@@ -80,6 +80,24 @@ the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migr
 
 ---
 
+## ✅ P4 Remediation — July 25, 2026 (real Prisma migration history — DONE, verified)
+
+- Every schema change P0–P3 was applied with `db push` (no versioned history). **Baselined** the existing
+  Prisma Postgres DB into a real migration history: `prisma migrate diff --from-empty --to-schema` →
+  `prisma/migrations/0_init/migration.sql` (full DDL incl. the P3 `Decimal(18,6)` columns, `ReferralSourceType`
+  enum, `Transaction @@index([reference])`), marked already-applied with `migrate resolve --applied 0_init`
+  (non-destructive — writes only `_prisma_migrations`). Added `prisma/migrations/migration_lock.toml`.
+- **Zero drift verified:** `migrate status` → "Database schema is up to date!" (1 migration);
+  `migrate diff --from-schema … --to-config-datasource --exit-code` → "No difference detected" (exit 0).
+- **Workflow adopted:** new scripts `db:migrate` (`migrate dev`), `db:migrate:deploy` (`migrate deploy`),
+  `db:migrate:status`; `db:push` kept but documented as dev-scratch only. Full workflow in `MIGRATIONS.md`
+  (schema edit → `db:migrate --name …` → review SQL → commit `prisma/migrations/**` → release runs
+  `db:migrate:deploy`; not wired into `next build` by design).
+- Regression guard: `prisma generate` + `tsc` + `next build` all green (schema unchanged — no-op confirming
+  nothing broke).
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.
