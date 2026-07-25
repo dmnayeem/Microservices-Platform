@@ -36,6 +36,17 @@
 
 ---
 
+## ✅ P2 Remediation — July 25, 2026 (frontend perf + mobile responsiveness — FIXED, verified tsc+eslint+build)
+
+- **Polling halved:** the mobile `BottomTabBar` no longer polls `/api/notifications` on desktop (gated behind a `matchMedia` mobile check) — the `Header` is now the single site-wide notification poller. `useAutoRefresh` had a `focus`+`visibilitychange` double-fire on every tab-return; a 1s coalescing guard collapses it to one run.
+- **Shared bundle slimmed:** framer-motion removed from the app-wide page wrappers (`(main)/template.tsx` + `PageTransition`) in favour of pure-CSS keyframes (`.animate-page-fade`/`.animate-page-slide`, honouring `prefers-reduced-motion`) — template.tsx is now a server component. `recharts` (revenue-trend, user-growth, analytics-charts) and `tiptap` (offers rich-text editor) are now `next/dynamic({ ssr:false })` with skeleton fallbacks; `qrcode` is lazy-`import()`ed only when the referral QR panel renders.
+- **Feed re-render fixed:** `FeedPostCard` wrapped in `React.memo` with stable (`useCallback`) id-scoped update/delete handlers, so liking/interacting with one post no longer re-renders every loaded post.
+- **Chat flicker fixed:** the 8s poll no longer flips `loading` (silent refresh) — the thread stopped collapsing to a spinner every poll; `/read` now fires only when a new incoming message arrives (not every poll).
+- **Mobile responsive quick-fixes:** audience-builder age/level grid `grid-cols-2 sm:grid-cols-4`, referral-tree per-level grid `grid-cols-3 sm:grid-cols-5 md:grid-cols-10`, quiz AI-generator modal `max-h-[90vh] overflow-y-auto`.
+- **Deferred to P3:** `survey-responses-view` recharts split (4 inline charts, rare admin route), full `next/image` sweep (78 `<img>`), splitting the 2.7k/2.9k-line client files, remaining raw admin-table migrations, chat `?since=` incremental fetch.
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.

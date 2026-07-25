@@ -38,27 +38,50 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Id of the last incoming message we've already marked read — avoids a POST
+  // /read write on every 8s poll when nothing new has arrived.
+  const lastReadRef = useRef<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  // `silent` polls (the 8s timer, post-send refresh) update the message list in
+  // place WITHOUT flipping `loading` — otherwise the whole thread collapsed to a
+  // spinner every 8s. Only the first load of a conversation shows the spinner.
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/chat/conversations/${conversationId}`);
       const d = await res.json();
-      setMessages(d.messages ?? []);
+      const msgs: Message[] = d.messages ?? [];
+      setMessages(msgs);
       setOther(d.otherUser ?? null);
-      await fetch(`/api/chat/conversations/${conversationId}/read`, {
-        method: "POST",
-      });
+
+      // Mark read only when the newest message is incoming and we haven't
+      // already acked it — not on every poll.
+      const last = msgs[msgs.length - 1];
+      if (
+        last &&
+        last.senderId !== currentUserId &&
+        last.id !== lastReadRef.current
+      ) {
+        lastReadRef.current = last.id;
+        await fetch(`/api/chat/conversations/${conversationId}/read`, {
+          method: "POST",
+        });
+      }
     } catch {
       // ignore
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Reset per-conversation state so switching threads shows a fresh spinner
+    // instead of the previous thread's messages.
+    lastReadRef.current = null;
+    setMessages([]);
+    setLoading(true);
     load();
-    const id = setInterval(load, 8000);
+    const id = setInterval(() => load(true), 8000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
@@ -88,7 +111,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
         }
       );
       if (!res.ok) throw new Error();
-      load();
+      load(true);
     } catch {
       setMessages((m) => m.filter((x) => x.id !== optimistic.id));
     } finally {

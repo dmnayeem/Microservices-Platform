@@ -217,7 +217,7 @@ export function ReferralTreeView({ userId, user }: Props) {
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
             Members per Level
           </p>
-          <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-10 gap-2">
             {Array.from({ length: stats.maxDepth }, (_, i) => i + 1).map((lvl) => (
               <div
                 key={lvl}

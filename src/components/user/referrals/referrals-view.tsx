@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { notifyCenter } from "@/lib/notify-center";
-import QRCodeLib from "qrcode";
+// `qrcode` is loaded lazily (only when the QR panel renders) so it stays out of
+// the initial referrals-page chunk — see QrPanel below.
 import { format } from "date-fns";
 import { ShareModal } from "@/components/user/primitives/share-modal";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
@@ -441,14 +442,18 @@ function QrPanel({ url }: { url: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    QRCodeLib.toDataURL(url, {
-      width: 256,
-      margin: 1,
-      color: {
-        dark: "#0f172a",
-        light: "#ffffff",
-      },
-    })
+    // Lazy-load the qrcode lib on first render of the panel.
+    import("qrcode")
+      .then((mod) =>
+        mod.default.toDataURL(url, {
+          width: 256,
+          margin: 1,
+          color: {
+            dark: "#0f172a",
+            light: "#ffffff",
+          },
+        })
+      )
       .then((d) => {
         if (!cancelled) setDataUrl(d);
       })

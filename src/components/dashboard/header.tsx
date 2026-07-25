@@ -38,7 +38,9 @@ export function Header({ user }: HeaderProps) {
   const [walletBalance, setWalletBalance] = useState(0);
 
   // Fetch notifications + wallet balance. Kept fresh site-wide: on mount, on
-  // every route change, on tab refocus, and on a 15s timer (see useAutoRefresh).
+  // tab refocus, and on a 30s timer (see useAutoRefresh). This is the single
+  // notification poller app-wide — the mobile bottom-bar defers to the Header
+  // on desktop and only polls on mobile viewports.
   const fetchData = useCallback(async () => {
     try {
       const notifRes = await fetch("/api/notifications?limit=5&unread=true", {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +18,20 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
-import { RichTextEditor } from "@/components/admin/offers/rich-text-editor";
+// Tiptap is heavy (~200KB) and only mounts inside this admin editor — load it
+// lazily so it stays out of the offer-editor's initial chunk.
+const RichTextEditor = dynamic(
+  () =>
+    import("@/components/admin/offers/rich-text-editor").then(
+      (m) => m.RichTextEditor
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-lg border border-slate-700 bg-slate-950 min-h-40 animate-pulse" />
+    ),
+  }
+);
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import {
   type OfferBlock,

@@ -159,7 +159,7 @@ export function AudienceBuilder({
 
       <CityChips cities={value.cities ?? []} onChange={(v) => set({ cities: v })} />
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <NumField label="Min age" value={num(value.minAge)} onChange={(s) => set({ minAge: toNum(s) })} />
         <NumField label="Max age" value={num(value.maxAge)} onChange={(s) => set({ maxAge: toNum(s) })} />
         <NumField label="Min level" value={num(value.minLevel)} onChange={(s) => set({ minLevel: toNum(s) })} />

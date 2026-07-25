@@ -28,6 +28,19 @@ export function BottomTabBar({ features }: { features?: string[] }) {
   const pathname = usePathname();
   const setMenuOpen = useMobileNav((s) => s.setOpen);
   const [unread, setUnread] = useState(0);
+  // This bar is `lg:hidden` — on desktop it's not visible, so skip its poll
+  // entirely (the Header already polls notifications). Halves the poll volume
+  // for every desktop user instead of duplicating it.
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   // Fetch unread on mount + on focus/timer (not on every navigation).
   const loadUnread = useCallback(async () => {
@@ -43,11 +56,12 @@ export function BottomTabBar({ features }: { features?: string[] }) {
   }, []);
 
   useEffect(() => {
+    if (!isMobile) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUnread();
-  }, [loadUnread]);
+  }, [loadUnread, isMobile]);
 
-  useAutoRefresh(loadUnread);
+  useAutoRefresh(loadUnread, { enabled: isMobile });
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);

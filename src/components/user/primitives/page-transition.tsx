@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -8,17 +7,15 @@ interface PageTransitionProps {
   children: ReactNode;
 }
 
+// Fade + small x-nudge on route change, as a pure-CSS keyframe
+// (`.animate-page-slide` in globals.css, which also honours
+// `prefers-reduced-motion`) so framer-motion stays out of the client bundle.
+// Keying on the pathname re-mounts the wrapper so the animation replays.
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
   return (
-    <motion.div
-      key={pathname}
-      initial={{ opacity: 0, x: 12 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -12 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-    >
+    <div key={pathname} className="animate-page-slide">
       {children}
-    </motion.div>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FeedAdCard, type FeedAd } from "@/components/user/feed/feed-ad-card";
 import {
   Image as ImageIcon,
@@ -375,13 +375,15 @@ function FeedTab({
     setPosts((prev) => [post, ...prev]);
   };
 
-  const handlePostUpdated = (id: string, patch: Partial<FeedPost>) => {
+  // Stable identities so the memoized FeedPostCard only re-renders the one post
+  // whose object actually changed (below they replace just the matching post).
+  const handlePostUpdated = useCallback((id: string, patch: Partial<FeedPost>) => {
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-  };
+  }, []);
 
-  const handlePostDeleted = (id: string) => {
+  const handlePostDeleted = useCallback((id: string) => {
     setPosts((prev) => prev.filter((p) => p.id !== id));
-  };
+  }, []);
 
   return (
     <PullToRefresh onRefresh={load}>
@@ -450,8 +452,8 @@ function FeedTab({
                   currentUserId={user.id}
                   currentUserRole={user.role ?? null}
                   canBoost={canBoost}
-                  onUpdated={(patch) => handlePostUpdated(post.id, patch)}
-                  onDeleted={() => handlePostDeleted(post.id)}
+                  onUpdatePost={handlePostUpdated}
+                  onDeletePost={handlePostDeleted}
                 />
                 {ad && <FeedAdCard key={`ad-${i}-${ad.adId}`} ad={ad} />}
               </Fragment>
@@ -1206,21 +1208,32 @@ function DonationComposer({
 // FeedPostCard
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FeedPostCard({
+const FeedPostCard = memo(function FeedPostCard({
   post,
   currentUserId,
   currentUserRole,
   canBoost,
-  onUpdated,
-  onDeleted,
+  onUpdatePost,
+  onDeletePost,
 }: {
   post: FeedPost;
   currentUserId: string;
   currentUserRole: string | null;
   canBoost?: boolean;
-  onUpdated: (patch: Partial<FeedPost>) => void;
-  onDeleted: () => void;
+  onUpdatePost: (id: string, patch: Partial<FeedPost>) => void;
+  onDeletePost: (id: string) => void;
 }) {
+  // Re-bind the id-scoped parent handlers to this card's post so all the
+  // existing `onUpdated(patch)` / `onDeleted()` call sites below stay unchanged,
+  // while the props received from the list are stable (enabling React.memo).
+  const onUpdated = useCallback(
+    (patch: Partial<FeedPost>) => onUpdatePost(post.id, patch),
+    [onUpdatePost, post.id]
+  );
+  const onDeleted = useCallback(
+    () => onDeletePost(post.id),
+    [onDeletePost, post.id]
+  );
   const [showComments, setShowComments] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
@@ -1755,7 +1768,7 @@ function FeedPostCard({
       )}
     </article>
   );
-}
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PromoteModal — lets an admin toggle PROMOTED, set an expiry, and tag a sponsor.

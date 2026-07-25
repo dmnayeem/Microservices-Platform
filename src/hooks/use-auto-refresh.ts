@@ -13,11 +13,15 @@ interface AutoRefreshOptions {
  * Re-runs `callback` to keep a surface's data fresh:
  *  - on window `focus`
  *  - on `visibilitychange` → visible (fires once immediately)
- *  - on a `setInterval` (default 15s) that is PAUSED while the tab is hidden
+ *  - on a `setInterval` (default 30s) that is PAUSED while the tab is hidden
  *
  * The interval never resets when `callback` changes (a ref holds the latest
  * one), so passing an inline arrow function is fine. All listeners/timers are
  * cleaned up on unmount or when `enabled` flips off.
+ *
+ * Returning to a tab fires BOTH `focus` and `visibilitychange` → visible, which
+ * used to run `callback` twice (two API round-trips per refocus). A 1s
+ * coalescing guard collapses the pair into a single run.
  *
  * Note: this does NOT call `callback` on mount — callers already fetch on mount
  * (App Router remounts page components on navigation). It only adds the live
@@ -36,11 +40,18 @@ export function useAutoRefresh(
     if (!enabled) return;
     if (typeof window === "undefined") return;
 
-    const run = () => cbRef.current();
+    // Coalesce focus + visibilitychange (both fire on tab-return) into one run.
+    let lastRun = 0;
+    const run = (coalesce = false) => {
+      const now = Date.now();
+      if (coalesce && now - lastRun < 1000) return;
+      lastRun = now;
+      cbRef.current();
+    };
 
     let timer: ReturnType<typeof setInterval> | null = null;
     const startTimer = () => {
-      if (timer === null) timer = setInterval(run, intervalMs);
+      if (timer === null) timer = setInterval(() => run(), intervalMs);
     };
     const stopTimer = () => {
       if (timer !== null) {
@@ -49,10 +60,10 @@ export function useAutoRefresh(
       }
     };
 
-    const onFocus = () => run();
+    const onFocus = () => run(true);
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        run();
+        run(true);
         startTimer();
       } else {
         stopTimer();

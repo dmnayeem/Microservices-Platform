@@ -289,6 +289,44 @@ textarea,
   animation: notify-bar linear forwards;
 }
 
+/* Screen-enter fade for the App Router `template` (re-mounts per navigation).
+   Pure CSS so framer-motion stays out of the shared client bundle. Fade-only
+   (no persistent transform) so fixed overlays inside pages aren't re-anchored. */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-page-fade {
+  animation: page-fade-in 0.18s ease-out;
+}
+
+/* Route-transition slide (PageTransition primitive): fade + small x-nudge. */
+@keyframes page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-page-slide {
+  animation: page-slide-in 0.2s ease-out;
+}
+
+/* Users who ask for less motion get the content with no entrance animation. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-fade,
+  .animate-page-slide {
+    animation: none;
+  }
+}
+
 /* Safe-area helpers for notch / status bar / home indicator (viewportFit=cover). */
 .safe-t {
   padding-top: env(safe-area-inset-top);
