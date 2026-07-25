@@ -168,7 +168,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             ? "Only active lotteries can be drawn"
             : result.reason === "no_tickets"
               ? "Cannot draw winners with no tickets sold"
-              : "Lottery not found";
+              : result.reason === "no_prizes"
+                ? "This lottery has no prize tiers configured"
+                : "Lottery not found";
         return NextResponse.json({ error: message }, { status: 400 });
       }
 

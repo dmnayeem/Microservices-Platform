@@ -10,7 +10,7 @@ export interface LotteryWinner {
 
 export type DrawResult =
   | { ok: true; winners: LotteryWinner[] }
-  | { ok: false; reason: "not_found" | "not_active" | "no_tickets" };
+  | { ok: false; reason: "not_found" | "not_active" | "no_tickets" | "no_prizes" };
 
 /**
  * Draw an ACTIVE lottery: shuffle its tickets, award each prize position to a
@@ -28,11 +28,16 @@ export async function drawLottery(lotteryId: string): Promise<DrawResult> {
   if (lottery.status !== "ACTIVE") return { ok: false, reason: "not_active" };
   if (lottery.tickets.length === 0) return { ok: false, reason: "no_tickets" };
 
-  const prizes = lottery.prizes as {
+  // `prizes` is a Json column; guard against a malformed/non-array value so the
+  // mapping loop below (outside the payout try/catch) can't throw on bad data.
+  const prizes = (
+    Array.isArray(lottery.prizes) ? lottery.prizes : []
+  ) as {
     position: number;
     amount: number;
     description: string;
   }[];
+  if (prizes.length === 0) return { ok: false, reason: "no_prizes" };
   const tickets = lottery.tickets;
 
   // Cryptographically-fair Fisher-Yates shuffle (never Math.random for real money).

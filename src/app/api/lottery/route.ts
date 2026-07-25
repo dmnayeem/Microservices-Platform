@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LotteryStatus, TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
+import { safeJsonParse } from "@/lib/safe-json";
 
 // GET /api/lottery - Get available lotteries and user's tickets
 export async function GET(request: NextRequest) {
@@ -312,7 +313,7 @@ export async function POST(request: NextRequest) {
       message: `Successfully purchased ${ticketCount} ticket(s)`,
       tickets: tickets.map((t) => ({
         ticketNumber: t.ticketNumber,
-        numbers: JSON.parse(t.numbers || "[]"),
+        numbers: safeJsonParse<number[]>(t.numbers, []),
       })),
       totalCost,
       newBalance: user.pointsBalance - totalCost,

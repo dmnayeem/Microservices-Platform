@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { safeJsonParse } from "@/lib/safe-json";
 
 // GET /api/lottery/my-tickets - Get user's lottery ticket history
 export async function GET(request: NextRequest) {
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
         return {
           id: t.id,
           ticketNumber: t.ticketNumber,
-          numbers: t.numbers ? JSON.parse(t.numbers) : null,
+          numbers: safeJsonParse<number[] | null>(t.numbers, null),
           isWinner: t.isWinner,
           prizeAmount: t.prizeAmount,
           purchasedAt: t.createdAt,
@@ -99,9 +100,10 @@ export async function GET(request: NextRequest) {
                 title: lottery.title,
                 drawDate: lottery.drawDate,
                 status: lottery.status,
-                winningNumbers: lottery.winningNumbers
-                  ? JSON.parse(lottery.winningNumbers)
-                  : null,
+                winningNumbers: safeJsonParse<number[] | null>(
+                  lottery.winningNumbers,
+                  null
+                ),
               }
             : null,
         };

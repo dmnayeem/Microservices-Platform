@@ -80,6 +80,15 @@ enum TransactionType {
   DEPOSIT
 }
 
+// What earning generated a referral commission. Currently only tasks pay
+// referral commissions; enumerated so new sources are added deliberately.
+enum ReferralSourceType {
+  TASK
+  PURCHASE
+  SUBSCRIPTION
+  COURSE
+}
+
 enum TransactionStatus {
   PENDING
   COMPLETED
@@ -1212,6 +1221,10 @@ model Transaction {
   @@index([status])
   @@index([createdAt])
   @@index([userId, createdAt])
+  // Non-unique: money routes look up "have we already processed this reference?"
+  // (idempotency). NOT @unique — marketplace/course double-entry writes two rows
+  // (buyer debit + seller credit) that deliberately share one reference.
+  @@index([reference])
 }
 
 model Withdrawal {
@@ -1376,7 +1389,7 @@ model ReferralEarning {
   referredUserId  String
   level           Int
   amount          Float
-  sourceType      String
+  sourceType      ReferralSourceType
   sourceId        String?
   createdAt       DateTime @default(now())
   @@index([userId])
