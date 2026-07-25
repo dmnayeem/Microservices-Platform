@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { toNum } from "@/lib/money";
 
 // GET /api/admin/subscriptions - Get all subscription requests
 export async function GET(request: NextRequest) {
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
             slug: subPkg?.slug,
             name: subPkg?.name ?? "—",
           },
-          amount: sub.amount,
+          amount: toNum(sub.amount),
           paymentMethod: sub.paymentMethod,
           transactionId: sub.transactionId,
           startDate: sub.startDate,

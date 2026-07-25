@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   ArrowLeft,
   CheckCircle,
@@ -149,7 +150,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
     new Date(withdrawal.user.createdAt)
   );
   const risk = assessWithdrawalRisk({
-    amount: withdrawal.amount,
+    amount: toNum(withdrawal.amount),
     userKycStatus: withdrawal.user.kycStatus,
     userPackageTier: withdrawal.user.package?.slug ?? "default",
     accountAgeDays: accountAge,
@@ -407,8 +408,8 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
             <WithdrawalActions
               withdrawalId={withdrawal.id}
               status={withdrawal.status}
-              amount={withdrawal.amount}
-              netAmount={withdrawal.netAmount}
+              amount={toNum(withdrawal.amount)}
+              netAmount={toNum(withdrawal.netAmount)}
               method={methodLabels[withdrawal.method] || withdrawal.method}
               existingTransactionId={withdrawal.transactionId ?? null}
             />

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import type { CouponType, CouponScope } from "@/generated/prisma";
 
 export interface CouponValidationOk {
@@ -78,14 +79,14 @@ export async function validateCoupon(opts: {
   if (course.isFree) {
     return { valid: false, reason: "This course is already free" };
   }
-  const livePrice = course.discountPrice ?? course.price;
+  const livePrice = toNum(course.discountPrice ?? course.price);
   if (livePrice <= 0) {
     return { valid: false, reason: "Nothing to discount" };
   }
-  if (coupon.minPurchase !== null && livePrice < coupon.minPurchase) {
+  if (coupon.minPurchase !== null && livePrice < toNum(coupon.minPurchase)) {
     return {
       valid: false,
-      reason: `Minimum purchase of $${coupon.minPurchase.toFixed(2)} required`,
+      reason: `Minimum purchase of $${toNum(coupon.minPurchase).toFixed(2)} required`,
     };
   }
   if (coupon.scope === "CATEGORY") {

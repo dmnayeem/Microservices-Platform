@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MarketplaceListingStatus } from "@/generated/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -80,7 +81,7 @@ export async function GET(
         assetType: listing.assetType,
         subType: listing.subType,
         details: listing.details,
-        price: listing.price,
+        price: toNum(listing.price),
         currency: listing.currency,
         status: listing.status,
         views: listing.views + 1,
@@ -90,9 +91,9 @@ export async function GET(
         directPurchasesCount: listing.directPurchasesCount,
         bidsCount: listing.bidsCount,
         bidderCount: listing.bidderCount,
-        monthlyRevenue: hideFinancials ? null : listing.monthlyRevenue,
-        monthlyProfit: hideFinancials ? null : listing.monthlyProfit,
-        monthlyExpenses: hideFinancials ? null : listing.monthlyExpenses,
+        monthlyRevenue: hideFinancials ? null : toNumOrNull(listing.monthlyRevenue),
+        monthlyProfit: hideFinancials ? null : toNumOrNull(listing.monthlyProfit),
+        monthlyExpenses: hideFinancials ? null : toNumOrNull(listing.monthlyExpenses),
         monthlyTraffic: listing.monthlyTraffic,
         assetAgeMonths: listing.assetAgeMonths,
         niche: listing.niche,
@@ -103,9 +104,9 @@ export async function GET(
         nsfw: listing.nsfw,
         ndaGated: listing.ndaGated,
         auctionMode: listing.auctionMode,
-        startingBid: listing.startingBid,
-        reservePrice: hideFinancials ? null : listing.reservePrice,
-        buyNowPrice: listing.buyNowPrice,
+        startingBid: toNumOrNull(listing.startingBid),
+        reservePrice: hideFinancials ? null : toNumOrNull(listing.reservePrice),
+        buyNowPrice: toNumOrNull(listing.buyNowPrice),
         auctionEndsAt: listing.auctionEndsAt,
         isFeatured: listing.isFeatured,
         isPromoted: listing.isPromoted,

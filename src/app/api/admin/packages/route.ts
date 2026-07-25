@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -91,7 +92,14 @@ export async function GET() {
   const packages = await prisma.package.findMany({
     orderBy: [{ order: "asc" }, { accessLevel: "asc" }],
   });
-  return NextResponse.json({ packages });
+  return NextResponse.json({
+    packages: packages.map((p) => ({
+      ...p,
+      priceMonthly: toNum(p.priceMonthly),
+      priceYearly: toNumOrNull(p.priceYearly),
+      minWithdrawal: toNum(p.minWithdrawal),
+    })),
+  });
 }
 
 /**

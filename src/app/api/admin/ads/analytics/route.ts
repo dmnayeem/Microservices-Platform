@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 
 // GET /api/admin/ads/analytics?days=14 — platform-wide ad time-series from
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     if (cur) {
       cur.impressions += s.impressions;
       cur.clicks += s.clicks;
-      cur.spendUsd += s.spendUsd;
+      cur.spendUsd += toNum(s.spendUsd);
     }
   }
 

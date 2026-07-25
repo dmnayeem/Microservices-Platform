@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { gt, toNum } from "@/lib/money";
 import {
   Crown,
   Users,
@@ -63,11 +64,11 @@ export default async function AdminPackagesPage() {
     0
   );
   const paidActive = packages.reduce(
-    (s, p) => (p.priceMonthly > 0 ? s + (activeSubByPkg[p.id] || 0) : s),
+    (s, p) => (gt(p.priceMonthly, 0) ? s + (activeSubByPkg[p.id] || 0) : s),
     0
   );
   const estimatedRevenue = packages.reduce(
-    (s, p) => s + (activeSubByPkg[p.id] || 0) * p.priceMonthly,
+    (s, p) => s + (activeSubByPkg[p.id] || 0) * toNum(p.priceMonthly),
     0
   );
 
@@ -196,7 +197,7 @@ export default async function AdminPackagesPage() {
                         {(userCountByPkg[pkg.id] || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-2 text-right tabular-nums">
-                        {pkg.priceMonthly > 0 ? (
+                        {gt(pkg.priceMonthly, 0) ? (
                           <span className="text-emerald-400">
                             {(activeSubByPkg[pkg.id] || 0).toLocaleString()}
                           </span>

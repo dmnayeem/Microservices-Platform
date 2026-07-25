@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 
 // GET /api/packages/subscription - Get user's subscription status
 export async function GET() {
@@ -65,7 +66,7 @@ export async function GET() {
         features: pkg?.features ?? [],
         dailyTaskLimit: pkg?.dailyTaskLimit ?? -1,
         withdrawalFee: pkg?.withdrawalFeeDiscount ?? 0,
-        minWithdrawal: pkg?.minWithdrawal ?? 5,
+        minWithdrawal: toNum(pkg?.minWithdrawal ?? 5),
       },
       activeSubscription: activeSub
         ? {
@@ -74,7 +75,7 @@ export async function GET() {
             packageName: activeSub.package?.name ?? "—",
             startDate: activeSub.startDate,
             endDate: activeSub.endDate,
-            amount: activeSub.amount,
+            amount: toNum(activeSub.amount),
             autoRenew: activeSub.autoRenew,
             paymentMethod: activeSub.paymentMethod,
           }
@@ -84,7 +85,7 @@ export async function GET() {
             id: pendingSub.id,
             tier: pendingSub.package?.slug ?? "—",
             packageName: pendingSub.package?.name ?? "—",
-            amount: pendingSub.amount,
+            amount: toNum(pendingSub.amount),
             transactionId: pendingSub.transactionId,
             paymentMethod: pendingSub.paymentMethod,
             submittedAt: pendingSub.createdAt,
@@ -95,7 +96,7 @@ export async function GET() {
         id: sub.id,
         tier: sub.package?.slug ?? "—",
         packageName: sub.package?.name ?? "—",
-        amount: sub.amount,
+        amount: toNum(sub.amount),
         startDate: sub.startDate,
         endDate: sub.endDate,
         isActive: sub.isActive,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAdClickCost } from "@/lib/ad-billing";
+import { add, toNum } from "@/lib/money";
 
 // GET /api/advertiser/campaigns/[id] — campaign + its ads + aggregated stats.
 // Owner-gated: only the advertiser who owns the campaign can view it.
@@ -67,9 +68,9 @@ export async function GET(
       title: campaign.title,
       description: campaign.description,
       status: campaign.status,
-      remaining: campaign.budget,
+      remaining: toNum(campaign.budget),
       spent,
-      budget: campaign.budget + spent,
+      budget: add(campaign.budget, spent).toNumber(),
       impressions: totals.impressions,
       clicks: totals.clicks,
       ctr:

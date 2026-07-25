@@ -7,6 +7,7 @@ import {
   NotificationType,
 } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (passed && !everPassed) {
     pointsAwarded = quiz.pointsReward;
     xpAwarded = quiz.xpReward;
-    const cash = quiz.cashReward || 0;
+    const cash = toNum(quiz.cashReward);
     const pointsPerUsd = await getPointsPerUsd();
     await prisma.$transaction([
       prisma.user.update({

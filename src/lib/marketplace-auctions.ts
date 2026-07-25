@@ -7,6 +7,7 @@ import {
   TransactionStatus,
 } from "@/generated/prisma";
 import { resolveCommissionBps, splitPrice } from "@/lib/marketplace-commission";
+import { lt, toNum, type MoneyInput } from "@/lib/money";
 
 export type AuctionCloseResult =
   | { listingId: string; outcome: "sold"; winnerId: string; amount: number }
@@ -23,7 +24,7 @@ interface AuctionListingRow {
   sellerId: string;
   title: string;
   assetType: string;
-  reservePrice: number | null;
+  reservePrice: MoneyInput | null;
   commissionRateBps: number | null;
 }
 
@@ -69,7 +70,7 @@ async function settleAuction(
   }
 
   // Reserve not met → expire
-  if (listing.reservePrice != null && highBid.amount < listing.reservePrice) {
+  if (listing.reservePrice != null && lt(highBid.amount, listing.reservePrice)) {
     await prisma.$transaction([
       prisma.marketplaceListing.update({
         where: { id: listing.id },
@@ -90,7 +91,7 @@ async function settleAuction(
         userId: listing.sellerId,
         type: NotificationType.SYSTEM,
         title: "Auction closed — reserve not met",
-        message: `Your auction "${listing.title}" closed below reserve. Highest bid: $${highBid.amount.toLocaleString()}.`,
+        message: `Your auction "${listing.title}" closed below reserve. Highest bid: $${toNum(highBid.amount).toLocaleString()}.`,
         data: { listingId: listing.id },
       },
     });
@@ -102,7 +103,7 @@ async function settleAuction(
   }
 
   // Pick winner — same settlement path as the manual close endpoint
-  const amount = highBid.amount;
+  const amount = toNum(highBid.amount);
   const bps = await resolveCommissionBps({
     assetType: listing.assetType,
     perListingOverride: listing.commissionRateBps,

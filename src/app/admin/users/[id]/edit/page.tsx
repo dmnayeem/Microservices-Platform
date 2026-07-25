@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { toNum } from "@/lib/money";
 import { UserEditForm } from "@/components/admin/users/edit-user-modal";
 
 export default async function EditUserPage({
@@ -79,6 +80,7 @@ export default async function EditUserPage({
   // UserEditForm prop shape.
   const user = {
     ...userRaw,
+    cashBalance: toNum(userRaw.cashBalance),
     dateOfBirth: userRaw.dateOfBirth ? new Date(userRaw.dateOfBirth) : null,
     featureOverrides: (userRaw.featureOverrides ?? null) as
       | Record<string, boolean>

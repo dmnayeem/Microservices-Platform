@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { PackagesView } from "@/components/user/packages/packages-view";
 
 export default async function PackagesPage() {
@@ -29,8 +30,8 @@ export default async function PackagesPage() {
         tier: p.slug,
         name: p.name,
         description: p.description ?? undefined,
-        priceMonthly: p.priceMonthly,
-        priceYearly: p.priceYearly ?? undefined,
+        priceMonthly: toNum(p.priceMonthly),
+        priceYearly: toNumOrNull(p.priceYearly) ?? undefined,
         dailyTaskLimit: p.dailyTaskLimit,
         withdrawalFee: p.withdrawalFeeDiscount,
       }))}

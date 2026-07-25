@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -52,7 +53,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ listing });
+    return NextResponse.json({
+      listing: {
+        ...listing,
+        price: toNum(listing.price),
+        monthlyRevenue: toNumOrNull(listing.monthlyRevenue),
+        monthlyProfit: toNumOrNull(listing.monthlyProfit),
+        monthlyExpenses: toNumOrNull(listing.monthlyExpenses),
+        startingBid: toNumOrNull(listing.startingBid),
+        reservePrice: toNumOrNull(listing.reservePrice),
+        buyNowPrice: toNumOrNull(listing.buyNowPrice),
+      },
+    });
   } catch (error) {
     console.error("Error fetching listing:", error);
     return NextResponse.json(

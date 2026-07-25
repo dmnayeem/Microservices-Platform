@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { WithdrawalStatus } from "@/generated/prisma";
 import { getSubscriptionStatus } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 
 // GET /api/wallet - Get user wallet details
 export async function GET() {
@@ -42,7 +43,7 @@ export async function GET() {
       },
       _sum: { amount: true },
     })) as unknown as { _sum: { amount: number | null } };
-    const pendingWithdrawalsAmount = pendingWithdrawalsAgg._sum.amount ?? 0;
+    const pendingWithdrawalsAmount = toNum(pendingWithdrawalsAgg._sum.amount);
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -94,8 +95,8 @@ export async function GET() {
         availablePoints: Math.max(0, availablePoints),
         cashEquivalent: user.pointsBalance / pointsPerUsd,
         pendingWithdrawal: pendingWithdrawalsAmount,
-        totalEarnings: user.totalEarnings,
-        totalWithdrawals: user.totalWithdrawals,
+        totalEarnings: toNum(user.totalEarnings),
+        totalWithdrawals: toNum(user.totalWithdrawals),
       },
       stats: {
         todayEarnings: todayEarningsPoints,

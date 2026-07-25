@@ -14,6 +14,7 @@ import {
   splitPrice,
 } from "@/lib/marketplace-commission";
 import { userCanFeature } from "@/lib/packages";
+import { lt, sub, toNum } from "@/lib/money";
 
 // POST /api/cart/checkout
 //
@@ -82,7 +83,7 @@ export async function POST() {
         issues.push(`"${l.title}" is your own listing`);
       } else if (l.auctionMode) {
         issues.push(`"${l.title}" is an auction — bid instead`);
-      } else if (!Number.isFinite(l.price) || l.price <= 0) {
+      } else if (!Number.isFinite(toNum(l.price)) || toNum(l.price) <= 0) {
         issues.push(`"${l.title}" has no valid price`);
       }
     }
@@ -96,7 +97,7 @@ export async function POST() {
       );
     }
 
-    const total = cart.reduce((s, i) => s + i.listing.price, 0);
+    const total = cart.reduce((s, i) => s + toNum(i.listing.price), 0);
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
@@ -105,12 +106,12 @@ export async function POST() {
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (buyer.cashBalance < total) {
+    if (lt(buyer.cashBalance, total)) {
       return NextResponse.json(
         {
           error: "Insufficient wallet balance",
-          shortBy: total - buyer.cashBalance,
-          details: `Need $${total.toFixed(2)}, have $${buyer.cashBalance.toFixed(2)}.`,
+          shortBy: sub(total, buyer.cashBalance).toNumber(),
+          details: `Need $${total.toFixed(2)}, have $${toNum(buyer.cashBalance).toFixed(2)}.`,
         },
         { status: 402 }
       );
@@ -123,7 +124,7 @@ export async function POST() {
           assetType: item.listing.assetType,
           perListingOverride: item.listing.commissionRateBps,
         });
-        const { fee, sellerAmount } = splitPrice(item.listing.price, bps);
+        const { fee, sellerAmount } = splitPrice(toNum(item.listing.price), bps);
         return { item, bps, fee, sellerAmount };
       })
     );

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   ArrowLeft,
   Mail,
@@ -209,7 +210,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
   const roleConfig = ROLE_CONFIG[user.role as UserRole] || ROLE_CONFIG.USER;
   const marketplaceSalesCount = marketplaceSalesAgg._count._all;
-  const marketplaceSalesAmount = marketplaceSalesAgg._sum.sellerAmount ?? 0;
+  const marketplaceSalesAmount = toNum(marketplaceSalesAgg._sum.sellerAmount);
 
   // Displayed counts = max(0, real + admin display-boost). Match the formula
   // used by /api/profile and /api/users/[id]/profile so the admin sees the

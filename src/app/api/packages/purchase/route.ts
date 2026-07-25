@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { PaymentMethod } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
+import { lt, toNum } from "@/lib/money";
 
 const schema = z.object({
   packageId: z.string().min(1),
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
   if (!pkg) {
     return NextResponse.json({ error: "Package not found" }, { status: 404 });
   }
-  if (pkg.priceMonthly === 0 && pkg.priceYearly == null) {
+  if (toNum(pkg.priceMonthly) === 0 && pkg.priceYearly == null) {
     return NextResponse.json(
       { error: "Free plans don't need to be purchased" },
       { status: 400 }
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   const months = DURATION_MONTHS[v.data.duration];
   const discount = DURATION_DISCOUNT[v.data.duration];
-  const totalUsd = pkg.priceMonthly * months * (1 - discount);
+  const totalUsd = toNum(pkg.priceMonthly) * months * (1 - discount);
   const pointsPerUsd = await getPointsPerUsd();
   const totalPoints = Math.ceil(totalUsd * pointsPerUsd);
 
@@ -76,11 +77,11 @@ export async function POST(request: NextRequest) {
 
   // Validate funds for non-redirect methods
   if (v.data.method === "CASH") {
-    if (user.cashBalance < totalUsd) {
+    if (lt(user.cashBalance, totalUsd)) {
       return NextResponse.json(
         {
           error: "Insufficient cash balance",
-          details: `Need $${totalUsd.toFixed(2)}, have $${user.cashBalance.toFixed(2)}`,
+          details: `Need $${totalUsd.toFixed(2)}, have $${toNum(user.cashBalance).toFixed(2)}`,
         },
         { status: 400 }
       );

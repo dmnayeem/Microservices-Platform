@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   DollarSign,
   Search,
@@ -341,7 +342,7 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
               rejected: 0,
             };
             const risk = assessWithdrawalRisk({
-              amount: withdrawal.amount,
+              amount: toNum(withdrawal.amount),
               userKycStatus: withdrawal.user.kycStatus,
               userPackageTier: withdrawal.user.package?.slug ?? "default",
               accountAgeDays: differenceInDays(new Date(), withdrawal.user.createdAt),
@@ -460,7 +461,7 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
                     <WithdrawalRowActions
                       withdrawalId={r.withdrawal.id}
                       status={r.withdrawal.status}
-                      amount={r.withdrawal.amount}
+                      amount={toNum(r.withdrawal.amount)}
                       canProcess={canProcess}
                     />
                   ),

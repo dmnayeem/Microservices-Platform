@@ -14,6 +14,7 @@ import {
   splitPrice,
 } from "@/lib/marketplace-commission";
 import { userCanFeature } from "@/lib/packages";
+import { lt, sub, toNum } from "@/lib/money";
 
 // POST /api/marketplace/:id/checkout
 //
@@ -73,7 +74,8 @@ export async function POST(
         { status: 400 }
       );
     }
-    if (!Number.isFinite(listing.price) || listing.price <= 0) {
+    const priceNum = toNum(listing.price);
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
       return NextResponse.json(
         { error: "This listing has no valid price." },
         { status: 400 }
@@ -87,12 +89,12 @@ export async function POST(
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (buyer.cashBalance < listing.price) {
+    if (lt(buyer.cashBalance, listing.price)) {
       return NextResponse.json(
         {
           error: "Insufficient wallet balance",
-          shortBy: listing.price - buyer.cashBalance,
-          details: `Need $${listing.price.toFixed(2)}, have $${buyer.cashBalance.toFixed(2)}.`,
+          shortBy: sub(listing.price, buyer.cashBalance).toNumber(),
+          details: `Need $${toNum(listing.price).toFixed(2)}, have $${toNum(buyer.cashBalance).toFixed(2)}.`,
         },
         { status: 402 }
       );
@@ -103,7 +105,7 @@ export async function POST(
       assetType: listing.assetType,
       perListingOverride: listing.commissionRateBps,
     });
-    const { fee, sellerAmount } = splitPrice(listing.price, bps);
+    const { fee, sellerAmount } = splitPrice(priceNum, bps);
 
     const purchase = await prisma.$transaction(async (tx) => {
       // Atomic status flip — bails out (count: 0) if a concurrent request
@@ -259,7 +261,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       purchaseId: purchase.id,
-      amount: listing.price,
+      amount: toNum(listing.price),
       fee,
       sellerAmount,
       checkoutUrl: null,

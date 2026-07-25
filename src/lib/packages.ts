@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull, type MoneyInput } from "@/lib/money";
 import {
   FEATURE_TO_COLUMN,
   FEATURE_KEYS,
@@ -90,6 +91,22 @@ export interface PackageRow {
  * misconfiguration and callers should error or fall back to FREE-equivalent
  * behavior.
  */
+/**
+ * Normalize a raw Prisma `Package` row into a `PackageRow`: the money columns
+ * are `Decimal` in the DB but `PackageRow` (and every consumer) uses `number`,
+ * so convert them at this single boundary instead of leaking Decimals behind an
+ * `as unknown as PackageRow` cast.
+ */
+function toPackageRow(pkg: unknown): PackageRow {
+  const p = pkg as Record<string, unknown>;
+  return {
+    ...(p as unknown as PackageRow),
+    priceMonthly: toNum(p.priceMonthly as MoneyInput),
+    priceYearly: toNumOrNull(p.priceYearly as MoneyInput | null),
+    minWithdrawal: toNum(p.minWithdrawal as MoneyInput),
+  };
+}
+
 export async function getEffectivePackage(
   userId: string
 ): Promise<PackageRow | null> {
@@ -111,7 +128,7 @@ export async function getEffectivePackage(
     (user.packageExpiresAt == null ||
       user.packageExpiresAt.getTime() > Date.now());
 
-  if (subActive) return user.package as unknown as PackageRow;
+  if (subActive) return toPackageRow(user.package);
 
   return defaultPackage();
 }
@@ -131,7 +148,7 @@ export async function defaultPackage(): Promise<PackageRow | null> {
   const row = await prisma.package.findFirst({
     where: { isDefault: true, isActive: true },
   });
-  const value = (row as unknown as PackageRow | null) ?? null;
+  const value = row ? toPackageRow(row) : null;
   _defaultPkg = { row: value, at: Date.now() };
   return value;
 }

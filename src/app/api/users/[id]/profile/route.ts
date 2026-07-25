@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getXpRank } from "@/lib/user-rank";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 
 // GET /api/users/[id]/profile — public profile data, honors privacy settings.
 export async function GET(
@@ -118,9 +119,9 @@ export async function GET(
       // Earnings tile respects the separate privacyEarnings setting — when
       // private, the totals are nulled but rank/xp/level/team stay visible.
       totalEarnedPoints: earningsVisible
-        ? Math.round(u.totalEarnings * pointsPerUsd)
+        ? Math.round(toNum(u.totalEarnings) * pointsPerUsd)
         : null,
-      totalEarnedUsd: earningsVisible ? u.totalEarnings : null,
+      totalEarnedUsd: earningsVisible ? toNum(u.totalEarnings) : null,
       tasksCompleted: u._count.taskSubmissions,
       rank: await getXpRank(u.id, u.xp),
       totalXp: u.xp,

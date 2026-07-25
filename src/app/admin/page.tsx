@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, type MoneyInput } from "@/lib/money";
 import { isAdmin, type UserRole } from "@/lib/rbac";
 import { Users, Activity, DollarSign, GitBranch, Clock, TrendingUp, CalendarDays, ListTodo, ClipboardCheck, Wallet, CheckCircle } from "lucide-react";
 import { StatCard } from "@/components/admin/stat-card";
@@ -36,7 +37,7 @@ function buildGrowthSeries(
 
 // Build the 30-day revenue dataset (oldest first)
 function buildRevenueSeries(
-  subs: Array<{ createdAt: Date; amount: number }>,
+  subs: Array<{ createdAt: Date; amount: MoneyInput }>,
   days = 30
 ): Array<{ label: string; revenue: number }> {
   const today = startOfDay(new Date());
@@ -213,7 +214,7 @@ export default async function AdminDashboardPage() {
 
   // Derive numbers
   const pendingPayoutsAmount = pendingWithdrawAgg._sum.amount ?? 0;
-  const totalPaid = paidWithdrawalsAgg._sum.amount ?? 0;
+  const totalPaid = toNum(paidWithdrawalsAgg._sum.amount);
   const todayRevenue = todayRevenueAgg._sum.amount ?? 0;
   const monthRevenue = monthRevenueAgg._sum.amount ?? 0;
   const totalRevenue = totalRevenueAgg._sum.amount ?? 0;

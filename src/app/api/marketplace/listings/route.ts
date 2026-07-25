@@ -8,6 +8,7 @@ import {
 } from "@/lib/marketplace-categories";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { userCanFeature } from "@/lib/packages";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
 
 // GET /api/marketplace/listings - Get marketplace listings
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
       category: l.category,
       assetType: l.assetType,
       subType: l.subType,
-      price: l.price,
+      price: toNum(l.price),
       currency: l.currency,
       status: l.status,
       views: l.views,
@@ -130,8 +131,8 @@ export async function GET(request: NextRequest) {
       salesCount: l._count.purchases,
       watchCount: l._count.watches,
       isWatched: myWatchedIds.has(l.id),
-      monthlyRevenue: l.monthlyRevenue,
-      monthlyProfit: l.monthlyProfit,
+      monthlyRevenue: toNumOrNull(l.monthlyRevenue),
+      monthlyProfit: toNumOrNull(l.monthlyProfit),
       monthlyTraffic: l.monthlyTraffic,
       assetAgeMonths: l.assetAgeMonths,
       niche: l.niche,
@@ -139,8 +140,8 @@ export async function GET(request: NextRequest) {
       isFeatured: l.isFeatured,
       isPromoted: l.isPromoted,
       auctionMode: l.auctionMode,
-      buyNowPrice: l.buyNowPrice,
-      startingBid: l.startingBid,
+      buyNowPrice: toNumOrNull(l.buyNowPrice),
+      startingBid: toNumOrNull(l.startingBid),
       auctionEndsAt: l.auctionEndsAt,
       createdAt: l.createdAt,
       seller: l.seller,

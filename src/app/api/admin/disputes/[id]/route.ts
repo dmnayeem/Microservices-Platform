@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { DisputeStatus, NotificationType, TransactionType, TransactionStatus } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -84,13 +85,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         id: dispute.id,
         purchase: {
           id: purchase?.id || "",
-          amount: purchase?.amount || 0,
-          fee: purchase?.fee || 0,
-          sellerAmount: purchase?.sellerAmount || 0,
+          amount: toNum(purchase?.amount),
+          fee: toNum(purchase?.fee),
+          sellerAmount: toNum(purchase?.sellerAmount),
           listing: {
             id: listing?.id || "",
             title: listing?.title || "Unknown",
-            price: listing?.price || 0,
+            price: toNum(listing?.price),
             image: listing?.images?.[0] || null,
           },
         },
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         evidence: dispute.evidence,
         status: dispute.status,
         resolution: dispute.resolution,
-        resolvedAmount: dispute.resolvedAmount,
+        resolvedAmount: toNumOrNull(dispute.resolvedAmount),
         assignedAdminId: dispute.assignedAdminId,
         adminNotes: dispute.adminNotes,
         createdAt: dispute.createdAt,

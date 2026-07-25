@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { WithdrawalStatus } from "@/generated/prisma/client";
 
 export const runtime = "nodejs";
@@ -78,7 +79,7 @@ export async function GET(req: NextRequest) {
                 w.user.username ??
                 w.user.name?.split(" ")[0]?.toLowerCase() ??
                 "user",
-              amount: w.netAmount,
+              amount: toNum(w.netAmount),
               unit: "USD",
               method: w.method,
               country: w.user.country,

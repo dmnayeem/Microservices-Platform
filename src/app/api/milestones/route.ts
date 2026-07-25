@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 
 // Static milestone definitions — progress computed live from user data
 interface MilestoneDef {
@@ -100,7 +101,7 @@ export async function GET() {
       case "earn_5":
       case "earn_50":
       case "earn_500":
-        return user.totalEarnings;
+        return toNum(user.totalEarnings);
       case "posts_5":
         return postCount;
       case "likes_50":

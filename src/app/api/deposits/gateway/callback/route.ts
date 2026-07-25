@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { deliverToUser } from "@/lib/notify";
 import { getPaymentProvider } from "@/lib/payments";
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
   // mismatch (tampered/underpaid) is never credited.
   const amountOk =
     paidAmount === undefined ||
-    Math.abs(Number(paidAmount) - deposit.amount) <= 0.01;
+    Math.abs(Number(paidAmount) - toNum(deposit.amount)) <= 0.01;
 
   if (!success || !amountOk) {
     if (deposit.status === "PENDING") {

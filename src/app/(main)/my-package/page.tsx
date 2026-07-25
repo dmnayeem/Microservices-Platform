@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import {
   MyPackageView,
   type PackageData,
@@ -39,11 +40,11 @@ export default async function MyPackagePage() {
         tier: pkg.slug,
         name: pkg.name,
         description: pkg.description,
-        priceMonthly: pkg.priceMonthly,
-        priceYearly: pkg.priceYearly,
+        priceMonthly: toNum(pkg.priceMonthly),
+        priceYearly: toNumOrNull(pkg.priceYearly),
         dailyTaskLimit: pkg.dailyTaskLimit,
         withdrawalFee: pkg.withdrawalFeeDiscount,
-        minWithdrawal: pkg.minWithdrawal,
+        minWithdrawal: toNum(pkg.minWithdrawal),
         features: pkg.features,
         referralBonus: pkg.dailyReferralPoints,
         xpMultiplier: pkg.xpMultiplier,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 
 // GET /api/marketplace/orders/:id - Get purchase details
 export async function GET(
@@ -75,13 +76,13 @@ export async function GET(
           images: purchase.listing.images,
           files,
           category: purchase.listing.category,
-          price: purchase.listing.price,
+          price: toNum(purchase.listing.price),
         },
         buyer: isSeller ? purchase.buyer : undefined,
         seller: isBuyer ? purchase.listing.seller : undefined,
-        amount: purchase.amount,
-        fee: purchase.fee,
-        sellerAmount: purchase.sellerAmount,
+        amount: toNum(purchase.amount),
+        fee: toNum(purchase.fee),
+        sellerAmount: toNum(purchase.sellerAmount),
         status: purchase.status,
         createdAt: purchase.createdAt,
       },

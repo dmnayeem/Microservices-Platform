@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DisputeStatus, NotificationType } from "@/generated/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -89,11 +90,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         id: dispute.id,
         purchase: {
           id: purchase.id,
-          amount: purchase.amount,
+          amount: toNum(purchase.amount),
           listing: {
             id: listing?.id || "",
             title: listing?.title || "Unknown",
-            price: listing?.price || 0,
+            price: toNum(listing?.price),
             image: listing?.images?.[0] || null,
           },
         },
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         evidence: dispute.evidence,
         status: dispute.status,
         resolution: dispute.resolution,
-        resolvedAmount: dispute.resolvedAmount,
+        resolvedAmount: toNumOrNull(dispute.resolvedAmount),
         createdAt: dispute.createdAt,
         resolvedAt: dispute.resolvedAt,
         myRole: isBuyer ? "BUYER" : "SELLER",

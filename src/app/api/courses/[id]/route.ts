@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CourseStatus, NotificationType } from "@/generated/prisma";
+import { toNum } from "@/lib/money";
 
 // GET /api/courses/:id - Get course details
 export async function GET(
@@ -73,7 +74,7 @@ export async function GET(
         category: course.category,
         difficulty: course.difficulty,
         duration: course.totalDuration,
-        price: course.price,
+        price: toNum(course.price),
         isFree: course.isFree,
         rating: course.rating,
         enrollmentsCount: course.enrollmentCount,

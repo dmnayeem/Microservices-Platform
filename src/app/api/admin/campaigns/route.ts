@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
 
 const schema = z.object({
@@ -69,5 +70,15 @@ export async function POST(request: NextRequest) {
       newData: { title: campaign.title, type: campaign.type },
     },
   });
-  return NextResponse.json({ success: true, campaign }, { status: 201 });
+  return NextResponse.json(
+    {
+      success: true,
+      campaign: {
+        ...campaign,
+        budget: toNumOrNull(campaign.budget),
+        rewardsDistributed: toNum(campaign.rewardsDistributed),
+      },
+    },
+    { status: 201 }
+  );
 }

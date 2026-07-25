@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
+import { toNum } from "@/lib/money";
 
 export type LeaderboardMetric =
   | "POINTS_EARNED"
@@ -132,7 +133,9 @@ export async function computeCombinedTopUsers(options: {
   // Build per-user component row
   const rows = users.map((u) => ({
     user: u,
-    points: u.totalEarnings,
+    // `totalEarnings` is a Decimal column masked as `number` by the cast above —
+    // normalize to a real number for the percentile/score math below.
+    points: toNum(u.totalEarnings),
     xp: u.xp,
     tasks: tasksByUser.get(u.id) ?? 0,
     team: teamByUser.get(u.id) ?? 0,

@@ -47,6 +47,39 @@
 
 ---
 
+## ✅ P3 Remediation — July 25, 2026 (tech-debt cleanup + Float→Decimal money migration — DONE, verified tsc+eslint+build)
+
+**Commit A — safe cleanup:**
+- Deleted zero-reference dead code (`src/stores/user-store.ts`, `src/components/admin/coming-soon.tsx`).
+- `safeJsonParse<T>()` helper (`src/lib/safe-json.ts`) applied at all lottery ticket/winning-number
+  `JSON.parse` sites (malformed rows → `[]`/`null`, not a 500); guarded the unprotected `prizes` Json cast in
+  `lottery.ts` (its mapping loop ran outside any try/catch) with a new `no_prizes` draw reason.
+- `Transaction @@index([reference])` (non-unique — marketplace/course double-entry deliberately shares a
+  reference; unique idempotency deferred). `ReferralEarning.sourceType String` → `ReferralSourceType` enum.
+
+**Commit B — Float→Decimal money migration:**
+- **37 money columns across 30 models** `Float` → `Decimal @db.Decimal(18,6)` (staged in 5 model-groups:
+  core wallet → payouts → earn config → packages/marketplace → courses). Left as `Float` (documented):
+  the 4 semantically-mixed rate fields (`Campaign.value`, `Package.withdrawalFeeDiscount`,
+  `ReferralLevel.commissionValue`, `CourseCoupon.value`) + all non-money floats (multipliers, ratings, score,
+  `dailyReferralPoints`).
+- **New `src/lib/money.ts`** (re-exports `Prisma.Decimal`; `D`/`toNum`/`toNumOrNull`/`add`/`sub`/`mul`/`div`/
+  `gte`/`gt`/`lte`/`lt`/`eq`/`sum`/`round2`). Server-side money math on the hot mutation paths
+  (auction settlement, checkout, withdrawals, commissions, subscription renewal) now uses exact Decimal;
+  the P0 atomic-CAS balance guards are unchanged (Prisma coerces number↔Decimal on writes/filters).
+- **Contract preserved as `number`:** every API JSON response serializes Decimal→number at the boundary
+  (`toNum`/`toNumOrNull`), so no client component or `src/types` changed. tsc surfaced every broken
+  arithmetic/comparison site (~80 across ~50 files); a dedicated JSON-boundary + cast-mask audit caught the
+  tsc-blind leaks — including masked-Decimal landmines in `cart/checkout`, `admin/leaderboard/reset` (prize
+  scoring), and the `PackageRow` DTO (`getEffectivePackage`/`defaultPackage` now normalize money via `toNum`).
+- Verified: `tsc --noEmit` clean, eslint clean, `next build` compiles.
+
+**Deferred beyond P3:** unique-reference idempotency (needs reference normalization + composite key), splitting
+the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migration, full `next/image` sweep,
+`db push` → real Prisma migration history.
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.

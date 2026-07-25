@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { deliverToUser } from "@/lib/notify";
 
@@ -46,7 +47,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Withdrawal not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ withdrawal });
+    return NextResponse.json({
+      withdrawal: {
+        ...withdrawal,
+        amount: toNum(withdrawal.amount),
+        fee: toNum(withdrawal.fee),
+        netAmount: toNum(withdrawal.netAmount),
+      },
+    });
   } catch (error) {
     console.error("Error fetching withdrawal:", error);
     return NextResponse.json(

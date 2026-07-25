@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { Users, DollarSign, TrendingUp, Activity, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import Link from "next/link";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
@@ -134,8 +135,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   const userChange = calculateChange(newUsers, previousNewUsers);
   const taskChange = calculateChange(completedTasks, previousCompletedTasks);
   const withdrawalChange = calculateChange(
-    totalWithdrawals._sum.amount || 0,
-    previousWithdrawals._sum.amount || 0
+    toNum(totalWithdrawals._sum.amount),
+    toNum(previousWithdrawals._sum.amount)
   );
   const activeUserChange = calculateChange(
     activeUsers.length,
@@ -172,7 +173,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         date: format(date, "MMM d"),
         users,
         tasks,
-        withdrawals: withdrawals._sum.amount || 0,
+        withdrawals: toNum(withdrawals._sum.amount),
       };
     })
   );

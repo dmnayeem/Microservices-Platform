@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { notFound, redirect } from "next/navigation";
 import { EditListingForm } from "./_components/EditListingForm";
 
@@ -42,6 +43,18 @@ export default async function EditListingPage({ params }: PageProps) {
     notFound();
   }
 
+  // Decimal money columns → plain numbers for the client form.
+  const listingForForm = {
+    ...listing,
+    price: toNum(listing.price),
+    monthlyRevenue: toNumOrNull(listing.monthlyRevenue),
+    monthlyProfit: toNumOrNull(listing.monthlyProfit),
+    monthlyExpenses: toNumOrNull(listing.monthlyExpenses),
+    startingBid: toNumOrNull(listing.startingBid),
+    reservePrice: toNumOrNull(listing.reservePrice),
+    buyNowPrice: toNumOrNull(listing.buyNowPrice),
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-950 via-gray-900 to-black p-6">
       <div className="max-w-4xl mx-auto">
@@ -50,7 +63,7 @@ export default async function EditListingPage({ params }: PageProps) {
           <p className="text-gray-400">Update the marketplace listing details</p>
         </div>
 
-        <EditListingForm listing={listing} />
+        <EditListingForm listing={listingForForm} />
       </div>
     </div>
   );

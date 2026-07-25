@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { defaultPackage } from "@/lib/packages";
+import { toNum } from "@/lib/money";
 import { deliverToUser } from "@/lib/notify";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
@@ -33,7 +34,7 @@ export async function runSubscriptionExpiry(): Promise<{
       select: { id: true, cashBalance: true, packageExpiresAt: true },
     });
     for (const u of users) {
-      balanceById.set(u.id, u.cashBalance);
+      balanceById.set(u.id, toNum(u.cashBalance));
       expiresById.set(u.id, u.packageExpiresAt);
     }
   }
@@ -49,19 +50,20 @@ export async function runSubscriptionExpiry(): Promise<{
       THIRTY_DAYS
     );
     const newEnd = new Date(now.getTime() + periodMs);
+    const subAmount = toNum(sub.amount);
 
     const canRenew =
       sub.autoRenew &&
-      sub.amount > 0 &&
+      subAmount > 0 &&
       !!sub.packageId &&
-      (balanceById.get(sub.userId) ?? 0) >= sub.amount;
+      (balanceById.get(sub.userId) ?? 0) >= subAmount;
 
     if (canRenew) {
       try {
         await prisma.$transaction(async (tx) => {
           const debit = await tx.user.updateMany({
-            where: { id: sub.userId, cashBalance: { gte: sub.amount } },
-            data: { cashBalance: { decrement: sub.amount } },
+            where: { id: sub.userId, cashBalance: { gte: subAmount } },
+            data: { cashBalance: { decrement: subAmount } },
           });
           if (debit.count === 0) throw new Error("INSUFFICIENT");
 
@@ -78,7 +80,7 @@ export async function runSubscriptionExpiry(): Promise<{
               userId: sub.userId,
               type: TransactionType.PURCHASE,
               status: TransactionStatus.COMPLETED,
-              amount: -sub.amount,
+              amount: -subAmount,
               points: 0,
               description: "Subscription auto-renewal",
               reference: `sub_renew_${sub.id}_${newEnd.getTime()}`,
@@ -89,7 +91,7 @@ export async function runSubscriptionExpiry(): Promise<{
         void deliverToUser({
           userId: sub.userId,
           title: "Subscription renewed",
-          message: `Your plan was auto-renewed for $${sub.amount.toFixed(2)}.`,
+          message: `Your plan was auto-renewed for $${subAmount.toFixed(2)}.`,
           link: "/my-package",
         });
         continue;

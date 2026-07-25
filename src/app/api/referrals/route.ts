@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { toNum } from "@/lib/money";
 
 // GET /api/referrals - Get user's referral dashboard data
 export async function GET(request: NextRequest) {
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
     const earningsByLevel: Record<number, { amount: number; count: number }> = {};
     let totalEarningsAmount = 0;
     for (const g of earningsGrouped) {
-      const amount = g._sum.amount ?? 0;
+      const amount = toNum(g._sum.amount);
       earningsByLevel[g.level] = { amount, count: g._count._all };
       totalEarningsAmount += amount;
     }
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
       where: { userId: session.user.id, createdAt: { gte: monthStart } },
       _sum: { amount: true },
     });
-    const monthEarningsAmount = monthEarningsAgg._sum.amount ?? 0;
+    const monthEarningsAmount = toNum(monthEarningsAgg._sum.amount);
 
     // Get recent referral activities
     const recentActivities = await prisma.referralEarning.findMany({
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
         joinedAt: r.createdAt,
         level: tag,
         userLevel: r.level,
-        totalEarnings: r.totalEarnings,
+        totalEarnings: toNum(r.totalEarnings),
       }));
     };
 
@@ -231,7 +232,7 @@ export async function GET(request: NextRequest) {
       recentActivities: recentActivities.map((a) => ({
         id: a.id,
         level: a.level,
-        amount: a.amount,
+        amount: toNum(a.amount),
         sourceType: a.sourceType,
         createdAt: a.createdAt,
       })),

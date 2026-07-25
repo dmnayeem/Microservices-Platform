@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { QuizForm, type QuizEditInitial } from "@/components/admin/quizzes/quiz-form";
 
@@ -46,7 +47,7 @@ export default async function EditQuizPage({
     passingScore: quiz.passingScore,
     pointsReward: quiz.pointsReward,
     xpReward: quiz.xpReward,
-    cashReward: quiz.cashReward,
+    cashReward: toNum(quiz.cashReward),
     maxAttempts: quiz.maxAttempts,
     cooldownHours: quiz.cooldownHours,
     requiredLevel: quiz.requiredLevel,

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { PackageForm, type PackageFormPkg } from "../../_components/PackageForm";
 import { ArrowLeft, Edit } from "lucide-react";
@@ -43,8 +44,8 @@ export default async function EditPackagePage({ params }: PageProps) {
     isActive: pkg.isActive,
     order: pkg.order,
 
-    priceMonthly: pkg.priceMonthly,
-    priceYearly: pkg.priceYearly,
+    priceMonthly: toNum(pkg.priceMonthly),
+    priceYearly: toNumOrNull(pkg.priceYearly),
     validityDays: pkg.validityDays,
 
     tasksEnabled: pkg.tasksEnabled,
@@ -75,7 +76,7 @@ export default async function EditPackagePage({ params }: PageProps) {
     appInstallEnabled: pkg.appInstallEnabled,
 
     dailyTaskLimit: pkg.dailyTaskLimit,
-    minWithdrawal: pkg.minWithdrawal,
+    minWithdrawal: toNum(pkg.minWithdrawal),
     withdrawalFeeDiscount: pkg.withdrawalFeeDiscount,
 
     xpMultiplier: pkg.xpMultiplier,

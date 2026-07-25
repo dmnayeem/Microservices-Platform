@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { ListingDetailView } from "@/components/user/marketplace/listing-detail-view";
 
 export default async function ListingDetailPage({
@@ -64,7 +65,7 @@ export default async function ListingDetailPage({
         assetType: listing.assetType,
         subType: listing.subType,
         details: listing.details as Record<string, unknown> | null,
-        price: listing.price,
+        price: toNum(listing.price),
         currency: listing.currency,
         images: listing.images,
         screenshots: listing.screenshots,
@@ -74,9 +75,9 @@ export default async function ListingDetailPage({
         uniqueViewers: listing.uniqueViewers,
         watchCount: counts.watches,
         salesCount: counts.purchases,
-        monthlyRevenue: hideFinancials ? null : listing.monthlyRevenue,
-        monthlyProfit: hideFinancials ? null : listing.monthlyProfit,
-        monthlyExpenses: hideFinancials ? null : listing.monthlyExpenses,
+        monthlyRevenue: hideFinancials ? null : toNumOrNull(listing.monthlyRevenue),
+        monthlyProfit: hideFinancials ? null : toNumOrNull(listing.monthlyProfit),
+        monthlyExpenses: hideFinancials ? null : toNumOrNull(listing.monthlyExpenses),
         monthlyTraffic: listing.monthlyTraffic,
         assetAgeMonths: listing.assetAgeMonths,
         niche: listing.niche,
@@ -87,9 +88,9 @@ export default async function ListingDetailPage({
         ndaGated: listing.ndaGated,
         nsfw: listing.nsfw,
         auctionMode: listing.auctionMode,
-        startingBid: listing.startingBid,
-        reservePrice: hideFinancials ? null : listing.reservePrice,
-        buyNowPrice: listing.buyNowPrice,
+        startingBid: toNumOrNull(listing.startingBid),
+        reservePrice: hideFinancials ? null : toNumOrNull(listing.reservePrice),
+        buyNowPrice: toNumOrNull(listing.buyNowPrice),
         auctionEndsAt: listing.auctionEndsAt
           ? listing.auctionEndsAt.toISOString()
           : null,

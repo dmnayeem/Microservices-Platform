@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   MarketplaceBidStatus,
   MarketplaceListingStatus,
@@ -48,7 +49,7 @@ export async function GET(
     return NextResponse.json({
       bids: bids.map((b) => ({
         id: b.id,
-        amount: b.amount,
+        amount: toNum(b.amount),
         status: b.status,
         message: b.message,
         createdAt: b.createdAt,
@@ -142,16 +143,18 @@ export async function POST(
       orderBy: { amount: "desc" },
     });
 
-    const floor = currentHigh
-      ? currentHigh.amount + minIncrement(currentHigh.amount)
-      : listing.startingBid ?? 0;
+    const currentHighNum = currentHigh ? toNum(currentHigh.amount) : null;
+    const floor =
+      currentHighNum != null
+        ? currentHighNum + minIncrement(currentHighNum)
+        : toNum(listing.startingBid);
 
     if (amount < floor) {
       return NextResponse.json(
         {
           error:
             currentHigh
-              ? `Bid must be at least $${floor.toLocaleString()} (current high $${currentHigh.amount.toLocaleString()} + minimum increment).`
+              ? `Bid must be at least $${floor.toLocaleString()} (current high $${toNum(currentHigh.amount).toLocaleString()} + minimum increment).`
               : `Bid must be at least the starting bid of $${(listing.startingBid ?? 0).toLocaleString()}.`,
         },
         { status: 400 }
@@ -221,7 +224,7 @@ export async function POST(
     return NextResponse.json({
       bid: newBid,
       isHigh: true,
-      reserveMet: listing.reservePrice == null || amount >= listing.reservePrice,
+      reserveMet: listing.reservePrice == null || amount >= toNum(listing.reservePrice),
     });
   } catch (error) {
     console.error("Place bid failed:", error);

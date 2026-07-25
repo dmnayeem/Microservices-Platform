@@ -5,6 +5,7 @@ import { KYCStatus } from "@/generated/prisma";
 import { calculateProfileCompletion } from "@/lib/profile-completion";
 import { getXpRank, calculateXpForLevel } from "@/lib/user-rank";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 
 const PROFILE_FIELDS = {
   id: true,
@@ -278,8 +279,8 @@ export async function GET() {
         xpNeeded,
         xpPercentage: Math.round((xpProgress / xpNeeded) * 100),
         pointsBalance: u.pointsBalance,
-        cashBalance: u.cashBalance,
-        totalEarnings: u.totalEarnings,
+        cashBalance: toNum(u.cashBalance),
+        totalEarnings: toNum(u.totalEarnings),
         tasksCompleted: u._count.taskSubmissions,
         referralsCount: u._count.referrals,
         achievementsCount,
@@ -293,12 +294,12 @@ export async function GET() {
         marketplaceListings: u._count.marketplaceListings,
         marketplacePurchases: u._count.marketplacePurchases,
         marketplaceSales: marketplaceSalesCount,
-        marketplaceSalesAmount: marketplaceTotalSalesAmount._sum.sellerAmount ?? 0,
+        marketplaceSalesAmount: toNum(marketplaceTotalSalesAmount._sum.sellerAmount),
         socialEarningsPoints,
         socialEarningsUsd: socialEarningsPoints / pointsPerUsd,
         lifetime: {
-          totalEarnedPoints: Math.round(u.totalEarnings * pointsPerUsd),
-          totalEarnedUsd: u.totalEarnings,
+          totalEarnedPoints: Math.round(toNum(u.totalEarnings) * pointsPerUsd),
+          totalEarnedUsd: toNum(u.totalEarnings),
           tasksCompleted: u._count.taskSubmissions,
           rank: xpRank,
           totalXp: u.xp,

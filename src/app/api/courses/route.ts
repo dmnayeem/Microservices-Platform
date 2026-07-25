@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CourseStatus } from "@/generated/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 // GET /api/courses
 //   q                — full-text-ish search across title / subtitle / description
@@ -149,9 +150,9 @@ export async function GET(request: NextRequest) {
       skillLevel: r.skillLevel,
       language: r.language,
       isFree: r.isFree,
-      price: r.price,
-      originalPrice: r.originalPrice,
-      discountPrice: r.discountPrice,
+      price: toNum(r.price),
+      originalPrice: toNumOrNull(r.originalPrice),
+      discountPrice: toNumOrNull(r.discountPrice),
       totalLessons: r._count.lessons,
       totalDuration: r.totalDuration,
       enrollmentCount: r.enrollmentCount,

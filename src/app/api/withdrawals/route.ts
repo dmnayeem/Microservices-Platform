@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
 import {
   WithdrawalStatus,
@@ -88,16 +89,16 @@ export async function GET(request: NextRequest) {
       switch (w.status) {
         case "PENDING":
         case "PROCESSING":
-          summary.pending += w.amount;
+          summary.pending += toNum(w.amount);
           summary.pendingCount++;
           break;
         case "COMPLETED":
-          summary.completed += w.amount;
+          summary.completed += toNum(w.amount);
           summary.completedCount++;
           break;
         case "REJECTED":
         case "CANCELLED":
-          summary.rejected += w.amount;
+          summary.rejected += toNum(w.amount);
           summary.rejectedCount++;
           break;
       }
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
       },
       select: { amount: true },
     });
-    const pendingWithdrawalsTotal = pendingWithdrawalsList.reduce((sum, w) => sum + w.amount, 0);
+    const pendingWithdrawalsTotal = pendingWithdrawalsList.reduce((sum, w) => sum + toNum(w.amount), 0);
 
     // Check cooldown (24 hours between withdrawals)
     const lastWithdrawal = await prisma.withdrawal.findFirst({

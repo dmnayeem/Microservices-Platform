@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 // GET /api/packages - Get available packages
 export async function GET() {
@@ -48,16 +49,20 @@ export async function GET() {
       name: pkg.name,
       description: pkg.description,
       pricing: {
-        monthly: pkg.priceMonthly,
-        yearly: pkg.priceYearly,
-        monthlySavings: pkg.priceYearly
-          ? Math.round(((pkg.priceMonthly * 12 - pkg.priceYearly) / (pkg.priceMonthly * 12)) * 100)
-          : 0,
+        monthly: toNum(pkg.priceMonthly),
+        yearly: toNumOrNull(pkg.priceYearly),
+        monthlySavings: (() => {
+          const pm = toNum(pkg.priceMonthly);
+          const py = toNumOrNull(pkg.priceYearly);
+          return py != null && pm > 0
+            ? Math.round(((pm * 12 - py) / (pm * 12)) * 100)
+            : 0;
+        })(),
       },
       benefits: {
         dailyTaskLimit: pkg.dailyTaskLimit,
         withdrawalFee: pkg.withdrawalFeeDiscount,
-        minWithdrawal: pkg.minWithdrawal,
+        minWithdrawal: toNum(pkg.minWithdrawal),
         referralBonus: pkg.dailyReferralPoints,
         xpMultiplier: pkg.xpMultiplier,
         features: pkg.features,
@@ -205,7 +210,7 @@ export async function POST(request: NextRequest) {
         id: subscription.id,
         packageId: pkg.id,
         packageName: pkg.name,
-        price,
+        price: toNum(price),
         billingPeriod,
         status: "PENDING_VERIFICATION",
         transactionId,

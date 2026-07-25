@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -50,7 +51,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     include: { questions: { orderBy: { order: "asc" } } },
   });
   if (!quiz) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ quiz });
+  return NextResponse.json({
+    quiz: { ...quiz, cashReward: toNum(quiz.cashReward) },
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {

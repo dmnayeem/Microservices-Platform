@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      quizzes,
+      quizzes: quizzes.map((q) => ({ ...q, cashReward: toNum(q.cashReward) })),
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 
 const MAX_DEPTH = 10;
@@ -101,7 +102,7 @@ export async function GET(
       )
     : [];
   const earningsByUser = new Map(
-    ids.map((uid, i) => [uid, earningsAgg[i]?._sum.amount ?? 0])
+    ids.map((uid, i) => [uid, toNum(earningsAgg[i]?._sum.amount)])
   );
 
   // Direct child counts for each node (referrals one level below them).

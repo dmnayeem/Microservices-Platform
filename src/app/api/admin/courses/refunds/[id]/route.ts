@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import {
@@ -111,7 +112,7 @@ export async function PATCH(
 
     // ── Approve: refund the buyer + reverse tutor credit ──
     const c = request.course;
-    const refundAmount = request.enrollment?.pricePaid ?? 0;
+    const refundAmount = toNum(request.enrollment?.pricePaid);
     const bps = await resolveCourseCommissionBps({
       categorySlug: c.category_rel?.slug ?? null,
       perCourseOverride: c.commissionRateBps,

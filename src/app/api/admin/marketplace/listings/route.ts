@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import {
@@ -171,7 +172,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: "Listing created successfully",
-      listing,
+      listing: {
+        ...listing,
+        price: toNum(listing.price),
+        monthlyRevenue: toNumOrNull(listing.monthlyRevenue),
+        monthlyProfit: toNumOrNull(listing.monthlyProfit),
+        monthlyExpenses: toNumOrNull(listing.monthlyExpenses),
+        startingBid: toNumOrNull(listing.startingBid),
+        reservePrice: toNumOrNull(listing.reservePrice),
+        buyNowPrice: toNumOrNull(listing.buyNowPrice),
+      },
     });
   } catch (error) {
     console.error("Error creating listing:", error);

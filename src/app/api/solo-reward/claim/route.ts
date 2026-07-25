@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 
 const CRITERIA = { tasksToday: 5, earningsToday: 1 };
 const REWARD = { points: 500, xp: 100 };
@@ -51,7 +52,7 @@ export async function POST() {
   }
 
   const earningsToday = earnTransactions.reduce(
-    (sum, t) => sum + (t.amount ?? 0),
+    (sum, t) => sum + toNum(t.amount),
     0
   );
 

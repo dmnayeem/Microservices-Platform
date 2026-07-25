@@ -8,6 +8,7 @@ import {
   getEligiblePackages,
 } from "@/lib/leaderboard";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 
 // The combined board is identical for every viewer — cache it for 60s so the
 // expensive 500-user pipeline runs at most once per minute (was per request).
@@ -121,7 +122,7 @@ export async function GET(request: NextRequest) {
         avatar: u.avatar,
         level: u.level,
         packageTier: u.package?.slug ?? "default",
-        value: Math.round(u.totalEarnings * pointsPerUsd),
+        value: Math.round(toNum(u.totalEarnings) * pointsPerUsd),
       }));
     } else if (type === "xp") {
       const usersRaw = await prisma.user.findMany({
@@ -242,7 +243,7 @@ export async function GET(request: NextRequest) {
         if (user) {
           let userValue = 0;
           if (type === "points") {
-            userValue = Math.round(user.totalEarnings * pointsPerUsd);
+            userValue = Math.round(toNum(user.totalEarnings) * pointsPerUsd);
           } else if (type === "xp") {
             userValue = user.xp;
           } else if (type === "referrals") {

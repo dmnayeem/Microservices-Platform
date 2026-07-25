@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   Store,
   Package,
@@ -1048,7 +1049,7 @@ async function fetchOrders({
     buyerId: p.buyerId,
     buyerName: buyerMap.get(p.buyerId)?.name ?? null,
     buyerEmail: buyerMap.get(p.buyerId)?.email ?? "",
-    amount: p.amount,
+    amount: toNum(p.amount),
     status: p.status,
     createdAt: p.createdAt,
   }));
@@ -1125,7 +1126,7 @@ async function fetchDisputes({
       reason: d.reason,
       status: d.status,
       createdAt: d.createdAt,
-      amount: p?.amount ?? 0,
+      amount: toNum(p?.amount),
       listingId: l?.id ?? "",
       listingTitle: l?.title ?? "—",
       buyerName: buyer?.name ?? buyer?.email ?? "—",

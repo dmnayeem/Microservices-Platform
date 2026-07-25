@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { z } from "zod";
 import { NotificationType, CourseRefundStatus } from "@/generated/prisma";
 
@@ -59,7 +60,7 @@ export async function POST(
         { status: 400 }
       );
     }
-    if (enrollment.pricePaid <= 0) {
+    if (toNum(enrollment.pricePaid) <= 0) {
       return NextResponse.json(
         { error: "Nothing to refund — this was a free enrolment." },
         { status: 400 }

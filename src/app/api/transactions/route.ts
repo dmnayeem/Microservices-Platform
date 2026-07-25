@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { TransactionType, TransactionStatus } from "@/generated/prisma";
 
 // GET /api/transactions - Get user transaction history
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
         type: tx.type,
         status: tx.status,
         points: tx.points,
-        amount: tx.amount,
+        amount: toNum(tx.amount),
         description: tx.description,
         reference: tx.reference,
         createdAt: tx.createdAt,

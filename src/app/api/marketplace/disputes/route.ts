@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DisputeReason, DisputeStatus, NotificationType } from "@/generated/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 // GET /api/marketplace/disputes - Get user's disputes
 export async function GET(request: NextRequest) {
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
           id: dispute.id,
           purchase: {
             id: dispute.purchaseId,
-            amount: purchase?.amount || 0,
+            amount: toNum(purchase?.amount),
             listing: {
               id: listing?.id || "",
               title: listing?.title || "Unknown",
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
           evidence: dispute.evidence,
           status: dispute.status,
           resolution: dispute.resolution,
-          resolvedAmount: dispute.resolvedAmount,
+          resolvedAmount: toNumOrNull(dispute.resolvedAmount),
           createdAt: dispute.createdAt,
           resolvedAt: dispute.resolvedAt,
           isMyDispute: dispute.initiatorId === session.user.id,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 
 // Solo reward unlocks daily once user meets criteria
 const CRITERIA = {
@@ -48,7 +49,7 @@ export async function GET() {
     }),
   ]);
   const earningsToday = earnTransactions.reduce(
-    (sum, t) => sum + (t.amount ?? 0),
+    (sum, t) => sum + toNum(t.amount),
     0
   );
 

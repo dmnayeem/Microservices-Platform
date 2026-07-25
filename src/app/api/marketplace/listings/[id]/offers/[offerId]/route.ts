@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   MarketplaceListingStatus,
   MarketplaceOfferStatus,
@@ -153,7 +154,7 @@ export async function PATCH(
       );
     }
 
-    const acceptedAmount = offer.amount;
+    const acceptedAmount = toNum(offer.amount);
     const bps = await resolveCommissionBps({
       assetType: offer.listing.assetType,
       perListingOverride: offer.listing.commissionRateBps,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 
 // GET /api/advertiser/campaigns/[id]/analytics?days=14
 // Time-series (from AdDailyStat) + per-ad breakdown for one campaign.
@@ -56,7 +57,7 @@ export async function GET(
     if (cur) {
       cur.impressions += s.impressions;
       cur.clicks += s.clicks;
-      cur.spendUsd += s.spendUsd;
+      cur.spendUsd += toNum(s.spendUsd);
     }
   }
 

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   SellerDashboardView,
   type SellerListing,
@@ -37,7 +38,7 @@ export default async function MyListingsPage() {
       id: l.id,
       title: l.title,
       category: l.category,
-      price: l.price,
+      price: toNum(l.price),
       images: l.images,
       views: l.views,
       status: l.status,

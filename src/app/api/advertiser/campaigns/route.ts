@@ -5,6 +5,7 @@ import { z } from "zod";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { getAdClickCost } from "@/lib/ad-billing";
 import { userCanFeature } from "@/lib/packages";
+import { add, sub, toNum } from "@/lib/money";
 
 export async function GET() {
   const session = await auth();
@@ -63,8 +64,8 @@ export async function GET() {
       title: c.title,
       description: c.description,
       status: c.status as "ACTIVE" | "PAUSED" | "ENDED" | "DRAFT",
-      budget: c.budget + spent,
-      remaining: c.budget,
+      budget: add(c.budget, spent).toNumber(),
+      remaining: toNum(c.budget),
       spent,
       impressions: m.impressions,
       clicks: m.clicks,
@@ -159,8 +160,8 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         {
-          error: `Wallet balance is $${(me?.cashBalance ?? 0).toFixed(2)} — need $${amount.toFixed(2)} to fund this campaign. Top up your wallet, then try again.`,
-          shortBy: amount - (me?.cashBalance ?? 0),
+          error: `Wallet balance is $${toNum(me?.cashBalance).toFixed(2)} — need $${amount.toFixed(2)} to fund this campaign. Top up your wallet, then try again.`,
+          shortBy: sub(amount, me?.cashBalance ?? 0).toNumber(),
         },
         { status: 402 }
       );
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
         title: campaign.title,
         description: campaign.description,
         status: campaign.status,
-        budget: campaign.budget,
+        budget: toNum(campaign.budget),
         spent: 0,
         impressions: 0,
         clicks: 0,

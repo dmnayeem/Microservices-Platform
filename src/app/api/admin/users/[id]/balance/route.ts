@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { lt } from "@/lib/money";
 import { z } from "zod";
 
 const adjustBalanceSchema = z.object({
@@ -61,7 +62,7 @@ export async function POST(
           { status: 400 }
         );
       }
-      if (type === "cash" && user.cashBalance < amount) {
+      if (type === "cash" && lt(user.cashBalance, amount)) {
         return NextResponse.json(
           { error: "Insufficient cash balance" },
           { status: 400 }

@@ -13,6 +13,7 @@ import {
   splitCoursePrice,
 } from "@/lib/course-commission";
 import { userCanFeature } from "@/lib/packages";
+import { lt, sub, toNum } from "@/lib/money";
 
 const enrollSchema = z.object({
   couponCode: z.string().max(60).optional().nullable(),
@@ -92,7 +93,7 @@ export async function POST(
       return NextResponse.json({ enrollment: existing, alreadyEnrolled: true });
     }
 
-    const livePrice = course.discountPrice ?? course.price;
+    const livePrice = toNum(course.discountPrice ?? course.price);
 
     // ── Free path ─────────────────────────────────────────────────────────
     if (course.isFree || livePrice === 0) {
@@ -173,11 +174,11 @@ export async function POST(
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (buyer.cashBalance < finalPrice) {
+    if (lt(buyer.cashBalance, finalPrice)) {
       return NextResponse.json(
         {
-          error: `Wallet balance is $${buyer.cashBalance.toFixed(2)} — need $${finalPrice.toFixed(2)} to enrol.`,
-          shortBy: finalPrice - buyer.cashBalance,
+          error: `Wallet balance is $${toNum(buyer.cashBalance).toFixed(2)} — need $${finalPrice.toFixed(2)} to enrol.`,
+          shortBy: sub(finalPrice, buyer.cashBalance).toNumber(),
         },
         { status: 402 }
       );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 // GET /api/admin/marketplace/:id/analytics
 // Aggregates the per-listing engagement funnel:
@@ -148,7 +149,7 @@ export async function GET(
         };
       }>).map((b) => ({
         id: b.id,
-        amount: b.amount,
+        amount: toNum(b.amount),
         status: b.status,
         createdAt: b.createdAt,
         bidder: {
@@ -171,8 +172,8 @@ export async function GET(
         };
       }>).map((o) => ({
         id: o.id,
-        amount: o.amount,
-        counterAmount: o.counterAmount,
+        amount: toNum(o.amount),
+        counterAmount: toNumOrNull(o.counterAmount),
         status: o.status,
         createdAt: o.createdAt,
         buyer: {

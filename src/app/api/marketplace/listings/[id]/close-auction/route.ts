@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   MarketplaceBidStatus,
@@ -119,12 +120,12 @@ export async function POST(
         closed: true,
         winner: null,
         reason: "Reserve not met",
-        highBid: highBid.amount,
+        highBid: toNum(highBid.amount),
       });
     }
 
     // We have a winner — settle the sale
-    const amount = highBid.amount;
+    const amount = toNum(highBid.amount);
     const bps = await resolveCommissionBps({
       assetType: listing.assetType,
       perListingOverride: listing.commissionRateBps,

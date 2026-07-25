@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { NotificationType } from "@/generated/prisma";
 import { defaultPackage } from "@/lib/packages";
+import { toNum } from "@/lib/money";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -64,9 +65,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           id: subscription.package?.id,
           slug: subscription.package?.slug,
           name: subscription.package?.name || "—",
-          price: subscription.amount,
+          price: toNum(subscription.amount),
         },
-        amount: subscription.amount,
+        amount: toNum(subscription.amount),
         paymentMethod: subscription.paymentMethod,
         transactionId: subscription.transactionId,
         startDate: subscription.startDate,

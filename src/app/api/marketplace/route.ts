@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { userCanFeature } from "@/lib/packages";
+import { toNum } from "@/lib/money";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       id: l.id,
       title: l.title,
       category: l.category,
-      price: l.price,
+      price: toNum(l.price),
       images: l.images,
       views: l.views,
       createdAt: l.createdAt.toISOString(),

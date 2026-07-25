@@ -206,12 +206,12 @@ model Campaign {
   endDate         DateTime
   targetType      String   @default("ALL") // ALL | TIER | NEW_USERS | COUNTRY
   targetValue     String?
-  budget          Float?
+  budget          Decimal? @db.Decimal(18, 6)
   bannerImage     String?
   termsAndConditions String? @db.Text
   status          String   @default("SCHEDULED") // SCHEDULED | ACTIVE | PAUSED | ENDED
   participantCount Int     @default(0)
-  rewardsDistributed Float @default(0)
+  rewardsDistributed Decimal @default(0) @db.Decimal(18, 6)
   createdById     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -227,7 +227,7 @@ model Mission {
   type          String   // TASK_COMPLETION | LOGIN_STREAK | REFERRAL | SPEND | EARN
   targetValue   Int
   pointsReward  Int      @default(0)
-  cashReward    Float    @default(0)
+  cashReward    Decimal    @default(0) @db.Decimal(18, 6)
   xpReward      Int      @default(0)
   duration      String   @default("DAILY") // DAILY | WEEKLY
   autoRefresh   Boolean  @default(true)
@@ -302,7 +302,7 @@ model DailyReferralClaim {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String   // YYYY-MM-DD (UTC)
-  amount    Float
+  amount    Decimal @db.Decimal(18, 6)
   points    Int
   claimedAt DateTime @default(now())
 
@@ -316,7 +316,7 @@ model AdCampaign {
   advertiser    User?    @relation("UserAdCampaigns", fields: [advertiserId], references: [id], onDelete: SetNull)
   title         String
   description   String?  @db.Text
-  budget        Float    @default(0)
+  budget        Decimal    @default(0) @db.Decimal(18, 6)
   status        String   @default("ACTIVE") // ACTIVE | PAUSED | ENDED
   // Optional flight window — ads only serve while now is within [startAt, endAt].
   startAt       DateTime?
@@ -411,7 +411,7 @@ model AdDailyStat {
   date        DateTime @db.Date
   impressions Int      @default(0)
   clicks      Int      @default(0)
-  spendUsd    Float    @default(0)
+  spendUsd    Decimal    @default(0) @db.Decimal(18, 6)
 
   @@unique([adId, date])
   @@index([adId, date])
@@ -443,7 +443,7 @@ model PushSubscription {
 model Deposit {
   id         String   @id @default(cuid())
   userId     String
-  amount     Float
+  amount     Decimal @db.Decimal(18, 6)
   method     String   // MANUAL_BKASH | MANUAL_NAGAD | SSLCOMMERZ | ...
   status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
   gatewayRef String?
@@ -517,7 +517,7 @@ model OfferwallCallback {
   offerId       String?
   offerName     String?
   transactionId String   @unique
-  payoutAmount  Float
+  payoutAmount  Decimal @db.Decimal(18, 6)
   userPayout    Int     // points
   currency      String   @default("USD")
   status        String   @default("PENDING") // PENDING | APPROVED | REJECTED | FRAUD | CHARGEBACK
@@ -627,7 +627,7 @@ model Quiz {
   passingScore    Int            @default(60)
   pointsReward    Int            @default(50)
   xpReward        Int            @default(25)
-  cashReward      Float          @default(0)
+  cashReward      Decimal          @default(0) @db.Decimal(18, 6)
   maxAttempts     Int            @default(3)
   cooldownHours   Int            @default(24)
   requiredLevel   Int            @default(1)
@@ -806,9 +806,9 @@ model User {
   role              UserRole    @default(USER)
   status            UserStatus  @default(PENDING_VERIFICATION)
   pointsBalance     Int         @default(0)
-  cashBalance       Float       @default(0)
-  totalEarnings     Float       @default(0)
-  totalWithdrawals  Float       @default(0)
+  cashBalance       Decimal     @default(0) @db.Decimal(18, 6)
+  totalEarnings     Decimal     @default(0) @db.Decimal(18, 6)
+  totalWithdrawals  Decimal     @default(0) @db.Decimal(18, 6)
   xp                Int         @default(0)
   level             Int         @default(1)
   streak            Int         @default(0)
@@ -1059,7 +1059,7 @@ model Task {
   status          TaskStatus   @default(ACTIVE)
   difficulty      TaskDifficulty @default(MEDIUM)
   pointsReward    Int
-  cashReward      Float        @default(0)
+  cashReward      Decimal        @default(0) @db.Decimal(18, 6)
   xpReward        Int          @default(0)
   isBoardOnly     Boolean      @default(false)
   boardId         String?
@@ -1210,7 +1210,7 @@ model Transaction {
   type        TransactionType
   status      TransactionStatus @default(COMPLETED)
   points      Int               @default(0)
-  amount      Float             @default(0)
+  amount      Decimal           @default(0) @db.Decimal(18, 6)
   description String?
   reference   String?
   metadata    Json?
@@ -1231,9 +1231,9 @@ model Withdrawal {
   id              String           @id @default(cuid())
   userId          String
   user            User             @relation(fields: [userId], references: [id])
-  amount          Float
-  fee             Float            @default(0)
-  netAmount       Float
+  amount          Decimal @db.Decimal(18, 6)
+  fee             Decimal            @default(0) @db.Decimal(18, 6)
+  netAmount       Decimal @db.Decimal(18, 6)
   method          PaymentMethod
   accountDetails  Json
   status          WithdrawalStatus @default(PENDING)
@@ -1273,8 +1273,8 @@ model Package {
   isDefault       Boolean  @default(false)
 
   // Pricing
-  priceMonthly    Float
-  priceYearly     Float?
+  priceMonthly    Decimal @db.Decimal(18, 6)
+  priceYearly     Decimal? @db.Decimal(18, 6)
   validityDays    Int?
 
   // Section-level feature toggles
@@ -1310,7 +1310,7 @@ model Package {
   dailyTaskLimit        Int   @default(-1)
   dailyPostLimit        Int   @default(-1)
   withdrawalFeeDiscount Float @default(0)
-  minWithdrawal         Float
+  minWithdrawal         Decimal @db.Decimal(18, 6)
 
   // Social earning (per-package). `socialEarningEnabled` is a hard on/off gate;
   // `socialEarningConfig` overrides the global per-action recipient points for
@@ -1353,7 +1353,7 @@ model Subscription {
   package       Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
   startDate     DateTime    @default(now())
   endDate       DateTime
-  amount        Float
+  amount        Decimal @db.Decimal(18, 6)
   paymentMethod PaymentMethod?
   transactionId String?
   isActive      Boolean     @default(true)
@@ -1388,7 +1388,7 @@ model ReferralEarning {
   user            User     @relation(fields: [userId], references: [id])
   referredUserId  String
   level           Int
-  amount          Float
+  amount          Decimal @db.Decimal(18, 6)
   sourceType      ReferralSourceType
   sourceId        String?
   createdAt       DateTime @default(now())
@@ -1414,7 +1414,7 @@ model MarketplaceListing {
   subType         String?
   // Category-specific structured data (mirrors customConfig pattern on Task).
   details         Json?
-  price           Float
+  price           Decimal @db.Decimal(18, 6)
   currency        String                   @default("USD")
   images          String[]
   // Proof-of-asset screenshots (Search Console, analytics, ad dashboards,
@@ -1426,9 +1426,9 @@ model MarketplaceListing {
   // Long-form description (markdown). Short `description` stays for cards/list.
   richDescription String?                  @db.Text
   // Asset financials (where relevant — null for non-monetized assets).
-  monthlyRevenue  Float?
-  monthlyProfit   Float?
-  monthlyExpenses Float?
+  monthlyRevenue  Decimal? @db.Decimal(18, 6)
+  monthlyProfit   Decimal? @db.Decimal(18, 6)
+  monthlyExpenses Decimal? @db.Decimal(18, 6)
   monthlyTraffic  Int?
   assetAgeMonths  Int?
   niche           String?
@@ -1443,9 +1443,9 @@ model MarketplaceListing {
   ndaGated        Boolean                  @default(false)
   // Auction support. When false the listing is fixed-price buy-now only.
   auctionMode     Boolean                  @default(false)
-  startingBid     Float?
-  reservePrice    Float?
-  buyNowPrice     Float?
+  startingBid     Decimal? @db.Decimal(18, 6)
+  reservePrice    Decimal? @db.Decimal(18, 6)
+  buyNowPrice     Decimal? @db.Decimal(18, 6)
   auctionEndsAt   DateTime?
   isFeatured      Boolean                  @default(false)
   featuredUntil   DateTime?
@@ -1483,9 +1483,9 @@ model MarketplacePurchase {
   listing     MarketplaceListing @relation(fields: [listingId], references: [id])
   buyerId     String
   buyer       User               @relation(fields: [buyerId], references: [id])
-  amount      Float
-  fee         Float
-  sellerAmount Float
+  amount      Decimal @db.Decimal(18, 6)
+  fee         Decimal @db.Decimal(18, 6)
+  sellerAmount Decimal @db.Decimal(18, 6)
   status      String             @default("COMPLETED")
   createdAt   DateTime           @default(now())
   disputes    MarketplaceDispute[]
@@ -1549,7 +1549,7 @@ model MarketplaceBid {
   listing   MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bidderId  String
   bidder    User                 @relation(fields: [bidderId], references: [id], onDelete: Cascade)
-  amount    Float
+  amount    Decimal @db.Decimal(18, 6)
   status    MarketplaceBidStatus @default(ACTIVE)
   message   String?              @db.Text
   createdAt DateTime             @default(now())
@@ -1569,10 +1569,10 @@ model MarketplaceOffer {
   listing       MarketplaceListing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
   buyerId       String
   buyer         User                   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  amount        Float
+  amount        Decimal @db.Decimal(18, 6)
   message       String?                @db.Text
   status        MarketplaceOfferStatus @default(PENDING)
-  counterAmount Float?
+  counterAmount Decimal? @db.Decimal(18, 6)
   counterMessage String?               @db.Text
   expiresAt     DateTime?
   createdAt     DateTime               @default(now())
@@ -1600,9 +1600,9 @@ model Course {
   difficulty      String        @default("BEGINNER")
   skillLevel      CourseSkillLevel @default(BEGINNER)
   language        String        @default("en")
-  price           Float         @default(0)
-  originalPrice   Float?
-  discountPrice   Float?
+  price           Decimal         @default(0) @db.Decimal(18, 6)
+  originalPrice   Decimal? @db.Decimal(18, 6)
+  discountPrice   Decimal? @db.Decimal(18, 6)
   discountEndsAt  DateTime?
   isFree          Boolean       @default(false)
   totalLessons    Int           @default(0)
@@ -1743,7 +1743,7 @@ model CourseEnrollment {
   progress        Int      @default(0)
   completedLessons String[] @default([])
   completedAt     DateTime?
-  pricePaid       Float    @default(0)
+  pricePaid       Decimal    @default(0) @db.Decimal(18, 6)
   couponCode      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1952,7 +1952,7 @@ model CourseCoupon {
   scope            CouponScope @default(ALL)
   categoryIds      String[]    @default([])
   courseIds        String[]    @default([])
-  minPurchase      Float?
+  minPurchase      Decimal? @db.Decimal(18, 6)
   maxRedemptions   Int?
   redemptionsCount Int         @default(0)
   perUserLimit     Int         @default(1)
@@ -1977,7 +1977,7 @@ model CourseRefundRequest {
   reason          String              @db.Text
   status          CourseRefundStatus  @default(PENDING)
   adminNote       String?
-  refundedAmount  Float?
+  refundedAmount  Decimal? @db.Decimal(18, 6)
   processedById   String?
   processedBy     User?               @relation("CourseRefundAdmin", fields: [processedById], references: [id], onDelete: SetNull)
   createdAt       DateTime            @default(now())
@@ -2601,7 +2601,7 @@ model MarketplaceDispute {
   evidence        String[]      // Array of evidence image/file URLs
   status          DisputeStatus @default(OPEN)
   resolution      String?       @db.Text
-  resolvedAmount  Float?        // Amount returned to buyer if any
+  resolvedAmount  Decimal?      @db.Decimal(18, 6) // Amount returned to buyer if any
   assignedAdminId String?
   adminNotes      String?       @db.Text
   messages        DisputeMessage[]
