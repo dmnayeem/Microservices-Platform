@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") as TransactionType | null;
     const status = searchParams.get("status") as TransactionStatus | null;
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
 
     // Build query
@@ -43,38 +43,22 @@ export async function GET(request: NextRequest) {
       prisma.transaction.count({ where }),
     ]);
 
-    // Calculate summary stats from all completed transactions
-    const completedTransactions = await prisma.transaction.findMany({
+    // Calculate summary stats from all completed transactions.
+    // Aggregate per-type in the DB instead of loading the full history.
+    const grouped = (await prisma.transaction.groupBy({
+      by: ["type"],
       where: { userId: session.user.id, status: "COMPLETED" },
-      select: { type: true, points: true },
-    });
+      _sum: { points: true },
+    })) as unknown as { type: TransactionType; _sum: { points: number | null } }[];
+    const sumByType = new Map(grouped.map((g) => [g.type, g._sum.points ?? 0]));
+    const sumOf = (t: TransactionType) => sumByType.get(t) ?? 0;
 
     const summary = {
-      totalEarnings: 0,
-      totalWithdrawals: 0,
-      totalReferrals: 0,
-      totalBonuses: 0,
+      totalEarnings: sumOf("EARNING") + sumOf("CHECKIN"),
+      totalWithdrawals: Math.abs(sumOf("WITHDRAWAL")),
+      totalReferrals: sumOf("REFERRAL"),
+      totalBonuses: sumOf("BONUS") + sumOf("LOTTERY_WIN"),
     };
-
-    completedTransactions.forEach((tx) => {
-      const points = tx.points || 0;
-      switch (tx.type) {
-        case "EARNING":
-        case "CHECKIN":
-          summary.totalEarnings += points;
-          break;
-        case "WITHDRAWAL":
-          summary.totalWithdrawals += Math.abs(points);
-          break;
-        case "REFERRAL":
-          summary.totalReferrals += points;
-          break;
-        case "BONUS":
-        case "LOTTERY_WIN":
-          summary.totalBonuses += points;
-          break;
-      }
-    });
 
     return NextResponse.json({
       transactions: transactions.map((tx) => ({

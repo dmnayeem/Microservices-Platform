@@ -6,6 +6,7 @@ import { z } from "zod";
 import { normalizeWidgetConfig } from "@/lib/feed-widgets";
 import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
 import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 
 const CATEGORY = "feed";
 const KEYS = {
@@ -112,6 +113,8 @@ export async function POST(req: NextRequest) {
       newData: JSON.parse(JSON.stringify({ widgets, quickEarn, customWidgets })),
     },
   });
+
+  invalidateSettingsCache();
 
   return NextResponse.json({ success: true, widgets, quickEarn, customWidgets });
 }

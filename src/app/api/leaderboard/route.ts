@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -7,6 +8,15 @@ import {
   getEligiblePackages,
 } from "@/lib/leaderboard";
 import { getPointsPerUsd } from "@/lib/economy";
+
+// The combined board is identical for every viewer — cache it for 60s so the
+// expensive 500-user pipeline runs at most once per minute (was per request).
+const cachedCombinedTop = unstable_cache(
+  async (limit: number, eligiblePackages: string[]) =>
+    computeCombinedTopUsers({ limit, eligiblePackages }),
+  ["leaderboard-combined"],
+  { revalidate: 60 }
+);
 
 // GET /api/leaderboard - Get leaderboard data
 export async function GET(request: NextRequest) {
@@ -20,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Combined mode — single mixed-metric leaderboard with eligibility.
     if (type === "combined") {
       const eligiblePackages = await getEligiblePackages();
-      const top = await computeCombinedTopUsers({ limit, eligiblePackages });
+      const top = await cachedCombinedTop(limit, eligiblePackages);
       let currentUser: {
         rank: number | string;
         score: number;

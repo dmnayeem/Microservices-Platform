@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { invalidatePointsRateCache } from "@/lib/economy";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 
 export async function GET() {
   try {
@@ -76,7 +77,8 @@ export async function POST(request: NextRequest) {
 
     await Promise.all(upsertPromises);
 
-    // Flush the points-rate cache so a changed conversion rate takes effect now.
+    // Flush caches so changed settings take effect immediately.
+    invalidateSettingsCache();
     if ("points_per_usd" in settings) invalidatePointsRateCache();
 
     return NextResponse.json({

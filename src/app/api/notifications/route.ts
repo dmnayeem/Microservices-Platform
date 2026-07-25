@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") as NotificationType | null;
     const unreadOnly = searchParams.get("unread") === "true";
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {

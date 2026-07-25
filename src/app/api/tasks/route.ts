@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") as TaskType | null;
     const category = searchParams.get("category");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
 
     // Get user with their level + country
@@ -220,12 +220,15 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    const submissionCounts = await Promise.all(
-      taskIds.map((id) =>
-        prisma.taskSubmission.count({ where: { taskId: id } })
-      )
+    // One grouped query for per-task submission totals (was N counts).
+    const submissionCountRows = (await prisma.taskSubmission.groupBy({
+      by: ["taskId"],
+      where: { taskId: { in: taskIds } },
+      _count: { _all: true },
+    })) as unknown as { taskId: string; _count: { _all: number } }[];
+    const submissionCountMap = new Map(
+      submissionCountRows.map((r) => [r.taskId, r._count._all])
     );
-    const submissionCountMap = new Map(taskIds.map((id, idx) => [id, submissionCounts[idx]]));
 
     const processedTasks = tasks.map((task) => {
       const todayCount = userTodayCounts.get(task.id) ?? 0;

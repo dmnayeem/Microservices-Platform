@@ -13,6 +13,7 @@ import {
   getEligiblePackages,
 } from "@/lib/leaderboard";
 import { getPointsPerUsd } from "@/lib/economy";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 
 const schema = z.object({
   period: z.enum(["daily", "weekly", "monthly"]),
@@ -345,6 +346,8 @@ export async function POST(request: NextRequest) {
       newData: { period, metric, totalPrize, winners: winners.length },
     },
   });
+
+  invalidateSettingsCache();
 
   return NextResponse.json({
     success: true,

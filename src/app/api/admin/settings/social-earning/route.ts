@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { invalidateSocialEarningCache } from "@/lib/social-earning";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 import { z } from "zod";
 
 const ACTIONS = [
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
   });
 
   invalidateSocialEarningCache();
+  invalidateSettingsCache();
 
   return NextResponse.json({ success: true, config: cfg });
 }

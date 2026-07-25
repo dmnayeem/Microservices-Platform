@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { isSectionKey, settingKeyFor } from "@/lib/landing-content";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
 
 interface RouteParams {
@@ -48,6 +49,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     create: { key, value, category: "landing", description: null },
     update: { value, category: "landing" },
   });
+
+  invalidateSettingsCache();
 
   return NextResponse.json({ ok: true, section });
 }

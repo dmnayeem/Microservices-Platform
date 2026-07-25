@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   FEATURE_TO_COLUMN,
@@ -119,11 +120,20 @@ export async function getEffectivePackage(
  * The platform's default plan. Every new user is implicitly on this when
  * their `packageId` is null or their subscription has expired.
  */
+// The default package changes rarely — a short module TTL avoids a `findFirst`
+// on every free/expired user (the majority) on every navigation.
+let _defaultPkg: { row: PackageRow | null; at: number } | null = null;
+const DEFAULT_PKG_TTL_MS = 60_000;
 export async function defaultPackage(): Promise<PackageRow | null> {
+  if (_defaultPkg && Date.now() - _defaultPkg.at < DEFAULT_PKG_TTL_MS) {
+    return _defaultPkg.row;
+  }
   const row = await prisma.package.findFirst({
     where: { isDefault: true, isActive: true },
   });
-  return (row as unknown as PackageRow | null) ?? null;
+  const value = (row as unknown as PackageRow | null) ?? null;
+  _defaultPkg = { row: value, at: Date.now() };
+  return value;
 }
 
 /**
@@ -161,7 +171,12 @@ export async function userAccessLevel(userId: string): Promise<number> {
  * The user's effective feature set = package flags with per-user overrides
  * applied. One query. Use `enabled.has(key)` for nav hiding + page gating.
  */
-export async function getEffectiveFeatures(userId: string): Promise<{
+// `React.cache` dedupes this per request — the (main) layout + several child
+// pages all resolve features in the same render, so this collapses ~7 identical
+// user queries into one.
+export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
+  userId: string
+): Promise<{
   pkg: PackageRow | null;
   overrides: FeatureOverrides;
   enabled: Set<PackageFeatureKey>;
@@ -190,7 +205,7 @@ export async function getEffectiveFeatures(userId: string): Promise<{
     if (resolveUserFeature(pkg, overrides, key)) enabled.add(key);
   }
   return { pkg, overrides, enabled };
-}
+});
 
 /** True if the user can use a feature (override-aware). */
 export async function userCanFeature(

@@ -6,6 +6,7 @@ import {
   SPLASH_SETTING_KEY,
   normalizeSplashConfig,
 } from "@/lib/splash";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 
 /** Admin: read the current splash config (merged over defaults). */
 export async function GET() {
@@ -35,5 +36,6 @@ export async function PUT(request: NextRequest) {
     create: { key: SPLASH_SETTING_KEY, value, category: "splash", description: null },
     update: { value, category: "splash" },
   });
+  invalidateSettingsCache();
   return NextResponse.json({ success: true, config: cfg });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 
 // GET /api/referrals - Get user's referral dashboard data
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const level = searchParams.get("level");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
 
     // Get user with referral code
@@ -51,76 +52,59 @@ export async function GET(request: NextRequest) {
         }, {} as Record<number, number>)
       : { 1: 10, 2: 5, 3: 2 };
 
-    // Get direct referrals (Level 1)
-    const level1Referrals = await prisma.user.findMany({
-      where: { referredById: session.user.id },
-      select: {
-        id: true,
-        name: true,
-        avatar: true,
-        createdAt: true,
-        level: true,
-        totalEarnings: true,
-      },
-    });
-
-    // Get Level 2 referrals (referrals of my referrals)
-    const level1Ids = level1Referrals.map((r) => r.id);
-    const level2Referrals = await prisma.user.findMany({
-      where: { referredById: { in: level1Ids } },
-      select: {
-        id: true,
-        name: true,
-        avatar: true,
-        createdAt: true,
-        level: true,
-        totalEarnings: true,
-        referredById: true,
-      },
-    });
-
-    // Get Level 3 referrals
-    const level2Ids = level2Referrals.map((r) => r.id);
-    const level3Referrals = await prisma.user.findMany({
-      where: { referredById: { in: level2Ids } },
-      select: {
-        id: true,
-        name: true,
-        avatar: true,
-        createdAt: true,
-        level: true,
-        totalEarnings: true,
-        referredById: true,
-      },
-    });
-
-    // Get all referral earnings for this user
-    const allEarnings = await prisma.referralEarning.findMany({
-      where: { userId: session.user.id },
-      select: { level: true, amount: true, createdAt: true },
-    });
-
-    // Calculate earnings by level
-    const earningsByLevel: Record<number, { amount: number; count: number }> = {};
-    allEarnings.forEach((e) => {
-      if (!earningsByLevel[e.level]) {
-        earningsByLevel[e.level] = { amount: 0, count: 0 };
-      }
-      earningsByLevel[e.level].amount += e.amount;
-      earningsByLevel[e.level].count++;
-    });
-
-    // Calculate total earnings
-    const totalEarningsAmount = allEarnings.reduce((sum, e) => sum + e.amount, 0);
-
-    // Get this month's earnings
+    // This month's boundary (used by the earnings aggregate below).
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const monthEarningsAmount = allEarnings
-      .filter((e) => e.createdAt >= monthStart)
-      .reduce((sum, e) => sum + e.amount, 0);
+    // Collect the downline id-chains. We only need ids to (a) build the
+    // parent-id filters for the lower levels and (b) count each level — the
+    // full user records for the visible page are fetched with DB pagination
+    // below instead of loading the entire downline into memory.
+    const level1IdRows = await prisma.user.findMany({
+      where: { referredById: session.user.id },
+      select: { id: true },
+    });
+    const level1Ids = level1IdRows.map((r) => r.id);
+
+    const level2IdRows = await prisma.user.findMany({
+      where: { referredById: { in: level1Ids } },
+      select: { id: true },
+    });
+    const level2Ids = level2IdRows.map((r) => r.id);
+
+    const level1Count = level1Ids.length;
+    const level2Count = level2Ids.length;
+    const level3Count = await prisma.user.count({
+      where: { referredById: { in: level2Ids } },
+    });
+    const totalReferrals = level1Count + level2Count + level3Count;
+
+    // Earnings by level — aggregate in the DB (was: load all earnings + reduce
+    // in JS). groupBy gives both the per-level sum and count in one query.
+    const earningsGrouped = (await prisma.referralEarning.groupBy({
+      by: ["level"],
+      where: { userId: session.user.id },
+      _sum: { amount: true },
+      _count: { _all: true },
+    })) as unknown as {
+      level: number;
+      _sum: { amount: number | null };
+      _count: { _all: number };
+    }[];
+    const earningsByLevel: Record<number, { amount: number; count: number }> = {};
+    let totalEarningsAmount = 0;
+    for (const g of earningsGrouped) {
+      const amount = g._sum.amount ?? 0;
+      earningsByLevel[g.level] = { amount, count: g._count._all };
+      totalEarningsAmount += amount;
+    }
+
+    const monthEarningsAgg = await prisma.referralEarning.aggregate({
+      where: { userId: session.user.id, createdAt: { gte: monthStart } },
+      _sum: { amount: true },
+    });
+    const monthEarningsAmount = monthEarningsAgg._sum.amount ?? 0;
 
     // Get recent referral activities
     const recentActivities = await prisma.referralEarning.findMany({
@@ -136,31 +120,93 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Determine which level's referrals to return based on filter
-    let referralsToShow;
-    let referralLevel = 1;
-    const totalReferrals = level1Referrals.length + level2Referrals.length + level3Referrals.length;
+    // Downline list for the requested level — paginated in the DB rather than
+    // fetching the whole downline and .slice()-ing.
+    const level1Where: Prisma.UserWhereInput = {
+      referredById: session.user.id,
+    };
+    const level2Where: Prisma.UserWhereInput = {
+      referredById: { in: level1Ids },
+    };
+    const level3Where: Prisma.UserWhereInput = {
+      referredById: { in: level2Ids },
+    };
 
-    if (level === "2") {
-      referralsToShow = level2Referrals;
-      referralLevel = 2;
-    } else if (level === "3") {
-      referralsToShow = level3Referrals;
-      referralLevel = 3;
-    } else if (level === "all") {
-      referralsToShow = [
-        ...level1Referrals.map((r) => ({ ...r, referralLevel: 1 })),
-        ...level2Referrals.map((r) => ({ ...r, referralLevel: 2 })),
-        ...level3Referrals.map((r) => ({ ...r, referralLevel: 3 })),
+    const fetchAndMap = async (
+      where: Prisma.UserWhereInput,
+      tag: number,
+      s: number,
+      t: number
+    ) => {
+      const rows = await prisma.user.findMany({
+        where,
+        skip: s,
+        take: t,
+        select: {
+          id: true,
+          name: true,
+          avatar: true,
+          createdAt: true,
+          level: true,
+          totalEarnings: true,
+        },
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        avatar: r.avatar,
+        joinedAt: r.createdAt,
+        level: tag,
+        userLevel: r.level,
+        totalEarnings: r.totalEarnings,
+      }));
+    };
+
+    let referrals: Awaited<ReturnType<typeof fetchAndMap>> = [];
+    let totalForPagination: number;
+
+    if (level === "all") {
+      // Reproduce the L1→L2→L3 concatenation, but fetch only the rows that
+      // fall inside the requested [skip, skip+limit) window per segment.
+      totalForPagination = totalReferrals;
+      const segments = [
+        { where: level1Where, size: level1Count, tag: 1 },
+        { where: level2Where, size: level2Count, tag: 2 },
+        { where: level3Where, size: level3Count, tag: 3 },
       ];
-      referralLevel = 0;
+      let offset = 0;
+      for (const seg of segments) {
+        const localStart = Math.max(0, skip - offset);
+        const localEnd = Math.min(seg.size, skip + limit - offset);
+        if (localEnd > localStart) {
+          const part = await fetchAndMap(
+            seg.where,
+            seg.tag,
+            localStart,
+            localEnd - localStart
+          );
+          referrals.push(...part);
+        }
+        offset += seg.size;
+      }
     } else {
-      referralsToShow = level1Referrals;
-      referralLevel = 1;
+      let where: Prisma.UserWhereInput;
+      let tag: number;
+      if (level === "2") {
+        where = level2Where;
+        tag = 2;
+        totalForPagination = level2Count;
+      } else if (level === "3") {
+        where = level3Where;
+        tag = 3;
+        totalForPagination = level3Count;
+      } else {
+        where = level1Where;
+        tag = 1;
+        totalForPagination = level1Count;
+      }
+      referrals = await fetchAndMap(where, tag, skip, limit);
     }
-
-    // Paginate
-    const paginatedReferrals = referralsToShow.slice(skip, skip + limit);
 
     return NextResponse.json({
       referralCode: user.referralCode,
@@ -168,27 +214,19 @@ export async function GET(request: NextRequest) {
       commissionRates,
       stats: {
         totalReferrals,
-        level1Count: level1Referrals.length,
-        level2Count: level2Referrals.length,
-        level3Count: level3Referrals.length,
+        level1Count,
+        level2Count,
+        level3Count,
         totalEarnings: totalEarningsAmount,
         monthEarnings: monthEarningsAmount,
         earningsByLevel,
       },
-      referrals: paginatedReferrals.map((r) => ({
-        id: r.id,
-        name: r.name,
-        avatar: r.avatar,
-        joinedAt: r.createdAt,
-        level: "referralLevel" in r ? r.referralLevel : referralLevel,
-        userLevel: r.level,
-        totalEarnings: r.totalEarnings,
-      })),
+      referrals,
       pagination: {
         page,
         limit,
-        total: referralsToShow.length,
-        totalPages: Math.ceil(referralsToShow.length / limit),
+        total: totalForPagination,
+        totalPages: Math.ceil(totalForPagination / limit),
       },
       recentActivities: recentActivities.map((a) => ({
         id: a.id,

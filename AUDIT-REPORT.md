@@ -27,6 +27,15 @@
 
 ---
 
+## ✅ P1 Remediation — July 25, 2026 (DB indexes + hot-path caching + N+1 — FIXED, verified)
+
+- **Indexes added** (db push): Notification `[userId,isRead]`+`[userId,createdAt]`, ChatMessage `[conversationId,createdAt]`, Post `[isPublic,isHidden,isPinned,createdAt]`, QuizAttempt `[quizId,userId]`, ReferralEarning `[referredUserId]`+`[userId,level]`, SocialReport `[status,contentType]`+`[contentType,contentId]`, AuditLog `[entity,entityId]`, Ad `[placementId,status]`, Task `[fundedByUserId]`, AdCampaign `[status,startAt,endAt]`.
+- **Caching:** `getSetting` now in-memory TTL (45s) + `invalidateSettingsCache()` wired into all 7 settings-writer routes → eliminates ~2 DB reads per ad-serve + per-feed setting reads. `getEffectiveFeatures` wrapped in `React.cache()` (per-request dedupe across layout+pages); `defaultPackage` module TTL (60s). Leaderboard combined board wrapped in `unstable_cache(60s)`; `getEligiblePackages` routed through cached getSetting.
+- **N+1 / unbounded killed:** `/api/transactions` + `/api/wallet` sums via `groupBy`/`aggregate` (no full-history load); `/api/referrals` earnings/counts via groupBy + DB-paginated downline; `/api/tasks` per-task submission counts via one groupBy. `?limit` clamped to ≤100 on feed/tasks/notifications/transactions/referrals.
+- **Remaining P1 (minor, deferred):** admin-dashboard stats `unstable_cache`; leaderboard viewer-rank double-compute for out-of-top-N (board itself now cached).
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
+import { invalidateSettingsCache } from "@/lib/system-settings";
 import { z } from "zod";
 
 const schema = z.object({
@@ -80,6 +81,8 @@ export async function POST(req: NextRequest) {
       newData: v.data,
     },
   });
+
+  invalidateSettingsCache();
 
   return NextResponse.json({ success: true, config: v.data });
 }

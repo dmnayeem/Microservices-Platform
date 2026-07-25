@@ -318,6 +318,7 @@ model AdCampaign {
 
   @@index([advertiserId])
   @@index([status])
+  @@index([status, startAt, endAt])
 }
 
 model AdPlacement {
@@ -390,6 +391,7 @@ model Ad {
   @@index([placementId])
   @@index([status])
   @@index([promotedPostId])
+  @@index([placementId, status])
 }
 
 // Per-day rollup of ad impressions/clicks/spend for time-series analytics.
@@ -601,6 +603,8 @@ model SocialReport {
   @@index([contentType])
   @@index([reporterId])
   @@index([createdAt])
+  @@index([status, contentType])
+  @@index([contentType, contentId])
 }
 
 model Quiz {
@@ -663,6 +667,7 @@ model QuizAttempt {
   @@index([quizId])
   @@index([userId])
   @@index([completedAt])
+  @@index([quizId, userId])
 }
 
 enum MarketplaceListingStatus {
@@ -1091,6 +1096,7 @@ model Task {
   @@index([requiredAccessLevel])
   @@index([status, createdAt])
   @@index([createdById])
+  @@index([fundedByUserId])
 }
 
 model TaskCategory {
@@ -1376,6 +1382,8 @@ model ReferralEarning {
   @@index([userId])
   @@index([createdAt])
   @@index([userId, createdAt])
+  @@index([referredUserId])
+  @@index([userId, level])
 }
 
 model MarketplaceListing {
@@ -2111,6 +2119,7 @@ model Post {
   @@index([isAnnouncement])
   @@index([isPromoted, promotedUntil])
   @@index([isPublic, createdAt])
+  @@index([isPublic, isHidden, isPinned, createdAt])
 }
 
 model Follow {
@@ -2418,6 +2427,8 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
 
 model Conversation {
@@ -2450,6 +2461,7 @@ model ChatMessage {
   @@index([conversationId])
   @@index([senderId])
   @@index([createdAt])
+  @@index([conversationId, createdAt])
 }
 
 // Reference data backing the cascading address dropdowns. Seeded once and
@@ -2543,6 +2555,7 @@ model AuditLog {
   @@index([userId])
   @@index([entity])
   @@index([createdAt])
+  @@index([entity, entityId])
 }
 
 enum DisputeStatus {
