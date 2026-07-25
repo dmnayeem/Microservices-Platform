@@ -1,20 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAdClickCost } from "@/lib/ad-billing";
 import { bumpAdDailyStat } from "@/lib/ad-stats";
 
+// Per-(user,ad) click cooldown to stop budget-drain click fraud. In-memory
+// (per-instance) is a lightweight first defense on top of auth + the budget CAS.
+const CLICK_COOLDOWN_MS = 30_000;
+const recentClicks = new Map<string, number>();
+
 /**
- * Records an ad click and bills the owning campaign's budget. The conditional
- * decrement (`budget >= cost`) is the no-overspend guard: when the remaining
- * budget can't cover another click, nothing is deducted and the campaign is
- * paused so `serve` stops showing it. Counting the click is best-effort and
- * never blocks the redirect.
+ * Records an authenticated ad click and bills the owning campaign's budget. A
+ * click is only BILLED once per (user, ad) within a cooldown window — so a bot
+ * can't drain a rival advertiser's budget by hammering this endpoint. The
+ * `budget >= cost` CAS is the no-overspend guard; billing/counting never blocks.
  */
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // Only logged-in users can bill a click (ads are served to authenticated users).
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ success: true, billed: false });
+  }
+  const userId = session.user.id;
+
+  // Dedup: same user clicking the same ad within the cooldown isn't re-billed.
+  const key = `${userId}:${id}`;
+  const now = Date.now();
+  const last = recentClicks.get(key);
+  if (last && now - last < CLICK_COOLDOWN_MS) {
+    return NextResponse.json({ success: true, billed: false });
+  }
+  recentClicks.set(key, now);
+  if (recentClicks.size > 5000) {
+    // Bound the map — drop entries older than the cooldown.
+    for (const [k, t] of recentClicks) if (now - t > CLICK_COOLDOWN_MS) recentClicks.delete(k);
+  }
 
   const ad = await prisma.ad
     .update({

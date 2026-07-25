@@ -65,14 +65,18 @@ async function handle(request: NextRequest, provider: string) {
     return NextResponse.json({ error: "Missing signature" }, { status: 401 });
   }
 
-  // Accept either a shared-secret match or an HMAC of the core fields.
+  // Require an HMAC over ALL money-bearing fields (incl. payoutAmount). The old
+  // plaintext-secret path + amount-less HMAC let anyone with the secret credit
+  // arbitrary amounts — both removed.
   const expectedHmac = crypto
     .createHmac("sha256", config.secretKey)
-    .update(`${transactionId}${userId}${userPayout}`)
+    .update(`${transactionId}${userId}${userPayout}${payoutAmount}`)
     .digest("hex");
+  const provided = signature.toLowerCase();
+  const expected = expectedHmac.toLowerCase();
   const ok =
-    signature === config.secretKey ||
-    signature.toLowerCase() === expectedHmac.toLowerCase();
+    provided.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
   if (!ok) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }

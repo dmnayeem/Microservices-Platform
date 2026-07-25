@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export interface LotteryWinner {
@@ -32,63 +33,63 @@ export async function drawLottery(lotteryId: string): Promise<DrawResult> {
     amount: number;
     description: string;
   }[];
-  const ticketIds = lottery.tickets.map((t) => t.id);
+  const tickets = lottery.tickets;
 
-  // Shuffle tickets for random selection.
-  const shuffled = [...ticketIds].sort(() => Math.random() - 0.5);
+  // Cryptographically-fair Fisher-Yates shuffle (never Math.random for real money).
+  const order = [...tickets];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = randomInt(0, i + 1);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
 
   const winners: LotteryWinner[] = [];
-  const winnerUpdates: Promise<unknown>[] = [];
-  const notificationUpdates: Promise<unknown>[] = [];
-
-  for (let i = 0; i < Math.min(prizes.length, shuffled.length); i++) {
-    const ticket = lottery.tickets.find((t) => t.id === shuffled[i]);
-    if (!ticket) continue;
-
+  for (let i = 0; i < Math.min(prizes.length, order.length); i++) {
+    const ticket = order[i];
     winners.push({
       position: prizes[i].position,
       ticketId: ticket.id,
       userId: ticket.userId,
       amount: prizes[i].amount,
     });
-
-    winnerUpdates.push(
-      prisma.lotteryTicket.update({
-        where: { id: ticket.id },
-        data: { isWinner: true, prizeAmount: prizes[i].amount },
-      })
-    );
-    winnerUpdates.push(
-      prisma.user.update({
-        where: { id: ticket.userId },
-        data: { pointsBalance: { increment: prizes[i].amount } },
-      })
-    );
-    notificationUpdates.push(
-      prisma.notification.create({
-        data: {
-          userId: ticket.userId,
-          type: "LOTTERY",
-          title: `You Won ${prizes[i].description}!`,
-          message: `Congratulations! You won ${prizes[i].amount.toLocaleString()} points in the "${lottery.title}" lottery!`,
-          data: {
-            lotteryId,
-            position: prizes[i].position,
-            prizeAmount: prizes[i].amount,
-          },
-        },
-      })
-    );
   }
 
-  await Promise.all([
-    prisma.lottery.update({
-      where: { id: lotteryId },
-      data: { status: "COMPLETED", winners: winners as unknown as object },
-    }),
-    ...winnerUpdates,
-    ...notificationUpdates,
-  ]);
+  // Draw ONCE: a CAS on status inside the transaction means only the first
+  // caller (admin button OR auto-draw cron) actually pays out — the loser
+  // matches 0 rows and aborts, so winners are never double-credited.
+  try {
+    const drawn = await prisma.$transaction(async (tx) => {
+      const claim = await tx.lottery.updateMany({
+        where: { id: lotteryId, status: "ACTIVE" },
+        data: { status: "COMPLETED", winners: winners as unknown as object },
+      });
+      if (claim.count === 0) return false;
+
+      for (let i = 0; i < winners.length; i++) {
+        const w = winners[i];
+        await tx.lotteryTicket.update({
+          where: { id: w.ticketId },
+          data: { isWinner: true, prizeAmount: w.amount },
+        });
+        await tx.user.update({
+          where: { id: w.userId },
+          data: { pointsBalance: { increment: w.amount } },
+        });
+        await tx.notification.create({
+          data: {
+            userId: w.userId,
+            type: "LOTTERY",
+            title: `You Won ${prizes[i].description}!`,
+            message: `Congratulations! You won ${w.amount.toLocaleString()} points in the "${lottery.title}" lottery!`,
+            data: { lotteryId, position: w.position, prizeAmount: w.amount },
+          },
+        });
+      }
+      return true;
+    });
+    if (!drawn) return { ok: false, reason: "not_active" };
+  } catch {
+    return { ok: false, reason: "not_active" };
+  }
 
   return { ok: true, winners };
 }

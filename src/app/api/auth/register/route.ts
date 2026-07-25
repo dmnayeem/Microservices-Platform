@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { registerUser } from "@/lib/auth/services";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -24,6 +25,8 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, "register", 5, 60_000);
+  if (limited) return limited;
   try {
     const body = await request.json();
     const validatedData = registerSchema.parse(body);

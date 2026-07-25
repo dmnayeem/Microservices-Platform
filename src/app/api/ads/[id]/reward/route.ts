@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
+import { getPointsPerUsd } from "@/lib/economy";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -22,6 +23,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
   }
 
   const points = ad.rewardPoints;
+  const pointsPerUsd = await getPointsPerUsd();
 
   // Serialize concurrent claims per user by locking the user row, then
   // re-checking the cooldown INSIDE the lock. Without this, N parallel POSTs
@@ -50,7 +52,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       where: { id: userId },
       data: {
         pointsBalance: { increment: points },
-        totalEarnings: { increment: points * 0.001 },
+        totalEarnings: { increment: points / pointsPerUsd },
       },
     });
     await tx.transaction.create({
@@ -59,7 +61,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         type: TransactionType.BONUS,
         status: TransactionStatus.COMPLETED,
         points,
-        amount: points * 0.001,
+        amount: points / pointsPerUsd,
         description: "Ad view reward",
         reference: `ad_${id}_${Date.now()}`,
       },

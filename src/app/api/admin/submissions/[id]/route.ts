@@ -5,6 +5,7 @@ import { hasPermission, type UserRole } from "@/lib/rbac";
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
+import { getPointsPerUsd } from "@/lib/economy";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -169,6 +170,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
 
       const awardsPoints = !isBoardTask && earnedPoints > 0;
+      const pointsPerUsd = await getPointsPerUsd();
 
       // Approve the submission. For non-board tasks award points/XP and write
       // a transaction; for board tasks just mark APPROVED and bump the
@@ -198,52 +200,48 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           });
         }
         if (awardsPoints) {
-          await tx.user.update({
-            where: { id: existingSubmission.userId },
-            data: {
-              pointsBalance: { increment: earnedPoints },
-              xp: { increment: earnedXp },
-              totalEarnings: { increment: earnedPoints * 0.001 },
-            },
-          });
-          await tx.transaction.create({
-            data: {
-              userId: existingSubmission.userId,
-              type: "EARNING",
-              status: "COMPLETED",
-              points: earnedPoints,
-              amount: earnedPoints * 0.001,
-              description: `Earned from task: ${task.title}`,
-              reference: existingSubmission.id,
-            },
-          });
-          // Funded (user-created) task: draw the reward from its budget pool and
-          // auto-complete when the pool is exhausted. CAS guard (gte) keeps the
-          // pool from going negative under concurrent approvals.
+          // Funded (user-created) task: draw from the budget pool FIRST (CAS).
+          // Only credit the worker with what the pool actually covers — never
+          // mint unfunded points. Unfunded (admin) tasks always credit.
+          let credit = true;
           if (task.fundedByUserId) {
             const drawn = await tx.task.updateMany({
               where: { id: task.id, remainingBudget: { gte: earnedPoints } },
               data: { remainingBudget: { decrement: earnedPoints } },
             });
             if (drawn.count === 0) {
-              // Pool can't cover this reward — zero it out and close the task
-              // (the worker is still credited above; the platform absorbs the tail).
+              credit = false;
               await tx.task.update({
                 where: { id: task.id },
                 data: { remainingBudget: 0, status: "COMPLETED" },
               });
-            } else {
-              const t = await tx.task.findUnique({
+            } else if (task.remainingBudget - earnedPoints < task.pointsReward) {
+              await tx.task.update({
                 where: { id: task.id },
-                select: { remainingBudget: true, pointsReward: true },
+                data: { status: "COMPLETED" },
               });
-              if (t && t.remainingBudget < t.pointsReward) {
-                await tx.task.update({
-                  where: { id: task.id },
-                  data: { status: "COMPLETED" },
-                });
-              }
             }
+          }
+          if (credit) {
+            await tx.user.update({
+              where: { id: existingSubmission.userId },
+              data: {
+                pointsBalance: { increment: earnedPoints },
+                xp: { increment: earnedXp },
+                totalEarnings: { increment: earnedPoints / pointsPerUsd },
+              },
+            });
+            await tx.transaction.create({
+              data: {
+                userId: existingSubmission.userId,
+                type: "EARNING",
+                status: "COMPLETED",
+                points: earnedPoints,
+                amount: earnedPoints / pointsPerUsd,
+                description: `Earned from task: ${task.title}`,
+                reference: existingSubmission.id,
+              },
+            });
           }
         }
         return tx.taskSubmission.findUnique({ where: { id } });

@@ -478,6 +478,35 @@ export async function POST(
       const effectiveXp = Math.round(task.xpReward * multiplier);
       const pointsPerUsd = await getPointsPerUsd();
 
+      // Funded (user-created) task: draw from the pool FIRST (CAS). If the pool
+      // can't cover this reward, never mint unfunded points — close the task and
+      // return without crediting. (Funded tasks are normally manual-review; this
+      // guards the auto path against concurrent overspend.)
+      if (task.fundedByUserId) {
+        const drawn = await prisma.task.updateMany({
+          where: { id: task.id, remainingBudget: { gte: effectivePoints } },
+          data: { remainingBudget: { decrement: effectivePoints } },
+        });
+        if (drawn.count === 0) {
+          await prisma.task.update({
+            where: { id: task.id },
+            data: { remainingBudget: 0, status: "COMPLETED" },
+          });
+          return NextResponse.json({
+            submission: updatedSubmission,
+            status: "approved",
+            message: "This task's reward budget is exhausted — no reward granted.",
+            rewards: { points: 0, xp: 0 },
+          });
+        }
+        if (task.remainingBudget - effectivePoints < task.pointsReward) {
+          await prisma.task.update({
+            where: { id: task.id },
+            data: { status: "COMPLETED" },
+          });
+        }
+      }
+
       // Update user points and XP
       const user = await prisma.user.update({
         where: { id: session.user.id },
@@ -514,26 +543,6 @@ export async function POST(
           completedCount: { increment: 1 },
         },
       });
-
-      // Funded (user-created) task: draw the reward from its pool (defensive —
-      // funded tasks are manual-review, but never mint unfunded points here).
-      if (task.fundedByUserId) {
-        const drawn = await prisma.task.updateMany({
-          where: { id: task.id, remainingBudget: { gte: effectivePoints } },
-          data: { remainingBudget: { decrement: effectivePoints } },
-        });
-        if (drawn.count === 0) {
-          await prisma.task.update({
-            where: { id: task.id },
-            data: { remainingBudget: 0, status: "COMPLETED" },
-          });
-        } else if (task.remainingBudget - effectivePoints < task.pointsReward) {
-          await prisma.task.update({
-            where: { id: task.id },
-            data: { status: "COMPLETED" },
-          });
-        }
-      }
 
       // Check for level up
       const newLevel = calculateLevel(user.xp + effectiveXp);

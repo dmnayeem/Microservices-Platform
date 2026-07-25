@@ -64,6 +64,19 @@ export async function POST(
       },
     });
 
+    // Audit trail — impersonation must be attributable to the admin.
+    await prisma.auditLog
+      .create({
+        data: {
+          userId: session.user.id,
+          action: "IMPERSONATE_START",
+          entity: "User",
+          entityId: targetUser.id,
+          newData: { targetEmail: targetUser.email },
+        },
+      })
+      .catch(() => {});
+
     return NextResponse.json({
       message: "Impersonation token generated",
       token,

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { sendNotificationEmail, isSmtpConfigured } from "@/lib/email";
+import { getPointsPerUsd } from "@/lib/economy";
 import { z } from "zod";
 
 // Bulk action schema
@@ -109,13 +110,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Non-zero integer points required" }, { status: 400 });
       }
       const delta = points as number;
+      const pointsPerUsd = await getPointsPerUsd();
       for (const uid of targetIds) {
         await prisma.$transaction([
           prisma.user.update({
             where: { id: uid },
             data: {
               pointsBalance: { increment: delta },
-              ...(delta > 0 ? { totalEarnings: { increment: delta * 0.001 } } : {}),
+              ...(delta > 0 ? { totalEarnings: { increment: delta / pointsPerUsd } } : {}),
             },
           }),
           prisma.transaction.create({
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
               type: delta > 0 ? TransactionType.BONUS : TransactionType.PENALTY,
               status: TransactionStatus.COMPLETED,
               points: delta,
-              amount: delta * 0.001,
+              amount: delta / pointsPerUsd,
               description: reason || `Admin ${delta > 0 ? "credit" : "debit"}`,
               reference: `admin_adjust_${uid}_${targetIds.length}`,
             },

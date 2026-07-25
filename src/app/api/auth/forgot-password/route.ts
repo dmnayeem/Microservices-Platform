@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requestPasswordReset } from "@/lib/auth/services";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
 export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, "forgot-password", 5, 60_000);
+  if (limited) return limited;
   try {
     const body = await request.json();
     const { email } = forgotPasswordSchema.parse(body);

@@ -1,4 +1,4 @@
-import { getSecret } from "@/lib/system-settings";
+import { getSecret, getSetting } from "@/lib/system-settings";
 import type {
   PaymentProvider,
   InitCheckoutInput,
@@ -60,6 +60,11 @@ export const bkash: PaymentProvider = {
   async initCheckout(input: InitCheckoutInput): Promise<InitCheckoutResult> {
     const { token, appKey, base } = await grantToken();
     const callbackURL = `${input.appUrl}/api/deposits/gateway/callback?provider=bkash`;
+    // bKash settles in BDT — convert the USD deposit amount at the admin-set rate
+    // (default ~123 BDT/$). Without this the user is charged the raw USD number
+    // in taka (~123x undercharge).
+    const rate = Number(await getSetting<number>("bkash.usdToBdtRate", 123)) || 123;
+    const amountBdt = Math.max(1, Math.round(input.amount * rate));
     const res = await fetch(`${base}/tokenized/checkout/create`, {
       method: "POST",
       headers: {
@@ -72,7 +77,7 @@ export const bkash: PaymentProvider = {
         mode: "0011",
         payerReference: input.user.id.slice(0, 12),
         callbackURL,
-        amount: String(input.amount),
+        amount: String(amountBdt),
         currency: "BDT",
         intent: "sale",
         merchantInvoiceNumber: input.tranId,

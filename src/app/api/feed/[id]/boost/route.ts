@@ -61,28 +61,48 @@ export async function POST(
   }
 
   const pointsPerUsd = await getPointsPerUsd();
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { pointsBalance: { decrement: BOOST_COST_POINTS } },
-    }),
-    prisma.post.update({
-      where: { id },
-      data: { isPinned: true },
-    }),
-    prisma.transaction.create({
-      data: {
-        userId,
-        type: TransactionType.PURCHASE,
-        status: TransactionStatus.COMPLETED,
-        points: -BOOST_COST_POINTS,
-        amount: BOOST_COST_POINTS / pointsPerUsd,
-        description: "Boosted social post",
-        reference: `boost_${id}_${Date.now()}`,
-        metadata: { postId: id },
-      },
-    }),
-  ]);
+  // Atomic + no-overspend: CAS on balance AND on `isPinned:false` so concurrent
+  // boosts (double-click / two posts) can't double-charge or go negative.
+  try {
+    await prisma.$transaction(async (tx) => {
+      const paid = await tx.user.updateMany({
+        where: { id: userId, pointsBalance: { gte: BOOST_COST_POINTS } },
+        data: { pointsBalance: { decrement: BOOST_COST_POINTS } },
+      });
+      if (paid.count === 0) throw new Error("INSUFFICIENT");
+
+      const pinned = await tx.post.updateMany({
+        where: { id, isPinned: false },
+        data: { isPinned: true },
+      });
+      if (pinned.count === 0) throw new Error("ALREADY_BOOSTED");
+
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: TransactionType.PURCHASE,
+          status: TransactionStatus.COMPLETED,
+          points: -BOOST_COST_POINTS,
+          amount: BOOST_COST_POINTS / pointsPerUsd,
+          description: "Boosted social post",
+          reference: `boost_${id}_${Date.now()}`,
+          metadata: { postId: id },
+        },
+      });
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "INSUFFICIENT") {
+      return NextResponse.json(
+        { error: `Insufficient points. ${BOOST_COST_POINTS} pts required.` },
+        { status: 400 }
+      );
+    }
+    if (msg === "ALREADY_BOOSTED") {
+      return NextResponse.json({ error: "This post is already boosted" }, { status: 400 });
+    }
+    throw e;
+  }
 
   return NextResponse.json({
     success: true,

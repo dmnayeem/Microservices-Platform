@@ -65,8 +65,42 @@ export const sslcommerz: PaymentProvider = {
   async verifyCallback(input: VerifyInput): Promise<VerifyResult> {
     const { params } = input;
     const gatewayRef = params.tran_id ?? "";
-    const status = params.status ?? "";
-    const success = status === "success" || status === "VALID" || status === "VALIDATED";
-    return { success, gatewayRef };
+    // NEVER trust the client-supplied `status` — validate server-side against
+    // SSLCommerz's validator API using the gateway-issued `val_id`. Without a
+    // val_id (e.g. a forged/cancelled callback) the payment is not credited.
+    const valId = params.val_id ?? params.value_a ?? "";
+    if (!gatewayRef || !valId) {
+      return { success: false, gatewayRef };
+    }
+    const { storeId, storePasswd, sandbox } = await keys();
+    if (!storeId || !storePasswd) return { success: false, gatewayRef };
+    const base = sandbox
+      ? "https://sandbox.sslcommerz.com"
+      : "https://securepay.sslcommerz.com";
+    try {
+      const q = new URLSearchParams({
+        val_id: valId,
+        store_id: storeId,
+        store_passwd: storePasswd,
+        format: "json",
+      });
+      const res = await fetch(
+        `${base}/validator/api/validationserverAPI.php?${q.toString()}`,
+        { method: "GET" }
+      );
+      const data = await res.json();
+      const validated =
+        (data?.status === "VALID" || data?.status === "VALIDATED") &&
+        String(data?.tran_id ?? "") === gatewayRef;
+      if (!validated) return { success: false, gatewayRef };
+      return {
+        success: true,
+        gatewayRef,
+        amount: Number(data?.amount ?? data?.currency_amount ?? NaN),
+        currency: String(data?.currency ?? "USD"),
+      };
+    } catch {
+      return { success: false, gatewayRef };
+    }
   },
 };

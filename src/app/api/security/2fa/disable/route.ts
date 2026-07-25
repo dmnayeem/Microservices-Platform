@@ -5,7 +5,9 @@ import speakeasy from "speakeasy";
 import { z } from "zod";
 
 const schema = z.object({
-  code: z.string().regex(/^\d{6}$/, "Code must be 6 digits").optional(),
+  // A current TOTP code is REQUIRED to disable 2FA — a hijacked session must not
+  // be able to silently strip 2FA with an empty body.
+  code: z.string().regex(/^\d{6}$/, "A current 6-digit code is required"),
 });
 
 export async function POST(request: NextRequest) {
@@ -33,16 +35,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (v.data.code) {
-    const isValid = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: "base32",
-      token: v.data.code,
-      window: 2,
-    });
-    if (!isValid) {
-      return NextResponse.json({ error: "Invalid code" }, { status: 400 });
-    }
+  const isValid = speakeasy.totp.verify({
+    secret: user.twoFactorSecret,
+    encoding: "base32",
+    token: v.data.code,
+    window: 2,
+  });
+  if (!isValid) {
+    return NextResponse.json({ error: "Invalid code" }, { status: 400 });
   }
 
   await prisma.user.update({

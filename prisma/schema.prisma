@@ -436,7 +436,9 @@ model Deposit {
   method     String   // MANUAL_BKASH | MANUAL_NAGAD | SSLCOMMERZ | ...
   status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
   gatewayRef String?
-  txnId      String?
+  // Manual deposit provider txn id — unique so the same payment can't be
+  // submitted/approved twice (double-credit).
+  txnId      String?  @unique
   proofUrl   String?
   adminNote  String?
   reviewedBy String?
@@ -446,6 +448,7 @@ model Deposit {
 
   @@index([userId])
   @@index([status])
+  @@index([status, createdAt])
 }
 
 enum FraudSeverity {
@@ -2053,8 +2056,10 @@ model LotteryTicket {
   isWinner    Boolean  @default(false)
   prizeAmount Int?
   createdAt   DateTime @default(now())
+  @@unique([lotteryId, ticketNumber])
   @@index([lotteryId])
   @@index([userId])
+  @@index([lotteryId, userId])
 }
 
 model Post {

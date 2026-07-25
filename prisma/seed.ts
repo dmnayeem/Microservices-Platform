@@ -8,6 +8,14 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+  // SAFETY: this seed wipes ALL users. Never allow it to run against production.
+  // Requires an explicit opt-in env var and refuses when NODE_ENV=production.
+  if (process.env.NODE_ENV === "production" || process.env.ALLOW_SEED !== "true") {
+    throw new Error(
+      "Refusing to run destructive seed: set ALLOW_SEED=true (and not NODE_ENV=production) to proceed."
+    );
+  }
+
   console.log("Starting seed...");
 
   // Delete all existing users first

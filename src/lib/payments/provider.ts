@@ -30,6 +30,11 @@ export interface VerifyResult {
   success: boolean;
   /** The gatewayRef of the deposit this callback settles. */
   gatewayRef: string;
+  /** Gateway-validated paid amount (in the deposit currency) — the callback
+   *  route cross-checks this against the stored deposit amount before crediting. */
+  amount?: number;
+  /** Gateway-validated currency code (e.g. "USD"). */
+  currency?: string;
 }
 
 export interface PaymentProvider {

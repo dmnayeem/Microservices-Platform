@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resetPassword } from "@/lib/auth/services";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
@@ -14,6 +15,8 @@ const resetPasswordSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, "reset-password", 10, 60_000);
+  if (limited) return limited;
   try {
     const body = await request.json();
     const { token, password } = resetPasswordSchema.parse(body);

@@ -399,10 +399,7 @@ function FeedTab({
       <CreatePostComposer user={user} onCreated={handlePostCreated} />
 
       {/* Sort toggle */}
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-          {sortedPosts.length} {sortedPosts.length === 1 ? "post" : "posts"}
-        </p>
+      <div className="flex items-center justify-end">
         <div className="inline-flex rounded-lg border border-gray-800 overflow-hidden text-xs">
           {(["recent", "trending"] as const).map((s) => (
             <button

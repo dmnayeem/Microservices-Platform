@@ -29,9 +29,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/wallet?deposit=error`);
   }
 
-  const { success, gatewayRef } = await provider
+  const { success, gatewayRef, amount: paidAmount } = await provider
     .verifyCallback({ params })
-    .catch(() => ({ success: false, gatewayRef: params.tran_id ?? params.paymentID ?? "" }));
+    .catch(() => ({
+      success: false,
+      gatewayRef: params.tran_id ?? params.paymentID ?? "",
+      amount: undefined as number | undefined,
+    }));
 
   if (!gatewayRef) {
     return NextResponse.redirect(`${APP_URL}/wallet?deposit=error`);
@@ -42,7 +46,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/wallet?deposit=notfound`);
   }
 
-  if (!success) {
+  // Cross-check the gateway-validated paid amount against what we recorded — a
+  // mismatch (tampered/underpaid) is never credited.
+  const amountOk =
+    paidAmount === undefined ||
+    Math.abs(Number(paidAmount) - deposit.amount) <= 0.01;
+
+  if (!success || !amountOk) {
     if (deposit.status === "PENDING") {
       await prisma.deposit.update({
         where: { id: deposit.id },

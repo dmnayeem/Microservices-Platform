@@ -109,8 +109,17 @@ async function settleAuction(
   });
   const { fee, sellerAmount } = splitPrice(amount, bps);
 
-  const [purchase] = await prisma.$transaction([
-    prisma.marketplacePurchase.create({
+  // Settle atomically. The winner debit is a CAS (`cashBalance >= amount`) so the
+  // platform never pays the seller from a buyer who can't cover the bid. If the
+  // winner is short, void the sale: mark all bids LOST + close the listing unsold.
+  const purchase = await prisma.$transaction(async (tx) => {
+    const paid = await tx.user.updateMany({
+      where: { id: highBid.bidderId, cashBalance: { gte: amount } },
+      data: { cashBalance: { decrement: amount } },
+    });
+    if (paid.count === 0) return null; // winner can't cover — abort settlement
+
+    const p = await tx.marketplacePurchase.create({
       data: {
         listingId: listing.id,
         buyerId: highBid.bidderId,
@@ -119,37 +128,31 @@ async function settleAuction(
         sellerAmount,
         status: "COMPLETED",
       },
-    }),
-    prisma.marketplaceBid.update({
+    });
+    await tx.marketplaceBid.update({
       where: { id: highBid.id },
       data: { status: MarketplaceBidStatus.WON },
-    }),
-    prisma.marketplaceBid.updateMany({
+    });
+    await tx.marketplaceBid.updateMany({
       where: {
         listingId: listing.id,
         id: { not: highBid.id },
-        status: {
-          in: [MarketplaceBidStatus.ACTIVE, MarketplaceBidStatus.OUTBID],
-        },
+        status: { in: [MarketplaceBidStatus.ACTIVE, MarketplaceBidStatus.OUTBID] },
       },
       data: { status: MarketplaceBidStatus.LOST },
-    }),
-    prisma.marketplaceListing.update({
+    });
+    await tx.marketplaceListing.update({
       where: { id: listing.id },
       data: { status: MarketplaceListingStatus.SOLD },
-    }),
-    prisma.user.update({
-      where: { id: highBid.bidderId },
-      data: { cashBalance: { decrement: amount } },
-    }),
-    prisma.user.update({
+    });
+    await tx.user.update({
       where: { id: listing.sellerId },
       data: {
         cashBalance: { increment: sellerAmount },
         totalEarnings: { increment: sellerAmount },
       },
-    }),
-    prisma.transaction.create({
+    });
+    await tx.transaction.create({
       data: {
         userId: highBid.bidderId,
         type: TransactionType.PURCHASE,
@@ -159,8 +162,8 @@ async function settleAuction(
         description: `Auction won — "${listing.title}"`,
         reference: `marketplace_auction_${listing.id}`,
       },
-    }),
-    prisma.transaction.create({
+    });
+    await tx.transaction.create({
       data: {
         userId: listing.sellerId,
         type: TransactionType.EARNING,
@@ -170,8 +173,42 @@ async function settleAuction(
         description: `Auction sale — "${listing.title}"`,
         reference: `marketplace_auction_${listing.id}`,
       },
-    }),
-  ]);
+    });
+    return p;
+  });
+
+  // Winner couldn't pay → void the auction (no seller payout).
+  if (!purchase) {
+    await prisma.$transaction([
+      prisma.marketplaceBid.updateMany({
+        where: {
+          listingId: listing.id,
+          status: { in: [MarketplaceBidStatus.ACTIVE, MarketplaceBidStatus.OUTBID] },
+        },
+        data: { status: MarketplaceBidStatus.LOST },
+      }),
+      prisma.marketplaceListing.update({
+        where: { id: listing.id },
+        data: { status: MarketplaceListingStatus.EXPIRED },
+      }),
+    ]);
+    await prisma.notification
+      .create({
+        data: {
+          userId: listing.sellerId,
+          type: NotificationType.SYSTEM,
+          title: "Auction closed — payment failed",
+          message: `The winning bidder for "${listing.title}" couldn't cover the bid, so the sale was voided.`,
+          data: { listingId: listing.id },
+        },
+      })
+      .catch(() => {});
+    return {
+      listingId: listing.id,
+      outcome: "expired" as const,
+      reason: "Winner had insufficient balance",
+    };
+  }
 
   await Promise.all([
     prisma.notification.create({
