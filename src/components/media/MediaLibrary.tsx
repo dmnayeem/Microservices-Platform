@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { MediaItem, MediaFilter } from "@/types/media";
 import { MediaUploader } from "./MediaUploader";
 import { toast } from "sonner";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export function MediaLibrary() {
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -282,11 +283,12 @@ export function MediaLibrary() {
                       className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-indigo-500 transition-all"
                     >
                       {item.fileType === "IMAGE" ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SmartImage
                           src={item.cloudFrontUrl || item.s3Url}
-                          alt={item.altText || item.originalFilename}
-                          className="w-full h-full object-cover"
+                          alt={(item.altText || item.originalFilename) ?? ""}
+                          fill
+                          sizes="200px"
+                          className="object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -335,10 +337,11 @@ export function MediaLibrary() {
                     >
                       <div className="shrink-0">
                         {item.fileType === "IMAGE" ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <SmartImage
                             src={item.cloudFrontUrl || item.s3Url}
-                            alt={item.altText || item.originalFilename}
+                            alt={(item.altText || item.originalFilename) ?? ""}
+                            width={64}
+                            height={64}
                             className="w-16 h-16 rounded object-cover"
                           />
                         ) : (
@@ -423,10 +426,11 @@ export function MediaLibrary() {
               {/* Preview */}
               <div className="flex items-start gap-4">
                 {selectedMedia.fileType === "IMAGE" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={selectedMedia.cloudFrontUrl || selectedMedia.s3Url}
-                    alt={selectedMedia.altText || selectedMedia.originalFilename}
+                    alt={(selectedMedia.altText || selectedMedia.originalFilename) ?? ""}
+                    width={128}
+                    height={128}
                     className="w-32 h-32 rounded-lg object-cover"
                   />
                 ) : (

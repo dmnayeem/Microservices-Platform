@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ListingActions } from "./_components/ListingActions";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -137,13 +138,14 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
                 {typedListing.images.map((image, index) => (
                   <div
                     key={index}
-                    className="aspect-square bg-gray-800 rounded-lg overflow-hidden"
+                    className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <SmartImage
                       src={image}
                       alt={`Image ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="200px"
+                      className="object-cover"
                     />
                   </div>
                 ))}

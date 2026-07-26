@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface TreeNode {
   id: string;
@@ -159,10 +160,9 @@ export function ReferralTreeView({ userId, user }: Props) {
       </Link>
 
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
+        <div className="relative w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
           {user.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+            <SmartImage src={user.avatar} alt="" fill sizes="48px" className="object-cover" />
           ) : (
             (user.name ?? user.email).charAt(0).toUpperCase()
           )}

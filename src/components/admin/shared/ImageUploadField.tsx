@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Image as ImageIcon, Video as VideoIcon, X } from "lucide-react";
 import { MediaSelector } from "@/components/media/MediaSelector";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import type { MediaItem } from "@/types/media";
 
 interface Props {
@@ -63,15 +64,20 @@ export function ImageUploadField({
                 className={`${previewClass} rounded-lg object-cover bg-slate-950 border border-slate-700`}
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={value}
-                alt=""
-                className={`${previewClass} rounded-lg object-cover bg-slate-950 border border-slate-700`}
-                onError={(e) => {
-                  e.currentTarget.style.opacity = "0.3";
-                }}
-              />
+              <div
+                className={`${previewClass} relative rounded-lg overflow-hidden bg-slate-950 border border-slate-700`}
+              >
+                <SmartImage
+                  src={value}
+                  alt=""
+                  fill
+                  sizes="200px"
+                  className="object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.opacity = "0.3";
+                  }}
+                />
+              </div>
             )}
             <button
               type="button"

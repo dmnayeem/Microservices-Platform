@@ -22,6 +22,7 @@ import {
 } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
 import { FEATURES } from "@/lib/features";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 // Generate a 12-char password with at least 1 lower / upper / digit / symbol
 function generateRandomPassword(length = 12): string {
@@ -1282,14 +1283,13 @@ function PhotoField({
       {value && (
         <div
           className={cn(
-            "rounded-lg overflow-hidden border border-slate-700 bg-slate-950 mb-3",
+            "relative rounded-lg overflow-hidden border border-slate-700 bg-slate-950 mb-3",
             kind === "avatar"
               ? "w-32 h-32 rounded-full"
               : "w-full aspect-[5/2]"
           )}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="" className="w-full h-full object-cover" />
+          <SmartImage src={value} alt="" fill sizes="128px" className="object-cover" />
         </div>
       )}
 

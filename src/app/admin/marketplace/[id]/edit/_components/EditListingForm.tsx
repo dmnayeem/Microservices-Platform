@@ -6,6 +6,7 @@ import { Save, X, Loader2, Package, Image as ImageIcon, Trash2, Plus, ArrowLeft,
 import { toast } from "sonner";
 import Link from "next/link";
 import { MediaSelector } from "@/components/media/MediaSelector";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import type { MediaItem } from "@/types/media";
 
 interface Listing {
@@ -311,10 +312,11 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                     key={index}
                     className="flex items-center gap-2 p-2 bg-gray-800 border border-gray-700 rounded-lg"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <SmartImage
                       src={img}
                       alt={`Preview ${index + 1}`}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 object-cover rounded"
                       onError={(e) => {
                         e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect fill='%23374151' width='48' height='48'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239CA3AF' font-family='sans-serif' font-size='12'%3ENo Image%3C/text%3E%3C/svg%3E";

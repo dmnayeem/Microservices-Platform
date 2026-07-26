@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Save, X, Plus, Trash2, AlertCircle, Loader2, Image as ImageIcon, Smartphone } from "lucide-react";
 import { MediaSelector } from "@/components/media/MediaSelector";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { notifyCenter } from "@/lib/notify-center";
 import type { MediaItem } from "@/types/media";
 import { SocialTaskBuilder } from "./SocialTaskBuilder";
@@ -652,10 +653,11 @@ export function TaskForm({ task }: TaskFormProps) {
               <div className="space-y-3">
                 {formData.thumbnailUrl ? (
                   <div className="relative inline-block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <SmartImage
                       src={formData.thumbnailUrl}
                       alt="Thumbnail"
+                      width={128}
+                      height={80}
                       className="w-32 h-20 object-cover rounded-lg border border-gray-700"
                     />
                     <button
@@ -917,10 +919,11 @@ export function TaskForm({ task }: TaskFormProps) {
                   <div className="flex items-center gap-3">
                     {q.imageUrl ? (
                       <div className="relative">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <SmartImage
                           src={q.imageUrl}
                           alt={`Question ${qIndex + 1} image`}
+                          width={96}
+                          height={64}
                           className="w-24 h-16 object-cover rounded-lg border border-gray-700"
                         />
                         <button

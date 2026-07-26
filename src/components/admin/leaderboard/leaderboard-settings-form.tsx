@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface PackageOption {
   id: string;
@@ -933,8 +934,7 @@ function GiftThumbnailUploader({
         }}
       />
       {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={value} alt="" className="w-full h-full object-cover" />
+        <SmartImage src={value} alt="" fill sizes="56px" className="object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <Gift className="w-5 h-5 text-slate-600" />

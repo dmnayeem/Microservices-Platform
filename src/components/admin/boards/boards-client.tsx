@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Board {
   id: string;
@@ -447,10 +448,11 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
                           className="flex items-center gap-3 p-2 rounded-lg bg-slate-950 border border-slate-800"
                         >
                           {c.user.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <SmartImage
                               src={c.user.image}
                               alt=""
+                              width={32}
+                              height={32}
                               className="w-8 h-8 rounded-full object-cover bg-slate-800"
                             />
                           ) : (

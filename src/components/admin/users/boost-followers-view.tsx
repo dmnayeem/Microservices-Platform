@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Props {
   userId: string;
@@ -402,10 +403,9 @@ export function BoostFollowersView({
           <ArrowLeft className="w-5 h-5 text-gray-400" />
         </Link>
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold overflow-hidden shrink-0">
+          <div className="relative w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold overflow-hidden shrink-0">
             {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" className="w-full h-full object-cover" />
+              <SmartImage src={avatar} alt="" fill sizes="48px" className="object-cover" />
             ) : (
               initial
             )}
@@ -1053,10 +1053,9 @@ function Avatar({
 }) {
   const initial = (fallback ?? "U").charAt(0).toUpperCase();
   return (
-    <div className="w-5 h-5 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[9px] font-bold overflow-hidden shrink-0">
+    <div className="relative w-5 h-5 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[9px] font-bold overflow-hidden shrink-0">
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="w-full h-full object-cover" />
+        <SmartImage src={src} alt="" fill sizes="20px" className="object-cover" />
       ) : (
         initial
       )}

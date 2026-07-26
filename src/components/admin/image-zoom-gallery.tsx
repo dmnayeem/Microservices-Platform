@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface ImageZoomGalleryProps {
   images: string[];
@@ -37,11 +38,12 @@ export function ImageZoomGallery({ images, size = 80 }: ImageZoomGalleryProps) {
             style={{ width: size, height: size }}
             aria-label={`Open image ${idx + 1}`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <SmartImage
               src={src}
               alt={`Proof ${idx + 1}`}
-              className="w-full h-full object-cover"
+              fill
+              sizes="120px"
+              className="object-cover"
             />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <ImageIcon className="w-5 h-5 text-white" />

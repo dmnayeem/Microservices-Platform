@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Inbox, CheckCircle, XCircle, Clock, Filter } from "lucide-react";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { formatDistanceToNow } from "date-fns";
 import { ApplicationDecisionButtons } from "./_components/ApplicationDecisionButtons";
 
@@ -148,10 +149,11 @@ export default async function TutorApplicationsPage({ searchParams }: PageProps)
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 {app.user.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={app.user.avatar}
                     alt=""
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-full object-cover bg-slate-800"
                   />
                 ) : (

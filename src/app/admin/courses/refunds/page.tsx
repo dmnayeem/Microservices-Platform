@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { RefreshCcw, Clock, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { formatDistanceToNow } from "date-fns";
 import { RefundDecisionButtons } from "./_components/RefundDecisionButtons";
 
@@ -134,10 +135,11 @@ export default async function CourseRefundsPage({ searchParams }: PageProps) {
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   {r.user.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={r.user.avatar}
                       alt=""
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-full object-cover bg-slate-800"
                     />
                   ) : (

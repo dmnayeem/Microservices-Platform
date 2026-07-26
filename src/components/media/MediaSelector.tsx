@@ -8,6 +8,7 @@ import type { MediaItem, MediaFilter } from "@/types/media";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { MediaUploader } from "./MediaUploader";
 import { AiImageGenerator } from "./AiImageGenerator";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface MediaSelectorProps {
   isOpen: boolean;
@@ -354,11 +355,12 @@ export function MediaSelector({
                             }`}
                           >
                             {item.fileType === "IMAGE" ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
+                              <SmartImage
                                 src={item.cloudFrontUrl || item.s3Url}
-                                alt={item.altText || item.originalFilename}
-                                className="w-full h-full object-cover"
+                                alt={(item.altText || item.originalFilename) ?? ""}
+                                fill
+                                sizes="200px"
+                                className="object-cover"
                               />
                             ) : (
                               <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -390,10 +392,11 @@ export function MediaSelector({
                           >
                             <div className="shrink-0">
                               {item.fileType === "IMAGE" ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <SmartImage
                                   src={item.cloudFrontUrl || item.s3Url}
-                                  alt={item.altText || item.originalFilename}
+                                  alt={(item.altText || item.originalFilename) ?? ""}
+                                  width={48}
+                                  height={48}
                                   className="w-12 h-12 rounded object-cover"
                                 />
                               ) : (

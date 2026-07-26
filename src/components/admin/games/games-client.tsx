@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Loader2, Gamepad2, X } from "lucide-react";
 import { toast } from "sonner";
 import { confirmDialog } from "@/lib/confirm";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export interface AdminGame {
   id: string;
@@ -58,10 +59,9 @@ export function GamesClient({
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {initial.map((g) => (
             <div key={g.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-3 flex gap-3">
-              <div className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden shrink-0 grid place-items-center">
+              <div className="relative w-14 h-14 rounded-xl bg-slate-950 overflow-hidden shrink-0 grid place-items-center">
                 {g.iconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={g.iconUrl} alt="" className="w-full h-full object-cover" />
+                  <SmartImage src={g.iconUrl} alt="" fill sizes="56px" className="object-cover" />
                 ) : (
                   <Gamepad2 className="w-6 h-6 text-slate-600" />
                 )}

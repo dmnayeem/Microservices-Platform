@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AD_PLACEMENTS } from "@/lib/ad-placements";
@@ -431,8 +432,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                   <div key={ad.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 hover:border-slate-700 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       {thumb ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={thumb} alt="" className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
+                        <SmartImage src={thumb} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
                       ) : (
                         <div className="w-14 h-14 rounded-lg bg-slate-950 grid place-items-center text-slate-600 shrink-0">
                           {isFeed ? <Rss className="w-5 h-5" /> : <Newspaper className="w-5 h-5" />}
@@ -494,8 +494,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {thumb ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={thumb} alt="" className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
+                          <SmartImage src={thumb} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
                         ) : (
                           <div className="w-14 h-14 rounded-lg bg-slate-950 grid place-items-center text-slate-600 shrink-0">
                             {isFeed ? <Rss className="w-5 h-5" /> : <Newspaper className="w-5 h-5" />}

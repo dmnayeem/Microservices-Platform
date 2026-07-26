@@ -28,6 +28,7 @@ import { AdminBroadcastDialog } from "./_components/AdminBroadcastDialog";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface PageProps {
   searchParams: Promise<{
@@ -325,10 +326,11 @@ export default async function CoursesAdminPage({ searchParams }: PageProps) {
                   c.tutor ? (
                     <div className="flex items-center gap-2 min-w-0">
                       {c.tutor.avatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SmartImage
                           src={c.tutor.avatar}
                           alt=""
+                          width={28}
+                          height={28}
                           className="w-7 h-7 rounded-full object-cover bg-slate-800 shrink-0"
                         />
                       ) : (

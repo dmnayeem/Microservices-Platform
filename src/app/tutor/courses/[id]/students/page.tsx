@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { ChevronLeft, Users, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -93,10 +94,11 @@ export default async function TutorCourseStudentsPage({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {e.user.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <SmartImage
                             src={e.user.avatar}
                             alt=""
+                            width={32}
+                            height={32}
                             className="w-8 h-8 rounded-full object-cover bg-slate-800"
                           />
                         ) : (

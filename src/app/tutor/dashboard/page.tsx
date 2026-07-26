@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { formatDistanceToNow } from "date-fns";
 
 export default async function TutorDashboardPage() {
@@ -180,10 +181,11 @@ export default async function TutorDashboardPage() {
               }>).map((e) => (
                 <li key={e.id} className="flex items-center gap-3 py-3 px-2">
                   {e.user.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={e.user.avatar}
                       alt=""
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full object-cover bg-slate-800"
                     />
                   ) : (

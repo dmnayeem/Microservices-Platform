@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import {
   BarChart3,
   Eye,
@@ -207,10 +208,11 @@ export default async function CourseAnalyticsPage({
             {recentEnrolls.map((e) => (
               <li key={e.id} className="py-3 flex items-center gap-3">
                 {e.user.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={e.user.avatar}
                     alt=""
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full object-cover bg-slate-800"
                   />
                 ) : (

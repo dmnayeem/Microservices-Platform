@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { CategoryField } from "@/lib/marketplace-categories";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Props {
   field: CategoryField;
@@ -381,8 +382,7 @@ function MultiScreenshotField({
               key={i}
               className="relative aspect-square rounded-lg overflow-hidden bg-slate-950 border border-slate-800 group"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="w-full h-full object-cover" />
+              <SmartImage src={url} alt="" fill sizes="200px" className="object-cover" />
               <button
                 type="button"
                 onClick={() => onChange(value.filter((_, j) => j !== i))}

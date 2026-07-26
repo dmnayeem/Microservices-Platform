@@ -7,6 +7,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { TutorRowActions } from "./_components/TutorRowActions";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export default async function AdminTutorsPage() {
   const session = await auth();
@@ -120,10 +121,11 @@ export default async function AdminTutorsPage() {
             cell: (t) => (
               <div className="flex items-center gap-2">
                 {t.user.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={t.user.avatar}
                     alt=""
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full object-cover bg-slate-800 shrink-0"
                   />
                 ) : (

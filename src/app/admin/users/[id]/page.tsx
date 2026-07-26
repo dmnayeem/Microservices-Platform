@@ -41,6 +41,7 @@ import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
 import { AdminUserAnalyticsTab } from "@/components/admin/users/admin-user-analytics";
 import { getXpRank, levelProgress } from "@/lib/user-rank";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -386,23 +387,25 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       <div className="relative rounded-2xl overflow-hidden border border-gray-800">
         <div className="relative h-32 sm:h-44 bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600">
           {user.coverPhoto && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SmartImage
               src={user.coverPhoto}
               alt=""
-              className="w-full h-full object-cover"
+              fill
+              sizes="100vw"
+              className="object-cover"
             />
           )}
         </div>
         <div className="bg-gray-900 px-4 sm:px-6 pt-12 pb-5 relative">
           <div className="absolute -top-12 left-4 sm:left-6">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 border-4 border-gray-900 flex items-center justify-center text-white text-3xl font-extrabold overflow-hidden shadow-xl">
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 border-4 border-gray-900 flex items-center justify-center text-white text-3xl font-extrabold overflow-hidden shadow-xl">
               {user.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SmartImage
                   src={user.avatar}
                   alt=""
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="112px"
+                  className="object-cover"
                 />
               ) : (
                 user.name?.charAt(0) || user.email?.charAt(0) || "U"
@@ -937,13 +940,14 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                     href={`/admin/users/${f.follower.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
+                    <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
                       {f.follower.avatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SmartImage
                           src={f.follower.avatar}
                           alt=""
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="40px"
+                          className="object-cover"
                         />
                       ) : (
                         (f.follower.name ?? f.follower.username ?? "U")
@@ -998,13 +1002,14 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                     href={`/admin/users/${f.following.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
+                    <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
                       {f.following.avatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SmartImage
                           src={f.following.avatar}
                           alt=""
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="40px"
+                          className="object-cover"
                         />
                       ) : (
                         (f.following.name ?? f.following.username ?? "U")

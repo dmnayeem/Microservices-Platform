@@ -24,6 +24,7 @@ import {
   Trash2,
   GripVertical,
 } from "lucide-react";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Props {
   value: SocialBundleConfig;
@@ -593,10 +594,11 @@ function FieldEditor({
         {labelEl}
         <div className="flex items-center gap-3">
           {value && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SmartImage
               src={value}
               alt="Preview"
+              width={80}
+              height={56}
               className="w-20 h-14 rounded-lg object-cover bg-gray-900 border border-gray-700"
             />
           )}

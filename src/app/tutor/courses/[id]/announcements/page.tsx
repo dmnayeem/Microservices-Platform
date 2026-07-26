@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { ChevronLeft, Megaphone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AnnouncementComposer } from "./_components/AnnouncementComposer";
@@ -81,10 +82,11 @@ export default async function TutorCourseAnnouncementsPage({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {a.author.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={a.author.avatar}
                       alt=""
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full object-cover bg-slate-800"
                     />
                   ) : (

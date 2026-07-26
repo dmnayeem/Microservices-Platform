@@ -20,6 +20,7 @@ import {
   FIELD_TYPE_LABEL,
 } from "@/lib/custom-tasks";
 import type { PanelSubmission, PanelTask } from "./types";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Props {
   submission: PanelSubmission;
@@ -127,10 +128,9 @@ function CustomAnswerValue({
               href={url}
               target="_blank"
               rel="noreferrer noopener"
-              className="block aspect-square rounded-lg overflow-hidden bg-gray-900 border border-gray-800 hover:border-indigo-500/50"
+              className="relative block aspect-square rounded-lg overflow-hidden bg-gray-900 border border-gray-800 hover:border-indigo-500/50"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="w-full h-full object-cover" />
+              <SmartImage src={url} alt="" fill sizes="200px" className="object-cover" />
             </a>
           ))}
         </div>

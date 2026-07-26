@@ -29,6 +29,7 @@ import {
   type CategoryField,
 } from "@/lib/marketplace-categories";
 import { CategoryFieldInput } from "./CategoryFieldInput";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 const STEPS = [
   { id: 1, label: "Asset type" },
@@ -1091,8 +1092,7 @@ function UrlListEditor({
                 className="relative aspect-square rounded-lg overflow-hidden bg-slate-950 border border-slate-800 group"
               >
                 {isImg ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={u} alt="" className="w-full h-full object-cover" />
+                  <SmartImage src={u} alt="" fill sizes="200px" className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center p-2">
                     <ImageIcon className="w-5 h-5 text-slate-600" />
