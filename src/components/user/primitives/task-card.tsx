@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Clock, Coins, Lock, Check, Sparkles, Zap } from "lucide-react";
 import type { ReactNode } from "react";
+import { SmartImage } from "./smart-image";
 
 export type TaskStatus =
   | "AVAILABLE"
@@ -114,10 +115,11 @@ export function TaskCard({
         {(thumbnail || icon) && (
           <div className="shrink-0">
             {thumbnail ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={thumbnail}
                 alt=""
+                width={56}
+                height={56}
                 className="w-14 h-14 rounded-lg object-cover bg-gray-800"
               />
             ) : (

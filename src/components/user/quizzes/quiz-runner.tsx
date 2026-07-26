@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface PlayQuestion {
   id: string;
@@ -335,9 +336,14 @@ export function QuizRunner({ quizId }: { quizId: string }) {
                   )}
                 >
                   {img ? (
-                    <div className="aspect-video bg-gray-950">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                    <div className="relative aspect-video bg-gray-950">
+                      <SmartImage
+                        src={img}
+                        alt=""
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="object-cover"
+                      />
                     </div>
                   ) : null}
                   <div className="flex items-center gap-2 p-2.5 bg-gray-950">

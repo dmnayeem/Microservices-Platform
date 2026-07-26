@@ -14,6 +14,7 @@ import {
   Lock,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -158,8 +159,13 @@ export function PublicProfileView({ userId, viewerId }: Props) {
       <div className="rounded-2xl overflow-hidden glass">
         <div className="relative h-32 sm:h-44 bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600">
           {user.coverPhoto && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.coverPhoto} alt="" className="w-full h-full object-cover" />
+            <SmartImage
+              src={user.coverPhoto}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+            />
           )}
         </div>
         <div className="bg-gray-900 px-4 sm:px-6 pt-12 pb-5 relative">

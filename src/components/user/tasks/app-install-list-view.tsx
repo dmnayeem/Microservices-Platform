@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Smartphone, Coins, ChevronRight, Loader2 } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface AppTask {
   id: string;
@@ -57,8 +58,13 @@ export function AppInstallListView() {
             >
               <div className="w-12 h-12 rounded-xl bg-gray-800 overflow-hidden shrink-0 grid place-items-center">
                 {t.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={t.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  <SmartImage
+                    src={t.thumbnailUrl}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <Smartphone className="w-5 h-5 text-gray-600" />
                 )}

@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { Star, Coins } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SmartImage } from "./smart-image";
 
 interface ListingCardProps {
   id?: string;
@@ -42,11 +43,12 @@ export function ListingCard({
     <>
       <div className="relative aspect-square bg-gray-800">
         {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SmartImage
             src={image}
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center text-gray-600 text-sm">

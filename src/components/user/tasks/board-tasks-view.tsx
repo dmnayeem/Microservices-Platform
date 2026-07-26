@@ -22,6 +22,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -221,12 +222,15 @@ export function BoardTasksView() {
             {/* Header */}
             <div className="rounded-2xl border border-gray-800 bg-linear-to-br from-orange-500/10 via-pink-500/5 to-gray-900 overflow-hidden">
               {detail.board.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={detail.board.imageUrl}
-                  alt=""
-                  className="w-full h-32 object-cover bg-gray-800"
-                />
+                <div className="relative w-full h-32 bg-gray-800">
+                  <SmartImage
+                    src={detail.board.imageUrl}
+                    alt=""
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
+                  />
+                </div>
               )}
               <div className="p-4">
                 <div className="flex items-start gap-3">
@@ -665,12 +669,15 @@ export function BoardTasksView() {
                 )}
               >
                 {b.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={b.thumbnailUrl}
-                    alt=""
-                    className="w-full h-24 object-cover bg-gray-800"
-                  />
+                  <div className="relative w-full h-24 bg-gray-800">
+                    <SmartImage
+                      src={b.thumbnailUrl}
+                      alt=""
+                      fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="h-24 bg-linear-to-br from-orange-500 to-pink-500 flex items-center justify-center text-3xl">
                     {b.iconEmoji || "📌"}

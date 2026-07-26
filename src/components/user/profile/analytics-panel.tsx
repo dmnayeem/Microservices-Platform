@@ -12,6 +12,7 @@ import {
   Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export interface AnalyticsResp {
   totals: {
@@ -158,10 +159,11 @@ export function AnalyticsPanel({
                   #{idx + 1}
                 </div>
                 {p.thumbnail && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={p.thumbnail}
                     alt=""
+                    width={48}
+                    height={48}
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}

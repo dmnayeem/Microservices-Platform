@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, ChevronRight, Sparkles } from "lucide-react";
 import type { SplashConfig } from "@/lib/splash";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 const SEEN_KEY = "splash_seen_v1";
 
@@ -91,14 +92,15 @@ export function SplashScreen() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <div className="w-full max-w-sm">
-          <div className="aspect-square w-full max-w-xs mx-auto rounded-3xl overflow-hidden bg-gray-900 border border-gray-800 flex items-center justify-center mb-8">
+          <div className="relative aspect-square w-full max-w-xs mx-auto rounded-3xl overflow-hidden bg-gray-900 border border-gray-800 flex items-center justify-center mb-8">
             {slide.imageUrl && !imgFailed ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={slide.imageUrl}
                 alt={slide.title}
+                fill
+                sizes="100vw"
                 onError={() => setImgFailed(true)}
-                className="w-full h-full object-cover"
+                className="object-cover"
               />
             ) : (
               <BrandLogo />

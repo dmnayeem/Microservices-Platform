@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { type AppInstallConfig } from "@/lib/app-install-tasks";
 
 interface AppInstallTask {
@@ -175,8 +176,13 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
         <div className="flex items-start gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gray-800 overflow-hidden shrink-0 grid place-items-center">
             {logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logo} alt="" className="w-full h-full object-cover" />
+              <SmartImage
+                src={logo}
+                alt=""
+                width={64}
+                height={64}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <Smartphone className="w-7 h-7 text-gray-600" />
             )}

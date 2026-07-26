@@ -5,6 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ShoppingBag } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export default async function OrdersPage() {
   const session = await auth();
@@ -48,10 +49,11 @@ export default async function OrdersPage() {
               className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-900 hover:border-gray-700"
             >
               {o.listing.images[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SmartImage
                   src={o.listing.images[0]}
                   alt=""
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-lg bg-gray-800 object-cover"
                 />
               ) : (

@@ -33,6 +33,7 @@ import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { GlobalSearch } from "@/components/user/primitives/global-search";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { cn } from "@/lib/utils";
 import { calculateLevel, calculateXpProgress } from "@/lib/utils";
 import { taskRunHref } from "@/lib/task-routes";
@@ -335,10 +336,11 @@ function LearnTab() {
             >
               <div className="flex gap-3">
                 {c.thumbnail ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={c.thumbnail}
                     alt=""
+                    width={64}
+                    height={64}
                     className="w-16 h-16 rounded-lg object-cover bg-gray-800 shrink-0"
                   />
                 ) : (

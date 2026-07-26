@@ -13,6 +13,7 @@ export { ListingCard } from "./listing-card";
 export { NotificationItem } from "./notification-item";
 export type { NotificationType } from "./notification-item";
 export { ImageZoomModal } from "./image-zoom-modal";
+export { SmartImage } from "./smart-image";
 export { ShareModal } from "./share-modal";
 export { ReportContent } from "./report-content";
 export type { ReportTargetType } from "./report-content";

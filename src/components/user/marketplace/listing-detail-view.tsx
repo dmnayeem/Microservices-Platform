@@ -31,6 +31,7 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { ReportContent } from "@/components/user/primitives/report-content";
 import { BidPanel } from "./bid-panel";
 import { OfferPanel } from "./offer-panel";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -265,11 +266,12 @@ export function ListingDetailView({
             }
           >
             {listing.images[0] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={listing.images[0]}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                sizes="100vw"
+                className="object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -306,10 +308,15 @@ export function ListingDetailView({
                   key={i}
                   type="button"
                   onClick={() => setZoom({ list: listing.images, idx: i })}
-                  className="aspect-square bg-gray-950 rounded-lg overflow-hidden border border-gray-800 hover:border-indigo-500/50"
+                  className="relative aspect-square bg-gray-950 rounded-lg overflow-hidden border border-gray-800 hover:border-indigo-500/50"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <SmartImage
+                    src={url}
+                    alt=""
+                    fill
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    className="object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -619,10 +626,15 @@ export function ListingDetailView({
                 key={i}
                 type="button"
                 onClick={() => setZoom({ list: listing.screenshots, idx: i })}
-                className="aspect-video rounded-lg overflow-hidden bg-gray-950 border border-gray-800 hover:border-emerald-500/40"
+                className="relative aspect-video rounded-lg overflow-hidden bg-gray-950 border border-gray-800 hover:border-emerald-500/40"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" className="w-full h-full object-cover" />
+                <SmartImage
+                  src={url}
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover"
+                />
               </button>
             ))}
           </div>

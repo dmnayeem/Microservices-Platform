@@ -19,6 +19,7 @@ import type { VideoConfig } from "@/lib/video-tasks";
 import { formatDuration } from "@/lib/video-tasks";
 import { VideoTaskPlayer } from "./video-task-player";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface VideoTask {
   id: string;
@@ -192,12 +193,15 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
       {/* Hero */}
       <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
         {task.thumbnailUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={task.thumbnailUrl}
-            alt=""
-            className="w-full h-40 sm:h-52 object-cover"
-          />
+          <div className="relative w-full h-40 sm:h-52">
+            <SmartImage
+              src={task.thumbnailUrl}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+            />
+          </div>
         )}
         <div className="p-4 sm:p-5 space-y-3">
           <div className="flex items-center gap-2">

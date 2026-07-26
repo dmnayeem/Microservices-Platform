@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Search, X, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SmartImage } from "./smart-image";
 
 interface GlobalSearchProps {
   open: boolean;
@@ -202,10 +203,11 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                   className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800"
                 >
                   {r.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={r.imageUrl}
                       alt=""
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-lg object-cover bg-gray-800"
                     />
                   ) : (

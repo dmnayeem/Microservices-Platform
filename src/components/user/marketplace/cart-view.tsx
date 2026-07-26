@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { toast } from "sonner";
 
 interface CartItem {
@@ -153,10 +154,11 @@ export function CartView() {
               >
                 <div className="w-14 h-14 rounded-lg bg-gray-800 overflow-hidden shrink-0">
                   {i.thumbnail && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={i.thumbnail}
                       alt=""
+                      width={56}
+                      height={56}
                       className="w-full h-full object-cover"
                     />
                   )}

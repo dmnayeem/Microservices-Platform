@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPostBackground } from "@/lib/post-backgrounds";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 /** Stable pseudo-count per ad (so the native engagement numbers don't jump). */
 function seededCount(adId: string, salt: number, min: number, max: number) {
@@ -178,23 +179,33 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
             ad.images.length >= 3 && "grid-cols-3"
           )}
         >
-          {ad.images.slice(0, 6).map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={url}
-              alt=""
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-              className={cn(
-                "w-full bg-gray-950",
-                ad.images.length === 1
-                  ? "max-h-[70vh] object-contain"
-                  : "aspect-square object-cover"
-              )}
-            />
-          ))}
+          {ad.images.slice(0, 6).map((url, i) =>
+            ad.images.length === 1 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={url}
+                alt=""
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+                className="w-full bg-gray-950 max-h-[70vh] object-contain"
+              />
+            ) : (
+              <div key={i} className="relative aspect-square overflow-hidden">
+                <SmartImage
+                  src={url}
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  className="object-cover bg-gray-950"
+                />
+              </div>
+            )
+          )}
         </a>
         )
       )}

@@ -21,6 +21,7 @@ import {
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { cn } from "@/lib/utils";
 
 interface Listing {
@@ -397,11 +398,12 @@ function ListingCardV2({ listing }: { listing: Listing }) {
     >
       <div className="relative aspect-video bg-gray-950 overflow-hidden">
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SmartImage
             src={cover}
             alt=""
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

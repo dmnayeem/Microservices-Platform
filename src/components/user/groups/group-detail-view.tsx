@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -186,13 +187,14 @@ export function GroupDetailView({ groupId }: Props) {
 
       {/* Banner / header */}
       <div className="relative rounded-2xl overflow-hidden border border-gray-800">
-        <div className="h-28 bg-linear-to-br from-indigo-500 to-purple-600">
+        <div className="relative h-28 bg-linear-to-br from-indigo-500 to-purple-600">
           {group.bannerUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SmartImage
               src={group.bannerUrl}
               alt=""
-              className="w-full h-full object-cover"
+              fill
+              sizes="100vw"
+              className="object-cover"
             />
           )}
         </div>

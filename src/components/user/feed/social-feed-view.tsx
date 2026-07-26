@@ -52,6 +52,7 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { MobileEarnBlock } from "@/components/user/feed/mobile-earn-block";
 import {
   FeedRightRail,
@@ -1604,25 +1605,36 @@ const FeedPostCard = memo(function FeedPostCard({
             post.images.length >= 3 && "grid-cols-3"
           )}
         >
-          {post.images.slice(0, 6).map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={url}
-              alt=""
-              onError={(e) => {
-                // Hide broken images so a bad URL doesn't leave a giant empty box.
-                e.currentTarget.style.display = "none";
-              }}
-              className={cn(
-                "w-full bg-gray-950",
-                // A lone image keeps its natural shape (capped height); grids stay square.
-                post.images.length === 1
-                  ? "max-h-[70vh] object-contain"
-                  : "aspect-square object-cover"
-              )}
-            />
-          ))}
+          {post.images.slice(0, 6).map((url, i) =>
+            // A lone image keeps its natural shape (capped height); grids stay square.
+            post.images.length === 1 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={url}
+                alt=""
+                onError={(e) => {
+                  // Hide broken images so a bad URL doesn't leave a giant empty box.
+                  e.currentTarget.style.display = "none";
+                }}
+                className="w-full bg-gray-950 max-h-[70vh] object-contain"
+              />
+            ) : (
+              <div key={i} className="relative aspect-square overflow-hidden">
+                <SmartImage
+                  src={url}
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  onError={(e) => {
+                    // Hide broken images so a bad URL doesn't leave a giant empty box.
+                    e.currentTarget.style.display = "none";
+                  }}
+                  className="object-cover bg-gray-950"
+                />
+              </div>
+            )
+          )}
         </div>
       )}
 

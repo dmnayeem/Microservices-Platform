@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Gamepad2, Play } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { GamePlayer, type PlayableGame } from "./game-player";
 
 export interface CatalogGame extends PlayableGame {
@@ -42,8 +43,13 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
               className="group rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden text-left hover:border-emerald-500/40 transition-colors"
             >
               <div className="relative aspect-square bg-gray-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={g.iconUrl} alt={g.title} className="w-full h-full object-cover" />
+                <SmartImage
+                  src={g.iconUrl}
+                  alt={g.title}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover"
+                />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors grid place-items-center">
                   <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-xs font-bold">
                     <Play className="w-3.5 h-3.5 fill-white" /> Play

@@ -78,6 +78,7 @@ import {
 } from "@/components/user/profile/analytics-panel";
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 import { BecomeTutorCard } from "@/components/user/profile/become-tutor-card";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface CompletionItem {
   key: string;
@@ -452,8 +453,13 @@ export function ProfileView() {
       <div className="relative rounded-2xl overflow-hidden glass">
         <div className="relative h-36 sm:h-48 bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600">
           {profile.coverPhoto && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={profile.coverPhoto} alt="" className="w-full h-full object-cover" />
+            <SmartImage
+              src={profile.coverPhoto}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+            />
           )}
           <button
             onClick={() => setPhotoTarget("coverPhoto")}
