@@ -8,6 +8,7 @@ import {
 } from "@/generated/prisma";
 import { getEffectivePackage } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 
 // Daily reward configuration (points per streak day)
 const DAILY_REWARDS = [
@@ -160,6 +161,11 @@ export async function POST() {
       }
     }
 
+    // Per-day idempotency key (matches the local-day "already claimed" guard
+    // above) so the (userId, reference) unique enforces one daily reward per day
+    // even if two claims race past the lastCheckIn check.
+    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+
     // Calculate reward for current day
     const rewardDay = (newStreak % 7) + 1;
     const reward = DAILY_REWARDS[rewardDay - 1];
@@ -192,7 +198,7 @@ export async function POST() {
           points: pointsEarned,
           amount: pointsEarned / pointsPerUsd,
           description: `Daily reward (Day ${rewardDay})`,
-          reference: `daily_${Date.now()}`,
+          reference: `daily_${todayKey}`,
           metadata: {
             day: rewardDay,
             streak: newStreak,
@@ -250,6 +256,14 @@ export async function POST() {
       levelUp: newLevel > user.level ? { newLevel } : null,
     });
   } catch (error) {
+    // Concurrent double-claim raced past the lastCheckIn guard and hit the
+    // per-day (userId, reference) unique → already claimed today.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json(
+        { error: "Daily reward already claimed today" },
+        { status: 400 }
+      );
+    }
     console.error("Error claiming daily reward:", error);
     return NextResponse.json(
       { error: "Failed to claim daily reward" },

@@ -294,6 +294,9 @@ export async function verifyEmail(token: string) {
         status: "COMPLETED",
         points: welcomeBonus,
         description: "Welcome bonus",
+        // Once per user — (userId, reference) unique prevents a double award if
+        // verification is ever replayed (token deletion above already guards it).
+        reference: `welcome_${user.id}`,
       },
     });
 

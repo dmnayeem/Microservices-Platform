@@ -68,43 +68,60 @@ export async function POST(
   }
 
   const pointsPerUsd = await getPointsPerUsd();
-  const [, , , donation, updated] = await prisma.$transaction([
-    prisma.user.update({
-      where: { id: donorId },
-      data: { pointsBalance: { decrement: v.data.points } },
-    }),
-    prisma.user.update({
-      where: { id: post.userId },
-      data: {
-        pointsBalance: { increment: v.data.points },
-        totalEarnings: { increment: v.data.points / pointsPerUsd },
-      },
-    }),
-    prisma.transaction.create({
-      data: {
-        userId: donorId,
-        type: TransactionType.PURCHASE,
-        status: TransactionStatus.COMPLETED,
-        points: -v.data.points,
-        amount: v.data.points / pointsPerUsd,
-        description: `Donation to post`,
-        reference: `donation_${id}_${Date.now()}`,
-        metadata: { postId: id, recipientId: post.userId },
-      },
-    }),
-    prisma.donation.create({
-      data: {
-        postId: id,
-        donorId,
-        points: v.data.points,
-      },
-    }),
-    prisma.post.update({
-      where: { id },
-      data: { donationCollected: { increment: v.data.points } },
-      select: { donationCollected: true, donationGoal: true },
-    }),
-  ]);
+  // Debit the donor with an atomic CAS (`pointsBalance >= points`) so two
+  // concurrent donations can't overspend (the pre-check above is check-then-act).
+  // Donation is legitimately repeatable, so the reference stays per-occurrence.
+  let donation: { id: string };
+  let updated: { donationCollected: number; donationGoal: number | null };
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const debit = await tx.user.updateMany({
+        where: { id: donorId, pointsBalance: { gte: v.data.points } },
+        data: { pointsBalance: { decrement: v.data.points } },
+      });
+      if (debit.count === 0) throw new Error("INSUFFICIENT");
+
+      await tx.user.update({
+        where: { id: post.userId },
+        data: {
+          pointsBalance: { increment: v.data.points },
+          totalEarnings: { increment: v.data.points / pointsPerUsd },
+        },
+      });
+      await tx.transaction.create({
+        data: {
+          userId: donorId,
+          type: TransactionType.PURCHASE,
+          status: TransactionStatus.COMPLETED,
+          points: -v.data.points,
+          amount: v.data.points / pointsPerUsd,
+          description: `Donation to post`,
+          reference: `donation_${id}_${Date.now()}`,
+          metadata: { postId: id, recipientId: post.userId },
+        },
+      });
+      const d = await tx.donation.create({
+        data: { postId: id, donorId, points: v.data.points },
+        select: { id: true },
+      });
+      const u = await tx.post.update({
+        where: { id },
+        data: { donationCollected: { increment: v.data.points } },
+        select: { donationCollected: true, donationGoal: true },
+      });
+      return { donation: d, updated: u };
+    });
+    donation = result.donation;
+    updated = result.updated;
+  } catch (err) {
+    if (err instanceof Error && err.message === "INSUFFICIENT") {
+      return NextResponse.json(
+        { error: "Insufficient points balance" },
+        { status: 400 }
+      );
+    }
+    throw err;
+  }
 
   await prisma.notification.create({
     data: {

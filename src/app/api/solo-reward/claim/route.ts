@@ -84,6 +84,8 @@ export async function POST() {
         status: "COMPLETED",
         points: REWARD.points,
         description: "Solo reward (daily)",
+        // Per-day idempotency key (backs up the auditLog "already claimed" guard).
+        reference: `solo_${todayStart.toISOString().slice(0, 10)}`,
       },
     }),
     prisma.auditLog.create({

@@ -128,7 +128,10 @@ export async function POST(request: NextRequest) {
               points: delta,
               amount: delta / pointsPerUsd,
               description: reason || `Admin ${delta > 0 ? "credit" : "debit"}`,
-              reference: `admin_adjust_${uid}_${targetIds.length}`,
+              // Repeatable admin action — key per-occurrence so two same-size
+              // adjustments to one user don't collide on the (userId, reference)
+              // unique (batch-size was collision-prone).
+              reference: `admin_adjust_${uid}_${Date.now()}`,
             },
           }),
         ]);

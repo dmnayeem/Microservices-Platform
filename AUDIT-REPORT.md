@@ -98,6 +98,31 @@ the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migr
 
 ---
 
+## ✅ P5 Remediation — July 26, 2026 (reference-based transaction idempotency — DONE, verified)
+
+- **DB backstop:** `Transaction @@unique([userId, reference])` (migration `*_txn_reference_idempotency`, applied
+  via the P4 workflow; migrate status up-to-date, no drift). A deterministic `reference` for a once-only money
+  event is now an idempotency key — a retry / concurrent-double / replay reusing it fails the 2nd ledger write
+  with P2002. Scoped to userId (double-entry rows share a reference but differ by userId); NULL refs stay
+  unconstrained. Verified zero existing dup `(userId, reference)` rows before adding it; guarded the only gap
+  (tutor self-enrol in `courses/[id]/enroll`, which shares a reference across buyer/tutor rows).
+- **Helper:** `src/lib/idempotency.ts` `isDuplicateLedgerError(err)` — duck-typed P2002 narrowed to the
+  `reference` column (won't swallow unrelated unique violations). Applied graceful handling (return
+  already-processed, no double-settle/500) to the deterministic once-only mutations: marketplace
+  checkout/orders, close-auction, offer-accept, course enroll, admin course-refund, admin dispute-refund,
+  gateway deposit callback — the primary fix for the close-auction / offer-accept / deposit-callback
+  check-then-act races.
+- **Reference normalization** (once-only paths that used `Date.now()`/null → deterministic, so the constraint
+  covers them): daily-reward `daily_<dayKey>`, solo-reward `solo_<day>`, welcome bonus `welcome_<userId>`,
+  quiz reward `quiz_reward_<userId>_<quizId>` (kills the quiz double-credit race — reward is once-per-quiz),
+  admin bulk-adjust `admin_adjust_<uid>_<ts>` (was batch-size, collision-prone under the new constraint).
+- **Guard-gap fixes:** `feed/donate` and `packages/purchase` converted to atomic CAS debits
+  (`updateMany … balance gte`) so concurrent double-submit can't overspend; packages/purchase also writes a
+  `subscription_<id>` reference and rejects a stacked pending off-platform request.
+- Verified: tsc + eslint clean, next build compiles.
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.
