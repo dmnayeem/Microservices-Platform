@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { hasPermission, type UserRole } from "@/lib/rbac";
-import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 
 export default async function AdminPackagesPage() {
@@ -94,6 +93,7 @@ export default async function AdminPackagesPage() {
   const userById = new Map(subUsers.map((u) => [u.id, u]));
   const pkgById = new Map(subPkgs.map((p) => [p.id, p]));
   type RecentSub = (typeof recentSubs)[number];
+  type Pkg = (typeof packages)[number];
 
   const canEdit = hasPermission(adminRole, "packages.edit");
 
@@ -132,111 +132,141 @@ export default async function AdminPackagesPage() {
       </div>
 
       {/* Plans table */}
-      {packages.length === 0 ? (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
-          <Layers className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-          <h3 className="text-lg font-semibold text-white">No plans yet</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Click <strong>Create Plan</strong> to seed your first plan. Mark it as Default so new users have somewhere to land.
-          </p>
-        </div>
-      ) : (
-        <AdminTableShell>
-            <table className="w-full text-sm min-w-220">
-              <thead>
-                <tr className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-gray-800 bg-gray-950">
-                  <th className="text-left py-3 px-4">Plan</th>
-                  <th className="text-left py-3 px-2">Slug</th>
-                  <th className="text-right py-3 px-2">Access</th>
-                  <th className="text-right py-3 px-2">Monthly</th>
-                  <th className="text-center py-3 px-2">Features</th>
-                  <th className="text-right py-3 px-2">Users</th>
-                  <th className="text-right py-3 px-2">Active Subs</th>
-                  <th className="text-center py-3 px-2">State</th>
-                  <th className="text-right py-3 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {packages.map((pkg) => {
-                  const enabledCount = countEnabledFlags(pkg);
-                  const totalFlags = 9 + 7;
-                  return (
-                    <tr key={pkg.id} className="hover:bg-gray-800/40">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="inline-block w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: pkg.badgeColor || "#6366f1" }}
-                          />
-                          <div>
-                            <p className="font-semibold text-white">{pkg.name}</p>
-                            {pkg.description && (
-                              <p className="text-[11px] text-gray-500 truncate max-w-xs">
-                                {pkg.description}
-                              </p>
-                            )}
-                          </div>
-                          {pkg.isDefault && (
-                            <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[10px] font-bold uppercase">
-                              <Star className="w-3 h-3" />
-                              Default
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 font-mono text-xs text-gray-400">{pkg.slug}</td>
-                      <td className="py-3 px-2 text-right text-gray-300 tabular-nums">{pkg.accessLevel}</td>
-                      <td className="py-3 px-2 text-right text-emerald-400 font-bold tabular-nums">
-                        ${pkg.priceMonthly.toFixed(2)}
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <span className="inline-flex items-center gap-1 text-xs text-gray-400">
-                          <Power className="w-3 h-3" />
-                          {enabledCount}/{totalFlags}
-                        </span>
-                      </td>
-                      <td className="py-3 px-2 text-right text-gray-300 tabular-nums">
-                        {(userCountByPkg[pkg.id] || 0).toLocaleString()}
-                      </td>
-                      <td className="py-3 px-2 text-right tabular-nums">
-                        {gt(pkg.priceMonthly, 0) ? (
-                          <span className="text-emerald-400">
-                            {(activeSubByPkg[pkg.id] || 0).toLocaleString()}
-                          </span>
-                        ) : (
-                          <span className="text-gray-600">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        {pkg.isActive ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 text-[10px] font-bold">
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {canEdit && (
-                          <Link
-                            href={`/admin/packages/${pkg.id}/edit`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-md text-xs font-semibold"
-                          >
-                            <Edit className="w-3 h-3" />
-                            Edit
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-        </AdminTableShell>
-      )}
+      <AdminTable<Pkg>
+        rows={packages}
+        getRowKey={(pkg) => pkg.id}
+        empty={
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+            <Layers className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+            <h3 className="text-lg font-semibold text-white">No plans yet</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Click <strong>Create Plan</strong> to seed your first plan. Mark it as Default so new users have somewhere to land.
+            </p>
+          </div>
+        }
+        columns={[
+          {
+            key: "plan",
+            header: "Plan",
+            primary: true,
+            cell: (pkg) => (
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: pkg.badgeColor || "#6366f1" }}
+                />
+                <div>
+                  <p className="font-semibold text-white">{pkg.name}</p>
+                  {pkg.description && (
+                    <p className="text-[11px] text-gray-500 truncate max-w-xs">
+                      {pkg.description}
+                    </p>
+                  )}
+                </div>
+                {pkg.isDefault && (
+                  <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[10px] font-bold uppercase">
+                    <Star className="w-3 h-3" />
+                    Default
+                  </span>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "slug",
+            header: "Slug",
+            mobileHidden: true,
+            cell: (pkg) => (
+              <span className="font-mono text-xs text-gray-400">{pkg.slug}</span>
+            ),
+          },
+          {
+            key: "access",
+            header: "Access",
+            className: "text-right",
+            mobileHidden: true,
+            cell: (pkg) => (
+              <span className="text-gray-300 tabular-nums">{pkg.accessLevel}</span>
+            ),
+          },
+          {
+            key: "monthly",
+            header: "Monthly",
+            className: "text-right",
+            cell: (pkg) => (
+              <span className="text-emerald-400 font-bold tabular-nums">
+                ${pkg.priceMonthly.toFixed(2)}
+              </span>
+            ),
+          },
+          {
+            key: "features",
+            header: "Features",
+            className: "text-center",
+            mobileHidden: true,
+            cell: (pkg) => (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                <Power className="w-3 h-3" />
+                {countEnabledFlags(pkg)}/{9 + 7}
+              </span>
+            ),
+          },
+          {
+            key: "users",
+            header: "Users",
+            className: "text-right",
+            cell: (pkg) => (
+              <span className="text-gray-300 tabular-nums">
+                {(userCountByPkg[pkg.id] || 0).toLocaleString()}
+              </span>
+            ),
+          },
+          {
+            key: "subs",
+            header: "Active Subs",
+            className: "text-right",
+            cell: (pkg) =>
+              gt(pkg.priceMonthly, 0) ? (
+                <span className="text-emerald-400 tabular-nums">
+                  {(activeSubByPkg[pkg.id] || 0).toLocaleString()}
+                </span>
+              ) : (
+                <span className="text-gray-600">—</span>
+              ),
+          },
+          {
+            key: "state",
+            header: "State",
+            className: "text-center",
+            cell: (pkg) =>
+              pkg.isActive ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Active
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 text-[10px] font-bold">
+                  Inactive
+                </span>
+              ),
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            className: "text-right",
+            cell: (pkg) =>
+              canEdit ? (
+                <Link
+                  href={`/admin/packages/${pkg.id}/edit`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-md text-xs font-semibold"
+                >
+                  <Edit className="w-3 h-3" />
+                  Edit
+                </Link>
+              ) : null,
+          },
+        ]}
+      />
 
       {/* Recent Subscriptions */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">

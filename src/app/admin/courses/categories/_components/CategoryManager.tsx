@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus, Save, Trash2, Edit3, X } from "lucide-react";
-import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
+import { AdminTable } from "@/components/admin/ui/admin-table";
 
 interface CategoryRow {
   id: string;
@@ -29,6 +29,40 @@ export function CategoryManager({ initial, canManage }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const refresh = () => startTransition(() => router.refresh());
+  const editingRow = initial.find((c) => c.id === editingId) ?? null;
+
+  const remove = async (row: CategoryRow) => {
+    if (
+      !(await confirmDialog({
+        title: `Delete category "${row.name}"?`,
+        description:
+          "This cannot be undone. Existing courses must be moved off this category first.",
+        tone: "danger",
+        confirmLabel: "Delete",
+      }))
+    ) {
+      return;
+    }
+    setBusyId(row.id);
+    try {
+      const res = await fetch(`/api/admin/courses/categories/${row.id}`, {
+        method: "DELETE",
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success("Category deleted");
+      refresh();
+    } catch (err) {
+      toast.error("Failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -36,7 +70,10 @@ export function CategoryManager({ initial, canManage }: Props) {
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => setCreating(true)}
+            onClick={() => {
+              setEditingId(null);
+              setCreating(true);
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm"
           >
             <Plus className="w-4 h-4" />
@@ -50,173 +87,138 @@ export function CategoryManager({ initial, canManage }: Props) {
           onClose={() => setCreating(false)}
           onSaved={() => {
             setCreating(false);
-            startTransition(() => router.refresh());
+            refresh();
           }}
         />
       )}
 
-      <AdminTableShell>
-        <table className="w-full text-sm min-w-180">
-          <thead className="bg-slate-950 text-xs uppercase text-slate-400">
-            <tr>
-              <th className="text-left px-4 py-3">Order</th>
-              <th className="text-left px-4 py-3">Name</th>
-              <th className="text-left px-4 py-3">Slug</th>
-              <th className="text-left px-4 py-3">Color</th>
-              <th className="text-left px-4 py-3">Courses</th>
-              <th className="text-left px-4 py-3">Status</th>
-              <th className="text-right px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800">
-            {initial.length === 0 && (
-              <tr>
-                <td colSpan={7} className="py-10 text-center text-slate-500">
-                  No categories yet. Create the first one to enable tutor and
-                  admin course filing.
-                </td>
-              </tr>
-            )}
-            {initial.map((c) => (
-              <CategoryRow
-                key={c.id}
-                row={c}
-                canManage={canManage}
-                onChanged={() => startTransition(() => router.refresh())}
-              />
-            ))}
-          </tbody>
-        </table>
-      </AdminTableShell>
-    </div>
-  );
-}
+      {editingRow && (
+        <CategoryForm
+          initial={editingRow}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            setEditingId(null);
+            refresh();
+          }}
+        />
+      )}
 
-function CategoryRow({
-  row,
-  canManage,
-  onChanged,
-}: {
-  row: CategoryRow;
-  canManage: boolean;
-  onChanged: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const remove = async () => {
-    if (
-      !(await confirmDialog({
-        title: `Delete category "${row.name}"?`,
-        description:
-          "This cannot be undone. Existing courses must be moved off this category first.",
-        tone: "danger",
-        confirmLabel: "Delete",
-      }))
-    ) {
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/courses/categories/${row.id}`, {
-        method: "DELETE",
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
-      toast.success("Category deleted");
-      onChanged();
-    } catch (err) {
-      toast.error("Failed", {
-        description: err instanceof Error ? err.message : "Try again",
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (editing) {
-    return (
-      <tr>
-        <td colSpan={7} className="p-4 bg-slate-950">
-          <CategoryForm
-            initial={row}
-            onClose={() => setEditing(false)}
-            onSaved={() => {
-              setEditing(false);
-              onChanged();
-            }}
-          />
-        </td>
-      </tr>
-    );
-  }
-
-  return (
-    <tr className="hover:bg-slate-800/40">
-      <td className="px-4 py-3 text-slate-400 tabular-nums">{row.order}</td>
-      <td className="px-4 py-3">
-        <div>
-          <p className="text-white font-medium">{row.name}</p>
-          {row.description && (
-            <p className="text-xs text-slate-500 max-w-md truncate">
-              {row.description}
-            </p>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3 text-slate-300 font-mono text-xs">{row.slug}</td>
-      <td className="px-4 py-3">
-        {row.color ? (
-          <div className="flex items-center gap-2">
-            <div
-              className="w-4 h-4 rounded"
-              style={{ backgroundColor: row.color }}
-            />
-            <span className="text-xs text-slate-400 font-mono">{row.color}</span>
+      <AdminTable<CategoryRow>
+        rows={initial}
+        getRowKey={(c) => c.id}
+        empty={
+          <div className="glass p-10 text-center text-slate-500">
+            No categories yet. Create the first one to enable tutor and admin
+            course filing.
           </div>
-        ) : (
-          <span className="text-slate-600 text-xs">—</span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-slate-300 tabular-nums">{row.courseCount}</td>
-      <td className="px-4 py-3">
-        {row.isActive ? (
-          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium">
-            Active
-          </span>
-        ) : (
-          <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
-            Inactive
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-right">
-        {canManage && (
-          <div className="inline-flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-indigo-300 hover:bg-indigo-500/10 text-xs"
-            >
-              <Edit3 className="w-3.5 h-3.5" /> Edit
-            </button>
-            <button
-              type="button"
-              onClick={remove}
-              disabled={busy}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-rose-300 hover:bg-rose-500/10 text-xs disabled:opacity-50"
-            >
-              {busy ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        }
+        columns={[
+          {
+            key: "order",
+            header: "Order",
+            cell: (c) => (
+              <span className="text-slate-400 tabular-nums">{c.order}</span>
+            ),
+          },
+          {
+            key: "name",
+            header: "Name",
+            primary: true,
+            cell: (c) => (
+              <div>
+                <p className="text-white font-medium">{c.name}</p>
+                {c.description && (
+                  <p className="text-xs text-slate-500 max-w-md truncate">
+                    {c.description}
+                  </p>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "slug",
+            header: "Slug",
+            cell: (c) => (
+              <span className="text-slate-300 font-mono text-xs">{c.slug}</span>
+            ),
+          },
+          {
+            key: "color",
+            header: "Color",
+            cell: (c) =>
+              c.color ? (
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  <span className="text-xs text-slate-400 font-mono">
+                    {c.color}
+                  </span>
+                </div>
               ) : (
-                <Trash2 className="w-3.5 h-3.5" />
-              )}
-              Delete
-            </button>
-          </div>
-        )}
-      </td>
-    </tr>
+                <span className="text-slate-600 text-xs">—</span>
+              ),
+          },
+          {
+            key: "courses",
+            header: "Courses",
+            cell: (c) => (
+              <span className="text-slate-300 tabular-nums">
+                {c.courseCount}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            header: "Status",
+            cell: (c) =>
+              c.isActive ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium">
+                  Active
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
+                  Inactive
+                </span>
+              ),
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            className: "text-right",
+            cell: (c) =>
+              canManage ? (
+                <div className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreating(false);
+                      setEditingId(c.id);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-indigo-300 hover:bg-indigo-500/10 text-xs"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(c)}
+                    disabled={busyId === c.id}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-rose-300 hover:bg-rose-500/10 text-xs disabled:opacity-50"
+                  >
+                    {busyId === c.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Delete
+                  </button>
+                </div>
+              ) : null,
+          },
+        ]}
+      />
+    </div>
   );
 }
 

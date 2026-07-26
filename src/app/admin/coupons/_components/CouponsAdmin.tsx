@@ -15,7 +15,7 @@ import {
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
-import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
+import { AdminTable } from "@/components/admin/ui/admin-table";
 
 interface Coupon {
   id: string;
@@ -46,7 +46,58 @@ export function CouponsAdmin({ initial, categories, courses, canManage }: Props)
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const refresh = () => startTransition(() => router.refresh());
+
+  const toggle = async (coupon: Coupon) => {
+    setBusyId(coupon.id);
+    try {
+      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !coupon.isActive }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success(coupon.isActive ? "Coupon paused" : "Coupon activated");
+      refresh();
+    } catch (err) {
+      toast.error("Failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (coupon: Coupon) => {
+    if (
+      !(await confirmDialog({
+        title: `Delete coupon "${coupon.code}"?`,
+        description: "Past redemptions stay intact.",
+        tone: "danger",
+        confirmLabel: "Delete",
+      }))
+    ) {
+      return;
+    }
+    setBusyId(coupon.id);
+    try {
+      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: "DELETE",
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success("Coupon deleted");
+      refresh();
+    } catch (err) {
+      toast.error("Failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -75,165 +126,120 @@ export function CouponsAdmin({ initial, categories, courses, canManage }: Props)
         />
       )}
 
-      <AdminTableShell>
-          <table className="w-full text-sm min-w-200">
-            <thead className="bg-slate-950 text-slate-400 text-xs uppercase">
-              <tr>
-                <th className="text-left px-4 py-3">Code</th>
-                <th className="text-left px-4 py-3">Discount</th>
-                <th className="text-left px-4 py-3">Scope</th>
-                <th className="text-left px-4 py-3">Used / Limit</th>
-                <th className="text-left px-4 py-3">Validity</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-right px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {initial.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-500">
-                    No coupons yet.
-                  </td>
-                </tr>
-              )}
-              {initial.map((c) => (
-                <CouponRow
-                  key={c.id}
-                  coupon={c}
-                  canManage={canManage}
-                  onChanged={refresh}
-                />
-              ))}
-            </tbody>
-          </table>
-      </AdminTableShell>
-    </div>
-  );
-}
-
-function CouponRow({
-  coupon,
-  canManage,
-  onChanged,
-}: {
-  coupon: Coupon;
-  canManage: boolean;
-  onChanged: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-
-  const toggle = async () => {
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !coupon.isActive }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
-      toast.success(coupon.isActive ? "Coupon paused" : "Coupon activated");
-      onChanged();
-    } catch (err) {
-      toast.error("Failed", {
-        description: err instanceof Error ? err.message : "Try again",
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const remove = async () => {
-    if (!(await confirmDialog({ title: `Delete coupon "${coupon.code}"?`, description: "Past redemptions stay intact.", tone: "danger", confirmLabel: "Delete" }))) {
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
-        method: "DELETE",
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
-      toast.success("Coupon deleted");
-      onChanged();
-    } catch (err) {
-      toast.error("Failed", {
-        description: err instanceof Error ? err.message : "Try again",
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <tr className="hover:bg-slate-800/40">
-      <td className="px-4 py-3 font-mono text-indigo-300">{coupon.code}</td>
-      <td className="px-4 py-3 text-white font-bold tabular-nums">
-        {coupon.type === "PERCENT"
-          ? `${coupon.value}%`
-          : `$${coupon.value.toFixed(2)}`}
-      </td>
-      <td className="px-4 py-3 text-slate-300 text-xs">
-        {coupon.scope === "ALL"
-          ? "All courses"
-          : coupon.scope === "CATEGORY"
-          ? `${coupon.categoryIds.length} categor${coupon.categoryIds.length === 1 ? "y" : "ies"}`
-          : `${coupon.courseIds.length} course${coupon.courseIds.length === 1 ? "" : "s"}`}
-      </td>
-      <td className="px-4 py-3 text-slate-300 tabular-nums">
-        {coupon.redemptionsCount}
-        {coupon.maxRedemptions !== null ? ` / ${coupon.maxRedemptions}` : ""}
-      </td>
-      <td className="px-4 py-3 text-slate-400 text-xs">
-        {new Date(coupon.validFrom).toLocaleDateString()}
-        {coupon.validUntil
-          ? ` → ${new Date(coupon.validUntil).toLocaleDateString()}`
-          : " → ∞"}
-      </td>
-      <td className="px-4 py-3">
-        {coupon.isActive ? (
-          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium">
-            Active
-          </span>
-        ) : (
-          <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
-            Inactive
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-right">
-        {canManage && (
-          <div className="inline-flex items-center gap-1">
-            <button
-              type="button"
-              onClick={toggle}
-              disabled={busy}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-50"
-            >
-              {coupon.isActive ? (
-                <ToggleRight className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <ToggleLeft className="w-4 h-4 text-slate-500" />
-              )}
-              {coupon.isActive ? "Pause" : "Activate"}
-            </button>
-            <button
-              type="button"
-              onClick={remove}
-              disabled={busy}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
-            >
-              {busy ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="w-3.5 h-3.5" />
-              )}
-              Delete
-            </button>
+      <AdminTable<Coupon>
+        rows={initial}
+        getRowKey={(c) => c.id}
+        empty={
+          <div className="glass p-10 text-center text-slate-500">
+            No coupons yet.
           </div>
-        )}
-      </td>
-    </tr>
+        }
+        columns={[
+          {
+            key: "code",
+            header: "Code",
+            primary: true,
+            cell: (c) => (
+              <span className="font-mono text-indigo-300">{c.code}</span>
+            ),
+          },
+          {
+            key: "discount",
+            header: "Discount",
+            cell: (c) => (
+              <span className="text-white font-bold tabular-nums">
+                {c.type === "PERCENT" ? `${c.value}%` : `$${c.value.toFixed(2)}`}
+              </span>
+            ),
+          },
+          {
+            key: "scope",
+            header: "Scope",
+            cell: (c) => (
+              <span className="text-slate-300 text-xs">
+                {c.scope === "ALL"
+                  ? "All courses"
+                  : c.scope === "CATEGORY"
+                  ? `${c.categoryIds.length} categor${c.categoryIds.length === 1 ? "y" : "ies"}`
+                  : `${c.courseIds.length} course${c.courseIds.length === 1 ? "" : "s"}`}
+              </span>
+            ),
+          },
+          {
+            key: "used",
+            header: "Used / Limit",
+            cell: (c) => (
+              <span className="text-slate-300 tabular-nums">
+                {c.redemptionsCount}
+                {c.maxRedemptions !== null ? ` / ${c.maxRedemptions}` : ""}
+              </span>
+            ),
+          },
+          {
+            key: "validity",
+            header: "Validity",
+            cell: (c) => (
+              <span className="text-slate-400 text-xs">
+                {new Date(c.validFrom).toLocaleDateString()}
+                {c.validUntil
+                  ? ` → ${new Date(c.validUntil).toLocaleDateString()}`
+                  : " → ∞"}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            header: "Status",
+            cell: (c) =>
+              c.isActive ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium">
+                  Active
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
+                  Inactive
+                </span>
+              ),
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            className: "text-right",
+            cell: (c) =>
+              canManage ? (
+                <div className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => toggle(c)}
+                    disabled={busyId === c.id}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    {c.isActive ? (
+                      <ToggleRight className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <ToggleLeft className="w-4 h-4 text-slate-500" />
+                    )}
+                    {c.isActive ? "Pause" : "Activate"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(c)}
+                    disabled={busyId === c.id}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
+                  >
+                    {busyId === c.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Delete
+                  </button>
+                </div>
+              ) : null,
+          },
+        ]}
+      />
+    </div>
   );
 }
 
