@@ -1460,13 +1460,14 @@ const FeedPostCard = memo(function FeedPostCard({
             href={post.user ? profileHref(post.user) : "#"}
             className="shrink-0"
           >
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium overflow-hidden">
+            <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium overflow-hidden">
               {post.user?.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SmartImage
                   src={post.user.avatar}
                   alt=""
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="40px"
+                  className="object-cover"
                 />
               ) : (
                 initial
@@ -2376,13 +2377,14 @@ function GroupsTab() {
               key={g.id}
               className="rounded-xl border border-gray-800 bg-gray-900 p-4 flex items-start gap-3"
             >
-              <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 overflow-hidden">
+              <div className="relative w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 overflow-hidden">
                 {g.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <SmartImage
                     src={g.avatarUrl}
                     alt=""
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="48px"
+                    className="object-cover"
                   />
                 ) : (
                   <Users className="w-5 h-5" />

@@ -123,6 +123,27 @@ the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migr
 
 ---
 
+## ✅ P6 Remediation — July 26, 2026 (next/image migration — DONE, verified)
+
+- **Config + latent-bug fix:** `next.config.ts` now has `images.remotePatterns` for our own hosts only
+  (`**.amazonaws.com`, `**.cloudfront.net`, `**.googleusercontent.com`) + avif/webp. The 7 pre-existing course
+  `<Image>` uses had NO image config → they would throw "hostname not configured" on external thumbnails; now
+  fixed.
+- **`SmartImage` wrapper** (`src/components/user/primitives/smart-image.tsx`): wraps `next/image` and sets
+  `unoptimized` when the src host isn't in our allowlist (or is `data:`/`blob:`), so arbitrary user/admin-typed
+  image URLs (ad creatives, marketplace/course/game thumbnails, pasted avatars) still render browser-direct
+  with lazy-load + CLS reservation and never throw — while our-host images get real optimization. Deliberately
+  avoids a global `hostname:"**"` (which would make `/_next/image` an open fetch proxy).
+- **Migrated ~50 `<img>` → SmartImage** across ~40 files: 28 large/fill-able images (marketplace cards/covers/
+  detail/cart/orders, feed multi-image grids, watch-ads card, profile/group covers, splash, quiz option, games,
+  task thumbnails) + 22 avatars (feed/chat/marketplace/profile/courses/groups).
+- **Left as `<img>` (documented):** QR/data-URIs, blob upload previews, free-zoom/unknown-aspect
+  (`object-contain`) images incl. single-image feed/profile posts, tiny static local icons, KYC, and the
+  low-traffic admin/tutor tables (deferred).
+- Verified: tsc + eslint clean, next build compiles (no remotePatterns/`<Image>`-validation errors).
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.

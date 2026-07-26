@@ -10,6 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -166,13 +167,14 @@ export function BidPanel({
 
       {high && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold overflow-hidden">
+          <div className="relative w-9 h-9 rounded-full bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold overflow-hidden">
             {high.bidder.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={high.bidder.avatar}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                sizes="36px"
+                className="object-cover"
               />
             ) : (
               high.bidder.name.charAt(0).toUpperCase()

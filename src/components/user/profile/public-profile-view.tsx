@@ -170,10 +170,9 @@ export function PublicProfileView({ userId, viewerId }: Props) {
         </div>
         <div className="bg-gray-900 px-4 sm:px-6 pt-12 pb-5 relative">
           <div className="absolute -top-12 left-4 sm:left-6">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 border-4 border-gray-900 flex items-center justify-center text-white text-3xl font-extrabold overflow-hidden">
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 border-4 border-gray-900 flex items-center justify-center text-white text-3xl font-extrabold overflow-hidden">
               {user.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                <SmartImage src={user.avatar} alt="" fill sizes="96px" className="object-cover" />
               ) : (
                 initial
               )}
@@ -480,10 +479,9 @@ function UserListTab({
             className="flex items-center gap-3 p-3 glass glass-hover"
           >
             <Link href={profileHref(u)}>
-              <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
+              <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
                 {u.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={u.avatar} alt="" className="w-full h-full object-cover" />
+                  <SmartImage src={u.avatar} alt="" fill sizes="40px" className="object-cover" />
                 ) : (
                   initial
                 )}

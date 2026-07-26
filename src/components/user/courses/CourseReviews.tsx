@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Star, Loader2, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Review {
   id: string;
@@ -104,12 +105,15 @@ export function CourseReviews({
             >
               <div className="flex items-center gap-2">
                 {r.user.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={r.user.avatar}
-                    alt=""
-                    className="w-7 h-7 rounded-full object-cover bg-gray-800"
-                  />
+                  <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-800">
+                    <SmartImage
+                      src={r.user.avatar}
+                      alt=""
+                      fill
+                      sizes="28px"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white">
                     {(r.user.name ?? "?").slice(0, 1).toUpperCase()}

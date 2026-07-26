@@ -94,13 +94,14 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
       <div className="p-4">
         {/* Header — avatar + name + "Sponsored" (mimics a real post) */}
         <div className="flex items-start gap-3">
-          <div className="shrink-0 w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium overflow-hidden">
+          <div className="relative shrink-0 w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium overflow-hidden">
             {ad.author.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={ad.author.avatar}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                sizes="40px"
+                className="object-cover"
               />
             ) : (
               initial

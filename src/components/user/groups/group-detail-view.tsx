@@ -200,13 +200,14 @@ export function GroupDetailView({ groupId }: Props) {
         </div>
         <div className="bg-gray-900 p-4 -mt-8 relative">
           <div className="flex items-end gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-gray-800 border-4 border-gray-900 overflow-hidden flex items-center justify-center text-white shrink-0">
+            <div className="relative w-16 h-16 rounded-2xl bg-gray-800 border-4 border-gray-900 overflow-hidden flex items-center justify-center text-white shrink-0">
               {group.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SmartImage
                   src={group.avatarUrl}
                   alt=""
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="64px"
+                  className="object-cover"
                 />
               ) : (
                 <Users className="w-7 h-7" />
@@ -283,13 +284,14 @@ export function GroupDetailView({ groupId }: Props) {
                 key={r.id}
                 className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-950 border border-gray-800"
               >
-                <div className="w-9 h-9 rounded-full bg-gray-800 overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                <div className="relative w-9 h-9 rounded-full bg-gray-800 overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                   {r.userAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SmartImage
                       src={r.userAvatar}
                       alt=""
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="36px"
+                      className="object-cover"
                     />
                   ) : (
                     (r.userName ?? "U")[0]?.toUpperCase()
@@ -348,10 +350,9 @@ export function GroupDetailView({ groupId }: Props) {
               className="rounded-xl border border-gray-800 bg-gray-900 p-3"
             >
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                <div className="relative w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                   {p.user?.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.user.avatar} alt="" className="w-full h-full object-cover" />
+                    <SmartImage src={p.user.avatar} alt="" fill sizes="32px" className="object-cover" />
                   ) : (
                     (p.user?.name || p.user?.username || "U").charAt(0)
                   )}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, MessageCircleQuestion, Pin, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Question {
   id: string;
@@ -168,12 +169,15 @@ function QuestionCard({
     <li className="rounded-xl border border-gray-800 bg-gray-950 p-3">
       <div className="flex items-center gap-2">
         {q.asker.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={q.asker.avatar}
-            alt=""
-            className="w-7 h-7 rounded-full object-cover bg-gray-800"
-          />
+          <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-800">
+            <SmartImage
+              src={q.asker.avatar}
+              alt=""
+              fill
+              sizes="28px"
+              className="object-cover"
+            />
+          </div>
         ) : (
           <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white">
             {(q.asker.name ?? "?").slice(0, 1).toUpperCase()}
@@ -195,12 +199,15 @@ function QuestionCard({
         <div className="mt-3 pt-3 border-t border-gray-800">
           <p className="text-xs font-bold text-emerald-300 inline-flex items-center gap-1.5">
             {q.answeredBy?.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={q.answeredBy.avatar}
-                alt=""
-                className="w-5 h-5 rounded-full object-cover bg-gray-800"
-              />
+              <span className="relative inline-block w-5 h-5 rounded-full overflow-hidden bg-gray-800">
+                <SmartImage
+                  src={q.answeredBy.avatar}
+                  alt=""
+                  fill
+                  sizes="20px"
+                  className="object-cover"
+                />
+              </span>
             ) : null}
             {q.answeredBy?.name ?? "Tutor"} answered
           </p>

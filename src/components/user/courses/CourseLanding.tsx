@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { CourseLandingHero } from "./CourseLandingHero";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { CourseCurriculum } from "./CourseCurriculum";
 import { CourseReviews } from "./CourseReviews";
 import { CourseQA } from "./CourseQA";
@@ -154,12 +155,15 @@ export function CourseLanding({ data, viewerId }: Props) {
               <h2 className="text-base font-bold text-white mb-3">Your tutor</h2>
               <div className="flex items-start gap-3">
                 {course.tutor.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={course.tutor.avatar}
-                    alt=""
-                    className="w-14 h-14 rounded-full object-cover bg-gray-800"
-                  />
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden bg-gray-800">
+                    <SmartImage
+                      src={course.tutor.avatar}
+                      alt=""
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold">
                     {(course.tutor.name ?? "?").slice(0, 1).toUpperCase()}

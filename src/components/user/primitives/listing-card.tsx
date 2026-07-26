@@ -73,12 +73,15 @@ export function ListingCard({
         {sellerName && (
           <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
             {sellerAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={sellerAvatar}
-                alt={sellerName}
-                className="w-4 h-4 rounded-full"
-              />
+              <div className="relative w-4 h-4 rounded-full overflow-hidden">
+                <SmartImage
+                  src={sellerAvatar}
+                  alt={sellerName}
+                  fill
+                  sizes="16px"
+                  className="object-cover"
+                />
+              </div>
             ) : (
               <div className="w-4 h-4 rounded-full bg-gray-700" />
             )}

@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import {
   Trophy,
   Crown,
@@ -116,12 +117,15 @@ function Avatar({
 }) {
   if (avatar) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={avatar}
-        alt=""
-        className="w-9 h-9 rounded-full object-cover bg-gray-800 shrink-0"
-      />
+      <div className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-800 shrink-0">
+        <SmartImage
+          src={avatar}
+          alt=""
+          fill
+          sizes="36px"
+          className="object-cover"
+        />
+      </div>
     );
   }
   return (

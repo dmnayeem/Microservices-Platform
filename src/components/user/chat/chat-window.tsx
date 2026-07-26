@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send, CheckCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Message {
   id: string;
@@ -124,12 +125,15 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
       {other && (
         <div className="px-4 py-3 border-b border-gray-800 bg-gray-900/70 backdrop-blur sticky top-14 z-10 flex items-center gap-3">
           {other.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={other.avatar}
-              alt=""
-              className="w-9 h-9 rounded-full bg-gray-800 object-cover"
-            />
+            <div className="relative w-9 h-9 rounded-full bg-gray-800 overflow-hidden">
+              <SmartImage
+                src={other.avatar}
+                alt=""
+                fill
+                sizes="36px"
+                className="object-cover"
+              />
+            </div>
           ) : (
             <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
               {other.name?.[0]?.toUpperCase() ?? "?"}

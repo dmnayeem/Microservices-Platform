@@ -669,13 +669,14 @@ export function ListingDetailView({
       {/* Seller card */}
       <section className="glass rounded-xl p-4 sm:p-5">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 overflow-hidden flex items-center justify-center text-white font-bold">
+          <div className="relative w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 overflow-hidden flex items-center justify-center text-white font-bold">
             {listing.seller.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SmartImage
                 src={listing.seller.avatar}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                sizes="48px"
+                className="object-cover"
               />
             ) : (
               (listing.seller.name ?? listing.seller.username ?? "S")
