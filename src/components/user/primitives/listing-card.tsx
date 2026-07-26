@@ -3,6 +3,7 @@ import { Star, Coins } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SmartImage } from "./smart-image";
+import { Avatar } from "./avatar";
 
 interface ListingCardProps {
   id?: string;
@@ -72,19 +73,12 @@ export function ListingCard({
         </h3>
         {sellerName && (
           <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-            {sellerAvatar ? (
-              <div className="relative w-4 h-4 rounded-full overflow-hidden">
-                <SmartImage
-                  src={sellerAvatar}
-                  alt={sellerName}
-                  fill
-                  sizes="16px"
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-4 h-4 rounded-full bg-gray-700" />
-            )}
+            <Avatar
+              src={sellerAvatar}
+              alt={sellerName}
+              size={16}
+              fallbackStyle="solid-gray"
+            />
             <span className="truncate">{sellerName}</span>
           </div>
         )}

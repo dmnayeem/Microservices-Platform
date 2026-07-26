@@ -32,6 +32,7 @@ import { ReportContent } from "@/components/user/primitives/report-content";
 import { BidPanel } from "./bid-panel";
 import { OfferPanel } from "./offer-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -669,21 +670,13 @@ export function ListingDetailView({
       {/* Seller card */}
       <section className="glass rounded-xl p-4 sm:p-5">
         <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 overflow-hidden flex items-center justify-center text-white font-bold">
-            {listing.seller.avatar ? (
-              <SmartImage
-                src={listing.seller.avatar}
-                alt=""
-                fill
-                sizes="48px"
-                className="object-cover"
-              />
-            ) : (
-              (listing.seller.name ?? listing.seller.username ?? "S")
-                .charAt(0)
-                .toUpperCase()
-            )}
-          </div>
+          <Avatar
+            src={listing.seller.avatar}
+            size={48}
+            fallbackText={(listing.seller.name ?? listing.seller.username ?? "S")
+              .charAt(0)
+              .toUpperCase()}
+          />
           <div className="flex-1 min-w-0">
             <Link
               href={profileHref(listing.seller)}

@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import {
   Trophy,
   Crown,
@@ -105,33 +105,6 @@ function Card({
       </div>
       {children}
     </section>
-  );
-}
-
-function Avatar({
-  name,
-  avatar,
-}: {
-  name: string | null;
-  avatar: string | null;
-}) {
-  if (avatar) {
-    return (
-      <div className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-800 shrink-0">
-        <SmartImage
-          src={avatar}
-          alt=""
-          fill
-          sizes="36px"
-          className="object-cover"
-        />
-      </div>
-    );
-  }
-  return (
-    <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-      {(name ?? "?").charAt(0).toUpperCase()}
-    </div>
   );
 }
 
@@ -430,7 +403,7 @@ export function FeedRightRail({
                   >
                     {i < 3 ? <Crown className="w-3.5 h-3.5 inline" /> : i + 1}
                   </span>
-                  <Avatar name={u.name} avatar={u.avatar} />
+                  <Avatar size={36} src={u.avatar} name={u.name} className="shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate group-hover:text-indigo-300">
                       {u.name ?? "Anonymous"}
@@ -450,7 +423,7 @@ export function FeedRightRail({
             {whoToFollow.map((u) => (
               <li key={u.id} className="flex items-center gap-2.5">
                 <Link href={profileHref(u)}>
-                  <Avatar name={u.name} avatar={u.avatar} />
+                  <Avatar size={36} src={u.avatar} name={u.name} className="shrink-0" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link

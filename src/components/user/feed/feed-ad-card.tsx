@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getPostBackground } from "@/lib/post-backgrounds";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 /** Stable pseudo-count per ad (so the native engagement numbers don't jump). */
 function seededCount(adId: string, salt: number, min: number, max: number) {
@@ -94,19 +95,13 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
       <div className="p-4">
         {/* Header — avatar + name + "Sponsored" (mimics a real post) */}
         <div className="flex items-start gap-3">
-          <div className="relative shrink-0 w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium overflow-hidden">
-            {ad.author.avatar ? (
-              <SmartImage
-                src={ad.author.avatar}
-                alt=""
-                fill
-                sizes="40px"
-                className="object-cover"
-              />
-            ) : (
-              initial
-            )}
-          </div>
+          <Avatar
+            src={ad.author.avatar}
+            size={40}
+            name={ad.author.name}
+            fallbackText={initial}
+            className="shrink-0"
+          />
           <div className="flex-1 min-w-0">
             <div className="inline-flex items-center gap-1.5">
               <span className="text-sm font-semibold text-white">

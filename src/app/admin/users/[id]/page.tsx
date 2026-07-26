@@ -42,6 +42,7 @@ import { userDisplayId } from "@/lib/display-id";
 import { AdminUserAnalyticsTab } from "@/components/admin/users/admin-user-analytics";
 import { getXpRank, levelProgress } from "@/lib/user-rank";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 
 interface PageProps {
@@ -399,19 +400,13 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </div>
         <div className="bg-gray-900 px-4 sm:px-6 pt-12 pb-5 relative">
           <div className="absolute -top-12 left-4 sm:left-6">
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 border-4 border-gray-900 flex items-center justify-center text-white text-3xl font-extrabold overflow-hidden shadow-xl">
-              {user.avatar ? (
-                <SmartImage
-                  src={user.avatar}
-                  alt=""
-                  fill
-                  sizes="112px"
-                  className="object-cover"
-                />
-              ) : (
-                user.name?.charAt(0) || user.email?.charAt(0) || "U"
-              )}
-            </div>
+            <Avatar
+              src={user.avatar}
+              size="w-24 h-24 sm:w-28 sm:h-28"
+              shape="rounded"
+              fallbackText={user.name?.charAt(0) || user.email?.charAt(0) || "U"}
+              className="border-4 border-gray-900 shadow-xl"
+            />
           </div>
 
           <div className="flex justify-end mb-2 gap-2">
@@ -941,21 +936,14 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                     href={`/admin/users/${f.follower.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700 transition-colors"
                   >
-                    <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
-                      {f.follower.avatar ? (
-                        <SmartImage
-                          src={f.follower.avatar}
-                          alt=""
-                          fill
-                          sizes="40px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        (f.follower.name ?? f.follower.username ?? "U")
-                          .charAt(0)
-                          .toUpperCase()
-                      )}
-                    </div>
+                    <Avatar
+                      src={f.follower.avatar}
+                      size={40}
+                      fallbackText={(f.follower.name ?? f.follower.username ?? "U")
+                        .charAt(0)
+                        .toUpperCase()}
+                      className="shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate inline-flex items-center gap-1">
                         {f.follower.name ?? f.follower.username ?? "User"}
@@ -1003,21 +991,14 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                     href={`/admin/users/${f.following.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700 transition-colors"
                   >
-                    <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
-                      {f.following.avatar ? (
-                        <SmartImage
-                          src={f.following.avatar}
-                          alt=""
-                          fill
-                          sizes="40px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        (f.following.name ?? f.following.username ?? "U")
-                          .charAt(0)
-                          .toUpperCase()
-                      )}
-                    </div>
+                    <Avatar
+                      src={f.following.avatar}
+                      size={40}
+                      fallbackText={(f.following.name ?? f.following.username ?? "U")
+                        .charAt(0)
+                        .toUpperCase()}
+                      className="shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate inline-flex items-center gap-1">
                         {f.following.name ?? f.following.username ?? "User"}

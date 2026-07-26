@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send, CheckCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface Message {
   id: string;
@@ -124,21 +124,11 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
     <div className="flex flex-col -mx-4 -mt-4" style={{ height: "calc(100vh - 56px - 64px)" }}>
       {other && (
         <div className="px-4 py-3 border-b border-gray-800 bg-gray-900/70 backdrop-blur sticky top-14 z-10 flex items-center gap-3">
-          {other.avatar ? (
-            <div className="relative w-9 h-9 rounded-full bg-gray-800 overflow-hidden">
-              <SmartImage
-                src={other.avatar}
-                alt=""
-                fill
-                sizes="36px"
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-              {other.name?.[0]?.toUpperCase() ?? "?"}
-            </div>
-          )}
+          <Avatar
+            src={other.avatar}
+            size={36}
+            fallbackText={other.name?.[0]?.toUpperCase() ?? "?"}
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white truncate">
               {other.name ?? "Anonymous"}

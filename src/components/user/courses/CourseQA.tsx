@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2, MessageCircleQuestion, Pin, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface Question {
   id: string;
@@ -168,21 +169,12 @@ function QuestionCard({
   return (
     <li className="rounded-xl border border-gray-800 bg-gray-950 p-3">
       <div className="flex items-center gap-2">
-        {q.asker.avatar ? (
-          <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-800">
-            <SmartImage
-              src={q.asker.avatar}
-              alt=""
-              fill
-              sizes="28px"
-              className="object-cover"
-            />
-          </div>
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white">
-            {(q.asker.name ?? "?").slice(0, 1).toUpperCase()}
-          </div>
-        )}
+        <Avatar
+          src={q.asker.avatar}
+          size={28}
+          fallbackStyle="solid-gray"
+          fallbackText={(q.asker.name ?? "?").slice(0, 1).toUpperCase()}
+        />
         <p className="text-sm text-white font-bold">{q.asker.name ?? "—"}</p>
         {q.isPinned && (
           <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-300 font-bold uppercase tracking-wider">

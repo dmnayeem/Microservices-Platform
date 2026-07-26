@@ -10,7 +10,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { CourseLandingHero } from "./CourseLandingHero";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { CourseCurriculum } from "./CourseCurriculum";
 import { CourseReviews } from "./CourseReviews";
 import { CourseQA } from "./CourseQA";
@@ -154,21 +154,12 @@ export function CourseLanding({ data, viewerId }: Props) {
             <section className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
               <h2 className="text-base font-bold text-white mb-3">Your tutor</h2>
               <div className="flex items-start gap-3">
-                {course.tutor.avatar ? (
-                  <div className="relative w-14 h-14 rounded-full overflow-hidden bg-gray-800">
-                    <SmartImage
-                      src={course.tutor.avatar}
-                      alt=""
-                      fill
-                      sizes="56px"
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold">
-                    {(course.tutor.name ?? "?").slice(0, 1).toUpperCase()}
-                  </div>
-                )}
+                <Avatar
+                  src={course.tutor.avatar}
+                  size={56}
+                  fallbackStyle="solid-gray"
+                  fallbackText={(course.tutor.name ?? "?").slice(0, 1).toUpperCase()}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-bold">{course.tutor.name}</p>
                   {course.tutor.tutorProfile?.headline && (

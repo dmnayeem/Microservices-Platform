@@ -10,7 +10,7 @@ import {
   Inbox,
   Send,
 } from "lucide-react";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -241,19 +241,12 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
               )}
             >
               <div className="flex items-start gap-3">
-                <div className="relative w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 overflow-hidden flex items-center justify-center text-white font-bold text-xs shrink-0">
-                  {o.buyer.avatar ? (
-                    <SmartImage
-                      src={o.buyer.avatar}
-                      alt=""
-                      fill
-                      sizes="32px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    o.buyer.name.charAt(0).toUpperCase()
-                  )}
-                </div>
+                <Avatar
+                  src={o.buyer.avatar}
+                  size={32}
+                  name={o.buyer.name}
+                  className="shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white">
                     {o.buyer.name}

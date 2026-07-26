@@ -53,6 +53,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { MobileEarnBlock } from "@/components/user/feed/mobile-earn-block";
 import {
   FeedRightRail,
@@ -1460,19 +1461,12 @@ const FeedPostCard = memo(function FeedPostCard({
             href={post.user ? profileHref(post.user) : "#"}
             className="shrink-0"
           >
-            <div className="relative w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium overflow-hidden">
-              {post.user?.avatar ? (
-                <SmartImage
-                  src={post.user.avatar}
-                  alt=""
-                  fill
-                  sizes="40px"
-                  className="object-cover"
-                />
-              ) : (
-                initial
-              )}
-            </div>
+            <Avatar
+              src={post.user?.avatar}
+              size={40}
+              name={post.user?.name}
+              fallbackText={initial}
+            />
           </Link>
           <div className="flex-1 min-w-0">
             <div className="inline-flex items-center gap-1.5">
@@ -2377,19 +2371,12 @@ function GroupsTab() {
               key={g.id}
               className="rounded-xl border border-gray-800 bg-gray-900 p-4 flex items-start gap-3"
             >
-              <div className="relative w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 overflow-hidden">
-                {g.avatarUrl ? (
-                  <SmartImage
-                    src={g.avatarUrl}
-                    alt=""
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <Users className="w-5 h-5" />
-                )}
-              </div>
+              <Avatar
+                src={g.avatarUrl}
+                size={48}
+                fallbackIcon={<Users className="w-5 h-5" />}
+                className="rounded-xl shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-sm font-bold text-white truncate">

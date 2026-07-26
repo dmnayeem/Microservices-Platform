@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { format, isToday, isYesterday, isThisWeek } from "date-fns";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface Conversation {
   id: string;
@@ -85,21 +85,11 @@ export function ChatInbox({ userId: _userId }: ChatInboxProps) {
               href={`/chat/${c.id}`}
               className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-900 hover:border-gray-700"
             >
-              {c.otherUser.avatar ? (
-                <div className="relative w-11 h-11 rounded-full bg-gray-800 overflow-hidden">
-                  <SmartImage
-                    src={c.otherUser.avatar}
-                    alt=""
-                    fill
-                    sizes="44px"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-11 h-11 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                  {c.otherUser.name?.[0]?.toUpperCase() ?? "?"}
-                </div>
-              )}
+              <Avatar
+                src={c.otherUser.avatar}
+                size={44}
+                fallbackText={c.otherUser.name?.[0]?.toUpperCase() ?? "?"}
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-white truncate">

@@ -26,7 +26,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar as AvatarPrimitive } from "@/components/user/primitives/avatar";
 
 interface Props {
   userId: string;
@@ -403,13 +403,13 @@ export function BoostFollowersView({
           <ArrowLeft className="w-5 h-5 text-gray-400" />
         </Link>
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="relative w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold overflow-hidden shrink-0">
-            {avatar ? (
-              <SmartImage src={avatar} alt="" fill sizes="48px" className="object-cover" />
-            ) : (
-              initial
-            )}
-          </div>
+          <AvatarPrimitive
+            src={avatar}
+            size={48}
+            fallbackText={initial}
+            fallbackClassName="bg-linear-to-br from-purple-500 to-pink-500"
+            className="shrink-0"
+          />
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-white inline-flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-400" />
@@ -1053,13 +1053,12 @@ function Avatar({
 }) {
   const initial = (fallback ?? "U").charAt(0).toUpperCase();
   return (
-    <div className="relative w-5 h-5 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[9px] font-bold overflow-hidden shrink-0">
-      {src ? (
-        <SmartImage src={src} alt="" fill sizes="20px" className="object-cover" />
-      ) : (
-        initial
-      )}
-    </div>
+    <AvatarPrimitive
+      src={src}
+      size={20}
+      fallbackText={initial}
+      className="shrink-0"
+    />
   );
 }
 

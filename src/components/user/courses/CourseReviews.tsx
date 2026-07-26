@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Star, Loader2, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface Review {
   id: string;
@@ -104,21 +104,12 @@ export function CourseReviews({
               className="rounded-xl border border-gray-800 bg-gray-950 p-3"
             >
               <div className="flex items-center gap-2">
-                {r.user.avatar ? (
-                  <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-800">
-                    <SmartImage
-                      src={r.user.avatar}
-                      alt=""
-                      fill
-                      sizes="28px"
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white">
-                    {(r.user.name ?? "?").slice(0, 1).toUpperCase()}
-                  </div>
-                )}
+                <Avatar
+                  src={r.user.avatar}
+                  size={28}
+                  fallbackStyle="solid-gray"
+                  fallbackText={(r.user.name ?? "?").slice(0, 1).toUpperCase()}
+                />
                 <p className="text-sm text-white font-bold">{r.user.name ?? "—"}</p>
                 <div className="flex gap-0.5">
                   {[1, 2, 3, 4, 5].map((n) => (

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Star, Users, Globe } from "lucide-react";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface Props {
   course: {
@@ -87,15 +87,7 @@ export function CourseLandingHero({ course, tutor }: Props) {
           {tutor && (
             <span className="inline-flex items-center gap-2">
               {tutor.avatar ? (
-                <span className="relative inline-block w-5 h-5 rounded-full overflow-hidden bg-gray-800">
-                  <SmartImage
-                    src={tutor.avatar}
-                    alt=""
-                    fill
-                    sizes="20px"
-                    className="object-cover"
-                  />
-                </span>
+                <Avatar src={tutor.avatar} size={20} className="inline-block" />
               ) : null}
               <span className="text-gray-400">
                 by <span className="text-white font-bold">{tutor.name}</span>

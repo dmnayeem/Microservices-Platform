@@ -79,6 +79,7 @@ import {
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 import { BecomeTutorCard } from "@/components/user/profile/become-tutor-card";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface CompletionItem {
   key: string;
@@ -473,13 +474,13 @@ export function ProfileView() {
         <div className="bg-gray-900 px-4 sm:px-6 pt-14 sm:pt-16 pb-5 relative">
           <div className="absolute -top-14 sm:-top-16 left-4 sm:left-6">
             <div className="relative">
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-linear-to-br from-indigo-500 to-purple-600 border-4 border-gray-900 flex items-center justify-center text-white text-4xl font-extrabold overflow-hidden shadow-xl">
-                {profile.avatar ? (
-                  <SmartImage src={profile.avatar} alt="" fill sizes="112px" className="object-cover" />
-                ) : (
-                  initial
-                )}
-              </div>
+              <Avatar
+                src={profile.avatar}
+                size="w-28 h-28 sm:w-32 sm:h-32"
+                shape="rounded"
+                fallbackText={initial}
+                className="border-4 border-gray-900 shadow-xl"
+              />
               <button
                 onClick={() => setPhotoTarget("avatar")}
                 className="absolute bottom-1 right-1 p-2 bg-gray-800 hover:bg-gray-700 rounded-full border-2 border-gray-900 shadow-lg"
@@ -2231,13 +2232,7 @@ function UserListTab({
             className="flex items-center gap-3 p-3 glass glass-hover"
           >
             <Link href={profileHref(u)} className="shrink-0">
-              <div className="relative w-11 h-11 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                {u.avatar ? (
-                  <SmartImage src={u.avatar} alt="" fill sizes="44px" className="object-cover" />
-                ) : (
-                  initial
-                )}
-              </div>
+              <Avatar src={u.avatar} size={44} fallbackText={initial} />
             </Link>
             <div className="flex-1 min-w-0">
               <Link href={profileHref(u)} className="block">

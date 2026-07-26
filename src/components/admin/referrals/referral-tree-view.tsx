@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface TreeNode {
   id: string;
@@ -160,13 +160,12 @@ export function ReferralTreeView({ userId, user }: Props) {
       </Link>
 
       <div className="flex items-start gap-3">
-        <div className="relative w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
-          {user.avatar ? (
-            <SmartImage src={user.avatar} alt="" fill sizes="48px" className="object-cover" />
-          ) : (
-            (user.name ?? user.email).charAt(0).toUpperCase()
-          )}
-        </div>
+        <Avatar
+          src={user.avatar}
+          size={48}
+          fallbackText={(user.name ?? user.email).charAt(0).toUpperCase()}
+          className="rounded-xl shrink-0"
+        />
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
             <Network className="w-6 h-6 text-purple-400" />
