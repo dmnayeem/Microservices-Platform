@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import {
   MarketplaceListingStatus,
   MarketplaceOfferStatus,
@@ -267,6 +268,11 @@ export async function POST(
       checkoutUrl: null,
     });
   } catch (error) {
+    // Retry/double-submit reuses reference `marketplace_<id>_<purchaseId>` →
+    // P2002; the purchase already went through, so report success not a 500.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
     // Race-loss messages should surface to the user, not as a 500.
     if (
       error instanceof Error &&

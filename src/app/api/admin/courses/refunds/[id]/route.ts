@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
@@ -238,6 +239,11 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, refundAmount, tutorClawback: tutorAmount });
   } catch (error) {
+    // Retry reuses reference `course_refund_<courseId>_<requestId>` → P2002; the
+    // refund already settled, so report success not a 500.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
     console.error("Process refund failed:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed" },

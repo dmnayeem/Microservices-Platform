@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { DisputeStatus, NotificationType, TransactionType, TransactionStatus } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -449,6 +450,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
   } catch (error) {
+    // Retry of a refund action reuses reference `dispute_refund_<id>` → P2002;
+    // the refund already settled, so report success not a 500.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
     console.error("Error processing dispute:", error);
     return NextResponse.json(
       { error: "Failed to process dispute" },

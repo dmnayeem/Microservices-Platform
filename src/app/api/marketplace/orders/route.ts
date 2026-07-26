@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import {
   MarketplaceListingStatus,
   TransactionType,
@@ -266,6 +267,11 @@ export async function POST(request: NextRequest) {
       message: "Purchase completed successfully",
     });
   } catch (error) {
+    // Retry/double-submit reuses reference `purchase_<listingId>`/`sale_<listingId>`
+    // → P2002; the order already settled, so report success not a 500.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ duplicate: true, message: "Purchase already completed" });
+    }
     console.error("Error creating purchase:", error);
     return NextResponse.json(
       { error: "Failed to complete purchase" },

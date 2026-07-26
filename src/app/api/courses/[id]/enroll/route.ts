@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { z } from "zod";
 import {
   NotificationType,
@@ -81,6 +82,18 @@ export async function POST(
     if (course.status !== "PUBLISHED") {
       return NextResponse.json(
         { error: "This course isn't open for enrolment." },
+        { status: 400 }
+      );
+    }
+
+    // A tutor can't enrol in their own course. Besides being nonsensical, the
+    // buyer-debit and tutor-credit ledger rows share one reference
+    // (`course_<courseId>_<enrollmentId>`) distinguished only by userId — if the
+    // buyer *were* the tutor, both rows would collide on (userId, reference)
+    // under the idempotency unique constraint.
+    if (session.user.id === course.tutorId) {
+      return NextResponse.json(
+        { error: "You can't enrol in your own course." },
         { status: 400 }
       );
     }
@@ -301,6 +314,11 @@ export async function POST(
       discount: couponInfo?.discount ?? 0,
     });
   } catch (error) {
+    // Retry/double-submit reuses reference `course_<courseId>_<enrollmentId>` →
+    // P2002; the enrolment already settled, so report success not a 500.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ alreadyEnrolled: true, duplicate: true });
+    }
     console.error("Enroll failed:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed" },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   MarketplaceBidStatus,
@@ -225,6 +226,12 @@ export async function POST(
       purchaseId: purchase.id,
     });
   } catch (error) {
+    // A concurrent double-close / retry reuses reference `marketplace_auction_<id>`
+    // → P2002 on (userId, reference). The first close already settled; treat this
+    // one as a no-op success instead of double-settling.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ closed: true, duplicate: true });
+    }
     console.error("Close auction failed:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed" },

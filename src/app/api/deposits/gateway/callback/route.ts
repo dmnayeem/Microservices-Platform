@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { toNum } from "@/lib/money";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { deliverToUser } from "@/lib/notify";
@@ -63,35 +64,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/wallet?deposit=failed`);
   }
 
-  // Credit once.
+  // Credit once. The `status === "PENDING"` check is check-then-act, so two
+  // concurrent gateway callbacks could both pass it; the ledger's unique
+  // (userId, reference) on `deposit_<id>` makes the loser fail with P2002, which
+  // we swallow — the deposit is already credited, so fall through to success.
   if (deposit.status === "PENDING") {
-    await prisma.$transaction([
-      prisma.deposit.update({
-        where: { id: deposit.id },
-        data: { status: "APPROVED", reviewedAt: new Date() },
-      }),
-      prisma.user.update({
-        where: { id: deposit.userId },
-        data: { cashBalance: { increment: deposit.amount } },
-      }),
-      prisma.transaction.create({
-        data: {
-          userId: deposit.userId,
-          type: TransactionType.DEPOSIT,
-          status: TransactionStatus.COMPLETED,
-          points: 0,
-          amount: deposit.amount,
-          description: `Deposit via ${provider.label}`,
-          reference: `deposit_${deposit.id}`,
-        },
-      }),
-    ]);
-    void deliverToUser({
-      userId: deposit.userId,
-      title: "Deposit approved",
-      message: `$${deposit.amount.toFixed(2)} has been added to your balance.`,
-      link: "/wallet",
-    });
+    try {
+      await prisma.$transaction([
+        prisma.deposit.update({
+          where: { id: deposit.id },
+          data: { status: "APPROVED", reviewedAt: new Date() },
+        }),
+        prisma.user.update({
+          where: { id: deposit.userId },
+          data: { cashBalance: { increment: deposit.amount } },
+        }),
+        prisma.transaction.create({
+          data: {
+            userId: deposit.userId,
+            type: TransactionType.DEPOSIT,
+            status: TransactionStatus.COMPLETED,
+            points: 0,
+            amount: deposit.amount,
+            description: `Deposit via ${provider.label}`,
+            reference: `deposit_${deposit.id}`,
+          },
+        }),
+      ]);
+      void deliverToUser({
+        userId: deposit.userId,
+        title: "Deposit approved",
+        message: `$${deposit.amount.toFixed(2)} has been added to your balance.`,
+        link: "/wallet",
+      });
+    } catch (err) {
+      if (!isDuplicateLedgerError(err)) throw err;
+    }
   }
 
   return NextResponse.redirect(`${APP_URL}/wallet?deposit=success`);

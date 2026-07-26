@@ -1221,9 +1221,17 @@ model Transaction {
   @@index([status])
   @@index([createdAt])
   @@index([userId, createdAt])
-  // Non-unique: money routes look up "have we already processed this reference?"
-  // (idempotency). NOT @unique — marketplace/course double-entry writes two rows
-  // (buyer debit + seller credit) that deliberately share one reference.
+  // Idempotency backstop: a deterministic `reference` for a once-only money event
+  // is unique per user, so a retry / concurrent-double / replay that reuses the
+  // same reference hits P2002 and is caught (see src/lib/idempotency.ts). Scoped
+  // to `userId` (not a global @unique on `reference`) because double-entry writes
+  // two rows — buyer debit + seller credit — that deliberately share one
+  // reference but have DIFFERENT userId. NULL references stay unconstrained
+  // (Postgres treats NULLs as distinct), so legitimately-repeatable events that
+  // use per-occurrence-distinct references are unaffected.
+  @@unique([userId, reference])
+  // Kept for reference-only lookups (findFirst by reference) that can't use the
+  // composite (userId, reference) index.
   @@index([reference])
 }
 
