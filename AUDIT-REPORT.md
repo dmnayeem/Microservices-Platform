@@ -144,6 +144,20 @@ the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migr
 
 ---
 
+## ✅ P8 Remediation — July 27, 2026 (finish deferred admin tables — DONE, verified)
+
+- Migrated the last deferred admin lists to `AdminTable` (mobile card-reflow): **coupons** (lifted per-row
+  busy → parent `busyId`, actions column), **course-categories** (inline colSpan edit-expand refactored to open
+  the edit form in the top panel, matching the create flow — AdminTable can't express a colSpan expand),
+  **packages "plans"** table (`mobileHidden` on Slug/Access/Features), and the **4 user-detail sub-tables**
+  (transactions / task-submissions / referrals / withdrawals, rendered `bare` inside the existing tab card).
+- Remaining raw `<table>` are now only the intentionally-special ones: access permission-matrix (dynamic role
+  columns), leaderboard cycle-winners (expandable rows), proxy-monitor (live sessions), users-table-client
+  (selection + bulk), boost-followers sample preview — plus the AdminTable/Shell components themselves.
+- Verified: tsc + eslint clean, next build compiles.
+
+---
+
 ## ✅ P7 Remediation — July 26, 2026 (admin consistency polish — DONE, verified)
 
 - **Admin/tutor images:** migrated 37 admin/tutor `<img>` → `SmartImage` (lazy-load, CLS, optimization for
