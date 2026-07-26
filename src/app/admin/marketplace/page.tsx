@@ -23,6 +23,7 @@ import { formatDistanceToNow } from "date-fns";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CreateListingButton } from "@/components/admin/marketplace-actions";
 import { DisputeResolveButton } from "@/components/admin/marketplace/dispute-resolve-button";
+import { AdminTable } from "@/components/admin/ui/admin-table";
 import { cn } from "@/lib/utils";
 import { ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
 
@@ -197,6 +198,10 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
       ? disputes.total
       : 0;
   const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
+
+  type ListingRow = (typeof listings.rows)[number];
+  type OrderRow = (typeof orders.rows)[number];
+  type DisputeRow = (typeof disputes.rows)[number];
 
   const buildHref = (next: {
     tab?: TabId;
@@ -383,135 +388,134 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
           {/* Listings Table */}
           <div className="glass overflow-x-auto scrollbar-thin">
             {listings.rows.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-800 bg-slate-800/50">
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Listing
-                      </th>
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Seller
-                      </th>
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Category
-                      </th>
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Price
-                      </th>
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Status
-                      </th>
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Stats
-                      </th>
-                      <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {listings.rows.map((listing) => {
+              <AdminTable<ListingRow>
+                bare
+                rows={listings.rows}
+                getRowKey={(listing) => listing.id}
+                columns={[
+                  {
+                    key: "listing",
+                    header: "Listing",
+                    primary: true,
+                    cell: (listing) => (
+                      <>
+                        <p className="font-medium text-white truncate max-w-65 inline-flex items-center gap-1.5">
+                          {listing.title}
+                          {listing.isFeatured && (
+                            <span title="Featured" className="text-amber-400">
+                              ★
+                            </span>
+                          )}
+                          {listing.verifiedMetrics && (
+                            <span
+                              title="Verified metrics"
+                              className="text-[10px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                            >
+                              ✓
+                            </span>
+                          )}
+                          {listing.auctionMode && (
+                            <span
+                              title="Auction mode"
+                              className="text-[10px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30"
+                            >
+                              Auction
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatDistanceToNow(listing.createdAt, {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "seller",
+                    header: "Seller",
+                    cell: (listing) => (
+                      <Link
+                        href={`/admin/users/${listing.seller.id}`}
+                        className="text-sm text-white hover:text-indigo-400 truncate max-w-40 block"
+                      >
+                        {listing.seller.name || listing.seller.email}
+                      </Link>
+                    ),
+                  },
+                  {
+                    key: "category",
+                    header: "Category",
+                    cell: (listing) => (
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 w-fit">
+                          {ASSET_TYPE_LABEL[listing.assetType] ??
+                            listing.assetType}
+                        </span>
+                        {listing.subType && (
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {listing.subType}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-600">
+                          {listing.category}
+                        </span>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "price",
+                    header: "Price",
+                    className: "text-white font-semibold",
+                    cell: (listing) => <>${listing.price.toFixed(2)}</>,
+                  },
+                  {
+                    key: "status",
+                    header: "Status",
+                    cell: (listing) => {
                       const cfg =
                         STATUS_CONFIG[listing.status] || STATUS_CONFIG.ACTIVE;
                       const StatusIcon = cfg.icon;
                       return (
-                        <tr
-                          key={listing.id}
-                          className="hover:bg-slate-800/40 transition-colors"
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}
                         >
-                          <td className="py-4 px-6">
-                            <p className="font-medium text-white truncate max-w-65 inline-flex items-center gap-1.5">
-                              {listing.title}
-                              {listing.isFeatured && (
-                                <span title="Featured" className="text-amber-400">
-                                  ★
-                                </span>
-                              )}
-                              {listing.verifiedMetrics && (
-                                <span
-                                  title="Verified metrics"
-                                  className="text-[10px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                                >
-                                  ✓
-                                </span>
-                              )}
-                              {listing.auctionMode && (
-                                <span
-                                  title="Auction mode"
-                                  className="text-[10px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30"
-                                >
-                                  Auction
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {formatDistanceToNow(listing.createdAt, {
-                                addSuffix: true,
-                              })}
-                            </p>
-                          </td>
-                          <td className="py-4 px-6">
-                            <Link
-                              href={`/admin/users/${listing.seller.id}`}
-                              className="text-sm text-white hover:text-indigo-400 truncate max-w-40 block"
-                            >
-                              {listing.seller.name || listing.seller.email}
-                            </Link>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex flex-col gap-1">
-                              <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 w-fit">
-                                {ASSET_TYPE_LABEL[listing.assetType] ??
-                                  listing.assetType}
-                              </span>
-                              {listing.subType && (
-                                <span className="text-[10px] text-slate-500 font-mono">
-                                  {listing.subType}
-                                </span>
-                              )}
-                              <span className="text-[10px] text-slate-600">
-                                {listing.category}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-white font-semibold">
-                            ${listing.price.toFixed(2)}
-                          </td>
-                          <td className="py-4 px-6">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}
-                            >
-                              <StatusIcon className="w-3 h-3" />
-                              {cfg.label}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3 text-sm text-slate-400">
-                              <span className="flex items-center gap-1">
-                                <Eye className="w-3.5 h-3.5" />
-                                {listing.views}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <ShoppingCart className="w-3.5 h-3.5" />
-                                {listing.purchases}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <Link
-                              href={`/admin/marketplace/${listing.id}`}
-                              className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-                            >
-                              View
-                            </Link>
-                          </td>
-                        </tr>
+                          <StatusIcon className="w-3 h-3" />
+                          {cfg.label}
+                        </span>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    },
+                  },
+                  {
+                    key: "stats",
+                    header: "Stats",
+                    cell: (listing) => (
+                      <div className="flex items-center gap-3 text-sm text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3.5 h-3.5" />
+                          {listing.views}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          {listing.purchases}
+                        </span>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    cell: (listing) => (
+                      <Link
+                        href={`/admin/marketplace/${listing.id}`}
+                        className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                      >
+                        View
+                      </Link>
+                    ),
+                  },
+                ]}
+              />
             ) : (
               <EmptyState icon={<Store className="w-12 h-12" />} title="No listings found" />
             )}
@@ -559,54 +563,66 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
           </div>
           <div className="glass overflow-x-auto scrollbar-thin">
             {orders.rows.length > 0 ? (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-800/50">
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Order</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Item</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Buyer</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Amount</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Status</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {orders.rows.map((o) => (
-                    <tr key={o.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-4 px-6 font-mono text-xs text-slate-300">
-                        {o.id.slice(0, 8)}
-                      </td>
-                      <td className="py-4 px-6">
-                        <Link
-                          href={`/admin/marketplace/${o.listingId}`}
-                          className="text-white hover:text-indigo-400 truncate max-w-65 block"
-                        >
-                          {o.listingTitle}
-                        </Link>
-                      </td>
-                      <td className="py-4 px-6">
-                        <Link
-                          href={`/admin/users/${o.buyerId}`}
-                          className="text-sm text-white hover:text-indigo-400"
-                        >
-                          {o.buyerName || o.buyerEmail}
-                        </Link>
-                      </td>
-                      <td className="py-4 px-6 text-white tabular-nums">
-                        ${o.amount.toFixed(2)}
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300">
-                          {PURCHASE_STATUS_LABEL[o.status] || o.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-sm text-slate-400">
-                        {formatDistanceToNow(o.createdAt, { addSuffix: true })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <AdminTable<OrderRow>
+                bare
+                rows={orders.rows}
+                getRowKey={(o) => o.id}
+                columns={[
+                  {
+                    key: "order",
+                    header: "Order",
+                    primary: true,
+                    className: "font-mono text-xs text-slate-300",
+                    cell: (o) => o.id.slice(0, 8),
+                  },
+                  {
+                    key: "item",
+                    header: "Item",
+                    cell: (o) => (
+                      <Link
+                        href={`/admin/marketplace/${o.listingId}`}
+                        className="text-white hover:text-indigo-400 truncate max-w-65 block"
+                      >
+                        {o.listingTitle}
+                      </Link>
+                    ),
+                  },
+                  {
+                    key: "buyer",
+                    header: "Buyer",
+                    cell: (o) => (
+                      <Link
+                        href={`/admin/users/${o.buyerId}`}
+                        className="text-sm text-white hover:text-indigo-400"
+                      >
+                        {o.buyerName || o.buyerEmail}
+                      </Link>
+                    ),
+                  },
+                  {
+                    key: "amount",
+                    header: "Amount",
+                    className: "text-white tabular-nums",
+                    cell: (o) => <>${o.amount.toFixed(2)}</>,
+                  },
+                  {
+                    key: "status",
+                    header: "Status",
+                    cell: (o) => (
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300">
+                        {PURCHASE_STATUS_LABEL[o.status] || o.status}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "date",
+                    header: "Date",
+                    className: "text-sm text-slate-400",
+                    cell: (o) =>
+                      formatDistanceToNow(o.createdAt, { addSuffix: true }),
+                  },
+                ]}
+              />
             ) : (
               <EmptyState
                 icon={<ShoppingCart className="w-12 h-12" />}
@@ -657,78 +673,95 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
           </div>
           <div className="glass overflow-x-auto scrollbar-thin">
             {disputes.rows.length > 0 ? (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-800/50">
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Dispute</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Buyer</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Seller</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Reason</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Amount</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Status</th>
-                    <th className="text-left py-4 px-6 text-sm font-medium text-slate-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {disputes.rows.map((d) => {
-                    const cfg = DISPUTE_STATUS_LABEL[d.status] ?? {
-                      label: d.status,
-                      color: "text-slate-400 bg-slate-500/10",
-                    };
-                    const isOpen = ["OPEN", "IN_REVIEW", "ESCALATED"].includes(
-                      d.status
-                    );
-                    return (
-                      <tr key={d.id} className="hover:bg-slate-800/40">
-                        <td className="py-4 px-6">
-                          <p className="text-white truncate max-w-50">
-                            {d.listingTitle}
-                          </p>
-                          <p className="text-xs text-slate-500 font-mono">
-                            #{d.id.slice(0, 8)}
-                          </p>
-                        </td>
-                        <td className="py-4 px-6 text-sm text-slate-300 truncate max-w-30">
-                          {d.buyerName}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-slate-300 truncate max-w-30">
-                          {d.sellerName}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-slate-400 truncate max-w-40">
-                          {d.reason}
-                        </td>
-                        <td className="py-4 px-6 text-white tabular-nums">
-                          ${d.amount.toFixed(2)}
-                        </td>
-                        <td className="py-4 px-6">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}
-                          >
-                            {cfg.label}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          {isOpen && canResolveDisputes ? (
-                            <DisputeResolveButton
-                              disputeId={d.id}
-                              buyerName={d.buyerName}
-                              sellerName={d.sellerName}
-                              amount={d.amount}
-                            />
-                          ) : (
-                            <Link
-                              href={`/admin/marketplace?tab=disputes&id=${d.id}`}
-                              className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-                            >
-                              View
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <AdminTable<DisputeRow>
+                bare
+                rows={disputes.rows}
+                getRowKey={(d) => d.id}
+                columns={[
+                  {
+                    key: "dispute",
+                    header: "Dispute",
+                    primary: true,
+                    cell: (d) => (
+                      <>
+                        <p className="text-white truncate max-w-50">
+                          {d.listingTitle}
+                        </p>
+                        <p className="text-xs text-slate-500 font-mono">
+                          #{d.id.slice(0, 8)}
+                        </p>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "buyer",
+                    header: "Buyer",
+                    className: "text-sm text-slate-300 truncate max-w-30",
+                    cell: (d) => d.buyerName,
+                  },
+                  {
+                    key: "seller",
+                    header: "Seller",
+                    className: "text-sm text-slate-300 truncate max-w-30",
+                    cell: (d) => d.sellerName,
+                  },
+                  {
+                    key: "reason",
+                    header: "Reason",
+                    className: "text-sm text-slate-400 truncate max-w-40",
+                    cell: (d) => d.reason,
+                  },
+                  {
+                    key: "amount",
+                    header: "Amount",
+                    className: "text-white tabular-nums",
+                    cell: (d) => <>${d.amount.toFixed(2)}</>,
+                  },
+                  {
+                    key: "status",
+                    header: "Status",
+                    cell: (d) => {
+                      const cfg = DISPUTE_STATUS_LABEL[d.status] ?? {
+                        label: d.status,
+                        color: "text-slate-400 bg-slate-500/10",
+                      };
+                      return (
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}
+                        >
+                          {cfg.label}
+                        </span>
+                      );
+                    },
+                  },
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    cell: (d) => {
+                      const isOpen = [
+                        "OPEN",
+                        "IN_REVIEW",
+                        "ESCALATED",
+                      ].includes(d.status);
+                      return isOpen && canResolveDisputes ? (
+                        <DisputeResolveButton
+                          disputeId={d.id}
+                          buyerName={d.buyerName}
+                          sellerName={d.sellerName}
+                          amount={d.amount}
+                        />
+                      ) : (
+                        <Link
+                          href={`/admin/marketplace?tab=disputes&id=${d.id}`}
+                          className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                        >
+                          View
+                        </Link>
+                      );
+                    },
+                  },
+                ]}
+              />
             ) : (
               <EmptyState
                 icon={<Scale className="w-12 h-12" />}

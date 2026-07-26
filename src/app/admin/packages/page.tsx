@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
+import { AdminTable } from "@/components/admin/ui/admin-table";
 
 export default async function AdminPackagesPage() {
   const session = await auth();
@@ -92,6 +93,7 @@ export default async function AdminPackagesPage() {
   ]);
   const userById = new Map(subUsers.map((u) => [u.id, u]));
   const pkgById = new Map(subPkgs.map((p) => [p.id, p]));
+  type RecentSub = (typeof recentSubs)[number];
 
   const canEdit = hasPermission(adminRole, "packages.edit");
 
@@ -248,69 +250,81 @@ export default async function AdminPackagesPage() {
             <p className="text-gray-400">No subscriptions yet.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-gray-800">
-                  <th className="text-left py-2 pr-3">User</th>
-                  <th className="text-left py-2 pr-3">Plan</th>
-                  <th className="text-left py-2 pr-3">Method</th>
-                  <th className="text-right py-2 pr-3">Amount</th>
-                  <th className="text-right py-2 pr-3">Status</th>
-                  <th className="text-right py-2">Activated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {recentSubs.map((s) => {
+          <AdminTable<RecentSub>
+            bare
+            rows={recentSubs}
+            getRowKey={(s) => s.id}
+            columns={[
+              {
+                key: "user",
+                header: "User",
+                primary: true,
+                cell: (s) => {
                   const u = userById.get(s.userId);
+                  return (
+                    <Link
+                      href={`/admin/users/${s.userId}`}
+                      className="text-white hover:text-indigo-400 transition-colors"
+                    >
+                      {u?.name || u?.email || s.userId.slice(0, 8)}
+                    </Link>
+                  );
+                },
+              },
+              {
+                key: "plan",
+                header: "Plan",
+                cell: (s) => {
                   const p = s.packageId ? pkgById.get(s.packageId) : null;
                   return (
-                    <tr key={s.id} className="hover:bg-gray-800/40">
-                      <td className="py-2 pr-3">
-                        <Link
-                          href={`/admin/users/${s.userId}`}
-                          className="text-white hover:text-indigo-400 transition-colors"
-                        >
-                          {u?.name || u?.email || s.userId.slice(0, 8)}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <span
-                          className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                          style={{
-                            backgroundColor: (p?.badgeColor || "#6366f1") + "33",
-                            color: p?.badgeColor || "#a5b4fc",
-                          }}
-                        >
-                          {p?.name || s.packageId?.slice(0, 8) || "—"}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 text-gray-400 text-xs">
-                        {s.paymentMethod ?? "—"}
-                      </td>
-                      <td className="py-2 pr-3 text-right text-amber-400 font-bold tabular-nums">
-                        ${s.amount.toFixed(2)}
-                      </td>
-                      <td className="py-2 pr-3 text-right">
-                        <span
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            s.isActive
-                              ? "bg-emerald-500/15 text-emerald-400"
-                              : "bg-gray-700 text-gray-300"
-                          }`}
-                        >
-                          {s.isActive ? "Active" : "Expired"}
-                        </span>
-                      </td>
-                      <td className="py-2 text-right text-gray-500 text-xs tabular-nums">
-                        {s.createdAt.toLocaleDateString()}
-                      </td>
-                    </tr>
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                      style={{
+                        backgroundColor: (p?.badgeColor || "#6366f1") + "33",
+                        color: p?.badgeColor || "#a5b4fc",
+                      }}
+                    >
+                      {p?.name || s.packageId?.slice(0, 8) || "—"}
+                    </span>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                },
+              },
+              {
+                key: "method",
+                header: "Method",
+                className: "text-gray-400 text-xs",
+                cell: (s) => s.paymentMethod ?? "—",
+              },
+              {
+                key: "amount",
+                header: "Amount",
+                className: "text-right text-amber-400 font-bold tabular-nums",
+                cell: (s) => <>${s.amount.toFixed(2)}</>,
+              },
+              {
+                key: "status",
+                header: "Status",
+                className: "text-right",
+                cell: (s) => (
+                  <span
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      s.isActive
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : "bg-gray-700 text-gray-300"
+                    }`}
+                  >
+                    {s.isActive ? "Active" : "Expired"}
+                  </span>
+                ),
+              },
+              {
+                key: "activated",
+                header: "Activated",
+                className: "text-right text-gray-500 text-xs tabular-nums",
+                cell: (s) => s.createdAt.toLocaleDateString(),
+              },
+            ]}
+          />
         )}
       </div>
 

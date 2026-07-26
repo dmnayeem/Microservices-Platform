@@ -6,6 +6,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Loader2, Save, Target, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AdminTable,
+  type AdminColumn,
+} from "@/components/admin/ui/admin-table";
 
 interface Mission {
   id: string;
@@ -80,6 +84,106 @@ export function MissionsClient({ initial, canManage }: Props) {
     }
   };
 
+  const columns: AdminColumn<Mission>[] = [
+    {
+      key: "mission",
+      header: "Mission",
+      primary: true,
+      cell: (m) => (
+        <>
+          <p className="text-white font-medium">{m.title}</p>
+          {m.description && (
+            <p className="text-xs text-slate-500 line-clamp-1">
+              {m.description}
+            </p>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      className: "text-slate-300",
+      cell: (m) => TYPE_LABELS[m.type] ?? m.type,
+    },
+    {
+      key: "target",
+      header: "Target",
+      className: "tabular-nums",
+      cell: (m) => m.targetValue,
+    },
+    {
+      key: "reward",
+      header: "Reward",
+      cell: (m) => (
+        <>
+          <span className="text-amber-400 font-bold">{m.pointsReward}</span> pts
+          {m.xpReward > 0 && (
+            <span className="text-slate-500"> · {m.xpReward} XP</span>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "duration",
+      header: "Duration",
+      cell: (m) => (
+        <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300">
+          {m.duration}
+        </span>
+      ),
+    },
+    {
+      key: "active",
+      header: "Active",
+      cell: (m) => (
+        <button
+          disabled={!canManage || busyId === m.id}
+          onClick={() => toggleActive(m)}
+          className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
+            m.isActive
+              ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+              : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+          } ${canManage ? "cursor-pointer" : "cursor-default"} disabled:opacity-50`}
+        >
+          {m.isActive ? "Active" : "Inactive"}
+        </button>
+      ),
+    },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "Actions",
+            className: "text-right",
+            cell: (m: Mission) => (
+              <div className="inline-flex gap-1">
+                <button
+                  onClick={() => setEditing(m)}
+                  className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-blue-400"
+                  title="Edit"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  disabled={busyId === m.id}
+                  onClick={() => remove(m)}
+                  className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400 disabled:opacity-50"
+                  title="Delete"
+                >
+                  {busyId === m.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ),
+          } as AdminColumn<Mission>,
+        ]
+      : []),
+  ];
+
   return (
     <>
       {canManage && (
@@ -94,118 +198,19 @@ export function MissionsClient({ initial, canManage }: Props) {
         </div>
       )}
 
-      {initial.length === 0 ? (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
-          <Target className="w-12 h-12 mx-auto mb-4 text-slate-600" />
-          <h3 className="text-lg font-medium text-white mb-1">
-            No missions yet
-          </h3>
-        </div>
-      ) : (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-800/50 border-b border-slate-800">
-              <tr>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Mission
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Type
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Target
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Reward
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Duration
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Active
-                </th>
-                {canManage && (
-                  <th className="text-right py-3 px-6 text-sm font-medium text-slate-400">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {initial.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-800/40">
-                  <td className="py-3 px-6">
-                    <p className="text-white font-medium">{m.title}</p>
-                    {m.description && (
-                      <p className="text-xs text-slate-500 line-clamp-1">
-                        {m.description}
-                      </p>
-                    )}
-                  </td>
-                  <td className="py-3 px-6 text-sm text-slate-300">
-                    {TYPE_LABELS[m.type] ?? m.type}
-                  </td>
-                  <td className="py-3 px-6 text-sm tabular-nums">
-                    {m.targetValue}
-                  </td>
-                  <td className="py-3 px-6 text-sm">
-                    <span className="text-amber-400 font-bold">
-                      {m.pointsReward}
-                    </span>{" "}
-                    pts
-                    {m.xpReward > 0 && (
-                      <span className="text-slate-500"> · {m.xpReward} XP</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-6">
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300">
-                      {m.duration}
-                    </span>
-                  </td>
-                  <td className="py-3 px-6">
-                    <button
-                      disabled={!canManage || busyId === m.id}
-                      onClick={() => toggleActive(m)}
-                      className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
-                        m.isActive
-                          ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
-                          : "bg-slate-700 text-slate-400 hover:bg-slate-600"
-                      } ${canManage ? "cursor-pointer" : "cursor-default"} disabled:opacity-50`}
-                    >
-                      {m.isActive ? "Active" : "Inactive"}
-                    </button>
-                  </td>
-                  {canManage && (
-                    <td className="py-3 px-6 text-right">
-                      <div className="inline-flex gap-1">
-                        <button
-                          onClick={() => setEditing(m)}
-                          className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-blue-400"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          disabled={busyId === m.id}
-                          onClick={() => remove(m)}
-                          className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400 disabled:opacity-50"
-                          title="Delete"
-                        >
-                          {busyId === m.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <AdminTable<Mission>
+        columns={columns}
+        rows={initial}
+        getRowKey={(m) => m.id}
+        empty={
+          <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
+            <Target className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+            <h3 className="text-lg font-medium text-white mb-1">
+              No missions yet
+            </h3>
+          </div>
+        }
+      />
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} />}
       {editing && (

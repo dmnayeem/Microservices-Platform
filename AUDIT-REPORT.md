@@ -144,6 +144,26 @@ the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migr
 
 ---
 
+## ✅ P7 Remediation — July 26, 2026 (admin consistency polish — DONE, verified)
+
+- **Admin/tutor images:** migrated 37 admin/tutor `<img>` → `SmartImage` (lazy-load, CLS, optimization for
+  our-host images; `unoptimized` fallback for arbitrary URLs). Avatars/thumbnails use fixed `width`/`height`;
+  covers/media-grid/aspect boxes use `fill` (added `relative` where missing); `onError` handlers preserved;
+  TaskForm previews use fixed w/h (content-sized `relative inline-block` parent would collapse under `fill`).
+  Kept as `<img>`: free-zoom/unknown-aspect previews (zoom lightbox, single proof/category previews, user-detail
+  post image).
+- **Raw `<table>` → `AdminTable`** (mobile card-reflow consistency): tutor course-students, admin proxy, admin
+  missions, admin packages "recent subscriptions", and the three admin marketplace tables (listings / orders /
+  disputes). Row-action components and server-pagination/filter JSX kept intact; identity column marked
+  `primary` for the mobile card title.
+- **Deleted dead code:** `src/components/admin/offerwalls/offerwall-callbacks-client.tsx` (zero importers).
+- **Intentionally left raw** (documented): access permission matrix (dynamic role columns), coupons/categories
+  (per-row edit-state components — deferred), packages plans table (wide 9-col), the 4 user-detail sub-tables,
+  leaderboard cycle-winners (expandable rows), proxy-monitor live sessions, users-table (selection + bulk).
+- Verified: tsc + eslint clean, next build compiles.
+
+---
+
 ## 1. What the project is
 
 Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.

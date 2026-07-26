@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { AdminTable } from "@/components/admin/ui/admin-table";
 import { ChevronLeft, Users, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -46,6 +47,7 @@ export default async function TutorCourseStudentsPage({
       country: string | null;
     };
   }>;
+  type Enrollment = (typeof enrollments)[number];
 
   return (
     <div className="space-y-5">
@@ -66,90 +68,98 @@ export default async function TutorCourseStudentsPage({
         </p>
       </div>
 
-      {enrollments.length === 0 ? (
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-12 text-center">
-          <Search className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-white font-bold">No enrolments yet</p>
-          <p className="text-sm text-slate-400 mt-1">
-            Once a student enrols, they&apos;ll show up here with live progress.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-950 text-slate-400 text-xs uppercase">
-                <tr>
-                  <th className="text-left px-4 py-3">Student</th>
-                  <th className="text-left px-4 py-3">Country</th>
-                  <th className="text-left px-4 py-3">Progress</th>
-                  <th className="text-left px-4 py-3">Paid</th>
-                  <th className="text-left px-4 py-3">Enrolled</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {enrollments.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-800/40">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {e.user.avatar ? (
-                          <SmartImage
-                            src={e.user.avatar}
-                            alt=""
-                            width={32}
-                            height={32}
-                            className="w-8 h-8 rounded-full object-cover bg-slate-800"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
-                            {(e.user.name ?? e.user.email ?? "?").slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-white truncate font-medium">
-                            {e.user.name ?? "—"}
-                          </p>
-                          <p className="text-[11px] text-slate-500 truncate">
-                            {e.user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-400">
-                      {e.user.country ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <ProgressBar value={e.progress} />
-                    </td>
-                    <td className="px-4 py-3 text-emerald-300 tabular-nums">
-                      ${e.pricePaid.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
-                      {formatDistanceToNow(e.createdAt, { addSuffix: true })}
-                    </td>
-                    <td className="px-4 py-3">
-                      {e.completedAt ? (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium">
-                          Completed
-                        </span>
-                      ) : e.progress > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-medium">
-                          Learning
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
-                          Not started
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <AdminTable<Enrollment>
+        rows={enrollments}
+        getRowKey={(e) => e.id}
+        empty={
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-12 text-center">
+            <Search className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+            <p className="text-white font-bold">No enrolments yet</p>
+            <p className="text-sm text-slate-400 mt-1">
+              Once a student enrols, they&apos;ll show up here with live progress.
+            </p>
           </div>
-        </div>
-      )}
+        }
+        columns={[
+          {
+            key: "student",
+            header: "Student",
+            primary: true,
+            cell: (e) => (
+              <div className="flex items-center gap-2">
+                {e.user.avatar ? (
+                  <SmartImage
+                    src={e.user.avatar}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-full object-cover bg-slate-800"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                    {(e.user.name ?? e.user.email ?? "?").slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-white truncate font-medium">
+                    {e.user.name ?? "—"}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {e.user.email}
+                  </p>
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: "country",
+            header: "Country",
+            cell: (e) => <span className="text-slate-400">{e.user.country ?? "—"}</span>,
+          },
+          {
+            key: "progress",
+            header: "Progress",
+            cell: (e) => <ProgressBar value={e.progress} />,
+          },
+          {
+            key: "paid",
+            header: "Paid",
+            cell: (e) => (
+              <span className="text-emerald-300 tabular-nums">
+                ${e.pricePaid.toFixed(2)}
+              </span>
+            ),
+          },
+          {
+            key: "enrolled",
+            header: "Enrolled",
+            className: "whitespace-nowrap",
+            cell: (e) => (
+              <span className="text-slate-400">
+                {formatDistanceToNow(e.createdAt, { addSuffix: true })}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            header: "Status",
+            cell: (e) =>
+              e.completedAt ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium">
+                  Completed
+                </span>
+              ) : e.progress > 0 ? (
+                <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-medium">
+                  Learning
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
+                  Not started
+                </span>
+              ),
+          },
+        ]}
+      />
     </div>
   );
 }

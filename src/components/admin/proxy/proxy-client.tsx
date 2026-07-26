@@ -14,6 +14,10 @@ import {
   Globe,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AdminTable,
+  type AdminColumn,
+} from "@/components/admin/ui/admin-table";
 
 interface ProxyServer {
   id: string;
@@ -64,6 +68,104 @@ export function ProxyClient({ initial, canManage }: Props) {
     }
   };
 
+  const columns: AdminColumn<ProxyServer>[] = [
+    {
+      key: "name",
+      header: "Name / Country",
+      primary: true,
+      cell: (s) => (
+        <>
+          <p className="text-white font-medium">{s.name}</p>
+          <p className="text-xs text-slate-500">{s.country ?? "—"}</p>
+        </>
+      ),
+    },
+    {
+      key: "hostPort",
+      header: "Host:Port",
+      className: "font-mono text-slate-300",
+      cell: (s) => (
+        <>
+          {s.host}:{s.port}
+        </>
+      ),
+    },
+    {
+      key: "protocol",
+      header: "Protocol",
+      className: "text-slate-300",
+      cell: (s) => s.protocol,
+    },
+    {
+      key: "load",
+      header: "Load",
+      cell: (s) => (
+        <div className="flex items-center gap-2">
+          <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${
+                s.loadPercent < 50
+                  ? "bg-emerald-500"
+                  : s.loadPercent < 80
+                    ? "bg-amber-500"
+                    : "bg-red-500"
+              }`}
+              style={{ width: `${s.loadPercent}%` }}
+            />
+          </div>
+          <span className="text-xs text-slate-500 tabular-nums">
+            {s.loadPercent}%
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (s) => (
+        <span
+          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            STATUS_TONE[s.status] ?? "bg-slate-700 text-slate-300"
+          }`}
+        >
+          ● {s.status}
+        </span>
+      ),
+    },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "Actions",
+            className: "text-right",
+            cell: (s: ProxyServer) => (
+              <div className="inline-flex gap-1">
+                <button
+                  onClick={() => setEditing(s)}
+                  className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-blue-400"
+                  title="Edit"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  disabled={busyId === s.id}
+                  onClick={() => remove(s)}
+                  className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400 disabled:opacity-50"
+                  title="Delete"
+                >
+                  {busyId === s.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ),
+          } as AdminColumn<ProxyServer>,
+        ]
+      : []),
+  ];
+
   return (
     <>
       {canManage && (
@@ -78,117 +180,22 @@ export function ProxyClient({ initial, canManage }: Props) {
         </div>
       )}
 
-      {initial.length === 0 ? (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
-          <Globe className="w-12 h-12 mx-auto mb-4 text-slate-600" />
-          <h3 className="text-lg font-medium text-white mb-1">
-            No proxy servers
-          </h3>
-          <p className="text-sm text-slate-400">
-            Add country-specific proxy servers for proxy tasks.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-800/50 border-b border-slate-800">
-              <tr>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Name / Country
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Host:Port
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Protocol
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Load
-                </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-400">
-                  Status
-                </th>
-                {canManage && (
-                  <th className="text-right py-3 px-6 text-sm font-medium text-slate-400">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {initial.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-800/40">
-                  <td className="py-3 px-6">
-                    <p className="text-white font-medium">{s.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {s.country ?? "—"}
-                    </p>
-                  </td>
-                  <td className="py-3 px-6 font-mono text-sm text-slate-300">
-                    {s.host}:{s.port}
-                  </td>
-                  <td className="py-3 px-6 text-sm text-slate-300">
-                    {s.protocol}
-                  </td>
-                  <td className="py-3 px-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            s.loadPercent < 50
-                              ? "bg-emerald-500"
-                              : s.loadPercent < 80
-                                ? "bg-amber-500"
-                                : "bg-red-500"
-                          }`}
-                          style={{ width: `${s.loadPercent}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-slate-500 tabular-nums">
-                        {s.loadPercent}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-6">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        STATUS_TONE[s.status] ?? "bg-slate-700 text-slate-300"
-                      }`}
-                    >
-                      ● {s.status}
-                    </span>
-                  </td>
-                  {canManage && (
-                    <td className="py-3 px-6 text-right">
-                      <div className="inline-flex gap-1">
-                        <button
-                          onClick={() => setEditing(s)}
-                          className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-blue-400"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          disabled={busyId === s.id}
-                          onClick={() => remove(s)}
-                          className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400 disabled:opacity-50"
-                          title="Delete"
-                        >
-                          {busyId === s.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <AdminTable<ProxyServer>
+        columns={columns}
+        rows={initial}
+        getRowKey={(s) => s.id}
+        empty={
+          <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
+            <Globe className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+            <h3 className="text-lg font-medium text-white mb-1">
+              No proxy servers
+            </h3>
+            <p className="text-sm text-slate-400">
+              Add country-specific proxy servers for proxy tasks.
+            </p>
+          </div>
+        }
+      />
 
       {showCreate && <ServerModal onClose={() => setShowCreate(false)} />}
       {editing && (
