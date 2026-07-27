@@ -14,6 +14,7 @@ import {
   Lock,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { RenderedContent } from "@/components/user/feed/feed-content";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { toast } from "sonner";
@@ -373,7 +374,9 @@ function PostsTab({ userId }: { userId: string }) {
       {items.map((p) => (
         <div key={p.id} className="glass p-4">
           {p.content && (
-            <p className="text-sm text-gray-200 whitespace-pre-wrap">{p.content}</p>
+            <p className="text-sm text-gray-200 whitespace-pre-wrap">
+              <RenderedContent content={p.content} />
+            </p>
           )}
           {p.images.length > 0 && (
             // eslint-disable-next-line @next/next/no-img-element

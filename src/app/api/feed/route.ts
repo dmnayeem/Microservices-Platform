@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10) || 20, 1), 100);
     const userId = searchParams.get("userId"); // For user profile posts
     const groupId = searchParams.get("groupId"); // For group-filtered feed
+    const tag = searchParams.get("tag"); // Hashtag feed (without leading '#')
+    const search = searchParams.get("search"); // Free-text content search
     const skip = (page - 1) * limit;
 
     // Build query
@@ -29,6 +31,19 @@ export async function GET(request: NextRequest) {
     }
     if (groupId) {
       where.groupId = groupId;
+    }
+    // Hashtag / free-text filters. There's no hashtag index, so this is a
+    // case-insensitive substring match against post content ("#tag" for tags).
+    if (tag) {
+      const clean = tag.replace(/^#/, "").slice(0, 50);
+      if (clean) {
+        where.content = { contains: `#${clean}`, mode: "insensitive" };
+      }
+    } else if (search) {
+      const q = search.trim().slice(0, 100);
+      if (q) {
+        where.content = { contains: q, mode: "insensitive" };
+      }
     }
 
     // Get posts. Sort priority:
@@ -57,7 +72,7 @@ export async function GET(request: NextRequest) {
     type FeedPost = (typeof posts)[number];
     let announcements: FeedPost[] = [];
     let promoted: FeedPost[] = [];
-    if (page === 1 && !userId && !groupId) {
+    if (page === 1 && !userId && !groupId && !tag && !search) {
       [announcements, promoted] = await Promise.all([
         prisma.post.findMany({
           where: { ...where, isAnnouncement: true },

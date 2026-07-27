@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Loader2, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeedComment } from "./social-feed-view.types";
+import { RenderedContent } from "./feed-content";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Comments
@@ -115,7 +116,9 @@ export function CommentsSection({
           <p className="text-xs font-semibold text-white">
             {c.user?.name ?? "Anonymous"}
           </p>
-          <p className="text-sm text-gray-200 mt-0.5 break-words">{c.content}</p>
+          <p className="text-sm text-gray-200 mt-0.5 break-words">
+            <RenderedContent content={c.content} />
+          </p>
           <div className="flex items-center gap-3 mt-1">
             <p className="text-[10px] text-gray-500">
               {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}

@@ -452,9 +452,12 @@ export function FeedRightRail({
           <ul className="space-y-2">
             {trendingHashtags.map((h) => (
               <li key={h.tag} className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-indigo-300 truncate">
+                <Link
+                  href={`/hashtag/${encodeURIComponent(h.tag.replace(/^#/, ""))}`}
+                  className="text-sm font-semibold text-indigo-300 hover:text-indigo-200 hover:underline truncate"
+                >
                   {h.tag}
-                </span>
+                </Link>
                 {h.count > 0 && (
                   <span className="text-[11px] text-gray-500 tabular-nums shrink-0">
                     {h.count} posts

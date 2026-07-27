@@ -17,6 +17,7 @@ import {
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
+import { RenderedContent } from "@/components/user/feed/feed-content";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -357,7 +358,7 @@ export function GroupDetailView({ groupId }: Props) {
               </div>
               {p.content && (
                 <p className="mt-2 text-sm text-gray-200 whitespace-pre-wrap wrap-break-word">
-                  {p.content}
+                  <RenderedContent content={p.content} />
                 </p>
               )}
               {p.images?.[0] && (

@@ -4,8 +4,21 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RenderedContent — splits text by @mentions and turns them into Links to /u/<id>
+// RenderedContent — links URLs, @mentions, and #hashtags in post text
 // ─────────────────────────────────────────────────────────────────────────────
+// Matches a URL, an @mention, or a #hashtag (Unicode letters/digits/_). One
+// combined pass so the three don't clobber each other; gaps go to renderFormatted.
+const ENTITY_RE =
+  /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]{2,30})|#([\p{L}\p{N}_]{2,50})/gu;
+// Trailing punctuation that should NOT be part of a matched URL.
+const URL_TRAILING_RE = /[.,;:!?)\]}'"]+$/;
+
+/** Compact display label for a URL (drop protocol + trailing slash, cap length). */
+function urlLabel(url: string): string {
+  let s = url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+  if (s.length > 50) s = s.slice(0, 48) + "…";
+  return s;
+}
 // Render **bold** and *italic* markdown within a plain-text chunk as React nodes
 // (no HTML injection). Used between @mention segments in RenderedContent.
 export function renderFormatted(text: string, keyPrefix: string): React.ReactNode[] {
@@ -74,31 +87,76 @@ export function RenderedContent({ content }: { content: string }) {
     };
   }, [content]);
 
-  // Split content
+  // Split content by URL / @mention / #hashtag; render each; gaps → renderFormatted.
   const parts: React.ReactNode[] = [];
   let lastIdx = 0;
   let key = 0;
-  for (const m of content.matchAll(/@([a-zA-Z0-9_]{2,30})/g)) {
+  for (const m of content.matchAll(ENTITY_RE)) {
     const start = m.index ?? 0;
-    const username = m[1];
+    const [, urlRaw, username, tag] = m;
+
+    // URL: trim trailing punctuation (kept in the following text), validate scheme.
+    const matchLen = m[0].length;
+    if (urlRaw) {
+      const trailing = urlRaw.match(URL_TRAILING_RE)?.[0] ?? "";
+      const url = trailing ? urlRaw.slice(0, -trailing.length) : urlRaw;
+      let valid = false;
+      try {
+        const u = new URL(url);
+        valid = u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        valid = false;
+      }
+      if (!valid) continue; // leave it to be rendered as plain text by the gap
+      if (start > lastIdx) {
+        parts.push(...renderFormatted(content.slice(lastIdx, start), `p${key++}`));
+      }
+      parts.push(
+        <a
+          key={key++}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="text-indigo-400 hover:text-indigo-300 hover:underline break-all"
+        >
+          {urlLabel(url)}
+        </a>
+      );
+      lastIdx = start + (matchLen - trailing.length);
+      continue;
+    }
+
     if (start > lastIdx) {
       parts.push(...renderFormatted(content.slice(lastIdx, start), `p${key++}`));
     }
-    const userId = mentionMap[username.toLowerCase()];
-    if (userId) {
+
+    if (username) {
+      const userId = mentionMap[username.toLowerCase()];
+      parts.push(
+        userId ? (
+          <Link
+            key={key++}
+            href={`/u/${encodeURIComponent(username)}`}
+            className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold"
+          >
+            @{username}
+          </Link>
+        ) : (
+          <span key={key++}>@{username}</span>
+        )
+      );
+    } else if (tag) {
       parts.push(
         <Link
           key={key++}
-          href={`/u/${encodeURIComponent(username)}`}
-          className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold"
+          href={`/hashtag/${encodeURIComponent(tag)}`}
+          className="text-indigo-400 hover:text-indigo-300 hover:underline"
         >
-          @{username}
+          #{tag}
         </Link>
       );
-    } else {
-      parts.push(<span key={key++}>@{username}</span>);
     }
-    lastIdx = start + m[0].length;
+    lastIdx = start + matchLen;
   }
   if (lastIdx < content.length) {
     parts.push(...renderFormatted(content.slice(lastIdx), `p${key++}`));

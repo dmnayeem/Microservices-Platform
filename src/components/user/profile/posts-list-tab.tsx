@@ -10,6 +10,7 @@ import {
   Share2,
 } from "lucide-react";
 import type { ApiPost } from "./profile-view.types";
+import { RenderedContent } from "../feed/feed-content";
 
 export function PostsListTab({ userId }: { userId: string }) {
   const [items, setItems] = useState<ApiPost[]>([]);
@@ -64,7 +65,7 @@ export function PostsListTab({ userId }: { userId: string }) {
           )}
           {p.content && (
             <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
-              {p.content}
+              <RenderedContent content={p.content} />
             </p>
           )}
           {p.images.length > 0 && (
