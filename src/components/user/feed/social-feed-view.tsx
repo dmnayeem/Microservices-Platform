@@ -47,6 +47,8 @@ export function SocialFeedView({
   quickEarn,
   customWidgets,
   canBoost,
+  canShareLinks,
+  canShareYouTube,
 }: Props) {
   const [tab, setTab] = useState<ViewTab>("feed");
   const [sort, setSort] = useState<Sort>("recent");
@@ -96,6 +98,8 @@ export function SocialFeedView({
             sort={sort}
             onSortChange={setSort}
             canBoost={canBoost}
+            canShareLinks={canShareLinks}
+            canShareYouTube={canShareYouTube}
           />
         )}
 
@@ -131,6 +135,8 @@ function FeedTab({
   sort,
   onSortChange,
   canBoost,
+  canShareLinks,
+  canShareYouTube,
 }: {
   user: SessionUser;
   initialTicker: WithdrawalTickerItem[];
@@ -138,6 +144,8 @@ function FeedTab({
   sort: Sort;
   onSortChange: (s: Sort) => void;
   canBoost?: boolean;
+  canShareLinks?: boolean;
+  canShareYouTube?: boolean;
 }) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +287,12 @@ function FeedTab({
         />
       )}
 
-      <CreatePostComposer user={user} onCreated={handlePostCreated} />
+      <CreatePostComposer
+        user={user}
+        onCreated={handlePostCreated}
+        canShareLinks={canShareLinks}
+        canShareYouTube={canShareYouTube}
+      />
 
       {/* Sort toggle */}
       <div className="flex items-center justify-end">

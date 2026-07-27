@@ -15,6 +15,7 @@ import {
   Italic as ItalicIcon,
   Smile,
   Palette,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -49,9 +50,15 @@ function firstUrlInText(text: string): string | null {
 export function CreatePostComposer({
   user,
   onCreated,
+  canShareLinks = false,
+  canShareYouTube = false,
 }: {
   user: SessionUser;
   onCreated: (post: FeedPost) => void;
+  /** Admin-granted: may post plain links (else blocked + preview hidden). */
+  canShareLinks?: boolean;
+  /** Admin-granted: may post YouTube/video links. */
+  canShareYouTube?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<ComposerMode>("text");
@@ -84,12 +91,18 @@ export function CreatePostComposer({
   const previewSuppressed =
     previewDismissed && dismissedUrlRef.current === currentUrl;
   const currentUrlIsVideo = !!currentUrl && isEmbeddableVideoUrl(currentUrl);
+  // Is the author allowed to share this URL? Video → shareYouTube, else shareLinks.
+  const linkAllowed = !currentUrl
+    ? true
+    : currentUrlIsVideo
+      ? canShareYouTube
+      : canShareLinks;
 
   // Debounced link-preview fetch. All state writes live inside the timeout
   // callback (never synchronously in the effect body) so we don't trigger
   // react-hooks/set-state-in-effect, and so typing feels smooth.
   useEffect(() => {
-    if (!currentUrl || previewSuppressed || currentUrlIsVideo) {
+    if (!currentUrl || previewSuppressed || currentUrlIsVideo || !linkAllowed) {
       const timer = setTimeout(() => {
         // Clear any stale card once the URL is gone / superseded.
         if (previewedUrlRef.current !== currentUrl) {
@@ -112,7 +125,7 @@ export function CreatePostComposer({
         .finally(() => setPreviewLoading(false));
     }, 600);
     return () => clearTimeout(timer);
-  }, [currentUrl, previewSuppressed, currentUrlIsVideo]);
+  }, [currentUrl, previewSuppressed, currentUrlIsVideo, linkAllowed]);
 
   const dismissPreview = () => {
     dismissedUrlRef.current = currentUrl;
@@ -229,6 +242,16 @@ export function CreatePostComposer({
   const submit = async () => {
     if (!content.trim()) {
       toast.error("Write something first");
+      return;
+    }
+    // Hard-block a link the user isn't allowed to share (mirrors the server gate).
+    if (currentUrl && !linkAllowed) {
+      toast.error(
+        currentUrlIsVideo
+          ? "Sharing YouTube/video links isn't enabled for your account"
+          : "Sharing links isn't enabled for your account",
+        { description: "Ask an admin to enable it for you." }
+      );
       return;
     }
     if (mode === "poll") {
@@ -471,9 +494,23 @@ export function CreatePostComposer({
             </div>
           )}
 
+          {/* Permission notice — a URL the user isn't allowed to share. */}
+          {currentUrl && !linkAllowed && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
+              <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>
+                {currentUrlIsVideo
+                  ? "Sharing YouTube/video links isn't enabled for your account."
+                  : "Sharing links isn't enabled for your account."}{" "}
+                Ask an admin to enable it.
+              </span>
+            </div>
+          )}
+
           {/* Link preview (Facebook-style) — video plays inline, else an OG
-              card; both dismissable via ×. Hidden when an image is attached. */}
-          {currentUrl && !previewSuppressed && (
+              card; both dismissable via ×. Hidden when an image is attached or
+              the user lacks link-sharing permission. */}
+          {currentUrl && linkAllowed && !previewSuppressed && (
             currentUrlIsVideo ? (
               <div className="relative mt-3">
                 <InlineVideoEmbed url={currentUrl} />

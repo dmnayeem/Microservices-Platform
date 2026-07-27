@@ -57,6 +57,8 @@ export interface PackageFormPkg {
   sellCoursesEnabled: boolean;
   sellMarketplaceEnabled: boolean;
   agencyModeEnabled: boolean;
+  shareLinksEnabled: boolean;
+  shareYoutubeEnabled: boolean;
 
   // Per-task-type toggles
   socialTasksEnabled: boolean;
@@ -123,6 +125,8 @@ const CREATOR_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip
   { key: "sellCoursesEnabled", label: "Sell Courses / Tutor", tooltip: "Lets users create & sell courses (tutor tools)." },
   { key: "sellMarketplaceEnabled", label: "Sell on Marketplace", tooltip: "Lets users list & sell items on the marketplace." },
   { key: "agencyModeEnabled", label: "Agency / Moderator Mode", tooltip: "Unlocks the agency console / moderator capabilities." },
+  { key: "shareLinksEnabled", label: "Share Links in Posts", tooltip: "Lets users post clickable links (with previews) in the social feed." },
+  { key: "shareYoutubeEnabled", label: "Share YouTube / Video Links", tooltip: "Lets users post YouTube/Vimeo/video links that play inline in the feed." },
 ];
 
 // Per-task-type toggles (right grid). Each gates a TaskType in /api/tasks/*.

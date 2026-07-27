@@ -41,6 +41,14 @@ const PLAN_PATCH = z
     gamesEnabled: z.boolean().optional(),
     adFree: z.boolean().optional(),
 
+    // Creator / monetization capabilities
+    createTasksEnabled: z.boolean().optional(),
+    sellCoursesEnabled: z.boolean().optional(),
+    sellMarketplaceEnabled: z.boolean().optional(),
+    agencyModeEnabled: z.boolean().optional(),
+    shareLinksEnabled: z.boolean().optional(),
+    shareYoutubeEnabled: z.boolean().optional(),
+
     socialTasksEnabled: z.boolean().optional(),
     proxyTasksEnabled: z.boolean().optional(),
     articleTasksEnabled: z.boolean().optional(),

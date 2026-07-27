@@ -94,6 +94,8 @@ export default async function SocialPage() {
     ]);
 
   const canBoost = effectiveFeatures.enabled.has("boost");
+  const canShareLinks = effectiveFeatures.enabled.has("shareLinks");
+  const canShareYouTube = effectiveFeatures.enabled.has("shareYouTube");
 
   const quickEarn = normalizeQuickEarn(quickEarnRaw);
   const customWidgets = normalizeCustomWidgets(customWidgetsRaw);
@@ -164,6 +166,8 @@ export default async function SocialPage() {
       customWidgets={customWidgets}
       initialTicker={tickerPayload?.items ?? []}
       canBoost={canBoost}
+      canShareLinks={canShareLinks}
+      canShareYouTube={canShareYouTube}
       tickerConfig={
         tickerPayload
           ? {

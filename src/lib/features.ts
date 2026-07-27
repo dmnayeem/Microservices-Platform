@@ -24,6 +24,8 @@ export type PackageFeatureKey =
   | "sellCourses"
   | "sellMarketplace"
   | "agencyMode"
+  | "shareLinks"
+  | "shareYouTube"
   // Per-task-type
   | "socialTasks"
   | "proxyTasks"
@@ -50,6 +52,8 @@ export const FEATURE_TO_COLUMN: Record<PackageFeatureKey, string> = {
   sellCourses: "sellCoursesEnabled",
   sellMarketplace: "sellMarketplaceEnabled",
   agencyMode: "agencyModeEnabled",
+  shareLinks: "shareLinksEnabled",
+  shareYouTube: "shareYoutubeEnabled",
   socialTasks: "socialTasksEnabled",
   proxyTasks: "proxyTasksEnabled",
   articleTasks: "articleTasksEnabled",
@@ -87,6 +91,8 @@ export const FEATURES: {
   { key: "sellCourses", label: "Sell Courses / Tutor", group: "creator" },
   { key: "sellMarketplace", label: "Sell on Marketplace", group: "creator" },
   { key: "agencyMode", label: "Agency / Moderator Mode", group: "creator" },
+  { key: "shareLinks", label: "Share Links in Posts", group: "creator" },
+  { key: "shareYouTube", label: "Share YouTube / Video Links", group: "creator" },
   { key: "socialTasks", label: "Social Tasks", group: "task" },
   { key: "proxyTasks", label: "Proxy Tasks", group: "task" },
   { key: "articleTasks", label: "Article Tasks", group: "task" },

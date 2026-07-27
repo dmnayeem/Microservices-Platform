@@ -1310,7 +1310,7 @@ model Package {
   referralsEnabled    Boolean @default(true)
   withdrawalsEnabled  Boolean @default(true)
   marketplaceEnabled  Boolean @default(true)
-  boostEnabled        Boolean @default(true)
+  boostEnabled        Boolean @default(false)
   dailyMissionEnabled Boolean @default(true)
   lotteryEnabled      Boolean @default(true)
   coursesEnabled      Boolean @default(true)
@@ -1322,6 +1322,9 @@ model Package {
   sellCoursesEnabled     Boolean @default(false)
   sellMarketplaceEnabled Boolean @default(false)
   agencyModeEnabled      Boolean @default(false)
+  // Post-composer sharing capabilities — default OFF (granted per-user by admin)
+  shareLinksEnabled      Boolean @default(false)
+  shareYoutubeEnabled    Boolean @default(false)
 
   // Per-task-type toggles
   socialTasksEnabled    Boolean @default(true)

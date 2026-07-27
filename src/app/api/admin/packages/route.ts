@@ -37,6 +37,14 @@ const PLAN_INPUT = z
     gamesEnabled: z.boolean().optional(),
     adFree: z.boolean().optional(),
 
+    // Creator / monetization capabilities
+    createTasksEnabled: z.boolean().optional(),
+    sellCoursesEnabled: z.boolean().optional(),
+    sellMarketplaceEnabled: z.boolean().optional(),
+    agencyModeEnabled: z.boolean().optional(),
+    shareLinksEnabled: z.boolean().optional(),
+    shareYoutubeEnabled: z.boolean().optional(),
+
     // Per-task-type toggles
     socialTasksEnabled: z.boolean(),
     proxyTasksEnabled: z.boolean(),
@@ -172,6 +180,13 @@ export async function POST(req: NextRequest) {
         advertiserEnabled: data.advertiserEnabled ?? true,
         gamesEnabled: data.gamesEnabled ?? true,
         adFree: data.adFree ?? false,
+
+        createTasksEnabled: data.createTasksEnabled ?? false,
+        sellCoursesEnabled: data.sellCoursesEnabled ?? false,
+        sellMarketplaceEnabled: data.sellMarketplaceEnabled ?? false,
+        agencyModeEnabled: data.agencyModeEnabled ?? false,
+        shareLinksEnabled: data.shareLinksEnabled ?? false,
+        shareYoutubeEnabled: data.shareYoutubeEnabled ?? false,
 
         socialTasksEnabled: data.socialTasksEnabled,
         proxyTasksEnabled: data.proxyTasksEnabled,

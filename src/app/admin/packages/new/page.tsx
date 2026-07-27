@@ -33,7 +33,7 @@ export default async function NewPackagePage() {
     referralsEnabled: true,
     withdrawalsEnabled: true,
     marketplaceEnabled: true,
-    boostEnabled: true,
+    boostEnabled: false,
     dailyMissionEnabled: true,
     lotteryEnabled: true,
     coursesEnabled: true,
@@ -45,6 +45,8 @@ export default async function NewPackagePage() {
     sellCoursesEnabled: false,
     sellMarketplaceEnabled: false,
     agencyModeEnabled: false,
+    shareLinksEnabled: false,
+    shareYoutubeEnabled: false,
 
     socialTasksEnabled: true,
     proxyTasksEnabled: true,

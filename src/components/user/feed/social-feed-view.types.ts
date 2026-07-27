@@ -103,6 +103,8 @@ export interface Props {
   quickEarn?: QuickEarnTile[];
   customWidgets?: CustomWidget[];
   canBoost?: boolean;
+  canShareLinks?: boolean;
+  canShareYouTube?: boolean;
 }
 
 export type ViewTab = "feed" | "groups";

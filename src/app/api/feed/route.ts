@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
-import { getEffectivePackage } from "@/lib/packages";
+import { getEffectivePackage, userCanFeature } from "@/lib/packages";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { isValidPostBackground } from "@/lib/post-backgrounds";
 import { fetchLinkPreview, firstUrl } from "@/lib/link-preview";
+import { isEmbeddableVideoUrl } from "@/lib/video-url";
 import type { Prisma } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
@@ -278,6 +279,29 @@ export async function POST(request: NextRequest) {
         { error: "Post content cannot exceed 2000 characters" },
         { status: 400 }
       );
+    }
+
+    // Link/video sharing is an admin-granted capability for normal users. A URL
+    // in the post requires shareLinks (plain link) or shareYouTube (YouTube/
+    // Vimeo/video). Privileged roles (admins/staff) bypass this gate.
+    const role = session.user.role;
+    const isPrivileged = !!role && role !== "USER" && role !== "user";
+    if (!isPrivileged) {
+      const urlInContent = firstUrl(content.trim());
+      if (urlInContent) {
+        const isVideo = isEmbeddableVideoUrl(urlInContent);
+        const need = isVideo ? "shareYouTube" : "shareLinks";
+        if (!(await userCanFeature(session.user.id, need))) {
+          return NextResponse.json(
+            {
+              error: isVideo
+                ? "Sharing YouTube/video links isn't enabled for your account. Ask an admin to enable it."
+                : "Sharing links isn't enabled for your account. Ask an admin to enable it.",
+            },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Per-plan daily post limit (-1 = unlimited).
