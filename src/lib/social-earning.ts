@@ -15,6 +15,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
+import { getUserDayContext } from "@/lib/user-day";
 import {
   TransactionStatus,
   TransactionType,
@@ -240,15 +241,6 @@ export function invalidateSocialEarningCache() {
   _cached = null;
 }
 
-function utcDateKey(d = new Date()): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function utcStartOfDay(d = new Date()): Date {
-  const x = new Date(d);
-  x.setUTCHours(0, 0, 0, 0);
-  return x;
-}
 
 const ACTION_DESCRIPTION_RECIPIENT: Record<SocialAction, string> = {
   POST_CREATE: "Created a post",
@@ -375,7 +367,9 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
     }
   }
 
-  const todayStart = utcStartOfDay();
+  // Daily caps reset at the credited user's LOCAL midnight (country-based).
+  const day = await getUserDayContext(userId);
+  const todayStart = day.startOfDayUtc;
 
   // Daily points cap
   const dailyPts = await prisma.transaction.aggregate({
@@ -437,7 +431,7 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
   const reference =
     ctx.referenceOverride ??
     (action === "POST_CREATE"
-      ? `social_post_${role}_${userId}_${utcDateKey()}`
+      ? `social_post_${role}_${userId}_${day.dayKey}`
       : `social_${action.toLowerCase()}_${role}_${postId ?? "_"}_${sourceUserId ?? "_"}`);
 
   // Pre-flight duplicate check (the reference field is not unique on Transaction
@@ -572,13 +566,16 @@ export async function awardSocialEarning(
   if ((cfg.countTowardDailyMissions || batchRewardOn) && actorUserId) {
     const logAction = ACTOR_LOG_ACTION[action];
     if (logAction) {
+      // Key the log by the actor's LOCAL day so daily-mission progress reads it
+      // with the same boundary (buildDailyProgress uses the same context).
+      const { dayKey: dateKey } = await getUserDayContext(actorUserId);
       try {
         await prisma.socialActionLog.create({
           data: {
             userId: actorUserId,
             action: logAction,
             postId: postId ?? null,
-            dateKey: utcDateKey(),
+            dateKey,
           },
         });
       } catch (err) {

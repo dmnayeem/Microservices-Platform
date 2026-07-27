@@ -5,10 +5,7 @@ import {
   buildDailyProgress,
   resolveTaskTypeBucket,
 } from "@/lib/daily-mission-progress";
-
-function utcDateKey(d = new Date()): string {
-  return d.toISOString().slice(0, 10);
-}
+import { getUserDayContext, localDayKeyDaysAgo } from "@/lib/user-day";
 
 export async function GET() {
   const session = await auth();
@@ -62,7 +59,7 @@ export async function GET() {
   };
   const mission = missionRaw as typeof missionRaw & { items: ItemRow[] };
 
-  const today = utcDateKey();
+  const { dayKey: today, tz } = await getUserDayContext(userId);
   const countByType = await buildDailyProgress(userId, mission.items);
 
   const itemsWithProgress = mission.items.map((it) => {
@@ -109,13 +106,10 @@ export async function GET() {
     });
     const seen = new Set(recent.map((r) => r.date));
     let s = 0;
-    const cursor = new Date();
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
     for (let i = 0; i < 30; i++) {
-      const k = utcDateKey(cursor);
-      if (seen.has(k)) {
+      // Walk back over the user's LOCAL days (yesterday, day-before, …).
+      if (seen.has(localDayKeyDaysAgo(tz, i + 1))) {
         s += 1;
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
       } else {
         break;
       }

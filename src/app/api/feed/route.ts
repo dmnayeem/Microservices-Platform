@@ -13,6 +13,7 @@ import {
   POOL_SIZE,
   type RankablePost,
 } from "@/lib/feed-ranking";
+import { getUserDayContext } from "@/lib/user-day";
 import type { Prisma, Post } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
@@ -357,10 +358,9 @@ export async function POST(request: NextRequest) {
     const pkg = await getEffectivePackage(session.user.id);
     const dailyPostLimit = pkg?.dailyPostLimit ?? -1;
     if (dailyPostLimit !== -1) {
-      // Use UTC day boundary to match how every other daily counter here
-      // (AI usage, mission logs) keys its day — avoids a server-timezone skew.
-      const dayStart = new Date();
-      dayStart.setUTCHours(0, 0, 0, 0);
+      // Day boundary is the user's LOCAL midnight so the reset matches what the
+      // user experiences, not the server's UTC day.
+      const { startOfDayUtc: dayStart } = await getUserDayContext(session.user.id);
       const postsToday = await prisma.post.count({
         where: { userId: session.user.id, createdAt: { gte: dayStart } },
       });

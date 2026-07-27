@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateTaskQuiz, isGeminiConfigured } from "@/lib/gemini";
 import { TaskType, TaskStatus } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
+import { getUserDayContext } from "@/lib/user-day";
 
 // GET /api/tasks/quiz - Get quiz for a specific task or generate new one
 export async function GET(request: NextRequest) {
@@ -137,9 +138,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already submitted today
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Check if user already submitted today — boundary is the user's LOCAL midnight.
+    const { startOfDayUtc: todayStart } = await getUserDayContext(session.user.id);
 
     const existingSubmission = await prisma.taskSubmission.findFirst({
       where: {

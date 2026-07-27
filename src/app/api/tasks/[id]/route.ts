@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserDayContext } from "@/lib/user-day";
 
 // GET /api/tasks/:id - Get single task details
 export async function GET(
@@ -44,9 +45,9 @@ export async function GET(
 
     // Count today's submissions for this user (used for dailyLimit gate).
     // Statuses APPROVED/AUTO_APPROVED/PENDING all consume a daily slot —
-    // matches the legacy /api/tasks/[id]/start convention.
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // matches the legacy /api/tasks/[id]/start convention. Boundary is the
+    // user's LOCAL midnight.
+    const { startOfDayUtc: todayStart } = await getUserDayContext(session.user.id);
 
     const todayCount = await prisma.taskSubmission.count({
       where: {

@@ -17,21 +17,12 @@
 import { prisma } from "@/lib/prisma";
 import { SubmissionStatus, TaskType } from "@/generated/prisma/client";
 import { getSocialEarningConfig } from "@/lib/social-earning";
+import { getUserDayContext } from "@/lib/user-day";
 
 const TASK_TYPE_VALUES = new Set(Object.values(TaskType));
 
 interface MissionItemForCount {
   taskType: string;
-}
-
-function utcDateKey(d = new Date()): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function utcStartOfDay(d = new Date()): Date {
-  const x = new Date(d);
-  x.setUTCHours(0, 0, 0, 0);
-  return x;
 }
 
 /** Map a mission item taskType to the bucket used by countByType. */
@@ -62,8 +53,9 @@ export async function buildDailyProgress(
   userId: string,
   items: MissionItemForCount[]
 ): Promise<Record<string, number>> {
-  const todayStart = utcStartOfDay();
-  const today = utcDateKey();
+  // Reset boundary is the user's LOCAL midnight (country-based), not UTC.
+  const { dayKey: today, startOfDayUtc: todayStart } =
+    await getUserDayContext(userId);
 
   // Source 1: TaskSubmission counts (existing behaviour)
   const submissions = await prisma.taskSubmission.findMany({

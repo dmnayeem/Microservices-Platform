@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
+import { getUserDayContext } from "@/lib/user-day";
 
 const CRITERIA = { tasksToday: 5, earningsToday: 1 };
 const REWARD = { points: 500, xp: 100 };
@@ -15,10 +16,10 @@ export async function POST(request: NextRequest) {
   return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  // "Today" is the user's LOCAL day (country-based).
+  const { dayKey: todayKey, startOfDayUtc: todayStart } =
+    await getUserDayContext(userId);
+  const tomorrowStart = new Date(todayStart.getTime() + 86_400_000);
 
   const [tasksToday, earnTransactions, claimedToday] = await Promise.all([
     prisma.taskSubmission.count({
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
         points: REWARD.points,
         description: "Solo reward (daily)",
         // Per-day idempotency key (backs up the auditLog "already claimed" guard).
-        reference: `solo_${todayStart.toISOString().slice(0, 10)}`,
+        reference: `solo_${todayKey}`,
       },
     }),
     prisma.auditLog.create({

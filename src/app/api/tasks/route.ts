@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TaskStatus, TaskType } from "@/generated/prisma";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
+import { getUserDayContext } from "@/lib/user-day";
 
 import type { PackageFeatureKey } from "@/lib/packages";
 
@@ -73,9 +74,9 @@ export async function GET(request: NextRequest) {
 
     const accessLevel = userPackage?.accessLevel ?? 0;
 
-    // Get user's completed tasks today for daily limit check
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Get user's completed tasks today for daily limit check — boundary is the
+    // user's LOCAL midnight.
+    const { startOfDayUtc: todayStart } = await getUserDayContext(session.user.id);
 
     // Daily-limit counting — only states that consume a daily slot, today.
     const countingSubs = await prisma.taskSubmission.findMany({

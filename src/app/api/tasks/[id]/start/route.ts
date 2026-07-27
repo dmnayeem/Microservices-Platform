@@ -10,6 +10,7 @@ import {
 } from "@/lib/packages";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { isProfileComplete } from "@/lib/profile-completion";
+import { getUserDayContext } from "@/lib/user-day";
 
 const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
   SOCIAL: "socialTasks",
@@ -146,10 +147,12 @@ export async function POST(
       }
     }
 
+    // Day boundary for all daily counters below — the user's LOCAL midnight,
+    // computed once and reused (both the plan-wide and per-task daily limits).
+    const { startOfDayUtc: dayStart } = await getUserDayContext(session.user.id);
+
     // Plan-level dailyTaskLimit (across all tasks today).
     if (userPackage && userPackage.dailyTaskLimit !== -1) {
-      const dayStart = new Date();
-      dayStart.setHours(0, 0, 0, 0);
       const totalToday = await prisma.taskSubmission.count({
         where: {
           userId: session.user.id,
@@ -176,14 +179,11 @@ export async function POST(
     }
 
     // Per-task daily limit (admin-set on the task itself)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
     const todaySubmissions = await prisma.taskSubmission.count({
       where: {
         taskId: id,
         userId: session.user.id,
-        createdAt: { gte: todayStart },
+        createdAt: { gte: dayStart },
         status: { in: ["APPROVED", "AUTO_APPROVED", "PENDING"] },
       },
     });

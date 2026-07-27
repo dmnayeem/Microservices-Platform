@@ -9,6 +9,11 @@ import {
 import { getEffectivePackage } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import {
+  getUserDayContext,
+  localDayKey,
+  localDayKeyDaysAgo,
+} from "@/lib/user-day";
 
 // Daily reward configuration (points per streak day)
 const DAILY_REWARDS = [
@@ -44,28 +49,21 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if user can claim today's reward
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lastClaim = user.lastCheckIn ? new Date(user.lastCheckIn) : null;
+    // Reset boundary is the user's LOCAL day (country-based), not UTC/server.
+    const { dayKey: todayKey, tz, startOfDayUtc } = await getUserDayContext(
+      session.user.id
+    );
+    const lastKey = user.lastCheckIn
+      ? localDayKey(tz, new Date(user.lastCheckIn))
+      : null;
     let canClaim = true;
     let currentStreak = user.streak || 0;
 
-    if (lastClaim) {
-      const lastClaimDay = new Date(lastClaim);
-      lastClaimDay.setHours(0, 0, 0, 0);
-
-      const daysSinceLastClaim = Math.floor(
-        (today.getTime() - lastClaimDay.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      if (daysSinceLastClaim === 0) {
-        // Already claimed today
-        canClaim = false;
-      } else if (daysSinceLastClaim > 1) {
-        // Streak broken - reset to day 1
-        currentStreak = 0;
+    if (lastKey) {
+      if (lastKey === todayKey) {
+        canClaim = false; // already claimed today
+      } else if (lastKey !== localDayKeyDaysAgo(tz, 1)) {
+        currentStreak = 0; // missed a day → streak broken
       }
     }
 
@@ -73,9 +71,8 @@ export async function GET() {
     const nextRewardDay = (currentStreak % 7) + 1;
     const nextReward = DAILY_REWARDS[nextRewardDay - 1];
 
-    // Calculate time until next reward (if already claimed today)
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Time until the user's next local midnight.
+    const tomorrow = new Date(startOfDayUtc.getTime() + 86_400_000);
     const timeUntilNextReward = canClaim
       ? 0
       : tomorrow.getTime() - Date.now();
@@ -133,38 +130,26 @@ export async function POST() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if already claimed today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lastClaim = user.lastCheckIn ? new Date(user.lastCheckIn) : null;
+    // Reset boundary is the user's LOCAL day (country-based), not UTC/server.
+    const { dayKey: todayKey, tz } = await getUserDayContext(session.user.id);
+    const lastKey = user.lastCheckIn
+      ? localDayKey(tz, new Date(user.lastCheckIn))
+      : null;
     let newStreak = user.streak || 0;
 
-    if (lastClaim) {
-      const lastClaimDay = new Date(lastClaim);
-      lastClaimDay.setHours(0, 0, 0, 0);
-
-      const daysSinceLastClaim = Math.floor(
-        (today.getTime() - lastClaimDay.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      if (daysSinceLastClaim === 0) {
+    if (lastKey) {
+      if (lastKey === todayKey) {
         return NextResponse.json(
           { error: "Daily reward already claimed today" },
           { status: 400 }
         );
       }
-
-      if (daysSinceLastClaim > 1) {
-        // Streak broken - reset
-        newStreak = 0;
+      if (lastKey !== localDayKeyDaysAgo(tz, 1)) {
+        newStreak = 0; // missed a day → streak broken
       }
     }
-
-    // Per-day idempotency key (matches the local-day "already claimed" guard
-    // above) so the (userId, reference) unique enforces one daily reward per day
-    // even if two claims race past the lastCheckIn check.
-    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    // The per-day idempotency ref uses the same local day-key so the
+    // (userId, reference) unique enforces one reward per local day.
 
     // Calculate reward for current day
     const rewardDay = (newStreak % 7) + 1;

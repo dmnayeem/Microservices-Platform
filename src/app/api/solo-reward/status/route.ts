@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
+import { getUserDayContext } from "@/lib/user-day";
 
 // Solo reward unlocks daily once user meets criteria
 const CRITERIA = {
@@ -24,10 +25,9 @@ export async function GET() {
   }
   const userId = session.user.id;
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  // "Today" is the user's LOCAL day (country-based).
+  const { startOfDayUtc: todayStart } = await getUserDayContext(userId);
+  const tomorrowStart = new Date(todayStart.getTime() + 86_400_000);
 
   // Compute today's activity
   const [tasksToday, earnTransactions] = await Promise.all([

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { isGeminiConfigured, generateText } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
+import { getUserDayContext } from "@/lib/user-day";
 
 const schema = z.object({ prompt: z.string().min(3).max(4000) });
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
   // Settings can round-trip as strings, so coerce before comparing.
   const rawLimit = await getSetting<number>("ai.daily_limit_per_user", 50);
   const limit = Number(rawLimit);
-  const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const { dayKey: dateKey } = await getUserDayContext(session.user.id); // YYYY-MM-DD (user-local)
   const rateLimited = Number.isFinite(limit) && limit > 0;
   if (rateLimited) {
     const existing = await prisma.aiUsageDaily.findUnique({

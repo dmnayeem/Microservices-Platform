@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { SubmissionStatus } from "@/generated/prisma/client";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import { signArticleTaskToken } from "@/lib/article-task-token";
+import { getUserDayContext } from "@/lib/user-day";
 
 /**
  * POST /api/article-tasks/[taskId]/start
@@ -70,9 +71,8 @@ export async function POST(
       );
     }
 
-    // dailyLimit (per user, midnight-to-midnight in server tz)
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // dailyLimit (per user, midnight-to-midnight in the user's LOCAL tz)
+    const { startOfDayUtc: todayStart } = await getUserDayContext(session.user.id);
     const todayCount = await prisma.taskSubmission.count({
       where: {
         taskId: task.id,

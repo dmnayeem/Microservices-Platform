@@ -5,6 +5,11 @@ import {
   buildDailyProgress,
   resolveTaskTypeBucket,
 } from "@/lib/daily-mission-progress";
+import {
+  getUserDayContext,
+  localDayKey,
+  localDayKeyDaysAgo,
+} from "@/lib/user-day";
 
 /**
  * One-shot summary for the social feed right rail's earn widgets — merges the
@@ -35,8 +40,8 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // All daily boundaries use the user's LOCAL midnight (country-based).
+  const { startOfDayUtc, dayKey: todayKey, tz } = await getUserDayContext(userId);
 
   const todayAgg = await prisma.transaction.aggregate({
     // Today's earnings (points) — completed EARNING/BONUS transactions today.
@@ -44,7 +49,7 @@ export async function GET() {
       userId,
       status: "COMPLETED",
       type: { in: ["EARNING", "BONUS"] },
-      createdAt: { gte: todayStart },
+      createdAt: { gte: startOfDayUtc },
     },
     _sum: { points: true },
   });
@@ -68,17 +73,13 @@ export async function GET() {
     cacheStrategy: { ttl: 120, swr: 300 },
   });
 
-  // Login-streak status (mirror of /api/daily-reward GET day-diff logic).
+  // Login-streak status (mirror of /api/daily-reward GET, on the user's local day).
   let currentStreak = user.streak || 0;
   let canClaim = true;
   if (user.lastCheckIn) {
-    const lastDay = new Date(user.lastCheckIn);
-    lastDay.setHours(0, 0, 0, 0);
-    const days = Math.floor(
-      (todayStart.getTime() - lastDay.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (days === 0) canClaim = false;
-    else if (days > 1) currentStreak = 0;
+    const lastKey = localDayKey(tz, new Date(user.lastCheckIn));
+    if (lastKey === todayKey) canClaim = false;
+    else if (lastKey !== localDayKeyDaysAgo(tz, 1)) currentStreak = 0;
   }
 
   // Daily-mission progress (reuses the same builder as the mission page).
@@ -128,7 +129,7 @@ export async function GET() {
         userId_missionId_date: {
           userId,
           missionId: missionRaw.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayKey,
         },
       },
       select: { id: true },
