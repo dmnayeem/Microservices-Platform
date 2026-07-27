@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Wallet, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface Deposit {
   id: string;
@@ -63,7 +64,7 @@ export function DepositView() {
     try {
       const res = await fetch("/api/deposits", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount: amt, method, txnId, proofUrl }),
       });
       const d = await res.json().catch(() => ({}));
@@ -92,7 +93,7 @@ export function DepositView() {
     try {
       const res = await fetch("/api/deposits/gateway/init", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount: amt, provider }),
       });
       const d = await res.json().catch(() => ({}));

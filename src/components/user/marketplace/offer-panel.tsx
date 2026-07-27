@@ -14,6 +14,7 @@ import { Avatar } from "@/components/user/primitives/avatar";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface OfferRow {
   id: string;
@@ -72,7 +73,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
     try {
       const r = await fetch(`/api/marketplace/listings/${listingId}/offers`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount: n, message: message || undefined }),
       });
       const d = await r.json().catch(() => ({}));

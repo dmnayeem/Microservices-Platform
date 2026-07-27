@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface Prize {
   position: number;
@@ -81,7 +82,7 @@ export function LotteryView() {
     try {
       const res = await fetch("/api/lottery", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ lotteryId, quantity }),
       });
       if (!res.ok) {

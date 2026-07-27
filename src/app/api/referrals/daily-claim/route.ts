@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import {
   TransactionType,
@@ -101,11 +102,12 @@ export async function GET() {
   });
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
 
   const me = await prisma.user.findUnique({
@@ -240,5 +242,6 @@ export async function POST() {
     referralCount,
     perReferral,
     date: today,
+  });
   });
 }

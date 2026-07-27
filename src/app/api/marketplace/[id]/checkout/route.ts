@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { isDuplicateLedgerError, withIdempotency } from "@/lib/idempotency";
 import {
   MarketplaceListingStatus,
   MarketplaceOfferStatus,
@@ -30,11 +30,12 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return withIdempotency(_request, session.user.id, async () => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (!(await userCanFeature(session.user.id, "marketplace"))) {
       return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
     }
@@ -286,4 +287,5 @@ export async function POST(
       { status: 500 }
     );
   }
+  });
 }

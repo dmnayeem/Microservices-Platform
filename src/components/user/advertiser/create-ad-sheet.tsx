@@ -8,6 +8,7 @@ import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { AD_PLACEMENTS } from "@/lib/ad-placements";
 import { type AdTargeting } from "@/lib/ad-targeting";
 
@@ -124,7 +125,7 @@ export function CreateAdSheet({
     try {
       const res = await fetch(`/api/advertiser/campaigns/${campaignId}/ads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {

@@ -36,6 +36,7 @@ import { Avatar } from "@/components/user/primitives/avatar";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {
   ASSET_TYPE_LABEL,
   getFieldsFor,
@@ -156,7 +157,7 @@ export function ListingDetailView({
     try {
       const res = await fetch("/api/cart", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ listingId: listing.id, quantity: 1 }),
       });
       const data = await res.json().catch(() => ({}));
@@ -190,6 +191,7 @@ export function ListingDetailView({
     try {
       const res = await fetch(`/api/marketplace/${listing.id}/checkout`, {
         method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {

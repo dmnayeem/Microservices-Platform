@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  return withIdempotency(req, session.user.id, async () => {
   const body = await req.json();
   const v = addSchema.safeParse(body);
   if (!v.success) {
@@ -119,4 +121,5 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ success: true, item });
+  });
 }

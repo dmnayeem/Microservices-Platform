@@ -22,6 +22,7 @@ import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface ProxyTask {
   id: string;
@@ -226,7 +227,7 @@ export function ProxyTasksView() {
       const proofImages = screenshotUrl.trim() ? [screenshotUrl.trim()] : [];
       const res = await fetch(`/api/tasks/${active.id}/submit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({
           submissionId,
           proof: proofUrl.trim(),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { userCanFeature } from "@/lib/packages";
 import { ensureDefaultPlacements } from "@/lib/ad-placements-server";
@@ -42,6 +43,7 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(req, session.user.id, async () => {
   if (!(await userCanFeature(session.user.id, "advertiser"))) {
     return NextResponse.json(
       { error: "The advertiser is disabled for your plan" },
@@ -138,4 +140,5 @@ export async function POST(
     { success: true, count: created.length, pending: true },
     { status: 201 }
   );
+  });
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import type { FeedPost } from "./social-feed-view.types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,7 +32,7 @@ export function DonationBlock({
     try {
       const res = await fetch(`/api/feed/${post.id}/donate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ points: amount }),
       });
       const data = await res.json().catch(() => ({}));

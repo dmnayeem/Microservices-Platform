@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 
 const MANUAL_METHODS = new Set([
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(request, session.user.id, async () => {
   const body = await request.json().catch(() => ({}));
   const amount = Number(body.amount);
   const method = String(body.method || "");
@@ -60,4 +62,5 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ success: true, deposit });
+  });
 }

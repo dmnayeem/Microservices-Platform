@@ -6,6 +6,7 @@ import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 type Category = "ALL" | "ACTIVITY" | "EARNINGS" | "SOCIAL" | "ENGAGEMENT" | "REFERRAL" | "PROFILE";
 
@@ -153,6 +154,7 @@ export function MilestonesView() {
                     try {
                       await fetch(`/api/milestones/${m.id}/claim`, {
                         method: "POST",
+                        headers: { "Idempotency-Key": newIdempotencyKey() },
                       });
                       setMilestones((arr) =>
                         arr.map((x) => (x.id === m.id ? { ...x, claimed: true } : x))

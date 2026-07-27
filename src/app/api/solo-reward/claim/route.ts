@@ -1,16 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 
 const CRITERIA = { tasksToday: 5, earningsToday: 1 };
 const REWARD = { points: 500, xp: 100 };
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
 
   const todayStart = new Date();
@@ -103,5 +105,6 @@ export async function POST() {
     success: true,
     pointsAwarded: REWARD.points,
     xpAwarded: REWARD.xp,
+  });
   });
 }

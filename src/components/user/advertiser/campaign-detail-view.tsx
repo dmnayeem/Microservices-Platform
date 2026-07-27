@@ -18,6 +18,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { toast } from "sonner";
 import { promptDialog, confirmDialog } from "@/lib/confirm";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { CreateAdSheet } from "@/components/user/advertiser/create-ad-sheet";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -106,7 +107,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
     try {
       const res = await fetch(`/api/advertiser/campaigns/${campaignId}/fund`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount }),
       });
       if (!res.ok) {

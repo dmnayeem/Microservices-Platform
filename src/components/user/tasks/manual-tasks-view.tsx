@@ -13,6 +13,7 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 type Tab = "available" | "pending" | "approved" | "rejected";
 
@@ -95,7 +96,7 @@ export function ManualTasksView() {
     try {
       const res = await fetch(`/api/tasks/${submitting.id}/submit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ proofUrl, notes }),
       });
       if (!res.ok) throw new Error(await res.text());

@@ -14,6 +14,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { toast } from "sonner";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface CartItem {
   id: string;
@@ -73,7 +74,10 @@ export function CartView() {
   const checkout = async () => {
     setCheckingOut(true);
     try {
-      const res = await fetch("/api/cart/checkout", { method: "POST" });
+      const res = await fetch("/api/cart/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 402) {

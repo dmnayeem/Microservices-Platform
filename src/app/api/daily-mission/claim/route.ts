@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import {
   TransactionType,
@@ -16,11 +17,12 @@ function utcDateKey(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
 
   const me = await prisma.user.findUnique({
@@ -161,5 +163,6 @@ export async function POST() {
     xp,
     streak,
     date: today,
+  });
   });
 }

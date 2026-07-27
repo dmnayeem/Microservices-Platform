@@ -1235,6 +1235,25 @@ model Transaction {
   @@index([reference])
 }
 
+// Client-driven request idempotency. A money POST may send an `Idempotency-Key`
+// header (a per-action UUID); the server reserves a row here, runs the handler
+// once, stores the response, and replays the SAME response for any retry that
+// reuses the key. Complements the P5 ledger `@@unique([userId, reference])`
+// (which dedupes the money ROW) by deduping the whole HTTP request/response.
+model IdempotencyKey {
+  id             String   @id @default(cuid())
+  userId         String
+  key            String
+  method         String
+  endpoint       String
+  // 0 = reserved/in-flight; non-zero = completed HTTP status of the stored response.
+  responseStatus Int      @default(0)
+  response       Json     @default("{}")
+  createdAt      DateTime @default(now())
+  @@unique([userId, key])
+  @@index([createdAt])
+}
+
 model Withdrawal {
   id              String           @id @default(cuid())
   userId          String

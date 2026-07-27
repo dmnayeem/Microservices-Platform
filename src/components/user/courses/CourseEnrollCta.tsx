@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { promptDialog } from "@/lib/confirm";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {
   Loader2,
   Heart,
@@ -107,7 +108,7 @@ export function CourseEnrollCta({
     try {
       const res = await fetch(`/api/courses/${courseId}/enroll`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({
           couponCode: applied?.code ?? null,
           paymentMethod: "wallet",

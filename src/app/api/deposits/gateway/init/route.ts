@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { getPaymentProvider } from "@/lib/payments";
 
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  return withIdempotency(request, session.user.id, async () => {
   const body = await request.json().catch(() => ({}));
   const amount = Number(body.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -82,4 +84,5 @@ export async function POST(request: NextRequest) {
       { status: 502 }
     );
   }
+  });
 }

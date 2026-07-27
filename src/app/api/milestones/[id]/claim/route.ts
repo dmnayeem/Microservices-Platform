@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 
 const REWARDS: Record<string, number> = {
@@ -30,6 +31,7 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(_request, session.user.id, async () => {
   const { id } = await params;
   const userId = session.user.id;
   const reward = REWARDS[id];
@@ -80,4 +82,5 @@ export async function POST(
   ]);
 
   return NextResponse.json({ success: true, pointsRewarded: reward });
+  });
 }

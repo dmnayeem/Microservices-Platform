@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { LotteryStatus, TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -154,13 +155,14 @@ export async function GET(request: NextRequest) {
 
 // POST /api/lottery - Buy lottery tickets
 export async function POST(request: NextRequest) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return withIdempotency(request, session.user.id, async () => {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { lotteryId, quantity, selectedNumbers } = body;
 
@@ -325,6 +327,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 // Helper function to generate ticket number

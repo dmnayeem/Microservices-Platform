@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -125,13 +126,14 @@ export async function GET(request: NextRequest) {
 
 // POST /api/withdrawals - Request a new withdrawal
 export async function POST(request: NextRequest) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return withIdempotency(request, session.user.id, async () => {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { amount, method, accountDetails } = body;
 
@@ -367,4 +369,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }

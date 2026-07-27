@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Gift, Lock, CheckCircle2, Clock, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifyCenter } from "@/lib/notify-center";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 export type SoloRewardStatus = "LOCKED" | "ELIGIBLE" | "CLAIMED" | "EXPIRED";
 
@@ -47,7 +48,10 @@ export function SoloRewardWidget({
   const claim = async () => {
     setClaiming(true);
     try {
-      const res = await fetch("/api/solo-reward/claim", { method: "POST" });
+      const res = await fetch("/api/solo-reward/claim", {
+        method: "POST",
+        headers: { "Idempotency-Key": newIdempotencyKey() },
+      });
       if (!res.ok) throw new Error("Claim failed");
       notifyCenter.reward({
         title: "Reward claimed!",

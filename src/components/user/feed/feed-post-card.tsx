@@ -19,6 +19,7 @@ import { confirmDialog } from "@/lib/confirm";
 import { profileHref } from "@/lib/user-href";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { getPostBackground } from "@/lib/post-backgrounds";
 import { ShareModal } from "@/components/user/primitives/share-modal";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
@@ -519,6 +520,7 @@ export const FeedPostCard = memo(function FeedPostCard({
               try {
                 const res = await fetch(`/api/feed/${post.id}/boost`, {
                   method: "POST",
+                  headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);

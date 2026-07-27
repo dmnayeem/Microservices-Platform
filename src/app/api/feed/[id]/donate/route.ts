@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import {
   TransactionType,
@@ -21,6 +22,7 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(req, session.user.id, async () => {
   const donorId = session.user.id;
 
   const { id } = await params;
@@ -138,5 +140,6 @@ export async function POST(
     donationId: donation.id,
     donationCollected: updated.donationCollected,
     donationGoal: updated.donationGoal,
+  });
   });
 }

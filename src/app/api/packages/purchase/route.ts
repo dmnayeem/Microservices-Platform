@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { PaymentMethod } from "@/generated/prisma/client";
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return withIdempotency(request, session.user.id, async () => {
   const body = await request.json();
   const v = schema.safeParse(body);
   if (!v.success) {
@@ -206,5 +208,6 @@ export async function POST(request: NextRequest) {
     message: isOffPlatform
       ? "Order created. Admin will verify and activate your subscription shortly."
       : `${pkg.name} activated until ${endDate.toLocaleDateString()}`,
+  });
   });
 }

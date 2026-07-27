@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { toast } from "sonner";
 import { notifyCenter } from "@/lib/notify-center";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 const TYPE_TO_ROUTE: Record<string, string> = {
@@ -126,7 +127,10 @@ export function DailyMissionView() {
   const claim = async () => {
     setClaiming(true);
     try {
-      const res = await fetch("/api/daily-mission/claim", { method: "POST" });
+      const res = await fetch("/api/daily-mission/claim", {
+        method: "POST",
+        headers: { "Idempotency-Key": newIdempotencyKey() },
+      });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       notifyCenter.reward({

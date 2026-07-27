@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import {
   MarketplaceListingStatus,
@@ -24,12 +25,13 @@ import { lt, sub, toNum } from "@/lib/money";
 // stored `quantity` is treated as 1 at checkout. The status flip + counter
 // bump uses `updateMany({ where: { id, status: ACTIVE } })` per item so two
 // concurrent buyers racing on the same listing can't both succeed.
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return withIdempotency(request, session.user.id, async () => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (!(await userCanFeature(session.user.id, "marketplace"))) {
       return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
     }
@@ -328,4 +330,5 @@ export async function POST() {
       { status: 500 }
     );
   }
+  });
 }

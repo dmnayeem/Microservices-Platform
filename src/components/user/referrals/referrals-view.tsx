@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { notifyCenter } from "@/lib/notify-center";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 // `qrcode` is loaded lazily (only when the QR panel renders) so it stays out of
 // the initial referrals-page chunk — see QrPanel below.
 import { format } from "date-fns";
@@ -98,7 +99,10 @@ export function ReferralsView({
   const claimDaily = async () => {
     setClaimingDaily(true);
     try {
-      const res = await fetch("/api/referrals/daily-claim", { method: "POST" });
+      const res = await fetch("/api/referrals/daily-claim", {
+        method: "POST",
+        headers: { "Idempotency-Key": newIdempotencyKey() },
+      });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       notifyCenter.reward({

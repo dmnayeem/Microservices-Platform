@@ -6,6 +6,7 @@ import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldChe
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface PaymentMethod {
   id: string;
@@ -80,7 +81,7 @@ export function WithdrawalView({
     try {
       const res = await fetch("/api/withdrawals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount, methodId }),
       });
       if (!res.ok) throw new Error(await res.text());

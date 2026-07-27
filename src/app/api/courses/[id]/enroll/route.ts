@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { isDuplicateLedgerError, withIdempotency } from "@/lib/idempotency";
 import { z } from "zod";
 import {
   NotificationType,
@@ -43,11 +43,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return withIdempotency(req, session.user.id, async () => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     if (!(await userCanFeature(session.user.id, "courses"))) {
       return NextResponse.json({ error: "Courses are disabled for your plan" }, { status: 403 });
     }
@@ -325,6 +326,7 @@ export async function POST(
       { status: 500 }
     );
   }
+  });
 }
 
 async function fireEnrolNotifications(opts: {

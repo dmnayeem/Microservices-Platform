@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface BidRow {
   id: string;
@@ -97,7 +98,7 @@ export function BidPanel({
     try {
       const r = await fetch(`/api/marketplace/listings/${listingId}/bids`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount: n, message: message || undefined }),
       });
       const d = await r.json().catch(() => ({}));

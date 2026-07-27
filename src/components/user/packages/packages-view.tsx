@@ -5,6 +5,7 @@ import { Check, ArrowRight, Loader2, Sparkles, Crown, Zap, Shield, Lock } from "
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 type Tier = "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP";
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
@@ -111,7 +112,7 @@ export function PackagesView({
     try {
       const res = await fetch("/api/packages/purchase", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({
           packageId: selectedPkg.id,
           duration,
