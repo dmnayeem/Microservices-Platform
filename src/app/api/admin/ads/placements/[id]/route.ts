@@ -28,6 +28,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       ? Math.min(60, Math.max(5, Math.round(n)))
       : null;
   }
+  // Per-space interstitial ad duration (seconds). null clears (→ default 5s).
+  if (body.interstitialSeconds === null) {
+    data.interstitialSeconds = null;
+  } else if (body.interstitialSeconds !== undefined) {
+    const n = Number(body.interstitialSeconds);
+    data.interstitialSeconds = Number.isFinite(n)
+      ? Math.min(60, Math.max(3, Math.round(n)))
+      : null;
+  }
   const placement = await prisma.adPlacement.update({ where: { id }, data });
   return NextResponse.json({ placement });
 }

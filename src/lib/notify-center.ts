@@ -10,6 +10,8 @@
 // notification, centered, with a tap/auto dismiss. Ordinary corner toasts keep
 // using sonner.
 
+import { runInterstitial } from "@/lib/reward-interstitial";
+
 export type NotifyKind = "reward" | "success" | "error" | "warning" | "info";
 
 export interface NotifyItem {
@@ -67,14 +69,20 @@ export function dismissNotify(id: number) {
 
 export const notifyCenter = {
   reward(opts: RewardOptions = {}) {
-    return push({
-      kind: "reward",
-      title: opts.title ?? "Reward earned!",
-      description: opts.description,
-      amount: opts.amount,
-      unit: opts.unit ?? "pts",
-      durationMs: opts.durationMs ?? 3500,
-    });
+    // Gate the celebratory reward behind an interstitial ad (if one is
+    // configured for REWARD_INTERSTITIAL); resolves instantly when there's no
+    // ad / ad-free plan, so the popup shows immediately in that case.
+    const show = () =>
+      push({
+        kind: "reward",
+        title: opts.title ?? "Reward earned!",
+        description: opts.description,
+        amount: opts.amount,
+        unit: opts.unit ?? "pts",
+        durationMs: opts.durationMs ?? 3500,
+      });
+    void runInterstitial().then(show, show);
+    return 0;
   },
   success(title: string, description?: string, durationMs = 3500) {
     return push({ kind: "success", title, description, durationMs });

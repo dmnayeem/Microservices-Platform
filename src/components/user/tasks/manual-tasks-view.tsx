@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 type Tab = "available" | "pending" | "approved" | "rejected";
 
@@ -100,6 +101,7 @@ export function ManualTasksView() {
         body: JSON.stringify({ proofUrl, notes }),
       });
       if (!res.ok) throw new Error(await res.text());
+      await runInterstitial();
       toast.success("Submitted! Awaiting review.");
       setSubmitting(null);
       setProofUrl("");

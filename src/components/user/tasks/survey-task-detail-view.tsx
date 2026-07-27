@@ -24,6 +24,7 @@ import {
 } from "@/lib/survey-tasks";
 import { SurveyQuestionField } from "./survey-question-field";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface SurveyTask {
   id: string;
@@ -184,6 +185,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
+      await runInterstitial();
       toast.success(cfg.thankYouMessage || "Thanks! Submitted for review.", {
         description: `You'll get ${task.pointsReward} pts when approved.`,
       });

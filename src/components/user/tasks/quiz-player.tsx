@@ -5,6 +5,7 @@ import { X, Clock, Loader2, Trophy, AlertTriangle, ArrowRight, Check } from "luc
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { confirmDialog } from "@/lib/confirm";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface Question {
   id: string;
@@ -84,6 +85,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
       });
       if (!res.ok) throw new Error(await res.text());
       const d: ResultData = await res.json();
+      await runInterstitial();
       setResult(d);
       setState("result");
     } catch (err) {

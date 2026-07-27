@@ -23,6 +23,7 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface ProxyTask {
   id: string;
@@ -238,6 +239,7 @@ export function ProxyTasksView() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
+      await runInterstitial();
       toast.success(`Task complete! +${active.pointsReward} pts`);
       reset();
     } catch (err) {

@@ -61,6 +61,7 @@ interface Placement {
   name: string;
   isActive: boolean;
   rotationSeconds?: number | null;
+  interstitialSeconds?: number | null;
   _count?: { ads: number };
   stats?: PlacementStats;
 }
@@ -262,6 +263,15 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rotationSeconds: secs }),
+    });
+    loadAll();
+  };
+  // Per-space interstitial ad duration. `secs === null` clears it (→ default 5s).
+  const setPlacementInterstitial = async (p: Placement, secs: number | null) => {
+    await fetch(`/api/admin/ads/placements/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interstitialSeconds: secs }),
     });
     loadAll();
   };
@@ -647,6 +657,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                     rotationSeconds={rotationSeconds}
                     onToggle={() => togglePlacement(p)}
                     onSetRotation={(secs) => setPlacementRotation(p, secs)}
+                    onSetInterstitial={(secs) => setPlacementInterstitial(p, secs)}
                     onDelete={() => deletePlacement(p.id)}
                   />
                 ))}
@@ -814,6 +825,7 @@ function AdSpaceCard({
   rotationSeconds,
   onToggle,
   onSetRotation,
+  onSetInterstitial,
   onDelete,
 }: {
   placement: Placement;
@@ -821,10 +833,14 @@ function AdSpaceCard({
   rotationSeconds: number;
   onToggle: () => void;
   onSetRotation: (secs: number | null) => void;
+  onSetInterstitial: (secs: number | null) => void;
   onDelete: () => void;
 }) {
   // Effective interval for this space: its own override, else the global default.
   const effectiveRotation = p.rotationSeconds ?? rotationSeconds;
+  // Interstitial spaces show a full-screen ad for a fixed duration instead of
+  // rotating a banner — expose the duration control for those instead.
+  const isInterstitial = p.name.endsWith("_INTERSTITIAL");
   const Icon = PLACEMENT_ICON[p.name] ?? Layers;
   const isFeed = p.name === "IN_FEED";
   const stats = p.stats ?? { impressions: 0, clicks: 0, activeAds: 0, totalAds: 0 };
@@ -927,7 +943,29 @@ function AdSpaceCard({
         </div>
       </div>
 
-      {canManage && (
+      {canManage && isInterstitial && (
+        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+          <label className="whitespace-nowrap">Ad shows for</label>
+          <input
+            type="number"
+            min={3}
+            max={60}
+            defaultValue={p.interstitialSeconds ?? ""}
+            placeholder="5"
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              const next =
+                v === "" ? null : Math.min(60, Math.max(3, Math.round(Number(v) || 5)));
+              if ((p.interstitialSeconds ?? null) !== next) onSetInterstitial(next);
+            }}
+            className="w-14 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-center"
+          />
+          <span className="whitespace-nowrap">
+            sec{p.interstitialSeconds == null && " · default 5"}
+          </span>
+        </div>
+      )}
+      {canManage && !isInterstitial && (
         <div className="flex items-center gap-2 text-[11px] text-slate-400">
           <label className="whitespace-nowrap">Rotate every</label>
           <input

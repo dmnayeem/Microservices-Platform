@@ -338,6 +338,9 @@ model AdPlacement {
   // Per-space ad-rotation interval (seconds). Null = use the global
   // `ads.rotation_seconds` setting. Clamped 5–60 when set.
   rotationSeconds Int?
+  // Per-space interstitial ad duration (seconds) — how long the full-screen ad
+  // shows before it can be closed. Null = default 5s. Clamped 3–60 when set.
+  interstitialSeconds Int?
   ads       Ad[]
   createdAt DateTime @default(now())
 }

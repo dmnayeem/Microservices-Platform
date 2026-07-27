@@ -25,6 +25,7 @@ import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface ArticleTask {
   id: string;
@@ -213,6 +214,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
+      await runInterstitial();
       toast.success("Submitted! Pending admin review.", {
         description: `You'll get ${task.pointsReward} pts when approved.`,
       });
@@ -794,6 +796,7 @@ function ManualKeySubmitCard({
         );
         return;
       }
+      await runInterstitial();
       setMatchState("match");
       const pts = data.rewards?.points ?? 0;
       const xp = data.rewards?.xp ?? 0;

@@ -21,6 +21,7 @@ export const AD_PLACEMENTS = [
   { name: "PROFILE_BOTTOM", label: "Profile", description: "Bottom of user profiles.", where: "Profile page (/profile) — bottom" },
   { name: "GAME_INTERSTITIAL", label: "Game Interstitial", description: "Full-screen ad on game open / resume / quit.", where: "Games — full-screen on open/resume/quit" },
   { name: "VIDEO_INTERSTITIAL", label: "Video Interstitial", description: "Full-screen ad on video task open / before reward.", where: "Video tasks — full-screen before reward" },
+  { name: "REWARD_INTERSTITIAL", label: "Reward Interstitial", description: "Full-screen ad shown on every task submit / reward claim, before the reward is revealed.", where: "Every task submit & reward claim" },
 ] as const;
 
 export type AdPlacementName = (typeof AD_PLACEMENTS)[number]["name"];

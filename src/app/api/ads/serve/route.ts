@@ -125,9 +125,17 @@ export async function GET(request: NextRequest) {
     Math.max(5, Number(rotateSecondsRaw) || 12)
   );
 
+  // Interstitial ad duration (per-space, admin-set; default 5s) — how long the
+  // full-screen overlay shows before it can be closed.
+  const interstitialSeconds = Math.min(
+    60,
+    Math.max(3, placementRow.interstitialSeconds ?? 5)
+  );
+
   return NextResponse.json({
     poolSize: targeted.length,
     rotateMs: rotateSeconds * 1000,
+    interstitialSeconds,
     ad: {
       id: chosen.id,
       type: chosen.type,

@@ -26,6 +26,7 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface Board {
   id: string;
@@ -179,6 +180,7 @@ export function BoardTasksView() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      await runInterstitial();
       toast.success(`Board reward claimed! +${data.points} pts, +${data.xp} XP`);
       setShowConfirm(false);
       await loadDetail(detail.board.id);

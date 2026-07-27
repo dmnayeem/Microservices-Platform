@@ -18,6 +18,7 @@ import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { type AppInstallConfig } from "@/lib/app-install-tasks";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface AppInstallTask {
   id: string;
@@ -123,6 +124,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      await runInterstitial();
       if (d.status === "approved") {
         toast.success("Download counted! 🎉", {
           description: `+${d.rewards?.points ?? task.pointsReward} pts credited`,

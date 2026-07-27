@@ -20,6 +20,7 @@ import {
 import { CustomFieldInput } from "./custom-field-input";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface CustomTask {
   id: string;
@@ -145,6 +146,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error ?? `HTTP ${res.status}`);
       }
+      await runInterstitial();
       toast.success(cfg.thankYouMessage || "Submitted for review", {
         description: cfg.autoApprove
           ? `+${task.pointsReward} pts credited`

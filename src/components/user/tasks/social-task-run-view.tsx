@@ -29,6 +29,7 @@ import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SocialWatchModal } from "@/components/user/tasks/social-watch-modal";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 type ItemProof = { url: string; screenshot: string; username: string };
 const EMPTY_PROOF: ItemProof = { url: "", screenshot: "", username: "" };
@@ -439,6 +440,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || "Couldn't submit the task");
       }
+      await runInterstitial();
       setSubmitted(true);
       notifyCenter.success("Submitted!", "Awaiting verification.");
     } catch (err) {
