@@ -303,6 +303,17 @@ export function CreatePostComposer({
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
       const data = await res.json();
+      // Optimistic hand-off: show the poster the exact preview they just saw,
+      // even if server-side capture didn't persist one (client-only display of
+      // their own post; other viewers get the server-fetched/lazy version).
+      if (
+        data.post &&
+        !data.post.linkPreview &&
+        linkPreview &&
+        !previewDismissed
+      ) {
+        data.post.linkPreview = linkPreview;
+      }
       onCreated(data.post);
       reset();
       toast.success(

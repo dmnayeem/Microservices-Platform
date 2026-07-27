@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link2, X } from "lucide-react";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import type { LinkPreviewData } from "./social-feed-view.types";
@@ -87,23 +87,34 @@ export function LinkPreviewCard({
   // Starts true when a lazy fetch will run, so we show a skeleton immediately
   // without a synchronous setState inside the effect.
   const [loading, setLoading] = useState(() => !preview && !!contentUrl);
-  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    if (preview || !contentUrl || fetchedRef.current) return;
-    fetchedRef.current = true;
+    if (preview || !contentUrl) return;
     let cancel = false;
-    fetch(`/api/link-preview?url=${encodeURIComponent(contentUrl)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancel && d?.preview) setLazy(d.preview as LinkPreviewData);
-      })
-      .catch(() => {})
-      .finally(() => {
+    // Defer the fetch past StrictMode's throwaway mount→cleanup→remount: the
+    // first (cancelled) run's timer is cleared before it ever fetches, so the
+    // real mount fetches exactly once and always resolves `loading` — no stuck
+    // skeleton. All setState lives in `run` (not the effect body) to satisfy
+    // react-hooks/set-state-in-effect.
+    const run = async () => {
+      setLoading(true);
+      setLazy(null);
+      try {
+        const r = await fetch(
+          `/api/link-preview?url=${encodeURIComponent(contentUrl)}`
+        );
+        const d = r.ok ? await r.json() : null;
+        if (!cancel) setLazy((d?.preview as LinkPreviewData) ?? null);
+      } catch {
+        /* leave lazy null → card collapses */
+      } finally {
         if (!cancel) setLoading(false);
-      });
+      }
+    };
+    const t = setTimeout(run, 0);
     return () => {
       cancel = true;
+      clearTimeout(t);
     };
   }, [preview, contentUrl]);
 
