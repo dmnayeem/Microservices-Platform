@@ -19,10 +19,13 @@ import {
   Copy,
   ChevronRight,
   Loader2,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { profileHref } from "@/lib/user-href";
+import { missionItemLabel } from "@/lib/mission-labels";
 import { notifyCenter } from "@/lib/notify-center";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import {
@@ -78,7 +81,22 @@ interface Props {
 interface RailWidgets {
   balance: { points: number; todayEarnings: number };
   streak: { current: number; canClaim: boolean };
-  mission: { done: number; total: number; claimedToday: boolean } | null;
+  mission: {
+    name: string;
+    done: number;
+    total: number;
+    claimedToday: boolean;
+    rewardPoints: number;
+    rewardXp: number;
+    items: {
+      taskType: string;
+      description: string | null;
+      points: number;
+      target: number;
+      completedToday: number;
+      done: boolean;
+    }[];
+  } | null;
   referral: { code: string | null; link: string | null; totalReferrals: number };
 }
 
@@ -352,6 +370,54 @@ export function FeedRightRail({
               }}
             />
           </div>
+
+          {/* Task breakdown — name + progress + points, so it's clear what the
+              mission is and what each task pays. */}
+          {widgets.mission.items.length > 0 && (
+            <ul className="mt-3 space-y-1.5">
+              {widgets.mission.items.map((it, i) => (
+                <li
+                  key={`${it.taskType}-${i}`}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  {it.done ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Circle className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+                  )}
+                  <span
+                    className={cn(
+                      "flex-1 truncate",
+                      it.done ? "text-gray-500 line-through" : "text-gray-300"
+                    )}
+                  >
+                    {missionItemLabel(it.taskType, it.description)}
+                  </span>
+                  <span className="text-gray-500 tabular-nums shrink-0">
+                    {it.completedToday}/{it.target}
+                  </span>
+                  <span className="inline-flex items-center gap-0.5 text-amber-400 font-semibold tabular-nums shrink-0">
+                    <Coins className="w-3 h-3" />+{it.points}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {widgets.mission.rewardPoints > 0 && (
+            <p className="mt-2.5 pt-2.5 border-t border-gray-800 text-[11px] text-gray-400">
+              Complete all →{" "}
+              <span className="text-amber-400 font-semibold">
+                +{widgets.mission.rewardPoints} pts
+              </span>
+              {widgets.mission.rewardXp > 0 && (
+                <span className="text-violet-400 font-semibold">
+                  {" "}
+                  · +{widgets.mission.rewardXp} XP
+                </span>
+              )}
+            </p>
+          )}
         </Card>
       ) : null,
     quickEarn:

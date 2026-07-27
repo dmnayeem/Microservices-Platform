@@ -82,21 +82,45 @@ export async function GET() {
   // Daily-mission progress (reuses the same builder as the mission page).
   // The Accelerate client doesn't surface the `include: { items }` payload in
   // the inferred type, so narrow it explicitly (mirrors the today route).
-  type MissionItem = { taskType: string; targetCount: number };
+  type MissionItem = {
+    taskType: string;
+    targetCount: number;
+    description: string | null;
+    pointsPerComplete: number;
+    xpPerComplete: number;
+  };
   const missionItems =
     (missionRaw as unknown as { items: MissionItem[] } | null)?.items ?? [];
   let mission: {
+    name: string;
     done: number;
     total: number;
     claimedToday: boolean;
+    rewardPoints: number;
+    rewardXp: number;
+    items: {
+      taskType: string;
+      description: string | null;
+      points: number;
+      target: number;
+      completedToday: number;
+      done: boolean;
+    }[];
   } | null = null;
   if (missionRaw && missionItems.length) {
     const countByType = await buildDailyProgress(userId, missionItems);
-    const done = missionItems.filter(
-      (it) =>
-        (countByType[resolveTaskTypeBucket(it.taskType)] ?? 0) >=
-        it.targetCount
-    ).length;
+    const items = missionItems.map((it) => {
+      const count = countByType[resolveTaskTypeBucket(it.taskType)] ?? 0;
+      return {
+        taskType: it.taskType,
+        description: it.description,
+        points: it.pointsPerComplete,
+        target: it.targetCount,
+        completedToday: Math.min(count, it.targetCount),
+        done: count >= it.targetCount,
+      };
+    });
+    const done = items.filter((it) => it.done).length;
     const claim = await prisma.dailyMissionClaim.findUnique({
       where: {
         userId_missionId_date: {
@@ -108,9 +132,13 @@ export async function GET() {
       select: { id: true },
     });
     mission = {
+      name: missionRaw.name,
       done,
-      total: missionItems.length,
+      total: items.length,
       claimedToday: !!claim,
+      rewardPoints: missionRaw.completionPointsReward,
+      rewardXp: missionRaw.completionXpReward,
+      items,
     };
   }
 
