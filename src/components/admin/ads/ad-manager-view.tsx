@@ -60,6 +60,7 @@ interface Placement {
   id: string;
   name: string;
   isActive: boolean;
+  rotationSeconds?: number | null;
   _count?: { ads: number };
   stats?: PlacementStats;
 }
@@ -252,6 +253,15 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !p.isActive }),
+    });
+    loadAll();
+  };
+  // Per-space rotation override. `secs === null` clears it (→ global default).
+  const setPlacementRotation = async (p: Placement, secs: number | null) => {
+    await fetch(`/api/admin/ads/placements/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rotationSeconds: secs }),
     });
     loadAll();
   };
@@ -579,7 +589,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                 <b className="text-white">What is an ad space?</b> Each space is a fixed slot on a page
                 (see “Appears on” under each). Assign an ad to a space via the ad&apos;s <b>Placement</b>.
                 Put several active ads in one space and they <b>rotate automatically</b> — on reload and
-                every {rotationSeconds}s.
+                every {rotationSeconds}s by default. Each space can set its own rotation time below.
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-slate-400">
@@ -587,7 +597,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                 </p>
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400 whitespace-nowrap">Rotate every</label>
+                    <label className="text-xs text-slate-400 whitespace-nowrap" title="Applies to spaces that don't set their own interval">Default rotate every</label>
                     <input
                       type="number"
                       min={5}
@@ -636,6 +646,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                     canManage={canManage}
                     rotationSeconds={rotationSeconds}
                     onToggle={() => togglePlacement(p)}
+                    onSetRotation={(secs) => setPlacementRotation(p, secs)}
                     onDelete={() => deletePlacement(p.id)}
                   />
                 ))}
@@ -802,14 +813,18 @@ function AdSpaceCard({
   canManage,
   rotationSeconds,
   onToggle,
+  onSetRotation,
   onDelete,
 }: {
   placement: Placement;
   canManage: boolean;
   rotationSeconds: number;
   onToggle: () => void;
+  onSetRotation: (secs: number | null) => void;
   onDelete: () => void;
 }) {
+  // Effective interval for this space: its own override, else the global default.
+  const effectiveRotation = p.rotationSeconds ?? rotationSeconds;
   const Icon = PLACEMENT_ICON[p.name] ?? Layers;
   const isFeed = p.name === "IN_FEED";
   const stats = p.stats ?? { impressions: 0, clicks: 0, activeAds: 0, totalAds: 0 };
@@ -866,7 +881,7 @@ function AdSpaceCard({
           )}
           {stats.activeAds > 1 && (
             <p className="text-[10px] text-emerald-400/80 mt-1">
-              {stats.activeAds} active ads · rotate every {rotationSeconds}s &amp; on reload
+              {stats.activeAds} active ads · rotate every {effectiveRotation}s &amp; on reload
             </p>
           )}
         </div>
@@ -911,6 +926,31 @@ function AdSpaceCard({
           <p className="text-[9px] uppercase tracking-wider text-slate-500">CTR</p>
         </div>
       </div>
+
+      {canManage && (
+        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+          <label className="whitespace-nowrap">Rotate every</label>
+          <input
+            type="number"
+            min={5}
+            max={60}
+            defaultValue={p.rotationSeconds ?? ""}
+            placeholder={String(rotationSeconds)}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              const next =
+                v === ""
+                  ? null
+                  : Math.min(60, Math.max(5, Math.round(Number(v) || rotationSeconds)));
+              if ((p.rotationSeconds ?? null) !== next) onSetRotation(next);
+            }}
+            className="w-14 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-center"
+          />
+          <span className="whitespace-nowrap">
+            sec{p.rotationSeconds == null && ` · default ${rotationSeconds}`}
+          </span>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
         <span className="text-[11px] text-slate-400">

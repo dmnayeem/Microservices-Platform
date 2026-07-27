@@ -335,6 +335,9 @@ model AdPlacement {
   name      String   @unique
   platform  String   @default("ALL")
   isActive  Boolean  @default(true)
+  // Per-space ad-rotation interval (seconds). Null = use the global
+  // `ads.rotation_seconds` setting. Clamped 5–60 when set.
+  rotationSeconds Int?
   ads       Ad[]
   createdAt DateTime @default(now())
 }

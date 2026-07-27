@@ -18,6 +18,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const data: Record<string, unknown> = {};
   if (typeof body.isActive === "boolean") data.isActive = body.isActive;
   if (body.platform !== undefined) data.platform = String(body.platform);
+  // Per-space rotation interval: null clears it (→ global default); a number is
+  // clamped to 5–60 seconds.
+  if (body.rotationSeconds === null) {
+    data.rotationSeconds = null;
+  } else if (body.rotationSeconds !== undefined) {
+    const n = Number(body.rotationSeconds);
+    data.rotationSeconds = Number.isFinite(n)
+      ? Math.min(60, Math.max(5, Math.round(n)))
+      : null;
+  }
   const placement = await prisma.adPlacement.update({ where: { id }, data });
   return NextResponse.json({ placement });
 }

@@ -114,9 +114,12 @@ export async function GET(request: NextRequest) {
     .catch(() => {});
   void bumpAdDailyStat(chosen.id, { impressions: 1 });
 
-  // Rotation interval (admin-configurable), delivered so the client can auto-
-  // rotate creatives. Only meaningful when poolSize > 1.
-  const rotateSecondsRaw = await getSetting<number>("ads.rotation_seconds", 12);
+  // Rotation interval delivered so the client can auto-rotate creatives (only
+  // meaningful when poolSize > 1). The space's own `rotationSeconds` wins; when
+  // unset it falls back to the global `ads.rotation_seconds` admin setting.
+  const rotateSecondsRaw =
+    placementRow.rotationSeconds ??
+    (await getSetting<number>("ads.rotation_seconds", 12));
   const rotateSeconds = Math.min(
     60,
     Math.max(5, Number(rotateSecondsRaw) || 12)
