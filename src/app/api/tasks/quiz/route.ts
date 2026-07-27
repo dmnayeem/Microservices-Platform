@@ -5,6 +5,12 @@ import { generateTaskQuiz, isGeminiConfigured } from "@/lib/gemini";
 import { TaskType, TaskStatus } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
+import { getEffectivePackage } from "@/lib/packages";
+import {
+  getActiveMissionForUser,
+  buildDailyProgress,
+  resolveTaskTypeBucket,
+} from "@/lib/daily-mission-progress";
 
 // GET /api/tasks/quiz - Get quiz for a specific task or generate new one
 export async function GET(request: NextRequest) {
@@ -154,6 +160,46 @@ export async function POST(request: NextRequest) {
         { error: "You have already completed this quiz today" },
         { status: 400 }
       );
+    }
+
+    // Daily-mission cap — quizzes count against the mission's QUIZ target
+    // (mirrors /api/tasks/[id]/start so this alt path can't bypass it).
+    const [me, pkg] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { level: true },
+      }),
+      getEffectivePackage(session.user.id),
+    ]);
+    const mission = await getActiveMissionForUser(
+      pkg?.accessLevel ?? 0,
+      me?.level ?? 0
+    );
+    if (mission && mission.items.length > 0) {
+      const item = mission.items.find(
+        (it) => resolveTaskTypeBucket(it.taskType) === "QUIZ"
+      );
+      if (!item) {
+        return NextResponse.json(
+          {
+            error:
+              "This task isn't part of your daily mission. Upgrade your plan to unlock more tasks.",
+            code: "UPGRADE_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
+      const countByType = await buildDailyProgress(session.user.id, mission.items);
+      if ((countByType["QUIZ"] ?? 0) >= item.targetCount) {
+        return NextResponse.json(
+          {
+            error:
+              "You've finished today's quiz tasks in your daily mission. Upgrade your plan for more.",
+            code: "UPGRADE_REQUIRED",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Calculate score

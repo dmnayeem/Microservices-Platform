@@ -21,6 +21,10 @@ import { CustomFieldInput } from "./custom-field-input";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import {
+  TaskUpgradeNotice,
+  isUpgradeRequired,
+} from "@/components/user/primitives/task-upgrade-notice";
 
 interface CustomTask {
   id: string;
@@ -53,6 +57,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "loading" });
   const [answers, setAnswers] = useState<CustomAnswers>({});
   const [busy, setBusy] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -87,6 +92,10 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
         const sData = await sRes.json().catch(() => ({}));
         if (cancel) return;
         if (!sRes.ok) {
+          if (isUpgradeRequired(sData)) {
+            setUpgradeMsg(sData.error || "");
+            return;
+          }
           const reason = sData.error ?? `HTTP ${sRes.status}`;
           if (
             typeof reason === "string" &&
@@ -169,6 +178,10 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
         <p className="text-sm text-gray-500">Loading task…</p>
       </div>
     );
+  }
+
+  if (upgradeMsg !== null) {
+    return <TaskUpgradeNotice message={upgradeMsg} />;
   }
 
   if (loadError || !task) {

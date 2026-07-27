@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { confirmDialog } from "@/lib/confirm";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import {
+  TaskUpgradeNotice,
+  isUpgradeRequired,
+} from "@/components/user/primitives/task-upgrade-notice";
 
 interface Question {
   id: string;
@@ -46,6 +50,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [result, setResult] = useState<ResultData | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +88,15 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        // Daily-mission allowance exhausted → surface the upgrade prompt.
+        if (isUpgradeRequired(json)) {
+          setUpgradeMsg(json.error || "");
+          return;
+        }
+        throw new Error(json.error || `HTTP ${res.status}`);
+      }
       const d: ResultData = await res.json();
       await runInterstitial();
       setResult(d);
@@ -96,6 +109,22 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
       setSubmitting(false);
     }
   };
+
+  if (upgradeMsg !== null) {
+    return (
+      <div className="fixed inset-0 z-100 bg-gray-950 overflow-y-auto">
+        <div className="min-h-screen flex flex-col items-center justify-center px-6">
+          <TaskUpgradeNotice message={upgradeMsg} />
+          <button
+            onClick={onClose}
+            className="mt-2 px-5 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const cur = questions[idx];
   const selected = cur ? answers[cur.id] : undefined;

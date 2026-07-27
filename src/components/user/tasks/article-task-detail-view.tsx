@@ -26,6 +26,10 @@ import type { ArticleConfig } from "@/lib/article-tasks";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import {
+  TaskUpgradeNotice,
+  isUpgradeRequired,
+} from "@/components/user/primitives/task-upgrade-notice";
 
 interface ArticleTask {
   id: string;
@@ -79,6 +83,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uniqueKey, setUniqueKey] = useState("");
   const [busy, setBusy] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
 
   // Load task + decide whether to start, resume, or show completed/blocked state
   useEffect(() => {
@@ -131,6 +136,11 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
         const sData = await sRes.json().catch(() => ({}));
         if (cancel) return;
         if (!sRes.ok) {
+          // Daily-mission allowance exhausted → show the upgrade prompt.
+          if (isUpgradeRequired(sData)) {
+            setUpgradeMsg(sData.error || "");
+            return;
+          }
           // Common case: race or stale userStatus → daily limit hit. Treat as completed.
           const reason = sData.error ?? `HTTP ${sRes.status}`;
           if (
@@ -235,6 +245,10 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
         <p className="text-sm text-gray-500">Loading article task…</p>
       </div>
     );
+  }
+
+  if (upgradeMsg !== null) {
+    return <TaskUpgradeNotice message={upgradeMsg} />;
   }
 
   if (loadError || !task) {

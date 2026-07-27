@@ -30,6 +30,10 @@ import { SocialWatchModal } from "@/components/user/tasks/social-watch-modal";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import {
+  TaskUpgradeNotice,
+  isUpgradeRequired,
+} from "@/components/user/primitives/task-upgrade-notice";
 
 type ItemProof = { url: string; screenshot: string; username: string };
 const EMPTY_PROOF: ItemProof = { url: "", screenshot: "", username: "" };
@@ -115,6 +119,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
 
   const [proofByIndex, setProofByIndex] = useState<Record<number, ItemProof>>({});
   const [aiOutputByIndex, setAiOutputByIndex] = useState<Record<number, string>>({});
@@ -155,7 +160,11 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     const p = (async () => {
       const sr = await fetch(`/api/tasks/${taskId}/start`, { method: "POST" });
       const sd = await sr.json().catch(() => ({}));
-      if (!sr.ok) throw new Error(sd?.error || "Couldn't start the task");
+      if (!sr.ok) {
+        // Daily-mission allowance exhausted → surface the upgrade prompt.
+        if (isUpgradeRequired(sd)) setUpgradeMsg(sd.error || "");
+        throw new Error(sd?.error || "Couldn't start the task");
+      }
       const id = (sd.submission?.id as string | undefined) ?? null;
       if (id) {
         submissionIdRef.current = id;
@@ -460,6 +469,10 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
       </div>
     );
+  }
+
+  if (upgradeMsg !== null) {
+    return <TaskUpgradeNotice message={upgradeMsg} />;
   }
 
   if (notFound || !task || !platform) {

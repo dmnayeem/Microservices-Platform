@@ -25,6 +25,46 @@ interface MissionItemForCount {
   taskType: string;
 }
 
+export interface ActiveMissionItem {
+  id: string;
+  taskType: string;
+  targetCount: number;
+  description: string | null;
+  xpPerComplete: number;
+  pointsPerComplete: number;
+}
+export interface ActiveMission {
+  id: string;
+  name: string;
+  items: ActiveMissionItem[];
+}
+
+/**
+ * The highest tier-qualifying active daily mission template (with items) for a
+ * user, or null. Shared by /daily-mission/{today,claim}, rail-widgets, and the
+ * task-start gate so they all resolve the same mission.
+ */
+export async function getActiveMissionForUser(
+  accessLevel: number,
+  level: number
+): Promise<ActiveMission | null> {
+  const mission = await prisma.dailyMissionTemplate.findFirst({
+    where: {
+      requiredAccessLevel: { lte: accessLevel },
+      isActive: true,
+      requiredLevel: { lte: level },
+    },
+    orderBy: [
+      { requiredAccessLevel: "desc" },
+      { order: "asc" },
+      { createdAt: "desc" },
+    ],
+    include: { items: { orderBy: { order: "asc" } } },
+  });
+  if (!mission) return null;
+  return mission as unknown as ActiveMission;
+}
+
 /** Map a mission item taskType to the bucket used by countByType. */
 export function resolveTaskTypeBucket(taskType: string): string {
   if (TASK_TYPE_VALUES.has(taskType as TaskType)) return taskType;

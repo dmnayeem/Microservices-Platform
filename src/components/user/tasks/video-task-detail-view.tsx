@@ -20,6 +20,10 @@ import { formatDuration } from "@/lib/video-tasks";
 import { VideoTaskPlayer } from "./video-task-player";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import {
+  TaskUpgradeNotice,
+  isUpgradeRequired,
+} from "@/components/user/primitives/task-upgrade-notice";
 
 interface VideoTask {
   id: string;
@@ -54,6 +58,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<VideoTask | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
+  const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -87,6 +92,10 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
         const sData = await sRes.json().catch(() => ({}));
         if (cancel) return;
         if (!sRes.ok) {
+          if (isUpgradeRequired(sData)) {
+            setUpgradeMsg(sData.error || "");
+            return;
+          }
           const reason = sData.error ?? `HTTP ${sRes.status}`;
           if (
             typeof reason === "string" &&
@@ -141,6 +150,10 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
         }}
       />
     );
+  }
+
+  if (upgradeMsg !== null) {
+    return <TaskUpgradeNotice message={upgradeMsg} />;
   }
 
   if (state.kind === "loading") {

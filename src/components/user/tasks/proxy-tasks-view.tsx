@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import { isUpgradeRequired } from "@/components/user/primitives/task-upgrade-notice";
 
 interface ProxyTask {
   id: string;
@@ -178,7 +179,23 @@ export function ProxyTasksView() {
     setStarting(true);
     try {
       const res = await fetch(`/api/tasks/${t.id}/start`, { method: "POST" });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        // Daily-mission allowance exhausted → point the user to upgrade.
+        if (isUpgradeRequired(err)) {
+          toast.error(err.error || "Daily limit reached", {
+            description: "Upgrade your plan to do more tasks.",
+            action: {
+              label: "Upgrade",
+              onClick: () => {
+                window.location.href = "/packages";
+              },
+            },
+          });
+          return;
+        }
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
       const d = await res.json();
       setSubmissionId(d.submission?.id ?? null);
       setActive(t);
