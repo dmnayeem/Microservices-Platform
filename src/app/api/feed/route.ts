@@ -5,6 +5,8 @@ import { awardSocialEarning } from "@/lib/social-earning";
 import { getEffectivePackage } from "@/lib/packages";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { isValidPostBackground } from "@/lib/post-backgrounds";
+import { fetchLinkPreview, firstUrl } from "@/lib/link-preview";
+import type { Prisma } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
 export async function GET(request: NextRequest) {
@@ -173,6 +175,7 @@ export async function GET(request: NextRequest) {
       pollEndsAt: post.pollEndsAt,
       donationGoal: post.donationGoal,
       donationCollected: post.donationCollected,
+      linkPreview: post.linkPreview ?? null,
       groupId: post.groupId,
       myVote: userVoteMap.get(post.id) ?? null,
       createdAt: post.createdAt,
@@ -382,6 +385,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Best-effort OpenGraph link preview for the first URL in the post. Guarded
+    // (SSRF + timeout) inside fetchLinkPreview; failure never breaks the post.
+    let linkPreview: Awaited<ReturnType<typeof fetchLinkPreview>> = null;
+    const previewUrl = firstUrl(post.content);
+    if (previewUrl) {
+      try {
+        linkPreview = await fetchLinkPreview(previewUrl);
+        if (linkPreview) {
+          await prisma.post.update({
+            where: { id: post.id },
+            data: { linkPreview: linkPreview as unknown as Prisma.InputJsonValue },
+          });
+        }
+      } catch {
+        linkPreview = null;
+      }
+    }
+
     // Get user info
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -417,6 +438,7 @@ export async function POST(request: NextRequest) {
         pollEndsAt: post.pollEndsAt,
         donationGoal: post.donationGoal,
         donationCollected: post.donationCollected,
+        linkPreview,
         groupId: post.groupId,
         myVote: null,
         createdAt: post.createdAt,

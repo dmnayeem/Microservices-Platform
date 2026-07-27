@@ -2139,6 +2139,9 @@ model Post {
   socialEarnings Int    @default(0)
   pollOptions Json?     // [{ id, label, voteCount }]
   pollEndsAt  DateTime?
+  // OpenGraph preview of the first URL in `content`, fetched best-effort at
+  // create time: { url, title, description, image, siteName }. Null = no card.
+  linkPreview Json?
   donationGoal      Int?
   donationCollected Int       @default(0)
   groupId           String?

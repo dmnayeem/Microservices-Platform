@@ -24,6 +24,14 @@ export interface PollOption {
   voteCount: number;
 }
 
+export interface LinkPreviewData {
+  url: string;
+  title: string;
+  description: string;
+  image: string;
+  siteName: string;
+}
+
 export interface FeedPost {
   id: string;
   content: string;
@@ -42,6 +50,7 @@ export interface FeedPost {
   pollEndsAt?: string | null;
   donationGoal?: number | null;
   donationCollected?: number;
+  linkPreview?: LinkPreviewData | null;
   groupId?: string | null;
   myVote?: string | null;
   createdAt: string;

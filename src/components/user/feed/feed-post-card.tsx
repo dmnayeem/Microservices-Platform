@@ -30,7 +30,14 @@ import { DonationBlock } from "./donation-block";
 import { PromoteModal } from "./promote-modal";
 import { CommentsSection } from "./comments-section";
 import { RenderedContent } from "./feed-content";
+import { LinkPreviewCard } from "./link-preview-card";
 import type { FeedPost } from "./social-feed-view.types";
+
+// First http(s) URL in text (client-safe; server lib pulls node:dns so not imported here).
+function firstUrlInText(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s<]+/i);
+  return m ? m[0].replace(/[.,;:!?)\]}'"]+$/, "") : null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FeedPostCard
@@ -414,6 +421,15 @@ export const FeedPostCard = memo(function FeedPostCard({
               <RenderedContent content={post.content} />
             </p>
           ))}
+
+        {/* Link preview — only for text posts (no uploaded images / colored bg),
+            so the card doesn't compete with post media. */}
+        {!postBg && post.images.length === 0 && (post.linkPreview || firstUrlInText(post.content)) && (
+          <LinkPreviewCard
+            preview={post.linkPreview}
+            contentUrl={firstUrlInText(post.content)}
+          />
+        )}
       </div>
 
       {/* Images */}
