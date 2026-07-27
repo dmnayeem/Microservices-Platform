@@ -40,11 +40,18 @@ const DEFAULTS: TickerConfig = {
 
 const KEY_PREFIX = "ticker_";
 
+// Per-instance memo — the ticker renders on every feed load; staleness bounded
+// to 30s (mirrors system-settings/economy module caches).
+let _cfgCache: { value: TickerConfig; ts: number } | null = null;
+const CFG_TTL_MS = 30_000;
+
 async function loadConfig(): Promise<TickerConfig> {
+  if (_cfgCache && Date.now() - _cfgCache.ts < CFG_TTL_MS) return _cfgCache.value;
   const merged: TickerConfig = { ...DEFAULTS };
   try {
     const rows = await prisma.systemSetting.findMany({
       where: { category: "ticker" },
+      cacheStrategy: { ttl: 30, swr: 60 },
     });
     for (const r of rows) {
       if (!r.key.startsWith(KEY_PREFIX)) continue;
@@ -61,6 +68,7 @@ async function loadConfig(): Promise<TickerConfig> {
   } catch {
     // DB unreachable — return defaults
   }
+  _cfgCache = { value: merged, ts: Date.now() };
   return merged;
 }
 
@@ -118,6 +126,8 @@ export async function getTickerPayload(): Promise<{
   let realItems: WithdrawalTickerItem[] = [];
   if (cfg.show_real) {
     try {
+      // Social-proof ticker — a bit of staleness is fine; cache to spare the DB
+      // on every feed render.
       const recent = await prisma.withdrawal.findMany({
         where: {
           status: { in: ["COMPLETED", "PROCESSING"] },
@@ -125,12 +135,14 @@ export async function getTickerPayload(): Promise<{
         },
         orderBy: { createdAt: "desc" },
         take: cfg.max_items,
+        cacheStrategy: { ttl: 30, swr: 60 },
       });
       const userIds = [...new Set(recent.map((w) => w.userId))];
       const users = userIds.length
         ? await prisma.user.findMany({
             where: { id: { in: userIds } },
             select: { id: true, name: true, country: true },
+            cacheStrategy: { ttl: 60, swr: 120 },
           })
         : [];
       const usersById = new Map(users.map((u) => [u.id, u]));

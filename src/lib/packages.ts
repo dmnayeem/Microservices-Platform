@@ -109,7 +109,9 @@ function toPackageRow(pkg: unknown): PackageRow {
   };
 }
 
-export async function getEffectivePackage(
+// React.cache: dedupe the per-request user lookup — called on the ad-serve hot
+// path and several times per render (mirrors getEffectiveFeatures below).
+export const getEffectivePackage = cache(async function getEffectivePackage(
   userId: string
 ): Promise<PackageRow | null> {
   const user = await prisma.user.findUnique({
@@ -133,7 +135,7 @@ export async function getEffectivePackage(
   if (subActive) return toPackageRow(user.package);
 
   return defaultPackage();
-}
+});
 
 /**
  * The platform's default plan. Every new user is implicitly on this when

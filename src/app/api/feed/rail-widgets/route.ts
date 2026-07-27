@@ -64,6 +64,8 @@ export async function GET() {
       { createdAt: "desc" },
     ],
     include: { items: { orderBy: { order: "asc" } } },
+    // Mission templates change rarely and are shared across users — cache.
+    cacheStrategy: { ttl: 120, swr: 300 },
   });
 
   // Login-streak status (mirror of /api/daily-reward GET day-diff logic).

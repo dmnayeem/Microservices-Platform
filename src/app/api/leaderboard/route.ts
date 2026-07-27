@@ -19,6 +19,14 @@ const cachedCombinedTop = unstable_cache(
   { revalidate: 60 }
 );
 
+// A full-table user COUNT is brutal at 10M rows; the participant total is
+// display-only and barely changes minute-to-minute — cache it for 60s.
+const cachedTotalParticipants = unstable_cache(
+  async () => prisma.user.count(),
+  ["leaderboard-total-participants"],
+  { revalidate: 60 }
+);
+
 // GET /api/leaderboard - Get leaderboard data
 export async function GET(request: NextRequest) {
   try {
@@ -66,7 +74,7 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-      const totalParticipants = await prisma.user.count();
+      const totalParticipants = await cachedTotalParticipants();
       return NextResponse.json({
         leaderboard: top,
         eligiblePackages,
@@ -164,10 +172,18 @@ export async function GET(request: NextRequest) {
       });
       const users = usersRaw as unknown as LBUser[];
 
-      const referralCounts = await Promise.all(
-        users.map((u) =>
-          prisma.user.count({ where: { referredById: u.id } })
-        )
+      // One groupBy instead of N per-user counts (referral downline sizes).
+      const ids = users.map((u) => u.id);
+      const grouped = (await prisma.user.groupBy({
+        by: ["referredById"],
+        where: { referredById: { in: ids } },
+        _count: { _all: true },
+      })) as unknown as Array<{
+        referredById: string | null;
+        _count: { _all: number };
+      }>;
+      const countByReferrer = new Map(
+        grouped.map((g) => [g.referredById, g._count._all])
       );
 
       leaderboard = users.map((u, idx) => ({
@@ -177,7 +193,7 @@ export async function GET(request: NextRequest) {
         avatar: u.avatar,
         level: u.level,
         packageTier: u.package?.slug ?? "default",
-        value: referralCounts[idx],
+        value: countByReferrer.get(u.id) ?? 0,
       }));
     } else if (type === "tasks") {
       const usersRaw = await prisma.user.findMany({
@@ -195,15 +211,18 @@ export async function GET(request: NextRequest) {
       });
       const users = usersRaw as unknown as LBUser[];
 
-      const taskCounts = await Promise.all(
-        users.map((u) =>
-          prisma.taskSubmission.count({
-            where: {
-              userId: u.id,
-              status: { in: ["APPROVED", "AUTO_APPROVED"] },
-            },
-          })
-        )
+      // One groupBy instead of N per-user counts on the big TaskSubmission table.
+      const ids = users.map((u) => u.id);
+      const grouped = (await prisma.taskSubmission.groupBy({
+        by: ["userId"],
+        where: {
+          userId: { in: ids },
+          status: { in: ["APPROVED", "AUTO_APPROVED"] },
+        },
+        _count: { _all: true },
+      })) as unknown as Array<{ userId: string; _count: { _all: number } }>;
+      const countByUser = new Map(
+        grouped.map((g) => [g.userId, g._count._all])
       );
 
       leaderboard = users.map((u, idx) => ({
@@ -213,7 +232,7 @@ export async function GET(request: NextRequest) {
         avatar: u.avatar,
         level: u.level,
         packageTier: u.package?.slug ?? "default",
-        value: taskCounts[idx],
+        value: countByUser.get(u.id) ?? 0,
       }));
     }
 
@@ -269,7 +288,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get leaderboard metadata
-    const totalParticipants = await prisma.user.count();
+    const totalParticipants = await cachedTotalParticipants();
 
     return NextResponse.json({
       leaderboard,

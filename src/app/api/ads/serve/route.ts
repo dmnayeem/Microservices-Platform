@@ -49,9 +49,11 @@ export async function GET(request: NextRequest) {
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
   }
 
-  // Find placement by name
+  // Find placement by name. Placements change rarely, so cache the lookup —
+  // this is the hottest read path (every ad impression).
   const placementRow = await prisma.adPlacement.findFirst({
     where: { name: placement, isActive: true },
+    cacheStrategy: { ttl: 30, swr: 60 },
   });
   if (!placementRow) {
     return NextResponse.json({ ad: null });
