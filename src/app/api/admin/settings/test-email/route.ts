@@ -16,7 +16,11 @@ export async function POST() {
   const port = parseInt(process.env.SMTP_PORT || "587");
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
-  const fromEmail = process.env.SMTP_FROM_EMAIL || user;
+  const fromEmail =
+    process.env.SMTP_FROM_EMAIL ||
+    process.env.SMTP_FROM ||
+    process.env.EMAIL_FROM ||
+    user;
 
   if (!host || !user || !pass) {
     return NextResponse.json(

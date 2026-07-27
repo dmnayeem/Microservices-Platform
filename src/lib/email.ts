@@ -12,6 +12,11 @@ const transporter = nodemailer.createTransport({
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "EarnGPT";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+// Tolerate the env-name variants for the From address (SMTP_FROM is canonical;
+// EMAIL_FROM is what some deployments set) and fall back to the SMTP user so
+// the header is never `<undefined>`.
+const FROM_ADDRESS =
+  process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || "";
 
 export async function sendVerificationEmail(
   email: string,
@@ -76,7 +81,7 @@ export async function sendVerificationEmail(
   `;
 
   await transporter.sendMail({
-    from: `${APP_NAME} <${process.env.SMTP_FROM}>`,
+    from: `${APP_NAME} <${FROM_ADDRESS}>`,
     to: email,
     subject: `Verify your ${APP_NAME} account`,
     html,
@@ -146,7 +151,7 @@ export async function sendPasswordResetEmail(
   `;
 
   await transporter.sendMail({
-    from: `${APP_NAME} <${process.env.SMTP_FROM}>`,
+    from: `${APP_NAME} <${FROM_ADDRESS}>`,
     to: email,
     subject: `Reset your ${APP_NAME} password`,
     html,
@@ -212,7 +217,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
   `;
 
   await transporter.sendMail({
-    from: `${APP_NAME} <${process.env.SMTP_FROM}>`,
+    from: `${APP_NAME} <${FROM_ADDRESS}>`,
     to: email,
     subject: `Welcome to ${APP_NAME}! Let's start earning`,
     html,
@@ -260,7 +265,7 @@ export async function sendNotificationEmail(
       </table>
     </body></html>`;
   await transporter.sendMail({
-    from: `${APP_NAME} <${process.env.SMTP_FROM}>`,
+    from: `${APP_NAME} <${FROM_ADDRESS}>`,
     to: email,
     subject: `${title} · ${APP_NAME}`,
     html,
