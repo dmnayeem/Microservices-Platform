@@ -65,6 +65,9 @@ interface PerSideRule {
   enabled: boolean;
   points: number;
   xp: number;
+  /** Actor side only: award `points` once per this many DISTINCT-post actions
+   *  (lifetime). 1 = flat per action (legacy). e.g. 100 → +points per 100 likes. */
+  perCount?: number;
 }
 
 interface SocialEarningConfig {
@@ -219,6 +222,11 @@ export async function getSocialEarningConfig(): Promise<SocialEarningConfig> {
         xp: asNumber(
           map.get(`social_earning.${k}_actor_xp`),
           def.actor.xp
+        ),
+        // Every N distinct-post actions → `points`. 1 = flat per action.
+        perCount: Math.max(
+          1,
+          Math.floor(asNumber(map.get(`social_earning.${k}_actor_per_count`), 1))
         ),
       },
     };
@@ -554,7 +562,14 @@ export async function awardSocialEarning(
   // makes SOCIAL_LIKE/COMMENT/POST/SHARE/VOTE missions actually progress
   // (for POST_CREATE the actor === the poster). One row per action call; the
   // mission progress builder de-dupes by distinct post when configured.
-  if (cfg.countTowardDailyMissions && actorUserId) {
+  //
+  // Also log when this action's actor batch reward is on (perCount > 1) — the
+  // batch milestone counter reads SocialActionLog, so it must stay populated
+  // even if daily-mission counting is off.
+  const actorRule = cfg.perActivity[action].actor;
+  const actorPerCount = Math.max(1, Math.floor(actorRule.perCount ?? 1));
+  const batchRewardOn = actorRule.enabled && actorPerCount > 1;
+  if ((cfg.countTowardDailyMissions || batchRewardOn) && actorUserId) {
     const logAction = ACTOR_LOG_ACTION[action];
     if (logAction) {
       try {
@@ -601,6 +616,43 @@ export async function awardSocialEarning(
   if (actorUserId) {
     if (postOwnerUserId && actorUserId === postOwnerUserId) {
       result.actor = { points: 0, xp: 0, skipped: "self" };
+    } else if (
+      batchRewardOn &&
+      postId &&
+      (action === "LIKE_RECEIVED" || action === "COMMENT_RECEIVED")
+    ) {
+      // Milestone reward: pay `points` once per `perCount` DISTINCT posts the
+      // actor has engaged (lifetime), so like/unlike-spam on one post can't farm
+      // it. The current action was just logged above, so it's included.
+      const logAction = ACTOR_LOG_ACTION[action]!;
+      const rows = await prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT "postId") AS count
+        FROM "SocialActionLog"
+        WHERE "userId" = ${actorUserId}
+          AND "action" = ${logAction}
+          AND "postId" IS NOT NULL
+      `;
+      const distinct = Number(rows[0]?.count ?? 0);
+      if (distinct > 0 && distinct % actorPerCount === 0) {
+        const batchIndex = distinct / actorPerCount;
+        result.actor = await creditOne({
+          userId: actorUserId,
+          role: "actor",
+          rule: {
+            enabled: true,
+            points: actorRule.points,
+            xp: actorRule.xp,
+          },
+          cfg,
+          action,
+          postId: null, // milestone reward isn't tied to a single post
+          sourceUserId: postOwnerUserId,
+          referenceOverride: `social_${action.toLowerCase()}_actorbatch_${actorUserId}_${batchIndex}`,
+        });
+      } else {
+        // Not a milestone crossing on this action — no actor payout yet.
+        result.actor = { points: 0, xp: 0, skipped: "duplicate" };
+      }
     } else {
       result.actor = await creditOne({
         userId: actorUserId,

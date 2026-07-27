@@ -76,6 +76,8 @@ export default async function SocialEarningSettingsPage() {
               points:
                 (map.get(`social_earning.${a}_actor_points`) as number) ?? 0,
               xp: (map.get(`social_earning.${a}_actor_xp`) as number) ?? 0,
+              perCount:
+                (map.get(`social_earning.${a}_actor_per_count`) as number) ?? 1,
             },
           },
         ];
@@ -84,7 +86,12 @@ export default async function SocialEarningSettingsPage() {
       (typeof ACTIONS)[number],
       {
         recipient: { enabled: boolean; points: number; xp: number };
-        actor: { enabled: boolean; points: number; xp: number };
+        actor: {
+          enabled: boolean;
+          points: number;
+          xp: number;
+          perCount: number;
+        };
       }
     >,
   };

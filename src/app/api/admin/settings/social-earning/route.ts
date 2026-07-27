@@ -21,6 +21,8 @@ const sideSchema = z.object({
   enabled: z.boolean(),
   points: z.number().min(0).max(10000),
   xp: z.number().min(0).max(10000),
+  // Actor side only: award `points` once per this many distinct-post actions.
+  perCount: z.number().int().min(1).max(1_000_000).optional(),
 });
 
 const schema = z.object({
@@ -84,6 +86,8 @@ export async function GET() {
               (map.get(`social_earning.${a}_actor_enabled`) as boolean) ?? false,
             points: (map.get(`social_earning.${a}_actor_points`) as number) ?? 0,
             xp: (map.get(`social_earning.${a}_actor_xp`) as number) ?? 0,
+            perCount:
+              (map.get(`social_earning.${a}_actor_per_count`) as number) ?? 1,
           },
         },
       ])
@@ -131,6 +135,7 @@ export async function POST(req: NextRequest) {
     writes.push([`social_earning.${a}_actor_enabled`, row.actor.enabled]);
     writes.push([`social_earning.${a}_actor_points`, row.actor.points]);
     writes.push([`social_earning.${a}_actor_xp`, row.actor.xp]);
+    writes.push([`social_earning.${a}_actor_per_count`, row.actor.perCount ?? 1]);
   }
 
   await Promise.all(

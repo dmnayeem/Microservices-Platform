@@ -2287,6 +2287,8 @@ model SocialActionLog {
   createdAt DateTime @default(now())
   @@index([userId, dateKey, action])
   @@index([postId])
+  // Lifetime distinct-post count per actor+action (social-earning batch reward).
+  @@index([userId, action, postId])
 }
 
 // Per-user daily AI-generation counter (rate limit for /api/ai/generate).

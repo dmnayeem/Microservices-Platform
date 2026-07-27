@@ -37,6 +37,9 @@ interface SideRow {
   enabled: boolean;
   points: number;
   xp: number;
+  /** Actor side (like/comment): award `points` once per this many distinct-post
+   *  actions (lifetime). 1 = per action. */
+  perCount?: number;
 }
 
 interface ActivityRow {
@@ -238,7 +241,7 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
         </h2>
         <p className="text-xs text-slate-400 mb-4">
           Each activity has separate rates for the recipient and the actor.
-          Click "Actor reward" to expand the actor controls per row.
+          Click &quot;Actor reward&quot; to expand the actor controls per row.
         </p>
         <div className="space-y-2">
           {(Object.keys(ACTIVITY_META) as ActivityKey[]).map((k) => {
@@ -307,7 +310,19 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
                           row={row.actor}
                           canEdit={canEdit}
                           onChange={(patch) => setActor(k, patch)}
+                          showPerCount={
+                            k === "like_received" || k === "comment_received"
+                          }
                         />
+                        {(k === "like_received" || k === "comment_received") &&
+                          row.actor.enabled &&
+                          (row.actor.perCount ?? 1) > 1 && (
+                            <p className="mt-1 ml-11 text-[11px] text-emerald-300/80">
+                              Every {row.actor.perCount} distinct posts{" "}
+                              {k === "like_received" ? "liked" : "commented on"} →
+                              +{row.actor.points} pts (lifetime).
+                            </p>
+                          )}
                       </div>
                     )}
                   </>
@@ -431,7 +446,7 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
               </p>
               <p className="text-[11px] text-slate-500">
                 When enabled, each like/comment/share/post the user makes is
-                logged for the day's mission progress.
+                logged for the day&apos;s mission progress.
               </p>
             </div>
           </label>
@@ -483,14 +498,22 @@ function SideControls({
   row,
   canEdit,
   onChange,
+  showPerCount = false,
 }: {
   side: "recipient" | "actor";
   row: SideRow;
   canEdit: boolean;
   onChange: (patch: Partial<SideRow>) => void;
+  /** Actor like/comment: show the "Per (count)" milestone divisor. */
+  showPerCount?: boolean;
 }) {
   return (
-    <div className="mt-2 ml-11 grid grid-cols-1 sm:grid-cols-3 gap-2">
+    <div
+      className={cn(
+        "mt-2 ml-11 grid grid-cols-1 gap-2",
+        showPerCount ? "sm:grid-cols-4" : "sm:grid-cols-3"
+      )}
+    >
       <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
         <input
           type="checkbox"
@@ -503,6 +526,24 @@ function SideControls({
           {side} enabled
         </span>
       </label>
+      {showPerCount && (
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
+          <span className="text-[11px] text-slate-400 w-16 shrink-0" title="Award points once per this many distinct posts">
+            Per
+          </span>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={row.perCount ?? 1}
+            onChange={(e) =>
+              onChange({ perCount: Math.max(1, parseInt(e.target.value) || 1) })
+            }
+            disabled={!canEdit || !row.enabled}
+            className="flex-1 px-2 py-0.5 bg-slate-950 border border-slate-700 rounded text-sm text-white tabular-nums focus:outline-none focus:border-blue-500 disabled:opacity-60"
+          />
+        </div>
+      )}
       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
         <span className="text-[11px] text-slate-400 w-16 shrink-0">Points</span>
         <input
