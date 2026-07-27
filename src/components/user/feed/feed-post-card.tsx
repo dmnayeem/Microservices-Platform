@@ -30,6 +30,7 @@ import { DonationBlock } from "./donation-block";
 import { PromoteModal } from "./promote-modal";
 import { CommentsSection } from "./comments-section";
 import { RenderedContent } from "./feed-content";
+import { ExpandableContent } from "./expandable-content";
 import { LinkPreviewCard } from "./link-preview-card";
 import {
   InlineVideoEmbed,
@@ -421,9 +422,11 @@ export const FeedPostCard = memo(function FeedPostCard({
               </p>
             </div>
           ) : (
-            <p className="text-[15px] text-gray-200 leading-relaxed whitespace-pre-wrap mt-3">
-              <RenderedContent content={post.content} />
-            </p>
+            <ExpandableContent
+              content={post.content}
+              wrapperClassName="mt-3"
+              pClassName="text-[15px] text-gray-200 leading-relaxed"
+            />
           ))}
 
         {/* Link preview — only for text posts (no uploaded images / colored bg),
