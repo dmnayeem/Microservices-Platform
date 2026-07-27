@@ -2151,6 +2151,9 @@ model Post {
   group             Group?    @relation(fields: [groupId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  // Freshness signal for the smart feed: bumped when a new comment arrives so
+  // the post resurfaces. Defaults to createdAt for new/legacy rows.
+  lastActivityAt DateTime @default(now())
   comments    Comment[]
   likes       Like[]
   votes       Vote[]
@@ -2166,6 +2169,7 @@ model Post {
   @@index([isPromoted, promotedUntil])
   @@index([isPublic, createdAt])
   @@index([isPublic, isHidden, isPinned, createdAt])
+  @@index([isPublic, isHidden, lastActivityAt])
 }
 
 model Follow {

@@ -5,7 +5,7 @@ import { FeedAdCard, type FeedAd } from "@/components/user/feed/feed-ad-card";
 import {
   MessageCircle,
   Flame,
-  Clock,
+  Sparkles,
   Users,
   Compass,
 } from "lucide-react";
@@ -302,18 +302,18 @@ function FeedTab({
               key={s}
               onClick={() => onSortChange(s)}
               className={cn(
-                "px-3 py-1.5 inline-flex items-center gap-1 capitalize",
+                "px-3 py-1.5 inline-flex items-center gap-1",
                 sort === s
                   ? "bg-indigo-500 text-white"
                   : "bg-gray-900 text-gray-400 hover:text-white"
               )}
             >
               {s === "recent" ? (
-                <Clock className="w-3 h-3" />
+                <Sparkles className="w-3 h-3" />
               ) : (
                 <Flame className="w-3 h-3" />
               )}
-              {s}
+              {s === "recent" ? "For You" : "Trending"}
             </button>
           ))}
         </div>

@@ -149,10 +149,11 @@ export async function POST(
       },
     });
 
-    // Update comment count
+    // Update comment count + bump freshness so a newly-commented post
+    // resurfaces in the smart feed ("new comment → back to top").
     await prisma.post.update({
       where: { id },
-      data: { commentsCount: { increment: 1 } },
+      data: { commentsCount: { increment: 1 }, lastActivityAt: new Date() },
     });
 
     // Social earning — recipient (owner) and optionally actor (commenter)

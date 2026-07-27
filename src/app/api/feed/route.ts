@@ -7,7 +7,13 @@ import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { isValidPostBackground } from "@/lib/post-backgrounds";
 import { fetchLinkPreview, firstUrl } from "@/lib/link-preview";
 import { isEmbeddableVideoUrl } from "@/lib/video-url";
-import type { Prisma } from "@/generated/prisma/client";
+import {
+  scorePost,
+  dayKey,
+  POOL_SIZE,
+  type RankablePost,
+} from "@/lib/feed-ranking";
+import type { Prisma, Post } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
 export async function GET(request: NextRequest) {
@@ -49,29 +55,72 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get posts. Sort priority:
-    //   1. Announcements (admin OFFICIAL posts) — top of feed
-    //   2. User-paid Boost (isPinned)
-    //   3. Recency
-    // Promoted posts are NOT pulled in here; they're merged in below so we
-    // can interleave them every ~4 organic posts and respect promotedUntil.
-    const [posts, total] = await Promise.all([
-      prisma.post.findMany({
-        where: { ...where, isAnnouncement: false, isPromoted: false },
-        orderBy: [
-          { isPinned: "desc" },
-          { createdAt: "desc" },
-        ],
-        skip,
-        take: limit,
-      }),
-      prisma.post.count({ where }),
-    ]);
+    const now = new Date();
+    // The main feed (no user/group/tag/search filter) is ranked by a smart
+    // hot-score; filtered feeds stay chronological (intentional).
+    const isMainFeed = !userId && !groupId && !tag && !search;
+    const organicWhere = { ...where, isAnnouncement: false, isPromoted: false };
+
+    let posts: Post[];
+    let total: number;
+
+    if (isMainFeed && skip < POOL_SIZE) {
+      // Score a bounded pool of the freshest posts (pinned first so boosted
+      // posts are always included), then paginate by score. Bounded LIMIT keeps
+      // this fast even at very large post counts.
+      const [pool, cnt] = await Promise.all([
+        prisma.post.findMany({
+          where: organicWhere,
+          orderBy: [{ isPinned: "desc" }, { lastActivityAt: "desc" }],
+          take: POOL_SIZE,
+        }),
+        prisma.post.count({ where }),
+      ]);
+
+      // Viewer's follow set among pool authors → light ranking boost.
+      let follows = new Set<string>();
+      if (session?.user?.id) {
+        const authorIds = [...new Set(pool.map((p) => p.userId))];
+        if (authorIds.length > 0) {
+          const f = await prisma.follow.findMany({
+            where: {
+              followerId: session.user.id,
+              followingId: { in: authorIds },
+            },
+            select: { followingId: true },
+          });
+          follows = new Set(f.map((x) => x.followingId));
+        }
+      }
+
+      const day = dayKey(now);
+      const scoreById = new Map(
+        pool.map((p) => [
+          p.id,
+          scorePost(p as unknown as RankablePost, { follows, now, day }),
+        ])
+      );
+      const ranked = [...pool].sort((a, b) => {
+        // Boosted (pinned) posts always float to the very top.
+        if (a.isPinned !== b.isPinned) return Number(b.isPinned) - Number(a.isPinned);
+        return (scoreById.get(b.id) ?? 0) - (scoreById.get(a.id) ?? 0);
+      });
+      posts = ranked.slice(skip, skip + limit);
+      total = cnt;
+    } else {
+      // Filtered feeds, or deep-scroll past the scored pool → chronological.
+      const orderBy = isMainFeed
+        ? [{ lastActivityAt: "desc" as const }]
+        : [{ isPinned: "desc" as const }, { createdAt: "desc" as const }];
+      [posts, total] = await Promise.all([
+        prisma.post.findMany({ where: organicWhere, orderBy, skip, take: limit }),
+        prisma.post.count({ where }),
+      ]);
+    }
 
     // Announcements + active promoted posts — only on page 1, prepended
     // and interleaved respectively. On page 2+ the user has already seen
     // them so we skip to keep the feed feeling fresh.
-    const now = new Date();
     type FeedPost = (typeof posts)[number];
     let announcements: FeedPost[] = [];
     let promoted: FeedPost[] = [];
