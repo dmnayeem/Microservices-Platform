@@ -244,6 +244,7 @@ export async function POST(request: NextRequest) {
       donationGoal,
       groupId,
       backgroundStyle,
+      disableLinkPreview,
     } = body as {
       content?: string;
       images?: string[];
@@ -253,6 +254,7 @@ export async function POST(request: NextRequest) {
       donationGoal?: number;
       groupId?: string | null;
       backgroundStyle?: string | null;
+      disableLinkPreview?: boolean;
     };
 
     // Facebook-style colored background — only valid for text-only posts.
@@ -387,8 +389,13 @@ export async function POST(request: NextRequest) {
 
     // Best-effort OpenGraph link preview for the first URL in the post. Guarded
     // (SSRF + timeout) inside fetchLinkPreview; failure never breaks the post.
+    // Skipped when the post has images (image takes priority) or the user
+    // dismissed the composer preview (disableLinkPreview).
     let linkPreview: Awaited<ReturnType<typeof fetchLinkPreview>> = null;
-    const previewUrl = firstUrl(post.content);
+    const previewUrl =
+      disableLinkPreview || (post.images?.length ?? 0) > 0
+        ? null
+        : firstUrl(post.content);
     if (previewUrl) {
       try {
         linkPreview = await fetchLinkPreview(previewUrl);

@@ -31,6 +31,10 @@ import { PromoteModal } from "./promote-modal";
 import { CommentsSection } from "./comments-section";
 import { RenderedContent } from "./feed-content";
 import { LinkPreviewCard } from "./link-preview-card";
+import {
+  InlineVideoEmbed,
+  isEmbeddableVideoUrl,
+} from "@/components/user/primitives/inline-video-embed";
 import type { FeedPost } from "./social-feed-view.types";
 
 // First http(s) URL in text (client-safe; server lib pulls node:dns so not imported here).
@@ -423,13 +427,18 @@ export const FeedPostCard = memo(function FeedPostCard({
           ))}
 
         {/* Link preview — only for text posts (no uploaded images / colored bg),
-            so the card doesn't compete with post media. */}
-        {!postBg && post.images.length === 0 && (post.linkPreview || firstUrlInText(post.content)) && (
-          <LinkPreviewCard
-            preview={post.linkPreview}
-            contentUrl={firstUrlInText(post.content)}
-          />
-        )}
+            so it doesn't compete with post media. A YouTube/Vimeo/video URL plays
+            inline; any other URL gets an OpenGraph card. */}
+        {!postBg && post.images.length === 0 && (() => {
+          const url = firstUrlInText(post.content);
+          if (url && isEmbeddableVideoUrl(url)) {
+            return <div className="mt-3"><InlineVideoEmbed url={url} /></div>;
+          }
+          if (post.linkPreview || url) {
+            return <LinkPreviewCard preview={post.linkPreview} contentUrl={url} />;
+          }
+          return null;
+        })()}
       </div>
 
       {/* Images */}

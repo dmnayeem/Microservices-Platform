@@ -64,6 +64,14 @@ function resolve(url: string): Resolved {
   return { kind: "unknown" };
 }
 
+/** True when `url` is a YouTube/Vimeo/direct-video link that InlineVideoEmbed can
+ *  play inline — so callers (e.g. the feed card) can render a player instead of a
+ *  static link-preview card. */
+export function isEmbeddableVideoUrl(url: string): boolean {
+  const kind = resolve(url).kind;
+  return kind === "youtube" || kind === "vimeo" || kind === "file" || kind === "iframe";
+}
+
 export function InlineVideoEmbed({ url, title = "Video", className = "" }: Props) {
   const r = resolve(url);
 

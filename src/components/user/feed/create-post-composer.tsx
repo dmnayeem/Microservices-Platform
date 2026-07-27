@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image as ImageIcon,
   X,
@@ -24,11 +24,23 @@ import {
 } from "@/lib/post-backgrounds";
 import { compressImageToTarget } from "@/lib/image-compress";
 import { ComposerToolBtn, EmojiPopover } from "./composer-bits";
+import { LinkPreviewCard } from "./link-preview-card";
+import {
+  InlineVideoEmbed,
+  isEmbeddableVideoUrl,
+} from "@/components/user/primitives/inline-video-embed";
 import type {
   SessionUser,
   FeedPost,
   ComposerMode,
+  LinkPreviewData,
 } from "./social-feed-view.types";
+
+// First http(s) URL in text (client-safe). Mirrors feed-post-card's helper.
+function firstUrlInText(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s<]+/i);
+  return m ? m[0].replace(/[.,;:!?)\]}'"]+$/, "") : null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composer
@@ -54,11 +66,60 @@ export function CreatePostComposer({
   const [donationGoal, setDonationGoal] = useState<number>(1000);
   const [busy, setBusy] = useState(false);
   const [postAsAnnouncement, setPostAsAnnouncement] = useState(false);
+  // Facebook-style link preview: auto-fetched for the first URL, dismissable.
+  const [linkPreview, setLinkPreview] = useState<LinkPreviewData | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewDismissed, setPreviewDismissed] = useState(false);
+  const previewedUrlRef = useRef<string | null>(null);
+  const dismissedUrlRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // A colored background only applies to text-only posts.
   const activeBg = images.length === 0 ? getPostBackground(bg) : null;
+
+  // The URL (if any) we'd preview: text-only posts, no image (image wins).
+  const currentUrl =
+    mode === "text" && images.length === 0 ? firstUrlInText(content) : null;
+  const previewSuppressed =
+    previewDismissed && dismissedUrlRef.current === currentUrl;
+  const currentUrlIsVideo = !!currentUrl && isEmbeddableVideoUrl(currentUrl);
+
+  // Debounced link-preview fetch. All state writes live inside the timeout
+  // callback (never synchronously in the effect body) so we don't trigger
+  // react-hooks/set-state-in-effect, and so typing feels smooth.
+  useEffect(() => {
+    if (!currentUrl || previewSuppressed || currentUrlIsVideo) {
+      const timer = setTimeout(() => {
+        // Clear any stale card once the URL is gone / superseded.
+        if (previewedUrlRef.current !== currentUrl) {
+          previewedUrlRef.current = currentUrl;
+          setLinkPreview(null);
+          setPreviewLoading(false);
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    if (previewedUrlRef.current === currentUrl) return; // already have this one
+    const timer = setTimeout(() => {
+      previewedUrlRef.current = currentUrl;
+      setPreviewLoading(true);
+      setLinkPreview(null);
+      fetch(`/api/link-preview?url=${encodeURIComponent(currentUrl)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setLinkPreview((d?.preview as LinkPreviewData) ?? null))
+        .catch(() => setLinkPreview(null))
+        .finally(() => setPreviewLoading(false));
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [currentUrl, previewSuppressed, currentUrlIsVideo]);
+
+  const dismissPreview = () => {
+    dismissedUrlRef.current = currentUrl;
+    setPreviewDismissed(true);
+    setLinkPreview(null);
+    setPreviewLoading(false);
+  };
 
   // Insert text at the textarea caret (used by the emoji picker).
   const insertAtCaret = (text: string) => {
@@ -146,6 +207,11 @@ export function CreatePostComposer({
     setExpanded(false);
     setMode("text");
     setPostAsAnnouncement(false);
+    setLinkPreview(null);
+    setPreviewLoading(false);
+    setPreviewDismissed(false);
+    previewedUrlRef.current = null;
+    dismissedUrlRef.current = null;
   };
 
   const addImage = () => {
@@ -197,6 +263,7 @@ export function CreatePostComposer({
           isPublic: true,
           backgroundStyle:
             mode === "text" && images.length === 0 && bg ? bg : null,
+          disableLinkPreview: previewDismissed,
           ...(cleanedPoll && {
             pollOptions: cleanedPoll.map((label) => ({ label })),
             pollEndsAt: new Date(
@@ -402,6 +469,31 @@ export function CreatePostComposer({
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Link preview (Facebook-style) — video plays inline, else an OG
+              card; both dismissable via ×. Hidden when an image is attached. */}
+          {currentUrl && !previewSuppressed && (
+            currentUrlIsVideo ? (
+              <div className="relative mt-3">
+                <InlineVideoEmbed url={currentUrl} />
+                <button
+                  type="button"
+                  onClick={dismissPreview}
+                  aria-label="Remove preview"
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/70 hover:bg-red-500/80 text-white backdrop-blur-sm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : linkPreview ? (
+              <LinkPreviewCard preview={linkPreview} onRemove={dismissPreview} />
+            ) : previewLoading ? (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900/60 p-3 text-xs text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading preview…
+              </div>
+            ) : null
           )}
 
           {/* Formatting toolbar */}

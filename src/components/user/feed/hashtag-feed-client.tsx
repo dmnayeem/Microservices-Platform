@@ -8,11 +8,24 @@ import { Avatar } from "@/components/user/primitives/avatar";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { profileHref } from "@/lib/user-href";
 import { RenderedContent } from "./feed-content";
+import { LinkPreviewCard } from "./link-preview-card";
+import {
+  InlineVideoEmbed,
+  isEmbeddableVideoUrl,
+} from "@/components/user/primitives/inline-video-embed";
+import type { LinkPreviewData } from "./social-feed-view.types";
+
+// First http(s) URL in text (client-safe).
+function firstUrlInText(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s<]+/i);
+  return m ? m[0].replace(/[.,;:!?)\]}'"]+$/, "") : null;
+}
 
 interface HashtagPost {
   id: string;
   content: string;
   images: string[];
+  linkPreview?: LinkPreviewData | null;
   createdAt: string;
   likesCount: number;
   commentsCount: number;
@@ -122,7 +135,7 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
               <RenderedContent content={p.content} />
             </p>
           )}
-          {p.images?.[0] && (
+          {p.images?.[0] ? (
             <SmartImage
               src={p.images[0]}
               alt=""
@@ -130,6 +143,21 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
               height={600}
               className="mt-2 w-full h-auto rounded-lg border border-gray-800 bg-gray-950"
             />
+          ) : (
+            (() => {
+              const url = firstUrlInText(p.content);
+              if (url && isEmbeddableVideoUrl(url)) {
+                return (
+                  <div className="mt-2">
+                    <InlineVideoEmbed url={url} />
+                  </div>
+                );
+              }
+              if (p.linkPreview || url) {
+                return <LinkPreviewCard preview={p.linkPreview} contentUrl={url} />;
+              }
+              return null;
+            })()
           )}
           <div className="mt-3 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-800 pt-2.5">
             <span>👁 {p.viewsCount}</span>

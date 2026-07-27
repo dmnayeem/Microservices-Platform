@@ -15,7 +15,11 @@ export interface LinkPreview {
 }
 
 const TIMEOUT_MS = 6000;
-const MAX_BYTES = 512 * 1024; // 512 KB of HTML is plenty for <head> meta tags
+const MAX_BYTES = 1024 * 1024; // 1 MB — some sites push og: tags past big inline scripts
+const MAX_REDIRECTS = 3;
+// A realistic browser UA — some sites 403 obvious bot user-agents.
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1h
 const CACHE_MAX = 500;
 
@@ -149,10 +153,99 @@ function cacheSet(url: string, value: LinkPreview | null) {
   cache.set(url, { value, expires: Date.now() + CACHE_TTL_MS });
 }
 
+/** oEmbed JSON endpoint for YouTube/Vimeo video URLs, else null. The endpoint
+ *  host is a fixed public provider, so it's reliable and passes the SSRF guard. */
+function oembedEndpoint(u: URL): { endpoint: string; siteName: string } | null {
+  const host = u.hostname.replace(/^www\./, "").toLowerCase();
+  if (
+    host === "youtube.com" ||
+    host === "youtu.be" ||
+    host === "youtube-nocookie.com" ||
+    host.endsWith(".youtube.com")
+  ) {
+    return {
+      endpoint: `https://www.youtube.com/oembed?url=${encodeURIComponent(u.toString())}&format=json`,
+      siteName: "YouTube",
+    };
+  }
+  if (host === "vimeo.com" || host === "player.vimeo.com") {
+    return {
+      endpoint: `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(u.toString())}`,
+      siteName: "Vimeo",
+    };
+  }
+  return null;
+}
+
+/** Build a preview from a provider oEmbed JSON response (YouTube/Vimeo). */
+async function fetchViaOEmbed(
+  u: URL,
+  info: { endpoint: string; siteName: string }
+): Promise<LinkPreview | null> {
+  const res = await fetch(info.endpoint, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { "User-Agent": BROWSER_UA, Accept: "application/json" },
+  });
+  if (!res.ok) return null;
+  const data = (await res.json().catch(() => null)) as {
+    title?: string;
+    author_name?: string;
+    thumbnail_url?: string;
+  } | null;
+  if (!data) return null;
+  const title = (data.title ?? "").trim();
+  const image = (data.thumbnail_url ?? "").trim();
+  if (!title && !image) return null;
+  return {
+    url: u.toString(),
+    title: title.slice(0, 200),
+    description: data.author_name ? `by ${data.author_name}`.slice(0, 300) : "",
+    image: /^https?:\/\//i.test(image) ? image : "",
+    siteName: info.siteName,
+  };
+}
+
+/** Fetch following up to MAX_REDIRECTS hops, re-validating each hop's host/DNS
+ *  (keeps the SSRF guard across redirects). Shares one overall timeout. */
+async function fetchFollowingRedirects(start: URL): Promise<Response> {
+  const signal = AbortSignal.timeout(TIMEOUT_MS);
+  let current = start;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (hop > 0) await assertPublicUrl(current.toString()); // re-guard redirected host
+    const res = await fetch(current, {
+      signal,
+      redirect: "manual",
+      headers: {
+        "User-Agent": BROWSER_UA,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (!loc) return res;
+      let next: URL;
+      try {
+        next = new URL(loc, current);
+      } catch {
+        throw new Error("Bad redirect target");
+      }
+      if (next.protocol !== "http:" && next.protocol !== "https:") {
+        throw new Error("Bad redirect scheme");
+      }
+      current = next;
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Too many redirects");
+}
+
 /**
  * Fetch an OpenGraph preview for `rawUrl`. SSRF-guarded (scheme + DNS-resolved
- * IP block, no redirects, timeout, size + content-type cap). Returns null on any
- * failure so callers can silently skip the card. Results (incl. null) are cached.
+ * IP block re-checked on every redirect hop, timeout, size + content-type cap).
+ * YouTube/Vimeo use provider oEmbed. Returns null on any failure so callers can
+ * silently skip the card. Results (incl. null) are cached.
  */
 export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | null> {
   const cached = cacheGet(rawUrl);
@@ -161,16 +254,16 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | nu
   let result: LinkPreview | null = null;
   try {
     const u = await assertPublicUrl(rawUrl);
-    const res = await fetch(u, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      redirect: "error", // a redirect could bounce to an internal host
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; EarnGPTLinkPreview/1.0; +https://earngpt.app)",
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-    });
+
+    // Video providers: use oEmbed (reliable, tiny, never blocked) instead of HTML.
+    const oembed = oembedEndpoint(u);
+    if (oembed) {
+      result = await fetchViaOEmbed(u, oembed);
+      cacheSet(rawUrl, result);
+      return result;
+    }
+
+    const res = await fetchFollowingRedirects(u);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
     if (!ctype.includes("text/html") && !ctype.includes("application/xhtml")) {
