@@ -45,6 +45,8 @@ export default async function MyListingsPage() {
       salesCount: sales?.count ?? 0,
       totalEarned: sales?.earned ?? 0,
       createdAt: l.createdAt.toISOString(),
+      rejectionReason: l.rejectionReason,
+      featuredUntil: l.featuredUntil?.toISOString() ?? null,
     };
   });
 

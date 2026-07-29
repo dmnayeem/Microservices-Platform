@@ -105,9 +105,11 @@ export function LessonPane({
   return (
     <div className="space-y-3">
       {/* Lesson hero */}
-      {isVideoLike && lesson.videoUrl ? (
+      {isVideoLike && lesson.hasVideo ? (
         <LessonVideoPlayer
-          src={lesson.videoUrl}
+          key={lesson.id}
+          courseId={courseId}
+          lessonId={lesson.id}
           subtitlesUrl={lesson.subtitlesUrl}
           initialPosition={lesson.progress?.lastPosition ?? 0}
           onPositionTick={(seconds) =>

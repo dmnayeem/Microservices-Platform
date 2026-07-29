@@ -123,6 +123,46 @@ export function PricingStep({ state, update, canSetCommission }: Props) {
             />
           </Field>
 
+          <Field
+            label="Affiliate reward (optional)"
+            hint="Let others promote this course and earn a reward per sale they drive — paid from your cut. Leave off to disable."
+          >
+            <div className="flex items-center gap-2">
+              <select
+                value={state.affiliateCommissionType ?? ""}
+                onChange={(e) =>
+                  update(
+                    "affiliateCommissionType",
+                    (e.target.value || null) as BuilderState["affiliateCommissionType"]
+                  )
+                }
+                className={inputCls + " max-w-40"}
+              >
+                <option value="">No affiliate</option>
+                <option value="PERCENT">% of sale</option>
+                <option value="FIXED">Fixed $</option>
+              </select>
+              {state.affiliateCommissionType && (
+                <input
+                  type="number"
+                  min={0}
+                  step={state.affiliateCommissionType === "PERCENT" ? 1 : 0.01}
+                  value={state.affiliateCommissionValue ?? ""}
+                  onChange={(e) =>
+                    update(
+                      "affiliateCommissionValue",
+                      e.target.value === "" ? null : parseFloat(e.target.value)
+                    )
+                  }
+                  className={inputCls + " max-w-32 tabular-nums"}
+                  placeholder={
+                    state.affiliateCommissionType === "PERCENT" ? "20" : "5.00"
+                  }
+                />
+              )}
+            </div>
+          </Field>
+
           {canSetCommission && (
             <Field
               label="Per-course commission override (bps)"

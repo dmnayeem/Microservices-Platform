@@ -16,6 +16,7 @@ import {
 import { ListingCard } from "@/components/user/primitives/listing-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { PromoteButton } from "@/components/user/promotion/promote-button";
 import { cn } from "@/lib/utils";
 
 export interface SellerListing {
@@ -25,15 +26,25 @@ export interface SellerListing {
   price: number;
   images: string[];
   views: number;
-  status: "ACTIVE" | "SOLD" | "CANCELLED" | "EXPIRED";
+  status:
+    | "ACTIVE"
+    | "SOLD"
+    | "CANCELLED"
+    | "EXPIRED"
+    | "PENDING_REVIEW"
+    | "REJECTED";
   salesCount: number;
   totalEarned: number;
   createdAt: string;
+  rejectionReason?: string | null;
+  featuredUntil?: string | null;
 }
 
 const STATUS_FILTERS = [
   { value: "ALL", label: "All" },
+  { value: "PENDING_REVIEW", label: "Pending" },
   { value: "ACTIVE", label: "Active" },
+  { value: "REJECTED", label: "Rejected" },
   { value: "SOLD", label: "Sold" },
   { value: "CANCELLED", label: "Cancelled" },
   { value: "EXPIRED", label: "Expired" },
@@ -158,9 +169,24 @@ export function SellerDashboardView({ listings }: Props) {
                       ? "CANCELLED"
                       : l.status === "EXPIRED"
                         ? "EXPIRED"
-                        : undefined
+                        : l.status === "PENDING_REVIEW"
+                          ? "PENDING"
+                          : l.status === "REJECTED"
+                            ? "REJECTED"
+                            : undefined
                 }
               />
+              {l.status === "PENDING_REVIEW" && (
+                <p className="px-1 text-[10px] font-semibold text-amber-400">
+                  ⏳ Awaiting admin review
+                </p>
+              )}
+              {l.status === "REJECTED" && (
+                <p className="px-1 text-[10px] text-rose-400">
+                  <span className="font-semibold">Rejected</span>
+                  {l.rejectionReason ? ` — ${l.rejectionReason}` : ""}
+                </p>
+              )}
               <div className="px-1 flex items-center justify-between text-[10px] text-gray-500">
                 <span className="inline-flex items-center gap-0.5">
                   <Eye className="w-2.5 h-2.5" />
@@ -185,6 +211,15 @@ export function SellerDashboardView({ listings }: Props) {
                   )}
                 </span>
               </div>
+              {l.status === "ACTIVE" && (
+                <div className="px-1">
+                  <PromoteButton
+                    kind="listing"
+                    id={l.id}
+                    featuredUntil={l.featuredUntil}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

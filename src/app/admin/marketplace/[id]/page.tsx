@@ -1,12 +1,13 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ArrowLeft, Calendar, Eye, ShoppingCart, DollarSign, Tag, FileText, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Eye, ShoppingCart, DollarSign, Tag, FileText, Image as ImageIcon, Download, ShieldCheck, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ListingActions } from "./_components/ListingActions";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import type { MediaMeta } from "@/lib/media-metadata";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,6 +18,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   SOLD: { label: "Sold", color: "text-blue-400 bg-blue-500/10" },
   CANCELLED: { label: "Cancelled", color: "text-red-400 bg-red-500/10" },
   EXPIRED: { label: "Expired", color: "text-gray-400 bg-gray-500/10" },
+  PENDING_REVIEW: { label: "Pending review", color: "text-amber-400 bg-amber-500/10" },
+  REJECTED: { label: "Rejected", color: "text-rose-400 bg-rose-500/10" },
 };
 
 export default async function MarketplaceDetailPage({ params }: PageProps) {
@@ -173,6 +176,15 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
               </div>
             </div>
           )}
+
+          {/* Uploaded-file micro-data (stock media) — helps judge original vs
+              downloaded/edited. */}
+          {typedListing.fileMeta ? (
+            <FileMetaPanel
+              meta={typedListing.fileMeta as unknown as MediaMeta}
+              downloadUrl={typedListing.files[0]}
+            />
+          ) : null}
 
           {/* Purchase History */}
           <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
@@ -342,10 +354,145 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
               isPromoted={typedListing.isPromoted ?? false}
               isAuction={typedListing.auctionMode ?? false}
               isActive={typedListing.status === "ACTIVE"}
+              status={typedListing.status}
               auctionEndsAt={typedListing.auctionEndsAt ?? null}
             />
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value?: string | number | null }) {
+  if (value === undefined || value === null || value === "") return null;
+  return (
+    <div className="flex justify-between gap-3 text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-white text-right break-all">{value}</span>
+    </div>
+  );
+}
+
+/** Admin-only panel showing the extracted micro-data + originality hints for a
+ *  stock-media deliverable, with a download link to inspect the actual file. */
+function FileMetaPanel({
+  meta,
+  downloadUrl,
+}: {
+  meta: MediaMeta;
+  downloadUrl?: string;
+}) {
+  const suspicious =
+    (meta.kind === "image" && !meta.hints?.hasCameraExif) ||
+    meta.hints?.hasEditorSoftwareTag ||
+    meta.hints?.reEncoded ||
+    !!meta.hints?.duplicateOf;
+
+  return (
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          {suspicious ? (
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
+          ) : (
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+          )}
+          Uploaded file — micro-data
+        </h2>
+        {downloadUrl && (
+          <a
+            href={downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            download
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/20 text-sm font-semibold"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </a>
+        )}
+      </div>
+
+      {/* Originality hints */}
+      <div
+        className={`mb-4 p-3 rounded-lg border text-sm ${
+          suspicious
+            ? "bg-amber-500/10 border-amber-500/30 text-amber-200"
+            : "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
+        }`}
+      >
+        <ul className="space-y-1">
+          {meta.kind === "image" && (
+            <li>
+              {meta.hints?.hasCameraExif ? "✓" : "⚠"} Camera EXIF{" "}
+              {meta.hints?.hasCameraExif ? "present (likely an original capture)" : "missing (screenshot/export/download?)"}
+            </li>
+          )}
+          {meta.hints?.hasEditorSoftwareTag && (
+            <li>⚠ Edited in image software (editor tag in metadata)</li>
+          )}
+          {meta.hints?.reEncoded && (
+            <li>⚠ Re-encoded (encoder looks like ffmpeg/HandBrake)</li>
+          )}
+          {meta.hints?.duplicateOf && (
+            <li>
+              ⚠ Perceptual near-duplicate of another listing (
+              <Link
+                href={`/admin/marketplace/${meta.hints.duplicateOf}`}
+                className="underline"
+              >
+                view
+              </Link>
+              )
+            </li>
+          )}
+          {meta.hints?.note && <li className="text-gray-300">{meta.hints.note}</li>}
+        </ul>
+      </div>
+
+      <div className="space-y-1.5">
+        <Row label="File size" value={`${(meta.sizeBytes / 1024 / 1024).toFixed(2)} MB`} />
+        <Row label="SHA-256" value={meta.sha256?.slice(0, 24) + "…"} />
+        {meta.image && (
+          <>
+            <Row label="Dimensions" value={meta.image.width && meta.image.height ? `${meta.image.width}×${meta.image.height}` : undefined} />
+            <Row label="Camera" value={[meta.image.exif?.make, meta.image.exif?.model].filter(Boolean).join(" ") || undefined} />
+            <Row label="Lens" value={meta.image.exif?.lens} />
+            <Row label="Software" value={meta.image.exif?.software} />
+            <Row label="Captured" value={meta.image.exif?.dateTaken} />
+            <Row label="Perceptual hash" value={meta.image.pHash ? meta.image.pHash.slice(0, 20) + "…" : undefined} />
+          </>
+        )}
+        {meta.audio && (
+          <>
+            <Row label="Container" value={meta.audio.container} />
+            <Row label="Codec" value={meta.audio.codec} />
+            <Row label="Duration" value={meta.audio.durationSec ? `${Math.round(meta.audio.durationSec)}s` : undefined} />
+            <Row label="Bitrate" value={meta.audio.bitrate ? `${Math.round(meta.audio.bitrate / 1000)} kbps` : undefined} />
+            <Row label="Sample rate" value={meta.audio.sampleRate ? `${meta.audio.sampleRate} Hz` : undefined} />
+            <Row label="Encoder" value={meta.audio.encoder} />
+            <Row label="Title tag" value={meta.audio.title} />
+            <Row label="Artist tag" value={meta.audio.artist} />
+          </>
+        )}
+        {meta.video && (
+          <>
+            <Row label="Container" value={meta.video.container} />
+            <Row label="Codec" value={meta.video.codec} />
+            <Row label="Duration" value={meta.video.durationSec ? `${Math.round(meta.video.durationSec)}s` : undefined} />
+            <Row label="Encoder" value={meta.video.encoder} />
+          </>
+        )}
+        {meta.document && (
+          <>
+            <Row label="Format" value={meta.document.format} />
+            <Row label="Pages" value={meta.document.pageCount} />
+            <Row label="Producer" value={meta.document.producer} />
+            <Row label="Creator" value={meta.document.creator} />
+            <Row label="Created" value={meta.document.createdDate} />
+          </>
+        )}
       </div>
     </div>
   );

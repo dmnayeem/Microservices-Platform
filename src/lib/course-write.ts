@@ -69,6 +69,9 @@ export const courseWriteSchema = z.object({
   discountPrice: z.number().min(0).optional().nullable(),
   discountEndsAt: z.string().optional().nullable(),
   commissionRateBps: z.number().int().min(0).max(10000).optional().nullable(),
+  // Tutor-set affiliate reward (from the tutor's cut). See src/lib/affiliate.ts.
+  affiliateCommissionType: z.enum(["PERCENT", "FIXED"]).optional().nullable(),
+  affiliateCommissionValue: z.number().min(0).optional().nullable(),
   learningOutcomes: z.array(z.string().max(200)).max(30).default([]),
   requirements: z.array(z.string().max(200)).max(30).default([]),
   whatsIncluded: z.array(z.string().max(200)).max(30).default([]),
@@ -199,6 +202,14 @@ export async function saveCourse(input: CourseWriteInput, opts: SaveOpts) {
     discountEndsAt: input.discountEndsAt ? new Date(input.discountEndsAt) : null,
     commissionRateBps:
       opts.actor === "admin" ? input.commissionRateBps ?? null : undefined,
+    affiliateCommissionType:
+      input.affiliateCommissionValue && input.affiliateCommissionValue > 0
+        ? (input.affiliateCommissionType ?? "PERCENT")
+        : null,
+    affiliateCommissionValue:
+      input.affiliateCommissionValue && input.affiliateCommissionValue > 0
+        ? input.affiliateCommissionValue
+        : null,
     learningOutcomes: input.learningOutcomes,
     requirements: input.requirements,
     whatsIncluded: input.whatsIncluded,

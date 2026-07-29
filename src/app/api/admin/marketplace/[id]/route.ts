@@ -89,7 +89,62 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (action === "cancel") {
+    if (action === "approve") {
+      // Approve a pending seller listing → goes live.
+      const updatedListing = await prisma.marketplaceListing.update({
+        where: { id },
+        data: {
+          status: "ACTIVE",
+          reviewedAt: new Date(),
+          reviewedById: session.user.id,
+          rejectionReason: null,
+        },
+      });
+      await prisma.notification.create({
+        data: {
+          userId: listing.sellerId,
+          type: "SYSTEM",
+          title: "Listing Approved",
+          message: `Your listing "${listing.title}" is approved and now live on the marketplace.`,
+          data: { listingId: id, approvedBy: session.user.id },
+        },
+      });
+      return NextResponse.json({
+        success: true,
+        listing: updatedListing,
+        message: "Listing approved",
+      });
+    } else if (action === "reject") {
+      if (!reason || !String(reason).trim()) {
+        return NextResponse.json(
+          { error: "A rejection reason is required" },
+          { status: 400 }
+        );
+      }
+      const updatedListing = await prisma.marketplaceListing.update({
+        where: { id },
+        data: {
+          status: "REJECTED",
+          rejectionReason: String(reason).trim(),
+          reviewedAt: new Date(),
+          reviewedById: session.user.id,
+        },
+      });
+      await prisma.notification.create({
+        data: {
+          userId: listing.sellerId,
+          type: "SYSTEM",
+          title: "Listing Rejected",
+          message: `Your listing "${listing.title}" was rejected. Reason: ${String(reason).trim()}`,
+          data: { listingId: id, reason: String(reason).trim(), rejectedBy: session.user.id },
+        },
+      });
+      return NextResponse.json({
+        success: true,
+        listing: updatedListing,
+        message: "Listing rejected",
+      });
+    } else if (action === "cancel") {
       // Cancel the listing
       const updatedListing = await prisma.marketplaceListing.update({
         where: { id },

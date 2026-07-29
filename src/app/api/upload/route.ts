@@ -6,9 +6,11 @@ import { isS3Configured, getUploadUrl, generateFileKey, uploadFile, getPublicUrl
 const MAX_DIRECT_UPLOAD_SIZE = 5 * 1024 * 1024;
 
 // Allowed file types
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/tiff"];
+const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip", "application/epub+zip", "application/x-mobipocket-ebook"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+// Stock-media (music) deliverables.
+const ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/flac", "audio/aac", "audio/ogg", "audio/aiff", "audio/x-aiff"];
 
 // POST /api/upload - Request a pre-signed URL for file upload
 export async function POST(request: NextRequest) {
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type based on folder/purpose
-    const allAllowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_VIDEO_TYPES];
+    const allAllowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_AUDIO_TYPES];
     if (!allAllowedTypes.includes(fileType)) {
       return NextResponse.json(
         { error: "File type not allowed" },
@@ -126,7 +128,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validate file type
-    const allAllowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_VIDEO_TYPES];
+    const allAllowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_AUDIO_TYPES];
     if (!allAllowedTypes.includes(file.type)) {
       return NextResponse.json(
         { error: "File type not allowed" },

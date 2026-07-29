@@ -62,6 +62,16 @@ const STATUS_CONFIG: Record<
     color: "text-slate-400 bg-slate-500/10",
     icon: Clock,
   },
+  PENDING_REVIEW: {
+    label: "Pending review",
+    color: "text-amber-400 bg-amber-500/10",
+    icon: Clock,
+  },
+  REJECTED: {
+    label: "Rejected",
+    color: "text-rose-400 bg-rose-500/10",
+    icon: XCircle,
+  },
 };
 
 const PURCHASE_STATUS_LABEL: Record<string, string> = {
@@ -131,7 +141,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
   ] = await Promise.all([
     prisma.marketplaceListing.count(),
     prisma.marketplaceListing.count({ where: { status: "ACTIVE" } }),
-    Promise.resolve(0), // PENDING_REVIEW status not in current enum yet
+    prisma.marketplaceListing.count({ where: { status: "PENDING_REVIEW" } }),
     prisma.marketplacePurchase.count(),
     prisma.marketplacePurchase.count({ where: { status: "PENDING" } }),
     prisma.marketplaceDispute.count({

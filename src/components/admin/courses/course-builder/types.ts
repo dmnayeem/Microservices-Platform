@@ -68,6 +68,8 @@ export interface BuilderState {
   discountPrice: number | null;
   discountEndsAt: string; // ISO date string (yyyy-mm-dd) or empty
   commissionRateBps: number | null; // admin-only override
+  affiliateCommissionType: "PERCENT" | "FIXED" | null; // tutor-set affiliate reward
+  affiliateCommissionValue: number | null;
   // Detail
   learningOutcomes: string[];
   requirements: string[];
@@ -132,6 +134,8 @@ export function makeEmptyState(): BuilderState {
     discountPrice: null,
     discountEndsAt: "",
     commissionRateBps: null,
+    affiliateCommissionType: null,
+    affiliateCommissionValue: null,
     learningOutcomes: [],
     requirements: [],
     whatsIncluded: [],

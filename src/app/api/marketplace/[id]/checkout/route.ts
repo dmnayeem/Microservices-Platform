@@ -14,8 +14,15 @@ import {
   resolveCommissionBps,
   splitPrice,
 } from "@/lib/marketplace-commission";
+import {
+  AFFILIATE_COOKIE,
+  getAffiliateConfig,
+  isAffiliateEligible,
+  computeAffiliateCommission,
+  parseAttribution,
+} from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
-import { lt, sub, toNum } from "@/lib/money";
+import { lt, sub, toNum, toNumOrNull } from "@/lib/money";
 
 // POST /api/marketplace/:id/checkout
 //
@@ -53,6 +60,8 @@ export async function POST(
         assetType: true,
         auctionMode: true,
         commissionRateBps: true,
+        affiliateCommissionType: true,
+        affiliateCommissionValue: true,
       },
     });
     if (!listing) {
@@ -109,6 +118,45 @@ export async function POST(
     });
     const { fee, sellerAmount } = splitPrice(priceNum, bps);
 
+    // Affiliate attribution: if the buyer arrived via an affiliate's link and
+    // the seller set a reward, the affiliate earns it OUT OF the seller's cut
+    // (platform fee unchanged). Resolved before the tx; credited inside it.
+    let affiliateId: string | null = null;
+    let affiliateAmount = 0;
+    {
+      const cfg = await getAffiliateConfig();
+      if (
+        cfg.enabled &&
+        isAffiliateEligible(listing.affiliateCommissionType, toNumOrNull(listing.affiliateCommissionValue))
+      ) {
+        const attr = parseAttribution(
+          _request.cookies.get(AFFILIATE_COOKIE)?.value,
+          "MARKETPLACE",
+          id,
+          cfg.cookieWindowDays,
+          Date.now()
+        );
+        if (attr && attr.aff !== userId && attr.aff !== listing.sellerId) {
+          const aff = await prisma.user.findUnique({
+            where: { id: attr.aff },
+            select: { id: true, affiliateJoinedAt: true },
+          });
+          if (aff?.affiliateJoinedAt) {
+            affiliateAmount = computeAffiliateCommission(
+              listing.affiliateCommissionType,
+              toNumOrNull(listing.affiliateCommissionValue),
+              priceNum,
+              sellerAmount
+            );
+            if (affiliateAmount > 0) affiliateId = aff.id;
+          }
+        }
+      }
+    }
+    const sellerNet = affiliateId
+      ? Math.round((sellerAmount - affiliateAmount) * 100) / 100
+      : sellerAmount;
+
     const purchase = await prisma.$transaction(async (tx) => {
       // Atomic status flip — bails out (count: 0) if a concurrent request
       // already took the listing.
@@ -129,7 +177,7 @@ export async function POST(
           buyerId: userId,
           amount: listing.price,
           fee,
-          sellerAmount,
+          sellerAmount: sellerNet,
           status: "COMPLETED",
         },
       });
@@ -169,10 +217,50 @@ export async function POST(
       await tx.user.update({
         where: { id: listing.sellerId },
         data: {
-          cashBalance: { increment: sellerAmount },
-          totalEarnings: { increment: sellerAmount },
+          cashBalance: { increment: sellerNet },
+          totalEarnings: { increment: sellerNet },
         },
       });
+
+      // Affiliate payout (from the seller's cut) — credit + ledger, deduped by
+      // the (sourceType, orderRef) unique on AffiliateCommission.
+      if (affiliateId && affiliateAmount > 0) {
+        await tx.user.update({
+          where: { id: affiliateId },
+          data: {
+            cashBalance: { increment: affiliateAmount },
+            totalEarnings: { increment: affiliateAmount },
+          },
+        });
+        await tx.transaction.create({
+          data: {
+            userId: affiliateId,
+            type: TransactionType.AFFILIATE_COMMISSION,
+            status: TransactionStatus.COMPLETED,
+            amount: affiliateAmount,
+            points: 0,
+            description: `Affiliate commission — "${listing.title}"`,
+            reference: `affiliate_marketplace_${p.id}`,
+            metadata: {
+              listingId: id,
+              purchaseId: p.id,
+              saleAmount: priceNum,
+              fromBuyerId: userId,
+            },
+          },
+        });
+        await tx.affiliateCommission.create({
+          data: {
+            affiliateUserId: affiliateId,
+            sourceType: "MARKETPLACE",
+            sourceId: id,
+            orderRef: p.id,
+            buyerId: userId,
+            saleAmount: listing.price,
+            commissionAmount: affiliateAmount,
+          },
+        });
+      }
 
       // Ledger
       await tx.transaction.create({
@@ -198,7 +286,7 @@ export async function POST(
           userId: listing.sellerId,
           type: TransactionType.EARNING,
           status: TransactionStatus.COMPLETED,
-          amount: sellerAmount,
+          amount: sellerNet,
           points: 0,
           description: `Marketplace sale — "${listing.title}"`,
           reference: `marketplace_${id}_${p.id}`,
@@ -208,6 +296,8 @@ export async function POST(
             commissionBps: bps,
             platformFee: fee,
             fromUserId: userId,
+            affiliateUserId: affiliateId,
+            affiliateAmount,
           },
         },
       });
@@ -232,12 +322,13 @@ export async function POST(
           userId: listing.sellerId,
           type: NotificationType.SYSTEM,
           title: "You made a sale 💸",
-          message: `"${listing.title}" sold for $${listing.price.toLocaleString()}. You earned $${sellerAmount.toLocaleString()}.`,
+          message: `"${listing.title}" sold for $${listing.price.toLocaleString()}. You earned $${sellerNet.toLocaleString()}${affiliateId ? ` (after $${affiliateAmount.toLocaleString()} affiliate reward)` : ""}.`,
           data: {
             listingId: id,
             purchaseId: purchase.id,
             amount: listing.price,
-            sellerAmount,
+            sellerAmount: sellerNet,
+            affiliateAmount,
           },
         },
       }),
@@ -265,7 +356,8 @@ export async function POST(
       purchaseId: purchase.id,
       amount: toNum(listing.price),
       fee,
-      sellerAmount,
+      sellerAmount: sellerNet,
+      affiliateAmount,
       checkoutUrl: null,
     });
   } catch (error) {

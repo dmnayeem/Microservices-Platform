@@ -78,6 +78,8 @@ export function MarketplaceView() {
   const [auctionOnly, setAuctionOnly] = useState(false);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  // Asset-age bucket → maps to minAgeMonths/maxAgeMonths query params.
+  const [ageBucket, setAgeBucket] = useState("");
   const [sort, setSort] = useState("createdAt-desc");
   const [listings, setListings] = useState<Listing[]>([]);
   const [facets, setFacets] = useState<Facet[]>([]);
@@ -104,6 +106,11 @@ export function MarketplaceView() {
     if (auctionOnly) params.set("auction", "true");
     if (minPrice) params.set("minPrice", minPrice);
     if (maxPrice) params.set("maxPrice", maxPrice);
+    if (ageBucket) {
+      const [lo, hi] = ageBucket.split("-");
+      if (lo) params.set("minAgeMonths", lo);
+      if (hi) params.set("maxAgeMonths", hi);
+    }
     const [sortBy, sortOrder] = sort.split("-");
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
@@ -127,6 +134,7 @@ export function MarketplaceView() {
     auctionOnly,
     minPrice,
     maxPrice,
+    ageBucket,
     sort,
   ]);
 
@@ -137,7 +145,8 @@ export function MarketplaceView() {
     monetizedOnly ||
     auctionOnly ||
     minPrice ||
-    maxPrice;
+    maxPrice ||
+    ageBucket;
 
   const clearAll = () => {
     setAssetType("");
@@ -147,6 +156,7 @@ export function MarketplaceView() {
     setAuctionOnly(false);
     setMinPrice("");
     setMaxPrice("");
+    setAgeBucket("");
   };
 
   // Count of the toggle/price refinements (excludes assetType chips + search,
@@ -156,7 +166,8 @@ export function MarketplaceView() {
     (monetizedOnly ? 1 : 0) +
     (auctionOnly ? 1 : 0) +
     (minPrice ? 1 : 0) +
-    (maxPrice ? 1 : 0);
+    (maxPrice ? 1 : 0) +
+    (ageBucket ? 1 : 0);
 
   // Shared toggle + price controls — rendered inline on desktop and inside the
   // mobile BottomSheet. Identical state/handlers → behaviour is unchanged.
@@ -203,6 +214,18 @@ export function MarketplaceView() {
           className="w-16 bg-transparent text-white text-xs focus:outline-none tabular-nums"
         />
       </div>
+      <select
+        value={ageBucket}
+        onChange={(e) => setAgeBucket(e.target.value)}
+        className="px-2.5 py-1 rounded-full border border-gray-800 bg-gray-900 text-white text-xs focus:outline-none focus:border-indigo-500"
+        aria-label="Asset age"
+      >
+        <option value="">Any age</option>
+        <option value="0-12">Under 1 year</option>
+        <option value="12-36">1–3 years</option>
+        <option value="36-60">3–5 years</option>
+        <option value="60-">5+ years</option>
+      </select>
       {anyFilterActive && (
         <button
           onClick={clearAll}
@@ -540,9 +563,9 @@ function ListingCardV2({ listing }: { listing: Listing }) {
           {listing.assetAgeMonths ? (
             <span className="inline-flex items-center gap-1 text-purple-300">
               <span className="font-bold tabular-nums">
-                {listing.assetAgeMonths}
+                {formatAge(listing.assetAgeMonths)}
               </span>
-              <span className="text-gray-500">mo old</span>
+              <span className="text-gray-500">old</span>
             </span>
           ) : null}
         </div>
@@ -576,6 +599,15 @@ function compactNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
+}
+
+/** Human age from a month count: "2y 3m", "8mo", "<1mo". */
+function formatAge(months: number): string {
+  if (months < 1) return "<1mo";
+  if (months < 12) return `${months}mo`;
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  return m ? `${y}y ${m}m` : `${y}y`;
 }
 
 function compactMoney(n: number): string {

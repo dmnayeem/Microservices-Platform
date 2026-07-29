@@ -52,6 +52,7 @@ interface Facets {
     color: string | null;
     count: number;
   }>;
+  subcategories?: Array<{ id: string; name: string; count: number }>;
   skillLevels: Array<{ value: string; count: number }>;
   languages: Array<{ value: string; count: number }>;
   freeCount: number;
@@ -80,6 +81,7 @@ const LEVEL_LABELS: Record<string, string> = {
 export function CoursesBrowse({ initialFeatured }: Props) {
   const [q, setQ] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
   const [skillLevel, setSkillLevel] = useState<string | null>(null);
   const [language, setLanguage] = useState<string | null>(null);
   const [priceMode, setPriceMode] = useState<"all" | "free" | "paid">("all");
@@ -99,6 +101,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
       const params = new URLSearchParams();
       if (q.trim()) params.set("q", q.trim());
       if (categoryId) params.set("categoryId", categoryId);
+      if (subcategoryId) params.set("subcategoryId", subcategoryId);
       if (skillLevel) params.set("skillLevel", skillLevel);
       if (language) params.set("language", language);
       if (priceMode !== "all") params.set("price", priceMode);
@@ -118,7 +121,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [q, categoryId, skillLevel, language, priceMode, minRating, sort]);
+  }, [q, categoryId, subcategoryId, skillLevel, language, priceMode, minRating, sort]);
 
   // Debounce search; refetch on filter changes
   useEffect(() => {
@@ -131,6 +134,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
   const clearAll = () => {
     setQ("");
     setCategoryId(null);
+    setSubcategoryId(null);
     setSkillLevel(null);
     setLanguage(null);
     setPriceMode("all");
@@ -140,6 +144,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
 
   const activeFilterCount =
     (categoryId ? 1 : 0) +
+    (subcategoryId ? 1 : 0) +
     (skillLevel ? 1 : 0) +
     (language ? 1 : 0) +
     (priceMode !== "all" ? 1 : 0) +
@@ -236,7 +241,10 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             <ul className="space-y-1">
               <FilterRow
                 active={categoryId === null}
-                onClick={() => setCategoryId(null)}
+                onClick={() => {
+                  setCategoryId(null);
+                  setSubcategoryId(null);
+                }}
                 label="All categories"
                 count={facets?.total ?? 0}
               />
@@ -244,7 +252,10 @@ export function CoursesBrowse({ initialFeatured }: Props) {
                 <FilterRow
                   key={c.id}
                   active={categoryId === c.id}
-                  onClick={() => setCategoryId(c.id)}
+                  onClick={() => {
+                    setCategoryId(c.id);
+                    setSubcategoryId(null);
+                  }}
                   label={c.name}
                   count={c.count}
                   color={c.color}
@@ -252,6 +263,28 @@ export function CoursesBrowse({ initialFeatured }: Props) {
               ))}
             </ul>
           </FilterCard>
+
+          {categoryId && (facets?.subcategories?.length ?? 0) > 0 && (
+            <FilterCard title="Subcategory">
+              <ul className="space-y-1">
+                <FilterRow
+                  active={subcategoryId === null}
+                  onClick={() => setSubcategoryId(null)}
+                  label="All"
+                  count={facets?.total ?? 0}
+                />
+                {(facets?.subcategories ?? []).map((s) => (
+                  <FilterRow
+                    key={s.id}
+                    active={subcategoryId === s.id}
+                    onClick={() => setSubcategoryId(s.id)}
+                    label={s.name}
+                    count={s.count}
+                  />
+                ))}
+              </ul>
+            </FilterCard>
+          )}
 
           <FilterCard title="Skill level">
             <ul className="space-y-1">

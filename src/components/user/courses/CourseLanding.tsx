@@ -17,6 +17,7 @@ import { CourseQA } from "./CourseQA";
 import { RelatedCourses } from "./RelatedCourses";
 import { CourseEnrollCta } from "./CourseEnrollCta";
 import { StatCard } from "@/components/user/primitives/stat-card";
+import { AffiliateAttribution } from "@/components/user/affiliate/affiliate-attribution";
 
 interface Props {
   // From loadCourseLanding — shape is encapsulated here on purpose
@@ -66,6 +67,7 @@ export function CourseLanding({ data, viewerId }: Props) {
 
   return (
     <div className="space-y-10">
+      <AffiliateAttribution targetType="COURSE" targetId={course.id} />
       <CourseLandingHero
         course={course}
         tutor={course.tutor}

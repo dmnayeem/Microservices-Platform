@@ -78,6 +78,7 @@ enum TransactionType {
   COURSE_TUTOR_EARNING
   COURSE_REFUND
   DEPOSIT
+  AFFILIATE_COMMISSION
 }
 
 // What earning generated a referral commission. Currently only tasks pay
@@ -693,6 +694,8 @@ enum MarketplaceListingStatus {
   SOLD
   CANCELLED
   EXPIRED
+  PENDING_REVIEW
+  REJECTED
 }
 
 enum MarketplaceBidStatus {
@@ -846,6 +849,9 @@ model User {
   referredById      String?
   referredBy        User?       @relation("ReferralRelation", fields: [referredById], references: [id])
   referrals         User[]      @relation("ReferralRelation")
+  // Affiliate program opt-in (earn commission promoting marketplace/course items).
+  affiliateJoinedAt DateTime?
+  affiliateCommissions AffiliateCommission[] @relation("AffiliateCommissions")
   // Extended profile fields (admin_oo.md §5.02)
   gender            String?
   dateOfBirth       DateTime?
@@ -1485,6 +1491,34 @@ model ReferralEarning {
   @@index([userId, level])
 }
 
+// Affiliate program: a user shares a product/course link and earns the
+// seller/tutor-set reward when a sale happens through it. Distinct from the
+// signup-referral system above (attribution is per-product link, not signup).
+model AffiliateClick {
+  id              String   @id @default(cuid())
+  affiliateUserId String
+  targetType      String   // "MARKETPLACE" | "COURSE"
+  targetId        String
+  createdAt       DateTime @default(now())
+  @@index([affiliateUserId, createdAt])
+  @@index([targetType, targetId])
+}
+
+model AffiliateCommission {
+  id               String   @id @default(cuid())
+  affiliateUserId  String
+  affiliate        User     @relation("AffiliateCommissions", fields: [affiliateUserId], references: [id])
+  sourceType       String   // "MARKETPLACE" | "COURSE"
+  sourceId         String   // listingId | courseId
+  orderRef         String   // purchaseId | enrollmentId (dedupe)
+  buyerId          String
+  saleAmount       Decimal  @db.Decimal(18, 6)
+  commissionAmount Decimal  @db.Decimal(18, 6)
+  createdAt        DateTime @default(now())
+  @@unique([sourceType, orderRef])
+  @@index([affiliateUserId, createdAt])
+}
+
 model MarketplaceListing {
   id              String                   @id @default(cuid())
   sellerId        String
@@ -1540,11 +1574,25 @@ model MarketplaceListing {
   // Override platform commission in basis points (100 bps = 1%).
   // Falls back to setting `marketplace_commission_rates` when null.
   commissionRateBps Int?
+  // Seller-set affiliate reward paid (from the seller's own cut) to an affiliate
+  // who drives a sale. type = "PERCENT" (value = % of sale) | "FIXED" (value =
+  // USD). null / 0 ⇒ not affiliate-eligible. See src/lib/affiliate.ts.
+  affiliateCommissionType  String?
+  affiliateCommissionValue Decimal? @db.Decimal(18, 6)
   // Pre-aggregated counters for fast list rendering.
   bidsCount       Int                      @default(0)
   bidderCount     Int                      @default(0)
   uniqueViewers   Int                      @default(0)
   directPurchasesCount Int                 @default(0)
+  // Seller-listing moderation (admin approve/reject). New user listings start
+  // PENDING_REVIEW; rejection stores a reason shown back to the seller.
+  rejectionReason String?                  @db.Text
+  reviewedAt      DateTime?
+  reviewedById    String?
+  // Extracted micro-data of the uploaded deliverable (stock media): EXIF,
+  // codec/duration, hash, perceptual hash + heuristic hints. Surfaced to the
+  // admin to judge original vs downloaded/edited. See src/lib/media-metadata.ts.
+  fileMeta        Json?
   status          MarketplaceListingStatus @default(ACTIVE)
   views           Int                      @default(0)
   createdAt       DateTime                 @default(now())
@@ -1713,6 +1761,9 @@ model Course {
   tutor           User?         @relation("CourseTutor", fields: [tutorId], references: [id], onDelete: SetNull)
   certificateEnabled Boolean    @default(true)
   commissionRateBps Int?
+  // Tutor-set affiliate reward (from the tutor's cut) — see MarketplaceListing.
+  affiliateCommissionType  String?
+  affiliateCommissionValue Decimal? @db.Decimal(18, 6)
   isFeatured      Boolean       @default(false)
   featuredUntil   DateTime?
   isPromoted      Boolean       @default(false)

@@ -5,11 +5,65 @@ import { MarketplaceListingStatus, Prisma } from "@/generated/prisma";
 import {
   validateDetails,
   getCategory,
+  requiresDeliverable,
+  getDeliverableKind,
 } from "@/lib/marketplace-categories";
+import { extractMediaMetadata, type MediaMeta } from "@/lib/media-metadata";
+import { hammingDistance, PHASH_HAMMING_THRESHOLD } from "@/lib/phash";
+import { assertPublicUrl } from "@/lib/link-preview";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { userCanFeature } from "@/lib/packages";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
+
+// Cap how many bytes we pull back to analyse a deliverable (bounds bandwidth
+// for large stock video; images/audio are usually far smaller). For a bigger
+// file this is a partial read — enough for EXIF/container tags + a fingerprint.
+const PARSE_BYTE_CAP = 30 * 1024 * 1024;
+
+async function fetchDeliverableBytes(url: string): Promise<Buffer | null> {
+  try {
+    await assertPublicUrl(url); // files[] is client-supplied → guard SSRF
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(20_000),
+      headers: { Range: `bytes=0-${PARSE_BYTE_CAP - 1}` },
+    });
+    if (!res.ok && res.status !== 206) return null;
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab.byteLength > PARSE_BYTE_CAP ? ab.slice(0, PARSE_BYTE_CAP) : ab);
+  } catch {
+    return null;
+  }
+}
+
+/** Extract micro-data for a stock-media deliverable + flag perceptual dupes. */
+async function analyseDeliverable(
+  assetType: string,
+  fileUrl: string,
+  sellerId: string
+): Promise<MediaMeta | null> {
+  const bytes = await fetchDeliverableBytes(fileUrl);
+  if (!bytes) return null;
+  const kind = getDeliverableKind(assetType) ?? "file";
+  const meta = await extractMediaMetadata(bytes, "", kind);
+  // Perceptual duplicate scan (images) against other sellers' recent listings.
+  if (meta.image?.pHash) {
+    const recent = await prisma.marketplaceListing.findMany({
+      where: { assetType, sellerId: { not: sellerId } },
+      select: { id: true, fileMeta: true },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+    });
+    for (const r of recent) {
+      const ph = (r.fileMeta as { image?: { pHash?: string } } | null)?.image?.pHash;
+      if (typeof ph === "string" && hammingDistance(ph, meta.image.pHash) <= PHASH_HAMMING_THRESHOLD) {
+        meta.hints.duplicateOf = r.id;
+        break;
+      }
+    }
+  }
+  return meta;
+}
 
 // GET /api/marketplace/listings - Get marketplace listings
 export async function GET(request: NextRequest) {
@@ -23,6 +77,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
+    const minAgeMonths = searchParams.get("minAgeMonths");
+    const maxAgeMonths = searchParams.get("maxAgeMonths");
     const verifiedOnly = searchParams.get("verified") === "true";
     const monetizedOnly = searchParams.get("monetized") === "true";
     const auctionOnly = searchParams.get("auction") === "true";
@@ -35,6 +91,14 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
+
+    // Self-heal expired promotions so they stop floating to the top.
+    void prisma.marketplaceListing
+      .updateMany({
+        where: { isFeatured: true, featuredUntil: { lt: new Date() } },
+        data: { isFeatured: false },
+      })
+      .catch(() => {});
 
     const where: Prisma.MarketplaceListingWhereInput = {
       status: MarketplaceListingStatus.ACTIVE,
@@ -70,6 +134,14 @@ export async function GET(request: NextRequest) {
       where.price = {};
       if (minPrice) (where.price as Record<string, number>).gte = parseFloat(minPrice);
       if (maxPrice) (where.price as Record<string, number>).lte = parseFloat(maxPrice);
+    }
+
+    // Asset-age filter (months). Buckets like "<1yr" / "3yr+" map to min/max here.
+    if (minAgeMonths || maxAgeMonths) {
+      const age: Record<string, number> = {};
+      if (minAgeMonths) age.gte = parseInt(minAgeMonths, 10);
+      if (maxAgeMonths) age.lte = parseInt(maxAgeMonths, 10);
+      where.assetAgeMonths = age;
     }
 
     // Featured listings always float to the top; secondary sort = chosen sortBy
@@ -191,6 +263,11 @@ const ASSET_TYPES = [
   "MOBILE_APP",
   "MOBILE_GAME",
   "SAAS_PRODUCT",
+  "PLATFORM",
+  "STOCK_PHOTO",
+  "STOCK_VIDEO",
+  "MUSIC",
+  "EBOOK",
   "DIGITAL_PRODUCT",
   "SERVICE",
   "OTHER",
@@ -206,6 +283,9 @@ const userCreateSchema = z.object({
   details: z.record(z.string(), z.unknown()).optional(),
   price: z.number().positive(),
   currency: z.string().default("USD"),
+  // Seller-set affiliate reward (from the seller's cut).
+  affiliateCommissionType: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
+  affiliateCommissionValue: z.number().min(0).nullable().optional(),
   images: z.array(z.string().url()).optional(),
   screenshots: z.array(z.string().url()).optional(),
   attachments: z.array(z.string().url()).optional(),
@@ -229,7 +309,9 @@ const userCreateSchema = z.object({
 });
 
 // POST /api/marketplace/listings — user-side listing creation. Listings start
-// in ACTIVE status; admin can still toggle to CANCELLED if it violates rules.
+// in PENDING_REVIEW; an admin approves (→ ACTIVE) or rejects (→ REJECTED, with a
+// reason). Stock-media deliverables are analysed (EXIF/codec/hash/pHash) so the
+// admin can judge original vs downloaded/edited.
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -274,6 +356,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Stock media: analyse the uploaded deliverable (files[0]) so the admin can
+    // judge original vs downloaded/edited. Best-effort — never blocks creation.
+    let fileMeta: MediaMeta | null = null;
+    if (requiresDeliverable(data.assetType) && data.files && data.files.length > 0) {
+      fileMeta = await analyseDeliverable(
+        data.assetType,
+        data.files[0],
+        session.user.id
+      );
+    }
+
     const listing = await prisma.marketplaceListing.create({
       data: {
         sellerId: session.user.id,
@@ -286,6 +379,14 @@ export async function POST(request: NextRequest) {
         details: data.details ? JSON.parse(JSON.stringify(data.details)) : null,
         price: data.price,
         currency: data.currency,
+        affiliateCommissionType:
+          data.affiliateCommissionValue && data.affiliateCommissionValue > 0
+            ? (data.affiliateCommissionType ?? "PERCENT")
+            : null,
+        affiliateCommissionValue:
+          data.affiliateCommissionValue && data.affiliateCommissionValue > 0
+            ? data.affiliateCommissionValue
+            : null,
         images: data.images ?? [],
         screenshots: data.screenshots ?? [],
         attachments: data.attachments ?? [],
@@ -306,7 +407,9 @@ export async function POST(request: NextRequest) {
         reservePrice: data.reservePrice ?? null,
         buyNowPrice: data.buyNowPrice ?? null,
         auctionEndsAt: data.auctionEndsAt ? new Date(data.auctionEndsAt) : null,
-        status: MarketplaceListingStatus.ACTIVE,
+        fileMeta: fileMeta ? JSON.parse(JSON.stringify(fileMeta)) : undefined,
+        // User listings now go through admin moderation before going live.
+        status: MarketplaceListingStatus.PENDING_REVIEW,
       },
     });
 

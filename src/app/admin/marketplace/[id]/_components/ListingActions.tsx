@@ -18,6 +18,8 @@ import {
   TrendingUp,
   Gavel,
   ShieldCheck,
+  Check,
+  Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,6 +31,7 @@ interface ListingActionsProps {
   isPromoted: boolean;
   isAuction: boolean;
   isActive: boolean;
+  status: string;
   auctionEndsAt: Date | null;
 }
 
@@ -39,9 +42,13 @@ export function ListingActions({
   isPromoted,
   isAuction,
   isActive,
+  status,
   auctionEndsAt,
 }: ListingActionsProps) {
   const router = useRouter();
+  const [modBusy, setModBusy] = useState<"approve" | "reject" | null>(null);
+  const [showReject, setShowReject] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reason, setReason] = useState("");
@@ -49,6 +56,36 @@ export function ListingActions({
   const [isDeleting, setIsDeleting] = useState(false);
   const [featBusy, setFeatBusy] = useState<"feature" | "promote" | "close" | null>(null);
   const [error, setError] = useState("");
+
+  const moderate = async (action: "approve" | "reject") => {
+    if (action === "reject" && !rejectReason.trim()) {
+      toast.error("Add a rejection reason");
+      return;
+    }
+    setModBusy(action);
+    try {
+      const res = await fetch(`/api/admin/marketplace/${listingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          reason: action === "reject" ? rejectReason.trim() : undefined,
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success(action === "approve" ? "Listing approved — now live" : "Listing rejected");
+      setShowReject(false);
+      setRejectReason("");
+      router.refresh();
+    } catch (err) {
+      toast.error("Failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setModBusy(null);
+    }
+  };
 
   const toggleFeature = async (kind: "feature" | "promote") => {
     setFeatBusy(kind);
@@ -184,6 +221,76 @@ export function ListingActions({
       )}
 
       <div className="space-y-3">
+        {/* Moderation — only for listings awaiting review */}
+        {status === "PENDING_REVIEW" && (
+          <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2">
+            <p className="text-sm font-semibold text-amber-300">
+              Awaiting review
+            </p>
+            {!showReject ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => moderate("approve")}
+                  disabled={modBusy !== null}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold disabled:opacity-50"
+                >
+                  {modBusy === "approve" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowReject(true)}
+                  disabled={modBusy !== null}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/40 hover:bg-rose-500/25 text-sm font-bold disabled:opacity-50"
+                >
+                  <Ban className="w-4 h-4" />
+                  Reject
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <textarea
+                  rows={3}
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Reason (shown to the seller) — e.g. downloaded/stock image, no original metadata, low quality…"
+                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-rose-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReject(false);
+                      setRejectReason("");
+                    }}
+                    className="flex-1 px-3 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moderate("reject")}
+                    disabled={modBusy !== null || !rejectReason.trim()}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold disabled:opacity-50"
+                  >
+                    {modBusy === "reject" ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Ban className="w-4 h-4" />
+                    )}
+                    Confirm reject
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Analytics */}
         <Link
           href={`/admin/marketplace/${listingId}/analytics`}

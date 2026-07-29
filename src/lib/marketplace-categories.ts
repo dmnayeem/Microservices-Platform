@@ -18,9 +18,28 @@ export type AssetType =
   | "MOBILE_APP"
   | "MOBILE_GAME"
   | "SAAS_PRODUCT"
+  | "PLATFORM"
+  | "STOCK_PHOTO"
+  | "STOCK_VIDEO"
+  | "MUSIC"
+  | "EBOOK"
   | "DIGITAL_PRODUCT"
   | "SERVICE"
   | "OTHER";
+
+/**
+ * The deliverable a listing hands over. For stock-media types this is the
+ * actual sellable file, which the server analyses (EXIF/codec/hash/pHash) so an
+ * admin can judge original vs downloaded/edited. `null` = no single file
+ * deliverable (accounts, domains, websites, services…).
+ */
+export type DeliverableKind =
+  | "image"
+  | "video"
+  | "audio"
+  | "document"
+  | "file"
+  | null;
 
 export type FieldType =
   | "TEXT"
@@ -69,6 +88,12 @@ export interface CategoryConfig {
   }>;
   /** Fields specific to this asset type (added on top of COMMON_FIELDS). */
   fields: CategoryField[];
+  /** Sellable deliverable file kind — drives the seller uploader + which
+   *  metadata parser runs on submit. Omit/null for non-file assets. */
+  deliverableKind?: DeliverableKind;
+  /** When true, COMMON_FIELDS (financials/handover) are skipped — stock media
+   *  and simple digital goods don't have monthly revenue etc. */
+  skipCommonFields?: boolean;
 }
 
 // ─── Fields every monetizable asset gets ────────────────────────────────────
@@ -433,6 +458,104 @@ export const CATEGORIES: CategoryConfig[] = [
     ],
   },
   {
+    assetType: "PLATFORM",
+    label: "Platform",
+    description: "Online platform — marketplace, community, tool, or network",
+    iconKey: "Boxes",
+    fields: [
+      { key: "platformUrl", type: "URL", label: "Platform URL", required: true, group: "Platform" },
+      { key: "platformType", type: "TEXT", label: "Platform type", hint: "Marketplace, community, SaaS tool, network…", group: "Platform" },
+      { key: "registeredUsers", type: "NUMBER", label: "Registered users", min: 0, group: "Reach" },
+      { key: "activeUsers", type: "NUMBER", label: "Monthly active users", min: 0, group: "Reach" },
+      { key: "mrr", type: "MONEY", label: "MRR (USD)", min: 0, group: "Financials" },
+      { key: "techStack", type: "TEXT", label: "Tech stack", group: "Tech" },
+      { key: "sourceCodeIncluded", type: "BOOLEAN", label: "Source code included?", group: "Handover" },
+    ],
+  },
+  {
+    assetType: "STOCK_PHOTO",
+    label: "Stock photo",
+    description: "Original photograph licensed for reuse",
+    iconKey: "Image",
+    deliverableKind: "image",
+    skipCommonFields: true,
+    fields: [
+      { key: "resolution", type: "TEXT", label: "Resolution (px)", hint: "e.g. 6000×4000 — auto-detected from the file too", group: "File" },
+      { key: "fileFormat", type: "SELECT", label: "Format", options: ["JPG", "PNG", "TIFF", "RAW", "WEBP"], group: "File" },
+      { key: "orientation", type: "SELECT", label: "Orientation", options: ["Landscape", "Portrait", "Square"], group: "File" },
+      { key: "license", type: "SELECT", label: "License", required: true, options: ["Standard (royalty-free)", "Extended", "Editorial only", "Exclusive"], group: "License" },
+      { key: "modelReleased", type: "BOOLEAN", label: "Model release available?", hint: "Needed if recognizable people appear", group: "License" },
+      { key: "propertyReleased", type: "BOOLEAN", label: "Property release available?", group: "License" },
+      { key: "aiGenerated", type: "BOOLEAN", label: "AI-generated?", group: "Origin" },
+      { key: "keywords", type: "TEXT", label: "Keywords / tags", hint: "Comma-separated, for search", group: "Discovery" },
+      { key: "previewImage", type: "SCREENSHOT", label: "Watermarked preview", hint: "Public preview; the buyer gets the full file after purchase", required: true, group: "Preview" },
+    ],
+  },
+  {
+    assetType: "STOCK_VIDEO",
+    label: "Stock video",
+    description: "Original video clip / footage licensed for reuse",
+    iconKey: "Video",
+    deliverableKind: "video",
+    skipCommonFields: true,
+    fields: [
+      { key: "resolution", type: "SELECT", label: "Resolution", options: ["720p", "1080p", "2K", "4K", "6K", "8K"], group: "File" },
+      { key: "durationSec", type: "NUMBER", label: "Duration (seconds)", min: 0, group: "File" },
+      { key: "fps", type: "NUMBER", label: "Frame rate (fps)", min: 0, group: "File" },
+      { key: "fileFormat", type: "SELECT", label: "Format", options: ["MP4", "MOV", "WEBM", "ProRes"], group: "File" },
+      { key: "hasAudio", type: "BOOLEAN", label: "Includes audio?", group: "File" },
+      { key: "license", type: "SELECT", label: "License", required: true, options: ["Standard (royalty-free)", "Extended", "Editorial only", "Exclusive"], group: "License" },
+      { key: "modelReleased", type: "BOOLEAN", label: "Model release available?", group: "License" },
+      { key: "aiGenerated", type: "BOOLEAN", label: "AI-generated?", group: "Origin" },
+      { key: "keywords", type: "TEXT", label: "Keywords / tags", group: "Discovery" },
+      { key: "previewVideoUrl", type: "URL", label: "Watermarked preview URL", hint: "Public preview clip", group: "Preview" },
+    ],
+  },
+  {
+    assetType: "MUSIC",
+    label: "Music / audio",
+    description: "Original track, loop, or sound effect licensed for reuse",
+    iconKey: "Music",
+    deliverableKind: "audio",
+    skipCommonFields: true,
+    subTypes: [
+      { slug: "TRACK", label: "Full track", fields: [] },
+      { slug: "LOOP", label: "Loop", fields: [] },
+      { slug: "SFX", label: "Sound effect", fields: [] },
+      { slug: "BEAT", label: "Beat / instrumental", fields: [] },
+    ],
+    fields: [
+      { key: "genre", type: "TEXT", label: "Genre", group: "Track" },
+      { key: "durationSec", type: "NUMBER", label: "Duration (seconds)", min: 0, group: "Track" },
+      { key: "bpm", type: "NUMBER", label: "BPM", min: 0, group: "Track" },
+      { key: "fileFormat", type: "SELECT", label: "Format", options: ["WAV", "MP3", "FLAC", "AIFF", "OGG"], group: "File" },
+      { key: "hasVocals", type: "BOOLEAN", label: "Has vocals?", group: "Track" },
+      { key: "license", type: "SELECT", label: "License", required: true, options: ["Royalty-free", "Exclusive", "Creative Commons", "Sync license"], group: "License" },
+      { key: "aiGenerated", type: "BOOLEAN", label: "AI-generated?", group: "Origin" },
+      { key: "previewAudioUrl", type: "URL", label: "Watermarked preview URL", group: "Preview" },
+    ],
+  },
+  {
+    assetType: "EBOOK",
+    label: "Ebook",
+    description: "Ebook / PDF guide you hold the rights to sell",
+    iconKey: "BookOpen",
+    deliverableKind: "document",
+    skipCommonFields: true,
+    fields: [
+      { key: "author", type: "TEXT", label: "Author", group: "Book" },
+      { key: "format", type: "SELECT", label: "Format", required: true, options: ["PDF", "EPUB", "MOBI", "PDF + EPUB"], group: "Book" },
+      { key: "pages", type: "NUMBER", label: "Pages", min: 0, group: "Book" },
+      { key: "language", type: "TEXT", label: "Language", hint: "e.g. English, Bangla", group: "Book" },
+      { key: "license", type: "SELECT", label: "License", required: true, options: ["Personal use", "Commercial use", "Resell rights", "Private label rights (PLR)"], group: "License" },
+      { key: "drmFree", type: "BOOLEAN", label: "DRM-free?", group: "License" },
+      { key: "isbn", type: "TEXT", label: "ISBN (optional)", group: "Book" },
+      { key: "aiGenerated", type: "BOOLEAN", label: "AI-generated?", group: "Origin" },
+      { key: "keywords", type: "TEXT", label: "Keywords / tags", hint: "Comma-separated, for search", group: "Discovery" },
+      { key: "coverImage", type: "SCREENSHOT", label: "Cover image", hint: "Public cover; the buyer gets the file after purchase", required: true, group: "Preview" },
+    ],
+  },
+  {
     assetType: "DIGITAL_PRODUCT",
     label: "Digital product",
     description: "Ebook, template, course, software, media — downloadable",
@@ -507,7 +630,31 @@ export function getFieldsFor(
   const cat = getCategory(assetType);
   if (!cat) return [...COMMON_FIELDS];
   const sub = subType ? getSubType(assetType, subType) : null;
-  return [...COMMON_FIELDS, ...cat.fields, ...(sub?.fields ?? [])];
+  const common = cat.skipCommonFields ? [] : COMMON_FIELDS;
+  return [...common, ...cat.fields, ...(sub?.fields ?? [])];
+}
+
+/** Stock-media asset types — the deliverable file is analysed on submit so the
+ *  admin can judge original vs downloaded/edited. */
+export const STOCK_MEDIA_TYPES: ReadonlySet<string> = new Set([
+  "STOCK_PHOTO",
+  "STOCK_VIDEO",
+  "MUSIC",
+]);
+
+export function isStockMediaType(assetType: string): boolean {
+  return STOCK_MEDIA_TYPES.has(assetType);
+}
+
+/** Sellable deliverable kind for an asset type (drives uploader + parser). */
+export function getDeliverableKind(assetType: string): DeliverableKind {
+  return getCategory(assetType)?.deliverableKind ?? null;
+}
+
+/** True when the asset type sells an uploaded file (stock media + ebooks) — the
+ *  seller must upload it and the server analyses it for the admin. */
+export function requiresDeliverable(assetType: string): boolean {
+  return getDeliverableKind(assetType) != null;
 }
 
 export const ASSET_TYPE_LABEL: Record<string, string> = Object.fromEntries(

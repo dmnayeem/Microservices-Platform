@@ -381,6 +381,14 @@ function serializeForApi(
       role === "admin" && s.commissionRateBps !== null
         ? s.commissionRateBps
         : null,
+    affiliateCommissionType:
+      s.affiliateCommissionValue && s.affiliateCommissionValue > 0
+        ? (s.affiliateCommissionType ?? "PERCENT")
+        : null,
+    affiliateCommissionValue:
+      s.affiliateCommissionValue && s.affiliateCommissionValue > 0
+        ? s.affiliateCommissionValue
+        : null,
     learningOutcomes: s.learningOutcomes,
     requirements: s.requirements,
     whatsIncluded: s.whatsIncluded,

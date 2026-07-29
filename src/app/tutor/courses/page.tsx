@@ -5,6 +5,7 @@ import { BookOpen, Plus, Star, Users, Edit3 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
+import { PromoteButton } from "@/components/user/promotion/promote-button";
 
 interface PageProps {
   searchParams: Promise<{ status?: string }>;
@@ -44,6 +45,7 @@ export default async function TutorCoursesPage({ searchParams }: PageProps) {
     isFree: boolean;
     price: number;
     updatedAt: Date;
+    featuredUntil: Date | null;
     _count: { lessons: number; enrollments: number; reviews: number };
   }>;
 
@@ -140,7 +142,18 @@ export default async function TutorCoursesPage({ searchParams }: PageProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {courses.map((c) => (
-            <CourseCard key={c.id} c={c} />
+            <div key={c.id} className="space-y-1.5">
+              <CourseCard c={c} />
+              {c.status === "PUBLISHED" && (
+                <div className="px-1">
+                  <PromoteButton
+                    kind="course"
+                    id={c.id}
+                    featuredUntil={c.featuredUntil?.toISOString() ?? null}
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

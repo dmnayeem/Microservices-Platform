@@ -14,7 +14,9 @@ export interface PlayerLesson {
   title: string;
   description: string | null;
   content: string | null;
-  videoUrl: string | null;
+  // The raw video URL is never sent to the client; it's fetched on demand as a
+  // short-lived signed URL via /api/courses/[id]/lessons/[lessonId]/stream.
+  hasVideo: boolean;
   subtitlesUrl: string | null;
   duration: number;
   isPreview: boolean;

@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from "react";
 import dynamic from "next/dynamic";
-import { Gauge } from "lucide-react";
+import { Gauge, Loader2, AlertCircle } from "lucide-react";
 
 const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 
 interface Props {
-  src: string;
+  /** Video is fetched as a short-lived signed URL from the gated /stream route
+   *  — the raw URL is never handed to the client. */
+  courseId: string;
+  lessonId: string;
   subtitlesUrl: string | null;
   /** Resume position in seconds. */
   initialPosition: number;
@@ -25,7 +28,8 @@ interface Props {
 }
 
 export function LessonVideoPlayer({
-  src,
+  courseId,
+  lessonId,
   subtitlesUrl,
   initialPosition,
   onPositionTick,
@@ -35,11 +39,41 @@ export function LessonVideoPlayer({
 }: Props) {
   const [speed, setSpeed] = useState<number>(1);
   const [duration, setDuration] = useState<number>(0);
+  const [src, setSrc] = useState<string | null>(null);
+  const [error, setError] = useState(false);
   const watchedRef = useRef<number>(0);
   const lastTickRef = useRef<number>(0);
   const lastSavedAtRef = useRef<number>(0);
   const crossedRef = useRef<boolean>(false);
   const seekedInitialRef = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Resolve a signed, enrollment-checked source. The raw URL never reaches the
+  // DOM. The parent keys this component by lessonId, so each lesson gets a fresh
+  // mount (initial src=null) — no synchronous reset needed here.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/courses/${courseId}/lessons/${lessonId}/stream`,
+          { cache: "no-store" }
+        );
+        const d = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !d.url) {
+          setError(true);
+          return;
+        }
+        setSrc(d.url as string);
+      } catch {
+        if (!cancelled) setError(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, lessonId]);
 
   useEffect(() => {
     return () => {
@@ -48,6 +82,16 @@ export function LessonVideoPlayer({
       if (watchedRef.current > 0) onWatched(watchedRef.current);
     };
   }, [onPositionTick, onWatched]);
+
+  // Belt-and-suspenders download hardening on the underlying <video> element.
+  useEffect(() => {
+    if (!src) return;
+    const el = containerRef.current?.querySelector("video");
+    if (!el) return;
+    el.setAttribute("controlsList", "nodownload noremoteplayback");
+    el.setAttribute("disablePictureInPicture", "");
+    (el as HTMLVideoElement).disableRemotePlayback = true;
+  }, [src]);
 
   const handleTimeUpdate = useCallback(
     (e: SyntheticEvent<HTMLVideoElement>) => {
@@ -98,28 +142,46 @@ export function LessonVideoPlayer({
 
   return (
     <div className="relative bg-black rounded-2xl border border-gray-800 overflow-hidden">
-      <div className="relative pt-[56.25%]">
-        <ReactPlayer
-          src={src}
-          controls
-          playsInline
-          playbackRate={speed}
-          width="100%"
-          height="100%"
-          style={{ position: "absolute", inset: 0 }}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleLoadedMetadata}
-        >
-          {subtitlesUrl && (
-            <track
-              kind="subtitles"
-              src={subtitlesUrl}
-              srcLang="en"
-              label="English"
-              default
-            />
-          )}
-        </ReactPlayer>
+      <div
+        ref={containerRef}
+        className="relative pt-[56.25%]"
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {error ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400 p-4 text-center">
+            <AlertCircle className="w-6 h-6 text-rose-400" />
+            <p className="text-sm">Couldn&apos;t load this video. Refresh, or make sure you&apos;re enrolled.</p>
+          </div>
+        ) : !src ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
+          </div>
+        ) : (
+          <ReactPlayer
+            src={src}
+            controls
+            playsInline
+            playbackRate={speed}
+            width="100%"
+            height="100%"
+            style={{ position: "absolute", inset: 0 }}
+            controlsList="nodownload noremoteplayback"
+            disablePictureInPicture
+            onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+          >
+            {subtitlesUrl && (
+              <track
+                kind="subtitles"
+                src={subtitlesUrl}
+                srcLang="en"
+                label="English"
+                default
+              />
+            )}
+          </ReactPlayer>
+        )}
       </div>
       <div className="flex items-center justify-end gap-2 p-2 border-t border-gray-800 bg-gray-950">
         <Gauge className="w-3.5 h-3.5 text-gray-500" />

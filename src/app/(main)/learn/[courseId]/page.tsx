@@ -116,7 +116,8 @@ export default async function CoursePlayerPage({
         title: l.title,
         description: l.description,
         content: l.content,
-        videoUrl: l.videoUrl,
+        // Raw URL withheld — the player fetches a signed URL from /stream.
+        hasVideo: !!l.videoUrl,
         subtitlesUrl: l.subtitlesUrl,
         duration: l.duration,
         isPreview: l.isPreview,
