@@ -137,14 +137,14 @@ export function MobileEarnBlock({
             <Zap className="w-4 h-4 text-amber-400" />
             <h2 className="text-sm font-bold text-white">Quick Earn</h2>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {tiles.map((q) => {
               const Icon = QUICK_EARN_ICONS[q.icon] ?? Zap;
               return (
                 <Link
                   key={q.id}
                   href={q.href}
-                  className="glass-hover flex flex-col items-center gap-1 rounded-xl bg-gray-950/40 border border-gray-800 px-1.5 py-2.5 text-center font-semibold text-gray-200"
+                  className="glass-hover flex flex-col items-center gap-1 rounded-xl bg-gray-950/40 border border-gray-800 px-2 py-3 text-center font-semibold text-gray-200"
                 >
                   <Icon
                     className={cn(
@@ -152,7 +152,7 @@ export function MobileEarnBlock({
                       COLOR_CLASSES[q.color] ?? "text-indigo-400"
                     )}
                   />
-                  <span className="w-full truncate text-[11px] leading-tight">
+                  <span className="w-full truncate text-xs leading-tight">
                     {q.label}
                   </span>
                 </Link>

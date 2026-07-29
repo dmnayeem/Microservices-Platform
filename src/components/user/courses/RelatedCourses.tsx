@@ -28,7 +28,7 @@ export function RelatedCourses({ related }: { related: Related[] }) {
             <Link
               key={r.id}
               href={href}
-              className="bg-gray-900 rounded-xl border border-gray-800 hover:border-indigo-500/40 overflow-hidden group"
+              className="card card-interactive overflow-hidden group"
             >
               <div className="aspect-video bg-gray-950 relative">
                 {r.thumbnail ? (

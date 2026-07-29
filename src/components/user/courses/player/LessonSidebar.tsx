@@ -71,7 +71,7 @@ export function LessonSidebar({ modules, activeLessonId, onPick }: Props) {
     });
 
   return (
-    <aside className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto">
+    <aside className="card overflow-hidden lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto">
       <div className="p-3 border-b border-gray-800">
         <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
           Curriculum

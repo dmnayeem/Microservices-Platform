@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { hasPermission, ADMIN_ROLES, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma/client";
 import { parseFeatureOverrides } from "@/lib/packages";
 import { z } from "zod";
@@ -107,6 +107,8 @@ const updateUserSchema = z.object({
   packageExpiresAt: z.string().datetime().optional().nullable(),
   featureOverrides: z.record(z.string(), z.boolean()).optional().nullable(),
   kycStatus: z.enum(["NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"]).optional(),
+  twoFactorEnabled: z.boolean().optional(),
+  tutorSuspended: z.boolean().optional(),
   isBlueVerified: z.boolean().optional(),
   verifiedBadgeStyle: z
     .enum(["BLUE", "GOLD", "RAINBOW", "EMERALD", "PURPLE", "ROSE", "OCEAN"])
@@ -180,6 +182,22 @@ export async function PATCH(
 
     if (!existingUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Admin-role changes are SUPER_ADMIN-only. Role management was consolidated
+    // here from the standalone /admin/access editor (feature #8); preserve that
+    // page's stricter guard so a non-super `users.edit` admin can't grant or
+    // revoke ANY admin role (not just SUPER_ADMIN).
+    if (
+      data.role !== undefined &&
+      data.role !== existingUser.role &&
+      (ADMIN_ROLES.includes(data.role) || ADMIN_ROLES.includes(existingUser.role)) &&
+      adminRole !== "SUPER_ADMIN"
+    ) {
+      return NextResponse.json(
+        { error: "Only a super admin can change admin roles" },
+        { status: 403 }
+      );
     }
 
     // Check if changing role to super admin (only super admin can do this)
@@ -268,6 +286,12 @@ export async function PATCH(
       }
     }
     if (data.kycStatus !== undefined) updateData.kycStatus = data.kycStatus;
+    // 2FA reset: admin can only DISABLE (never force-enable) — clear the secret
+    // too so the user must re-enroll from scratch.
+    if (data.twoFactorEnabled === false) {
+      updateData.twoFactorEnabled = false;
+      updateData.twoFactorSecret = null;
+    }
     if (data.isBlueVerified !== undefined)
       updateData.isBlueVerified = data.isBlueVerified;
     if (data.verifiedBadgeStyle !== undefined)
@@ -328,6 +352,15 @@ export async function PATCH(
     if (data.role === "TUTOR" || grantTutor) {
       const { ensureTutorProfile } = await import("@/lib/tutor-application");
       await ensureTutorProfile(id);
+    }
+
+    // Tutor sell-courses suspension (per-user creator access, consolidated from
+    // the tutors page in feature #8). Only applies when a TutorProfile exists.
+    if (data.tutorSuspended !== undefined) {
+      await prisma.tutorProfile.updateMany({
+        where: { userId: id },
+        data: { isSuspended: data.tutorSuspended },
+      });
     }
 
     // Audit log

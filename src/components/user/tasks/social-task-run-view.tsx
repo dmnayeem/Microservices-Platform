@@ -13,6 +13,7 @@ import {
   PlayCircle,
   CheckCircle2,
   Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { notifyCenter } from "@/lib/notify-center";
@@ -33,7 +34,11 @@ import { runInterstitial } from "@/lib/reward-interstitial";
 import {
   TaskUpgradeNotice,
   isUpgradeRequired,
+  TaskLockedNotice,
+  isTaskLocked,
+  AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
+import { ensureAdsAllowed } from "@/lib/adblock";
 
 type ItemProof = { url: string; screenshot: string; username: string };
 const EMPTY_PROOF: ItemProof = { url: "", screenshot: "", username: "" };
@@ -120,6 +125,8 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [notFound, setNotFound] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
+  const [lockedMsg, setLockedMsg] = useState<string | null>(null);
+  const [adBlocked, setAdBlocked] = useState(false);
 
   const [proofByIndex, setProofByIndex] = useState<Record<number, ItemProof>>({});
   const [aiOutputByIndex, setAiOutputByIndex] = useState<Record<number, string>>({});
@@ -140,6 +147,8 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   // Gate progress-saving until the initial load + resume finished, so an empty
   // first render never overwrites previously-saved progress.
   const [hydrated, setHydrated] = useState(false);
+  // Per-user auto-verify codes (item index → code), from the task GET response.
+  const [verifyCodes, setVerifyCodes] = useState<Record<number, string>>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of submissionId for async callers, plus a shared in-flight /start
   // promise so mount + submit never fire two concurrent /start calls (which
@@ -158,11 +167,18 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
       });
     if (startPromiseRef.current) return startPromiseRef.current;
     const p = (async () => {
+      // Ad-blocker gate: refuse to start while a blocker is active.
+      if (!(await ensureAdsAllowed())) {
+        setAdBlocked(true);
+        throw new Error("Ad blocker active");
+      }
       const sr = await fetch(`/api/tasks/${taskId}/start`, { method: "POST" });
       const sd = await sr.json().catch(() => ({}));
       if (!sr.ok) {
         // Daily-mission allowance exhausted → surface the upgrade prompt.
         if (isUpgradeRequired(sd)) setUpgradeMsg(sd.error || "");
+        // Blocked behind an earlier task in the chain (feature #7).
+        if (isTaskLocked(sd)) setLockedMsg(sd.error || "");
         throw new Error(sd?.error || "Couldn't start the task");
       }
       const id = (sd.submission?.id as string | undefined) ?? null;
@@ -239,6 +255,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         }
         const mapped = mapSocialTaskRow(d.task);
         setTask(mapped);
+        if (d.socialVerifyCodes && typeof d.socialVerifyCodes === "object") {
+          setVerifyCodes(d.socialVerifyCodes as Record<number, string>);
+        }
         // Start (or resume) the submission so we have an id to submit with.
         // Failures here are non-fatal — submit() will retry and surface them.
         // ensureSubmission() de-dupes concurrent /start calls (see M2).
@@ -473,6 +492,14 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
   if (upgradeMsg !== null) {
     return <TaskUpgradeNotice message={upgradeMsg} />;
+  }
+
+  if (lockedMsg !== null) {
+    return <TaskLockedNotice message={lockedMsg} />;
+  }
+
+  if (adBlocked) {
+    return <AdblockNotice />;
   }
 
   if (notFound || !task || !platform) {
@@ -730,6 +757,58 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               )
             )}
 
+            {/* Auto-verify code — the user MUST include this unique code in the
+                content they publish; the server fetches the URL to confirm it. */}
+            {item.verify === "CODE" && verifyCodes[idx] && (
+              <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/30 p-3 space-y-1.5">
+                <p className="text-xs font-bold text-emerald-300 inline-flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  Include this verification code in your{" "}
+                  {def?.label?.toLowerCase() ?? "post"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-emerald-500/40 text-emerald-300 font-mono text-sm tracking-widest text-center select-all">
+                    {verifyCodes[idx]}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard
+                        ?.writeText(verifyCodes[idx])
+                        .then(() => {
+                          setCopied(`code-${idx}`);
+                          setTimeout(() => setCopied(null), 1500);
+                        });
+                    }}
+                    className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-semibold shrink-0"
+                  >
+                    {copied === `code-${idx}` ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-emerald-400/70">
+                  We fetch your public link and auto-approve when the code is
+                  found — no screenshot needed. Private/login-only pages fall back
+                  to manual review.
+                </p>
+              </div>
+            )}
+
+            {/* Membership auto-verify — remind the user to link their account. */}
+            {(item.verify === "TELEGRAM_MEMBER" ||
+              item.verify === "DISCORD_MEMBER") && (
+              <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/30 p-3">
+                <p className="text-xs text-emerald-300 inline-flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  Auto-verified —{" "}
+                  <Link href="/profile" className="underline font-semibold">
+                    link your{" "}
+                    {item.verify === "TELEGRAM_MEMBER" ? "Telegram" : "Discord"}
+                  </Link>{" "}
+                  and join, then submit. We confirm membership automatically.
+                </p>
+              </div>
+            )}
+
             {/* AI generate — builds a unique variant from the task + your content */}
             {item.aiPromptEnabled && (
               <div className="rounded-lg bg-purple-500/5 border border-purple-500/30 p-3 space-y-2">
@@ -936,6 +1015,8 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           url={watchModal.url}
           watchSeconds={watchModal.seconds}
           title={watchModal.title}
+          taskId={taskId}
+          submissionId={submissionId}
           onComplete={() =>
             setWatchedByIndex((prev) => ({ ...prev, [watchModal.idx]: true }))
           }

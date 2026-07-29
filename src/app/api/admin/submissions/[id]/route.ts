@@ -6,6 +6,7 @@ import { processReferralCommissions } from "@/lib/referral-commissions";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { getPointsPerUsd } from "@/lib/economy";
+import { bumpTrust, TRUST_APPROVE, TRUST_REJECT } from "@/lib/trust";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -254,6 +255,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
 
+      // Reputation: approving nudges trust up; an all-rejected social bundle
+      // (finalStatus flipped to REJECTED) counts as a fraud strike instead.
+      if (finalStatus === "APPROVED") {
+        await bumpTrust(existingSubmission.userId, TRUST_APPROVE);
+      } else {
+        await bumpTrust(existingSubmission.userId, TRUST_REJECT, {
+          strike: true,
+        });
+      }
+
       // Process referral commissions (after transaction completes) — skip
       // for board tasks and when no points were minted.
       if (awardsPoints && referralPoints > 0) {
@@ -302,6 +313,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           rejectionReason: rejectionReason || "Submission rejected by admin",
         },
       });
+
+      // Reputation: a rejection lowers trust + counts a fraud strike.
+      await bumpTrust(existingSubmission.userId, TRUST_REJECT, { strike: true });
 
       // Notify user
       await prisma.notification.create({

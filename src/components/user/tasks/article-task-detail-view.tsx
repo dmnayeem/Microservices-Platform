@@ -29,7 +29,11 @@ import { runInterstitial } from "@/lib/reward-interstitial";
 import {
   TaskUpgradeNotice,
   isUpgradeRequired,
+  TaskLockedNotice,
+  isTaskLocked,
+  AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
+import { ensureAdsAllowed } from "@/lib/adblock";
 
 interface ArticleTask {
   id: string;
@@ -84,6 +88,8 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
   const [uniqueKey, setUniqueKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
+  const [lockedMsg, setLockedMsg] = useState<string | null>(null);
+  const [adBlocked, setAdBlocked] = useState(false);
 
   // Load task + decide whether to start, resume, or show completed/blocked state
   useEffect(() => {
@@ -129,6 +135,12 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           return;
         }
 
+        // Ad-blocker gate: refuse to start a task while a blocker is active.
+        if (!(await ensureAdsAllowed())) {
+          if (!cancel) setAdBlocked(true);
+          return;
+        }
+
         // 4. Otherwise, try to start a fresh submission
         const sRes = await fetch(`/api/tasks/${taskId}/start`, {
           method: "POST",
@@ -139,6 +151,11 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           // Daily-mission allowance exhausted → show the upgrade prompt.
           if (isUpgradeRequired(sData)) {
             setUpgradeMsg(sData.error || "");
+            return;
+          }
+          // Blocked behind an earlier task in the chain (feature #7).
+          if (isTaskLocked(sData)) {
+            setLockedMsg(sData.error || "");
             return;
           }
           // Common case: race or stale userStatus → daily limit hit. Treat as completed.
@@ -249,6 +266,14 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
 
   if (upgradeMsg !== null) {
     return <TaskUpgradeNotice message={upgradeMsg} />;
+  }
+
+  if (lockedMsg !== null) {
+    return <TaskLockedNotice message={lockedMsg} />;
+  }
+
+  if (adBlocked) {
+    return <AdblockNotice />;
   }
 
   if (loadError || !task) {

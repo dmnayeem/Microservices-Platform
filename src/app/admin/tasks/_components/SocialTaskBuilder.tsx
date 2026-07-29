@@ -23,6 +23,7 @@ import {
   Minus,
   Trash2,
   GripVertical,
+  ShieldCheck,
 } from "lucide-react";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -289,6 +290,14 @@ function SocialActionCard({
 }) {
   const controls = useDragControls();
   const def = getAction(platformKey, item.action);
+  // Which bot membership check (if any) fits this platform+action.
+  const memberVerify: "TELEGRAM_MEMBER" | "DISCORD_MEMBER" | null =
+    platformKey === "TELEGRAM" &&
+    (item.action === "JOIN_CHANNEL" || item.action === "JOIN_GROUP")
+      ? "TELEGRAM_MEMBER"
+      : platformKey === "DISCORD" && item.action === "JOIN_SERVER"
+        ? "DISCORD_MEMBER"
+        : null;
   if (!def) return null;
 
   return (
@@ -423,6 +432,94 @@ function SocialActionCard({
           );
         })}
       </div>
+
+      {/* Auto-verify by code — content actions only. The server fetches the
+          user's proof URL and confirms their unique code is present, so it
+          auto-approves without a fakeable screenshot. */}
+      {def.supportsAiPrompt && (
+        <label
+          className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 cursor-pointer"
+          title="Each user gets a unique code they must include in their post/comment. On submit the server fetches the public URL and verifies the code — screenshots can't fake it. Works on publicly fetchable pages; private walls fall back to manual review."
+        >
+          <input
+            type="checkbox"
+            checked={item.verify === "CODE"}
+            onChange={() =>
+              onUpdate(
+                item.verify === "CODE"
+                  ? { verify: undefined }
+                  : {
+                      verify: "CODE",
+                      // A proof URL is required to fetch + verify.
+                      proofRequirements: {
+                        ...item.proofRequirements,
+                        url: true,
+                      },
+                    }
+              )
+            }
+            className="mt-0.5 rounded bg-gray-800 border-gray-600 text-emerald-500"
+          />
+          <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+          <span className="text-xs">
+            <span className="font-semibold text-emerald-300">
+              Auto-verify by code in content
+            </span>
+            <span className="block text-emerald-400/70">
+              User must embed a unique code; server fetches the URL to confirm.
+              Auto-approves on match.
+            </span>
+          </span>
+        </label>
+      )}
+
+      {/* Auto-verify membership by bot — Telegram/Discord join actions. */}
+      {memberVerify && (
+        <div className="space-y-2">
+          <label
+            className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 cursor-pointer"
+            title="A bot you control confirms the user actually joined — impossible to fake. Requires the bot token in Settings → Integrations and the bot added to the target as admin, plus the user linking their account."
+          >
+            <input
+              type="checkbox"
+              checked={item.verify === memberVerify}
+              onChange={() =>
+                onUpdate(
+                  item.verify === memberVerify
+                    ? { verify: undefined }
+                    : { verify: memberVerify }
+                )
+              }
+              className="mt-0.5 rounded bg-gray-800 border-gray-600 text-emerald-500"
+            />
+            <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+            <span className="text-xs">
+              <span className="font-semibold text-emerald-300">
+                Auto-verify membership (bot)
+              </span>
+              <span className="block text-emerald-400/70">
+                Bot confirms the user joined. Auto-approves on match.
+              </span>
+            </span>
+          </label>
+          {item.verify === memberVerify && (
+            <input
+              value={item.fields.verifyTarget ?? ""}
+              onChange={(e) =>
+                onUpdate({
+                  fields: { ...item.fields, verifyTarget: e.target.value },
+                })
+              }
+              placeholder={
+                memberVerify === "TELEGRAM_MEMBER"
+                  ? "Verify target — @channelusername or chat id (e.g. -1001234567890)"
+                  : "Verify target — Discord guild (server) id"
+              }
+              className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-500 text-sm"
+            />
+          )}
+        </div>
+      )}
 
       {/* Proof requirements */}
       <ProofRequirements

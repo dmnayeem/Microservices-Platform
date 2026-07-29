@@ -15,13 +15,15 @@ import {
   CheckCheck,
   Trash2,
   Filter,
-  Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { FilterChips } from "@/components/user/primitives/filter-chips";
+import { EmptyState } from "@/components/user/primitives/empty-state";
+import { ListSkeleton } from "@/components/user/primitives/skeleton";
 
 interface Notification {
   id: string;
@@ -254,7 +256,7 @@ export default function NotificationsPage() {
   const endItem = Math.min(pagination.page * pagination.limit, pagination.total);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -291,26 +293,14 @@ export default function NotificationsPage() {
       </div>
 
       {/* Type Filters */}
-      <div className="flex flex-wrap gap-2">
-        {filters.map((filter) => (
-          <button
-            key={filter.label}
-            onClick={() =>
-              setSelectedFilter(
-                filter.type === selectedFilter ? null : filter.type
-              )
-            }
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-              selectedFilter === filter.type
-                ? "bg-indigo-500 text-white"
-                : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
-            )}
-          >
-            {filter.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        value={selectedFilter ?? "ALL"}
+        onChange={(v) => setSelectedFilter(v === "ALL" ? null : v)}
+        options={filters.map((f) => ({
+          value: f.type ?? "ALL",
+          label: f.label,
+        }))}
+      />
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
@@ -335,24 +325,20 @@ export default function NotificationsPage() {
       )}
 
       {/* Notifications List */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-gray-500">
-            <div className="text-center">
-              <Bell className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg">No notifications</p>
-              <p className="text-sm mt-2">
-                {showUnreadOnly
-                  ? "No unread notifications"
-                  : "You're all caught up!"}
-              </p>
-            </div>
-          </div>
-        ) : (
+      {loading ? (
+        <ListSkeleton rows={6} />
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          icon={Bell}
+          title="No notifications"
+          description={
+            showUnreadOnly
+              ? "No unread notifications"
+              : "You're all caught up!"
+          }
+        />
+      ) : (
+        <div className="card overflow-hidden">
           <div className="divide-y divide-gray-800">
             {notifications.map((notification) => {
               const typeConfig =
@@ -444,45 +430,45 @@ export default function NotificationsPage() {
               );
             })}
           </div>
-        )}
 
-        {/* Pagination */}
-        {pagination.total > PAGE_SIZE && (
-          <div className="p-4 border-t border-gray-800 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
-              Showing {startItem} - {endItem} of {pagination.total}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={cn(
-                  "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
-                  currentPage > 1
-                    ? "bg-gray-800 text-white hover:bg-gray-700"
-                    : "bg-gray-800/50 text-gray-600 cursor-not-allowed"
-                )}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </button>
-              <button
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage >= pagination.totalPages}
-                className={cn(
-                  "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
-                  currentPage < pagination.totalPages
-                    ? "bg-gray-800 text-white hover:bg-gray-700"
-                    : "bg-gray-800/50 text-gray-600 cursor-not-allowed"
-                )}
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </button>
+          {/* Pagination */}
+          {pagination.total > PAGE_SIZE && (
+            <div className="p-4 border-t border-gray-800 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing {startItem} - {endItem} of {pagination.total}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
+                    currentPage > 1
+                      ? "bg-gray-800 text-white hover:bg-gray-700"
+                      : "bg-gray-800/50 text-gray-600 cursor-not-allowed"
+                  )}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </button>
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= pagination.totalPages}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
+                    currentPage < pagination.totalPages
+                      ? "bg-gray-800 text-white hover:bg-gray-700"
+                      : "bg-gray-800/50 text-gray-600 cursor-not-allowed"
+                  )}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

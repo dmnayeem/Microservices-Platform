@@ -46,7 +46,7 @@ export function AdInterstitialOverlay({
     if (!open) return;
     let cancel = false;
     // Timeout so a hung request never blocks the host flow (the gate resolves).
-    fetch(`/api/ads/serve?placement=${placement}`, {
+    fetch(`/api/spaces/panel?placement=${placement}`, {
       signal: AbortSignal.timeout(8000),
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -56,7 +56,11 @@ export function AdInterstitialOverlay({
           setAd(d.ad);
           // Duration is admin-set per space (server), falling back to the prop.
           setLeft(Number(d.interstitialSeconds) || skipSeconds);
-          fetch(`/api/ads/${d.ad.id}/impression`, { method: "POST" }).catch(() => {});
+          fetch(`/api/spaces/${d.ad.id}/event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ kind: "view" }),
+          }).catch(() => {});
         } else {
           doneRef.current(); // no ad → don't block
         }
@@ -78,7 +82,11 @@ export function AdInterstitialOverlay({
   if (!open || !ad) return null;
 
   const trackClick = () => {
-    fetch(`/api/ads/${ad.id}/click`, { method: "POST" }).catch(() => {});
+    fetch(`/api/spaces/${ad.id}/event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "open" }),
+    }).catch(() => {});
   };
 
   return (

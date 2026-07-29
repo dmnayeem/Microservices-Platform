@@ -99,6 +99,11 @@ const DEFAULTS: SettingsBag = {
   twilio_token: "",
   google_analytics_id: "",
   facebook_pixel_id: "",
+  "integrations.telegram_bot_token": "",
+  "integrations.telegram_bot_username": "",
+  "integrations.discord_client_id": "",
+  "integrations.discord_client_secret": "",
+  "integrations.discord_bot_token": "",
   // Limits
   max_tasks_per_day: 50,
   max_withdrawals_per_day: 3,
@@ -107,6 +112,10 @@ const DEFAULTS: SettingsBag = {
   file_upload_max_mb: 5,
   api_rate_limit_per_min: 100,
   "ai.daily_limit_per_user": 50,
+  "tasks.sequential_unlock": false,
+  "antifraud.auto_approve_min_trust": 0,
+  "antifraud.spot_check_percent": 0,
+  "antifraud.block_duplicate_proof": false,
   // Popups / install (site-wide)
   "ui.cookies_popup_enabled": true,
   "ui.notification_popup_enabled": true,
@@ -145,11 +154,19 @@ const CATEGORY_FOR_KEY: Record<string, string> = {
   stripe_secret_key: "integrations", twilio_sid: "integrations",
   twilio_token: "integrations", google_analytics_id: "integrations",
   facebook_pixel_id: "integrations",
+  "integrations.telegram_bot_token": "integrations",
+  "integrations.telegram_bot_username": "integrations",
+  "integrations.discord_client_id": "integrations",
+  "integrations.discord_client_secret": "integrations",
+  "integrations.discord_bot_token": "integrations",
   // Limits
   max_tasks_per_day: "limits", max_withdrawals_per_day: "limits",
   max_referrals_per_user: "limits", max_active_listings: "limits",
   file_upload_max_mb: "limits", api_rate_limit_per_min: "limits",
-  "ai.daily_limit_per_user": "limits",
+  "ai.daily_limit_per_user": "limits", "tasks.sequential_unlock": "limits",
+  "antifraud.auto_approve_min_trust": "limits",
+  "antifraud.spot_check_percent": "limits",
+  "antifraud.block_duplicate_proof": "limits",
   // Popups / install
   "ui.cookies_popup_enabled": "ui_toggles",
   "ui.notification_popup_enabled": "ui_toggles",
@@ -789,6 +806,60 @@ export function SystemSettingsForm({
                 />
               </Field>
             </Section>
+            <Section title="Social task verification (bots)">
+              <p className="text-xs text-slate-500 -mt-1 mb-2">
+                Powers auto-verified Telegram/Discord JOIN tasks. Create a bot,
+                add it to the target channel/server as admin, then paste the
+                tokens here. Feature stays dormant until set.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Telegram bot token">
+                  <input
+                    type="password"
+                    value={(values["integrations.telegram_bot_token"] as string) || ""}
+                    onChange={(e) => set("integrations.telegram_bot_token", e.target.value)}
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+                <Field label="Telegram bot username (@handle)">
+                  <input
+                    value={(values["integrations.telegram_bot_username"] as string) || ""}
+                    onChange={(e) => set("integrations.telegram_bot_username", e.target.value)}
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Discord client ID">
+                  <input
+                    value={(values["integrations.discord_client_id"] as string) || ""}
+                    onChange={(e) => set("integrations.discord_client_id", e.target.value)}
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+                <Field label="Discord client secret">
+                  <input
+                    type="password"
+                    value={(values["integrations.discord_client_secret"] as string) || ""}
+                    onChange={(e) => set("integrations.discord_client_secret", e.target.value)}
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+              </div>
+              <Field label="Discord bot token">
+                <input
+                  type="password"
+                  value={(values["integrations.discord_bot_token"] as string) || ""}
+                  onChange={(e) => set("integrations.discord_bot_token", e.target.value)}
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+            </Section>
           </div>
         )}
 
@@ -878,6 +949,54 @@ export function SystemSettingsForm({
                 />
               </Field>
             </div>
+            <Toggle
+              label="Sequential task unlock"
+              description="Lock every task behind the previous one — users must finish tasks one-by-one in the admin-set Sequence Order. Resets daily; admins are never locked."
+              checked={values["tasks.sequential_unlock"] === true}
+              onChange={(v) => set("tasks.sequential_unlock", v)}
+              disabled={!canEdit}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Auto-approve min trust (0 = off)">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={Number(values["antifraud.auto_approve_min_trust"] ?? 0)}
+                  onChange={(e) =>
+                    set(
+                      "antifraud.auto_approve_min_trust",
+                      parseInt(e.target.value) || 0
+                    )
+                  }
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+              <Field label="Spot-check % of auto-approvals">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={Number(values["antifraud.spot_check_percent"] ?? 0)}
+                  onChange={(e) =>
+                    set(
+                      "antifraud.spot_check_percent",
+                      parseInt(e.target.value) || 0
+                    )
+                  }
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+            </div>
+            <Toggle
+              label="Block duplicate proof"
+              description="Reject a task submission whose proof (post/profile URL, username, or re-uploaded screenshot) already matches another user's. Off = flag for review only. Public links can legitimately repeat, so leave off unless abuse is high."
+              checked={values["antifraud.block_duplicate_proof"] === true}
+              onChange={(v) => set("antifraud.block_duplicate_proof", v)}
+              disabled={!canEdit}
+            />
           </div>
         )}
 

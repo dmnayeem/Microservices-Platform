@@ -39,7 +39,10 @@ export function dayKey(now: Date): string {
 export interface ScoreOpts {
   follows: Set<string>;
   now: Date;
-  day: string;
+  /** Jitter seed component. Same seed → same order (stable pagination); a new
+   *  seed reshuffles. The feed route passes a per-session seed (or falls back to
+   *  the UTC day key), giving fresh variety each refresh. */
+  seed: string;
 }
 
 /** Hot score for a post. Higher = higher in the feed. */
@@ -55,8 +58,8 @@ export function scorePost(post: RankablePost, opts: ScoreOpts): number {
 
   const follow = opts.follows.has(post.userId) ? FOLLOW_MULT : 1;
 
-  // ±15% deterministic variety, stable within a UTC day (keeps pages consistent).
-  const jitter = 0.85 + 0.3 * rand01(`${post.id}:${opts.day}`);
+  // ±15% deterministic variety, stable for a given seed (keeps pages consistent).
+  const jitter = 0.85 + 0.3 * rand01(`${post.id}:${opts.seed}`);
 
   return (1 + engagement) * recency * follow * jitter;
 }

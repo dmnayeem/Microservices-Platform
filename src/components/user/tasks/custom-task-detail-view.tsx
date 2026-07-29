@@ -24,7 +24,9 @@ import { runInterstitial } from "@/lib/reward-interstitial";
 import {
   TaskUpgradeNotice,
   isUpgradeRequired,
+  AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
+import { ensureAdsAllowed } from "@/lib/adblock";
 
 interface CustomTask {
   id: string;
@@ -58,6 +60,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
   const [answers, setAnswers] = useState<CustomAnswers>({});
   const [busy, setBusy] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
+  const [adBlocked, setAdBlocked] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -83,6 +86,11 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
         }
         if (userStatus.completedToday) {
           setSubmitState({ kind: "completed_today" });
+          return;
+        }
+
+        if (!(await ensureAdsAllowed())) {
+          if (!cancel) setAdBlocked(true);
           return;
         }
 
@@ -182,6 +190,10 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
 
   if (upgradeMsg !== null) {
     return <TaskUpgradeNotice message={upgradeMsg} />;
+  }
+
+  if (adBlocked) {
+    return <AdblockNotice />;
   }
 
   if (loadError || !task) {

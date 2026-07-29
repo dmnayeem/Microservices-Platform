@@ -822,6 +822,11 @@ model User {
   level             Int         @default(1)
   streak            Int         @default(0)
   lastCheckIn       DateTime?
+  // Anti-fraud reputation: 0–100, starts neutral. Approvals nudge up, fraud
+  // rejections nudge down; low trust forces manual review of otherwise
+  // auto-approvable submissions (see src/lib/trust.ts).
+  trustScore        Int         @default(50)
+  fraudStrikes      Int         @default(0)
   packageId         String?
   package           Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
   packageExpiresAt  DateTime?
@@ -933,6 +938,7 @@ model User {
   dailyMissionClaims  DailyMissionClaim[]
   dailyReferralClaims DailyReferralClaim[]
   socialAccounts      SocialAccount[]
+  linkedAccounts      LinkedPlatformAccount[]
   // Native social graph
   followers          Follow[]    @relation("Followers")
   following          Follow[]    @relation("Following")
@@ -977,6 +983,22 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+// Verified platform link — one row per (user × platform). Unlike SocialAccount
+// (self-reported handle/stats), this stores a REAL platform user-id captured via
+// Telegram Login Widget / Discord OAuth, so a bot can confirm channel/guild
+// membership for auto-verified JOIN tasks (anti-fraud Phase C).
+model LinkedPlatformAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform       String   // "TELEGRAM" | "DISCORD"
+  platformUserId String
+  username       String?
+  linkedAt       DateTime @default(now())
+  @@unique([userId, platform])
+  @@index([platform, platformUserId])
 }
 
 // Connected social account — one row per (user × platform)
@@ -1079,6 +1101,8 @@ model Task {
   completedCount  Int          @default(0)
   minLevel        Int          @default(1)
   requiredAccessLevel Int      @default(0)
+  // Sequential-unlock ordering — lower shows/unlocks first (feature #7).
+  order           Int          @default(0)
   countries       String[]     @default([])
   contentUrl      String?
   thumbnailUrl    String?
@@ -1114,6 +1138,7 @@ model Task {
   @@index([type])
   @@index([requiredAccessLevel])
   @@index([status, createdAt])
+  @@index([status, order])
   @@index([createdById])
   @@index([fundedByUserId])
 }
@@ -1172,6 +1197,25 @@ model TaskSubmission {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([userId, status, createdAt])
+}
+
+// Anti-fraud fingerprint of a SOCIAL task's submitted proof values (feature #10).
+// One row per proof value (post/profile URL, screenshot URL, username) per
+// submission. On submit we look up matching (taskId, kind, value) rows from a
+// DIFFERENT user to flag likely duplicate/recycled proof for admin review.
+model SocialProofFingerprint {
+  id           String   @id @default(cuid())
+  taskId       String
+  userId       String
+  submissionId String
+  kind         String   // "URL" | "SCREENSHOT" | "USERNAME"
+  // SHA-256 of the normalized proof value — fixed length so the equality index
+  // is safe for arbitrarily long URLs (a raw-text btree index can overflow).
+  valueHash    String
+  createdAt    DateTime @default(now())
+
+  @@index([taskId, kind, valueHash])
+  @@index([submissionId])
 }
 
 // Pool of one-time-use unique keys for an ARTICLE task. Keys are claimed

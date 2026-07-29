@@ -14,6 +14,8 @@ import {
   GraduationCap,
   X,
 } from "lucide-react";
+import { EmptyState } from "@/components/user/primitives/empty-state";
+import { CardSkeleton } from "@/components/user/primitives/skeleton";
 
 interface FeaturedCard {
   id: string;
@@ -331,10 +333,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-gray-900 rounded-xl border border-gray-800 animate-pulse h-80"
-                />
+                <CardSkeleton key={i} />
               ))}
             </div>
           ) : error ? (
@@ -342,13 +341,11 @@ export function CoursesBrowse({ initialFeatured }: Props) {
               {error}
             </div>
           ) : rows.length === 0 ? (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-12 text-center">
-              <GraduationCap className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-white font-bold">No courses match</p>
-              <p className="text-sm text-gray-400 mt-1">
-                Try removing a filter or searching for something else.
-              </p>
-            </div>
+            <EmptyState
+              icon={GraduationCap}
+              title="No courses match"
+              description="Try removing a filter or searching for something else."
+            />
           ) : (
             <>
               <p className="text-xs text-gray-500">
@@ -369,7 +366,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
 
 function FilterCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-3">
+    <div className="card p-3">
       <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
         {title}
       </p>
@@ -457,10 +454,10 @@ function CourseCard({ c, highlight }: { c: BrowseCard; highlight?: boolean }) {
     <Link
       href={c.href}
       className={
-        "group bg-gray-900 rounded-xl border overflow-hidden flex flex-col transition-colors " +
+        "group card overflow-hidden flex flex-col " +
         (highlight
-          ? "border-amber-500/40 hover:border-amber-400"
-          : "border-gray-800 hover:border-indigo-500/40")
+          ? "border-amber-500/40! hover:border-amber-400!"
+          : "card-interactive")
       }
     >
       <div className="aspect-video bg-gray-950 relative">

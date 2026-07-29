@@ -1,4 +1,4 @@
-import { ExternalLink, AtSign, Sparkles, Info } from "lucide-react";
+import { ExternalLink, AtSign, Sparkles, Info, AlertTriangle } from "lucide-react";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
 import { getPlatform, getAction, normalizeSocialConfig } from "@/lib/social-tasks";
 import type { PanelSubmission, PanelTask } from "./types";
@@ -16,13 +16,49 @@ interface ItemProof {
   generatedContent?: string | null;
   watched?: boolean | null;
   reviewStatus?: "approved" | "rejected" | null;
+  verifyStatus?: "verified" | "code_missing" | "failed" | "unverifiable" | null;
+}
+
+const VERIFY_BADGE: Record<
+  string,
+  { label: string; cls: string }
+> = {
+  verified: {
+    label: "✓ code verified",
+    cls: "bg-emerald-500/15 text-emerald-400",
+  },
+  code_missing: {
+    label: "⚠ code not found",
+    cls: "bg-red-500/15 text-red-400",
+  },
+  failed: {
+    label: "⚠ not a member",
+    cls: "bg-red-500/15 text-red-400",
+  },
+  unverifiable: {
+    label: "⏳ couldn't verify — review",
+    cls: "bg-amber-500/15 text-amber-300",
+  },
+};
+
+interface FraudFlag {
+  kind: string;
+  value?: string | null;
+  matchedUserId?: string | null;
 }
 
 interface SocialMetadata {
   socialUsername?: string | null;
   socialGeneratedContent?: string | null;
   items?: ItemProof[];
+  fraudFlags?: FraudFlag[];
 }
+
+const FRAUD_KIND_LABEL: Record<string, string> = {
+  URL: "proof URL",
+  SCREENSHOT: "screenshot",
+  USERNAME: "username",
+};
 
 export function SocialProofPanel({ submission, task }: Props) {
   const norm = normalizeSocialConfig(task.socialConfig);
@@ -44,6 +80,23 @@ export function SocialProofPanel({ submission, task }: Props) {
           {norm.items.length} action{norm.items.length === 1 ? "" : "s"}
         </span>
       </div>
+
+      {meta?.fraudFlags && meta.fraudFlags.length > 0 && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/40 p-2.5 text-xs text-red-300 space-y-1">
+          <p className="inline-flex items-center gap-1.5 font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            Possible duplicate proof — reused by another user on this task
+          </p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            {meta.fraudFlags.map((f, i) => (
+              <li key={i} className="break-all">
+                {FRAUD_KIND_LABEL[f.kind] ?? f.kind}
+                {f.value ? `: ${f.value}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {bundleItems ? (
         // v2 bundle — one proof block per action.
@@ -74,6 +127,13 @@ export function SocialProofPanel({ submission, task }: Props) {
                   {proof.watched && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300">
                       ✓ watched
+                    </span>
+                  )}
+                  {proof.verifyStatus && VERIFY_BADGE[proof.verifyStatus] && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${VERIFY_BADGE[proof.verifyStatus].cls}`}
+                    >
+                      {VERIFY_BADGE[proof.verifyStatus].label}
                     </span>
                   )}
                   {proof.reviewStatus && (

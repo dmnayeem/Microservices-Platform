@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Bookmark, Plus, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/user/primitives/empty-state";
 import type { BookmarkEntry } from "./types";
 
 interface Props {
@@ -62,7 +63,12 @@ export function LessonBookmarksPanel({ bookmarks, onChange }: Props) {
       </div>
 
       {bookmarks.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">No bookmarks yet.</p>
+        <EmptyState
+          icon={Bookmark}
+          title="No bookmarks yet"
+          description="Save a moment to jump back to it later."
+          className="py-8"
+        />
       ) : (
         <ul className="space-y-2">
           {bookmarks.map((b) => (

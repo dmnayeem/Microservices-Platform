@@ -35,7 +35,7 @@ const LEVEL_LABEL: Record<string, string> = {
 export function CourseLandingHero({ course, tutor }: Props) {
   const bg = course.bannerUrl || course.thumbnail;
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-gray-800 bg-gray-900">
+    <section className="card relative overflow-hidden">
       {bg && (
         <div className="absolute inset-0">
           <Image

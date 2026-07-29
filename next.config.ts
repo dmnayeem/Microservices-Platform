@@ -25,6 +25,21 @@ const nextConfig: NextConfig = {
     // it actually uses — meaningful JS reduction across the whole app.
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
+  // Ad-blocker resistance: the browser only ever requests these neutral,
+  // first-party-looking paths (no `ads`/`click`/`impression` token for filter
+  // lists to match). They rewrite INTERNALLY to the real ad routes — the
+  // destination is invisible to the client. Legacy `/api/ads/*` stay mounted for
+  // back-compat (e.g. mobile). `afterFiles` semantics: real filesystem routes
+  // (e.g. /api/spaces/media/[id]) win, so these only catch the aliased paths.
+  async rewrites() {
+    return [
+      { source: "/api/spaces/panel", destination: "/api/ads/serve" },
+      { source: "/api/feed/inline", destination: "/api/ads/feed" },
+      { source: "/api/earn/watch", destination: "/api/ads/rewarded" },
+      { source: "/api/spaces/:id/event", destination: "/api/ads/:id/event" },
+      { source: "/api/earn/:id/claim", destination: "/api/ads/:id/reward" },
+    ];
+  },
 };
 
 export default nextConfig;

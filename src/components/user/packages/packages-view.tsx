@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { TIER_GRADIENT } from "@/lib/tiers";
 
 type Tier = "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP";
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
@@ -49,14 +50,10 @@ const TIER_ICON: Record<Tier, React.ReactNode> = {
   VIP: <Crown className="w-5 h-5" />,
 };
 
-const TIER_GRADIENT: Record<Tier, string> = {
-  FREE: "from-gray-600 to-gray-700",
-  STARTER: "from-indigo-500 to-cyan-500",
-  PRO: "from-purple-500 to-pink-500",
-  ELITE: "from-amber-500 to-orange-500",
-  VIP: "from-emerald-500 to-teal-500",
-};
-
+// NOTE: these marketing blurbs diverge from the real economics in
+// @/lib/tiers (e.g. FREE advertises a "$5–$500 withdrawal range" but
+// TIER_LIMITS.FREE is actually {min:0,max:0}). Kept local on purpose —
+// reconciling the copy is a product decision, not a mechanical dedup.
 const FEATURES: Record<Tier, string[]> = {
   FREE: ["$5–$500 withdrawal range", "1× earning multiplier", "0% fee discount", "Standard support"],
   STARTER: ["$5–$1,000 withdrawal", "1.1× multiplier", "10% fee discount", "Standard support"],
@@ -178,7 +175,7 @@ export function PackagesView({
                   "w-full text-left rounded-2xl p-4 border transition-all",
                   selected
                     ? "border-indigo-500 bg-indigo-500/5 scale-[1.01]"
-                    : "border-gray-800 bg-gray-900 hover:border-gray-700",
+                    : "glass glass-hover border-transparent",
                   isCurrent && "opacity-60"
                 )}
               >

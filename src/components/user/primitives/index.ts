@@ -7,6 +7,7 @@ export { BottomSheet } from "./bottom-sheet";
 export { BalanceCard } from "./balance-card";
 export { TaskCard } from "./task-card";
 export type { TaskStatus, TaskDifficulty } from "./task-card";
+export { TaskSubmissionRow } from "./task-submission-row";
 export { TransactionRow } from "./transaction-row";
 export type { TxType, TxStatus } from "./transaction-row";
 export { ListingCard } from "./listing-card";

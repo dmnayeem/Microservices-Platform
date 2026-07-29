@@ -660,7 +660,7 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
                       header: "Actions",
                       cell: (admin: (typeof admins)[number]) => (
                         <Link
-                          href={`/admin/access/${admin.id}`}
+                          href={`/admin/users/${admin.id}/edit`}
                           className="px-3 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
                         >
                           Manage

@@ -22,6 +22,7 @@ import { LessonNotesPanel } from "./LessonNotesPanel";
 import { LessonBookmarksPanel } from "./LessonBookmarksPanel";
 import { QuizPlayer } from "./QuizPlayer";
 import { AssignmentSubmitter } from "./AssignmentSubmitter";
+import { EmptyState } from "@/components/user/primitives/empty-state";
 import type {
   PlayerLesson,
   PlayerLessonProgress,
@@ -131,7 +132,7 @@ export function LessonPane({
           onSubmitted={() => persist({ isCompleted: true })}
         />
       ) : (
-        <article className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+        <article className="card p-5">
           <LessonTypePill type={lesson.lessonType} />
           <h1 className="text-xl font-bold text-white mt-2">{lesson.title}</h1>
           {lesson.description && (
@@ -150,7 +151,7 @@ export function LessonPane({
       )}
 
       {/* Lesson title + controls */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="card p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="min-w-0">
           <LessonTypePill type={lesson.lessonType} />
           <h2 className="text-base font-bold text-white mt-1 truncate">
@@ -202,7 +203,7 @@ export function LessonPane({
       </div>
 
       {/* Tabs */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800">
+      <div className="card">
         <div className="flex border-b border-gray-800 overflow-x-auto scrollbar-none">
           <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<FileText className="w-3.5 h-3.5" />}>
             Overview
@@ -246,9 +247,12 @@ export function LessonPane({
           {tab === "resources" && (
             <div className="space-y-1.5">
               {resources.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">
-                  No downloadable resources for this lesson.
-                </p>
+                <EmptyState
+                  icon={Download}
+                  title="No resources"
+                  description="No downloadable resources for this lesson."
+                  className="py-8"
+                />
               ) : (
                 resources.map((r, i) => (
                   <a

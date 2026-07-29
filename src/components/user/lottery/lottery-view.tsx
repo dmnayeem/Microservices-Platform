@@ -249,8 +249,9 @@ function FeaturedLotteryCard({
         </p>
       </div>
 
-      <p className="mt-2 text-4xl sm:text-5xl font-extrabold text-white tabular-nums">
-        💰 {topPrize.toLocaleString()}
+      <p className="mt-2 text-4xl sm:text-5xl font-extrabold text-white tabular-nums inline-flex items-center gap-2">
+        <Coins className="w-9 h-9 text-amber-300 shrink-0" />
+        {topPrize.toLocaleString()}
         <span className="text-base font-bold ml-1 text-purple-200/80">pts</span>
       </p>
       <p className="text-sm text-purple-200/80 mt-1">

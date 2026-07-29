@@ -17,6 +17,7 @@ import {
 import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
 import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
 import { getEffectiveFeatures } from "@/lib/packages";
+import { serveFeedAds } from "@/lib/ad-serve";
 
 export default async function SocialPage() {
   const session = await auth();
@@ -44,6 +45,7 @@ export default async function SocialPage() {
     quickEarnRaw,
     customWidgetsRaw,
     effectiveFeatures,
+    initialFeedAds,
   ] = await Promise.all([
       prisma.banner.findMany({
         where: {
@@ -91,6 +93,9 @@ export default async function SocialPage() {
       getSetting("feed.quick_earn_tiles", null),
       getSetting("feed.custom_widgets", null),
       getEffectiveFeatures(userId),
+      // SSR the first in-feed native ad so it's in the initial HTML (unblockable
+      // first paint); the client fetches the rest via /api/feed/inline.
+      serveFeedAds({ userId, count: 1 }),
     ]);
 
   const canBoost = effectiveFeatures.enabled.has("boost");
@@ -157,6 +162,7 @@ export default async function SocialPage() {
         role: session.user.role ?? null,
       }}
       initialBanners={banners}
+      initialFeedAd={initialFeedAds[0] ?? null}
       bestEarners={bestEarners}
       whoToFollow={whoToFollowRows}
       trendingHashtags={trendingHashtags}

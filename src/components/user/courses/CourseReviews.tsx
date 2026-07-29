@@ -36,7 +36,7 @@ export function CourseReviews({
   myReview,
 }: Props) {
   return (
-    <section className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4">
+    <section className="card p-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-bold text-white">Student reviews</h2>
         <p className="text-xs text-gray-500">

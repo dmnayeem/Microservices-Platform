@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, StickyNote } from "lucide-react";
+import { EmptyState } from "@/components/user/primitives/empty-state";
 import type { NoteEntry } from "./types";
 
 interface Props {
@@ -63,9 +64,12 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
       </div>
 
       {notes.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">
-          No notes yet. Jot down anything you want to remember.
-        </p>
+        <EmptyState
+          icon={StickyNote}
+          title="No notes yet"
+          description="Jot down anything you want to remember."
+          className="py-8"
+        />
       ) : (
         <ul className="space-y-2">
           {notes.map((n) => (

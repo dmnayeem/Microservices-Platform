@@ -70,7 +70,7 @@ export function CourseCurriculum({
 
   if (modules.length === 0) {
     return (
-      <section className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+      <section className="card p-5">
         <h2 className="text-base font-bold text-white">Curriculum</h2>
         <p className="text-sm text-gray-400 mt-2">
           The tutor hasn&apos;t published any lessons yet.
@@ -80,7 +80,7 @@ export function CourseCurriculum({
   }
 
   return (
-    <section className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+    <section className="card p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-bold text-white">Curriculum</h2>
         <p className="text-xs text-gray-500">

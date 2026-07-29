@@ -11,6 +11,7 @@ import {
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { isProfileComplete } from "@/lib/profile-completion";
 import { getUserDayContext } from "@/lib/user-day";
+import { getTaskChainState } from "@/lib/task-sequence";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
@@ -150,6 +151,20 @@ export async function POST(
           { status: 403 }
         );
       }
+    }
+
+    // Sequential-unlock gate (feature #7): if this task is locked behind an
+    // earlier, not-yet-completed task in the user's chain, block it. No-ops when
+    // the toggle is off or the user is an admin.
+    const { lockedTaskIds } = await getTaskChainState(session.user.id);
+    if (lockedTaskIds.has(id)) {
+      return NextResponse.json(
+        {
+          error: "Complete the previous task first to unlock this one.",
+          code: "TASK_LOCKED",
+        },
+        { status: 403 }
+      );
     }
 
     // Day boundary for all daily counters below — the user's LOCAL midnight,

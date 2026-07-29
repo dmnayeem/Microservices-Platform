@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { firstPartyMediaUrl } from "@/lib/ad-proxy";
 
 /** List active reward ads with each ad's cooldown state for the current user. */
 export async function GET() {
@@ -34,7 +35,7 @@ export async function GET() {
         id: ad.id,
         title: ad.campaign.title,
         format: ad.format,
-        imageUrl: ad.contentUrl ?? null,
+        imageUrl: ad.contentUrl ? firstPartyMediaUrl(ad.id, "img") : null,
         html: ad.htmlContent ?? null,
         targetUrl: ad.targetUrl ?? null,
         rewardPoints: ad.rewardPoints,

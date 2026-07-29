@@ -16,6 +16,7 @@ import {
   Smile,
   Palette,
   Lock,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ export function CreatePostComposer({
   const [bg, setBg] = useState<string>(""); // colored-background id ("" = none)
   const [uploading, setUploading] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showMore, setShowMore] = useState(false); // reveals formatting/bg/image-URL row
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollDuration, setPollDuration] = useState<24 | 48 | 72>(24);
   const [donationGoal, setDonationGoal] = useState<number>(1000);
@@ -544,6 +546,23 @@ export function CreatePostComposer({
             ) : null
           )}
 
+          {/* Progressive disclosure — secondary controls stay tucked away until
+              the user asks for them, keeping the default composer uncluttered.
+              State persists while hidden (no reset on collapse). */}
+          <button
+            type="button"
+            onClick={() => setShowMore((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-1.5 text-xs font-semibold transition-colors self-start",
+              showMore ? "text-indigo-300" : "text-gray-400 hover:text-gray-200"
+            )}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            {showMore ? "Fewer options" : "More options"}
+          </button>
+
+          {showMore && (
+            <>
           {/* Formatting toolbar */}
           <div className="flex items-center gap-1">
             <ComposerToolBtn title="Bold" onClick={() => wrapSelection("**")}>
@@ -585,7 +604,7 @@ export function CreatePostComposer({
               className="hidden"
               onChange={handleFile}
             />
-            <span className="ml-auto text-[10px] text-gray-500 hidden sm:inline">
+            <span className="ml-auto text-[11px] text-gray-500 hidden sm:inline">
               **bold** · *italic*
             </span>
           </div>
@@ -640,6 +659,8 @@ export function CreatePostComposer({
               Add
             </button>
           </div>
+            </>
+          )}
         </>
       )}
 
@@ -676,7 +697,7 @@ export function CreatePostComposer({
           <span className="text-xs font-semibold text-cyan-200">
             Post as Official Announcement
           </span>
-          <span className="text-[10px] text-cyan-400/70 ml-auto">
+          <span className="text-[11px] text-cyan-400/70 ml-auto">
             Pinned to top • OFFICIAL badge
           </span>
         </label>

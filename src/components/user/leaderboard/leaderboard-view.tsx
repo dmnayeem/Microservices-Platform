@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Trophy, Medal, Crown, Loader2 } from "lucide-react";
+import { Trophy, Medal, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { Avatar } from "@/components/user/primitives/avatar";
+import { FilterChips } from "@/components/user/primitives/filter-chips";
+import { ListSkeleton } from "@/components/user/primitives/skeleton";
+import { EmptyState } from "@/components/user/primitives/empty-state";
 
 interface Row {
   rank: number;
@@ -69,109 +73,126 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
   const suffix = METRICS.find((m) => m.key === metric)!.suffix;
   const fmt = (v: number) => `${v.toLocaleString()}${suffix ? ` ${suffix}` : ""}`;
 
-  // Podium order: 2nd, 1st, 3rd
+  const changeMetric = (next: MetricKey) => {
+    if (next === metric) return;
+    setLoading(true);
+    setMetric(next);
+  };
+
+  // Podium display order: 2nd, 1st, 3rd (1st raised in the middle).
   const podium = [rows[1], rows[0], rows[2]];
   const podiumMeta = [
-    { color: "from-gray-400 to-gray-500", icon: Medal, rank: 2 },
-    { color: "from-amber-400 to-yellow-500", icon: Crown, rank: 1 },
-    { color: "from-amber-600 to-orange-700", icon: Medal, rank: 3 },
+    { ring: "ring-gray-300/60", badge: "bg-gray-300 text-gray-900", icon: Medal, rank: 2 },
+    { ring: "ring-amber-400/70", badge: "bg-amber-400 text-amber-950", icon: Crown, rank: 1 },
+    { ring: "ring-orange-500/60", badge: "bg-orange-500 text-orange-950", icon: Medal, rank: 3 },
   ];
 
+  // Rank chip colour for the list (top 3 tinted, rest neutral).
+  const rankChip = (rank: number) =>
+    rank === 1
+      ? "bg-amber-400/15 text-amber-300 ring-amber-400/30"
+      : rank === 2
+        ? "bg-gray-300/15 text-gray-200 ring-gray-300/30"
+        : rank === 3
+          ? "bg-orange-500/15 text-orange-300 ring-orange-500/30"
+          : "bg-gray-800 text-gray-400 ring-gray-700/60";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-        <p className="text-gray-400 mt-1">See where you rank against other earners</p>
+        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+          <Trophy className="w-6 h-6 text-amber-400" />
+          Leaderboard
+        </h1>
+        <p className="text-sm text-gray-400 mt-0.5">
+          See where you rank against other earners.
+        </p>
       </div>
 
       {/* Metric filter */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-none">
-        {METRICS.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => {
-              if (m.key !== metric) {
-                setLoading(true);
-                setMetric(m.key);
-              }
-            }}
-            className={cn(
-              "shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-              metric === m.key
-                ? "bg-indigo-500 text-white"
-                : "bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800"
-            )}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        value={metric}
+        onChange={changeMetric}
+        options={METRICS.map((m) => ({ value: m.key, label: m.label }))}
+      />
 
       {loading ? (
-        <div className="py-20 flex justify-center">
-          <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
-        </div>
+        <ListSkeleton rows={6} />
       ) : rows.length === 0 ? (
-        <div className="glass rounded-xl py-16 text-center text-gray-500">
-          <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>No rankings yet</p>
-          <p className="text-sm mt-1">Complete tasks to appear on the leaderboard!</p>
-        </div>
+        <EmptyState
+          icon={Trophy}
+          title="No rankings yet"
+          description="Complete tasks to appear on the leaderboard!"
+        />
       ) : (
         <>
           {/* Top 3 podium */}
-          <div className="grid grid-cols-3 gap-4">
-            {podium.map((row, i) =>
-              row ? (
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end">
+            {podium.map((row, i) => {
+              const meta = podiumMeta[i];
+              const raised = i === 1;
+              const Icon = meta.icon;
+              return (
                 <div
-                  key={row.userId}
+                  key={row ? row.userId : i}
                   className={cn(
-                    "glass rounded-xl p-4 sm:p-6 text-center",
-                    i === 1 ? "-mt-4" : "mt-4"
+                    "glass rounded-2xl px-2 py-4 sm:p-5 text-center relative",
+                    raised && "-mt-3 sm:-mt-4 ring-1 ring-amber-400/30"
                   )}
                 >
-                  <div
+                  {/* Crown floats above the #1 card */}
+                  {raised && (
+                    <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 mx-auto -mt-1 mb-1 drop-shadow" />
+                  )}
+                  <div className="relative w-fit mx-auto">
+                    {row ? (
+                      <Avatar
+                        src={row.avatar}
+                        name={row.name}
+                        size={raised ? 64 : 52}
+                        className={cn("ring-2", meta.ring)}
+                      />
+                    ) : (
+                      <div
+                        className={cn(
+                          "rounded-full bg-gray-800 flex items-center justify-center ring-2",
+                          meta.ring
+                        )}
+                        style={{ width: raised ? 64 : 52, height: raised ? 64 : 52 }}
+                      >
+                        <Icon className="w-6 h-6 text-gray-600" />
+                      </div>
+                    )}
+                    <span
+                      className={cn(
+                        "absolute -bottom-1 left-1/2 -translate-x-1/2 min-w-5 h-5 px-1 rounded-full text-[11px] font-extrabold inline-flex items-center justify-center ring-2 ring-gray-950 tabular-nums",
+                        meta.badge
+                      )}
+                    >
+                      {meta.rank}
+                    </span>
+                  </div>
+                  <p
                     className={cn(
-                      "w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-linear-to-br flex items-center justify-center mb-3",
-                      podiumMeta[i].color
+                      "text-xs sm:text-sm font-semibold truncate mt-2.5",
+                      row ? "text-white" : "text-gray-500"
                     )}
                   >
-                    {(() => {
-                      const Icon = podiumMeta[i].icon;
-                      return <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />;
-                    })()}
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold text-white">
-                    #{podiumMeta[i].rank}
+                    {row ? row.name : "No one yet"}
                   </p>
-                  <p className="text-sm text-white truncate mt-1">{row.name}</p>
-                  <p className="text-indigo-400 font-medium mt-1 text-sm">
-                    {fmt(row.value)}
-                  </p>
-                </div>
-              ) : (
-                <div
-                  key={i}
-                  className={cn(
-                    "glass rounded-xl p-4 sm:p-6 text-center",
-                    i === 1 ? "-mt-4" : "mt-4"
+                  {row && (
+                    <p className="text-amber-400 font-bold text-xs sm:text-sm tabular-nums mt-0.5">
+                      {fmt(row.value)}
+                    </p>
                   )}
-                >
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-full bg-gray-800 flex items-center justify-center mb-3">
-                    <Medal className="w-7 h-7 text-gray-600" />
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-600">
-                    #{podiumMeta[i].rank}
-                  </p>
-                  <p className="text-gray-500 mt-1 text-sm">No one yet</p>
                 </div>
-              )
-            )}
+              );
+            })}
           </div>
 
-          {/* Current user (if outside top) */}
+          {/* Current user (if outside the top list) */}
           {me && !me.isInTop && (
-            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
+            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
               <span className="text-sm text-indigo-300 font-medium">
                 Your rank: <span className="font-bold">#{me.rank}</span>
               </span>
@@ -181,56 +202,51 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
             </div>
           )}
 
-          {/* Full table */}
-          <div className="glass rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-800">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Rank</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">User</th>
-                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">Level</th>
-                    <th className="text-right py-3 px-4 text-xs font-medium text-gray-400">
-                      {METRICS.find((m) => m.key === metric)!.label}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.userId}
-                      className={cn(
-                        "border-b border-gray-800/60 last:border-0",
-                        row.userId === currentUserId && "bg-indigo-500/10"
+          {/* Full ranking — a row list (mobile-first; no horizontal scroll). */}
+          <div className="glass rounded-2xl divide-y divide-gray-800/60 overflow-hidden">
+            {rows.map((row) => {
+              const isMe = row.userId === currentUserId;
+              return (
+                <div
+                  key={row.userId}
+                  className={cn(
+                    "flex items-center gap-3 px-3 sm:px-4 py-2.5",
+                    isMe && "bg-indigo-500/10"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "shrink-0 w-8 h-8 rounded-lg ring-1 inline-flex items-center justify-center text-xs font-extrabold tabular-nums",
+                      rankChip(row.rank)
+                    )}
+                  >
+                    {row.rank}
+                  </span>
+                  <Avatar
+                    src={row.avatar}
+                    name={row.name}
+                    size={36}
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white truncate">
+                      {row.name ?? "User"}
+                      {isMe && (
+                        <span className="ml-1.5 text-[10px] font-bold text-indigo-400">
+                          You
+                        </span>
                       )}
-                    >
-                      <td className="py-3 px-4 text-sm font-bold text-gray-300 tabular-nums">
-                        #{row.rank}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium shrink-0">
-                            {row.name?.charAt(0)?.toUpperCase() ?? "U"}
-                          </div>
-                          <span className="text-sm text-white truncate">
-                            {row.name}
-                            {row.userId === currentUserId && (
-                              <span className="ml-1 text-[10px] text-indigo-400">(You)</span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-400 tabular-nums">
-                        Lv {row.level}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-right font-semibold text-white tabular-nums">
-                        {fmt(row.value)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </p>
+                    <p className="text-[11px] text-gray-500 tabular-nums">
+                      Level {row.level}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-bold text-white tabular-nums">
+                    {fmt(row.value)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}

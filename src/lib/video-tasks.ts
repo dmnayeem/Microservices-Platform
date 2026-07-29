@@ -19,6 +19,24 @@ export type VideoProvider =
   | "DIRECT"
   | "OTHER";
 
+/**
+ * Optional YouTube-style engagement layer bundled with a VIDEO task (#11), so a
+ * single task can be "watch + subscribe + like + comment" instead of a separate
+ * SOCIAL task. YouTube can't be API-verified, so proof is either honor-based
+ * (checkboxes → auto-approve, guarded by the trust-score/spot-check anti-fraud)
+ * OR a required screenshot (→ manual review) — the admin picks via the existing
+ * `proofRequirements.screenshot` flag.
+ */
+export interface VideoEngagement {
+  /** "Open channel" target for the Subscribe step. */
+  channelUrl?: string;
+  requireSubscribe: boolean;
+  requireLike: boolean;
+  requireComment: boolean;
+  /** Suggested comment text the user can copy (Comment step). */
+  commentTemplate?: string;
+}
+
 export interface VideoConfig {
   videoUrl: string;
   provider: VideoProvider;
@@ -34,6 +52,46 @@ export interface VideoConfig {
   };
   uniqueKey?: string;
   uniqueKeyHint?: string;
+  /** Optional engagement steps (subscribe/like/comment). */
+  engagement?: VideoEngagement;
+}
+
+export type EngagementKey = "subscribe" | "like" | "comment";
+export interface EngagementStep {
+  key: EngagementKey;
+  label: string;
+  /** External link the user opens to perform the action. */
+  url: string;
+}
+
+/** True if the task requires any engagement action beyond watching. */
+export function hasEngagement(cfg: VideoConfig | null | undefined): boolean {
+  const e = cfg?.engagement;
+  return !!e && (e.requireSubscribe || e.requireLike || e.requireComment);
+}
+
+/** Ordered engagement steps for a task (subscribe → like → comment). */
+export function engagementSteps(
+  cfg: VideoConfig | null | undefined
+): EngagementStep[] {
+  const e = cfg?.engagement;
+  if (!e) return [];
+  const steps: EngagementStep[] = [];
+  if (e.requireSubscribe)
+    steps.push({
+      key: "subscribe",
+      label: "Subscribe to the channel",
+      url: e.channelUrl || cfg!.videoUrl,
+    });
+  if (e.requireLike)
+    steps.push({ key: "like", label: "Like the video", url: cfg!.videoUrl });
+  if (e.requireComment)
+    steps.push({
+      key: "comment",
+      label: "Comment on the video",
+      url: cfg!.videoUrl,
+    });
+  return steps;
 }
 
 export function emptyVideoConfig(): VideoConfig {
@@ -137,6 +195,12 @@ export function validateVideoConfig(
     return {
       ok: false,
       error: "Unique key is required when 'Unique Key' proof is enabled",
+    };
+  }
+  if (cfg.engagement?.requireSubscribe && !cfg.engagement.channelUrl?.trim()) {
+    return {
+      ok: false,
+      error: "Channel URL is required when 'Require Subscribe' is enabled",
     };
   }
   return { ok: true };

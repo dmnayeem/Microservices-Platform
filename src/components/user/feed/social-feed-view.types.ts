@@ -8,6 +8,7 @@ import type {
 import type { FeedWidgetConfig } from "@/lib/feed-widgets";
 import type { QuickEarnTile } from "@/lib/feed-quick-earn";
 import type { CustomWidget } from "@/lib/feed-custom-widgets";
+import type { FeedAd } from "@/components/user/feed/feed-ad-card";
 
 export interface SessionUser {
   id: string;
@@ -93,6 +94,8 @@ export interface TickerConfig {
 export interface Props {
   user: SessionUser;
   initialBanners: BannerSlide[];
+  /** SSR-injected first in-feed native ad (unblockable first paint). */
+  initialFeedAd?: FeedAd | null;
   initialTicker: WithdrawalTickerItem[];
   tickerConfig?: TickerConfig;
   bestEarners: RailEarner[];

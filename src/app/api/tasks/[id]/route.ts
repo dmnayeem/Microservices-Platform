@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserDayContext } from "@/lib/user-day";
+import { normalizeSocialConfig } from "@/lib/social-tasks";
+import { verifyCodeFor } from "@/lib/task-verify-code";
 
 // GET /api/tasks/:id - Get single task details
 export async function GET(
@@ -64,6 +66,19 @@ export async function GET(
       !!task.totalLimit && task.completedCount >= task.totalLimit;
     const remainingToday = Math.max(0, effectiveDailyLimit - todayCount);
 
+    // Per-user verification codes for auto-verify-by-code social items. Derived
+    // server-side (HMAC) so each user's code is unique and can't be computed on
+    // the client. Keyed by item index → the code the user must embed in content.
+    const socialVerifyCodes: Record<number, string> = {};
+    if (task.type === "SOCIAL") {
+      const { items } = normalizeSocialConfig(task.socialConfig);
+      items.forEach((it, idx) => {
+        if (it.verify === "CODE") {
+          socialVerifyCodes[idx] = verifyCodeFor(id, idx, session.user.id);
+        }
+      });
+    }
+
     return NextResponse.json({
       task: {
         ...task,
@@ -72,6 +87,7 @@ export async function GET(
           ? task.totalLimit - task.completedCount
           : null,
       },
+      socialVerifyCodes,
       userStatus: {
         hasActiveSubmission: !!activeSubmission,
         activeSubmissionId: activeSubmission?.id,

@@ -10,6 +10,7 @@ import {
   Paperclip,
   X,
 } from "lucide-react";
+import { CardSkeleton } from "@/components/user/primitives/skeleton";
 
 interface AssignmentField {
   id: string;
@@ -142,11 +143,25 @@ export function AssignmentSubmitter({
     }
   };
 
-  if (error || !payload) {
+  if (error) {
     return (
       <div className="bg-rose-500/10 border border-rose-500/40 rounded-2xl p-6 flex items-start gap-3">
         <AlertCircle className="w-5 h-5 text-rose-300 mt-0.5 shrink-0" />
-        <p className="text-sm text-rose-100">{error ?? "Loading…"}</p>
+        <div>
+          <p className="text-sm font-bold text-rose-100">
+            Couldn&apos;t load the assignment
+          </p>
+          <p className="text-sm text-rose-200/80 mt-0.5">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!payload) {
+    return (
+      <div className="space-y-3">
+        <CardSkeleton />
+        <CardSkeleton />
       </div>
     );
   }
@@ -181,7 +196,7 @@ export function AssignmentSubmitter({
         </div>
       )}
 
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4">
+      <div className="card p-5 space-y-4">
         {payload.fields.map((f) => (
           <div key={f.id}>
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { TaskStatus, TaskType } from "@/generated/prisma/client";
 import { mapSocialTaskRow } from "@/lib/social-tasks";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
+import { getTaskChainState } from "@/lib/task-sequence";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -93,7 +94,12 @@ export async function GET(request: NextRequest) {
     take: 100,
   });
 
+  // Sequential-unlock: mark tasks locked behind an earlier one (feature #7).
+  const { lockedTaskIds } = await getTaskChainState(session.user.id);
   return NextResponse.json({
-    tasks: tasks.map((t) => mapSocialTaskRow(t)),
+    tasks: tasks.map((t) => ({
+      ...mapSocialTaskRow(t),
+      locked: lockedTaskIds.has(t.id),
+    })),
   });
 }

@@ -35,6 +35,8 @@ interface ApiTask {
   minLevel?: number;
   canStart?: boolean;
   reason?: string | null;
+  locked?: boolean;
+  lockReason?: string | null;
   userStatus?:
     | "AVAILABLE"
     | "IN_PROGRESS"
@@ -262,7 +264,8 @@ export function TasksHubView() {
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
               href={taskRunHref(t.type, t.id)}
-              status={t.userStatus ?? "AVAILABLE"}
+              status={t.locked ? "LOCKED" : t.userStatus ?? "AVAILABLE"}
+              actionLabel={t.locked ? "🔒 Locked" : undefined}
             />
           ))}
         </div>

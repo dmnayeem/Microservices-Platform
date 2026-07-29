@@ -11,6 +11,7 @@ import {
   Send,
   Trophy,
 } from "lucide-react";
+import { CardSkeleton } from "@/components/user/primitives/skeleton";
 
 interface QuizQuestion {
   id: string;
@@ -123,11 +124,7 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
   };
 
   if (loading) {
-    return (
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-12 text-center">
-        <Loader2 className="w-6 h-6 text-gray-500 mx-auto animate-spin" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
   if (error || !quiz) {
     return (
@@ -207,7 +204,7 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
             return (
               <li
                 key={q.id}
-                className="bg-gray-900 rounded-xl border border-gray-800 p-4"
+                className="card p-4"
               >
                 <p className="text-sm font-bold text-white">
                   <span className="text-gray-500 font-mono text-xs mr-1">

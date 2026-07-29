@@ -55,6 +55,7 @@ export const FeedPostCard = memo(function FeedPostCard({
   canBoost,
   onUpdatePost,
   onDeletePost,
+  onBumpPost,
 }: {
   post: FeedPost;
   currentUserId: string;
@@ -62,6 +63,8 @@ export const FeedPostCard = memo(function FeedPostCard({
   canBoost?: boolean;
   onUpdatePost: (id: string, patch: Partial<FeedPost>) => void;
   onDeletePost: (id: string) => void;
+  /** Float this post to the top of the feed (viewer just commented on it). */
+  onBumpPost?: (id: string) => void;
 }) {
   // Re-bind the id-scoped parent handlers to this card's post so all the
   // existing `onUpdated(patch)` / `onDeleted()` call sites below stay unchanged,
@@ -589,7 +592,7 @@ export const FeedPostCard = memo(function FeedPostCard({
       )}
 
       {showComments && (
-        <CommentsSection postId={post.id} currentUserId={currentUserId} onCommentAdded={() => onUpdated({ commentsCount: post.commentsCount + 1 })} />
+        <CommentsSection postId={post.id} currentUserId={currentUserId} onCommentAdded={() => { onUpdated({ commentsCount: post.commentsCount + 1 }); onBumpPost?.(post.id); }} />
       )}
 
       <ShareModal

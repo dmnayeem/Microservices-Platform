@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TaskStatus, TaskType } from "@/generated/prisma/client";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
+import { getTaskChainState } from "@/lib/task-sequence";
 
 export async function GET() {
   const session = await auth();
@@ -40,6 +41,7 @@ export async function GET() {
     take: 50,
   });
 
+  const { lockedTaskIds } = await getTaskChainState(session.user.id);
   return NextResponse.json({
     tasks: tasks.map((t) => ({
       id: t.id,
@@ -50,6 +52,7 @@ export async function GET() {
       country: t.countries[0] ?? user.country ?? "Worldwide",
       serverHost: undefined,
       serverPort: undefined,
+      locked: lockedTaskIds.has(t.id),
     })),
   });
 }

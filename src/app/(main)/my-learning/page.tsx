@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
+import { StatCard } from "@/components/user/primitives/stat-card";
+import { EmptyState } from "@/components/user/primitives/empty-state";
+import { MyLearningTabs } from "./MyLearningTabs";
 
 const TABS = [
   { id: "in-progress", label: "In progress" },
@@ -208,49 +211,37 @@ export default async function MyLearningPage({ searchParams }: PageProps) {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat
-          icon={<PlayCircle className="w-4 h-4" />}
-          tone="text-indigo-300"
+        <StatCard
+          icon={<PlayCircle className="w-5 h-5" />}
+          tone="blue"
           label="In progress"
           value={inProgress.length}
         />
-        <Stat
-          icon={<CheckCircle2 className="w-4 h-4" />}
-          tone="text-emerald-300"
+        <StatCard
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          tone="green"
           label="Completed"
           value={completed.length}
         />
-        <Stat
-          icon={<Award className="w-4 h-4" />}
-          tone="text-amber-300"
+        <StatCard
+          icon={<Award className="w-5 h-5" />}
+          tone="amber"
           label="Certificates"
           value={certificates.length}
         />
-        <Stat
-          icon={<Heart className="w-4 h-4" />}
-          tone="text-rose-300"
+        <StatCard
+          icon={<Heart className="w-5 h-5" />}
+          tone="pink"
           label="Wishlist"
           value={bookmarks.length}
         />
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-800 flex gap-1 overflow-x-auto">
-        {TABS.map((t) => (
-          <Link
-            key={t.id}
-            href={`/my-learning?tab=${t.id}`}
-            className={
-              "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap " +
-              (active === t.id
-                ? "border-indigo-500 text-white"
-                : "border-transparent text-gray-400 hover:text-white")
-            }
-          >
-            {t.label}
-          </Link>
-        ))}
-      </div>
+      <MyLearningTabs
+        active={active}
+        options={TABS.map((t) => ({ value: t.id, label: t.label }))}
+      />
 
       {/* Panels */}
       {active === "in-progress" && (
@@ -275,41 +266,6 @@ export default async function MyLearningPage({ searchParams }: PageProps) {
   );
 }
 
-function Stat({
-  icon,
-  tone,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  tone: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-      <div className={`inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold ${tone}`}>
-        {icon}
-        {label}
-      </div>
-      <p className="mt-1 text-2xl font-extrabold text-white tabular-nums">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function EmptyCard({ icon, title, hint }: { icon: React.ReactNode; title: string; hint?: string }) {
-  return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-12 text-center">
-      <div className="w-10 h-10 rounded-full bg-gray-800 mx-auto flex items-center justify-center text-gray-500 mb-2">
-        {icon}
-      </div>
-      <p className="text-white font-bold">{title}</p>
-      {hint && <p className="text-sm text-gray-400 mt-1">{hint}</p>}
-    </div>
-  );
-}
 
 function EnrollmentList({
   items,
@@ -335,10 +291,10 @@ function EnrollmentList({
 }) {
   if (items.length === 0) {
     return (
-      <EmptyCard
-        icon={<PlayCircle className="w-6 h-6" />}
+      <EmptyState
+        icon={PlayCircle}
         title="Nothing here yet"
-        hint={emptyHint}
+        description={emptyHint}
       />
     );
   }
@@ -347,7 +303,7 @@ function EnrollmentList({
       {items.map((e) => (
         <li
           key={e.id}
-          className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden hover:border-indigo-500/40 group"
+          className="card card-interactive overflow-hidden group"
         >
           <Link href={`/learn/${e.course.id}`} className="block">
             <div className="aspect-video bg-gray-950 relative">
@@ -422,10 +378,10 @@ function WishlistList({
 }) {
   if (items.length === 0) {
     return (
-      <EmptyCard
-        icon={<Heart className="w-6 h-6" />}
+      <EmptyState
+        icon={Heart}
         title="Your wishlist is empty"
-        hint="Tap the heart on any course to save it for later."
+        description="Tap the heart on any course to save it for later."
       />
     );
   }
@@ -437,7 +393,7 @@ function WishlistList({
         return (
           <li
             key={c.id}
-            className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden hover:border-rose-500/40 group"
+            className="card overflow-hidden group hover:border-rose-500/40!"
           >
             <Link href={`/courses/${c.slug ?? c.id}`} className="block">
               <div className="aspect-video bg-gray-950 relative">
@@ -484,10 +440,10 @@ function CertificateList({
 }) {
   if (items.length === 0) {
     return (
-      <EmptyCard
-        icon={<Award className="w-6 h-6" />}
+      <EmptyState
+        icon={Award}
         title="No certificates yet"
-        hint="Finish a course (and pass every quiz) to earn one."
+        description="Finish a course (and pass every quiz) to earn one."
       />
     );
   }
@@ -548,10 +504,7 @@ function QuizAttempts({
 }) {
   if (items.length === 0) {
     return (
-      <EmptyCard
-        icon={<Brain className="w-6 h-6" />}
-        title="No quizzes taken yet"
-      />
+      <EmptyState icon={Brain} title="No quizzes taken yet" />
     );
   }
   return (
@@ -559,7 +512,7 @@ function QuizAttempts({
       {items.map((a) => (
         <li
           key={a.id}
-          className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex items-center gap-3"
+          className="card p-4 flex items-center gap-3"
         >
           <Brain
             className={`w-6 h-6 shrink-0 ${a.passed ? "text-emerald-300" : "text-rose-300"}`}
@@ -600,10 +553,7 @@ function AssignmentSubs({
 }) {
   if (items.length === 0) {
     return (
-      <EmptyCard
-        icon={<ClipboardList className="w-6 h-6" />}
-        title="No assignments submitted yet"
-      />
+      <EmptyState icon={ClipboardList} title="No assignments submitted yet" />
     );
   }
   return (
@@ -611,7 +561,7 @@ function AssignmentSubs({
       {items.map((s) => (
         <li
           key={s.id}
-          className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex items-center gap-3"
+          className="card p-4 flex items-center gap-3"
         >
           <ClipboardList className="w-6 h-6 text-amber-300 shrink-0" />
           <div className="flex-1 min-w-0">

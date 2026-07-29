@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmissionStatus } from "@/generated/prisma";
 import type { VideoConfig } from "@/lib/video-tasks";
+import { socialWatchTargetSeconds } from "@/lib/social-tasks";
 
 // Client sends a beat every ~5s while the video is genuinely playing AND the
 // tab is visible/focused. The server — not the client — decides how many
@@ -63,12 +64,16 @@ export async function POST(
     // what the task requires.
     const task = await prisma.task.findUnique({
       where: { id },
-      select: { videoConfig: true, duration: true },
+      select: { type: true, videoConfig: true, socialConfig: true, duration: true },
     });
+    // SOCIAL bundles accrue toward the sum of their locked watch items; VIDEO
+    // (and other timed types) toward videoConfig.watchSeconds / duration.
     const watchTarget =
-      (task?.videoConfig as VideoConfig | null)?.watchSeconds ??
-      task?.duration ??
-      0;
+      task?.type === "SOCIAL"
+        ? socialWatchTargetSeconds(task.socialConfig)
+        : ((task?.videoConfig as VideoConfig | null)?.watchSeconds ??
+          task?.duration ??
+          0);
 
     // Server-clock gap since the previous beat, clamped to a single interval.
     // The FIRST beat (no prior lastBeatAt) credits nothing — it just anchors

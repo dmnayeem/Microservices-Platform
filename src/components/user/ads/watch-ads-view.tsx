@@ -24,7 +24,7 @@ export function WatchAdsView() {
 
   const load = () => {
     setLoading(true);
-    fetch("/api/ads/rewarded")
+    fetch("/api/earn/watch")
       .then((r) => r.json())
       .then((d) => setAds(d.ads ?? []))
       .catch(() => setAds([]))
@@ -33,7 +33,7 @@ export function WatchAdsView() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/ads/rewarded")
+    fetch("/api/earn/watch")
       .then((r) => r.json())
       .then((d) => {
         if (active) {
@@ -163,7 +163,7 @@ function AdWatchModal({
   const claim = async () => {
     setClaiming(true);
     try {
-      const res = await fetch(`/api/ads/${ad.id}/reward`, { method: "POST" });
+      const res = await fetch(`/api/earn/${ad.id}/claim`, { method: "POST" });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? "Couldn't claim");
       notifyCenter.reward({

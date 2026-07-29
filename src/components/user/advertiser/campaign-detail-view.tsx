@@ -185,7 +185,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       </Link>
 
       {/* Header */}
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+      <div className="card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-white truncate">
@@ -197,7 +197,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
               </p>
             )}
             <span
-              className={`inline-block mt-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+              className={`inline-block mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                 campaign.status === "ACTIVE"
                   ? "bg-emerald-500/10 text-emerald-400"
                   : campaign.status === "PAUSED"
@@ -234,7 +234,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       </div>
 
       {/* 14-day impressions bar chart */}
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+      <div className="card p-4">
         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-3">
           Impressions · last 14 days
         </p>
@@ -289,7 +289,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             return (
               <div
                 key={ad.id}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-3 flex items-center gap-3"
+                className="card p-3 flex items-center gap-3"
               >
                 <div className="relative w-12 h-12 rounded-lg bg-gray-800 overflow-hidden shrink-0 flex items-center justify-center">
                   {thumb ? (
@@ -302,12 +302,12 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                   <p className="text-sm font-semibold text-white truncate">
                     {title}
                   </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] px-1 py-0.5 rounded bg-gray-800 text-gray-400 font-bold uppercase">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <span className="text-[10px] px-1 py-0.5 rounded bg-gray-800 text-gray-400 font-bold uppercase">
                       {ad.format}
                     </span>
                     {ad.promotedPost && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-bold uppercase">
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-bold uppercase">
                         Promoted post
                       </span>
                     )}
@@ -366,7 +366,7 @@ function AdStatusBadge({
   const s = status?.toUpperCase();
   if (s === "PENDING") {
     return (
-      <span className="text-[9px] px-1 py-0.5 rounded font-bold uppercase bg-amber-500/10 text-amber-400">
+      <span className="text-[10px] px-1 py-0.5 rounded font-bold uppercase bg-amber-500/10 text-amber-400">
         Pending review
       </span>
     );
@@ -375,7 +375,7 @@ function AdStatusBadge({
     return (
       <span
         title={rejectionReason || "Rejected"}
-        className="text-[9px] px-1 py-0.5 rounded font-bold uppercase bg-red-500/10 text-red-400"
+        className="text-[10px] px-1 py-0.5 rounded font-bold uppercase bg-red-500/10 text-red-400"
       >
         Rejected
       </span>
@@ -383,7 +383,7 @@ function AdStatusBadge({
   }
   return (
     <span
-      className={`text-[9px] px-1 py-0.5 rounded font-bold uppercase ${
+      className={`text-[10px] px-1 py-0.5 rounded font-bold uppercase ${
         s === "ACTIVE"
           ? "bg-emerald-500/10 text-emerald-400"
           : "bg-amber-500/10 text-amber-400"

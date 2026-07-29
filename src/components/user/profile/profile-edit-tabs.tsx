@@ -31,6 +31,7 @@ import {
 import type { ProfileResponse, SocialAccount } from "./profile-view.types";
 import { LANGUAGES, PLATFORM_META, inp } from "./profile-view.constants";
 import { Card, Field, UsernameField, StatTile, Toggle } from "./profile-ui";
+import { VerifiedAccountsCard } from "./verified-accounts-card";
 
 export function PersonalTab({
   data,
@@ -412,6 +413,7 @@ export function SocialTab({
           })}
         </div>
       </Card>
+      <VerifiedAccountsCard />
     </div>
   );
 }

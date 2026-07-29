@@ -126,15 +126,6 @@ const fieldImageUrl: SocialField = {
   placeholder: "Image users should attach to their post",
 };
 
-// Reserved: optional notes field that platforms can opt into.
-const _fieldNotes: SocialField = {
-  key: "notes",
-  label: "Notes (optional)",
-  type: "textarea",
-  required: false,
-  placeholder: "Any extra details for the reviewer",
-};
-
 // -----------------------------------------------------------------------------
 // Platform definitions
 // -----------------------------------------------------------------------------
@@ -2552,6 +2543,265 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
       },
     ],
   },
+
+  // ── WhatsApp ─────────────────────────────────────────────────────────────
+  {
+    key: "WHATSAPP",
+    label: "WhatsApp",
+    emoji: "📱",
+    brandColor: "bg-[#25d366] text-white",
+    websiteUrl: "https://www.whatsapp.com",
+    actions: [
+      {
+        key: "FOLLOW_CHANNEL",
+        label: "Follow Channel",
+        emoji: "📢",
+        description: "Follow a WhatsApp Channel",
+        adminFields: [fieldUrl("targetUrl", "Channel invite link")],
+        proofFields: [fieldScreenshot, fieldProofUsername],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 25 },
+      },
+      {
+        key: "JOIN_GROUP",
+        label: "Join Group",
+        emoji: "👥",
+        description: "Join a WhatsApp group via invite link",
+        adminFields: [fieldUrl("targetUrl", "Group invite link")],
+        proofFields: [fieldScreenshot, fieldProofUsername],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 25 },
+      },
+      {
+        key: "REACT_TO_STATUS",
+        label: "React to Status",
+        emoji: "❤️",
+        description: "React to a status/channel update",
+        adminFields: [fieldUrl("targetUrl", "Channel / status link")],
+        proofFields: [fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 3, max: 12 },
+      },
+    ],
+  },
+
+  // ── Twitch ───────────────────────────────────────────────────────────────
+  {
+    key: "TWITCH",
+    label: "Twitch",
+    emoji: "🎮",
+    brandColor: "bg-[#9146ff] text-white",
+    websiteUrl: "https://www.twitch.tv",
+    actions: [
+      {
+        key: "FOLLOW",
+        label: "Follow Channel",
+        emoji: "➕",
+        description: "Follow a Twitch channel",
+        adminFields: [fieldUrl("targetUrl", "Channel URL")],
+        proofFields: [fieldProofUrl("Your profile URL"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 25 },
+      },
+      {
+        key: "SUBSCRIBE",
+        label: "Subscribe",
+        emoji: "⭐",
+        description: "Subscribe to a Twitch channel",
+        adminFields: [fieldUrl("targetUrl", "Channel URL")],
+        proofFields: [fieldScreenshot, fieldProofUsername],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 20, max: 80 },
+      },
+      {
+        key: "WATCH_STREAM",
+        label: "Watch Stream",
+        emoji: "👁️",
+        description: "Watch a stream/VOD for a minimum duration",
+        adminFields: [fieldUrl("targetUrl", "Stream / VOD URL"), fieldWatchSeconds],
+        proofFields: [fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 50 },
+      },
+    ],
+  },
+
+  // ── Kick ─────────────────────────────────────────────────────────────────
+  {
+    key: "KICK",
+    label: "Kick",
+    emoji: "🥊",
+    brandColor: "bg-[#53fc18] text-black",
+    websiteUrl: "https://kick.com",
+    actions: [
+      {
+        key: "FOLLOW",
+        label: "Follow Channel",
+        emoji: "➕",
+        description: "Follow a Kick channel",
+        adminFields: [fieldUrl("targetUrl", "Channel URL")],
+        proofFields: [fieldProofUrl("Your profile URL"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 25 },
+      },
+      {
+        key: "WATCH_STREAM",
+        label: "Watch Stream",
+        emoji: "👁️",
+        description: "Watch a stream/VOD for a minimum duration",
+        adminFields: [fieldUrl("targetUrl", "Stream / VOD URL"), fieldWatchSeconds],
+        proofFields: [fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 50 },
+      },
+    ],
+  },
+
+  // ── Bluesky ──────────────────────────────────────────────────────────────
+  {
+    key: "BLUESKY",
+    label: "Bluesky",
+    emoji: "🦋",
+    brandColor: "bg-[#0085ff] text-white",
+    websiteUrl: "https://bsky.app",
+    actions: [
+      {
+        key: "FOLLOW",
+        label: "Follow",
+        emoji: "➕",
+        description: "Follow a Bluesky profile",
+        adminFields: [fieldUrl("targetUrl", "Profile URL")],
+        proofFields: [fieldProofUrl("Your profile URL"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 20 },
+      },
+      {
+        key: "LIKE_POST",
+        label: "Like Post",
+        emoji: "❤️",
+        description: "Like a specific post",
+        adminFields: [fieldUrl("targetUrl", "Post URL")],
+        proofFields: [fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 3, max: 10 },
+      },
+      {
+        key: "REPOST",
+        label: "Repost",
+        emoji: "🔁",
+        description: "Repost a post",
+        adminFields: [fieldUrl("targetUrl", "Post URL")],
+        proofFields: [fieldUrl("proofUrl", "URL of your repost"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 10, max: 30 },
+      },
+      {
+        key: "REPLY",
+        label: "Reply",
+        emoji: "💬",
+        description: "Reply to a post",
+        adminFields: [fieldUrl("targetUrl", "Post URL"), fieldComment("Reply template")],
+        aiGeneratableFields: ["commentTemplate"],
+        proofFields: [fieldUrl("proofUrl", "URL of your reply"), fieldScreenshot],
+        supportsAiPrompt: true,
+        suggestedReward: { min: 10, max: 30 },
+      },
+    ],
+  },
+
+  // ── Mastodon ─────────────────────────────────────────────────────────────
+  {
+    key: "MASTODON",
+    label: "Mastodon",
+    emoji: "🐘",
+    brandColor: "bg-[#6364ff] text-white",
+    websiteUrl: "https://joinmastodon.org",
+    actions: [
+      {
+        key: "FOLLOW",
+        label: "Follow",
+        emoji: "➕",
+        description: "Follow a Mastodon account",
+        adminFields: [fieldUrl("targetUrl", "Profile URL")],
+        proofFields: [fieldProofUrl("Your profile URL"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 20 },
+      },
+      {
+        key: "FAVOURITE",
+        label: "Favourite Post",
+        emoji: "⭐",
+        description: "Favourite a specific post",
+        adminFields: [fieldUrl("targetUrl", "Post URL")],
+        proofFields: [fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 3, max: 10 },
+      },
+      {
+        key: "BOOST",
+        label: "Boost",
+        emoji: "🔁",
+        description: "Boost (reblog) a post",
+        adminFields: [fieldUrl("targetUrl", "Post URL")],
+        proofFields: [fieldUrl("proofUrl", "URL of your boost"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 10, max: 30 },
+      },
+      {
+        key: "REPLY",
+        label: "Reply",
+        emoji: "💬",
+        description: "Reply to a post",
+        adminFields: [fieldUrl("targetUrl", "Post URL"), fieldComment("Reply template")],
+        aiGeneratableFields: ["commentTemplate"],
+        proofFields: [fieldUrl("proofUrl", "URL of your reply"), fieldScreenshot],
+        supportsAiPrompt: true,
+        suggestedReward: { min: 10, max: 30 },
+      },
+    ],
+  },
+
+  // ── Medium ───────────────────────────────────────────────────────────────
+  {
+    key: "MEDIUM",
+    label: "Medium",
+    emoji: "✍️",
+    brandColor: "bg-black text-white",
+    websiteUrl: "https://medium.com",
+    actions: [
+      {
+        key: "FOLLOW",
+        label: "Follow",
+        emoji: "➕",
+        description: "Follow a Medium writer or publication",
+        adminFields: [fieldUrl("targetUrl", "Profile / publication URL")],
+        proofFields: [fieldProofUrl("Your profile URL"), fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 5, max: 20 },
+      },
+      {
+        key: "CLAP",
+        label: "Clap",
+        emoji: "👏",
+        description: "Clap for a story",
+        adminFields: [fieldUrl("targetUrl", "Story URL")],
+        proofFields: [fieldScreenshot],
+        supportsAiPrompt: false,
+        suggestedReward: { min: 3, max: 12 },
+      },
+      {
+        key: "RESPOND",
+        label: "Respond",
+        emoji: "💬",
+        description: "Write a response to a story",
+        adminFields: [fieldUrl("targetUrl", "Story URL"), fieldComment("Response template")],
+        aiGeneratableFields: ["commentTemplate"],
+        proofFields: [fieldUrl("proofUrl", "URL of your response"), fieldScreenshot],
+        supportsAiPrompt: true,
+        suggestedReward: { min: 12, max: 35 },
+      },
+    ],
+  },
 ];
 
 // -----------------------------------------------------------------------------
@@ -2859,7 +3109,8 @@ const PLATFORM_CATEGORY_MAP: { key: string; label: string; keys: string[] }[] = 
     keys: [
       "FACEBOOK", "FB_GROUP", "TWITTER", "YOUTUBE", "INSTAGRAM", "TIKTOK",
       "PINTEREST", "LINKEDIN", "THREADS", "DISCORD", "TELEGRAM", "REDDIT",
-      "QUORA", "SNAPCHAT",
+      "QUORA", "SNAPCHAT", "WHATSAPP", "TWITCH", "KICK", "BLUESKY",
+      "MASTODON", "MEDIUM",
     ],
   },
   {
@@ -2983,9 +3234,26 @@ export interface BundleItem {
   proofRequirements: ProofRequirements;
   aiPromptEnabled: boolean;
   aiPrompt: string | null;
-  /** Display-only (e.g. min watch seconds); no lock enforcement. */
+  /** Minimum watch seconds for a watch/stream action. Drives BOTH the client
+   *  watch-lock player AND the server watch target (see socialWatchTargetSeconds
+   *  + the /heartbeat and submit routes) — a submission can't pass without the
+   *  server accruing this much real foreground playback. 0/undefined = no gate. */
   watchSeconds?: number;
+  /** Server-side auto-verification method for this action (anti-fake proof):
+   *  - "CODE": user must include their unique code in the published content; the
+   *    server fetches the proof URL and confirms it.
+   *  - "TELEGRAM_MEMBER" / "DISCORD_MEMBER": a bot confirms the user joined.
+   *  undefined = no auto-verify (manual proof review, the default). */
+  verify?: "CODE" | "TELEGRAM_MEMBER" | "DISCORD_MEMBER";
 }
+
+/** Auto-verification methods a bundle item can use. */
+export type VerifyMethod = "CODE" | "TELEGRAM_MEMBER" | "DISCORD_MEMBER";
+const VERIFY_METHODS: VerifyMethod[] = [
+  "CODE",
+  "TELEGRAM_MEMBER",
+  "DISCORD_MEMBER",
+];
 
 /** Persisted shape stored in Task.socialConfig (JSON), v2. */
 export interface SocialBundleConfig {
@@ -3030,6 +3298,11 @@ function coerceBundleItem(raw: unknown): BundleItem | null {
     watchSeconds:
       typeof r.watchSeconds === "number" && Number.isFinite(r.watchSeconds)
         ? r.watchSeconds
+        : undefined,
+    verify:
+      typeof r.verify === "string" &&
+      VERIFY_METHODS.includes(r.verify as VerifyMethod)
+        ? (r.verify as VerifyMethod)
         : undefined,
   };
 }
@@ -3106,6 +3379,7 @@ export interface SocialTaskItemView {
   aiPrompt: string | null;
   watchSeconds: number | null;
   targetUrl: string;
+  verify?: VerifyMethod;
 }
 
 export interface SocialTaskView {
@@ -3159,6 +3433,7 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
     aiPrompt: it.aiPrompt ?? null,
     watchSeconds: it.watchSeconds ?? null,
     targetUrl: it.fields?.targetUrl ?? it.fields?.targetHandle ?? "",
+    verify: it.verify,
   }));
   const first = items[0];
   return {
@@ -3284,6 +3559,14 @@ const ACTION_TIER: Record<string, number> = {
   CREATE_BOARD: 80,
   PIN_TO_MULTI: 80,
   GIVE_AWARD: 80,
+  // new-platform additions (WhatsApp, Twitch, Kick, Bluesky, Mastodon, Medium)
+  WATCH_STREAM: 10,
+  REACT_TO_STATUS: 20,
+  FAVOURITE: 20,
+  CLAP: 20,
+  BOOST: 50,
+  FOLLOW_CHANNEL: 60,
+  RESPOND: 40,
 };
 
 /** Natural-flow tier for an action key (lower = earlier). Unknown → 90. */
@@ -3292,11 +3575,30 @@ export function actionPriority(actionKey: string): number {
 }
 
 /** Watch/stream actions that can use a timed-lock player (see SocialWatchModal). */
-const WATCH_ACTIONS = new Set(["WATCH_VIDEO", "LISTEN_FULL", "WATCH_REEL"]);
+const WATCH_ACTIONS = new Set([
+  "WATCH_VIDEO",
+  "LISTEN_FULL",
+  "WATCH_REEL",
+  "WATCH_STREAM",
+]);
 
 /** True if the action is a passive watch/stream type (eligible for a watch timer). */
 export function isWatchAction(actionKey: string | null | undefined): boolean {
   return !!actionKey && WATCH_ACTIONS.has(actionKey);
+}
+
+/**
+ * Total server-enforced watch seconds for a SOCIAL task = Σ of the watchSeconds
+ * on every locked watch item (watchSeconds > 0). This is the target the server
+ * heartbeat accrues toward and the submit route gates on, so the client's
+ * `watched: true` flag can't be forged. 0 → the task has no watch gate.
+ */
+export function socialWatchTargetSeconds(rawSocialConfig: unknown): number {
+  const { items } = normalizeSocialConfig(rawSocialConfig);
+  return items.reduce((sum, it) => {
+    const s = it.watchSeconds ?? 0;
+    return isWatchAction(it.action) && s > 0 ? sum + s : sum;
+  }, 0);
 }
 
 /** Sort bundle items into the natural worker flow (stable within a tier). */

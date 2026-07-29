@@ -8,8 +8,10 @@ import {
   Sparkles,
   Users,
   Compass,
+  ArrowUp,
 } from "lucide-react";
 import { PullToRefresh } from "@/components/user/primitives/pull-to-refresh";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { cn } from "@/lib/utils";
 import {
   BannerSlider,
@@ -37,6 +39,7 @@ import type {
 export function SocialFeedView({
   user,
   initialBanners,
+  initialFeedAd,
   initialTicker,
   tickerConfig,
   bestEarners,
@@ -93,6 +96,7 @@ export function SocialFeedView({
         {tab === "feed" && (
           <FeedTab
             user={user}
+            initialFeedAd={initialFeedAd}
             initialTicker={initialTicker}
             tickerConfig={tickerConfig}
             sort={sort}
@@ -130,6 +134,7 @@ export function SocialFeedView({
 
 function FeedTab({
   user,
+  initialFeedAd,
   initialTicker,
   tickerConfig,
   sort,
@@ -139,6 +144,7 @@ function FeedTab({
   canShareYouTube,
 }: {
   user: SessionUser;
+  initialFeedAd?: FeedAd | null;
   initialTicker: WithdrawalTickerItem[];
   tickerConfig?: TickerConfig;
   sort: Sort;
@@ -153,12 +159,28 @@ function FeedTab({
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Per-session jitter seed → the main feed reshuffles each session, and each
+  // pull-to-refresh regenerates it for fresh variety, while staying stable
+  // across pages within one session (same seed).
+  const seedRef = useRef<string>(Math.random().toString(36).slice(2));
+  // Baseline for the live "new activity" pill — the max lastActivityAt from the
+  // last full load. The pulse poll compares against this.
+  const latestSeenRef = useRef<number>(0);
+  const [hasNewActivity, setHasNewActivity] = useState(false);
+
   // Native in-feed ad pool — each ad is consumed once, in order, spaced through
   // the feed (no repeats while scrolling). We fetch more (excluding already-seen
   // ids) as the pool is consumed; de-dupe on append so a server fallback repeat
   // is never re-added.
-  const [feedAds, setFeedAds] = useState<FeedAd[]>([]);
-  const feedAdIdsRef = useRef<Set<string>>(new Set());
+  // Seed with the SSR-injected first ad so it paints from the server HTML (an
+  // ad-blocker can't hide markup already in the document); the client fetches
+  // the rest via /api/feed/inline, excluding this one.
+  const [feedAds, setFeedAds] = useState<FeedAd[]>(
+    initialFeedAd ? [initialFeedAd] : []
+  );
+  const feedAdIdsRef = useRef<Set<string>>(
+    new Set(initialFeedAd ? [initialFeedAd.adId] : [])
+  );
   const loadingAdsRef = useRef(false);
 
   const PAGE_SIZE = 20;
@@ -169,7 +191,7 @@ function FeedTab({
     try {
       const exclude = Array.from(feedAdIdsRef.current).join(",");
       const res = await fetch(
-        `/api/ads/feed?count=10${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`
+        `/api/feed/inline?count=10${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`
       );
       const data = await res.json();
       if (Array.isArray(data.ads) && data.ads.length > 0) {
@@ -188,14 +210,24 @@ function FeedTab({
     }
   };
 
-  const load = async () => {
+  // `reshuffle` regenerates the session seed (pull-to-refresh → new order);
+  // the pill reload keeps the seed so only genuinely-resurfaced posts move.
+  const load = async (reshuffle = false) => {
+    if (reshuffle) seedRef.current = Math.random().toString(36).slice(2);
     try {
-      const res = await fetch(`/api/feed?page=1&limit=${PAGE_SIZE}`);
+      const res = await fetch(
+        `/api/feed?page=1&limit=${PAGE_SIZE}&seed=${seedRef.current}`
+      );
       const data = await res.json();
       const items: FeedPost[] = data.posts ?? [];
       setPosts(items);
       setPage(1);
       setHasMore(items.length >= PAGE_SIZE);
+      // Reset the live-pill baseline to the freshest activity we just loaded.
+      if (data.latestActivityAt) {
+        latestSeenRef.current = new Date(data.latestActivityAt).getTime();
+      }
+      setHasNewActivity(false);
     } catch {
       setPosts([]);
       setHasMore(false);
@@ -205,12 +237,17 @@ function FeedTab({
     void fetchFeedAds();
   };
 
+  // Pull-to-refresh should reshuffle for fresh variety.
+  const refresh = () => load(true);
+
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const next = page + 1;
     try {
-      const res = await fetch(`/api/feed?page=${next}&limit=${PAGE_SIZE}`);
+      const res = await fetch(
+        `/api/feed?page=${next}&limit=${PAGE_SIZE}&seed=${seedRef.current}`
+      );
       const data = await res.json();
       const items: FeedPost[] = data.posts ?? [];
       // De-dupe against posts already shown (announcements/promoted can repeat).
@@ -274,9 +311,59 @@ function FeedTab({
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
+  // Instant bubble: when the viewer comments on a post, float it to the top
+  // right away (server already bumped lastActivityAt). Advance the pill baseline
+  // so this own-action doesn't also trigger the "new activity" pill.
+  const handlePostBumped = useCallback((id: string) => {
+    latestSeenRef.current = Date.now();
+    setPosts((prev) => {
+      const idx = prev.findIndex((p) => p.id === id);
+      if (idx <= 0) return prev; // already at top or not present
+      const next = [...prev];
+      const [moved] = next.splice(idx, 1);
+      next.unshift(moved);
+      return next;
+    });
+  }, []);
+
+  // Live "new activity" pill — poll the cheap /api/feed/pulse signal (~30s,
+  // paused while the tab is hidden). If the freshest activity is newer than what
+  // we last loaded, surface the pill instead of reordering under the user.
+  useAutoRefresh(
+    useCallback(async () => {
+      try {
+        const res = await fetch("/api/feed/pulse");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.latestActivityAt) return;
+        const latest = new Date(data.latestActivityAt).getTime();
+        if (latest > latestSeenRef.current) setHasNewActivity(true);
+      } catch {
+        /* transient — try again next tick */
+      }
+    }, []),
+    { intervalMs: 30000 }
+  );
+
+  const showNewActivity = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    void load(); // same seed — only resurfaced posts move
+  };
+
   return (
-    <PullToRefresh onRefresh={load}>
+    <PullToRefresh onRefresh={refresh}>
     <div className="space-y-4">
+      {hasNewActivity && (
+        <div className="sticky top-2 z-20 flex justify-center">
+          <button
+            onClick={showNewActivity}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500 text-white text-sm font-semibold shadow-lg hover:bg-indigo-600 transition-colors"
+          >
+            <ArrowUp className="w-4 h-4" />
+            New posts
+          </button>
+        </div>
+      )}
       {initialTicker.length > 0 && (
         <WithdrawalTicker
           items={initialTicker}
@@ -348,6 +435,7 @@ function FeedTab({
                   canBoost={canBoost}
                   onUpdatePost={handlePostUpdated}
                   onDeletePost={handlePostDeleted}
+                  onBumpPost={handlePostBumped}
                 />
                 {ad && <FeedAdCard key={`ad-${i}-${ad.adId}`} ad={ad} />}
               </Fragment>

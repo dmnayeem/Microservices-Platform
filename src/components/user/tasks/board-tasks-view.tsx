@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { runInterstitial } from "@/lib/reward-interstitial";
+import { ensureAdsAllowed } from "@/lib/adblock";
 
 interface Board {
   id: string;
@@ -587,8 +588,8 @@ export function BoardTasksView() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold text-white flex items-center gap-2">
-        📌 Board Tasks
+      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+        <Pin className="w-6 h-6 text-amber-400" /> Board Tasks
       </h1>
 
       {!loading && availableCategories.length > 0 && (
@@ -652,13 +653,15 @@ export function BoardTasksView() {
             return (
               <button
                 key={b.id}
-                onClick={() => {
+                onClick={async () => {
                   if (isLocked) {
                     toast.info(
                       `Locked — claim "${b.lockedBy?.title}" first.`
                     );
                     return;
                   }
+                  // Ad-blocker gate: refuse to open while a blocker is active.
+                  if (!(await ensureAdsAllowed())) return;
                   setSelectedBoardId(b.id);
                 }}
                 className={cn(
@@ -721,7 +724,7 @@ export function BoardTasksView() {
                       {b.description}
                     </p>
                   )}
-                  <div className="grid grid-cols-3 gap-1.5 mt-3 text-[10px]">
+                  <div className="grid grid-cols-3 gap-1.5 mt-3 text-[11px]">
                     <div className="flex flex-col items-center p-1.5 rounded bg-gray-800">
                       <Pin className="w-3 h-3 text-orange-400 mb-0.5" />
                       <span className="font-bold text-white tabular-nums">

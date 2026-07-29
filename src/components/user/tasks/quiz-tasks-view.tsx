@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { QuizPlayer } from "./quiz-player";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { ensureAdsAllowed } from "@/lib/adblock";
 import { cn } from "@/lib/utils";
 
 interface QuizRow {
@@ -52,8 +53,8 @@ export function QuizTasksView() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold text-white flex items-center gap-2">
-        🧠 Quiz Tasks
+      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+        <Brain className="w-6 h-6 text-purple-400" /> Quiz Tasks
       </h1>
 
       <AdRenderer placement="TASK_LIST" />
@@ -73,7 +74,9 @@ export function QuizTasksView() {
           {quizzes.map((q) => (
             <button
               key={q.id}
-              onClick={() => setActiveId(q.id)}
+              onClick={async () => {
+                if (await ensureAdsAllowed()) setActiveId(q.id);
+              }}
               className="text-left rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:border-indigo-500/40 transition-colors"
             >
               <div className="flex items-start gap-3">

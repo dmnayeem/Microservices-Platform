@@ -9,11 +9,13 @@ import {
   KeyRound,
   Sparkles,
   PlayCircle,
+  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { notifyCenter } from "@/lib/notify-center";
-import type { VideoConfig } from "@/lib/video-tasks";
-import { formatDuration } from "@/lib/video-tasks";
+import type { VideoConfig, EngagementKey } from "@/lib/video-tasks";
+import { formatDuration, engagementSteps } from "@/lib/video-tasks";
 import { confirmDialog } from "@/lib/confirm";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { AdInterstitialOverlay } from "@/components/user/primitives/ad-interstitial-overlay";
@@ -65,6 +67,15 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
   const [autoFailed, setAutoFailed] = useState(false);
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uniqueKey, setUniqueKey] = useState("");
+  // YouTube-style engagement steps + the user's honor confirmations.
+  const engSteps = useMemo(() => engagementSteps(cfg), [cfg]);
+  const [engDone, setEngDone] = useState<Record<EngagementKey, boolean>>({
+    subscribe: false,
+    like: false,
+    comment: false,
+  });
+  const allEngDone = engSteps.every((s) => engDone[s.key]);
+  const [copiedComment, setCopiedComment] = useState(false);
   // Interstitial ad gates — playback waits for the intro ad; the reward flow
   // waits for the outro ad. Both resolve immediately when no ad is available.
   const [introAdDone, setIntroAdDone] = useState(false);
@@ -205,18 +216,20 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, task.id, submissionId]);
 
-  // Auto-submit on complete (if configured & no proof needed)
+  // Auto-submit on complete (if configured & nothing to confirm)
   const needsProofForm =
     proofReq.screenshot || proofReq.uniqueKey;
+  // Engagement steps also require a manual confirm, so they block auto-submit.
+  const needsInteraction = needsProofForm || engSteps.length > 0;
   useEffect(() => {
     if (phase !== "complete") return;
     if (!outroAdDone) return; // let the outro interstitial finish first
     if (!autoSubmit) return;
-    if (needsProofForm) return;
+    if (needsInteraction) return;
     if (submittedRef.current) return;
     void doSubmit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, autoSubmit, needsProofForm, outroAdDone]);
+  }, [phase, autoSubmit, needsInteraction, outroAdDone]);
 
   const doSubmit = async () => {
     if (submittedRef.current) return;
@@ -226,6 +239,10 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
     }
     if (proofReq.uniqueKey && !uniqueKey.trim()) {
       toast.error("Unique key is required");
+      return;
+    }
+    if (!allEngDone) {
+      toast.error("Please complete all the steps first");
       return;
     }
     submittedRef.current = true;
@@ -244,6 +261,12 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
           proof: videoUrl,
           proofImages: screenshotUrl ? [screenshotUrl] : [],
           uniqueKey,
+          engagement: engSteps.length
+            ? engSteps.reduce(
+                (acc, s) => ({ ...acc, [s.key]: engDone[s.key] }),
+                {} as Record<EngagementKey, boolean>
+              )
+            : undefined,
         }),
       });
       if (!res.ok) {
@@ -548,6 +571,67 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
 
         {phase === "complete" && (
           <div className="space-y-3">
+            {engSteps.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-white">
+                  Finish these steps to earn:
+                </p>
+                {engSteps.map((s) => (
+                  <div
+                    key={s.key}
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-2.5 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-white">{s.label}</span>
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-semibold shrink-0"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Open
+                      </a>
+                    </div>
+                    {s.key === "comment" && cfg?.engagement?.commentTemplate && (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 px-2 py-1.5 rounded bg-gray-950 border border-gray-800 text-gray-300 text-xs break-words">
+                          {cfg.engagement.commentTemplate}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard
+                              ?.writeText(cfg.engagement!.commentTemplate!)
+                              .then(() => {
+                                setCopiedComment(true);
+                                setTimeout(() => setCopiedComment(false), 1500);
+                              });
+                          }}
+                          className="px-2 py-1.5 rounded bg-gray-800 text-gray-200 text-xs font-semibold shrink-0"
+                        >
+                          {copiedComment ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={engDone[s.key]}
+                        onChange={(e) =>
+                          setEngDone((p) => ({ ...p, [s.key]: e.target.checked }))
+                        }
+                        className="rounded bg-gray-800 border-gray-600 text-emerald-500"
+                      />
+                      <span className="text-xs text-emerald-300 inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        I did this
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
             {needsProofForm && (
               <div className="space-y-2">
                 {proofReq.screenshot && (
@@ -587,7 +671,7 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
               </div>
             )}
 
-            {(autoSubmit && !needsProofForm && busy && !autoFailed) ? (
+            {(autoSubmit && !needsInteraction && busy && !autoFailed) ? (
               <div className="flex items-center justify-center gap-2 py-2.5 text-emerald-400 text-sm font-semibold">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Submitting…
@@ -595,15 +679,17 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
             ) : (
               <button
                 onClick={doSubmit}
-                disabled={busy}
-                className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                disabled={busy || !allEngDone}
+                className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {busy ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Upload className="w-4 h-4" />
                 )}
-                Submit & Claim +{task.pointsReward} pts
+                {allEngDone
+                  ? `Submit & Claim +${task.pointsReward} pts`
+                  : "Complete the steps above"}
               </button>
             )}
           </div>

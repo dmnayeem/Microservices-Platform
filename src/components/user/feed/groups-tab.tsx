@@ -6,6 +6,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/user/primitives/avatar";
+import { EmptyState } from "@/components/user/primitives/empty-state";
+import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { CreateGroupModal } from "./create-group-modal";
 import type { GroupSummary } from "./social-feed-view.types";
 
@@ -96,24 +98,22 @@ export function GroupsTab() {
         </button>
       </div>
 
-      {loading && (
-        <div className="text-center py-8 text-gray-500 text-sm">Loading…</div>
-      )}
+      {loading && <ListSkeleton rows={3} />}
 
       {!loading && list.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-800 p-8 text-center">
-          <Users className="w-10 h-10 text-gray-600 mx-auto mb-2" />
-          <p className="text-sm font-medium text-white">
-            {scope === "mine"
+        <EmptyState
+          icon={Users}
+          title={
+            scope === "mine"
               ? "You haven't joined any groups yet"
-              : "No public groups to discover"}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {scope === "mine"
+              : "No public groups to discover"
+          }
+          description={
+            scope === "mine"
               ? "Browse the Discover tab to find communities to join."
-              : "Be the first — create one!"}
-          </p>
-        </div>
+              : "Be the first — create one!"
+          }
+        />
       )}
 
       {!loading && list.length > 0 && (
@@ -135,12 +135,12 @@ export function GroupsTab() {
                     {g.name}
                   </p>
                   {g.type === "PRIVATE" && (
-                    <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 font-bold">
+                    <span className="text-[10px] uppercase tracking-wider px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 font-bold">
                       Private
                     </span>
                   )}
                   {g.isOwner && (
-                    <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold">
+                    <span className="text-[10px] uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold">
                       Owner
                     </span>
                   )}

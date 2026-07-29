@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { toNum } from "@/lib/money";
 import { UserEditForm } from "@/components/admin/users/edit-user-modal";
+import {
+  UserDetailActions,
+  AdjustBalanceButton,
+} from "@/components/admin/user-detail-actions";
 
 export default async function EditUserPage({
   params,
@@ -38,8 +42,11 @@ export default async function EditUserPage({
         pointsBalance: true,
         cashBalance: true,
         packageId: true,
+        packageExpiresAt: true,
         featureOverrides: true,
         kycStatus: true,
+        twoFactorEnabled: true,
+        tutorProfile: { select: { isSuspended: true } },
         isBlueVerified: true,
         verifiedBadgeStyle: true,
         gender: true,
@@ -78,16 +85,25 @@ export default async function EditUserPage({
 
   // Normalize Prisma Accelerate's stringified DateTime back to Date for the
   // UserEditForm prop shape.
+  const { tutorProfile, ...userRest } = userRaw;
   const user = {
-    ...userRaw,
+    ...userRest,
     cashBalance: toNum(userRaw.cashBalance),
     dateOfBirth: userRaw.dateOfBirth ? new Date(userRaw.dateOfBirth) : null,
+    packageExpiresAt: userRaw.packageExpiresAt
+      ? new Date(userRaw.packageExpiresAt)
+      : null,
     featureOverrides: (userRaw.featureOverrides ?? null) as
       | Record<string, boolean>
       | null,
+    // Flatten the tutor relation so the form can show a sell-courses suspend
+    // toggle only for users that actually have a TutorProfile.
+    hasTutorProfile: tutorProfile != null,
+    tutorSuspended: tutorProfile?.isSuspended ?? false,
   };
 
   const isSuperAdmin = adminRole === "SUPER_ADMIN";
+  const canBalance = hasPermission(adminRole, "users.adjust_balance");
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -98,6 +114,48 @@ export default async function EditUserPage({
         <ChevronLeft className="w-4 h-4" />
         Back to user detail
       </Link>
+
+      {/* One-stop per-user action bar (feature #8) — every account action is
+          reachable from the edit screen, reusing the detail-page components. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+        <UserDetailActions
+          userId={id}
+          userName={user.name}
+          userEmail={user.email}
+          userStatus={user.status}
+          canEdit={false}
+          canBan={hasPermission(adminRole, "users.ban")}
+          canDelete={hasPermission(adminRole, "users.delete")}
+          canApprove={hasPermission(adminRole, "users.edit")}
+          canImpersonate={
+            isSuperAdmin &&
+            user.role !== "SUPER_ADMIN" &&
+            user.id !== session.user.id
+          }
+        />
+        {canBalance && (
+          <div className="flex items-center gap-3 border-l border-slate-800 pl-3">
+            {(["points", "cash", "level", "xp"] as const).map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1 text-xs text-slate-400"
+              >
+                <span className="uppercase tracking-wide">{t}</span>
+                <AdjustBalanceButton userId={id} type={t} action="add" canAdjust />
+                <AdjustBalanceButton userId={id} type={t} action="deduct" canAdjust />
+              </span>
+            ))}
+          </div>
+        )}
+        {hasPermission(adminRole, "users.edit") && (
+          <Link
+            href={`/admin/users/${id}/boost-followers`}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:text-white"
+          >
+            Follower / display boost
+          </Link>
+        )}
+      </div>
 
       <UserEditForm user={user} isSuperAdmin={isSuperAdmin} plans={plans} />
     </div>

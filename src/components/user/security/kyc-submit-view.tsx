@@ -69,7 +69,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       if (d.status === "APPROVED") {
-        toast.success("Verified instantly ✅", {
+        toast.success("Verified instantly", {
           description: "Your identity is confirmed — withdrawals unlocked.",
         });
       } else {
@@ -136,7 +136,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
           </h1>
           <p className="text-xs sm:text-sm text-gray-400">
             Verify your identity to unlock higher withdrawal limits and the blue
-            🔵 badge.
+            verified badge.
           </p>
         </div>
       </div>
@@ -225,17 +225,18 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
           {autoEnabled && (
             <div className="inline-flex w-full rounded-lg border border-gray-800 overflow-hidden text-xs">
               {([
-                ["auto", "⚡ Instant verify"],
+                ["auto", "Instant verify"],
                 ["manual", "Upload manually"],
               ] as const).map(([m, label]) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
                   className={cn(
-                    "flex-1 px-3 py-2 font-semibold",
+                    "flex-1 px-3 py-2 font-semibold inline-flex items-center justify-center gap-1",
                     mode === m ? "bg-indigo-500 text-white" : "bg-gray-900 text-gray-400"
                   )}
                 >
+                  {m === "auto" && <Zap className="w-3.5 h-3.5" />}
                   {label}
                 </button>
               ))}

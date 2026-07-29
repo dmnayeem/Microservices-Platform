@@ -121,9 +121,11 @@ export function CourseCreator() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold text-white">📚 Create Course</h1>
+      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+        <BookOpen className="w-6 h-6 text-indigo-400" /> Create Course
+      </h1>
 
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-3">
+      <div className="card p-4 space-y-3">
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1.5">
             Title *
@@ -206,7 +208,7 @@ export function CourseCreator() {
         {modules.map((m, mi) => (
           <div
             key={m.id}
-            className="rounded-xl border border-gray-800 bg-gray-900 p-3"
+            className="card p-3"
           >
             <div className="flex items-center gap-2 mb-2">
               <GripVertical className="w-4 h-4 text-gray-500" />
@@ -251,7 +253,7 @@ export function CourseCreator() {
                       updateLesson(m.id, l.id, { videoUrl: e.target.value })
                     }
                     placeholder="Video URL (optional)"
-                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-[11px] text-gray-300 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-indigo-500"
                   />
                   <textarea
                     rows={2}
@@ -260,7 +262,7 @@ export function CourseCreator() {
                       updateLesson(m.id, l.id, { content: e.target.value })
                     }
                     placeholder="Lesson notes/content (optional)"
-                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-[11px] text-gray-300 resize-none focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 resize-none focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               ))}

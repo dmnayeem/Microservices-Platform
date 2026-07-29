@@ -43,19 +43,30 @@ export interface AdResponse {
 interface AdRendererProps {
   placement: AdPlacement;
   className?: string;
+  // SSR-injected first ad (+ its rotation interval). When present the component
+  // paints it immediately from the server HTML — an ad-blocker can't hide markup
+  // that's already in the initial document — and skips the initial fetch (the
+  // impression was already counted server-side). Rotation continues client-side.
+  initialAd?: AdResponse | null;
+  initialRotateMs?: number;
 }
 
 // How many recently-shown ad ids to remember per placement, so reloads +
 // auto-rotation cycle evenly across the pool instead of bouncing A→B→A.
 const RECENT_KEEP = 4;
 
-export function AdRenderer({ placement, className }: AdRendererProps) {
-  const [ad, setAd] = useState<AdResponse | null>(null);
+export function AdRenderer({
+  placement,
+  className,
+  initialAd = null,
+  initialRotateMs = 0,
+}: AdRendererProps) {
+  const [ad, setAd] = useState<AdResponse | null>(initialAd);
   const [error, setError] = useState(false);
   const [fading, setFading] = useState(false);
   // Rotation interval (ms) reported by the server; 0 = don't auto-rotate
-  // (single-ad space or ad-free viewer).
-  const rotateMsRef = useRef(0);
+  // (single-ad space or ad-free viewer). Seeded from the SSR value when present.
+  const rotateMsRef = useRef(initialRotateMs);
 
   // Fetch an ad, excluding the recently-shown ids kept in sessionStorage. On
   // success it records the new id and updates the rotation interval.
@@ -73,7 +84,7 @@ export function AdRenderer({ placement, className }: AdRendererProps) {
         const qs = recent.length
           ? `&exclude=${encodeURIComponent(recent.join(","))}`
           : "";
-        const res = await fetch(`/api/ads/serve?placement=${placement}${qs}`);
+        const res = await fetch(`/api/spaces/panel?placement=${placement}${qs}`);
         const data = res.ok ? await res.json() : null;
         if (!data?.ad) {
           // Only hide the slot when the very first load finds nothing; a failed
@@ -134,26 +145,50 @@ export function AdRenderer({ placement, className }: AdRendererProps) {
       }
     };
 
-    // loadAd only setState()s after an `await fetch` (a real async boundary), so
-    // this is not a synchronous cascading render — the rule is a false positive.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadAd({ initial: true }).then((ok) => {
-      if (cancelled || !ok) return;
+    if (initialAd) {
+      // SSR already painted (and impression-counted) the first ad. Remember it
+      // so the first client rotation doesn't repeat it, then start rotation
+      // WITHOUT a second fetch (which would double-count the impression).
+      try {
+        const storeKey = `ad-recent-${placement}`;
+        const prev: string[] = JSON.parse(
+          sessionStorage.getItem(storeKey) ?? "[]"
+        );
+        const next = [initialAd.id, ...prev.filter((id) => id !== initialAd.id)]
+          .slice(0, RECENT_KEEP);
+        sessionStorage.setItem(storeKey, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
       startTimer();
       document.addEventListener("visibilitychange", onVisibility);
-    });
+    } else {
+      // loadAd only setState()s after an `await fetch` (a real async boundary),
+      // so this is not a synchronous cascading render — the rule is a false
+      // positive.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadAd({ initial: true }).then((ok) => {
+        if (cancelled || !ok) return;
+        startTimer();
+        document.addEventListener("visibilitychange", onVisibility);
+      });
+    }
 
     return () => {
       cancelled = true;
       stopTimer();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [loadAd]);
+  }, [loadAd, initialAd, placement]);
 
   if (error || !ad) return null;
 
   const trackClick = () => {
-    fetch(`/api/ads/${ad.id}/click`, { method: "POST" }).catch(() => {});
+    fetch(`/api/spaces/${ad.id}/event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "open" }),
+    }).catch(() => {});
   };
 
   const dim = resolveAdSize(ad.size, ad.width, ad.height);
@@ -180,8 +215,14 @@ export function AdRenderer({ placement, className }: AdRendererProps) {
         )}
         style={outerStyle}
       >
+        {/* Compliant disclosure badge — kept for FTC/EU. The iframe title is
+            neutral (no "Sponsored") so cosmetic filters can't select it. */}
+        <span className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur text-[9px] font-bold uppercase tracking-wider text-white/90">
+          <Megaphone className="w-2.5 h-2.5" />
+          Sponsored
+        </span>
         <iframe
-          title="Sponsored"
+          title="Embedded content"
           srcDoc={ad.html}
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           className="block w-full border-0"

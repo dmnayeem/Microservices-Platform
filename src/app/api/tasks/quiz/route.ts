@@ -6,6 +6,7 @@ import { TaskType, TaskStatus } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { getEffectivePackage } from "@/lib/packages";
+import { getTaskChainState } from "@/lib/task-sequence";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
@@ -159,6 +160,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "You have already completed this quiz today" },
         { status: 400 }
+      );
+    }
+
+    // Sequential-unlock gate (feature #7) — same guard as /api/tasks/[id]/start
+    // so the quiz submit path can't bypass a locked task. No-ops for admins /
+    // when the toggle is off.
+    const { lockedTaskIds } = await getTaskChainState(session.user.id);
+    if (lockedTaskIds.has(taskId)) {
+      return NextResponse.json(
+        {
+          error: "Complete the previous task first to unlock this one.",
+          code: "TASK_LOCKED",
+        },
+        { status: 403 }
       );
     }
 

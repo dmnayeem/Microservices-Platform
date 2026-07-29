@@ -80,7 +80,7 @@ export default async function TutorDashboardPage() {
             <GraduationCap className="w-6 h-6 text-indigo-300" />
             Tutor dashboard
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-gray-400 text-sm mt-1">
             Build courses, track students, earn from every enrolment.
           </p>
         </div>
@@ -132,18 +132,18 @@ export default async function TutorDashboardPage() {
           {courses.length === 0 ? (
             <Empty icon={<PlayCircle />} title="No courses yet" cta="Build your first course" href="/tutor/courses/new" />
           ) : (
-            <ul className="divide-y divide-slate-800">
+            <ul className="divide-y divide-gray-800">
               {courses.map((c) => (
                 <li key={c.id}>
                   <Link
                     href={`/tutor/courses/${c.id}`}
-                    className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-slate-800/50"
+                    className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-gray-800/50"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white font-medium truncate">
                         {c.title}
                       </p>
-                      <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                      <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                         <CourseStatusPill status={c.status} />
                         <span>{c.enrollmentCount} students</span>
                         {c.avgRating > 0 && (
@@ -154,7 +154,7 @@ export default async function TutorDashboardPage() {
                         )}
                       </div>
                     </div>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-gray-500">
                       {formatDistanceToNow(c.updatedAt, { addSuffix: true })}
                     </span>
                   </Link>
@@ -172,7 +172,7 @@ export default async function TutorDashboardPage() {
               hint="Once a student enrols in one of your courses they'll show up here."
             />
           ) : (
-            <ul className="divide-y divide-slate-800">
+            <ul className="divide-y divide-gray-800">
               {(recentEnrollments as unknown as Array<{
                 id: string;
                 createdAt: Date;
@@ -186,10 +186,10 @@ export default async function TutorDashboardPage() {
                       alt=""
                       width={32}
                       height={32}
-                      className="w-8 h-8 rounded-full object-cover bg-slate-800"
+                      className="w-8 h-8 rounded-full object-cover bg-gray-800"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white">
                       {(e.user.name ?? e.user.email ?? "?").slice(0, 1).toUpperCase()}
                     </div>
                   )}
@@ -205,7 +205,7 @@ export default async function TutorDashboardPage() {
                       </Link>
                     </p>
                   </div>
-                  <span className="text-[11px] text-slate-500 whitespace-nowrap">
+                  <span className="text-[11px] text-gray-500 whitespace-nowrap">
                     {formatDistanceToNow(e.createdAt, { addSuffix: true })}
                   </span>
                 </li>
@@ -222,7 +222,7 @@ export default async function TutorDashboardPage() {
               hint="No unanswered student questions right now."
             />
           ) : (
-            <ul className="divide-y divide-slate-800">
+            <ul className="divide-y divide-gray-800">
               {(pendingQuestions as unknown as Array<{
                 id: string;
                 question: string;
@@ -235,7 +235,7 @@ export default async function TutorDashboardPage() {
                     <MessageSquare className="w-4 h-4 text-fuchsia-300 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-white line-clamp-2">{q.question}</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-gray-500 mt-0.5">
                         {q.asker.name ?? "Anonymous"} on{" "}
                         <Link
                           href={`/tutor/courses/${q.course.id}`}
@@ -255,7 +255,7 @@ export default async function TutorDashboardPage() {
         </Section>
 
         <Section title="Tips" href={null}>
-          <ul className="text-sm text-slate-300 space-y-2">
+          <ul className="text-sm text-gray-300 space-y-2">
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
               Add at least 2 modules and 4–6 lessons per module — students drop
@@ -289,7 +289,7 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
       <div className={`inline-flex items-center gap-1.5 text-xs uppercase tracking-wide font-bold ${tone}`}>
         {icon}
         {label}
@@ -311,7 +311,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-bold text-white">{title}</h2>
         {href && (
@@ -342,12 +342,12 @@ function Empty({
   href?: string;
 }) {
   return (
-    <div className="text-center py-8 text-slate-400">
-      <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 mx-auto mb-2">
+    <div className="text-center py-8 text-gray-400">
+      <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-500 mx-auto mb-2">
         {icon}
       </div>
       <p className="text-sm font-bold text-white">{title}</p>
-      {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
       {cta && href && (
         <Link
           href={href}
@@ -362,14 +362,14 @@ function Empty({
 
 function CourseStatusPill({ status }: { status: string }) {
   const cfg: Record<string, { label: string; cls: string }> = {
-    DRAFT: { label: "Draft", cls: "bg-slate-700/40 text-slate-300" },
+    DRAFT: { label: "Draft", cls: "bg-gray-700/40 text-gray-300" },
     PENDING_REVIEW: {
       label: "In review",
       cls: "bg-amber-500/15 text-amber-300",
     },
     PUBLISHED: { label: "Live", cls: "bg-emerald-500/15 text-emerald-300" },
     SUSPENDED: { label: "Suspended", cls: "bg-rose-500/15 text-rose-300" },
-    ARCHIVED: { label: "Archived", cls: "bg-slate-700/40 text-slate-400" },
+    ARCHIVED: { label: "Archived", cls: "bg-gray-700/40 text-gray-400" },
   };
   const c = cfg[status] ?? cfg.DRAFT;
   return (

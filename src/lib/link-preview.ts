@@ -55,8 +55,9 @@ function isBlockedIp(ip: string): boolean {
 }
 
 /** Validate scheme + host, then resolve DNS and block if ANY IP is private
- *  (closes DNS-rebinding). Throws on any disallowed target. */
-async function assertPublicUrl(raw: string): Promise<URL> {
+ *  (closes DNS-rebinding). Throws on any disallowed target. Exported so other
+ *  server-side fetchers (e.g. the ad creative proxy) can reuse the same guard. */
+export async function assertPublicUrl(raw: string): Promise<URL> {
   let u: URL;
   try {
     u = new URL(raw);
@@ -304,6 +305,61 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview | nu
 
   cacheSet(rawUrl, result);
   return result;
+}
+
+/**
+ * Fetch the raw HTML of a public page, SSRF-guarded and capped, for server-side
+ * proof verification (e.g. confirming a per-user code appears in a published
+ * comment/post). Returns the HTML string, or null on any failure (blocked host,
+ * non-HTML, timeout, login wall, HTTP error) so callers can fall back to manual
+ * review. NOT cached — proof content changes over time and must be read live.
+ */
+export async function fetchRawHtml(rawUrl: string): Promise<string | null> {
+  try {
+    const u = await assertPublicUrl(rawUrl);
+    const res = await fetchFollowingRedirects(u);
+    if (!res.ok) return null;
+    const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
+    if (!ctype.includes("text/html") && !ctype.includes("application/xhtml")) {
+      return null;
+    }
+    return await readCapped(res);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch the raw bytes of a public URL (SSRF-guarded, capped), for hashing an
+ * uploaded proof image server-side. Returns a Buffer, or null on any failure.
+ * NOT cached. Accepts any content-type (images aren't HTML).
+ */
+export async function fetchRawBytes(rawUrl: string): Promise<Buffer | null> {
+  try {
+    const u = await assertPublicUrl(rawUrl);
+    // Re-guards every redirect hop against private IPs (same as HTML fetch).
+    const res = await fetchFollowingRedirects(u);
+    if (!res.ok || !res.body) return null;
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          total += value.byteLength;
+          if (total >= MAX_BYTES) break;
+        }
+      }
+    } finally {
+      await reader.cancel().catch(() => {});
+    }
+    return Buffer.concat(chunks.map((c) => Buffer.from(c)));
+  } catch {
+    return null;
+  }
 }
 
 /** First http(s) URL found in free text, or null. */

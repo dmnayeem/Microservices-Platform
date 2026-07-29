@@ -1,7 +1,12 @@
 import { ExternalLink, Key, CheckCircle2, XCircle } from "lucide-react";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
 import { DurationCard } from "../duration-card";
-import { getProviderMeta, type VideoConfig } from "@/lib/video-tasks";
+import {
+  getProviderMeta,
+  engagementSteps,
+  type VideoConfig,
+  type EngagementKey,
+} from "@/lib/video-tasks";
 import type { PanelSubmission, PanelTask } from "./types";
 
 interface Props {
@@ -31,6 +36,14 @@ export function VideoProofPanel({ submission, task }: Props) {
       submission.status === "PENDING");
 
   const videoUrl = cfg?.videoUrl ?? task.contentUrl ?? null;
+
+  // YouTube-style engagement (#11): what the task required vs what the user
+  // confirmed (honor checkboxes, stored in metadata.videoEngagement).
+  const engSteps = engagementSteps(cfg);
+  const engDone =
+    ((submission.metadata as Record<string, unknown> | null)
+      ?.videoEngagement as Partial<Record<EngagementKey, boolean>> | undefined) ??
+    {};
 
   return (
     <div className="space-y-3">
@@ -96,6 +109,36 @@ export function VideoProofPanel({ submission, task }: Props) {
           </div>
         )}
       </div>
+
+      {engSteps.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 mb-1.5">
+            YouTube engagement (user-confirmed):
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {engSteps.map((s) => {
+              const done = !!engDone[s.key];
+              return (
+                <span
+                  key={s.key}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+                    done
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                      : "bg-gray-800 border-gray-700 text-gray-400"
+                  }`}
+                >
+                  {done ? (
+                    <CheckCircle2 className="w-3 h-3" />
+                  ) : (
+                    <XCircle className="w-3 h-3" />
+                  )}
+                  {s.label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {submission.proofImages && submission.proofImages.length > 0 && (
         <div>

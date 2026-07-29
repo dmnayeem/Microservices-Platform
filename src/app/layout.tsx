@@ -24,6 +24,7 @@ import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { ConfirmHost } from "@/components/providers/confirm-host";
 import { NotifyCenterHost } from "@/components/providers/notify-center-host";
 import { RewardInterstitialHost } from "@/components/providers/reward-interstitial-host";
+import { AdblockHost } from "@/components/providers/adblock-host";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import "./globals.css";
 
@@ -111,6 +112,7 @@ export default async function RootLayout({
           <ConfirmHost />
           <NotifyCenterHost />
           <RewardInterstitialHost />
+          <AdblockHost />
           <Toaster
             position="top-center"
             theme="dark"

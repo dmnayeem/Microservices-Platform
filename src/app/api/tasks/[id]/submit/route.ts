@@ -15,7 +15,7 @@ import {
   compareUniqueKey,
   type ArticleConfig,
 } from "@/lib/article-tasks";
-import type { VideoConfig } from "@/lib/video-tasks";
+import { hasEngagement, type VideoConfig } from "@/lib/video-tasks";
 import {
   validateAnswers as validateSurveyAnswers,
   type SurveyConfig,
@@ -27,6 +27,21 @@ import {
   type CustomAnswers,
 } from "@/lib/custom-tasks";
 import type { AppInstallConfig } from "@/lib/app-install-tasks";
+import { socialWatchTargetSeconds, normalizeSocialConfig } from "@/lib/social-tasks";
+import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
+import {
+  verifyTelegramMember,
+  verifyDiscordMember,
+} from "@/lib/social-verify-membership";
+import { fetchRawHtml, fetchRawBytes } from "@/lib/link-preview";
+import { getSetting } from "@/lib/system-settings";
+import { bumpTrust, TRUST_APPROVE } from "@/lib/trust";
+import {
+  perceptualHash,
+  hammingDistance,
+  PHASH_HAMMING_THRESHOLD,
+} from "@/lib/phash";
+import { createHash } from "crypto";
 
 // POST /api/tasks/:id/submit - Submit task proof
 export async function POST(
@@ -62,6 +77,8 @@ export async function POST(
       items: socialItems,
       // CUSTOM-only proof field (admin-defined form answers)
       customAnswers,
+      // VIDEO YouTube-style engagement confirmations { subscribe?, like?, comment? }
+      engagement: videoEngagement,
     } = body;
 
     // Get the task
@@ -118,9 +135,24 @@ export async function POST(
     ) {
       requiredSeconds = videoDuration;
     }
-    // SOCIAL bundles verify each action via the locked player's watched flag,
-    // not a wall-clock elapsed gate — skip the elapsed check for them even if an
-    // admin left a stray task.duration on the task.
+    // SOCIAL bundles with watch items are gated on SERVER-accrued watch seconds
+    // (the /heartbeat route credits only real foreground playback) — the client
+    // `watched: true` flag alone can't pass. Non-watch social actions have no
+    // time gate here (they're proof-reviewed).
+    if (task.type === "SOCIAL") {
+      const socialTarget = socialWatchTargetSeconds(task.socialConfig);
+      if (socialTarget > 0) {
+        const need = Math.floor(socialTarget * 0.8);
+        if (submission.watchedSeconds < need) {
+          return NextResponse.json(
+            {
+              error: `Please finish watching. ${need - submission.watchedSeconds} seconds of watch time remaining.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
     if (requiredSeconds && task.type !== "SOCIAL") {
       const requiredDuration = Math.floor(requiredSeconds * 0.8); // 80% of required time
 
@@ -337,20 +369,9 @@ export async function POST(
     const appInstallAutoApprove =
       task.type === "APPINSTALL" &&
       (task.appInstallConfig as AppInstallConfig | null)?.autoApprove === true;
-    const shouldAutoApprove =
-      !uniqueKeyMismatch &&
-      task.type !== "SURVEY" &&
-      (isArticleKeyPool ||
-        customAutoApprove ||
-        appInstallAutoApprove ||
-        (task.type !== "ARTICLE" &&
-          task.type !== "CUSTOM" &&
-          task.type !== "APPINSTALL" &&
-          (task.autoApprove || task.type === "VIDEO" || task.type === "QUIZ")));
-
-    const newStatus = shouldAutoApprove
-      ? SubmissionStatus.AUTO_APPROVED
-      : SubmissionStatus.PENDING;
+    // NOTE: shouldAutoApprove / newStatus are computed AFTER the SOCIAL block
+    // below, because social code-verification (socialCodeAutoApprove) is decided
+    // there and must feed the auto-approve decision.
 
     // Tasks assigned to a Task Board don't grant individual rewards. The full
     // reward bundle is paid out only when the user claims the entire board.
@@ -366,6 +387,10 @@ export async function POST(
     const socialBundle: Array<Record<string, unknown>> | null =
       isSocial && Array.isArray(socialItems) ? socialItems : null;
     const submissionMetadata: Record<string, unknown> = {};
+    // True only when EVERY item is a code-verify item and ALL codes were found
+    // at their public URLs — then the submission is trustworthy enough to
+    // auto-approve without human review.
+    let socialCodeAutoApprove = false;
     if (isSocial) {
       if (socialBundle) {
         // Store per-action proof; mirror item[0] into the legacy keys so any
@@ -385,6 +410,256 @@ export async function POST(
         // Legacy single-action submission (old client / in-flight task).
         submissionMetadata.socialUsername = username ?? null;
         submissionMetadata.socialGeneratedContent = generatedContent ?? null;
+      }
+
+      // Proof-fraud check: fingerprint each submitted proof value and flag any
+      // that a DIFFERENT user already used on this task (recycled screenshots /
+      // reused post links / shared usernames). We flag for the reviewer — we do
+      // NOT hard-block, since public URLs can legitimately repeat.
+      const norm = (v: unknown) =>
+        typeof v === "string" ? v.trim().toLowerCase() : "";
+      const hash = (v: string) =>
+        createHash("sha256").update(v).digest("hex");
+      const rawPairs: Array<{ kind: string; raw: string }> = [];
+      const pushVal = (kind: string, v: unknown) => {
+        const n = norm(v);
+        if (n) rawPairs.push({ kind, raw: n });
+      };
+      if (socialBundle) {
+        for (const it of socialBundle) {
+          pushVal("URL", it.proofUrl);
+          pushVal("SCREENSHOT", it.screenshotUrl);
+          pushVal("USERNAME", it.username);
+        }
+      } else {
+        pushVal("USERNAME", username);
+      }
+      // De-dupe (kind,value) within this submission.
+      const seen = new Set<string>();
+      const pairs = rawPairs
+        .map((p) => ({ ...p, valueHash: hash(p.raw) }))
+        .filter((p) => {
+          const k = `${p.kind}:${p.valueHash}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      if (pairs.length > 0) {
+        const matches = await prisma.socialProofFingerprint.findMany({
+          where: {
+            taskId: task.id,
+            userId: { not: session.user.id },
+            OR: pairs.map((p) => ({ kind: p.kind, valueHash: p.valueHash })),
+          },
+          select: { kind: true, valueHash: true, userId: true },
+        });
+        if (matches.length > 0) {
+          const byHash = new Map(pairs.map((p) => [`${p.kind}:${p.valueHash}`, p.raw]));
+          submissionMetadata.fraudFlags = matches.map((m) => ({
+            kind: m.kind,
+            value: byHash.get(`${m.kind}:${m.valueHash}`) ?? null,
+            matchedUserId: m.userId,
+          }));
+        }
+        // Record this submission's fingerprints for future lookups.
+        await prisma.socialProofFingerprint.createMany({
+          data: pairs.map((p) => ({
+            taskId: task.id,
+            userId: session.user.id,
+            submissionId: submission.id,
+            kind: p.kind,
+            valueHash: p.valueHash,
+          })),
+        });
+      }
+
+      // Screenshot re-upload dedup: hash the actual image BYTES (not the URL),
+      // so the same screenshot re-uploaded under a new S3 URL is still caught.
+      const shotUrls = socialBundle
+        ? [
+            ...new Set(
+              socialBundle
+                .map((it) => it.screenshotUrl)
+                .filter(
+                  (u): u is string => typeof u === "string" && !!u.trim()
+                )
+            ),
+          ]
+        : [];
+      if (shotUrls.length > 0) {
+        const byteHashes: string[] = [];
+        const phashes: string[] = [];
+        for (const url of shotUrls) {
+          const bytes = await fetchRawBytes(url);
+          if (bytes) {
+            byteHashes.push(createHash("sha256").update(bytes).digest("hex"));
+            // Perceptual hash too — survives re-encode/crop that dodges sha256.
+            const ph = await perceptualHash(bytes);
+            if (ph) phashes.push(ph);
+          }
+        }
+        if (byteHashes.length > 0) {
+          const shotMatches = await prisma.socialProofFingerprint.findMany({
+            where: {
+              taskId: task.id,
+              kind: "SCREENSHOT_BYTES",
+              valueHash: { in: byteHashes },
+              userId: { not: session.user.id },
+            },
+            select: { userId: true },
+          });
+          if (shotMatches.length > 0) {
+            const existing = (submissionMetadata.fraudFlags as
+              | Array<Record<string, unknown>>
+              | undefined) ?? [];
+            submissionMetadata.fraudFlags = [
+              ...existing,
+              ...shotMatches.map((m) => ({
+                kind: "SCREENSHOT",
+                value: "re-uploaded image",
+                matchedUserId: m.userId,
+              })),
+            ];
+          }
+          await prisma.socialProofFingerprint.createMany({
+            data: byteHashes.map((h) => ({
+              taskId: task.id,
+              userId: session.user.id,
+              submissionId: submission.id,
+              kind: "SCREENSHOT_BYTES",
+              valueHash: h,
+            })),
+          });
+        }
+
+        // Perceptual near-duplicate scan. Hamming distance can't be indexed, so
+        // we pull a bounded window of this task's recent PHASH fingerprints from
+        // OTHER users and compare in-memory (≤ threshold bits differ ⇒ same img).
+        if (phashes.length > 0) {
+          const priorPhashes = await prisma.socialProofFingerprint.findMany({
+            where: {
+              taskId: task.id,
+              kind: "SCREENSHOT_PHASH",
+              userId: { not: session.user.id },
+            },
+            select: { userId: true, valueHash: true },
+            orderBy: { createdAt: "desc" },
+            take: 500,
+          });
+          const near: string[] = [];
+          for (const mine of phashes) {
+            for (const prior of priorPhashes) {
+              if (
+                hammingDistance(mine, prior.valueHash) <=
+                PHASH_HAMMING_THRESHOLD
+              ) {
+                near.push(prior.userId);
+                break; // one flag per submitted screenshot is enough
+              }
+            }
+          }
+          if (near.length > 0) {
+            const existing = (submissionMetadata.fraudFlags as
+              | Array<Record<string, unknown>>
+              | undefined) ?? [];
+            submissionMetadata.fraudFlags = [
+              ...existing,
+              ...near.map((matchedUserId) => ({
+                kind: "SCREENSHOT",
+                value: "near-duplicate image (perceptual)",
+                matchedUserId,
+              })),
+            ];
+          }
+          await prisma.socialProofFingerprint.createMany({
+            data: phashes.map((h) => ({
+              taskId: task.id,
+              userId: session.user.id,
+              submissionId: submission.id,
+              kind: "SCREENSHOT_PHASH",
+              valueHash: h,
+            })),
+          });
+        }
+      }
+
+      // Server-side auto-verification per item (anti-fake proof). Each method
+      // proves the action really happened, so a matching bundle can auto-approve
+      // without a fakeable screenshot:
+      //   CODE            — fetch the public proof URL, confirm the user's unique
+      //                     code is in the content.
+      //   TELEGRAM_MEMBER / DISCORD_MEMBER — a bot confirms the linked account
+      //                     actually joined the target chat/guild.
+      // "verified" → trusted. "failed"/"code_missing" → not verified (manual).
+      // "unverifiable" (login wall, fetch/API error, not linked) → manual, never
+      // a silent pass. Whole bundle verified → auto-approve.
+      if (socialBundle) {
+        const cfg = normalizeSocialConfig(task.socialConfig);
+        const verifyIdx = cfg.items
+          .map((it, i) => ({ it, i }))
+          .filter((x) => !!x.it.verify);
+        if (verifyIdx.length > 0) {
+          const metaItems = submissionMetadata.items as Array<
+            Record<string, unknown>
+          >;
+          // Load the user's verified platform links only if a member check needs them.
+          const needsLinks = verifyIdx.some(
+            (x) =>
+              x.it.verify === "TELEGRAM_MEMBER" ||
+              x.it.verify === "DISCORD_MEMBER"
+          );
+          const linkByPlatform = new Map<string, string>();
+          if (needsLinks) {
+            const links = await prisma.linkedPlatformAccount.findMany({
+              where: { userId: session.user.id },
+              select: { platform: true, platformUserId: true },
+            });
+            links.forEach((l) => linkByPlatform.set(l.platform, l.platformUserId));
+          }
+
+          let allVerified = true;
+          for (const { it, i } of verifyIdx) {
+            let status: "verified" | "failed" | "code_missing" | "unverifiable" =
+              "unverifiable";
+            if (it.verify === "CODE") {
+              const proofUrl =
+                (socialBundle[i]?.proofUrl as string | undefined) ?? "";
+              const expected = verifyCodeFor(task.id, i, session.user.id);
+              if (!proofUrl) status = "code_missing";
+              else {
+                const html = await fetchRawHtml(proofUrl);
+                if (html === null) status = "unverifiable";
+                else
+                  status = contentHasCode(html, expected)
+                    ? "verified"
+                    : "code_missing";
+              }
+            } else if (
+              it.verify === "TELEGRAM_MEMBER" ||
+              it.verify === "DISCORD_MEMBER"
+            ) {
+              const platform =
+                it.verify === "TELEGRAM_MEMBER" ? "TELEGRAM" : "DISCORD";
+              const linkedId = linkByPlatform.get(platform);
+              const target = it.fields?.verifyTarget ?? "";
+              if (!linkedId) {
+                status = "unverifiable";
+                if (metaItems[i]) metaItems[i].needsLink = platform;
+              } else {
+                status =
+                  it.verify === "TELEGRAM_MEMBER"
+                    ? await verifyTelegramMember(target, linkedId)
+                    : await verifyDiscordMember(target, linkedId);
+              }
+            }
+            if (metaItems[i]) metaItems[i].verifyStatus = status;
+            if (status !== "verified") allVerified = false;
+          }
+          // Auto-approve only when EVERY item is auto-verified — a mixed bundle
+          // still needs manual review of its non-verified actions.
+          socialCodeAutoApprove =
+            allVerified && verifyIdx.length === cfg.items.length;
+        }
       }
     }
     // For ARTICLE: surface the unique-key mismatch flag so the admin sees
@@ -408,7 +683,89 @@ export async function POST(
       ).trim();
       submissionMetadata.submitIp = submitIp || null;
     }
+    // For VIDEO with YouTube-style engagement: record which steps the user
+    // confirmed so the admin panel can show them.
+    if (task.type === "VIDEO" && hasEngagement(task.videoConfig as VideoConfig | null)) {
+      submissionMetadata.videoEngagement =
+        videoEngagement && typeof videoEngagement === "object"
+          ? videoEngagement
+          : {};
+    }
+    // Hard-block duplicate proof (admin opt-in): if this SOCIAL submission
+    // matched another user's proof (URL / username / re-uploaded screenshot) and
+    // the admin turned blocking on, reject instead of just flagging.
+    if (
+      isSocial &&
+      Array.isArray(submissionMetadata.fraudFlags) &&
+      submissionMetadata.fraudFlags.length > 0 &&
+      (await getSetting<boolean>("antifraud.block_duplicate_proof", false))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This proof matches another user's submission. Please complete the task yourself and submit your own proof.",
+          code: "DUPLICATE_PROOF",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Auto-approve decision (computed here so social code-verification can feed
+    // it). SOCIAL auto-approves when the admin set task.autoApprove OR the whole
+    // bundle was server-verified by code.
+    let shouldAutoApprove =
+      !uniqueKeyMismatch &&
+      task.type !== "SURVEY" &&
+      (isArticleKeyPool ||
+        customAutoApprove ||
+        appInstallAutoApprove ||
+        socialCodeAutoApprove ||
+        (task.type !== "ARTICLE" &&
+          task.type !== "CUSTOM" &&
+          task.type !== "APPINSTALL" &&
+          (task.autoApprove || task.type === "VIDEO" || task.type === "QUIZ")));
+
+    // VIDEO YouTube-style engagement that requires a screenshot is manually
+    // reviewed (a screenshot only has value if a human checks it). Honor-based
+    // engagement (no screenshot) keeps auto-approving, guarded by the trust /
+    // spot-check gate below.
+    if (
+      task.type === "VIDEO" &&
+      hasEngagement(task.videoConfig as VideoConfig | null) &&
+      (task.videoConfig as VideoConfig | null)?.proofRequirements?.screenshot
+    ) {
+      shouldAutoApprove = false;
+    }
+
+    // Anti-fraud gate: even if the submission qualifies for auto-approval, hold
+    // it for MANUAL review when the submitter's trust is below the admin bar, or
+    // when it's caught by the random spot-check sample. Keeps auto-approve fast
+    // for trusted users while auditing the rest.
+    if (shouldAutoApprove) {
+      const [minTrust, spotPct] = await Promise.all([
+        getSetting<number>("antifraud.auto_approve_min_trust", 0),
+        getSetting<number>("antifraud.spot_check_percent", 0),
+      ]);
+      if (minTrust > 0 || spotPct > 0) {
+        const me = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { trustScore: true },
+        });
+        const lowTrust = minTrust > 0 && (me?.trustScore ?? 0) < minTrust;
+        const spotChecked = spotPct > 0 && Math.random() * 100 < spotPct;
+        if (lowTrust || spotChecked) {
+          shouldAutoApprove = false;
+          submissionMetadata.heldForReview = lowTrust ? "low_trust" : "spot_check";
+        }
+      }
+    }
+
+    // Computed after all metadata (incl. heldForReview) is finalized.
     const hasMetadata = Object.keys(submissionMetadata).length > 0;
+
+    const newStatus = shouldAutoApprove
+      ? SubmissionStatus.AUTO_APPROVED
+      : SubmissionStatus.PENDING;
 
     const resolvedProof = isSocial
       ? socialBundle
@@ -465,6 +822,11 @@ export async function POST(
     const updatedSubmission = (await prisma.taskSubmission.findUnique({
       where: { id: submission.id },
     }))!;
+
+    // Reputation: a clean auto-approval nudges the user's trust up.
+    if (shouldAutoApprove) {
+      await bumpTrust(session.user.id, TRUST_APPROVE);
+    }
 
     // If auto-approved AND not a board task, award points and update user
     if (shouldAutoApprove && !isBoardTask) {

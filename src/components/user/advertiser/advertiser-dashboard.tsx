@@ -203,7 +203,7 @@ export function AdvertiserDashboard() {
             <Link
               key={c.id}
               href={`/advertiser/campaigns/${c.id}`}
-              className="block rounded-xl border border-gray-800 bg-gray-900 p-3 hover:border-gray-700 transition-colors"
+              className="block card card-interactive p-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -211,7 +211,7 @@ export function AdvertiserDashboard() {
                     {c.title}
                   </p>
                   <span
-                    className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                    className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                       c.status === "ACTIVE"
                         ? "bg-emerald-500/10 text-emerald-400"
                         : c.status === "PAUSED"

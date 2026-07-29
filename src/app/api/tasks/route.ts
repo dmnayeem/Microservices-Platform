@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { TaskStatus, TaskType } from "@/generated/prisma";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
 import { getUserDayContext } from "@/lib/user-day";
+import { getTaskChainState } from "@/lib/task-sequence";
 
 import type { PackageFeatureKey } from "@/lib/packages";
 
@@ -191,7 +192,9 @@ export async function GET(request: NextRequest) {
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
         where,
-        orderBy: [{ createdAt: "desc" }],
+        // Sequential-unlock ordering (feature #7): admin-set `order` first, then
+        // newest — so the displayed order matches the unlock chain.
+        orderBy: [{ order: "asc" }, { createdAt: "desc" }],
         skip,
         take: limit,
       }),
@@ -231,6 +234,10 @@ export async function GET(request: NextRequest) {
       submissionCountRows.map((r) => [r.taskId, r._count._all])
     );
 
+    // Sequential-unlock chain state (no-op unless the admin toggle is on and the
+    // user isn't an admin). Same helper the start/quiz gates enforce with.
+    const { lockedTaskIds } = await getTaskChainState(session.user.id);
+
     const processedTasks = tasks.map((task) => {
       const todayCount = userTodayCounts.get(task.id) ?? 0;
       const hasPending = pendingTaskIds.has(task.id);
@@ -249,6 +256,8 @@ export async function GET(request: NextRequest) {
       const remainingSlots = task.totalLimit
         ? task.totalLimit - task.completedCount
         : null;
+
+      const locked = lockedTaskIds.has(task.id);
 
       return {
         id: task.id,
@@ -280,6 +289,8 @@ export async function GET(request: NextRequest) {
         totalLimitReached: !!reachedTotalLimit,
         canStart,
         completedToday,
+        locked,
+        lockReason: locked ? "Complete the previous task first" : null,
         reason: !canStart
           ? dailyLimitReached
             ? "Daily limit reached"
@@ -294,8 +305,9 @@ export async function GET(request: NextRequest) {
     // (completed today, pending review, in-progress, revision, rejected) so the
     // badge shows instead of the task silently vanishing. Only globally
     // unavailable tasks with no user history stay hidden.
+    // Locked tasks stay visible (shown with a lock) instead of vanishing.
     const visibleTasks = processedTasks.filter(
-      (t) => t.canStart || t.userStatus !== "AVAILABLE"
+      (t) => t.canStart || t.locked || t.userStatus !== "AVAILABLE"
     );
 
     return NextResponse.json({

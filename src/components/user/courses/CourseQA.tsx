@@ -60,7 +60,7 @@ export function CourseQA({ courseId, initial, isEnrolled, viewerId, tutorId }: P
   };
 
   return (
-    <section className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4">
+    <section className="card p-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-bold text-white inline-flex items-center gap-2">
           <MessageCircleQuestion className="w-5 h-5 text-fuchsia-300" />

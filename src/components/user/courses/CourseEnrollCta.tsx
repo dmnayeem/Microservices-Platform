@@ -184,7 +184,7 @@ export function CourseEnrollCta({
   };
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="aspect-video bg-gray-950 relative">
         {promoVideoUrl ? (
           <video

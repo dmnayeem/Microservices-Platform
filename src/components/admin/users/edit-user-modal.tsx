@@ -21,6 +21,7 @@ import {
   type VerifiedBadgeStyle,
 } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
+import { isAdmin, type UserRole } from "@/lib/rbac";
 import { FEATURES } from "@/lib/features";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -57,8 +58,13 @@ export interface EditUserData {
   pointsBalance: number;
   cashBalance: number;
   packageId: string | null;
+  packageExpiresAt: Date | null;
   featureOverrides?: Record<string, boolean> | null;
   kycStatus: string;
+  twoFactorEnabled: boolean;
+  /** Whether the user has a TutorProfile (controls the sell-courses suspend toggle). */
+  hasTutorProfile: boolean;
+  tutorSuspended: boolean;
   isBlueVerified: boolean;
   verifiedBadgeStyle: string | null;
   // Personal
@@ -162,10 +168,15 @@ export function UserEditForm({
     pointsBalance: user.pointsBalance,
     cashBalance: user.cashBalance,
     packageId: user.packageId ?? "",
+    packageExpiresAt: user.packageExpiresAt
+      ? new Date(user.packageExpiresAt).toISOString().slice(0, 10)
+      : "",
     featureOverrides: {
       ...((user.featureOverrides ?? {}) as Record<string, boolean>),
     } as Record<string, boolean>,
     kycStatus: user.kycStatus,
+    twoFactorEnabled: user.twoFactorEnabled,
+    tutorSuspended: user.tutorSuspended,
     isBlueVerified: user.isBlueVerified,
     verifiedBadgeStyle: user.verifiedBadgeStyle ?? "BLUE",
 
@@ -201,6 +212,9 @@ export function UserEditForm({
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
+  // Non-super admins may not change a user who already holds an admin role.
+  const roleLocked = !isSuperAdmin && isAdmin(user.role as UserRole);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -229,8 +243,19 @@ export function UserEditForm({
         payload.cashBalance = Number(form.cashBalance);
       if (form.packageId !== (user.packageId ?? ""))
         payload.packageId = form.packageId || null;
+      const newExp = form.packageExpiresAt
+        ? new Date(form.packageExpiresAt).toISOString()
+        : null;
+      const oldExp = user.packageExpiresAt
+        ? new Date(user.packageExpiresAt).toISOString()
+        : null;
+      if (newExp !== oldExp) payload.packageExpiresAt = newExp;
       if (form.kycStatus !== user.kycStatus)
         payload.kycStatus = form.kycStatus;
+      if (form.twoFactorEnabled !== user.twoFactorEnabled)
+        payload.twoFactorEnabled = form.twoFactorEnabled;
+      if (form.tutorSuspended !== user.tutorSuspended)
+        payload.tutorSuspended = form.tutorSuspended;
       if (form.isBlueVerified !== user.isBlueVerified)
         payload.isBlueVerified = form.isBlueVerified;
       if (form.verifiedBadgeStyle !== (user.verifiedBadgeStyle ?? "BLUE"))
@@ -457,20 +482,35 @@ export function UserEditForm({
               </Field>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Role">
+                  {/* Admin roles are SUPER_ADMIN-only (feature #8) — non-super
+                      admins can only set USER/TUTOR and can't touch a user who
+                      already holds an admin role. Server enforces this too. */}
                   <select
                     value={form.role}
                     onChange={(e) => set("role", e.target.value)}
                     className={fieldCls}
-                    disabled={!isSuperAdmin && user.role === "SUPER_ADMIN"}
+                    disabled={roleLocked}
                   >
                     <option value="USER">User</option>
                     <option value="TUTOR">Tutor</option>
-                    <option value="MODERATOR">Moderator</option>
-                    <option value="SUPPORT_ADMIN">Support Admin</option>
-                    <option value="CONTENT_ADMIN">Content Admin</option>
-                    <option value="MARKETING_ADMIN">Marketing Admin</option>
-                    <option value="FINANCE_ADMIN">Finance Admin</option>
-                    {isSuperAdmin && <option value="SUPER_ADMIN">Super Admin</option>}
+                    {isSuperAdmin ? (
+                      <>
+                        <option value="MODERATOR">Moderator</option>
+                        <option value="SUPPORT_ADMIN">Support Admin</option>
+                        <option value="CONTENT_ADMIN">Content Admin</option>
+                        <option value="MARKETING_ADMIN">Marketing Admin</option>
+                        <option value="FINANCE_ADMIN">Finance Admin</option>
+                        <option value="SUPER_ADMIN">Super Admin</option>
+                      </>
+                    ) : (
+                      // Keep the current admin role visible (read-only) so the
+                      // select isn't blank when a non-super admin views it.
+                      roleLocked && (
+                        <option value={user.role}>
+                          {user.role.replace(/_/g, " ")}
+                        </option>
+                      )
+                    )}
                   </select>
                 </Field>
                 <Field label="Status">
@@ -739,6 +779,37 @@ export function UserEditForm({
                 )}
               </section>
 
+              {/* Section — Two-Factor Authentication (admin can only disable) */}
+              <section className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
+                <h3 className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
+                  Two-Factor Authentication
+                </h3>
+                {form.twoFactorEnabled ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-slate-300">
+                      2FA is <span className="text-emerald-400 font-semibold">enabled</span> for this user.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => set("twoFactorEnabled", false)}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-semibold hover:bg-red-500/20 transition-colors"
+                    >
+                      Disable 2FA
+                    </button>
+                  </div>
+                ) : user.twoFactorEnabled ? (
+                  <p className="text-sm text-amber-400">
+                    2FA will be disabled and the secret cleared on save. The user
+                    must re-enroll.
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    2FA is not enabled. Admins can only disable/reset it, never
+                    force-enable.
+                  </p>
+                )}
+              </section>
+
               {/* Section 4 — Quick References */}
               <section className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
                 <h3 className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
@@ -852,6 +923,18 @@ export function UserEditForm({
                     <option value="APPROVED">Approved (Verified)</option>
                     <option value="REJECTED">Rejected</option>
                   </select>
+                </Field>
+                <Field label="Plan Expiry">
+                  <input
+                    type="date"
+                    value={form.packageExpiresAt}
+                    onChange={(e) => set("packageExpiresAt", e.target.value)}
+                    className={fieldCls}
+                  />
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Blank = no expiry. After this date the user falls back to the
+                    default plan.
+                  </p>
                 </Field>
               </div>
               <label className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 cursor-pointer hover:border-slate-600">
@@ -1167,6 +1250,28 @@ export function UserEditForm({
                       </div>
                     );
                   })}
+                  {/* Tutor sell-courses suspension — a per-user creator-access
+                      lever distinct from the sellCourses capability grant. Only
+                      meaningful once the user actually has a TutorProfile. */}
+                  {grp === "creator" && user.hasTutorProfile && (
+                    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-950/50 border border-slate-800">
+                      <span className="text-sm text-white">
+                        Suspend selling (Tutor)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => set("tutorSuspended", !form.tutorSuspended)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0",
+                          form.tutorSuspended
+                            ? "bg-red-500 text-white"
+                            : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+                        )}
+                      >
+                        {form.tutorSuspended ? "Suspended" : "Active"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -16,14 +16,18 @@ import {
 } from "lucide-react";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import type { VideoConfig } from "@/lib/video-tasks";
-import { formatDuration } from "@/lib/video-tasks";
+import { formatDuration, engagementSteps } from "@/lib/video-tasks";
 import { VideoTaskPlayer } from "./video-task-player";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import {
   TaskUpgradeNotice,
   isUpgradeRequired,
+  TaskLockedNotice,
+  isTaskLocked,
+  AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
+import { ensureAdsAllowed } from "@/lib/adblock";
 
 interface VideoTask {
   id: string;
@@ -59,6 +63,8 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
+  const [lockedMsg, setLockedMsg] = useState<string | null>(null);
+  const [adBlocked, setAdBlocked] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -86,6 +92,12 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
           return;
         }
 
+        // Ad-blocker gate: refuse to start a task while a blocker is active.
+        if (!(await ensureAdsAllowed())) {
+          if (!cancel) setAdBlocked(true);
+          return;
+        }
+
         const sRes = await fetch(`/api/tasks/${taskId}/start`, {
           method: "POST",
         });
@@ -94,6 +106,10 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
         if (!sRes.ok) {
           if (isUpgradeRequired(sData)) {
             setUpgradeMsg(sData.error || "");
+            return;
+          }
+          if (isTaskLocked(sData)) {
+            setLockedMsg(sData.error || "");
             return;
           }
           const reason = sData.error ?? `HTTP ${sRes.status}`;
@@ -154,6 +170,14 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
 
   if (upgradeMsg !== null) {
     return <TaskUpgradeNotice message={upgradeMsg} />;
+  }
+
+  if (lockedMsg !== null) {
+    return <TaskLockedNotice message={lockedMsg} />;
+  }
+
+  if (adBlocked) {
+    return <AdblockNotice />;
   }
 
   if (state.kind === "loading") {
@@ -260,6 +284,24 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
       </div>
 
       <AdRenderer placement="TASK_START" />
+
+      {/* YouTube-style engagement requirements — shown upfront so the user
+          knows what's needed before starting. */}
+      {engagementSteps(cfg).length > 0 && (
+        <section className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4">
+          <h2 className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold mb-2">
+            This task requires
+          </h2>
+          <ul className="space-y-1.5 text-sm text-gray-200">
+            {watchSeconds > 0 && (
+              <li>▶️ Watch {formatDuration(watchSeconds)}</li>
+            )}
+            {engagementSteps(cfg).map((s) => (
+              <li key={s.key}>✅ {s.label}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Instructions */}
       {task.instructions && (

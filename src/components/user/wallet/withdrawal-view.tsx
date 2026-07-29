@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldCheck, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { TIER_LIMITS, TIER_FEE_DISCOUNT, BASE_FEE_PCT } from "@/lib/tiers";
 
 interface PaymentMethod {
   id: string;
@@ -25,24 +27,6 @@ interface WithdrawalViewProps {
   /** Admin-configurable points-per-$1 rate (default 1000). */
   pointsPerUsd?: number;
 }
-
-const TIER_LIMITS: Record<string, { min: number; max: number }> = {
-  FREE: { min: 0, max: 0 },
-  STARTER: { min: 5, max: 1000 },
-  PRO: { min: 10, max: 5000 },
-  ELITE: { min: 20, max: 25000 },
-  VIP: { min: 50, max: 100000 },
-};
-
-const TIER_FEE_DISCOUNT: Record<string, number> = {
-  FREE: 0,
-  STARTER: 0.1,
-  PRO: 0.25,
-  ELITE: 0.4,
-  VIP: 0.5,
-};
-
-const BASE_FEE_PCT = 0.05;
 
 export function WithdrawalView({
   cashBalance,
@@ -98,22 +82,16 @@ export function WithdrawalView({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-white flex items-center gap-2">
-        💸 Withdraw
+      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+        <Banknote className="w-6 h-6 text-emerald-400" /> Withdraw
       </h1>
 
-      <div className="rounded-2xl border border-gray-800 bg-linear-to-br from-emerald-600/15 to-gray-900 p-4">
-        <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
-          Available Cash
-        </p>
-        <p className="text-3xl font-extrabold text-emerald-400 tabular-nums mt-1">
-          ${cashBalance.toFixed(2)}
-        </p>
-        <p className="text-[11px] text-gray-500">
-          Plus {pointsBalance.toLocaleString()} points (≈ $
-          {(pointsBalance / pointsPerUsd).toFixed(2)})
-        </p>
-      </div>
+      <BalanceCard
+        points={pointsBalance}
+        cash={cashBalance}
+        pointsPerUsd={pointsPerUsd}
+        compact
+      />
 
       {isFree && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4">

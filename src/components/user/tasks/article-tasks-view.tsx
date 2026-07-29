@@ -7,9 +7,8 @@ import { TaskCard } from "@/components/user/primitives/task-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { TaskSubmissionRow } from "@/components/user/primitives/task-submission-row";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 type Tab = "available" | "pending" | "approved" | "rejected";
 
@@ -22,6 +21,7 @@ interface ArticleTask {
   difficulty?: string;
   thumbnailUrl?: string | null;
   duration?: number | null;
+  locked?: boolean;
 }
 
 interface Submission {
@@ -123,8 +123,11 @@ export function ArticleTasksView() {
             xpReward={t.xpReward}
             durationMin={t.duration ?? undefined}
             thumbnail={t.thumbnailUrl ?? undefined}
-            actionLabel="Read & Submit"
-            onAction={() => router.push(`/article-tasks/${t.id}`)}
+            status={t.locked ? "LOCKED" : undefined}
+            actionLabel={t.locked ? "🔒 Locked" : "Read & Submit"}
+            onAction={
+              t.locked ? undefined : () => router.push(`/article-tasks/${t.id}`)
+            }
           />
         ))}
 
@@ -143,46 +146,15 @@ export function ArticleTasksView() {
       {!loading && tab !== "available" && submissions.length > 0 && (
         <div className="space-y-2">
           {submissions.map((s) => (
-            <div
+            <TaskSubmissionRow
               key={s.id}
-              className="p-3 rounded-xl border border-gray-800 bg-gray-900"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">
-                    {s.task.title}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    {format(new Date(s.createdAt), "PP p")}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                    s.status === "PENDING" && "bg-amber-500/10 text-amber-400",
-                    (s.status === "APPROVED" ||
-                      s.status === "AUTO_APPROVED") &&
-                      "bg-emerald-500/10 text-emerald-400",
-                    s.status === "REJECTED" && "bg-red-500/10 text-red-400",
-                    s.status === "REVISION_REQUESTED" &&
-                      "bg-orange-500/10 text-orange-400"
-                  )}
-                >
-                  {s.status.replace("_", " ")}
-                </span>
-                <span className="text-sm font-bold text-amber-400 tabular-nums">
-                  +{s.pointsReward}
-                </span>
-              </div>
-              {(s.rejectionReason || s.adminNote) && (
-                <p className="text-xs text-gray-400 mt-1.5 px-2 py-1.5 rounded bg-gray-950">
-                  {s.rejectionReason && (
-                    <strong>{s.rejectionReason}: </strong>
-                  )}
-                  {s.adminNote}
-                </p>
-              )}
-            </div>
+              title={s.task.title}
+              status={s.status}
+              points={s.pointsReward}
+              date={s.createdAt}
+              rejectionReason={s.rejectionReason}
+              adminNote={s.adminNote}
+            />
           ))}
         </div>
       )}

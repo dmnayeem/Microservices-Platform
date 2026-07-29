@@ -2,142 +2,71 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
-  Wallet,
-  TrendingUp,
   CheckCircle,
   Users,
-  ArrowUpRight,
-  ArrowDownRight,
-  Clock,
   Star,
   Gift,
   Trophy,
+  Flame,
+  Zap,
+  ListTodo,
 } from "lucide-react";
 import Link from "next/link";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import {
+  AdRenderer,
+  type AdResponse,
+} from "@/components/user/primitives/ad-renderer";
+import { serveAd } from "@/lib/ad-serve";
+import { StatCard } from "@/components/user/primitives/stat-card";
+import { BalanceCard } from "@/components/user/primitives/balance-card";
+import {
+  TransactionRow,
+  type TxType,
+  type TxStatus,
+} from "@/components/user/primitives/transaction-row";
+import { EmptyState } from "@/components/user/primitives/empty-state";
 import { taskRunHref } from "@/lib/task-routes";
+import { toNum } from "@/lib/money";
+import { getPointsPerUsd } from "@/lib/economy";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { ProfileCompletionBanner } from "@/components/user/primitives/profile-completion-banner";
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 
-// Stats Card Component
-function StatsCard({
-  title,
-  value,
-  change,
-  changeType,
-  icon: Icon,
-}: {
-  title: string;
-  value: string;
-  change?: string;
-  changeType?: "positive" | "negative";
-  icon: React.ElementType;
-}) {
-  return (
-    <div className="card p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-400">{title}</p>
-          <p className="text-2xl font-extrabold text-white mt-1 tracking-tight tabular-nums">{value}</p>
-          {change && (
-            <div className="flex items-center gap-1 mt-2">
-              {changeType === "positive" ? (
-                <ArrowUpRight className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <ArrowDownRight className="w-4 h-4 text-red-400" />
-              )}
-              <span
-                className={
-                  changeType === "positive" ? "text-emerald-400" : "text-red-400"
-                }
-              >
-                {change}
-              </span>
-              <span className="text-gray-500 text-sm">vs last week</span>
-            </div>
-          )}
-        </div>
-        <div className="grid place-items-center h-11 w-11 bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20 rounded-xl">
-          <Icon className="w-6 h-6" />
-        </div>
-      </div>
-    </div>
-  );
+// Map the DB transaction type → the TransactionRow visual type.
+function toTxType(t: string): TxType {
+  switch (t) {
+    case "REFERRAL":
+      return "EARN_REFERRAL";
+    case "LOTTERY_WIN":
+      return "EARN_LOTTERY";
+    case "BONUS":
+    case "CHECKIN":
+    case "GIFT":
+      return "EARN_BONUS";
+    case "WITHDRAWAL":
+      return "WITHDRAWAL";
+    case "PURCHASE":
+    case "COURSE_PURCHASE":
+    case "DEPOSIT":
+      return "PURCHASE";
+    case "REFUND":
+    case "COURSE_REFUND":
+      return "REFUND";
+    case "EARNING":
+    case "COURSE_TUTOR_EARNING":
+      return "EARN_TASK";
+    default:
+      return "EARN_OTHER";
+  }
 }
 
-// Quick Action Card
-const QA_TONE: Record<string, string> = {
-  indigo: "bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20",
-  amber: "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20",
-  emerald: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20",
-  pink: "bg-pink-500/10 text-pink-400 ring-1 ring-pink-500/20",
-};
-
-function QuickActionCard({
-  title,
-  description,
-  href,
-  icon: Icon,
-  tone = "indigo",
-}: {
-  title: string;
-  description: string;
-  href: string;
-  icon: React.ElementType;
-  tone?: "indigo" | "amber" | "emerald" | "pink";
-}) {
-  return (
-    <Link href={href} className="card card-interactive p-5 group block">
-      <div
-        className={`w-12 h-12 rounded-xl grid place-items-center mb-4 ${QA_TONE[tone]}`}
-      >
-        <Icon className="w-6 h-6" />
-      </div>
-      <h3 className="font-semibold text-white group-hover:text-indigo-300 transition-colors">
-        {title}
-      </h3>
-      <p className="text-sm text-gray-500 mt-1">{description}</p>
-    </Link>
-  );
-}
-
-// Recent Activity Item - Kept for future use
-// function ActivityItem({
-//   title,
-//   description,
-//   time,
-//   type,
-// }: {
-//   title: string;
-//   description: string;
-//   time: string;
-//   type: "earning" | "withdrawal" | "task" | "referral";
-// }) {
-//   const icons = {
-//     earning: { icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-400" },
-//     withdrawal: { icon: Wallet, color: "bg-purple-500/10 text-purple-400" },
-//     task: { icon: CheckCircle, color: "bg-indigo-500/10 text-indigo-400" },
-//     referral: { icon: Users, color: "bg-amber-500/10 text-amber-400" },
-//   };
-//   const { icon: Icon, color } = icons[type];
-//   return (
-//     <div className="flex items-start gap-4 py-4 border-b border-gray-800 last:border-0">
-//       <div className={`p-2 rounded-lg ${color}`}>
-//         <Icon className="w-4 h-4" />
-//       </div>
-//       <div className="flex-1 min-w-0">
-//         <p className="text-sm font-medium text-white">{title}</p>
-//         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-//       </div>
-//       <div className="flex items-center gap-1 text-xs text-gray-500">
-//         <Clock className="w-3 h-3" />
-//         {time}
-//       </div>
-//     </div>
-//   );
-// }
+const QUICK_ACTIONS = [
+  { label: "Tasks", href: "/tasks", icon: CheckCircle, tone: "bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20" },
+  { label: "Invite", href: "/referrals", icon: Users, tone: "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20" },
+  { label: "Daily Bonus", href: "/earn", icon: Gift, tone: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20" },
+  { label: "Leaderboard", href: "/leaderboard", icon: Trophy, tone: "bg-pink-500/10 text-pink-400 ring-1 ring-pink-500/20" },
+];
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -147,7 +76,7 @@ export default async function DashboardPage() {
   }
 
   // Fetch user data from database
-  const [userData, tasksCompleted, referralsCount, availableTasks] =
+  const [userData, tasksCompleted, referralsCount, availableTasks, recentTx, pointsPerUsd] =
     await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
@@ -185,16 +114,34 @@ export default async function DashboardPage() {
         // dashboard render time.
         cacheStrategy: { ttl: 60, swr: 120 },
       }),
+      prisma.transaction.findMany({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          points: true,
+          amount: true,
+          description: true,
+          createdAt: true,
+        },
+      }),
+      getPointsPerUsd(),
     ]);
 
-  const [gate, kycPrompt] = await Promise.all([
+  const [gate, kycPrompt, dashAd] = await Promise.all([
     getProfileGateState(session.user.id),
     getKycPromptState(session.user.id),
+    // SSR the dashboard banner so it's in the initial HTML (ad-blocker can't hide
+    // markup that's already there). AdRenderer paints this, then rotates client-side.
+    serveAd({ placement: "DASHBOARD", userId: session.user.id }),
   ]);
 
   const user = session.user;
   const points = userData?.pointsBalance ?? 0;
-  const balance = userData?.cashBalance ?? 0;
+  const cash = toNum(userData?.cashBalance ?? 0);
   const xp = userData?.xp ?? 0;
   const level = userData?.level ?? 1;
   const streak = userData?.streak ?? 0;
@@ -202,178 +149,145 @@ export default async function DashboardPage() {
   const xpProgress = Math.min((xp / xpForNextLevel) * 100, 100);
 
   return (
-    <div className="space-y-8">
-      {gate.locked && (
+    <div className="space-y-6">
+      {/* One nudge at a time — profile completion takes priority over KYC. */}
+      {gate.locked ? (
         <ProfileCompletionBanner
           done={gate.progress.done}
           total={gate.progress.total}
           percentage={gate.progress.percentage}
         />
-      )}
-      {kycPrompt.show && <KycPromptBanner />}
+      ) : kycPrompt.show ? (
+        <KycPromptBanner />
+      ) : null}
 
-      {/* Welcome Section */}
+      {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold text-white">
+        <h1 className="text-xl font-bold text-white">
           Welcome back, {user.name?.split(" ")[0] || "User"}!
         </h1>
-        <p className="text-gray-400 mt-1">
+        <p className="text-sm text-gray-400 mt-0.5">
           Here&apos;s what&apos;s happening with your earnings today.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Total Points"
-          value={points.toLocaleString()}
-          icon={Wallet}
+      {/* Balance hero + stat strip */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <BalanceCard
+          points={points}
+          cash={cash}
+          pointsPerUsd={pointsPerUsd}
+          withdrawHref="/wallet"
+          className="lg:col-span-1"
         />
-        <StatsCard
-          title="Available Balance"
-          value={`$${balance.toFixed(2)}`}
-          icon={TrendingUp}
-        />
-        <StatsCard
-          title="Tasks Completed"
-          value={tasksCompleted.toString()}
-          icon={CheckCircle}
-        />
-        <StatsCard
-          title="Referrals"
-          value={referralsCount.toString()}
-          icon={Users}
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <QuickActionCard
-            title="Complete Tasks"
-            description="Earn points by completing tasks"
-            href="/tasks"
-            icon={CheckCircle}
-            tone="indigo"
+        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
+          <StatCard
+            label="Tasks Completed"
+            value={tasksCompleted}
+            icon={<CheckCircle className="w-5 h-5" />}
+            tone="green"
           />
-          <QuickActionCard
-            title="Invite Friends"
-            description="Earn commissions from referrals"
-            href="/referrals"
-            icon={Users}
+          <StatCard
+            label="Referrals"
+            value={referralsCount}
+            icon={<Users className="w-5 h-5" />}
             tone="amber"
           />
-          <QuickActionCard
-            title="Daily Bonus"
-            description="Claim your daily rewards"
-            href="/earn"
-            icon={Gift}
-            tone="emerald"
-          />
-          <QuickActionCard
-            title="Leaderboard"
-            description="See top earners this week"
-            href="/leaderboard"
-            icon={Trophy}
+          <StatCard
+            label="Day Streak"
+            value={streak}
+            hint={streak > 0 ? "Keep it up!" : "Check in daily"}
+            icon={<Flame className="w-5 h-5" />}
             tone="pink"
           />
+          <StatCard
+            label={`Level ${level}`}
+            value={`${xp}/${xpForNextLevel} XP`}
+            hint={`${Math.round(xpProgress)}% to next level`}
+            icon={<Zap className="w-5 h-5" />}
+            tone="purple"
+          />
         </div>
       </div>
 
-      <AdRenderer placement="DASHBOARD" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+      {/* Quick actions — compact chips (no cramped 2-up on phones) */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2 px-1">
+          Quick Access
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          {QUICK_ACTIONS.map((qa) => (
             <Link
-              href="/wallet"
-              className="text-sm text-indigo-400 hover:text-indigo-300"
+              key={qa.label}
+              href={qa.href}
+              className="group card card-interactive flex flex-col items-center justify-center gap-1.5 p-3"
             >
-              View all
-            </Link>
-          </div>
-          <div className="space-y-0">
-            <div className="flex items-center justify-center py-12 text-gray-500">
-              <div className="text-center">
-                <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No recent activity</p>
-                <p className="text-sm mt-1">
-                  Complete tasks to start earning!
-                </p>
+              <div className={`w-10 h-10 rounded-xl grid place-items-center ${qa.tone}`}>
+                <qa.icon className="w-5 h-5" />
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Streak & Achievements */}
-        <div className="space-y-6">
-          {/* Daily Streak */}
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Daily Streak
-            </h3>
-            <div className="flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-3xl font-bold text-white">{streak}</span>
-                </div>
-                <p className="text-gray-400 text-sm">days</p>
-                <p className="text-xs text-gray-500 mt-2">
-                  {streak > 0 ? "Keep it up!" : "Check in daily to build your streak!"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Level Progress */}
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Level</h3>
-              <span className="px-2 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-medium rounded-full">
-                Level {level}
+              <span className="text-[11px] font-medium text-gray-300 group-hover:text-white text-center leading-tight">
+                {qa.label}
               </span>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">XP Progress</span>
-                <span className="text-white">{xp} / {xpForNextLevel} XP</span>
-              </div>
-              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-linear-to-r from-indigo-500 to-purple-600 rounded-full"
-                  style={{ width: `${xpProgress}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                Complete tasks to earn XP and level up!
-              </p>
-            </div>
-          </div>
+            </Link>
+          ))}
         </div>
       </div>
 
-      {/* Available Tasks Preview */}
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Available Tasks</h2>
-          <Link
-            href="/tasks"
-            className="text-sm text-indigo-400 hover:text-indigo-300"
-          >
-            View all tasks
+      <AdRenderer
+        placement="DASHBOARD"
+        initialAd={dashAd.ad as AdResponse | null}
+        initialRotateMs={dashAd.rotateMs}
+      />
+
+      {/* Recent activity (real last-5 transactions) */}
+      <section className="card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-white">Recent Activity</h2>
+          <Link href="/wallet" className="text-sm text-indigo-400 hover:text-indigo-300">
+            View all
+          </Link>
+        </div>
+        {recentTx.length === 0 ? (
+          <EmptyState
+            icon={Star}
+            title="No activity yet"
+            description="Complete tasks to start earning!"
+            action={{ label: "Browse tasks", href: "/tasks" }}
+          />
+        ) : (
+          <div>
+            {recentTx.map((tx) => {
+              const usePoints = tx.points !== 0;
+              return (
+                <TransactionRow
+                  key={tx.id}
+                  type={toTxType(tx.type)}
+                  description={tx.description ?? tx.type.replace(/_/g, " ")}
+                  amount={usePoints ? tx.points : toNum(tx.amount)}
+                  unit={usePoints ? "pts" : "USD"}
+                  status={tx.status as TxStatus}
+                  date={tx.createdAt}
+                />
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Available tasks preview */}
+      <section className="card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-white">Available Tasks</h2>
+          <Link href="/tasks" className="text-sm text-indigo-400 hover:text-indigo-300">
+            View all
           </Link>
         </div>
         {availableTasks.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-gray-500">
-            <div className="text-center">
-              <Star className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No tasks available right now</p>
-              <p className="text-sm mt-1">Check back soon for new tasks!</p>
-            </div>
-          </div>
+          <EmptyState
+            icon={ListTodo}
+            title="No tasks available right now"
+            description="Check back soon for new earning opportunities!"
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {availableTasks.map((t) => (
@@ -389,7 +303,7 @@ export default async function DashboardPage() {
                   <p className="text-sm font-semibold text-white truncate group-hover:text-indigo-400 transition-colors">
                     {t.title}
                   </p>
-                  <p className="text-[11px] text-gray-500 capitalize">
+                  <p className="text-xs text-gray-500 capitalize">
                     {t.type.toLowerCase()}
                     {t.difficulty ? ` · ${t.difficulty.toLowerCase()}` : ""}
                   </p>
@@ -399,14 +313,14 @@ export default async function DashboardPage() {
                     +{t.pointsReward.toLocaleString()}
                   </p>
                   {t.xpReward > 0 && (
-                    <p className="text-[10px] text-gray-500">+{t.xpReward} XP</p>
+                    <p className="text-xs text-gray-500">+{t.xpReward} XP</p>
                   )}
                 </div>
               </Link>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

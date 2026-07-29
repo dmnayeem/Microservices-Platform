@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const groupId = searchParams.get("groupId"); // For group-filtered feed
     const tag = searchParams.get("tag"); // Hashtag feed (without leading '#')
     const search = searchParams.get("search"); // Free-text content search
+    const seed = searchParams.get("seed"); // Per-session jitter seed (reshuffle)
     const skip = (page - 1) * limit;
 
     // Build query
@@ -64,6 +65,10 @@ export async function GET(request: NextRequest) {
 
     let posts: Post[];
     let total: number;
+    // Max activity across the organic feed — the client's baseline for the live
+    // "new activity" pill (see /api/feed/pulse). Only set on the main-feed pool
+    // path; null elsewhere (client only reads it on page-1 main feed).
+    let latestActivityAt: Date | null = null;
 
     if (isMainFeed && skip < POOL_SIZE) {
       // Score a bounded pool of the freshest posts (pinned first so boosted
@@ -94,13 +99,20 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const day = dayKey(now);
+      // Per-session seed reshuffles the order each refresh; fall back to the UTC
+      // day key so an un-seeded request still gets stable daily variety.
+      const jitterSeed = seed || dayKey(now);
       const scoreById = new Map(
         pool.map((p) => [
           p.id,
-          scorePost(p as unknown as RankablePost, { follows, now, day }),
+          scorePost(p as unknown as RankablePost, { follows, now, seed: jitterSeed }),
         ])
       );
+      // The globally most-recent activity is always within the freshest-500 pool.
+      latestActivityAt = pool.reduce<Date | null>((max, p) => {
+        const t = p.lastActivityAt;
+        return !max || t > max ? t : max;
+      }, null);
       const ranked = [...pool].sort((a, b) => {
         // Boosted (pinned) posts always float to the very top.
         if (a.isPinned !== b.isPinned) return Number(b.isPinned) - Number(a.isPinned);
@@ -260,6 +272,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       posts: formattedPosts,
+      latestActivityAt,
       pagination: {
         page,
         limit,

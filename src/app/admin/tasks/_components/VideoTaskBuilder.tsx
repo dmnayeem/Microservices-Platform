@@ -235,6 +235,76 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
           </div>
         </div>
       )}
+
+      {/* YouTube-style engagement (optional) — subscribe / like / comment */}
+      {(() => {
+        const eng = value.engagement ?? {
+          requireSubscribe: false,
+          requireLike: false,
+          requireComment: false,
+        };
+        const setEng = (patch: Partial<NonNullable<VideoConfig["engagement"]>>) =>
+          onChange({ ...value, engagement: { ...eng, ...patch } });
+        return (
+          <div className="rounded-lg border border-gray-800 bg-gray-950 p-4 space-y-3">
+            <p className="text-sm font-bold text-white">
+              ▶️ YouTube engagement <span className="text-gray-500 font-normal">(optional)</span>
+            </p>
+            <p className="text-[11px] text-gray-500 -mt-1">
+              Bundle subscribe/like/comment with the watch. If <b>Screenshot</b> proof
+              is on, engagement is manually reviewed; otherwise it&apos;s honor-based and
+              auto-approves (guarded by the user&apos;s trust score).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <ProofToggle
+                label="Require Subscribe"
+                help="User subscribes to the channel"
+                checked={eng.requireSubscribe}
+                onChange={(v) => setEng({ requireSubscribe: v })}
+              />
+              <ProofToggle
+                label="Require Like"
+                help="User likes the video"
+                checked={eng.requireLike}
+                onChange={(v) => setEng({ requireLike: v })}
+              />
+              <ProofToggle
+                label="Require Comment"
+                help="User comments on the video"
+                checked={eng.requireComment}
+                onChange={(v) => setEng({ requireComment: v })}
+              />
+            </div>
+            {eng.requireSubscribe && (
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Channel URL <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={eng.channelUrl ?? ""}
+                  onChange={(e) => setEng({ channelUrl: e.target.value })}
+                  placeholder="https://youtube.com/@channel"
+                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
+            {eng.requireComment && (
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Suggested comment (optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={eng.commentTemplate ?? ""}
+                  onChange={(e) => setEng({ commentTemplate: e.target.value })}
+                  placeholder="Text the user can copy and post as their comment"
+                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

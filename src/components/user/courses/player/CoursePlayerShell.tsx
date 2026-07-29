@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { LessonSidebar } from "./LessonSidebar";
 import { LessonPane } from "./LessonPane";
+import { EmptyState } from "@/components/user/primitives/empty-state";
 import type { PlayerModule, PlayerLesson } from "./types";
 
 interface Props {
@@ -176,13 +177,11 @@ export function CoursePlayerShell({
               }
             />
           ) : (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-12 text-center">
-              <CheckCircle2 className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-white font-bold">No lessons yet</p>
-              <p className="text-sm text-gray-400 mt-1">
-                The tutor hasn&apos;t published any lessons for this course.
-              </p>
-            </div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No lessons yet"
+              description="The tutor hasn't published any lessons for this course."
+            />
           )}
         </div>
       </div>

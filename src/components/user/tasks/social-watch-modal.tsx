@@ -19,6 +19,10 @@ interface Props {
   url: string;
   watchSeconds: number;
   title?: string;
+  /** Task + submission ids — used to send server heartbeats so watch time is
+   *  accrued server-side (anti-fraud), not just trusted from the client flag. */
+  taskId: string;
+  submissionId: string | null;
   onComplete: () => void;
   onClose: () => void;
 }
@@ -37,6 +41,8 @@ export function SocialWatchModal({
   url,
   watchSeconds,
   title,
+  taskId,
+  submissionId,
   onComplete,
   onClose,
 }: Props) {
@@ -92,6 +98,31 @@ export function SocialWatchModal({
       window.removeEventListener("blur", onBlur);
     };
   }, []);
+
+  // Server heartbeat — every 5s while genuinely watching (playing + visible +
+  // focused), tell the server to accrue real seconds. The server clamps each
+  // beat to real wall-clock, so this is the authoritative watch count the submit
+  // route gates on; the client `watched` flag alone can no longer pass.
+  useEffect(() => {
+    if (!submissionId) return;
+    const beat = () => {
+      if (
+        phaseRef.current !== "watch" ||
+        !playingRef.current ||
+        !visibleRef.current ||
+        !focusedRef.current
+      ) {
+        return;
+      }
+      void fetch(`/api/tasks/${taskId}/heartbeat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId }),
+      }).catch(() => {});
+    };
+    const iv = setInterval(beat, 5000);
+    return () => clearInterval(iv);
+  }, [taskId, submissionId]);
 
   // Warmup countdown — transition happens inside the timeout (not synchronously
   // in the effect body) to avoid cascading renders.

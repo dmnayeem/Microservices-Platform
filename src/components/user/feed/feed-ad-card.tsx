@@ -66,9 +66,11 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
         for (const e of entries) {
           if (e.isIntersecting && !firedRef.current) {
             firedRef.current = true;
-            fetch(`/api/ads/${ad.adId}/impression`, { method: "POST" }).catch(
-              () => {}
-            );
+            fetch(`/api/spaces/${ad.adId}/event`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ kind: "view" }),
+            }).catch(() => {});
             io.disconnect();
           }
         }
@@ -80,7 +82,11 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
   }, [ad.adId]);
 
   const trackClick = () => {
-    fetch(`/api/ads/${ad.adId}/click`, { method: "POST" }).catch(() => {});
+    fetch(`/api/spaces/${ad.adId}/event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "open" }),
+    }).catch(() => {});
   };
 
   const initial = (ad.author.name || "A").charAt(0).toUpperCase();
