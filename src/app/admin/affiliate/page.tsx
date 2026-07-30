@@ -33,7 +33,7 @@ export default async function AdminAffiliatePage() {
 
   const byAffiliate = byAffiliateRaw as unknown as Array<{
     affiliateUserId: string;
-    _sum: { commissionAmount: unknown };
+    _sum: { commissionAmount: number | null };
     _count: { _all: number };
   }>;
   const affIds = byAffiliate.map((a) => a.affiliateUserId);

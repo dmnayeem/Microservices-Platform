@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
 
 interface SessionRow {
   id: string;
@@ -149,7 +150,7 @@ export function ProxyMonitor({ canManage }: Props) {
             No active proxy sessions in the last hour.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <AdminTableShell>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
@@ -180,7 +181,7 @@ export function ProxyMonitor({ canManage }: Props) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </AdminTableShell>
         )}
       </div>
 

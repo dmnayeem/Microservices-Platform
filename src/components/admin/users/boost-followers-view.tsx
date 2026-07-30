@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Avatar as AvatarPrimitive } from "@/components/user/primitives/avatar";
+import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
 
 interface Props {
   userId: string;
@@ -1001,7 +1002,7 @@ function SampleTable({
           </>
         )}
       </p>
-      <div className="rounded-lg border border-gray-800 bg-gray-950 overflow-x-auto">
+      <AdminTableShell className="rounded-lg">
         <table className="w-full text-xs">
           <thead className="bg-gray-900 text-gray-500">
             <tr>
@@ -1039,7 +1040,7 @@ function SampleTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </AdminTableShell>
     </div>
   );
 }
