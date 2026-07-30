@@ -5,6 +5,7 @@ import { runSubscriptionExpiry } from "@/lib/subscription-expiry";
 import { runCourseReminders, runLiveClassTransitions } from "@/lib/course-cron";
 import { closeAuctionById, closeDueAuctions } from "@/lib/marketplace-auctions";
 import { drawLottery } from "@/lib/lottery";
+import { pruneOldLogs } from "@/lib/log-retention";
 
 // ── Periodic sweeps (Inngest cron — replaces Vercel Cron) ────────────────────
 
@@ -26,6 +27,11 @@ export const courseReminders = inngest.createFunction(
 export const courseLiveClasses = inngest.createFunction(
   { id: "course-live-classes", triggers: [{ cron: "*/15 * * * *" }] }, // 15 min
   async () => runLiveClassTransitions()
+);
+
+export const logRetention = inngest.createFunction(
+  { id: "log-retention", triggers: [{ cron: "30 3 * * *" }] }, // daily 03:30 UTC
+  async () => pruneOldLogs()
 );
 
 // ── Event-driven exact timing (+ backstop sweeps) ────────────────────────────
@@ -86,6 +92,7 @@ export const functions = [
   subscriptionExpiry,
   courseReminders,
   courseLiveClasses,
+  logRetention,
   auctionCloseScheduled,
   auctionSweep,
   lotteryDrawScheduled,
