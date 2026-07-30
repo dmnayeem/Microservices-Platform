@@ -47,6 +47,8 @@ interface CourseRow {
   discountPrice: number | null;
   discountEndsAt: Date | null;
   commissionRateBps: number | null;
+  affiliateCommissionType: string | null;
+  affiliateCommissionValue: number | null;
   learningOutcomes: string[];
   requirements: string[];
   whatsIncluded: string[];
@@ -102,6 +104,12 @@ export function buildBuilderInitialFromCourse(
       ? course.discountEndsAt.toISOString().slice(0, 10)
       : "",
     commissionRateBps: course.commissionRateBps,
+    affiliateCommissionType:
+      course.affiliateCommissionType === "PERCENT" ||
+      course.affiliateCommissionType === "FIXED"
+        ? course.affiliateCommissionType
+        : null,
+    affiliateCommissionValue: course.affiliateCommissionValue,
     learningOutcomes: course.learningOutcomes ?? [],
     requirements: course.requirements ?? [],
     whatsIncluded: course.whatsIncluded ?? [],

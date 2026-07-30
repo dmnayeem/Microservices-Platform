@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { toNumOrNull } from "@/lib/money";
+import { isAffiliateEligible } from "@/lib/affiliate";
 
 /** Load the full landing-page payload for a course (by slug or id) + the
  *  current user's enrollment / bookmark / review status. Used by the
@@ -78,6 +80,8 @@ export async function loadCourseLanding(opts: {
     publishedAt: Date | null;
     lastContentUpdate: Date | null;
     tutorId: string | null;
+    affiliateCommissionType: string | null;
+    affiliateCommissionValue: number | null;
     tutor: {
       id: string;
       name: string | null;
@@ -222,6 +226,10 @@ export async function loadCourseLanding(opts: {
 
   return {
     course,
+    affiliateEligible: isAffiliateEligible(
+      course.affiliateCommissionType,
+      toNumOrNull(course.affiliateCommissionValue)
+    ),
     enrollment,
     bookmarked,
     myReview,

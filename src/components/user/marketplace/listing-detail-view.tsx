@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { confirmDialog } from "@/lib/confirm";
 import { profileHref } from "@/lib/user-href";
 import { AffiliateAttribution } from "@/components/user/affiliate/affiliate-attribution";
+import { AffiliateShareButton } from "@/components/user/affiliate/affiliate-share-button";
 import {
   ShoppingCart,
   Eye,
@@ -251,6 +252,11 @@ export function ListingDetailView({
   return (
     <div className="space-y-5">
       <AffiliateAttribution targetType="MARKETPLACE" targetId={listing.id} />
+      {(listing as { affiliateEligible?: boolean }).affiliateEligible && (
+        <div className="flex justify-end">
+          <AffiliateShareButton eligible />
+        </div>
+      )}
       <Link
         href="/marketplace"
         className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"

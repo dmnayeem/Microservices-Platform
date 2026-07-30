@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { format } from "date-fns";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Download } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -18,7 +18,7 @@ export default async function OrdersPage() {
     (
       await prisma.marketplaceListing.findMany({
         where: { id: { in: ordersRaw.map((o) => o.listingId) } },
-        select: { id: true, title: true, images: true },
+        select: { id: true, title: true, images: true, files: true },
       })
     ).map((l) => [l.id, l])
   );
@@ -43,8 +43,8 @@ export default async function OrdersPage() {
       ) : (
         <div className="space-y-2">
           {orders.map((o) => (
+            <div key={o.id} className="space-y-1.5">
             <Link
-              key={o.id}
               href={`/marketplace/${o.listing.id}`}
               className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-900 hover:border-gray-700"
             >
@@ -71,6 +71,16 @@ export default async function OrdersPage() {
                 ${o.amount.toFixed(2)}
               </span>
             </Link>
+            {o.status === "COMPLETED" && o.listing.files.length > 0 && (
+              <a
+                href={`/api/marketplace/listings/${o.listing.id}/download`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 text-xs font-bold hover:bg-indigo-500/25"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download
+              </a>
+            )}
+            </div>
           ))}
         </div>
       )}

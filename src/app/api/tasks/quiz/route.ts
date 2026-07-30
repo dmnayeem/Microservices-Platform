@@ -25,11 +25,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get("taskId");
 
+    // No taskId → list available QUIZ tasks (with sequential-unlock lock state)
+    // for the quiz tab. mirrors the video/social list gating.
     if (!taskId) {
-      return NextResponse.json(
-        { error: "Task ID is required" },
-        { status: 400 }
-      );
+      const [lister, pkg] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { level: true },
+        }),
+        getEffectivePackage(session.user.id),
+      ]);
+      const accessLevel = pkg?.accessLevel ?? 0;
+      const quizTasks = await prisma.task.findMany({
+        where: {
+          type: TaskType.QUIZ,
+          status: TaskStatus.ACTIVE,
+          minLevel: { lte: lister?.level ?? 0 },
+          requiredAccessLevel: { lte: accessLevel },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
+      const { lockedTaskIds } = await getTaskChainState(session.user.id);
+      return NextResponse.json({
+        quizzes: quizTasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description ?? undefined,
+          difficulty: (t.difficulty as string) || "BEGINNER",
+          questionCount: Array.isArray(t.questions)
+            ? (t.questions as unknown[]).length
+            : 0,
+          timeLimit: 0,
+          pointsReward: t.pointsReward,
+          minScore: 70,
+          locked: lockedTaskIds.has(t.id),
+        })),
+      });
     }
 
     // Get the task

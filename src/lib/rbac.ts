@@ -418,6 +418,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
+    name: "Affiliate",
+    href: "/admin/affiliate",
+    icon: "Handshake",
+    permissions: ["marketplace.view"],
+    category: "PLATFORM",
+  },
+  {
     name: "Social Feed",
     href: "/admin/social-moderation",
     icon: "MessageSquare",

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MarketplaceListingStatus } from "@/generated/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { isAffiliateEligible } from "@/lib/affiliate";
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -79,6 +80,10 @@ export async function GET(
         files: listing.files,
         category: listing.category,
         assetType: listing.assetType,
+        affiliateEligible: isAffiliateEligible(
+          listing.affiliateCommissionType,
+          toNumOrNull(listing.affiliateCommissionValue)
+        ),
         subType: listing.subType,
         details: listing.details,
         price: toNum(listing.price),
