@@ -4,6 +4,19 @@
 
 ---
 
+## ⏸️ EI KAJ PORE KORBO (2026-07-30) — "note rakhun" (blocked on external creds/infra, faked na)
+আমি একা শেষ করতে পারিনি কারণ external account/service/key দরকার। creds/decision দিলে যেকোনোটা তখন করা যাবে।
+- [ ] **Payment gateways** — Stripe / SSLCommerz / bKash / Nagad / PayPal keys। Course enroll (`/api/courses/[id]/enroll`) + marketplace checkout এখন **wallet-only**; `paymentMethod` enum + TODO hook আগে থেকেই আছে — শুধু SDK + keys wire করতে হবে।
+- [ ] **Email / Push notifications** — provider + keys (Resend/SendGrid + FCM/OneSignal)। Notification model আছে, শুধু delivery channel নেই।
+- [ ] **HLS / live video** — transcoding service + infra (ffmpeg/Mux/Cloudflare Stream)। Video protection এখন signed-URL deterrence পর্যন্ত (DRM na)। Live class model (`CourseLiveClass`) আছে কিন্তু real streaming নেই।
+- [ ] **Anti-fraud Phase C** — Telegram/Discord bot **token** বসানো + bot-কে channel-এ add + প্রতি task-এ verify target set। কোড dormant, শুধু token লাগবে (`src/lib/social-verify-membership.ts`)।
+- [ ] **i18n** — কোন কোন ভাষা target সেটা ঠিক করা দরকার + বড় কাজ (whole-app string extraction)।
+- [ ] **Cursor pagination retrofit** (deferred, risky না blocked) — feed/notifications/admin-এর offset→cursor। Live pagination contract বদলায় → আলাদা careful pass + regression test দরকার। Log **retention pruning** (নিরাপদ অংশ) `src/lib/log-retention.ts` + daily cron-এ করা হয়ে গেছে।
+
+**NOTE:** affiliate + promotion + video protection + digital marketplace + PDF certs + log-retention + admin-table cleanup সব **DONE + committed + pushed (through 18d93ec), migrations applied**। HTML5 Games আগেই পুরো বানানো ছিল।
+
+---
+
 ## Social anti-fraud proof (follow-on to #10) — Phases A/B/C ALL DONE (uncommitted). All 4 migrations APPLIED to live DB 2026-07-29.
 Plan: `.claude/plans/start-next-abstract-lampson.md`. User wants all 4 methods.
 - [x] **Phase A** ✅ DONE (uncommitted) — unique-code + server URL-fetch auto-verify. `src/lib/task-verify-code.ts` (derived HMAC per-user code), `fetchRawHtml` in link-preview.ts, `BundleItem.verify="CODE"`, admin "Auto-verify by code" toggle, run-view code box, submit-route fetch+match → auto-approve (verifyStatus in metadata), admin panel badges. Typecheck+eslint clean.
