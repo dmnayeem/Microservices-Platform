@@ -55,7 +55,7 @@ export default async function CertificatePage({
 
       <div className="text-center">
         <a
-          href={`/cert-print/${cert.serial}`}
+          href={cert.pdfUrl ?? `/cert-print/${cert.serial}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold"

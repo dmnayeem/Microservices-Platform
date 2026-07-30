@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { NotificationType } from "@/generated/prisma";
+import { renderCertificatePdf } from "@/lib/certificate-pdf";
+import { uploadFile, getPublicUrl, isS3Configured } from "@/lib/s3";
 
 /** Determine whether the given enrollment is eligible for a certificate.
  *  Eligible when: all lessons completed AND all quizzes passed at least once. */
@@ -63,7 +65,13 @@ function generateSerial(): string {
 export async function issueCertificate(enrollmentId: string) {
   const enrollment = await prisma.courseEnrollment.findUnique({
     where: { id: enrollmentId },
-    select: { id: true, userId: true, courseId: true, course: { select: { title: true } } },
+    select: {
+      id: true,
+      userId: true,
+      courseId: true,
+      course: { select: { title: true } },
+      user: { select: { name: true } },
+    },
   });
   if (!enrollment) throw new Error("Enrollment not found");
 
@@ -103,9 +111,32 @@ export async function issueCertificate(enrollmentId: string) {
       userId: enrollment.userId,
       serial,
       sharedUrl,
-      // pdfUrl is a deferred follow-up — PDF rendering not in v1 scope.
     },
   });
+
+  // Render + store the PDF (best-effort; failure doesn't block issuance).
+  if (isS3Configured()) {
+    try {
+      const pdf = await renderCertificatePdf({
+        recipientName: enrollment.user?.name ?? "Student",
+        courseTitle: enrollment.course?.title ?? "Course",
+        serial,
+        issuedAt: cert.issuedAt,
+      });
+      const key = `certificates/${serial}.pdf`;
+      const up = await uploadFile(key, pdf, "application/pdf");
+      const url = up.success ? (up.url ?? getPublicUrl(key)) : null;
+      if (url) {
+        await prisma.courseCertificate.update({
+          where: { id: cert.id },
+          data: { pdfUrl: url },
+        });
+        cert.pdfUrl = url;
+      }
+    } catch (err) {
+      console.error("Certificate PDF generation failed:", err);
+    }
+  }
 
   // Notify the student
   await prisma.notification.create({
