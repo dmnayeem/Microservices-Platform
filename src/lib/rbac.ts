@@ -426,6 +426,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
+    name: "Deals",
+    href: "/admin/marketplace/deals",
+    icon: "Scale",
+    permissions: ["marketplace.mediate"],
+    category: "PLATFORM",
+  },
+  {
     name: "Social Feed",
     href: "/admin/social-moderation",
     icon: "MessageSquare",

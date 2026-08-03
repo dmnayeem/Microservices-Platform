@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { hasPermission, type UserRole } from "@/lib/rbac";
+import { getMediationConfig, saveMediationConfig } from "@/lib/marketplace-mediation";
+import { z } from "zod";
+
+// GET /api/admin/marketplace/mediation
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const role = session.user.role as UserRole | undefined;
+  if (!hasPermission(role, "marketplace.view")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return NextResponse.json({ config: await getMediationConfig() });
+}
+
+const schema = z.object({
+  enabled: z.boolean(),
+  feeBps: z.number().int().min(0).max(10000),
+});
+
+// PATCH /api/admin/marketplace/mediation
+export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const role = session.user.role as UserRole | undefined;
+  if (!hasPermission(role, "marketplace.manage")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const v = schema.safeParse(await request.json());
+  if (!v.success) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+  await saveMediationConfig({ enabled: v.data.enabled, feeBps: v.data.feeBps });
+  return NextResponse.json({ config: { enabled: v.data.enabled, feeBps: v.data.feeBps } });
+}

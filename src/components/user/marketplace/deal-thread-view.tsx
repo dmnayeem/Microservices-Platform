@@ -135,10 +135,10 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
     }
   };
 
-  const dealAction = async (dealId: string, action: string, reason?: string) => {
+  const runAction = async (url: string, action: string, reason?: string) => {
     setActionBusy(true);
     try {
-      const res = await fetch(`/api/marketplace/deals/${dealId}`, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, reason }),
@@ -153,6 +153,10 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
       setActionBusy(false);
     }
   };
+  const dealAction = (dealId: string, action: string, reason?: string) =>
+    runAction(`/api/marketplace/deals/${dealId}`, action, reason);
+  const adminAction = (dealId: string, action: string, reason?: string) =>
+    runAction(`/api/admin/marketplace/deals/${dealId}`, action, reason);
 
   if (loading || !data) {
     return (
@@ -288,6 +292,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               viewerId={viewerId}
               busy={actionBusy}
               onAction={dealAction}
+              onAdminAction={adminAction}
             />
           ) : (
             <>
@@ -323,15 +328,18 @@ function DealActions({
   viewerId,
   busy,
   onAction,
+  onAdminAction,
 }: {
   deal: Deal;
   role: Role;
   viewerId: string;
   busy: boolean;
   onAction: (dealId: string, action: string, reason?: string) => void;
+  onAdminAction: (dealId: string, action: string, reason?: string) => void;
 }) {
   const isBuyer = role === "BUYER";
   const isSeller = role === "SELLER";
+  const isAdmin = role === "ADMIN";
   const btn =
     "w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-bold disabled:opacity-50";
 
@@ -413,10 +421,28 @@ function DealActions({
         </div>
       )}
 
-      {deal.status === "DISPUTED" && (
+      {deal.status === "DISPUTED" && !isAdmin && (
         <p className="text-[11px] text-amber-300 inline-flex items-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5" /> Under admin review.
         </p>
+      )}
+
+      {/* Admin mediation controls */}
+      {isAdmin && ["FUNDED", "DELIVERED", "DISPUTED"].includes(deal.status) && (
+        <div className="space-y-2 pt-2 border-t border-white/10">
+          <p className="text-[10px] uppercase tracking-wider text-amber-300 font-bold">
+            Admin mediation
+          </p>
+          <button disabled={busy} onClick={() => onAdminAction(deal.id, "assign")} className={cn(btn, "bg-white/10 text-gray-200 hover:bg-white/20")}>
+            Assign to me
+          </button>
+          <button disabled={busy} onClick={() => onAdminAction(deal.id, "release")} className={cn(btn, "bg-emerald-600 text-white hover:bg-emerald-700")}>
+            <CheckCircle2 className="w-4 h-4" /> Release to seller
+          </button>
+          <button disabled={busy} onClick={() => onAdminAction(deal.id, "refund")} className={cn(btn, "bg-red-500/15 text-red-300 hover:bg-red-500/25")}>
+            Refund buyer
+          </button>
+        </div>
       )}
       {viewerId === deal.proposedById && deal.status === "PROPOSED" && (
         <p className="text-[10px] text-gray-500">You proposed this deal.</p>
