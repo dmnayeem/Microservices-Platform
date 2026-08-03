@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
 import { BottomTabBar } from "@/components/dashboard/bottom-tab-bar";
+import { AppRefreshShell } from "@/components/pwa/app-refresh-shell";
 import { getEffectiveFeatures } from "@/lib/packages";
 
 export default async function MainLayout({
@@ -34,7 +35,7 @@ export default async function MainLayout({
 
         {/* Page Content */}
         <main className="py-6 px-4 sm:px-6 lg:px-8 pb-24 lg:pb-8">
-          {children}
+          <AppRefreshShell>{children}</AppRefreshShell>
         </main>
       </div>
 

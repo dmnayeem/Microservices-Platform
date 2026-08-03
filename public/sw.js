@@ -1,17 +1,28 @@
 // EarnGPT service worker — web-push notifications + minimal offline shell.
-const CACHE = "earngpt-shell-v1";
+const CACHE = "earngpt-shell-v2";
 const OFFLINE_URL = "/";
 
-// Precache the app shell so navigations have an offline fallback, and take
-// control immediately so the page is "controlled" (required for installability).
+// Precache the app shell for an offline navigation fallback. We intentionally do
+// NOT call skipWaiting() here: on first install there is no controller so this SW
+// activates immediately anyway, but for an UPDATE it stays "waiting" until the
+// client applies it at a safe moment (pull-to-refresh / reopen) — see the
+// SKIP_WAITING message below. This prevents surprise mid-use reloads.
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
       .then((cache) => cache.add(OFFLINE_URL))
       .catch(() => {})
-      .then(() => self.skipWaiting())
   );
+});
+
+// The page tells a waiting SW to take over (after pull-to-refresh / reopen). The
+// resulting `controllerchange` triggers a single guarded reload on the client.
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (data === "SKIP_WAITING" || (data && data.type === "SKIP_WAITING")) {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

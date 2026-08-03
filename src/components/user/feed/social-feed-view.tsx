@@ -10,8 +10,8 @@ import {
   Compass,
   ArrowUp,
 } from "lucide-react";
-import { PullToRefresh } from "@/components/user/primitives/pull-to-refresh";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { useAppRefresh } from "@/hooks/use-app-refresh";
 import { cn } from "@/lib/utils";
 import {
   BannerSlider,
@@ -239,6 +239,15 @@ function FeedTab({
 
   // Pull-to-refresh should reshuffle for fresh variety.
   const refresh = () => load(true);
+  // App-wide pull-to-refresh (from the layout shell) re-pulls the feed too.
+  useAppRefresh(refresh);
+
+  // Refs so the ~30s pollers below always see the latest load fn + posts without
+  // re-subscribing their timers on every render.
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  const postsRef = useRef(posts);
+  postsRef.current = posts;
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -326,9 +335,10 @@ function FeedTab({
     });
   }, []);
 
-  // Live "new activity" pill — poll the cheap /api/feed/pulse signal (~30s,
-  // paused while the tab is hidden). If the freshest activity is newer than what
-  // we last loaded, surface the pill instead of reordering under the user.
+  // Live "new activity" — poll the cheap /api/feed/pulse signal (~30s, paused
+  // while the tab is hidden). If there's newer activity: when the user is at the
+  // top, pull it in seamlessly (Facebook-style); otherwise surface the pill so
+  // the view never jumps under them.
   useAutoRefresh(
     useCallback(async () => {
       try {
@@ -337,11 +347,51 @@ function FeedTab({
         const data = await res.json();
         if (!data.latestActivityAt) return;
         const latest = new Date(data.latestActivityAt).getTime();
-        if (latest > latestSeenRef.current) setHasNewActivity(true);
+        if (latest > latestSeenRef.current) {
+          if (window.scrollY <= 4) {
+            latestSeenRef.current = latest;
+            void loadRef.current();
+          } else {
+            setHasNewActivity(true);
+          }
+        }
       } catch {
         /* transient — try again next tick */
       }
     }, []),
+    { intervalMs: 30000 }
+  );
+
+  // Live engagement counts — patch like/comment counts of the posts on screen so
+  // other users' likes/comments update in place without a reload (~30s, paused
+  // while hidden). Bounded to the visible window; own optimistic `liked` state is
+  // untouched (only the numeric counts are patched).
+  useAutoRefresh(
+    useCallback(async () => {
+      const ids = postsRef.current.slice(0, 30).map((p) => p.id);
+      if (ids.length === 0) return;
+      try {
+        const res = await fetch("/api/feed/counts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const c of (data.counts ?? []) as Array<{
+          id: string;
+          likesCount: number;
+          commentsCount: number;
+        }>) {
+          handlePostUpdated(c.id, {
+            likesCount: c.likesCount,
+            commentsCount: c.commentsCount,
+          });
+        }
+      } catch {
+        /* transient */
+      }
+    }, [handlePostUpdated]),
     { intervalMs: 30000 }
   );
 
@@ -351,7 +401,6 @@ function FeedTab({
   };
 
   return (
-    <PullToRefresh onRefresh={refresh}>
     <div className="space-y-4">
       {hasNewActivity && (
         <div className="sticky top-2 z-20 flex justify-center">
@@ -453,6 +502,5 @@ function FeedTab({
         </div>
       )}
     </div>
-    </PullToRefresh>
   );
 }

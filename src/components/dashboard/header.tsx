@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { useAppRefresh } from "@/hooks/use-app-refresh";
 
 interface HeaderProps {
   user: {
@@ -72,6 +73,8 @@ export function Header({ user }: HeaderProps) {
 
   // Live refresh: tab refocus + timer (paused while tab hidden).
   useAutoRefresh(fetchData);
+  // Pull-to-refresh anywhere in the app instantly re-pulls balance + notifications.
+  useAppRefresh(fetchData);
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/login" });

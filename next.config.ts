@@ -40,6 +40,20 @@ const nextConfig: NextConfig = {
       { source: "/api/earn/:id/claim", destination: "/api/ads/:id/reward" },
     ];
   },
+  // Always revalidate the service worker + manifest so a new deploy propagates to
+  // installed PWAs instead of a CDN/browser pinning a stale worker.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+      },
+      {
+        source: "/manifest.json",
+        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

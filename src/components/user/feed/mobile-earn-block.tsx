@@ -19,7 +19,7 @@ interface Widgets {
 
 /**
  * Mobile/tablet-only earn strip shown below the feed banner slider: a Daily
- * Bonus claim card on top, then the Quick Earn tiles (2-up mobile, 4-up tablet).
+ * Bonus claim card on top, then the Quick Earn tiles (3-up mobile, 4-up tablet).
  * Self-fetches its widget data — it renders on a different breakpoint than the
  * desktop right rail (`lg:hidden`), so they never both mount on the same screen.
  */
@@ -130,14 +130,14 @@ export function MobileEarnBlock({
         </section>
       )}
 
-      {/* Quick Earn — 2-up mobile, 4-up tablet */}
+      {/* Quick Earn — 3-up mobile, 4-up tablet */}
       {tiles.length > 0 && (
         <section className="glass p-4">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4 text-amber-400" />
             <h2 className="text-sm font-bold text-white">Quick Earn</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {tiles.map((q) => {
               const Icon = QUICK_EARN_ICONS[q.icon] ?? Zap;
               return (
