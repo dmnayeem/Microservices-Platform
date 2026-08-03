@@ -79,6 +79,7 @@ enum TransactionType {
   COURSE_REFUND
   DEPOSIT
   AFFILIATE_COMMISSION
+  ADMIN_FEE
 }
 
 // What earning generated a referral commission. Currently only tasks pay
@@ -715,6 +716,18 @@ enum MarketplaceOfferStatus {
   WITHDRAWN
 }
 
+// Escrow "deal" lifecycle. A deal holds the buyer's funds until delivery is
+// confirmed (or auto-released), instead of the instant-settle checkout path.
+enum MarketplaceDealStatus {
+  PROPOSED  // terms proposed in a thread; awaiting acceptance + funding
+  FUNDED    // buyer funded escrow; funds held, awaiting delivery
+  DELIVERED // seller marked delivered; awaiting buyer confirm / auto-release
+  RELEASED  // funds released to seller — completed
+  REFUNDED  // funds returned to buyer (clawback)
+  CANCELLED // cancelled before funding
+  DISPUTED  // under admin mediation
+}
+
 enum CourseStatus {
   DRAFT
   PENDING_REVIEW
@@ -798,6 +811,7 @@ enum NotificationType {
   LOTTERY
   SOCIAL
   COURSE
+  MESSAGE
 }
 model User {
   id                String      @id @default(cuid())
@@ -1604,6 +1618,8 @@ model MarketplaceListing {
   viewLog         MarketplaceListingView[]
   bids            MarketplaceBid[]
   offers          MarketplaceOffer[]
+  threads         MarketplaceThread[]
+  deals           MarketplaceDeal[]
   @@index([sellerId])
   @@index([status])
   @@index([category])
@@ -1625,6 +1641,80 @@ model MarketplacePurchase {
   disputes    MarketplaceDispute[]
   @@index([listingId])
   @@index([buyerId])
+}
+
+// Buyer↔seller conversation scoped to a listing. An admin can join a thread to
+// mediate a deal (membership checked in the API, not by a relation). One thread
+// per buyer per listing. User IDs are bare (mirrors MarketplaceDispute) so the
+// User model stays untouched.
+model MarketplaceThread {
+  id              String                     @id @default(cuid())
+  listingId       String
+  listing         MarketplaceListing         @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId         String
+  sellerId        String
+  assignedAdminId String?
+  lastMessageAt   DateTime                   @default(now())
+  unreadBuyer     Int                        @default(0)
+  unreadSeller    Int                        @default(0)
+  createdAt       DateTime                   @default(now())
+  messages        MarketplaceThreadMessage[]
+  deals           MarketplaceDeal[]
+  @@unique([listingId, buyerId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([lastMessageAt])
+}
+
+model MarketplaceThreadMessage {
+  id          String            @id @default(cuid())
+  threadId    String
+  thread      MarketplaceThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId    String
+  senderType  String            @default("USER") // USER, ADMIN, SYSTEM
+  body        String            @db.Text
+  attachments String[]
+  createdAt   DateTime          @default(now())
+  @@index([threadId])
+  @@index([senderId])
+}
+
+// Full-escrow deal on a thread. Buyer funds `amount` (+ optional `adminFee` on
+// top when admin-mediated); funds are held (`heldAmount`) until RELEASED to the
+// seller or REFUNDED to the buyer. On RELEASE a MarketplacePurchase row is
+// created (`purchaseId`) so the existing download-gate + orders views work.
+model MarketplaceDeal {
+  id              String                @id @default(cuid())
+  threadId        String
+  thread          MarketplaceThread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  listingId       String
+  listing         MarketplaceListing    @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId         String
+  sellerId        String
+  proposedById    String
+  amount          Decimal               @db.Decimal(18, 6)
+  status          MarketplaceDealStatus @default(PROPOSED)
+  adminMediated   Boolean               @default(false)
+  adminFee        Decimal               @default(0) @db.Decimal(18, 6)
+  assignedAdminId String?
+  heldAmount      Decimal               @default(0) @db.Decimal(18, 6)
+  commissionBps   Int?
+  purchaseId      String?
+  autoReleaseAt   DateTime?
+  deliveredAt     DateTime?
+  confirmedAt     DateTime?
+  releasedAt      DateTime?
+  refundedAt      DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  @@index([threadId])
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([assignedAdminId])
+  @@index([autoReleaseAt])
 }
 
 model CartItem {

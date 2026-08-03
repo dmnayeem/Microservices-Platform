@@ -92,6 +92,7 @@ export type Permission =
   | "marketplace.view"
   | "marketplace.manage"
   | "marketplace.disputes"
+  | "marketplace.mediate"
   // Packages / Subscriptions
   | "packages.view"
   | "packages.edit"
@@ -189,7 +190,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "leaderboards.view", "leaderboards.manage",
     "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
     "payment_methods.view", "payment_methods.manage",
-    "marketplace.view", "marketplace.manage", "marketplace.disputes",
+    "marketplace.view", "marketplace.manage", "marketplace.disputes", "marketplace.mediate",
     "packages.view", "packages.edit",
     "referrals.view", "referrals.configure",
     "lottery.view", "lottery.manage",
@@ -252,7 +253,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "users.view", "users.edit", "users.ban", "users.impersonate",
     "kyc.view", "kyc.approve", "kyc.reject",
     "tasks.view",
-    "marketplace.view", "marketplace.disputes",
+    "marketplace.view", "marketplace.disputes", "marketplace.mediate",
     "moderation.view", "moderation.manage",
   ],
 
