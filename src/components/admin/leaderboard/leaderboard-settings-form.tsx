@@ -1,6 +1,7 @@
 "use client";
 
 import { confirmDialog } from "@/lib/confirm";
+import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -540,8 +541,9 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
                     {(c.totalPrize ?? 0).toLocaleString()} pts
                   </span>
                 </summary>
-                <div className="border-t border-slate-800 p-3 overflow-x-auto">
-                  <table className="w-full text-sm">
+                <div className="border-t border-slate-800 p-3">
+                  <AdminTableShell className="bg-transparent">
+                  <table className="w-full min-w-105 text-sm">
                     <thead>
                       <tr className="text-[10px] uppercase tracking-wider text-slate-500">
                         <th className="text-left pb-2">Rank</th>
@@ -567,6 +569,7 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
                       ))}
                     </tbody>
                   </table>
+                  </AdminTableShell>
                 </div>
               </details>
             ))}

@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { MarketplaceListingStatus } from "@/generated/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { isAffiliateEligible } from "@/lib/affiliate";
+import { hasPermission } from "@/lib/rbac";
+import type { UserRole } from "@/generated/prisma";
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -68,6 +70,14 @@ export async function GET(
     const isOwner = session?.user?.id === listing.sellerId;
     const hideFinancials = listing.ndaGated && !isOwner;
 
+    // Deliverable files are private: only the seller (owner) or a marketplace
+    // admin may see the raw URLs here. Buyers receive them post-purchase via the
+    // gated `/download` route — never expose them to arbitrary viewers.
+    const canSeeFiles =
+      isOwner ||
+      (!!session?.user?.role &&
+        hasPermission(session.user.role as UserRole, "marketplace.manage"));
+
     return NextResponse.json({
       listing: {
         id: listing.id,
@@ -77,7 +87,7 @@ export async function GET(
         images: listing.images,
         screenshots: listing.screenshots,
         attachments: listing.attachments,
-        files: listing.files,
+        files: canSeeFiles ? listing.files : [],
         category: listing.category,
         assetType: listing.assetType,
         affiliateEligible: isAffiliateEligible(

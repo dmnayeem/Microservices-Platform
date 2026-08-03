@@ -89,7 +89,9 @@ export async function GET(request: NextRequest) {
     const [rowsRaw, total, facets] = await Promise.all([
       prisma.course.findMany({
         where,
-        orderBy: [orderBy, { id: "desc" }],
+        // Paid promotions float to the top of the default grid — matches the
+        // marketplace behavior (listings/route.ts orders by isFeatured first).
+        orderBy: [{ isFeatured: "desc" }, orderBy, { id: "desc" }],
         skip,
         take: limit,
         include: {

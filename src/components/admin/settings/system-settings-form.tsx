@@ -116,6 +116,8 @@ const DEFAULTS: SettingsBag = {
   "antifraud.auto_approve_min_trust": 0,
   "antifraud.spot_check_percent": 0,
   "antifraud.block_duplicate_proof": false,
+  // Log retention windows (days) — consumed by the daily pruning cron
+  retention_days: { views: 90, logs: 120, audit: 365, notifications: 60 },
   // Popups / install (site-wide)
   "ui.cookies_popup_enabled": true,
   "ui.notification_popup_enabled": true,
@@ -167,6 +169,7 @@ const CATEGORY_FOR_KEY: Record<string, string> = {
   "antifraud.auto_approve_min_trust": "limits",
   "antifraud.spot_check_percent": "limits",
   "antifraud.block_duplicate_proof": "limits",
+  retention_days: "limits",
   // Popups / install
   "ui.cookies_popup_enabled": "ui_toggles",
   "ui.notification_popup_enabled": "ui_toggles",
@@ -997,6 +1000,44 @@ export function SystemSettingsForm({
               onChange={(v) => set("antifraud.block_duplicate_proof", v)}
               disabled={!canEdit}
             />
+            <Section title="Log retention (days)">
+              <p className="text-xs text-slate-500 -mt-1 mb-2">
+                The daily pruning job deletes rows older than these windows.
+                Higher = keep longer. Unread notifications are never deleted.
+              </p>
+              {(() => {
+                const r = {
+                  ...(DEFAULTS.retention_days as Record<string, number>),
+                  ...((values.retention_days as Record<string, number>) ?? {}),
+                };
+                const setR = (k: string, v: number) =>
+                  set("retention_days", { ...r, [k]: v });
+                const fields: Array<{ k: string; label: string }> = [
+                  { k: "views", label: "View/impression logs" },
+                  { k: "logs", label: "Ad & social action logs" },
+                  { k: "audit", label: "Audit log" },
+                  { k: "notifications", label: "Read notifications" },
+                ];
+                return (
+                  <div className="grid grid-cols-2 gap-3">
+                    {fields.map((f) => (
+                      <Field key={f.k} label={f.label}>
+                        <input
+                          type="number"
+                          min={1}
+                          value={Number(r[f.k] ?? 0)}
+                          onChange={(e) =>
+                            setR(f.k, parseInt(e.target.value) || 1)
+                          }
+                          disabled={!canEdit}
+                          className={inp}
+                        />
+                      </Field>
+                    ))}
+                  </div>
+                );
+              })()}
+            </Section>
           </div>
         )}
 

@@ -432,6 +432,23 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
                               Auction
                             </span>
                           )}
+                          {listing.status === "PENDING_REVIEW" &&
+                            (() => {
+                              const sig = fileMetaSignal(listing.fileMeta);
+                              if (!sig) return null;
+                              return (
+                                <span
+                                  title={sig.title}
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-1 py-0.5 rounded border ${
+                                    sig.level === "warn"
+                                      ? "bg-red-500/15 text-red-300 border-red-500/30"
+                                      : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                  }`}
+                                >
+                                  {sig.label}
+                                </span>
+                              );
+                            })()}
                         </p>
                         <p className="text-xs text-slate-500">
                           {formatDistanceToNow(listing.createdAt, {
@@ -945,6 +962,39 @@ function Pagination({
 
 // ─── Data fetchers ────────────────────────────────────────────────
 
+/**
+ * Derive a quick triage badge from a listing's captured file micro-metadata.
+ * "warn" when the deliverable looks non-original (near-duplicate of another
+ * listing, re-encoded, or carries editor/converter metadata); "ok" otherwise.
+ * The full breakdown stays on the listing detail's FileMetaPanel.
+ */
+function fileMetaSignal(
+  fileMeta: unknown
+): { level: "warn" | "ok"; label: string; title: string } | null {
+  if (!fileMeta || typeof fileMeta !== "object") return null;
+  const hints = (fileMeta as { hints?: Record<string, unknown> }).hints;
+  if (!hints || typeof hints !== "object") return null;
+  const dup = !!(hints as { duplicateOf?: unknown }).duplicateOf;
+  const reEncoded = (hints as { reEncoded?: unknown }).reEncoded === true;
+  const edited =
+    (hints as { hasEditorSoftwareTag?: unknown }).hasEditorSoftwareTag === true;
+  if (dup || reEncoded || edited) {
+    const reasons = [
+      dup && "near-duplicate of another listing",
+      reEncoded && "re-encoded",
+      edited && "editor/converter metadata",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    return { level: "warn", label: "⚠ check", title: `Originality flags: ${reasons}` };
+  }
+  return {
+    level: "ok",
+    label: "✓ clean",
+    title: "No originality red flags in file metadata",
+  };
+}
+
 async function fetchListings({
   where,
   skip,
@@ -990,6 +1040,7 @@ async function fetchListings({
     isFeatured: boolean;
     verifiedMetrics: boolean;
     auctionMode: boolean;
+    fileMeta: unknown;
     seller: { id: string; name: string | null; email: string };
   };
 
@@ -1007,6 +1058,7 @@ async function fetchListings({
       isFeatured: boolean;
       verifiedMetrics: boolean;
       auctionMode: boolean;
+      fileMeta: unknown;
       seller: { id: string; name: string | null; email: string };
       _count: { purchases: number };
     }>
@@ -1024,6 +1076,7 @@ async function fetchListings({
     isFeatured: l.isFeatured,
     verifiedMetrics: l.verifiedMetrics,
     auctionMode: l.auctionMode,
+    fileMeta: l.fileMeta,
     seller: l.seller,
   }));
 
