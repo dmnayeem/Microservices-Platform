@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveThreadAccess } from "@/lib/marketplace-thread";
 import type { UserRole } from "@/generated/prisma";
 import { toNum } from "@/lib/money";
+import { getMediationConfig } from "@/lib/marketplace-mediation";
 
 // GET /api/marketplace/threads/:id — thread messages + deals + participants.
 export async function GET(
@@ -23,7 +24,7 @@ export async function GET(
   if (!thread) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!role) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const [listing, buyer, seller, messages, deals] = await Promise.all([
+  const [listing, buyer, seller, messages, deals, mediation] = await Promise.all([
     prisma.marketplaceListing.findUnique({
       where: { id: thread.listingId },
       select: { id: true, title: true, images: true, price: true, status: true },
@@ -39,6 +40,7 @@ export async function GET(
       where: { threadId: id },
       orderBy: { createdAt: "desc" },
     }),
+    getMediationConfig(),
   ]);
 
   // Clear the caller's unread counter (buyer/seller only).
@@ -57,6 +59,7 @@ export async function GET(
       listing: listing
         ? { ...listing, price: toNum(listing.price) }
         : null,
+      mediation: { enabled: mediation.enabled, feeBps: mediation.feeBps },
     },
     messages: messages.map((m) => ({
       id: m.id,

@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Package,
   ListChecks,
+  MessagesSquare,
   ShoppingCart,
   ShieldCheck,
   Sparkles,
@@ -274,6 +275,13 @@ export function MarketplaceView() {
           aria-label="Orders"
         >
           <ListChecks className="w-4 h-4" />
+        </Link>
+        <Link
+          href="/marketplace/messages"
+          className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
+          aria-label="Messages"
+        >
+          <MessagesSquare className="w-4 h-4" />
         </Link>
       </div>
 

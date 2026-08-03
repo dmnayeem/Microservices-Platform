@@ -26,6 +26,7 @@ import {
   Paperclip,
   ImageOff,
   ChevronLeft,
+  MessageCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
@@ -112,6 +113,24 @@ export function ListingDetailView({
   const router = useRouter();
   const [zoom, setZoom] = useState<{ list: string[]; idx: number } | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [msgBusy, setMsgBusy] = useState(false);
+
+  const messageSeller = async () => {
+    setMsgBusy(true);
+    try {
+      const res = await fetch("/api/marketplace/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: listing.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not open chat");
+      router.push(`/marketplace/messages/${data.threadId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open chat");
+      setMsgBusy(false);
+    }
+  };
   const [showReport, setShowReport] = useState(false);
   const [busy, setBusy] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
@@ -447,6 +466,20 @@ export function ListingDetailView({
                 <span className="text-[10px] opacity-70 tabular-nums ml-1">
                   {watchCount}
                 </span>
+              </button>
+            )}
+            {!isOwner && (
+              <button
+                onClick={messageSeller}
+                disabled={msgBusy}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-500/40 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25 text-sm font-bold disabled:opacity-50"
+              >
+                {msgBusy ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <MessageCircle className="w-4 h-4" />
+                )}
+                Message seller
               </button>
             )}
             <button
