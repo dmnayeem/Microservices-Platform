@@ -6,6 +6,7 @@ import { runCourseReminders, runLiveClassTransitions } from "@/lib/course-cron";
 import { closeAuctionById, closeDueAuctions } from "@/lib/marketplace-auctions";
 import { drawLottery } from "@/lib/lottery";
 import { pruneOldLogs } from "@/lib/log-retention";
+import { releaseDeal, releaseDueDeals } from "@/lib/marketplace-deal";
 
 // ── Periodic sweeps (Inngest cron — replaces Vercel Cron) ────────────────────
 
@@ -68,6 +69,25 @@ export const lotteryDrawScheduled = inngest.createFunction(
   }
 );
 
+/** Fires at a delivered deal's auto-release time and releases it if still due. */
+export const dealAutoReleaseScheduled = inngest.createFunction(
+  { id: "deal-auto-release-scheduled", triggers: [{ event: EVENTS.DEAL_DELIVERED }] },
+  async ({ event, step }) => {
+    const { dealId, autoReleaseAt } = event.data as {
+      dealId: string;
+      autoReleaseAt: string;
+    };
+    await step.sleepUntil("until-auto-release", new Date(autoReleaseAt));
+    return step.run("release-deal", () => releaseDeal({ dealId, actor: "SYSTEM" }));
+  }
+);
+
+/** Backstop: auto-release any DELIVERED deal whose timer has elapsed. */
+export const dealAutoReleaseSweep = inngest.createFunction(
+  { id: "deal-auto-release-sweep", triggers: [{ cron: "*/15 * * * *" }] },
+  async () => releaseDueDeals()
+);
+
 /** Backstop: draw any ACTIVE lottery whose drawDate has passed. */
 export const lotterySweep = inngest.createFunction(
   { id: "lottery-sweep", triggers: [{ cron: "0 * * * *" }] }, // hourly
@@ -97,4 +117,6 @@ export const functions = [
   auctionSweep,
   lotteryDrawScheduled,
   lotterySweep,
+  dealAutoReleaseScheduled,
+  dealAutoReleaseSweep,
 ];

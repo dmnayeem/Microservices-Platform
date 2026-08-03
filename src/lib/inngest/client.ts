@@ -16,4 +16,6 @@ export const inngest = new Inngest({
 export const EVENTS = {
   AUCTION_CREATED: "marketplace/auction.created",
   LOTTERY_ACTIVATED: "lottery/activated",
+  DEAL_FUNDED: "marketplace/deal.funded",
+  DEAL_DELIVERED: "marketplace/deal.delivered",
 } as const;

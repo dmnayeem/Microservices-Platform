@@ -54,6 +54,8 @@ CREATE TABLE "MarketplaceDeal" (
     "assignedAdminId" TEXT,
     "heldAmount" DECIMAL(18,6) NOT NULL DEFAULT 0,
     "commissionBps" INTEGER,
+    "affiliateUserId" TEXT,
+    "affiliateAmount" DECIMAL(18,6) NOT NULL DEFAULT 0,
     "purchaseId" TEXT,
     "autoReleaseAt" TIMESTAMP(3),
     "deliveredAt" TIMESTAMP(3),

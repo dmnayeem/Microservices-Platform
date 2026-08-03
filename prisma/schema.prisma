@@ -1699,6 +1699,10 @@ model MarketplaceDeal {
   assignedAdminId String?
   heldAmount      Decimal               @default(0) @db.Decimal(18, 6)
   commissionBps   Int?
+  // Affiliate attribution captured at funding time (buyer's cookie); paid out of
+  // the seller's cut on release, mirroring the instant-checkout affiliate path.
+  affiliateUserId String?
+  affiliateAmount Decimal               @default(0) @db.Decimal(18, 6)
   purchaseId      String?
   autoReleaseAt   DateTime?
   deliveredAt     DateTime?
