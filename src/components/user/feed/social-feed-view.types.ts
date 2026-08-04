@@ -47,6 +47,8 @@ export interface FeedPost {
   commentsCount: number;
   sharesCount: number;
   viewsCount?: number;
+  linkClicksCount?: number;
+  uniqueLinkClicksCount?: number;
   pollOptions?: PollOption[] | null;
   pollEndsAt?: string | null;
   donationGoal?: number | null;

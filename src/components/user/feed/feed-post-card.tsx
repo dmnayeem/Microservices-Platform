@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Sparkles,
   BarChart3,
+  MousePointerClick,
   CheckCircle,
   X,
 } from "lucide-react";
@@ -421,12 +422,13 @@ export const FeedPostCard = memo(function FeedPostCard({
                   postBg.textClass
                 )}
               >
-                <RenderedContent content={post.content} />
+                <RenderedContent content={post.content} postId={post.id} />
               </p>
             </div>
           ) : (
             <ExpandableContent
               content={post.content}
+              postId={post.id}
               wrapperClassName="mt-3"
               pClassName="text-[15px] text-gray-200 leading-relaxed"
             />
@@ -441,7 +443,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             return <div className="mt-3"><InlineVideoEmbed url={url} /></div>;
           }
           if (post.linkPreview || url) {
-            return <LinkPreviewCard preview={post.linkPreview} contentUrl={url} />;
+            return <LinkPreviewCard preview={post.linkPreview} contentUrl={url} postId={post.id} />;
           }
           return null;
         })()}
@@ -576,14 +578,25 @@ export const FeedPostCard = memo(function FeedPostCard({
           </span>
         )}
         {post.isOwner && (
-          <button
-            onClick={() => setShowAnalytics((v) => !v)}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 ml-auto"
-            title="View analytics"
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span className="tabular-nums text-xs">{post.viewsCount ?? 0}</span>
-          </button>
+          <div className="ml-auto flex items-center gap-3">
+            {!!(post.linkPreview || firstUrlInText(post.content)) && (
+              <span
+                className="inline-flex items-center gap-1.5 text-sm text-amber-400"
+                title="Link clicks (total)"
+              >
+                <MousePointerClick className="w-4 h-4" />
+                <span className="tabular-nums text-xs">{post.linkClicksCount ?? 0}</span>
+              </span>
+            )}
+            <button
+              onClick={() => setShowAnalytics((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400"
+              title="View analytics"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="tabular-nums text-xs">{post.viewsCount ?? 0}</span>
+            </button>
+          </div>
         )}
       </div>
 

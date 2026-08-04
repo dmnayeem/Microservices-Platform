@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { trackLinkClick } from "@/lib/track-link-click";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RenderedContent — links URLs, @mentions, and #hashtags in post text
@@ -52,7 +53,14 @@ export function renderFormatted(text: string, keyPrefix: string): React.ReactNod
   return out;
 }
 
-export function RenderedContent({ content }: { content: string }) {
+export function RenderedContent({
+  content,
+  postId,
+}: {
+  content: string;
+  /** Post id — enables link-click tracking on inline URLs (feed post context). */
+  postId?: string;
+}) {
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -117,6 +125,7 @@ export function RenderedContent({ content }: { content: string }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer nofollow"
+          onClick={() => trackLinkClick(postId)}
           className="text-indigo-400 hover:text-indigo-300 hover:underline break-all"
         >
           {urlLabel(url)}

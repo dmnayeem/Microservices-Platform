@@ -12,10 +12,13 @@ import { RenderedContent } from "./feed-content";
  */
 export function ExpandableContent({
   content,
+  postId,
   pClassName,
   wrapperClassName,
 }: {
   content: string;
+  /** Post id — enables inline link-click tracking. */
+  postId?: string;
   /** Classes for the text paragraph. */
   pClassName?: string;
   /** Classes for the wrapper (e.g. margin). */
@@ -51,7 +54,7 @@ export function ExpandableContent({
         ref={ref}
         className={cn("whitespace-pre-wrap", pClassName, !expanded && "line-clamp-2")}
       >
-        <RenderedContent content={content} />
+        <RenderedContent content={content} postId={postId} />
       </p>
       {needsToggle && (
         <button

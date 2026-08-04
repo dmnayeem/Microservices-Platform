@@ -10,6 +10,8 @@ import {
   Coins,
   Loader2,
   Sparkles,
+  MousePointerClick,
+  Link2,
 } from "lucide-react";
 
 interface AnalyticsResp {
@@ -19,6 +21,8 @@ interface AnalyticsResp {
     likesCount: number;
     commentsCount: number;
     sharesCount: number;
+    linkClicksCount: number;
+    uniqueLinkClicksCount: number;
     donationsCount: number;
     donationsCollected: number;
     socialEarnings: number;
@@ -103,6 +107,21 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
           value={post.sharesCount}
         />
       </div>
+
+      {(post.linkClicksCount > 0 || post.uniqueLinkClicksCount > 0) && (
+        <div className="grid grid-cols-2 gap-2">
+          <Stat
+            icon={<MousePointerClick className="w-3.5 h-3.5 text-amber-400" />}
+            label="Link clicks"
+            value={post.linkClicksCount}
+          />
+          <Stat
+            icon={<Link2 className="w-3.5 h-3.5 text-amber-400" />}
+            label="Unique clicks"
+            value={post.uniqueLinkClicksCount}
+          />
+        </div>
+      )}
 
       {(post.donationsCount > 0 || post.donationsCollected > 0) && (
         <div className="rounded-lg bg-pink-500/10 border border-pink-500/20 px-3 py-2 text-xs text-pink-200 inline-flex items-center gap-2">

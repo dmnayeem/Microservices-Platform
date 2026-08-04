@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react";
 import { Link2, X } from "lucide-react";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { trackLinkClick } from "@/lib/track-link-click";
 import type { LinkPreviewData } from "./social-feed-view.types";
 
 /** Render a stored OpenGraph preview as a bordered card. When `onRemove` is
  *  given (composer), a × button lets the author drop the card before posting. */
 function Card({
   preview,
+  postId,
   onRemove,
 }: {
   preview: LinkPreviewData;
+  postId?: string;
   onRemove?: () => void;
 }) {
   return (
@@ -20,6 +23,7 @@ function Card({
         href={preview.url}
         target="_blank"
         rel="noopener noreferrer nofollow"
+        onClick={() => trackLinkClick(postId)}
         className="block overflow-hidden rounded-xl border border-gray-800 bg-gray-900/60 hover:border-gray-700 transition-colors"
       >
         {preview.image && (
@@ -75,11 +79,14 @@ function Card({
 export function LinkPreviewCard({
   preview,
   contentUrl,
+  postId,
   onRemove,
 }: {
   preview?: LinkPreviewData | null;
   /** First URL in the post content — used only for the lazy fallback. */
   contentUrl?: string | null;
+  /** Post id — enables link-click tracking (omit in the composer). */
+  postId?: string;
   /** When provided, shows a × to drop the card (composer use). */
   onRemove?: () => void;
 }) {
@@ -118,8 +125,8 @@ export function LinkPreviewCard({
     };
   }, [preview, contentUrl]);
 
-  if (preview) return <Card preview={preview} onRemove={onRemove} />;
-  if (lazy) return <Card preview={lazy} onRemove={onRemove} />;
+  if (preview) return <Card preview={preview} postId={postId} onRemove={onRemove} />;
+  if (lazy) return <Card preview={lazy} postId={postId} onRemove={onRemove} />;
   if (loading) {
     // Compact skeleton (no big image box) so a link that resolves to nothing
     // doesn't flash a large empty card before collapsing.

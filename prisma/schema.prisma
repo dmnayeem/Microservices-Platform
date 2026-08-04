@@ -971,6 +971,7 @@ model User {
   displayFollowingBoost Int       @default(0)
   displayPostsBoost     Int       @default(0)
   postViews          PostView[]
+  postLinkClicks     PostLinkClick[]
   postShares         PostShare[]
   socialActions      SocialActionLog[]
   boardClaims        BoardClaim[]
@@ -2340,6 +2341,10 @@ model Post {
   commentsCount Int     @default(0)
   sharesCount Int       @default(0)
   viewsCount  Int       @default(0)
+  // Link-click report (owner-only): total clicks (spam-guarded by a short
+  // cooldown) and distinct clickers (one per user, via PostLinkClick).
+  linkClicksCount Int   @default(0)
+  uniqueLinkClicksCount Int @default(0)
   socialEarnings Int    @default(0)
   pollOptions Json?     // [{ id, label, voteCount }]
   pollEndsAt  DateTime?
@@ -2360,6 +2365,7 @@ model Post {
   votes       Vote[]
   donations   Donation[]
   views       PostView[]
+  linkClicks  PostLinkClick[]
   shares      PostShare[]
   mentions    Mention[]
   adPromotions Ad[]     @relation("PostAds")
@@ -2429,6 +2435,21 @@ model PostView {
   @@index([postId])
   @@index([userId])
   @@index([viewedAt])
+}
+
+// One row per distinct user who clicked a link in a post — powers the "unique
+// clicks" metric (total clicks are the counter on Post). Mirrors PostView.
+model PostLinkClick {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clickedAt DateTime @default(now())
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@index([clickedAt])
 }
 
 model Mention {
