@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can, canAny } from "@/lib/permissions";
+import { taskCreatePermFor, TASK_CREATE_PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { validateCustomConfig, type CustomConfig } from "@/lib/custom-tasks";
 import {
   validateAppInstallConfig,
@@ -22,8 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.create")) {
+    // Coarse gate: must be able to create at least one task type.
+    if (
+      !(await canAny(session.user.id, ["tasks.create", ...TASK_CREATE_PERMISSIONS]))
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -77,6 +80,17 @@ export async function POST(request: NextRequest) {
     const validTypes = ["VIDEO", "ARTICLE", "QUIZ", "SURVEY", "SOCIAL", "PROXY", "OFFERWALL", "CUSTOM", "APPINSTALL"];
     if (!validTypes.includes(type)) {
       return NextResponse.json({ error: "Invalid task type" }, { status: 400 });
+    }
+
+    // Per-type creation gate: the umbrella `tasks.create` OR this type's permission.
+    if (
+      !(await can(session.user.id, "tasks.create")) &&
+      !(await can(session.user.id, taskCreatePermFor(type)))
+    ) {
+      return NextResponse.json(
+        { error: `You don't have permission to create ${type} tasks` },
+        { status: 403 }
+      );
     }
 
     // Validate APPINSTALL task config
@@ -237,8 +251,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.view")) {
+    if (!(await can(session.user.id, "tasks.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

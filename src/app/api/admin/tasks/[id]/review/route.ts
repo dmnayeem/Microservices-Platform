@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { notifyUser } from "@/lib/notify";
 import { getPointsPerUsd } from "@/lib/economy";
 import { TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma/client";
@@ -14,8 +14,7 @@ interface RouteParams {
 // (PENDING_REVIEW) task. Rejecting refunds the creator's remaining budget.
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "tasks.create")) {
+  if (!session?.user || !(await can(session.user.id, "tasks.create"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { getUserAnalytics } from "@/lib/profile-analytics";
 
 // GET /api/admin/users/[id]/analytics
@@ -14,8 +14,7 @@ export async function GET(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const role = session.user.role as UserRole | undefined;
-    if (!hasPermission(role, "users.view")) {
+    if (!(await can(session.user.id, "users.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

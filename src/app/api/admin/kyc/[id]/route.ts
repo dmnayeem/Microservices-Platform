@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { deliverToUser } from "@/lib/notify";
 import { z } from "zod";
 
@@ -23,7 +23,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
     const { id } = await params;
     const body = await request.json();
     const validation = reviewSchema.safeParse(body);
@@ -35,10 +34,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     const { action, rejectionReason, decisionNote } = validation.data;
 
-    if (action === "approve" && !hasPermission(adminRole, "kyc.approve")) {
+    if (action === "approve" && !(await can(session.user.id, "kyc.approve"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    if (action !== "approve" && !hasPermission(adminRole, "kyc.reject")) {
+    if (action !== "approve" && !(await can(session.user.id, "kyc.reject"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (action === "reject" && !rejectionReason?.trim()) {

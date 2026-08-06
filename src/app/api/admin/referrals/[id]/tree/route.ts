@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 
 const MAX_DEPTH = 10;
 
@@ -29,8 +29,7 @@ export async function GET(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "referrals.view")) {
+  if (!(await can(session.user.id, "referrals.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

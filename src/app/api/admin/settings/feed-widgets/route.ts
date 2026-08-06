@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import { normalizeWidgetConfig } from "@/lib/feed-widgets";
 import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
@@ -47,7 +47,7 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!hasPermission(session.user.role as UserRole | undefined, "settings.view")) {
+  if (!(await can(session.user.id, "settings.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const rows = await prisma.systemSetting.findMany({
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!hasPermission(session.user.role as UserRole | undefined, "settings.edit")) {
+  if (!(await can(session.user.id, "settings.edit"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

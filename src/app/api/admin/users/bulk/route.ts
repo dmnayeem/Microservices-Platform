@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { sendNotificationEmail, isSmtpConfigured } from "@/lib/email";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
     const adminId = session.user.id;
 
     const body = await request.json();
@@ -45,14 +44,14 @@ export async function POST(request: NextRequest) {
 
     // Permission check per action
     if (action === "ban" || action === "unban") {
-      if (!hasPermission(adminRole, "users.ban")) {
+      if (!(await can(session.user.id, "users.ban"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     } else if (action === "delete") {
-      if (!hasPermission(adminRole, "users.delete")) {
+      if (!(await can(session.user.id, "users.delete"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-    } else if (!hasPermission(adminRole, "users.edit")) {
+    } else if (!(await can(session.user.id, "users.edit"))) {
       // sendEmail / adjustPoints / changeTier
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

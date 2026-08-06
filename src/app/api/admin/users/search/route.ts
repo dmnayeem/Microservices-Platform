@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.view")) {
+    if (!(await can(session.user.id, "users.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

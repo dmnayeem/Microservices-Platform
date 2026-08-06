@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import {
   getCommissionConfig,
   saveCommissionConfig,
@@ -15,8 +15,7 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const role = session.user.role as UserRole | undefined;
-    if (!hasPermission(role, "marketplace.view")) {
+    if (!(await can(session.user.id, "marketplace.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const config = await getCommissionConfig();
@@ -43,8 +42,7 @@ export async function PATCH(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const role = session.user.role as UserRole | undefined;
-    if (!hasPermission(role, "marketplace.manage")) {
+    if (!(await can(session.user.id, "marketplace.manage"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const body = await request.json();

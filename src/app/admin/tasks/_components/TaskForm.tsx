@@ -72,6 +72,8 @@ const countries = [
 ];
 
 interface TaskFormProps {
+  /** Task types the current admin may create. Omitted = all (e.g. editing). */
+  allowedTypes?: string[];
   task?: {
     id: string;
     title: string;
@@ -119,8 +121,13 @@ interface QuizQuestion {
   explanation: string;
 }
 
-export function TaskForm({ task }: TaskFormProps) {
+export function TaskForm({ task, allowedTypes }: TaskFormProps) {
   const router = useRouter();
+  // When creating, restrict the type picker to types the admin may create.
+  const visibleTaskTypes =
+    allowedTypes && !task
+      ? taskTypes.filter((t) => allowedTypes.includes(t.id))
+      : taskTypes;
   // After the in-place save creates a brand-new task, we hold its id
   // here so subsequent saves PATCH the right row instead of POSTing
   // duplicates. Also surfaces the id to child components (the article
@@ -523,7 +530,7 @@ export function TaskForm({ task }: TaskFormProps) {
       <div className="space-y-6">
         <h2 className="text-lg font-semibold text-white">Select Task Type</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {taskTypes.map((type) => {
+          {visibleTaskTypes.map((type) => {
             const Icon = type.icon;
             return (
               <button

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { grantAdCredits } from "@/lib/ad-credits";
 import { z } from "zod";
 
@@ -15,8 +15,7 @@ const schema = z.object({
 // POST /api/admin/ads/credits — grant (or adjust, if negative) a user's ad credit.
 export async function POST(request: NextRequest) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "ads.manage")) {
+  if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const v = schema.safeParse(await request.json().catch(() => ({})));

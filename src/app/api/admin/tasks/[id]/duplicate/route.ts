@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma";
 
 // POST /api/admin/tasks/[id]/duplicate - Duplicate a task
@@ -16,8 +16,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.create")) {
+    if (!(await can(session.user.id, "tasks.create"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

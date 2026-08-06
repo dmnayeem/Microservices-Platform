@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 
 interface RouteParams {
@@ -14,8 +14,7 @@ const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "ads.manage")) {
+  if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
@@ -64,8 +63,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "ads.manage")) {
+  if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;

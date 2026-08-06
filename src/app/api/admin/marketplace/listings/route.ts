@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import {
   validateDetails,
@@ -70,8 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "marketplace.manage")) {
+    if (!(await can(session.user.id, "marketplace.manage"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

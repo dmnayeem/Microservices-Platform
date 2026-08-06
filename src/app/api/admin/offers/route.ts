@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ensureUniqueOfferSlug } from "@/lib/offers-server";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "offers.view"))
+  if (!(await can(session.user.id, "offers.view")))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const offers = await prisma.offer.findMany({
@@ -29,8 +28,7 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "offers.manage"))
+  if (!(await can(session.user.id, "offers.manage")))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));

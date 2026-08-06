@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   type SurveyConfig,
   type SurveyAnswers,
@@ -39,8 +39,7 @@ export async function GET(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "submissions.view")) {
+  if (!(await can(session.user.id, "submissions.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { getEffectivePermissions } from "@/lib/permissions";
+import { TASK_TYPES, taskCreatePermFor } from "@/lib/rbac";
 import { TaskForm } from "../_components/TaskForm";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -8,12 +9,16 @@ import Link from "next/link";
 export default async function CreateTaskPage() {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "tasks.create")) {
+  // Effective per-type create permissions (config + per-user override aware).
+  const perms = await getEffectivePermissions(session.user.id);
+  const allowedTypes = TASK_TYPES.filter(
+    (t) => perms.has("tasks.create") || perms.has(taskCreatePermFor(t))
+  );
+  if (allowedTypes.length === 0) {
     redirect("/admin/tasks");
   }
 
@@ -34,7 +39,7 @@ export default async function CreateTaskPage() {
       </div>
 
       {/* Form */}
-      <TaskForm />
+      <TaskForm allowedTypes={allowedTypes as unknown as string[]} />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const PLAN_INPUT = z
@@ -92,8 +92,7 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "packages.view")) {
+  if (!(await can(session.user.id, "packages.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -122,8 +121,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "packages.edit")) {
+  if (!(await can(session.user.id, "packages.edit"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

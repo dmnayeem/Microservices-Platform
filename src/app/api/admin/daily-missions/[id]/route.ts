@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { tierToAccessLevel } from "@/lib/missions";
 import { z } from "zod";
 
@@ -55,8 +55,7 @@ export async function GET(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "missions.view")) {
+  if (!(await can(session.user.id, "missions.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
@@ -78,8 +77,7 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "missions.manage")) {
+  if (!(await can(session.user.id, "missions.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
@@ -152,8 +150,7 @@ export async function DELETE(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "missions.manage")) {
+  if (!(await can(session.user.id, "missions.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;

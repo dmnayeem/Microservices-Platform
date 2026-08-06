@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 // Admin roles that can access /admin routes
@@ -12,6 +13,7 @@ const ADMIN_ROLES = [
   "SUPPORT_ADMIN",
   "MARKETING_ADMIN",
   "MODERATOR",
+  "AD_MANAGER",
 ] as const;
 
 // Reserved: schema for credentials validation when `authorize` is wired up.
@@ -58,9 +60,18 @@ export const authConfig: NextAuthConfig = {
     newUser: "/social",
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const { nextUrl } = request;
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
+
+      // Pass-through response that forwards the current pathname to server
+      // components (the admin layout reads `x-pathname` for its central guard).
+      const allow = () => {
+        const headers = new Headers(request.headers);
+        headers.set("x-pathname", pathname);
+        return NextResponse.next({ request: { headers } });
+      };
 
       // Public routes that don't require authentication
       const publicRoutes = [
@@ -95,7 +106,7 @@ export const authConfig: NextAuthConfig = {
 
       // Allow public routes and API routes
       if (isPublicRoute || isPublicApiRoute) {
-        return true;
+        return allow();
       }
 
       // Require authentication for protected routes
@@ -112,7 +123,7 @@ export const authConfig: NextAuthConfig = {
         }
       }
 
-      return true;
+      return allow();
     },
     async jwt({ token, user, trigger, session }) {
       if (user) {

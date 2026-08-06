@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { NotificationType } from "@/generated/prisma";
 import { defaultPackage } from "@/lib/packages";
 import { toNum } from "@/lib/money";
@@ -19,8 +19,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "packages.view")) {
+    if (!(await can(session.user.id, "packages.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -96,8 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "packages.edit")) {
+    if (!(await can(session.user.id, "packages.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -270,8 +268,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "packages.edit")) {
+    if (!(await can(session.user.id, "packages.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

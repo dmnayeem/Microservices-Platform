@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
@@ -20,8 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "submissions.view")) {
+    if (!(await can(session.user.id, "submissions.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -66,7 +65,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
 
     const { id } = await params;
     const body = await request.json();
@@ -109,7 +107,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     if (normalized === "approved") {
-      if (!hasPermission(adminRole, "submissions.approve")) {
+      if (!(await can(session.user.id, "submissions.approve"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
@@ -300,7 +298,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             : "All actions rejected — no points awarded",
       });
     } else if (normalized === "rejected") {
-      if (!hasPermission(adminRole, "submissions.reject")) {
+      if (!(await can(session.user.id, "submissions.reject"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
@@ -350,7 +348,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       });
     } else {
       // revision_requested
-      if (!hasPermission(adminRole, "submissions.reject")) {
+      if (!(await can(session.user.id, "submissions.reject"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { DisputeStatus, NotificationType, TransactionType, TransactionStatus } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum, toNumOrNull } from "@/lib/money";
@@ -20,8 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "marketplace.disputes")) {
+    if (!(await can(session.user.id, "marketplace.disputes"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -162,8 +161,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "marketplace.disputes")) {
+    if (!(await can(session.user.id, "marketplace.disputes"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -472,8 +470,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "marketplace.disputes")) {
+    if (!(await can(session.user.id, "marketplace.disputes"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

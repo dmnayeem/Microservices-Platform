@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { toNum } from "@/lib/money";
 
 // GET /api/admin/ads/report?days=N — per-ad / per-placement / per-campaign
@@ -17,8 +17,7 @@ const EMPTY: Agg = { impressions: 0, clicks: 0, spend: 0 };
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "ads.view")) {
+  if (!session?.user || !(await can(session.user.id, "ads.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

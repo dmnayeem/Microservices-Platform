@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { generateQuizQuestions, isGeminiConfigured } from "@/lib/gemini";
 import { z } from "zod";
 
@@ -17,8 +17,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "ai.manage") && !hasPermission(adminRole, "quizzes.manage")) {
+    if (!(await can(session.user.id, "ai.manage")) && !(await can(session.user.id, "quizzes.manage"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

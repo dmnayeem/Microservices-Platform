@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,8 +11,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "banners.manage")) {
+  if (!(await can(session.user.id, "banners.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
@@ -50,8 +49,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "banners.manage")) {
+  if (!(await can(session.user.id, "banners.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;

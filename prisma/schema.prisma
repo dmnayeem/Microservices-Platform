@@ -17,6 +17,10 @@ enum UserRole {
   SUPPORT_ADMIN
   MARKETING_ADMIN
   MODERATOR
+  // Advertiser/agency console (user-side, not an admin-panel role).
+  AGENCY
+  // Ad Manager admin — scoped to the Ads Manager surface.
+  AD_MANAGER
 }
 
 enum UserStatus {
@@ -880,6 +884,7 @@ model User {
   kycApprovedAt     DateTime?
   kycPromptedAt     DateTime?   // set once when we nudge a completed-profile user to do KYC
   featureOverrides  Json?       // per-user feature grants/denials { [featureKey]: boolean } overriding the package
+  permissionOverrides Json?     // per-user RBAC permission grants/denials { [permission]: boolean } on top of the role
   isBlueVerified    Boolean     @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   TransactionType,
   TransactionStatus,
@@ -195,8 +195,7 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "leaderboards.manage")) {
+  if (!(await can(session.user.id, "leaderboards.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

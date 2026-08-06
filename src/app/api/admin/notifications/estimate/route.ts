@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -17,8 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "notifications.send")) {
+    if (!(await can(session.user.id, "notifications.send"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

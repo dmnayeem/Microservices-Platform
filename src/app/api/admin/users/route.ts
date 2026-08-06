@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
@@ -30,6 +31,8 @@ const createUserSchema = z.object({
       "SUPPORT_ADMIN",
       "MARKETING_ADMIN",
       "MODERATOR",
+      "AGENCY",
+      "AD_MANAGER",
     ])
     .default("USER"),
   status: z.enum(["ACTIVE", "PENDING_VERIFICATION"]).default("ACTIVE"),
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.edit")) {
+    if (!(await can(session.user.id, "users.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

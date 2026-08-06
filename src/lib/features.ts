@@ -103,6 +103,18 @@ export const FEATURES: {
   { key: "appInstall", label: "App Install Tasks", group: "task" },
 ];
 
+/**
+ * Features auto-granted by a user's ROLE, on top of their package + overrides.
+ * The AGENCY role is a user-side advertiser/agency console, so it always unlocks
+ * the advertiser + agency-mode + create-tasks capabilities regardless of plan.
+ * (Type-only import of UserRole — no runtime coupling to rbac.ts.)
+ */
+export const ROLE_FEATURES: Partial<
+  Record<import("@/lib/rbac").UserRole, PackageFeatureKey[]>
+> = {
+  AGENCY: ["advertiser", "agencyMode", "createTasks"],
+};
+
 /** Sparse per-user grants/denials that override the package value. */
 export type FeatureOverrides = Partial<Record<PackageFeatureKey, boolean>>;
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const schema = z.object({
@@ -24,8 +24,7 @@ const schema = z.object({
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "banners.view")) {
+  if (!(await can(session.user.id, "banners.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const banners = await prisma.banner.findMany({
@@ -38,8 +37,7 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "banners.manage")) {
+  if (!(await can(session.user.id, "banners.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();

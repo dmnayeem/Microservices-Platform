@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import nodemailer from "nodemailer";
 
 export async function POST() {
@@ -8,7 +8,7 @@ export async function POST() {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!hasPermission(session.user.role as UserRole | undefined, "settings.edit")) {
+  if (!(await can(session.user.id, "settings.edit"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

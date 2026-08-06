@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
 
@@ -31,8 +31,7 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "campaigns.manage")) {
+  if (!(await can(session.user.id, "campaigns.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();

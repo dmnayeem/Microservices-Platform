@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const questionSchema = z.object({
@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "quizzes.view")) {
+    if (!(await can(session.user.id, "quizzes.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -81,8 +80,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "quizzes.manage")) {
+    if (!(await can(session.user.id, "quizzes.manage"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

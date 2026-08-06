@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { notifyUser } from "@/lib/notify";
 import { NotificationType } from "@/generated/prisma/client";
 
@@ -13,8 +13,7 @@ interface RouteParams {
 // so it starts serving, and notify the advertiser.
 export async function POST(_request: NextRequest, { params }: RouteParams) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "ads.manage")) {
+  if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;

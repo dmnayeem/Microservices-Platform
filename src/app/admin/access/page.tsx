@@ -17,13 +17,16 @@ import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import {
   hasPermission,
+  isSuperAdmin,
   type UserRole,
   ADMIN_ROLES,
   ROLE_CONFIG,
   ROLE_PERMISSIONS,
+  TASK_CREATE_PERMISSIONS,
 } from "@/lib/rbac";
+import { getRolePermissionConfig } from "@/lib/permissions";
 import { AdminTable } from "@/components/admin/ui/admin-table";
-import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
+import { RolePermissionEditor } from "@/components/admin/access/role-permission-editor";
 
 interface PageProps {
   searchParams: Promise<{
@@ -167,6 +170,9 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
   const skip = (page - 1) * pageSize;
   const roleFilter = params.role || "";
   const searchQuery = params.search || "";
+
+  // Saved role→permission overrides (for the editable Roles & Permissions tab).
+  const savedRolePerms = view === "roles" ? await getRolePermissionConfig() : {};
 
   // Activity log fetch (only for activity tab)
   const activityLogs =
@@ -435,74 +441,37 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {/* ROLES & PERMISSIONS TAB */}
-      {view === "roles" && (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 overflow-x-auto">
-          <h2 className="text-lg font-semibold text-white mb-1">
-            Permission Matrix
-          </h2>
-          <p className="text-sm text-slate-400 mb-4">
-            Cells with ✓ mean the role has that permission. Edit code-level
-            permissions in <code className="text-slate-300">src/lib/rbac.ts</code>.
-          </p>
-
-          {PERMISSION_CATEGORIES.map((cat) => (
-            <div key={cat.label} className="mb-6">
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">
-                {cat.label}
-              </p>
-              <AdminTableShell className="rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-800/50">
-                    <tr>
-                      <th className="text-left py-2 px-3 text-slate-400 font-medium">
-                        Permission
-                      </th>
-                      {ADMIN_ROLES.filter((r) => r !== "USER").map((r) => {
-                        const c = ROLE_CONFIG[r];
-                        return (
-                          <th
-                            key={r}
-                            className={`px-2 py-2 text-center text-xs ${c.color}`}
-                          >
-                            {c.label.replace(" Admin", "")}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {cat.permissions.map((perm) => (
-                      <tr key={perm} className="hover:bg-slate-800/40">
-                        <td className="py-2 px-3 font-mono text-xs text-slate-300">
-                          {perm}
-                        </td>
-                        {ADMIN_ROLES.filter((r) => r !== "USER").map((r) => {
-                          const has = ROLE_PERMISSIONS[r].includes(
-                            perm as never
-                          );
-                          return (
-                            <td
-                              key={r}
-                              className="px-2 py-2 text-center"
-                            >
-                              {has ? (
-                                <Check className="w-4 h-4 text-emerald-400 inline" />
-                              ) : (
-                                <span className="text-slate-700">—</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </AdminTableShell>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ROLES & PERMISSIONS TAB — super-admin editable (module toggles + advanced) */}
+      {view === "roles" &&
+        (() => {
+          // Editable roles = admin roles minus SUPER_ADMIN (always full).
+          const editableRoles = ADMIN_ROLES.filter(
+            (r) => r !== "SUPER_ADMIN"
+          ).map((r) => ({
+            role: r,
+            label: ROLE_CONFIG[r].label,
+            color: ROLE_CONFIG[r].color,
+            bgColor: ROLE_CONFIG[r].bgColor,
+          }));
+          const defaults = Object.fromEntries(
+            editableRoles.map((r) => [r.role, ROLE_PERMISSIONS[r.role as UserRole]])
+          );
+          // Fold the per-task-type create permissions into "Content & Earning".
+          const editorCategories = PERMISSION_CATEGORIES.map((c) =>
+            c.label === "Content & Earning"
+              ? { ...c, permissions: [...c.permissions, ...TASK_CREATE_PERMISSIONS] }
+              : c
+          );
+          return (
+            <RolePermissionEditor
+              editableRoles={editableRoles}
+              categories={editorCategories}
+              defaults={defaults as Record<string, string[]>}
+              config={savedRolePerms as Record<string, string[]>}
+              canManage={isSuperAdmin(adminRole)}
+            />
+          );
+        })()}
 
       {/* ADMINS TAB */}
       {view === "admins" && (

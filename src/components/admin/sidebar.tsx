@@ -65,6 +65,9 @@ interface AdminSidebarProps {
     image?: string | null;
     role?: string;
   };
+  // Server-resolved, effective (config + per-user override aware) nav modules.
+  // Falls back to role-default modules when not provided.
+  modules?: ReturnType<typeof getGroupedModules>;
 }
 
 // Icon mapping for dynamic rendering
@@ -283,7 +286,7 @@ function AdminSidebarContent({
   );
 }
 
-export function AdminSidebar({ user }: AdminSidebarProps) {
+export function AdminSidebar({ user, modules }: AdminSidebarProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const collapsed = useAdminUI((s) => s.sidebarCollapsed);
@@ -297,7 +300,9 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   }, []);
 
   const userRole = user.role as UserRole | undefined;
-  const groupedModules = getGroupedModules(userRole);
+  // Prefer the effective modules resolved on the server; fall back to role
+  // defaults for safety if the prop wasn't supplied.
+  const groupedModules = modules ?? getGroupedModules(userRole);
   const roleConfig = userRole ? ROLE_CONFIG[userRole] : ROLE_CONFIG.USER;
 
   const handleSignOut = () => {

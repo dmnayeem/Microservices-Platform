@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { z } from "zod";
 import {
   releaseDeal,
@@ -24,8 +24,7 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "marketplace.mediate")) {
+  if (!(await can(session.user.id, "marketplace.mediate"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

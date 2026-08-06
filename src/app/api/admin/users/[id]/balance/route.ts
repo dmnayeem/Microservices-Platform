@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { lt } from "@/lib/money";
 import { z } from "zod";
 
@@ -24,8 +24,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.adjust_balance")) {
+    if (!(await can(session.user.id, "users.adjust_balance"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

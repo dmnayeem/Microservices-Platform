@@ -11,9 +11,14 @@ export type UserRole =
   | "CONTENT_ADMIN"
   | "SUPPORT_ADMIN"
   | "MARKETING_ADMIN"
-  | "MODERATOR";
+  | "MODERATOR"
+  // Advertiser/agency console — a user-side role (NOT in the admin panel).
+  | "AGENCY"
+  // Ad Manager admin — scoped to the Ads Manager surface.
+  | "AD_MANAGER";
 
-// Admin roles that have access to admin panel
+// Admin roles that have access to admin panel.
+// AGENCY is intentionally excluded — it is a user-side advertiser console.
 export const ADMIN_ROLES: UserRole[] = [
   "SUPER_ADMIN",
   "FINANCE_ADMIN",
@@ -21,6 +26,7 @@ export const ADMIN_ROLES: UserRole[] = [
   "SUPPORT_ADMIN",
   "MARKETING_ADMIN",
   "MODERATOR",
+  "AD_MANAGER",
 ];
 
 // String array version for client components
@@ -31,6 +37,7 @@ export const ADMIN_ROLE_STRINGS = [
   "SUPPORT_ADMIN",
   "MARKETING_ADMIN",
   "MODERATOR",
+  "AD_MANAGER",
 ] as const;
 
 // Sidebar category groups
@@ -68,9 +75,19 @@ export type Permission =
   | "kyc.reject"
   // Tasks & Boards
   | "tasks.view"
-  | "tasks.create"
+  | "tasks.create" // umbrella (legacy): grants creating any type when held
   | "tasks.edit"
   | "tasks.delete"
+  // Per-task-type creation gating (checked by the admin create API)
+  | "tasks.create.video"
+  | "tasks.create.article"
+  | "tasks.create.quiz"
+  | "tasks.create.survey"
+  | "tasks.create.social"
+  | "tasks.create.proxy"
+  | "tasks.create.offerwall"
+  | "tasks.create.custom"
+  | "tasks.create.appinstall"
   | "boards.view"
   | "boards.manage"
   // Submissions
@@ -166,6 +183,30 @@ export type Permission =
   | "media.view"
   | "media.manage";
 
+// ── Per-task-type creation permissions ──
+// Mirrors the TaskType enum in schema.prisma. `taskCreatePermFor(type)` maps a
+// task type to its create permission; the admin create API checks it per type.
+export const TASK_TYPES = [
+  "VIDEO",
+  "ARTICLE",
+  "QUIZ",
+  "SURVEY",
+  "SOCIAL",
+  "PROXY",
+  "OFFERWALL",
+  "CUSTOM",
+  "APPINSTALL",
+] as const;
+export type TaskTypeName = (typeof TASK_TYPES)[number];
+
+export function taskCreatePermFor(type: string): Permission {
+  return `tasks.create.${type.toLowerCase()}` as Permission;
+}
+
+/** Every per-type create permission (stable order = TASK_TYPES). */
+export const TASK_CREATE_PERMISSIONS: Permission[] =
+  TASK_TYPES.map(taskCreatePermFor);
+
 // Permission matrix based on admin_oo.md / PROTOTYPE_ADMIN.md
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   USER: [], // No admin permissions
@@ -185,6 +226,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "users.view", "users.edit", "users.ban", "users.delete", "users.adjust_balance", "users.impersonate",
     "kyc.view", "kyc.approve", "kyc.reject",
     "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
+    ...TASK_CREATE_PERMISSIONS,
     "boards.view", "boards.manage",
     "submissions.view", "submissions.approve", "submissions.reject",
     "leaderboards.view", "leaderboards.manage",
@@ -233,6 +275,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "dashboard.view",
     "users.view",
     "tasks.view", "tasks.create", "tasks.edit",
+    // All types except app-install by default.
+    "tasks.create.video", "tasks.create.article", "tasks.create.quiz",
+    "tasks.create.survey", "tasks.create.social", "tasks.create.proxy",
+    "tasks.create.offerwall", "tasks.create.custom",
     "boards.view", "boards.manage",
     "submissions.view", "submissions.approve", "submissions.reject",
     "courses.view", "courses.manage", "courses.approve",
@@ -280,7 +326,121 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "submissions.view", "submissions.approve", "submissions.reject",
     "moderation.view", "moderation.manage", "social.moderate",
   ],
+
+  // User-side advertiser/agency console — no admin-panel permissions.
+  // Its capabilities come from the feature flags granted by ROLE_FEATURES
+  // (advertiser / agencyMode / createTasks), not from admin permissions.
+  AGENCY: [],
+
+  // Ad Manager admin — scoped to the Ads Manager surface + its analytics.
+  AD_MANAGER: [
+    "dashboard.view",
+    "ads.view", "ads.manage",
+    "analytics.view",
+  ],
 };
+
+// Runtime list of every known permission. Derived from the role matrix — since
+// SUPER_ADMIN holds every permission, this stays complete automatically. Used to
+// validate stored config/overrides and to render the config + per-user UIs.
+export const ALL_PERMISSIONS: Permission[] = Array.from(
+  new Set(Object.values(ROLE_PERMISSIONS).flat())
+);
+const ALL_PERMISSION_SET = new Set<Permission>(ALL_PERMISSIONS);
+
+/** Type guard: is an arbitrary string a known Permission? */
+export function isPermission(v: unknown): v is Permission {
+  return typeof v === "string" && ALL_PERMISSION_SET.has(v as Permission);
+}
+
+/** Sparse per-user permission grants/denials (true = grant, false = deny). */
+export type PermissionOverrides = Partial<Record<Permission, boolean>>;
+
+/** Safely read a stored `permissionOverrides` JSON into a typed sparse map. */
+export function parsePermissionOverrides(v: unknown): PermissionOverrides {
+  if (!v || typeof v !== "object") return {};
+  const src = v as Record<string, unknown>;
+  const out: PermissionOverrides = {};
+  for (const k of Object.keys(src)) {
+    if (isPermission(k) && typeof src[k] === "boolean") {
+      out[k] = src[k] as boolean;
+    }
+  }
+  return out;
+}
+
+// Grouped permission catalog for admin UIs (role editor + per-user overrides).
+// Client-safe (no server imports). Keep labels human-friendly.
+export const PERMISSION_CATALOG: Array<{ label: string; permissions: Permission[] }> = [
+  {
+    label: "Users & KYC",
+    permissions: [
+      "users.view", "users.edit", "users.ban", "users.delete",
+      "users.adjust_balance", "users.impersonate",
+      "kyc.view", "kyc.approve", "kyc.reject",
+    ],
+  },
+  {
+    label: "Content & Earning",
+    permissions: [
+      "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
+      ...TASK_CREATE_PERMISSIONS,
+      "submissions.view", "submissions.approve", "submissions.reject",
+      "boards.view", "boards.manage",
+      "courses.view", "courses.manage", "courses.approve",
+      "quizzes.view", "quizzes.manage",
+      "missions.view", "missions.manage",
+      "lottery.view", "lottery.manage",
+      "leaderboards.view", "leaderboards.manage",
+    ],
+  },
+  {
+    label: "Finance",
+    permissions: [
+      "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
+      "payment_methods.view", "payment_methods.manage",
+      "packages.view", "packages.edit",
+      "referrals.view", "referrals.configure",
+    ],
+  },
+  {
+    label: "Marketplace & Social",
+    permissions: [
+      "marketplace.view", "marketplace.manage", "marketplace.disputes", "marketplace.mediate",
+      "social.moderate", "social.post", "social.promote",
+      "moderation.view", "moderation.manage",
+    ],
+  },
+  {
+    label: "Marketing & Ads",
+    permissions: [
+      "campaigns.view", "campaigns.manage",
+      "notifications.view", "notifications.send",
+      "banners.view", "banners.manage",
+      "ads.view", "ads.manage",
+      "games.view", "games.manage",
+      "offers.view", "offers.manage",
+      "landing.view", "landing.edit",
+      "ticker.view", "ticker.edit",
+    ],
+  },
+  {
+    label: "System & Security",
+    permissions: [
+      "dashboard.view",
+      "analytics.view", "analytics.export",
+      "ai.view", "ai.manage",
+      "settings.view", "settings.edit",
+      "admins.view", "admins.manage",
+      "logs.view",
+      "fraud.view", "fraud.manage",
+      "proxy.view", "proxy.manage",
+      "offerwalls.view", "offerwalls.manage",
+      "media.view", "media.manage",
+      "tutor.applications.review",
+    ],
+  },
+];
 
 // Check if a role has a specific permission
 export function hasPermission(role: UserRole | undefined, permission: Permission): boolean {
@@ -650,34 +810,66 @@ export const ADMIN_MODULES: AdminModule[] = [
   },
 ];
 
-// Get modules accessible by a role
-export function getAccessibleModules(role: UserRole | undefined): AdminModule[] {
-  if (!role) return [];
+// The role's code-default permission set. For runtime-configured or per-user
+// resolution, use getEffectivePermissions() from src/lib/permissions.ts and the
+// *ForPerms variants below.
+export function roleDefaultPermSet(role: UserRole | undefined): Set<Permission> {
+  return new Set(role ? ROLE_PERMISSIONS[role] ?? [] : []);
+}
+
+const CATEGORY_ORDER: ModuleCategory[] = [
+  "CORE",
+  "FINANCE",
+  "PLATFORM",
+  "SECURITY",
+  "MARKETING",
+  "SYSTEM",
+];
+
+// Modules accessible given an explicit permission set (config/override-aware).
+export function getAccessibleModulesForPerms(
+  perms: Set<Permission>
+): AdminModule[] {
   return ADMIN_MODULES.filter((module) =>
-    module.permissions.some((p) => hasPermission(role, p))
+    module.permissions.some((p) => perms.has(p))
   );
 }
 
-// Get modules grouped by category, filtered by role
+// Modules grouped by category given an explicit permission set.
+export function getGroupedModulesForPerms(
+  perms: Set<Permission>
+): Array<{ category: ModuleCategory; label: string; modules: AdminModule[] }> {
+  const accessible = getAccessibleModulesForPerms(perms);
+  return CATEGORY_ORDER.map((category) => ({
+    category,
+    label: CATEGORY_LABELS[category],
+    modules: accessible.filter((m) => m.category === category),
+  })).filter((g) => g.modules.length > 0);
+}
+
+// The admin module that owns a given pathname (longest matching href wins, so
+// /admin/marketplace/deals resolves to Deals, not Marketplace). Returns null
+// when no module claims the path. Used by the central route guard.
+export function moduleForPath(pathname: string): AdminModule | null {
+  let best: AdminModule | null = null;
+  for (const m of ADMIN_MODULES) {
+    if (pathname === m.href || pathname.startsWith(m.href + "/")) {
+      if (!best || m.href.length > best.href.length) best = m;
+    }
+  }
+  return best;
+}
+
+// Role-based convenience wrappers (code defaults only — client-safe).
+export function getAccessibleModules(role: UserRole | undefined): AdminModule[] {
+  if (!role) return [];
+  return getAccessibleModulesForPerms(roleDefaultPermSet(role));
+}
+
 export function getGroupedModules(
   role: UserRole | undefined
 ): Array<{ category: ModuleCategory; label: string; modules: AdminModule[] }> {
-  const accessible = getAccessibleModules(role);
-  const order: ModuleCategory[] = [
-    "CORE",
-    "FINANCE",
-    "PLATFORM",
-    "SECURITY",
-    "MARKETING",
-    "SYSTEM",
-  ];
-  return order
-    .map((category) => ({
-      category,
-      label: CATEGORY_LABELS[category],
-      modules: accessible.filter((m) => m.category === category),
-    }))
-    .filter((g) => g.modules.length > 0);
+  return getGroupedModulesForPerms(roleDefaultPermSet(role));
 }
 
 // Role display names and colors
@@ -690,4 +882,6 @@ export const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bgCol
   SUPPORT_ADMIN: { label: "Support Admin", color: "text-amber-400", bgColor: "bg-amber-500/10" },
   MARKETING_ADMIN: { label: "Marketing Admin", color: "text-pink-400", bgColor: "bg-pink-500/10" },
   MODERATOR: { label: "Moderator", color: "text-cyan-400", bgColor: "bg-cyan-500/10" },
+  AGENCY: { label: "Agency", color: "text-orange-300", bgColor: "bg-orange-500/10" },
+  AD_MANAGER: { label: "Ad Manager", color: "text-yellow-300", bgColor: "bg-yellow-500/10" },
 };

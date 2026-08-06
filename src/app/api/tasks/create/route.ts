@@ -55,6 +55,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Per-type gate: SOCIAL self-serve additionally requires the socialTasks
+  // feature (an admin can enable task creation but disable social specifically).
+  if (d.type === "SOCIAL" && !(await userCanFeature(userId, "socialTasks"))) {
+    return NextResponse.json(
+      { error: "Social task creation isn't enabled for your account." },
+      { status: 403 }
+    );
+  }
+
   const budgetPoints = d.pointsReward * d.targetCount;
   const pointsPerUsd = await getPointsPerUsd();
   const costUsd = budgetPoints / pointsPerUsd;

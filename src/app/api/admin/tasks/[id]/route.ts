@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   normalizeSocialConfig,
   validateSocialBundle,
@@ -20,8 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.view")) {
+    if (!(await can(session.user.id, "tasks.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -72,8 +71,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.edit")) {
+    if (!(await can(session.user.id, "tasks.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -260,8 +258,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.delete")) {
+    if (!(await can(session.user.id, "tasks.delete"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -300,8 +297,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "tasks.edit")) {
+    if (!(await can(session.user.id, "tasks.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

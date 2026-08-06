@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { getLandingContent } from "@/lib/landing-content-server";
 
 export async function GET() {
@@ -8,8 +8,7 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "landing.view")) {
+  if (!(await can(session.user.id, "landing.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

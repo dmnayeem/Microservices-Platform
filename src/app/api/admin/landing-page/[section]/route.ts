@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { isSectionKey, settingKeyFor } from "@/lib/landing-content";
 import { invalidateSettingsCache } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
@@ -15,8 +15,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "landing.edit")) {
+  if (!(await can(session.user.id, "landing.edit"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

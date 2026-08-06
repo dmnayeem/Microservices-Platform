@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { subDays, startOfDay, endOfDay, format } from "date-fns";
 import {
   type SurveyConfig,
@@ -22,8 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "analytics.export")) {
+    if (!(await can(session.user.id, "analytics.export"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

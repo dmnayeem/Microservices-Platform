@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const ANNOUNCE_SCHEMA = z.object({ isAnnouncement: z.boolean() }).strict();
@@ -20,8 +20,7 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "social.post")) {
+  if (!(await can(session.user.id, "social.post"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

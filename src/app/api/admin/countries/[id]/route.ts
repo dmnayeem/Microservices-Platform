@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ALL_LOCATION_TYPES } from "@/lib/locations";
 import { z } from "zod";
 
@@ -33,8 +33,7 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "settings.edit")) {
+  if (!(await can(session.user.id, "settings.edit"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

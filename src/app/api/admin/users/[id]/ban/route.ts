@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
 const banSchema = z.object({
@@ -21,7 +22,7 @@ export async function POST(
     }
 
     const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.ban")) {
+    if (!(await can(session.user.id, "users.ban"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -112,8 +113,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.ban")) {
+    if (!(await can(session.user.id, "users.ban"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

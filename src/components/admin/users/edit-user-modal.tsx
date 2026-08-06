@@ -21,7 +21,7 @@ import {
   type VerifiedBadgeStyle,
 } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
-import { isAdmin, type UserRole } from "@/lib/rbac";
+import { isAdmin, PERMISSION_CATALOG, type UserRole } from "@/lib/rbac";
 import { FEATURES } from "@/lib/features";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -60,6 +60,8 @@ export interface EditUserData {
   packageId: string | null;
   packageExpiresAt: Date | null;
   featureOverrides?: Record<string, boolean> | null;
+  /** Per-user RBAC permission grants/denials (super-admin editable). */
+  permissionOverrides?: Record<string, boolean> | null;
   kycStatus: string;
   twoFactorEnabled: boolean;
   /** Whether the user has a TutorProfile (controls the sell-courses suspend toggle). */
@@ -103,13 +105,23 @@ interface UserEditFormProps {
   onDone?: () => void;
 }
 
-type Tab = "account" | "verify" | "balance" | "photos" | "personal" | "address" | "access";
+type Tab =
+  | "account"
+  | "verify"
+  | "balance"
+  | "photos"
+  | "personal"
+  | "address"
+  | "access"
+  | "permissions";
 
-const TABS: Array<{ id: Tab; label: string }> = [
+// `superOnly` tabs render only for super admins (per-user admin permissions).
+const TABS: Array<{ id: Tab; label: string; superOnly?: boolean }> = [
   { id: "account", label: "Account" },
   { id: "verify", label: "🔑 Verify & Password" },
   { id: "balance", label: "Balance & Tier" },
   { id: "access", label: "Feature Access" },
+  { id: "permissions", label: "🛡️ Permissions", superOnly: true },
   { id: "photos", label: "Photos" },
   { id: "personal", label: "Personal Info" },
   { id: "address", label: "Address" },
@@ -173,6 +185,9 @@ export function UserEditForm({
       : "",
     featureOverrides: {
       ...((user.featureOverrides ?? {}) as Record<string, boolean>),
+    } as Record<string, boolean>,
+    permissionOverrides: {
+      ...((user.permissionOverrides ?? {}) as Record<string, boolean>),
     } as Record<string, boolean>,
     kycStatus: user.kycStatus,
     twoFactorEnabled: user.twoFactorEnabled,
@@ -321,6 +336,15 @@ export function UserEditForm({
         payload.featureOverrides = form.featureOverrides;
       }
 
+      // Per-user RBAC permission overrides (super-admin only).
+      if (
+        isSuperAdmin &&
+        JSON.stringify(form.permissionOverrides) !==
+          JSON.stringify(user.permissionOverrides ?? {})
+      ) {
+        payload.permissionOverrides = form.permissionOverrides;
+      }
+
       if (Object.keys(payload).length === 0) {
         toast.info("No changes to save");
         setSubmitting(false);
@@ -381,7 +405,7 @@ export function UserEditForm({
 
       {/* Tabs */}
       <div className="flex gap-1 px-4 pt-3 border-b border-slate-800 overflow-x-auto">
-          {TABS.map((t) => (
+          {TABS.filter((t) => !t.superOnly || isSuperAdmin).map((t) => (
             <button
               key={t.id}
               type="button"
@@ -1272,6 +1296,73 @@ export function UserEditForm({
                       </button>
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "permissions" && isSuperAdmin && (
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500">
+                Per-user admin permissions layered on top of the role.{" "}
+                <b>Default</b> follows the role; <b>Grant</b>/<b>Deny</b> force it
+                for this user only. Use <b>Deny</b> to hide a whole area (e.g.
+                Finance) from one admin.
+              </p>
+              {PERMISSION_CATALOG.map((cat) => (
+                <div key={cat.label} className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                    {cat.label}
+                  </p>
+                  {cat.permissions.map((perm) => {
+                    const cur = form.permissionOverrides[perm];
+                    const setOv = (val: boolean | null) => {
+                      const next = { ...form.permissionOverrides };
+                      if (val === null) delete next[perm];
+                      else next[perm] = val;
+                      set("permissionOverrides", next);
+                    };
+                    const opts: Array<{ lbl: string; val: boolean | null }> = [
+                      { lbl: "Default", val: null },
+                      { lbl: "Grant", val: true },
+                      { lbl: "Deny", val: false },
+                    ];
+                    return (
+                      <div
+                        key={perm}
+                        className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-950/50 border border-slate-800"
+                      >
+                        <span className="font-mono text-xs text-slate-300">
+                          {perm}
+                        </span>
+                        <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden text-xs font-semibold shrink-0">
+                          {opts.map(({ lbl, val }) => {
+                            const active =
+                              val === null ? cur === undefined : cur === val;
+                            return (
+                              <button
+                                key={lbl}
+                                type="button"
+                                onClick={() => setOv(val)}
+                                className={cn(
+                                  "px-3 py-1.5 transition-colors",
+                                  active
+                                    ? val === true
+                                      ? "bg-emerald-500 text-white"
+                                      : val === false
+                                        ? "bg-red-500 text-white"
+                                        : "bg-slate-700 text-white"
+                                    : "text-slate-400 hover:text-white"
+                                )}
+                              >
+                                {lbl}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>

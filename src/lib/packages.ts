@@ -5,10 +5,12 @@ import {
   FEATURE_TO_COLUMN,
   FEATURE_KEYS,
   FEATURES,
+  ROLE_FEATURES,
   parseFeatureOverrides,
   type PackageFeatureKey,
   type FeatureOverrides,
 } from "@/lib/features";
+import type { UserRole } from "@/lib/rbac";
 
 // Re-export the client-safe catalog so existing `@/lib/packages` imports keep working.
 export { FEATURE_KEYS, FEATURES, parseFeatureOverrides };
@@ -205,6 +207,7 @@ export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
+      role: true,
       packageExpiresAt: true,
       package: true,
       featureOverrides: true,
@@ -224,6 +227,13 @@ export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
   const enabled = new Set<PackageFeatureKey>();
   for (const key of FEATURE_KEYS) {
     if (resolveUserFeature(pkg, overrides, key)) enabled.add(key);
+  }
+  // Role-granted features (e.g. AGENCY → advertiser/agency console) union on top,
+  // unless the user has an explicit per-user override turning the feature OFF.
+  const roleFeatures = ROLE_FEATURES[(user?.role as UserRole) ?? "USER"] ?? [];
+  for (const key of roleFeatures) {
+    if (overrides[key] === false) continue;
+    enabled.add(key);
   }
   return { pkg, overrides, enabled };
 });

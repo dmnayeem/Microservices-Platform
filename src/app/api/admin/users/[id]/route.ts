@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, ADMIN_ROLES, type UserRole } from "@/lib/rbac";
+import { ADMIN_ROLES, parsePermissionOverrides, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma/client";
 import { parseFeatureOverrides } from "@/lib/packages";
 import { z } from "zod";
@@ -18,8 +19,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.view")) {
+    if (!(await can(session.user.id, "users.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -95,6 +95,8 @@ const updateUserSchema = z.object({
     "SUPPORT_ADMIN",
     "MARKETING_ADMIN",
     "MODERATOR",
+    "AGENCY",
+    "AD_MANAGER",
   ]).optional(),
   status: z.enum(["ACTIVE", "PENDING_VERIFICATION", "SUSPENDED", "BANNED"]).optional(),
 
@@ -106,6 +108,7 @@ const updateUserSchema = z.object({
   packageId: z.string().nullable().optional(),
   packageExpiresAt: z.string().datetime().optional().nullable(),
   featureOverrides: z.record(z.string(), z.boolean()).optional().nullable(),
+  permissionOverrides: z.record(z.string(), z.boolean()).optional().nullable(),
   kycStatus: z.enum(["NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"]).optional(),
   twoFactorEnabled: z.boolean().optional(),
   tutorSuspended: z.boolean().optional(),
@@ -158,7 +161,7 @@ export async function PATCH(
     }
 
     const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.edit")) {
+    if (!(await can(session.user.id, "users.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -284,6 +287,21 @@ export async function PATCH(
           grantTutor = true;
         }
       }
+    }
+    // Per-user RBAC permission overrides — SUPER_ADMIN only (same gate as admin
+    // role changes). Deny/grant individual admin permissions on top of the role.
+    if (data.permissionOverrides !== undefined) {
+      if (adminRole !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only a super admin can edit permissions" },
+          { status: 403 }
+        );
+      }
+      const po =
+        data.permissionOverrides === null
+          ? {}
+          : parsePermissionOverrides(data.permissionOverrides);
+      updateData.permissionOverrides = Object.keys(po).length ? po : null;
     }
     if (data.kycStatus !== undefined) updateData.kycStatus = data.kycStatus;
     // 2FA reset: admin can only DISABLE (never force-enable) — clear the secret

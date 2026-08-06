@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { detectStore } from "@/lib/app-install-tasks";
 
 // POST /api/admin/tasks/fetch-app-metadata { url }
@@ -9,8 +9,7 @@ import { detectStore } from "@/lib/app-install-tasks";
 // Any failure returns { error } so the admin form can fall back to manual entry.
 export async function POST(req: NextRequest) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "tasks.create")) {
+  if (!session?.user || !(await can(session.user.id, "tasks.create"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

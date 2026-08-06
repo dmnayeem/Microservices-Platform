@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 
 // GET /api/admin/ads/analytics?days=14 — platform-wide ad time-series from
 // AdDailyStat + lifetime totals.
 export async function GET(req: NextRequest) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "ads.view")) {
+  if (!session?.user || !(await can(session.user.id, "ads.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const days = Math.min(

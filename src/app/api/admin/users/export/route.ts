@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma";
 import { formatInternationalPhone } from "@/lib/phone-codes";
 import { userDisplayId } from "@/lib/display-id";
@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.view")) {
+    if (!(await can(session.user.id, "users.view"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

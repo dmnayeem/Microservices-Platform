@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { deliverToUser } from "@/lib/notify";
 
@@ -15,8 +15,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "withdrawals.process")) {
+  if (!(await can(session.user.id, "withdrawals.process"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

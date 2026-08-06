@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 
 /** Admin: list deposits, filterable by status. */
 export async function GET(request: NextRequest) {
@@ -9,8 +9,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "withdrawals.view")) {
+  if (!(await can(session.user.id, "withdrawals.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const status = new URL(request.url).searchParams.get("status") ?? undefined;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   SPLASH_SETTING_KEY,
   normalizeSplashConfig,
@@ -11,8 +11,7 @@ import { invalidateSettingsCache } from "@/lib/system-settings";
 /** Admin: read the current splash config (merged over defaults). */
 export async function GET() {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "banners.view")) {
+  if (!session?.user || !(await can(session.user.id, "banners.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const row = await prisma.systemSetting.findUnique({
@@ -24,8 +23,7 @@ export async function GET() {
 /** Admin: save the splash config. */
 export async function PUT(request: NextRequest) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "banners.manage")) {
+  if (!session?.user || !(await can(session.user.id, "banners.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json().catch(() => null);

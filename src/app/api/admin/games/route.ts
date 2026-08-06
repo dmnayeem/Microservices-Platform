@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 
 const schema = z.object({
   title: z.string().min(2).max(120),
@@ -16,8 +16,7 @@ const schema = z.object({
 
 export async function GET() {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user || !hasPermission(role, "games.view")) {
+  if (!session?.user || !(await can(session.user.id, "games.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const games = await prisma.game.findMany({
@@ -28,8 +27,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  if (!session?.user?.id || !hasPermission(role, "games.manage")) {
+  if (!session?.user?.id || !(await can(session.user.id, "games.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const v = schema.safeParse(await request.json());

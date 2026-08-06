@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { invalidateSocialEarningCache } from "@/lib/social-earning";
 import { invalidateSettingsCache } from "@/lib/system-settings";
 import { z } from "zod";
@@ -49,8 +49,7 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "settings.view")) {
+  if (!(await can(session.user.id, "settings.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -102,8 +101,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "settings.edit")) {
+  if (!(await can(session.user.id, "settings.edit"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 
 // POST /api/admin/users/[id]/approve - Approve a pending user
 export async function POST(
@@ -15,8 +15,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminRole = session.user.role as UserRole | undefined;
-    if (!hasPermission(adminRole, "users.edit")) {
+    if (!(await can(session.user.id, "users.edit"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
