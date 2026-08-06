@@ -110,6 +110,10 @@ export interface Props {
   canBoost?: boolean;
   canShareLinks?: boolean;
   canShareYouTube?: boolean;
+  /** Feed ad density (admin-configurable). */
+  feedAdInterval?: number;
+  underPostBanner?: boolean;
+  underPostInterval?: number;
 }
 
 export type ViewTab = "feed" | "groups";

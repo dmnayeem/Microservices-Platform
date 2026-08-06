@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FeedAdCard, type FeedAd } from "@/components/user/feed/feed-ad-card";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import {
   MessageCircle,
   Flame,
@@ -52,6 +53,9 @@ export function SocialFeedView({
   canBoost,
   canShareLinks,
   canShareYouTube,
+  feedAdInterval = 2,
+  underPostBanner = false,
+  underPostInterval = 3,
 }: Props) {
   const [tab, setTab] = useState<ViewTab>("feed");
   const [sort, setSort] = useState<Sort>("recent");
@@ -104,6 +108,9 @@ export function SocialFeedView({
             canBoost={canBoost}
             canShareLinks={canShareLinks}
             canShareYouTube={canShareYouTube}
+            feedAdInterval={feedAdInterval}
+            underPostBanner={underPostBanner}
+            underPostInterval={underPostInterval}
           />
         )}
 
@@ -142,6 +149,9 @@ function FeedTab({
   canBoost,
   canShareLinks,
   canShareYouTube,
+  feedAdInterval,
+  underPostBanner,
+  underPostInterval,
 }: {
   user: SessionUser;
   initialFeedAd?: FeedAd | null;
@@ -152,6 +162,9 @@ function FeedTab({
   canBoost?: boolean;
   canShareLinks?: boolean;
   canShareYouTube?: boolean;
+  feedAdInterval: number;
+  underPostBanner: boolean;
+  underPostInterval: number;
 }) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -468,13 +481,16 @@ function FeedTab({
       {!loading && sortedPosts.length > 0 && (
         <div className="space-y-3">
           {sortedPosts.map((post, i) => {
-            // One native ad after every 2 posts. Each ad is consumed once (no
-            // modulo wrap) so nothing repeats while scrolling; empty slots (pool
-            // not yet grown) simply show no ad.
-            const slot = Math.floor(i / 2);
-            const ad = (i + 1) % 2 === 0 && slot < feedAds.length
-              ? feedAds[slot]
-              : null;
+            // Native ad after every `feedAdInterval` posts. Each ad is consumed
+            // once (no modulo wrap) so nothing repeats while scrolling; empty
+            // slots (pool not yet grown) simply show no ad.
+            const n = Math.max(1, feedAdInterval);
+            const slot = Math.floor(i / n);
+            const ad =
+              (i + 1) % n === 0 && slot < feedAds.length ? feedAds[slot] : null;
+            // Optional banner under posts (admin-toggled), every `underPostInterval`.
+            const showBanner =
+              underPostBanner && (i + 1) % Math.max(1, underPostInterval) === 0;
             return (
               <Fragment key={post.id}>
                 <FeedPostCard
@@ -487,6 +503,7 @@ function FeedTab({
                   onBumpPost={handlePostBumped}
                 />
                 {ad && <FeedAdCard key={`ad-${i}-${ad.adId}`} ad={ad} />}
+                {showBanner && <AdRenderer placement="FEED_POST_BELOW" />}
               </Fragment>
             );
           })}

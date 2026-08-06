@@ -13,6 +13,7 @@ export const AD_PLACEMENTS = [
   { name: "VIDEO_BELOW", label: "Video — Below", description: "Below the video player while watching.", where: "Video task page — below player" },
   { name: "TASK_COMPLETE", label: "Task Complete", description: "Task completion / reward screens.", where: "Task reward / completion screen" },
   { name: "IN_FEED", label: "Social Feed", description: "Native ad interleaved in the social feed.", where: "Inside the social feed (/social)" },
+  { name: "FEED_POST_BELOW", label: "Under Post Banner", description: "Banner shown under posts in the social feed (admin-set interval).", where: "Social feed (/social) — under posts" },
   { name: "FEED_SIDEBAR", label: "Feed Sidebar", description: "Sponsored card in the social feed right rail.", where: "Social feed (/social) — right sidebar" },
   { name: "DASHBOARD", label: "Dashboard", description: "User dashboard banner.", where: "Dashboard (/) — top banner" },
   { name: "EARN_HUB", label: "Earn Hub", description: "Earn hub banner.", where: "Earn hub (/earn) — banner" },
@@ -25,3 +26,32 @@ export const AD_PLACEMENTS = [
 ] as const;
 
 export type AdPlacementName = (typeof AD_PLACEMENTS)[number]["name"];
+
+/**
+ * Recommended creative size per placement (an `AD_SIZES` key). Drives the admin
+ * space preview aspect-ratio + size label, and pre-fills the ad's default size
+ * when creating an ad for that space. Unlisted placements → "responsive".
+ */
+export const PLACEMENT_SIZE: Record<string, string> = {
+  TASK_LIST: "leaderboard",
+  TASK_START: "leaderboard",
+  VIDEO_ABOVE: "leaderboard",
+  VIDEO_BELOW: "leaderboard",
+  TASK_COMPLETE: "medium",
+  IN_FEED: "responsive",
+  FEED_POST_BELOW: "medium",
+  FEED_SIDEBAR: "medium",
+  DASHBOARD: "leaderboard",
+  EARN_HUB: "leaderboard",
+  WALLET_TOP: "leaderboard",
+  MARKETPLACE_TOP: "leaderboard",
+  PROFILE_BOTTOM: "medium",
+  GAME_INTERSTITIAL: "story",
+  VIDEO_INTERSTITIAL: "story",
+  REWARD_INTERSTITIAL: "story",
+};
+
+/** The `AD_SIZES` key recommended for a placement (defaults to "responsive"). */
+export function placementSizeKey(name: string): string {
+  return PLACEMENT_SIZE[name] ?? "responsive";
+}

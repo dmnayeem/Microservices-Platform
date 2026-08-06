@@ -18,6 +18,7 @@ import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
 import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { serveFeedAds } from "@/lib/ad-serve";
+import { getAdDensity } from "@/lib/ad-density";
 
 export default async function SocialPage() {
   const session = await auth();
@@ -98,6 +99,8 @@ export default async function SocialPage() {
       serveFeedAds({ userId, count: 1 }),
     ]);
 
+  const adDensity = await getAdDensity();
+
   const canBoost = effectiveFeatures.enabled.has("boost");
   const canShareLinks = effectiveFeatures.enabled.has("shareLinks");
   const canShareYouTube = effectiveFeatures.enabled.has("shareYouTube");
@@ -174,6 +177,9 @@ export default async function SocialPage() {
       canBoost={canBoost}
       canShareLinks={canShareLinks}
       canShareYouTube={canShareYouTube}
+      feedAdInterval={adDensity.feedAdInterval}
+      underPostBanner={adDensity.underPostBanner}
+      underPostInterval={adDensity.underPostInterval}
       tickerConfig={
         tickerPayload
           ? {

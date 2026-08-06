@@ -157,6 +157,36 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const [adsenseClient, setAdsenseClient] = useState("");
   const [gamNetworkCode, setGamNetworkCode] = useState("");
   const [networkBusy, setNetworkBusy] = useState(false);
+  const [feedAdInterval, setFeedAdInterval] = useState(2);
+  const [feedPromoInterval, setFeedPromoInterval] = useState(4);
+  const [underPostBanner, setUnderPostBanner] = useState(false);
+  const [underPostInterval, setUnderPostInterval] = useState(3);
+  const [densityBusy, setDensityBusy] = useState(false);
+
+  const saveDensity = async () => {
+    setDensityBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: {
+            "ads.feed_ad_interval": Math.max(1, feedAdInterval),
+            "ads.feed_promo_interval": Math.max(1, feedPromoInterval),
+            "ads.under_post_banner": underPostBanner,
+            "ads.under_post_interval": Math.max(1, underPostInterval),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Feed ad density saved");
+    } catch {
+      toast.error("Couldn't save density");
+    } finally {
+      setDensityBusy(false);
+    }
+  };
 
   const saveNetworkGlobals = async () => {
     setNetworkBusy(true);
@@ -196,6 +226,12 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
       if (typeof p.adsenseClient === "string") setAdsenseClient(p.adsenseClient);
       if (typeof p.gamNetworkCode === "string") setGamNetworkCode(p.gamNetworkCode);
+      if (p.density) {
+        setFeedAdInterval(p.density.feedAdInterval ?? 2);
+        setFeedPromoInterval(p.density.feedPromoInterval ?? 4);
+        setUnderPostBanner(!!p.density.underPostBanner);
+        setUnderPostInterval(p.density.underPostInterval ?? 3);
+      }
     } catch {
       toast.error("Failed to load ad data");
     } finally {
@@ -219,6 +255,12 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
         if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
         if (typeof p.adsenseClient === "string") setAdsenseClient(p.adsenseClient);
         if (typeof p.gamNetworkCode === "string") setGamNetworkCode(p.gamNetworkCode);
+        if (p.density) {
+          setFeedAdInterval(p.density.feedAdInterval ?? 2);
+          setFeedPromoInterval(p.density.feedPromoInterval ?? 4);
+          setUnderPostBanner(!!p.density.underPostBanner);
+          setUnderPostInterval(p.density.underPostInterval ?? 3);
+        }
       })
       .catch(() => active && toast.error("Failed to load ad data"))
       .finally(() => active && setLoading(false));
@@ -706,6 +748,38 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                   >
                     {networkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Save networks
+                  </button>
+                )}
+              </div>
+
+              {/* Feed ad density */}
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Feed ad density</p>
+                <p className="text-[11px] text-slate-500 -mt-1">Each space with 2+ active ads auto-rotates every N seconds and on reload.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Native ad — every N posts</label>
+                    <input type="number" min={1} max={20} value={feedAdInterval} disabled={!canManage} onChange={(e) => setFeedAdInterval(Math.max(1, Number(e.target.value) || 2))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Promoted post — every N entries</label>
+                    <input type="number" min={1} max={20} value={feedPromoInterval} disabled={!canManage} onChange={(e) => setFeedPromoInterval(Math.max(1, Number(e.target.value) || 4))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-slate-200">
+                  <input type="checkbox" checked={underPostBanner} disabled={!canManage} onChange={(e) => setUnderPostBanner(e.target.checked)} />
+                  Show a banner under posts (placement <span className="font-mono text-xs text-slate-400">FEED_POST_BELOW</span>)
+                </label>
+                {underPostBanner && (
+                  <div className="max-w-xs">
+                    <label className="block text-xs text-slate-400 mb-1">…under every N posts</label>
+                    <input type="number" min={1} max={20} value={underPostInterval} disabled={!canManage} onChange={(e) => setUnderPostInterval(Math.max(1, Number(e.target.value) || 3))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />
+                  </div>
+                )}
+                {canManage && (
+                  <button onClick={saveDensity} disabled={densityBusy} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                    {densityBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save density
                   </button>
                 )}
               </div>

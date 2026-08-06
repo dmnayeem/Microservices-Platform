@@ -8,6 +8,7 @@ import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-fram
 
 export type AdPlacement =
   | "IN_FEED"
+  | "FEED_POST_BELOW"
   | "FEED_SIDEBAR"
   | "TASK_LIST"
   | "TASK_START"

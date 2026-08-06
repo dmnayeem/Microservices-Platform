@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ensureDefaultPlacements } from "@/lib/ad-placements-server";
 import { getSetting } from "@/lib/system-settings";
+import { getAdDensity } from "@/lib/ad-density";
 
 export async function GET() {
   const session = await auth();
@@ -64,6 +65,7 @@ export async function GET() {
   );
   const adsenseClient = String((await getSetting<string>("ads.adsense_client", "")) || "");
   const gamNetworkCode = String((await getSetting<string>("ads.gam_network_code", "")) || "");
+  const density = await getAdDensity();
 
   return NextResponse.json({
     placements: withStats,
@@ -71,6 +73,7 @@ export async function GET() {
     cpcUsd,
     adsenseClient,
     gamNetworkCode,
+    density,
   });
 }
 

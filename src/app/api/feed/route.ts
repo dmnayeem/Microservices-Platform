@@ -14,6 +14,7 @@ import {
   type RankablePost,
 } from "@/lib/feed-ranking";
 import { getUserDayContext } from "@/lib/user-day";
+import { getAdDensity } from "@/lib/ad-density";
 import type { Prisma, Post } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
@@ -251,14 +252,15 @@ export async function GET(request: NextRequest) {
     });
 
     // Interleave: announcements at top → organic posts with one promoted
-    // injected every ~4 entries.
+    // injected every N entries (admin-configurable, default 4).
+    const promoEvery = Math.max(1, (await getAdDensity()).feedPromoInterval);
     const organic = posts.map(formatPost);
     const promotedFormatted = promoted.map(formatPost);
     const interleaved: ReturnType<typeof formatPost>[] = [];
     let promoIdx = 0;
     organic.forEach((p, i) => {
       interleaved.push(p);
-      if (promoIdx < promotedFormatted.length && (i + 1) % 4 === 0) {
+      if (promoIdx < promotedFormatted.length && (i + 1) % promoEvery === 0) {
         interleaved.push(promotedFormatted[promoIdx++]);
       }
     });
