@@ -2,8 +2,10 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
-import { CreditCard, Save } from "lucide-react";
+import { CreditCard, Save, Wallet } from "lucide-react";
 import { PaymentMethodsForm } from "@/components/admin/payment-methods/payment-methods-form";
+import { DepositMethodsForm } from "@/components/admin/payment-methods/deposit-methods-form";
+import { getDepositMethods } from "@/lib/deposit-methods";
 
 const DEFAULT_METHODS = [
   // Mobile banking
@@ -153,6 +155,8 @@ export default async function PaymentMethodsPage() {
     return s ? { ...d, ...s } : d;
   });
 
+  const depositMethods = await getDepositMethods();
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
@@ -170,12 +174,28 @@ export default async function PaymentMethodsPage() {
         </p>
       </div>
 
-      <PaymentMethodsForm initial={methods} canEdit={canManage} />
+      <div>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1">Payout methods (withdrawals)</h2>
+        <PaymentMethodsForm initial={methods} canEdit={canManage} />
+      </div>
+
+      <div className="pt-2 border-t border-slate-800">
+        <h2 className="text-lg font-bold text-white inline-flex items-center gap-2 mt-4">
+          <Wallet className="w-5 h-5 text-emerald-400" />
+          Deposit methods (where users send money)
+        </h2>
+        <p className="text-slate-400 text-sm mt-1 mb-3">
+          Manual / Binance methods users pay to, then submit a transaction id + proof.
+          You verify &amp; approve → their wallet is credited. Set a receiving account
+          and instructions for each.
+        </p>
+        <DepositMethodsForm initial={depositMethods} canEdit={canManage} />
+      </div>
 
       <p className="text-xs text-slate-500 inline-flex items-center gap-2">
         <Save className="w-3 h-3" />
-        Saved per-method to <code className="text-slate-400">system_settings</code> rows
-        with key prefix <code className="text-slate-400">pm_</code>.
+        Payout config → <code className="text-slate-400">pm_</code> rows; deposit methods →{" "}
+        <code className="text-slate-400">deposit_methods</code>.
       </p>
     </div>
   );

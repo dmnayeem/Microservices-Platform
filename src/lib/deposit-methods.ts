@@ -1,0 +1,81 @@
+import { getSetting } from "@/lib/system-settings";
+import { prisma } from "@/lib/prisma";
+
+/**
+ * Admin-configurable MANUAL deposit methods (Binance, mobile-banking, PayPal,
+ * Payoneer, or any custom digital wallet). Each carries a receiving `account`
+ * (UID / number / email / address) + instructions that the user is shown so they
+ * know exactly where to send money. Stored as one SystemSetting array
+ * (`deposit_methods`, category `payment_methods`). Users deposit with a txn id +
+ * proof; an admin approves → wallet cash is credited (existing Deposit flow).
+ */
+export interface DepositMethod {
+  /** Stable key stored on the Deposit row (e.g. "binance", "bkash", or a slug). */
+  key: string;
+  label: string;
+  /** Receiving account shown to users: Binance UID, bKash number, email, address… */
+  account: string;
+  instructions: string;
+  enabled: boolean;
+  minAmount: number;
+  maxAmount: number;
+}
+
+const SETTING_KEY = "deposit_methods";
+
+export const DEPOSIT_METHOD_PRESETS: DepositMethod[] = [
+  { key: "binance", label: "Binance Pay", account: "", instructions: "Send via Binance Pay to the ID above, then paste the transaction ID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "bkash", label: "bKash", account: "", instructions: "Send Money to the number above, then enter the bKash TrxID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "nagad", label: "Nagad", account: "", instructions: "Send Money to the number above, then enter the Nagad TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "rocket", label: "Rocket", account: "", instructions: "Send to the number above, then enter the Rocket TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "paypal", label: "PayPal", account: "", instructions: "Send to the PayPal email above (Friends & Family), then paste the transaction id.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "payoneer", label: "Payoneer", account: "", instructions: "Pay to the Payoneer account above, then paste the reference id.", enabled: false, minAmount: 1, maxAmount: 100000 },
+];
+
+const num = (v: unknown, def: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : def;
+};
+
+function normalize(raw: unknown): DepositMethod[] {
+  if (!Array.isArray(raw)) return DEPOSIT_METHOD_PRESETS;
+  return raw
+    .filter((m) => m && typeof m === "object")
+    .map((m) => {
+      const o = m as Record<string, unknown>;
+      const key = String(o.key ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      return {
+        key,
+        label: String(o.label ?? key),
+        account: String(o.account ?? ""),
+        instructions: String(o.instructions ?? ""),
+        enabled: o.enabled === true,
+        minAmount: num(o.minAmount, 1),
+        maxAmount: num(o.maxAmount, 100000),
+      };
+    })
+    .filter((m) => m.key);
+}
+
+/** All configured deposit methods (presets when nothing saved yet). */
+export async function getDepositMethods(): Promise<DepositMethod[]> {
+  const raw = await getSetting<unknown>(SETTING_KEY, null);
+  if (raw == null) return DEPOSIT_METHOD_PRESETS;
+  const list = normalize(raw);
+  return list.length ? list : DEPOSIT_METHOD_PRESETS;
+}
+
+/** Methods a user can actually pay to (enabled AND has a receiving account). */
+export async function getEnabledDepositMethods(): Promise<DepositMethod[]> {
+  return (await getDepositMethods()).filter((m) => m.enabled && m.account.trim());
+}
+
+/** Persist the whole methods array (admin-only at the call site). */
+export async function saveDepositMethods(list: DepositMethod[]): Promise<void> {
+  const clean = normalize(list);
+  await prisma.systemSetting.upsert({
+    where: { key: SETTING_KEY },
+    create: { key: SETTING_KEY, category: "payment_methods", value: clean as unknown as object },
+    update: { category: "payment_methods", value: clean as unknown as object },
+  });
+}
