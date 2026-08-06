@@ -54,6 +54,12 @@ export async function serveAd(opts: {
   const { placement, userId } = opts;
   const exclude = new Set(opts.exclude ?? []);
 
+  // Interstitial placements (REWARD/VIDEO/GAME_INTERSTITIAL) are the platform's
+  // OWN house ads shown before a reward — they always serve (even to ad-free
+  // plans) and don't require a funded advertiser campaign. Paid feed/banner
+  // placements keep the ad-free + budget/flight gating below.
+  const interstitial = placement.endsWith("_INTERSTITIAL");
+
   let viewer: TargetableUser | null = null;
   if (userId) {
     const [pkg, u] = await Promise.all([
@@ -75,7 +81,7 @@ export async function serveAd(opts: {
         },
       }),
     ]);
-    if (pkg?.adFree) return EMPTY; // Watch & Earn is unaffected
+    if (pkg?.adFree && !interstitial) return EMPTY; // Watch & Earn is unaffected
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
   }
 
@@ -91,14 +97,20 @@ export async function serveAd(opts: {
     where: {
       placementId: placementRow.id,
       status: "ACTIVE",
-      campaign: {
-        status: "ACTIVE",
-        budget: { gte: cost },
-        AND: [
-          { OR: [{ startAt: null }, { startAt: { lte: now } }] },
-          { OR: [{ endAt: null }, { endAt: { gte: now } }] },
-        ],
-      },
+      // House interstitials: any ACTIVE ad on the placement serves (no funded
+      // campaign / flight-window needed). Paid placements keep the full gate.
+      ...(interstitial
+        ? {}
+        : {
+            campaign: {
+              status: "ACTIVE",
+              budget: { gte: cost },
+              AND: [
+                { OR: [{ startAt: null }, { startAt: { lte: now } }] },
+                { OR: [{ endAt: null }, { endAt: { gte: now } }] },
+              ],
+            },
+          }),
     },
     include: { campaign: { select: { title: true } } },
   });
