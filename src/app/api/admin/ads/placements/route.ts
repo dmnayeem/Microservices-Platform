@@ -62,8 +62,16 @@ export async function GET() {
     100,
     Math.max(0.001, Number(await getSetting<number>("ads.cpcUsd", 0.05)) || 0.05)
   );
+  const adsenseClient = String((await getSetting<string>("ads.adsense_client", "")) || "");
+  const gamNetworkCode = String((await getSetting<string>("ads.gam_network_code", "")) || "");
 
-  return NextResponse.json({ placements: withStats, rotationSeconds, cpcUsd });
+  return NextResponse.json({
+    placements: withStats,
+    rotationSeconds,
+    cpcUsd,
+    adsenseClient,
+    gamNetworkCode,
+  });
 }
 
 export async function POST(request: NextRequest) {

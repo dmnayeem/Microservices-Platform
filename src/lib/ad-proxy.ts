@@ -30,8 +30,11 @@ export function firstPartyMediaUrl(adId: string, field: AdMediaField): string {
   return `/api/spaces/media/${adId}?f=${field}`;
 }
 
-/** Ad types whose creative WE host (and can therefore first-party). SDK/META
- *  load the network's own script/creative from Google/Meta and can't be proxied. */
+/** Ad types whose creative WE host (and can therefore first-party). Network types
+ *  (ADSENSE/GAM/SDK/META) load the network's own script/creative from Google/Meta
+ *  and can't be proxied. */
 export function isFirstPartyAdType(type: string | null | undefined): boolean {
-  return type !== "SDK" && type !== "META";
+  return (
+    type !== "SDK" && type !== "META" && type !== "ADSENSE" && type !== "GAM"
+  );
 }

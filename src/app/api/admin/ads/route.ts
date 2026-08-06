@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 
-const AD_TYPES = ["LOCAL", "HTML", "SDK", "META"];
+const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
 
 export async function GET() {
@@ -65,6 +65,12 @@ export async function POST(request: NextRequest) {
     videoUrl: body.videoUrl ? String(body.videoUrl) : null,
     targetUrl: body.targetUrl ? String(body.targetUrl) : null,
     htmlContent: body.htmlContent ? String(body.htmlContent) : null,
+    // Network (ADSENSE/GAM) config + optional tracking pixels.
+    adSlot: body.adSlot ? String(body.adSlot) : null,
+    adUnitPath: body.adUnitPath ? String(body.adUnitPath) : null,
+    adClient: body.adClient ? String(body.adClient) : null,
+    impressionPixel: body.impressionPixel ? String(body.impressionPixel) : null,
+    clickTracker: body.clickTracker ? String(body.clickTracker) : null,
     size: body.size ? String(body.size) : "responsive",
     width: Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null,
     height: Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null,

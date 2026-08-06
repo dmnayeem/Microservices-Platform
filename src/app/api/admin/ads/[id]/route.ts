@@ -9,7 +9,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-const AD_TYPES = ["LOCAL", "HTML", "SDK", "META"];
+const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
@@ -29,6 +29,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.videoUrl !== undefined) data.videoUrl = body.videoUrl ? String(body.videoUrl) : null;
   if (body.targetUrl !== undefined) data.targetUrl = body.targetUrl ? String(body.targetUrl) : null;
   if (body.htmlContent !== undefined) data.htmlContent = body.htmlContent ? String(body.htmlContent) : null;
+  if (body.adSlot !== undefined) data.adSlot = body.adSlot ? String(body.adSlot) : null;
+  if (body.adUnitPath !== undefined) data.adUnitPath = body.adUnitPath ? String(body.adUnitPath) : null;
+  if (body.adClient !== undefined) data.adClient = body.adClient ? String(body.adClient) : null;
+  if (body.impressionPixel !== undefined) data.impressionPixel = body.impressionPixel ? String(body.impressionPixel) : null;
+  if (body.clickTracker !== undefined) data.clickTracker = body.clickTracker ? String(body.clickTracker) : null;
   if (body.size !== undefined) data.size = body.size ? String(body.size) : "responsive";
   if (body.width !== undefined)
     data.width = Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null;

@@ -5,6 +5,7 @@ import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
 import { bumpAdDailyStat } from "@/lib/ad-stats";
 import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
+import { composeNetworkAdHtml, getNetworkGlobals } from "@/lib/ad-network";
 import type { FeedAd } from "@/components/user/feed/feed-ad-card";
 
 /** Shaped banner/interstitial ad — identical to the `/api/ads/serve` payload. */
@@ -22,6 +23,8 @@ export interface ServedAd {
   size?: string;
   width?: number;
   height?: number;
+  impressionPixel?: string;
+  clickTracker?: string;
 }
 
 export interface ServeResult {
@@ -155,6 +158,13 @@ export async function serveAd(opts: {
   );
 
   const proxy = isFirstPartyAdType(chosen.type);
+  // Network types (ADSENSE/GAM): compose a self-contained document server-side;
+  // fall back to any raw htmlContent when config is incomplete.
+  let html = chosen.htmlContent ?? undefined;
+  if (chosen.type === "ADSENSE" || chosen.type === "GAM") {
+    const composed = composeNetworkAdHtml(chosen, await getNetworkGlobals());
+    if (composed) html = composed;
+  }
   return {
     poolSize: targeted.length,
     rotateMs: rotateSeconds * 1000,
@@ -176,11 +186,13 @@ export async function serveAd(opts: {
       body: undefined,
       ctaLabel: "Learn More",
       ctaUrl: chosen.targetUrl ?? undefined,
-      html: chosen.htmlContent ?? undefined,
+      html,
       sponsor: undefined,
       size: chosen.size ?? undefined,
       width: chosen.width ?? undefined,
       height: chosen.height ?? undefined,
+      impressionPixel: chosen.impressionPixel ?? undefined,
+      clickTracker: chosen.clickTracker ?? undefined,
     },
   };
 }

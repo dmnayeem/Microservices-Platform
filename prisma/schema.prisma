@@ -365,12 +365,20 @@ model Ad {
   campaign    AdCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   placementId String
   placement   AdPlacement @relation(fields: [placementId], references: [id])
-  type        String      @default("LOCAL")
+  type        String      @default("LOCAL") // LOCAL | HTML | ADSENSE | GAM
   format      String      @default("BANNER") // BANNER | NATIVE (feed post-like)
   contentUrl  String?     // image / GIF creative URL
   videoUrl    String?     // MP4/WebM video creative URL
   targetUrl   String?
   htmlContent String?     @db.Text
+  // Third-party ad-network config (type ADSENSE | GAM). The self-contained
+  // creative HTML is composed server-side in src/lib/ad-network.ts.
+  adSlot      String?     // AdSense ad-slot id (data-ad-slot)
+  adUnitPath  String?     // Google Ad Manager ad-unit path (/network/unit)
+  adClient    String?     // optional per-ad AdSense client override (ca-pub-…)
+  // Optional third-party tracking pixels (any type).
+  impressionPixel String? // 1×1 beacon fired on view
+  clickTracker    String? // pinged on click (local creatives)
   // Creative size — preset key (see src/lib/ad-sizes.ts); width/height used for "custom"
   size        String?     @default("responsive")
   width       Int?

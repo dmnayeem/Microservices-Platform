@@ -14,6 +14,7 @@ import {
   Eye,
   MousePointer,
   Loader2,
+  Save,
   X,
   ListChecks,
   PlayCircle,
@@ -73,6 +74,11 @@ interface Ad {
   videoUrl: string | null;
   targetUrl: string | null;
   htmlContent: string | null;
+  adSlot?: string | null;
+  adUnitPath?: string | null;
+  adClient?: string | null;
+  impressionPixel?: string | null;
+  clickTracker?: string | null;
   size: string | null;
   width: number | null;
   height: number | null;
@@ -148,6 +154,32 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const [rotationBusy, setRotationBusy] = useState(false);
   const [cpcUsd, setCpcUsd] = useState(0.01);
   const [cpcBusy, setCpcBusy] = useState(false);
+  const [adsenseClient, setAdsenseClient] = useState("");
+  const [gamNetworkCode, setGamNetworkCode] = useState("");
+  const [networkBusy, setNetworkBusy] = useState(false);
+
+  const saveNetworkGlobals = async () => {
+    setNetworkBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: {
+            "ads.adsense_client": adsenseClient.trim(),
+            "ads.gam_network_code": gamNetworkCode.trim(),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Ad-network settings saved");
+    } catch {
+      toast.error("Couldn't save ad-network settings");
+    } finally {
+      setNetworkBusy(false);
+    }
+  };
 
   const loadAll = async () => {
     setLoading(true);
@@ -162,6 +194,8 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       setPlacements(p.placements ?? []);
       if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
       if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
+      if (typeof p.adsenseClient === "string") setAdsenseClient(p.adsenseClient);
+      if (typeof p.gamNetworkCode === "string") setGamNetworkCode(p.gamNetworkCode);
     } catch {
       toast.error("Failed to load ad data");
     } finally {
@@ -183,6 +217,8 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
         setPlacements(p.placements ?? []);
         if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
         if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
+        if (typeof p.adsenseClient === "string") setAdsenseClient(p.adsenseClient);
+        if (typeof p.gamNetworkCode === "string") setGamNetworkCode(p.gamNetworkCode);
       })
       .catch(() => active && toast.error("Failed to load ad data"))
       .finally(() => active && setLoading(false));
@@ -635,6 +671,45 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                   </div>
                 </div>
               </div>
+
+              {/* Global ad-network (publisher) config */}
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Ad networks (publisher)</p>
+                <p className="text-[11px] text-slate-500 -mt-1">Set once — per-ad you only enter the slot / ad-unit. Network ads are third-party (ad-blockable) and report in the network&apos;s own console.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">AdSense client (ca-pub-…)</label>
+                    <input
+                      value={adsenseClient}
+                      onChange={(e) => setAdsenseClient(e.target.value)}
+                      disabled={!canManage}
+                      placeholder="ca-pub-1234567890123456"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Ad Manager network code</label>
+                    <input
+                      value={gamNetworkCode}
+                      onChange={(e) => setGamNetworkCode(e.target.value)}
+                      disabled={!canManage}
+                      placeholder="22106938064"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                {canManage && (
+                  <button
+                    onClick={saveNetworkGlobals}
+                    disabled={networkBusy}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+                  >
+                    {networkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save networks
+                  </button>
+                )}
+              </div>
+
               {canManage && (
                 <div className="flex gap-2 max-w-md">
                   <input
@@ -1117,10 +1192,26 @@ function AdModal({
   const [videoUrl, setVideoUrl] = useState(ad?.videoUrl ?? "");
   const [targetUrl, setTargetUrl] = useState(ad?.targetUrl ?? "");
   const [htmlContent, setHtmlContent] = useState(ad?.htmlContent ?? "");
-  // Creative kind: IMAGE (incl. GIF) | VIDEO | HTML. Drives the DB `type`.
-  const [creative, setCreative] = useState<"IMAGE" | "VIDEO" | "HTML">(
-    ad?.type === "HTML" ? "HTML" : ad?.videoUrl ? "VIDEO" : "IMAGE"
+  // Creative kind: IMAGE (incl. GIF) | VIDEO | HTML | NETWORK. Drives the DB `type`.
+  const [creative, setCreative] = useState<"IMAGE" | "VIDEO" | "HTML" | "NETWORK">(
+    ad?.type === "ADSENSE" || ad?.type === "GAM"
+      ? "NETWORK"
+      : ad?.type === "HTML"
+      ? "HTML"
+      : ad?.videoUrl
+      ? "VIDEO"
+      : "IMAGE"
   );
+  // Ad-network config (creative NETWORK): provider + AdSense slot / GAM ad-unit.
+  const [provider, setProvider] = useState<"adsense" | "gam" | "custom">(
+    ad?.type === "ADSENSE" ? "adsense" : ad?.type === "GAM" ? "gam" : "custom"
+  );
+  const [adSlot, setAdSlot] = useState(ad?.adSlot ?? "");
+  const [adUnitPath, setAdUnitPath] = useState(ad?.adUnitPath ?? "");
+  const [adClient, setAdClient] = useState(ad?.adClient ?? "");
+  // Optional third-party tracking pixels (any type).
+  const [impressionPixel, setImpressionPixel] = useState(ad?.impressionPixel ?? "");
+  const [clickTracker, setClickTracker] = useState(ad?.clickTracker ?? "");
   const [size, setSize] = useState(ad?.size ?? "responsive");
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
@@ -1145,15 +1236,33 @@ function AdModal({
     }
     setBusy(true);
     try {
+      const type =
+        creative === "NETWORK"
+          ? provider === "adsense"
+            ? "ADSENSE"
+            : provider === "gam"
+            ? "GAM"
+            : "HTML"
+          : creative === "HTML"
+          ? "HTML"
+          : "LOCAL";
       const payload = {
         campaignId,
         placementId,
-        type: creative === "HTML" ? "HTML" : "LOCAL",
+        type,
         format,
         contentUrl: creative === "IMAGE" ? contentUrl : "",
         videoUrl: creative === "VIDEO" ? videoUrl : "",
         targetUrl,
-        htmlContent: creative === "HTML" ? htmlContent : "",
+        htmlContent:
+          creative === "HTML" || (creative === "NETWORK" && provider === "custom")
+            ? htmlContent
+            : "",
+        adSlot: type === "ADSENSE" ? adSlot : "",
+        adUnitPath: type === "GAM" ? adUnitPath : "",
+        adClient: type === "ADSENSE" ? adClient : "",
+        impressionPixel,
+        clickTracker,
         size,
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
@@ -1203,19 +1312,53 @@ function AdModal({
         <div>
           <label className="block text-xs text-slate-400 mb-1">Creative</label>
           <div className="flex gap-2">
-            {(["IMAGE", "VIDEO", "HTML"] as const).map((c) => (
+            {(["IMAGE", "VIDEO", "HTML", "NETWORK"] as const).map((c) => (
               <button
                 key={c}
                 onClick={() => setCreative(c)}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold ${creative === c ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
               >
-                {c === "IMAGE" ? "Image / GIF" : c === "VIDEO" ? "Video" : "HTML / Script"}
+                {c === "IMAGE" ? "Image / GIF" : c === "VIDEO" ? "Video" : c === "HTML" ? "HTML / Script" : "Ad Network"}
               </button>
             ))}
           </div>
         </div>
 
-        {creative === "HTML" ? (
+        {creative === "NETWORK" ? (
+          <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Ad network</label>
+              <select value={provider} onChange={(e) => setProvider(e.target.value as typeof provider)} className={inputCls}>
+                <option value="adsense">Google AdSense</option>
+                <option value="gam">Google Ad Manager (GPT)</option>
+                <option value="custom">Other network (paste script)</option>
+              </select>
+            </div>
+            {provider === "adsense" ? (
+              <>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Ad slot id (data-ad-slot)</label>
+                  <input value={adSlot} onChange={(e) => setAdSlot(e.target.value)} className={inputCls} placeholder="1234567890" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Client override (optional)</label>
+                  <input value={adClient} onChange={(e) => setAdClient(e.target.value)} className={inputCls} placeholder="ca-pub-… (defaults to global)" />
+                </div>
+              </>
+            ) : provider === "gam" ? (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Ad-unit path</label>
+                <input value={adUnitPath} onChange={(e) => setAdUnitPath(e.target.value)} className={inputCls} placeholder="/22106938064/my_banner or my_banner" />
+                <p className="text-[10px] text-slate-500 mt-1">Bare name uses the global network code. Set size below (default 300×250).</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Network snippet (HTML / script)</label>
+                <textarea value={htmlContent} onChange={(e) => setHtmlContent(e.target.value)} rows={4} className={inputCls} placeholder="<script>…</script> from any ad network" />
+              </div>
+            )}
+          </div>
+        ) : creative === "HTML" ? (
           <div>
             <label className="block text-xs text-slate-400 mb-1">
               HTML content (scripts / ad-network tags run in a sandboxed frame)
@@ -1233,6 +1376,17 @@ function AdModal({
             <ImageUploadField value={contentUrl} onChange={setContentUrl} previewSize="md" />
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Impression pixel URL (optional)</label>
+            <input value={impressionPixel} onChange={(e) => setImpressionPixel(e.target.value)} className={inputCls} placeholder="https://…/imp.gif" />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Click-tracker URL (optional)</label>
+            <input value={clickTracker} onChange={(e) => setClickTracker(e.target.value)} className={inputCls} placeholder="https://…/click" />
+          </div>
+        </div>
 
         <div>
           <label className="block text-xs text-slate-400 mb-1">Size</label>
