@@ -1100,35 +1100,75 @@ function AdSpaceCard({
 }
 
 interface DayStat { date: string; impressions: number; clicks: number; spendUsd: number }
+interface ReportRow { impressions: number; clicks: number; spend: number; ctr: number }
+interface AdRow extends ReportRow { type: string; campaign: string; placement: string }
+interface PlacementRow extends ReportRow { name: string }
+interface CampaignRow extends ReportRow { title: string }
+const RANGES = [7, 14, 30, 90];
+const isNetworkType = (t: string) => t === "ADSENSE" || t === "GAM";
+
 function AnalyticsTab() {
+  const [days, setDays] = useState(14);
   const [series, setSeries] = useState<DayStat[]>([]);
   const [totals, setTotals] = useState({ impressions: 0, clicks: 0, ctr: 0 });
+  const [perAd, setPerAd] = useState<AdRow[]>([]);
+  const [perPlacement, setPerPlacement] = useState<PlacementRow[]>([]);
+  const [perCampaign, setPerCampaign] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/ads/analytics?days=14")
-      .then((r) => r.json())
-      .then((d) => {
-        setSeries(d.series ?? []);
-        setTotals(d.totals ?? { impressions: 0, clicks: 0, ctr: 0 });
+    let active = true;
+    Promise.all([
+      fetch(`/api/admin/ads/analytics?days=${days}`).then((r) => r.json()),
+      fetch(`/api/admin/ads/report?days=${days}`).then((r) => r.json()),
+    ])
+      .then(([a, rep]) => {
+        if (!active) return;
+        setSeries(a.series ?? []);
+        setTotals(a.totals ?? { impressions: 0, clicks: 0, ctr: 0 });
+        setPerAd(rep.perAd ?? []);
+        setPerPlacement(rep.perPlacement ?? []);
+        setPerCampaign(rep.perCampaign ?? []);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [days]);
 
   const maxImp = Math.max(1, ...series.map((s) => s.impressions));
   const spend = series.reduce((s, d) => s + d.spendUsd, 0);
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm font-semibold text-white">Performance</p>
+        <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden">
+          {RANGES.map((d) => (
+            <button
+              key={d}
+              onClick={() => {
+                setLoading(true);
+                setDays(d);
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold ${days === d ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Eye className="w-5 h-5" />} value={totals.impressions.toLocaleString()} label="Impressions (all time)" tone="purple" />
         <StatCard icon={<MousePointer className="w-5 h-5" />} value={totals.clicks.toLocaleString()} label="Clicks (all time)" tone="amber" />
         <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${totals.ctr.toFixed(2)}%`} label="CTR" tone="emerald" />
-        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`$${spend.toFixed(2)}`} label="Spend (14d)" tone="indigo" />
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`$${spend.toFixed(2)}`} label={`Spend (${days}d)`} tone="indigo" />
       </div>
+
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-3">Impressions · last 14 days</p>
+        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-3">Impressions · last {days} days</p>
         {loading ? (
           <p className="text-xs text-slate-500 py-6 text-center">Loading…</p>
         ) : series.every((s) => s.impressions === 0) ? (
@@ -1142,6 +1182,70 @@ function AnalyticsTab() {
             ))}
           </div>
         )}
+      </div>
+
+      <ReportTable title="Top ads" cols={["Ad", "Impr", "Clicks", "CTR", "Spend"]}>
+        {perAd.map((r, i) => {
+          const net = isNetworkType(r.type);
+          return (
+            <tr key={i} className="border-t border-slate-800">
+              <td className="py-1.5 pr-2 text-white truncate max-w-52">
+                {r.campaign} <span className="text-[10px] text-slate-500">· {r.placement}{net ? ` · ${r.type}` : ""}</span>
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : r.clicks.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : `${r.ctr.toFixed(1)}%`}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "network" : `$${r.spend.toFixed(2)}`}</td>
+            </tr>
+          );
+        })}
+      </ReportTable>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <ReportTable title="By placement" cols={["Placement", "Impr", "Clicks", "CTR"]}>
+          {perPlacement.map((r, i) => (
+            <tr key={i} className="border-t border-slate-800">
+              <td className="py-1.5 pr-2 text-white truncate max-w-40">{PLACEMENT_LABEL[r.name] ?? r.name}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.clicks.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.ctr.toFixed(1)}%</td>
+            </tr>
+          ))}
+        </ReportTable>
+        <ReportTable title="By campaign" cols={["Campaign", "Impr", "Clicks", "Spend"]}>
+          {perCampaign.map((r, i) => (
+            <tr key={i} className="border-t border-slate-800">
+              <td className="py-1.5 pr-2 text-white truncate max-w-40">{r.title}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.clicks.toLocaleString()}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">${r.spend.toFixed(2)}</td>
+            </tr>
+          ))}
+        </ReportTable>
+      </div>
+      <p className="text-[10px] text-slate-500">
+        Network (AdSense / Ad Manager) ads show served impressions only — their clicks &amp; revenue are in the network&apos;s own console.
+      </p>
+    </div>
+  );
+}
+
+function ReportTable({ title, cols, children }: { title: string; cols: string[]; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">{title}</p>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wider text-slate-500">
+              <th className="text-left pb-1.5">{cols[0]}</th>
+              {cols.slice(1).map((c) => (
+                <th key={c} className="text-right pb-1.5">{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
       </div>
     </div>
   );
