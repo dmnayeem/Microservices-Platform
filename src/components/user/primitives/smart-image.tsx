@@ -27,7 +27,15 @@ function isOptimizable(src: string): boolean {
   if (!src) return false;
   // Data/blob URIs and app-relative paths never need a remote pattern.
   if (src.startsWith("data:") || src.startsWith("blob:")) return false;
-  if (src.startsWith("/")) return true; // local static asset
+  if (src.startsWith("/")) {
+    // Dynamic API-served media (often with a ?variant query, e.g.
+    // /api/spaces/media/[id]?f=logo) is already optimized/sized by our own route.
+    // Skip the Next optimizer — routing a local image WITH a query string through
+    // it requires an images.localPatterns allowlist entry (Next 16) and would
+    // throw. Plain static assets (/logo.png) still get optimized.
+    if (src.startsWith("/api/") || src.includes("?")) return false;
+    return true; // local static asset
+  }
   try {
     const host = new URL(src).hostname.toLowerCase();
     return OPTIMIZABLE_HOSTS.some((s) => host === s.slice(1) || host.endsWith(s));
