@@ -28,6 +28,20 @@ budget — they serve as house inventory.
 - **Impression pixel URL** — fired as a 1×1 beacon when the ad renders.
 - **Click-tracker URL** — pinged when a **local** creative is clicked.
 
+## Ad spaces, previews & feed density
+Admin → **Ads → Ad Spaces**:
+- Each space card shows a **live preview** of a real served creative at that
+  space's **recommended size** (previews never count impressions), or a
+  size-shaped skeleton when no ad is active. Creating an ad pre-fills that size.
+- **Rotation** — put 2+ ACTIVE ads on one space and it **auto-rotates every N
+  seconds** (per-space "Rotate every … sec") **and changes on reload**. One ad =
+  no rotation.
+- **Feed ad density** (in Ad Spaces): native in-feed ad **every N posts**
+  (default 2); admin-promoted post **every N entries** (default 4); an optional
+  **banner under posts** (`FEED_POST_BELOW`, default off) every N posts.
+- Slots **reserve their size while loading** (no blank jump) and **collapse** when
+  there's genuinely no ad.
+
 ## Local (house) ads
 Image / GIF / video / native / raw HTML. Fully first-party and
 **ad-blocker-resistant** (creatives are proxied same-origin), with **full

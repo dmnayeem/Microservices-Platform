@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
+import { placementSizeKey } from "@/lib/ad-placements";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 
 export type AdPlacement =
@@ -67,6 +68,8 @@ export function AdRenderer({
   const [ad, setAd] = useState<AdResponse | null>(initialAd);
   const [error, setError] = useState(false);
   const [fading, setFading] = useState(false);
+  // Reserve space during the first fetch (no SSR ad) so the slot doesn't jump.
+  const [loading, setLoading] = useState(!initialAd);
   // Rotation interval (ms) reported by the server; 0 = don't auto-rotate
   // (single-ad space or ad-free viewer). Seeded from the SSR value when present.
   const rotateMsRef = useRef(initialRotateMs);
@@ -171,7 +174,9 @@ export function AdRenderer({
       // positive.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadAd({ initial: true }).then((ok) => {
-        if (cancelled || !ok) return;
+        if (cancelled) return;
+        setLoading(false);
+        if (!ok) return;
         startTimer();
         document.addEventListener("visibilitychange", onVisibility);
       });
@@ -184,7 +189,26 @@ export function AdRenderer({
     };
   }, [loadAd, initialAd, placement]);
 
-  if (error || !ad) return null;
+  if (error) return null;
+  if (!ad) {
+    // Truly no ad → collapse (no permanent blank box).
+    if (!loading) return null;
+    // First load in flight → reserve a size-shaped skeleton so nothing jumps.
+    const reserved = resolveAdSize(placementSizeKey(placement));
+    return (
+      <div
+        className={cn(
+          "rounded-2xl border border-gray-800 bg-gray-900/40 animate-pulse mx-auto",
+          className
+        )}
+        style={{
+          aspectRatio: reserved ? `${reserved.w} / ${reserved.h}` : undefined,
+          maxWidth: reserved?.w,
+          minHeight: reserved ? undefined : 90,
+        }}
+      />
+    );
+  }
 
   const trackClick = () => {
     fetch(`/api/spaces/${ad.id}/event`, {
