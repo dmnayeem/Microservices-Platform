@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Megaphone, Calendar, Target, DollarSign } from "lucide-react";
 import { CampaignsClient } from "@/components/admin/campaigns/campaigns-client";
@@ -44,7 +45,16 @@ export default async function CampaignsAdminPage() {
         <Stat icon={<DollarSign className="w-5 h-5" />} tone="slate" value={stats.ended} label="Ended" />
       </div>
 
-      <CampaignsClient initial={campaigns as never} canManage={canManage} />
+      <CampaignsClient
+        initial={
+          campaigns.map((c) => ({
+            ...c,
+            budget: toNumOrNull(c.budget),
+            rewardsDistributed: toNum(c.rewardsDistributed),
+          })) as never
+        }
+        canManage={canManage}
+      />
 
       {campaigns.length === 0 && (
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">

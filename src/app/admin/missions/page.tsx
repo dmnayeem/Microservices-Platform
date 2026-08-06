@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Target } from "lucide-react";
 import { MissionsClient } from "@/components/admin/missions/missions-client";
@@ -27,7 +28,12 @@ export default async function MissionsAdminPage() {
           Daily/weekly objectives that reward users with points and XP.
         </p>
       </div>
-      <MissionsClient initial={missions as never} canManage={canManage} />
+      <MissionsClient
+        initial={
+          missions.map((m) => ({ ...m, cashReward: toNum(m.cashReward) })) as never
+        }
+        canManage={canManage}
+      />
     </div>
   );
 }

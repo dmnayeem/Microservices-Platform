@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum } from "@/lib/money";
 import {
   Users,
   Search,
@@ -416,7 +417,12 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
 
       {/* Users Table — client component for selection / bulk actions */}
       <UsersTableClient
-        users={allUsers as unknown as Parameters<typeof UsersTableClient>[0]["users"]}
+        users={
+          allUsers.map((u) => ({
+            ...u,
+            cashBalance: toNum(u.cashBalance),
+          })) as unknown as Parameters<typeof UsersTableClient>[0]["users"]
+        }
         totalCount={totalCount}
         page={page}
         pageSize={pageSize}

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNumOrNull } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Tag } from "lucide-react";
 import Link from "next/link";
@@ -52,7 +53,10 @@ export default async function AdminCouponsPage() {
       </div>
 
       <CouponsAdmin
-        initial={couponsRaw as unknown as Array<{
+        initial={couponsRaw.map((c) => ({
+          ...c,
+          minPurchase: toNumOrNull(c.minPurchase),
+        })) as unknown as Array<{
           id: string;
           code: string;
           type: "PERCENT" | "FIXED";

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { CoursesBrowse } from "@/components/user/courses/CoursesBrowse";
 import { GraduationCap } from "lucide-react";
 import { getEffectiveFeatures } from "@/lib/packages";
@@ -65,8 +66,8 @@ export default async function CoursesPage() {
           subtitle: c.subtitle,
           thumbnail: c.thumbnail,
           isFree: c.isFree,
-          price: c.price,
-          discountPrice: c.discountPrice,
+          price: toNum(c.price),
+          discountPrice: toNumOrNull(c.discountPrice),
           avgRating: c.avgRating,
           enrollmentCount: c.enrollmentCount,
           totalDuration: c.totalDuration,
