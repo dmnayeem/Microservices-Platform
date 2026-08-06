@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ClipboardCheck, Filter, Clock, CheckCircle, XCircle, RotateCcw, ChevronLeft, ChevronRight, Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Star, Layers, ChevronDown } from "lucide-react";
+import { ClipboardCheck, Filter, Clock, CheckCircle, XCircle, RotateCcw, ChevronLeft, ChevronRight, Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Star, Layers, ChevronDown, Smartphone } from "lucide-react";
 import { SubmissionActions } from "@/components/admin/submissions/submission-actions";
 import { SocialReviewActions } from "@/components/admin/submissions/social-review-actions";
 import { SubmissionProofPanel } from "@/components/admin/submissions/proof-panels";
@@ -32,6 +32,7 @@ const taskTypeIcons: Record<string, typeof Video> = {
   PROXY: Globe,
   OFFERWALL: Gift,
   CUSTOM: Sparkles,
+  APPINSTALL: Smartphone,
 };
 
 const taskTypeColors: Record<string, string> = {
@@ -43,6 +44,7 @@ const taskTypeColors: Record<string, string> = {
   PROXY: "text-cyan-400 bg-cyan-500/10",
   OFFERWALL: "text-emerald-400 bg-emerald-500/10",
   CUSTOM: "text-indigo-400 bg-indigo-500/10",
+  APPINSTALL: "text-green-400 bg-green-500/10",
 };
 
 export default async function AdminSubmissionsPage({ searchParams }: PageProps) {
@@ -128,6 +130,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
             surveyConfig: true,
             customConfig: true,
             socialConfig: true,
+            appInstallConfig: true,
             questions: true,
             contentUrl: true,
             proxyInstructions: true,
@@ -172,6 +175,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
       surveyConfig: unknown;
       customConfig: unknown;
       socialConfig: unknown;
+      appInstallConfig: unknown;
       questions: unknown;
       contentUrl: string | null;
       proxyInstructions: string | null;
@@ -337,6 +341,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
             <option value="PROXY">Proxy</option>
             <option value="OFFERWALL">Offerwall</option>
             <option value="CUSTOM">Custom</option>
+            <option value="APPINSTALL">App Install</option>
           </select>
           <select
             name="board"

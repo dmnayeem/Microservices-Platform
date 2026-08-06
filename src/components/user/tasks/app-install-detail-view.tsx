@@ -17,7 +17,10 @@ import { toast } from "sonner";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
-import { type AppInstallConfig } from "@/lib/app-install-tasks";
+import {
+  effectiveProofItems,
+  type AppInstallConfig,
+} from "@/lib/app-install-tasks";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import {
   TaskUpgradeNotice,
@@ -54,7 +57,10 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitState, setSubmitState] = useState<SubmitState>({ kind: "loading" });
-  const [screenshot, setScreenshot] = useState("");
+  // Per-requirement proof: { [itemId]: { image?, value? } }.
+  const [proof, setProof] = useState<
+    Record<string, { image?: string; value?: string }>
+  >({});
   const [busy, setBusy] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
   const [adBlocked, setAdBlocked] = useState(false);
@@ -124,10 +130,29 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
 
   const submit = async () => {
     if (!task || submitState.kind !== "ready") return;
-    if (!screenshot) {
-      toast.error("Upload a screenshot showing the app installed");
-      return;
+    const items = effectiveProofItems(task.appInstallConfig);
+    for (const it of items) {
+      const p = proof[it.id] ?? {};
+      if (it.screenshot && !p.image) {
+        toast.error(`Upload a screenshot for: ${it.label}`);
+        return;
+      }
+      if (it.valueLabel && !p.value?.trim()) {
+        toast.error(`Enter ${it.valueLabel}`);
+        return;
+      }
     }
+    const proofImages = items
+      .filter((it) => it.screenshot)
+      .map((it) => proof[it.id]?.image)
+      .filter((u): u is string => !!u);
+    const appInstallProof = items.map((it) => ({
+      id: it.id,
+      kind: it.kind,
+      label: it.label,
+      target: it.target,
+      value: proof[it.id]?.value?.trim() || undefined,
+    }));
     setBusy(true);
     try {
       const res = await fetch(`/api/tasks/${task.id}/submit`, {
@@ -135,7 +160,8 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           submissionId: submitState.submissionId,
-          proofImages: [screenshot],
+          proofImages,
+          appInstallProof,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -305,25 +331,82 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
         </section>
       )}
 
-      {submitState.kind === "ready" && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 space-y-3">
-          <div>
-            <p className="text-sm font-bold text-white">Submit your proof</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Install the app, open it, then upload a screenshot as proof.
-            </p>
-          </div>
-          <ProofImageUpload value={screenshot} onChange={setScreenshot} />
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy || !screenshot}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-900/30 disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : "Submit proof"}
-          </button>
-        </div>
-      )}
+      {submitState.kind === "ready" &&
+        (() => {
+          const items = effectiveProofItems(cfg);
+          const canSubmit = items.every(
+            (it) =>
+              (!it.screenshot || proof[it.id]?.image) &&
+              (!it.valueLabel || proof[it.id]?.value?.trim())
+          );
+          return (
+            <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 space-y-4">
+              <div>
+                <p className="text-sm font-bold text-white">Submit your proof</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Complete each requirement below, then submit.
+                </p>
+              </div>
+
+              {items.map((it, i) => (
+                <div
+                  key={it.id}
+                  className="rounded-lg border border-gray-800 bg-gray-950/40 p-3 space-y-2"
+                >
+                  <p className="text-sm font-semibold text-white">
+                    <span className="text-emerald-400">{i + 1}.</span> {it.label}
+                  </p>
+                  {it.valueLabel && (
+                    <div>
+                      <label className="block text-[11px] text-gray-400 mb-1">
+                        {it.valueLabel}
+                      </label>
+                      <input
+                        value={proof[it.id]?.value ?? ""}
+                        onChange={(e) =>
+                          setProof((p) => ({
+                            ...p,
+                            [it.id]: { ...p[it.id], value: e.target.value },
+                          }))
+                        }
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+                        placeholder={
+                          it.kind === "LEVEL"
+                            ? `e.g. ${it.target ?? 10}`
+                            : "Your answer"
+                        }
+                      />
+                    </div>
+                  )}
+                  {it.screenshot && (
+                    <ProofImageUpload
+                      value={proof[it.id]?.image ?? ""}
+                      onChange={(url) =>
+                        setProof((p) => ({
+                          ...p,
+                          [it.id]: { ...p[it.id], image: url },
+                        }))
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={submit}
+                disabled={busy || !canSubmit}
+                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-900/30 disabled:opacity-50"
+              >
+                {busy ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "Submit proof"
+                )}
+              </button>
+            </div>
+          );
+        })()}
     </div>
   );
 }

@@ -29,6 +29,7 @@ export interface PanelTask {
   surveyConfig: unknown;
   customConfig: unknown;
   socialConfig: unknown;
+  appInstallConfig: unknown;
   questions: unknown;
   contentUrl: string | null;
   proxyInstructions: string | null;

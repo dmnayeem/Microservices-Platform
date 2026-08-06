@@ -26,7 +26,11 @@ import {
   type CustomConfig,
   type CustomAnswers,
 } from "@/lib/custom-tasks";
-import type { AppInstallConfig } from "@/lib/app-install-tasks";
+import {
+  effectiveProofItems,
+  hasRichProof,
+  type AppInstallConfig,
+} from "@/lib/app-install-tasks";
 import { socialWatchTargetSeconds, normalizeSocialConfig } from "@/lib/social-tasks";
 import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
 import {
@@ -79,6 +83,8 @@ export async function POST(
       customAnswers,
       // VIDEO YouTube-style engagement confirmations { subscribe?, like?, comment? }
       engagement: videoEngagement,
+      // APPINSTALL structured per-requirement proof [{id,kind,label,target,value?}]
+      appInstallProof,
     } = body;
 
     // Get the task
@@ -316,14 +322,51 @@ export async function POST(
       }
     }
 
-    // ── App-install task: a proof screenshot is required ──
+    // ── App-install task: validate each configured proof requirement ──
+    // Legacy tasks (no proofItems) fall back to a single required screenshot.
+    let appInstallMeta: Record<string, unknown> | null = null;
     if (task.type === "APPINSTALL") {
-      if (!Array.isArray(proofImages) || proofImages.length === 0) {
-        return NextResponse.json(
-          { error: "Upload a screenshot showing the app installed." },
-          { status: 400 }
-        );
+      const cfg = task.appInstallConfig as AppInstallConfig | null;
+      const items = effectiveProofItems(cfg);
+      const images: string[] = Array.isArray(proofImages) ? proofImages : [];
+      const byId = new Map(
+        (Array.isArray(appInstallProof) ? appInstallProof : []).map(
+          (p: { id?: string; value?: string }) => [String(p?.id), p]
+        )
+      );
+      // Screenshots arrive in item order (only for items that require one).
+      let shotIdx = 0;
+      const metaItems: Array<Record<string, unknown>> = [];
+      for (const it of items) {
+        let imageUrl: string | null = null;
+        if (it.screenshot) {
+          imageUrl = images[shotIdx] ?? null;
+          shotIdx += 1;
+          if (!imageUrl) {
+            return NextResponse.json(
+              { error: `Upload a screenshot for: ${it.label}` },
+              { status: 400 }
+            );
+          }
+        }
+        const value = byId.get(it.id)?.value?.toString().trim() || null;
+        if (it.valueLabel && !value) {
+          return NextResponse.json(
+            { error: `Please provide: ${it.valueLabel}` },
+            { status: 400 }
+          );
+        }
+        metaItems.push({
+          id: it.id,
+          kind: it.kind,
+          label: it.label,
+          target: it.target ?? null,
+          valueLabel: it.valueLabel ?? null,
+          value,
+          imageUrl,
+        });
       }
+      appInstallMeta = { appKind: cfg?.appKind ?? "app", items: metaItems };
     }
 
     // ── Video task: hard-fail on bad unique key (auto-reject) ──
@@ -366,9 +409,12 @@ export async function POST(
     const customAutoApprove =
       task.type === "CUSTOM" &&
       (task.customConfig as CustomConfig | null)?.autoApprove === true;
+    // Auto-approve only simple installs — never when a requirement needs a human
+    // to verify a target/typed value.
     const appInstallAutoApprove =
       task.type === "APPINSTALL" &&
-      (task.appInstallConfig as AppInstallConfig | null)?.autoApprove === true;
+      (task.appInstallConfig as AppInstallConfig | null)?.autoApprove === true &&
+      !hasRichProof(task.appInstallConfig as AppInstallConfig | null);
     // NOTE: shouldAutoApprove / newStatus are computed AFTER the SOCIAL block
     // below, because social code-verification (socialCodeAutoApprove) is decided
     // there and must feed the auto-approve decision.
@@ -672,6 +718,11 @@ export async function POST(
     // screen can render them next to the task config.
     if (task.type === "CUSTOM" && customAnswers) {
       submissionMetadata.customAnswers = customAnswers;
+    }
+    // APPINSTALL: store the structured per-requirement proof (label/target/value
+    // + screenshot per item) so the reviewer sees labeled proof, not bare images.
+    if (appInstallMeta) {
+      submissionMetadata.appInstall = appInstallMeta;
     }
     // For PROXY: record the submit IP so the admin fraud surface can verify the
     // user actually browsed through the assigned proxy region.

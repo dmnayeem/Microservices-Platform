@@ -7,6 +7,7 @@ import { SocialProofPanel } from "./SocialProofPanel";
 import { ProxyProofPanel } from "./ProxyProofPanel";
 import { GenericProofPanel } from "./GenericProofPanel";
 import { CustomProofPanel } from "./CustomProofPanel";
+import { AppInstallProofPanel } from "./AppInstallProofPanel";
 import type { PanelSubmission, PanelTask } from "./types";
 
 interface Props {
@@ -39,6 +40,8 @@ export function SubmissionProofPanel({ submission, task }: Props) {
       return <ProxyProofPanel submission={submission} task={task} />;
     case "CUSTOM":
       return <CustomProofPanel submission={submission} task={task} />;
+    case "APPINSTALL":
+      return <AppInstallProofPanel submission={submission} task={task} />;
     case "OFFERWALL":
     default:
       return <GenericProofPanel submission={submission} />;

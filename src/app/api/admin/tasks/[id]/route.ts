@@ -7,6 +7,11 @@ import {
   validateSocialBundle,
   bundleTotalPoints,
 } from "@/lib/social-tasks";
+import {
+  validateAppInstallConfig,
+  normalizeAppInstallConfig,
+  type AppInstallConfig,
+} from "@/lib/app-install-tasks";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -173,6 +178,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         null;
     }
 
+    // APPINSTALL: validate + normalize server-side (mirror the create route, so
+    // proof requirements / app-kind persist cleanly instead of raw client JSON).
+    let appInstallConfigOut = appInstallConfig
+      ? JSON.parse(JSON.stringify(appInstallConfig))
+      : null;
+    if (type === "APPINSTALL" && appInstallConfig) {
+      const err = validateAppInstallConfig(appInstallConfig);
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+      appInstallConfigOut = JSON.parse(
+        JSON.stringify(normalizeAppInstallConfig(appInstallConfig as AppInstallConfig))
+      );
+    }
+
     // Update the task
     const task = await prisma.task.update({
       where: { id },
@@ -214,9 +232,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         customConfig: customConfig
           ? JSON.parse(JSON.stringify(customConfig))
           : null,
-        appInstallConfig: appInstallConfig
-          ? JSON.parse(JSON.stringify(appInstallConfig))
-          : null,
+        appInstallConfig: appInstallConfigOut,
         proxyInstructions: proxyInstructions || null,
         startsAt: startsAt ? new Date(startsAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
