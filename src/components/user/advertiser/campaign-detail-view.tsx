@@ -92,7 +92,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
     if (!campaign) return;
     const input = await promptDialog({
       title: "Add budget",
-      description: `Add budget to "${campaign.title}" (USD, from your wallet):`,
+      description: `Add budget to "${campaign.title}" (USD, from your Ad Credit):`,
       tone: "info",
       defaultValue: "20",
       placeholder: "Amount in USD",

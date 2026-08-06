@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, MousePointer2, Eye, Target, Loader2 } from "lucide-react";
+import { Plus, MousePointer2, Eye, Target, Loader2, Wallet } from "lucide-react";
 import { StatCard } from "@/components/user/primitives/stat-card";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
@@ -44,6 +44,24 @@ export function AdvertiserDashboard() {
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
   const [busy, setBusy] = useState(false);
+  // Ad Credit wallet
+  const [credit, setCredit] = useState(0);
+  const [buying, setBuying] = useState(false);
+  const [buyAmount, setBuyAmount] = useState(20);
+  const [buyCurrency, setBuyCurrency] = useState<"cash" | "points">("cash");
+  const [buyBusy, setBuyBusy] = useState(false);
+
+  const loadCredit = async () => {
+    try {
+      const res = await fetch("/api/advertiser/credits");
+      if (res.ok) {
+        const d = await res.json();
+        setCredit(d.adCreditBalance ?? 0);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -52,10 +70,35 @@ export function AdvertiserDashboard() {
       const d = await res.json();
       setCampaigns(d.campaigns ?? []);
       setStats(d.stats ?? stats);
+      await loadCredit();
     } catch {
       // ignore
     } finally {
       setLoading(false);
+    }
+  };
+
+  const buyCredits = async () => {
+    if (!Number.isFinite(buyAmount) || buyAmount < 5) {
+      toast.error("Minimum is $5");
+      return;
+    }
+    setBuyBusy(true);
+    try {
+      const res = await fetch("/api/advertiser/credits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountUsd: buyAmount, currency: buyCurrency }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      setCredit(d.adCreditBalance ?? credit);
+      toast.success(`Ad credit added — balance $${(d.adCreditBalance ?? 0).toFixed(2)}`);
+      setBuying(false);
+    } catch (err) {
+      toast.error("Couldn't add funds", { description: err instanceof Error ? err.message : "Try again" });
+    } finally {
+      setBuyBusy(false);
     }
   };
 
@@ -86,7 +129,8 @@ export function AdvertiserDashboard() {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? `HTTP ${res.status}`);
       }
-      toast.success(`Campaign created — $${budget.toFixed(2)} funded from wallet`);
+      toast.success(`Campaign created — $${budget.toFixed(2)} funded from Ad Credit`);
+      loadCredit();
       setCreating(false);
       setTitle("");
       setDescription("");
@@ -106,7 +150,7 @@ export function AdvertiserDashboard() {
   const fundCampaign = async (id: string, title: string) => {
     const input = await promptDialog({
       title: "Add budget",
-      description: `Add budget to "${title}" (USD, from your wallet):`,
+      description: `Add budget to "${title}" (USD, from your Ad Credit):`,
       tone: "info",
       defaultValue: "20",
       placeholder: "Amount in USD",
@@ -130,6 +174,7 @@ export function AdvertiserDashboard() {
       }
       toast.success(`$${amount.toFixed(2)} added`);
       load();
+      loadCredit();
     } catch (err) {
       toast.error("Funding failed", {
         description: err instanceof Error ? err.message : "Try again",
@@ -156,6 +201,25 @@ export function AdvertiserDashboard() {
             New Campaign
           </button>
         </div>
+      </div>
+
+      {/* Ad Credit wallet */}
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-emerald-500/15 grid place-items-center text-emerald-300 shrink-0">
+          <Wallet className="w-6 h-6" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-400">Ad Credit balance</p>
+          <p className="text-xl font-extrabold text-white tabular-nums">${credit.toFixed(2)}</p>
+          <p className="text-[10px] text-gray-500">Non-withdrawable — used to fund campaigns.</p>
+        </div>
+        <button
+          onClick={() => setBuying(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          Add funds
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -349,6 +413,72 @@ export function AdvertiserDashboard() {
                 onChange={(e) => setEndAt(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
               />
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        open={buying}
+        onOpenChange={setBuying}
+        title="Add Ad Credit"
+        footer={
+          <div className="flex gap-2">
+            <button
+              disabled={buyBusy}
+              onClick={() => setBuying(false)}
+              className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={buyBusy}
+              onClick={buyCredits}
+              className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {buyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : `Buy $${buyAmount.toFixed(2)}`}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-gray-400">
+            Ad Credit funds your campaigns and is non-withdrawable. Pay with your wallet cash or points.
+          </p>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1.5">Amount ($)</label>
+            <input
+              type="number"
+              min={5}
+              step={5}
+              value={buyAmount}
+              onChange={(e) => setBuyAmount(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+            />
+            <div className="flex gap-2 mt-2">
+              {[10, 20, 50, 100].map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setBuyAmount(a)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold ${buyAmount === a ? "bg-emerald-500 text-white" : "bg-gray-800 text-gray-300"}`}
+                >
+                  ${a}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1.5">Pay with</label>
+            <div className="flex gap-2">
+              {(["cash", "points"] as const).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setBuyCurrency(c)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold ${buyCurrency === c ? "bg-emerald-500 text-white" : "bg-gray-800 text-gray-300"}`}
+                >
+                  {c === "cash" ? "Wallet cash" : "Points"}
+                </button>
+              ))}
             </div>
           </div>
         </div>
