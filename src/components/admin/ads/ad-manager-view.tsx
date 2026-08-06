@@ -163,6 +163,33 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const [underPostBanner, setUnderPostBanner] = useState(false);
   const [underPostInterval, setUnderPostInterval] = useState(3);
   const [densityBusy, setDensityBusy] = useState(false);
+  const [grantEmail, setGrantEmail] = useState("");
+  const [grantAmount, setGrantAmount] = useState(10);
+  const [grantBusy, setGrantBusy] = useState(false);
+
+  const grantAdCredit = async () => {
+    if (!grantEmail.trim() || !Number.isFinite(grantAmount) || grantAmount === 0) {
+      toast.error("Email + non-zero amount required");
+      return;
+    }
+    setGrantBusy(true);
+    try {
+      const res = await fetch("/api/admin/ads/credits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: grantEmail.trim(), amountUsd: grantAmount }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success(`Ad credit updated — balance $${(d.adCreditBalance ?? 0).toFixed(2)}`);
+      setGrantEmail("");
+      setGrantAmount(10);
+    } catch (err) {
+      toast.error("Grant failed", { description: err instanceof Error ? err.message : "Try again" });
+    } finally {
+      setGrantBusy(false);
+    }
+  };
 
   const saveDensity = async () => {
     setDensityBusy(true);
@@ -784,6 +811,28 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                   </button>
                 )}
               </div>
+
+              {/* Grant ad credit */}
+              {canManage && (
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Grant ad credit</p>
+                  <p className="text-[11px] text-slate-500 -mt-1">Give an advertiser Ad Credit (USD, non-withdrawable). Negative amount deducts.</p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="flex-1 min-w-48">
+                      <label className="block text-xs text-slate-400 mb-1">Advertiser email</label>
+                      <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="advertiser@email.com" className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Amount ($)</label>
+                      <input type="number" step={5} value={grantAmount} onChange={(e) => setGrantAmount(Number(e.target.value))} className="w-28 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm" />
+                    </div>
+                    <button onClick={grantAdCredit} disabled={grantBusy} className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                      {grantBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Grant
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {canManage && (
                 <div className="flex gap-2 max-w-md">
