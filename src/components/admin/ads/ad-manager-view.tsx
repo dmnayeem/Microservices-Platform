@@ -37,8 +37,9 @@ import { AdWizard } from "@/components/admin/ads/ad-wizard";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
-import { AD_PLACEMENTS } from "@/lib/ad-placements";
-import { AD_SIZES } from "@/lib/ad-sizes";
+import { AD_PLACEMENTS, placementSizeKey } from "@/lib/ad-placements";
+import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
+import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 import { type AdTargeting } from "@/lib/ad-targeting";
 
 interface Campaign {
@@ -1052,29 +1053,11 @@ function AdSpaceCard({
         </div>
       </div>
 
-      {/* Preview mock */}
-      <div className="rounded-lg bg-slate-950 border border-slate-800 p-2.5">
-        {isFeed ? (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full bg-slate-700" />
-              <div className="h-1.5 w-16 rounded bg-slate-700" />
-              <span className="ml-auto text-[7px] font-bold uppercase tracking-wider text-slate-600">Sponsored</span>
-            </div>
-            <div className="h-1.5 w-full rounded bg-slate-800" />
-            <div className="h-8 w-full rounded bg-slate-800" />
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-12 rounded bg-slate-800 shrink-0" />
-            <div className="flex-1 space-y-1">
-              <div className="h-1.5 w-3/4 rounded bg-slate-700" />
-              <div className="h-1.5 w-1/2 rounded bg-slate-800" />
-            </div>
-            <span className="text-[7px] font-bold uppercase tracking-wider text-slate-600">Ad</span>
-          </div>
-        )}
-      </div>
+      {/* Live preview + size */}
+      <SpacePreview placement={p.name} isFeed={isFeed} />
+      <p className="text-[10px] text-slate-500 -mt-1">
+        Recommended size: <span className="text-slate-300 font-mono">{spaceSizeLabel(p.name)}</span>
+      </p>
 
       {/* Live stats */}
       <div className="grid grid-cols-3 gap-2 text-center">
@@ -1324,6 +1307,62 @@ function ReportTable({ title, cols, children }: { title: string; cols: string[];
     </div>
   );
 }
+function spaceSizeLabel(name: string): string {
+  const s = AD_SIZES.find((x) => x.key === placementSizeKey(name));
+  if (!s || s.w == null || s.h == null) return "Responsive (full width)";
+  return `${s.w}×${s.h}`;
+}
+
+interface PreviewAd { html?: string; videoUrl?: string; imageUrl?: string; title?: string }
+
+/** Live, side-effect-free preview of a real served creative for a placement. */
+function SpacePreview({ placement, isFeed }: { placement: string; isFeed: boolean }) {
+  const [ad, setAd] = useState<PreviewAd | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/admin/ads/preview?placement=${encodeURIComponent(placement)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => active && setAd(d?.ad ?? null))
+      .catch(() => {})
+      .finally(() => active && setLoaded(true));
+    return () => {
+      active = false;
+    };
+  }, [placement]);
+
+  const dim = resolveAdSize(placementSizeKey(placement));
+  const ratio = dim ? `${dim.w} / ${dim.h}` : undefined;
+
+  if (!loaded) {
+    return <div className="rounded-lg bg-slate-950 border border-slate-800 animate-pulse" style={{ aspectRatio: ratio, minHeight: 56 }} />;
+  }
+  if (!ad) {
+    return (
+      <div
+        className="rounded-lg bg-slate-950 border border-dashed border-slate-800 grid place-items-center text-[10px] text-slate-600 p-3 text-center"
+        style={{ aspectRatio: ratio, minHeight: 56 }}
+      >
+        No active ad — {isFeed ? "native" : "banner"} space
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mx-auto w-full" style={{ aspectRatio: ratio, maxWidth: dim?.w }}>
+      {ad.html ? (
+        <SandboxedAdFrame html={ad.html} height={dim?.h ?? 120} badge={false} />
+      ) : ad.videoUrl ? (
+        <video src={ad.videoUrl} muted autoPlay loop playsInline className="w-full h-full object-cover" />
+      ) : ad.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ad.imageUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="p-3 text-xs text-slate-300 truncate">{ad.title ?? "Ad"}</div>
+      )}
+    </div>
+  );
+}
+
 function IconBtn({ children, onClick, title, danger }: { children: React.ReactNode; onClick: () => void; title: string; danger?: boolean }) {
   return (
     <button onClick={onClick} title={title} className={`p-2 rounded-lg bg-slate-800 hover:bg-slate-700 ${danger ? "text-red-400" : "text-slate-300"}`}>
@@ -1390,7 +1429,12 @@ function AdModal({
   // Optional third-party tracking pixels (any type).
   const [impressionPixel, setImpressionPixel] = useState(ad?.impressionPixel ?? "");
   const [clickTracker, setClickTracker] = useState(ad?.clickTracker ?? "");
-  const [size, setSize] = useState(ad?.size ?? "responsive");
+  const [size, setSize] = useState(
+    ad?.size ??
+      placementSizeKey(
+        placements.find((pl) => pl.id === (ad?.placement.id ?? placements[0]?.id))?.name ?? ""
+      )
+  );
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
   const [weight, setWeight] = useState(String(ad?.weight ?? 10));

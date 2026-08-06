@@ -53,18 +53,22 @@ export async function serveAd(opts: {
   userId?: string | null;
   exclude?: Iterable<string>;
   countImpression?: boolean;
+  /** Admin preview: serve any ACTIVE ad on the placement (skip ad-free /
+   *  targeting / budget / flight gates) and never count an impression. */
+  preview?: boolean;
 }): Promise<ServeResult> {
-  const { placement, userId } = opts;
+  const { placement, userId, preview } = opts;
   const exclude = new Set(opts.exclude ?? []);
 
   // Interstitial placements (REWARD/VIDEO/GAME_INTERSTITIAL) are the platform's
   // OWN house ads shown before a reward — they always serve (even to ad-free
   // plans) and don't require a funded advertiser campaign. Paid feed/banner
-  // placements keep the ad-free + budget/flight gating below.
-  const interstitial = placement.endsWith("_INTERSTITIAL");
+  // placements keep the ad-free + budget/flight gating below. Preview mode is
+  // treated like a house placement so admins always see inventory.
+  const interstitial = placement.endsWith("_INTERSTITIAL") || !!preview;
 
   let viewer: TargetableUser | null = null;
-  if (userId) {
+  if (userId && !preview) {
     const [pkg, u] = await Promise.all([
       getEffectivePackage(userId),
       prisma.user.findUnique({
@@ -138,7 +142,7 @@ export async function serveAd(opts: {
     }
   }
 
-  if (opts.countImpression !== false) {
+  if (opts.countImpression !== false && !preview) {
     prisma.ad
       .update({
         where: { id: chosen.id },
