@@ -481,6 +481,9 @@ export function AdvertiserDashboard() {
               ))}
             </div>
           </div>
+          <Link href="/deposit" className="block text-center text-xs text-emerald-400 hover:text-emerald-300 font-semibold pt-1">
+            Low balance? Add funds via Binance / manual →
+          </Link>
         </div>
       </BottomSheet>
     </div>

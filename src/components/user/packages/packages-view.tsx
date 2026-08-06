@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, ArrowRight, Loader2, Sparkles, Crown, Zap, Shield, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -320,6 +321,13 @@ export function PackagesView({
               </div>
             </label>
           ))}
+          {["CARD", "BKASH", "NAGAD", "BINANCE"].includes(method) && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
+              Fastest: <Link href="/deposit" className="font-bold underline">add funds to your wallet</Link> via
+              Binance / bKash / manual, then pay with <b>Cash Balance</b>. Otherwise an admin verifies your
+              payment before activating.
+            </div>
+          )}
           <div className="flex gap-2">
             <button
               onClick={() => setStep(2)}
