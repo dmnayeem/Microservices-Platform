@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, PlayCircle, Clock, Sparkles, X, CheckCircle2 } from "lucide-react";
 import { notifyCenter } from "@/lib/notify-center";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 
 interface RewardAd {
   id: string;
@@ -194,10 +195,9 @@ function AdWatchModal({
 
         <div className="bg-gray-950">
           {ad.html ? (
-            <div
-              className="w-full min-h-[220px] flex items-center justify-center p-4"
-              dangerouslySetInnerHTML={{ __html: ad.html }}
-            />
+            <div className="w-full p-4">
+              <SandboxedAdFrame html={ad.html} height={260} badge={false} />
+            </div>
           ) : ad.imageUrl ? (
             <a
               href={ad.targetUrl ?? "#"}

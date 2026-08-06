@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import type { AdPlacementName } from "@/lib/ad-placements";
+import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 
 interface Ad {
   id: string;
@@ -15,6 +16,7 @@ interface Ad {
   ctaUrl?: string;
   html?: string;
   sponsor?: string;
+  impressionPixel?: string;
 }
 
 /**
@@ -128,10 +130,14 @@ export function AdInterstitialOverlay({
           )}
         </div>
       ) : ad.html ? (
-        <div
-          className="max-w-md w-full rounded-2xl overflow-hidden border border-white/10"
-          dangerouslySetInnerHTML={{ __html: ad.html }}
-        />
+        <div className="max-w-md w-full">
+          <SandboxedAdFrame
+            html={ad.html}
+            height={280}
+            impressionPixel={ad.impressionPixel}
+            badge={false}
+          />
+        </div>
       ) : (
         <a
           href={ad.ctaUrl ?? "#"}

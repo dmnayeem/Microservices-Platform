@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
+import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 
 export type AdPlacement =
   | "IN_FEED"
@@ -17,12 +18,11 @@ export type AdPlacement =
   | "VIDEO_INTERSTITIAL"
   | "DASHBOARD"
   | "EARN_HUB"
-  | "EARN_PROMOTE"
   | "WALLET_TOP"
   | "MARKETPLACE_TOP"
   | "PROFILE_BOTTOM";
 
-export type AdType = "LOCAL" | "HTML" | "SDK" | "META";
+export type AdType = "LOCAL" | "HTML" | "ADSENSE" | "GAM";
 
 export interface AdResponse {
   id: string;
@@ -38,6 +38,8 @@ export interface AdResponse {
   size?: string;
   width?: number;
   height?: number;
+  impressionPixel?: string;
+  clickTracker?: string;
 }
 
 interface AdRendererProps {
@@ -189,6 +191,14 @@ export function AdRenderer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind: "open" }),
     }).catch(() => {});
+    // Optional third-party click tracker.
+    if (ad.clickTracker) {
+      try {
+        void fetch(ad.clickTracker, { mode: "no-cors", keepalive: true });
+      } catch {
+        /* best-effort */
+      }
+    }
   };
 
   const dim = resolveAdSize(ad.size, ad.width, ad.height);
@@ -204,29 +214,18 @@ export function AdRenderer({
     transition: "opacity 180ms ease",
   } as const;
 
-  // HTML / ad-network tag creative — run inside a sandboxed iframe so injected
-  // <script> actually executes (dangerouslySetInnerHTML never runs scripts).
-  if (ad.type === "HTML" && ad.html) {
+  // HTML / AdSense / GAM creative — runs inside the shared sandboxed iframe so
+  // injected <script> actually executes (dangerouslySetInnerHTML never does).
+  if (
+    (ad.type === "HTML" || ad.type === "ADSENSE" || ad.type === "GAM") &&
+    ad.html
+  ) {
     return (
-      <div
-        className={cn(
-          "relative rounded-xl overflow-hidden border border-gray-800 bg-gray-900 mx-auto",
-          className
-        )}
-        style={outerStyle}
-      >
-        {/* Compliant disclosure badge — kept for FTC/EU. The iframe title is
-            neutral (no "Sponsored") so cosmetic filters can't select it. */}
-        <span className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur text-[9px] font-bold uppercase tracking-wider text-white/90">
-          <Megaphone className="w-2.5 h-2.5" />
-          Sponsored
-        </span>
-        <iframe
-          title="Embedded content"
-          srcDoc={ad.html}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-          className="block w-full border-0"
-          style={{ height: dim?.h ?? 250 }}
+      <div className={cn("mx-auto", className)} style={outerStyle}>
+        <SandboxedAdFrame
+          html={ad.html}
+          height={dim?.h ?? 250}
+          impressionPixel={ad.impressionPixel}
         />
       </div>
     );
@@ -248,6 +247,10 @@ export function AdRenderer({
         <Megaphone className="w-2.5 h-2.5" />
         Sponsored
       </span>
+      {ad.impressionPixel ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ad.impressionPixel} alt="" width={1} height={1} className="absolute bottom-0 right-0 opacity-0 pointer-events-none" />
+      ) : null}
       {ad.videoUrl ? (
         <video
           src={ad.videoUrl}
