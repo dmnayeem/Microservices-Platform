@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
-
-const MANUAL_METHODS = new Set([
-  "MANUAL_BKASH",
-  "MANUAL_NAGAD",
-  "MANUAL_ROCKET",
-  "MANUAL_BANK",
-]);
+import { getEnabledDepositMethods } from "@/lib/deposit-methods";
 
 /** List the current user's deposits. */
 export async function GET() {
@@ -40,8 +34,17 @@ export async function POST(request: NextRequest) {
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: "Enter a valid amount" }, { status: 400 });
   }
-  if (!MANUAL_METHODS.has(method)) {
-    return NextResponse.json({ error: "Invalid payment method" }, { status: 400 });
+  // Validate against the admin-configured, enabled deposit methods.
+  const enabled = await getEnabledDepositMethods();
+  const picked = enabled.find((m) => m.key === method);
+  if (!picked) {
+    return NextResponse.json({ error: "Invalid or unavailable payment method" }, { status: 400 });
+  }
+  if (amount < picked.minAmount || (picked.maxAmount > 0 && amount > picked.maxAmount)) {
+    return NextResponse.json(
+      { error: `${picked.label}: amount must be $${picked.minAmount}–$${picked.maxAmount}.` },
+      { status: 400 }
+    );
   }
   if (!txnId) {
     return NextResponse.json(
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     data: {
       userId: session.user.id,
       amount,
-      method,
+      method: picked.key,
       txnId,
       proofUrl,
       status: "PENDING",

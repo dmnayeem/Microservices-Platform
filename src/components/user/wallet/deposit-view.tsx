@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Wallet, ExternalLink } from "lucide-react";
+import { Loader2, Wallet, ExternalLink, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import type { DepositMethod } from "@/lib/deposit-methods";
 
 interface Deposit {
   id: string;
@@ -14,13 +15,6 @@ interface Deposit {
   createdAt: string;
 }
 
-const MANUAL_METHODS = [
-  { key: "MANUAL_BKASH", label: "bKash", emoji: "📱" },
-  { key: "MANUAL_NAGAD", label: "Nagad", emoji: "📲" },
-  { key: "MANUAL_ROCKET", label: "Rocket", emoji: "🚀" },
-  { key: "MANUAL_BANK", label: "Bank", emoji: "🏦" },
-];
-
 const STATUS_TONE: Record<string, string> = {
   PENDING: "bg-amber-500/10 text-amber-400",
   APPROVED: "bg-emerald-500/10 text-emerald-400",
@@ -29,10 +23,12 @@ const STATUS_TONE: Record<string, string> = {
 
 export function DepositView() {
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState<string>("MANUAL_BKASH");
+  const [methods, setMethods] = useState<DepositMethod[]>([]);
+  const [method, setMethod] = useState<string>("");
   const [txnId, setTxnId] = useState("");
   const [proofUrl, setProofUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [gateways, setGateways] = useState<{ key: string; label: string }[]>([]);
 
@@ -44,16 +40,40 @@ export function DepositView() {
   };
   useEffect(() => {
     load();
+    fetch("/api/deposits/methods")
+      .then((r) => r.json())
+      .then((d) => {
+        const list: DepositMethod[] = d.methods ?? [];
+        setMethods(list);
+        setMethod((cur) => cur || list[0]?.key || "");
+      })
+      .catch(() => setMethods([]));
     fetch("/api/deposits/gateway/providers")
       .then((r) => r.json())
       .then((d) => setGateways(d.providers ?? []))
       .catch(() => setGateways([]));
   }, []);
 
+  const selected = methods.find((m) => m.key === method) ?? null;
+  const copyAccount = async () => {
+    if (!selected?.account) return;
+    try {
+      await navigator.clipboard.writeText(selected.account);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const submitManual = async () => {
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt <= 0) {
       toast.error("Enter a valid amount");
+      return;
+    }
+    if (!method) {
+      toast.error("Pick a payment method");
       return;
     }
     if (!txnId.trim()) {
@@ -139,26 +159,52 @@ export function DepositView() {
 
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-1.5">
-            Manual method
+            Payment method
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {MANUAL_METHODS.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => setMethod(m.key)}
-                className={`p-2.5 rounded-lg border text-sm font-semibold ${
-                  method === m.key
-                    ? "border-indigo-500 bg-indigo-500/10 text-white"
-                    : "border-gray-700 bg-gray-800 text-gray-300"
-                }`}
-              >
-                <span className="mr-1">{m.emoji}</span>
-                {m.label}
-              </button>
-            ))}
-          </div>
+          {methods.length === 0 ? (
+            <p className="text-xs text-gray-500">No manual methods are available right now.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {methods.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setMethod(m.key)}
+                  className={`p-2.5 rounded-lg border text-sm font-semibold ${
+                    method === m.key
+                      ? "border-indigo-500 bg-indigo-500/10 text-white"
+                      : "border-gray-700 bg-gray-800 text-gray-300"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {selected && (
+          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
+            <p className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold">Send payment to</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-sm text-white break-all bg-gray-900/60 rounded px-2 py-1.5">{selected.account}</code>
+              <button
+                type="button"
+                onClick={copyAccount}
+                className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            {selected.instructions && (
+              <p className="text-xs text-gray-300 whitespace-pre-wrap">{selected.instructions}</p>
+            )}
+            <p className="text-[10px] text-gray-500">
+              Limits: ${selected.minAmount} – ${selected.maxAmount}. After paying, enter your transaction id below.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-1.5">
@@ -227,7 +273,9 @@ export function DepositView() {
               <div>
                 <p className="text-sm font-semibold text-white">
                   ${d.amount.toFixed(2)}{" "}
-                  <span className="text-gray-500 font-normal">· {d.method.replace("MANUAL_", "")}</span>
+                  <span className="text-gray-500 font-normal">
+                    · {methods.find((m) => m.key === d.method)?.label ?? d.method.replace("MANUAL_", "")}
+                  </span>
                 </p>
                 <p className="text-[11px] text-gray-500">
                   {new Date(d.createdAt).toLocaleDateString()}
