@@ -561,6 +561,8 @@ model OfferwallCallback {
   userPayout    Int     // points
   currency      String   @default("USD")
   status        String   @default("PENDING") // PENDING | APPROVED | REJECTED | FRAUD | CHARGEBACK
+  internalOfferId String? // resolved OfferwallOffer.id from the subid (catalog credit)
+  isReversal    Boolean  @default(false) // chargeback / reconciliation negative postback
   fraudScore    Int     @default(0)
   fraudReasons  String[]
   ipAddress     String?
@@ -2844,6 +2846,100 @@ model OfferwallConfig {
   config      Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ── Internal offerwall catalog (curated + provider-synced offers) ──
+// Loose coupling (plain userId/providerId strings, no User FK) matches the
+// existing OfferwallCallback style. Offers are grouped into categories and
+// completed one-by-one (sequential unlock via `order`), country-targeted,
+// with per-offer points + completion mode (proof / postback / manual).
+model OfferwallCategory {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  slug        String           @unique
+  description String?
+  icon        String?
+  color       String?
+  order       Int              @default(0)
+  isActive    Boolean          @default(true)
+  offers      OfferwallOffer[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([isActive, order])
+}
+
+model OfferwallOffer {
+  id                  String                @id @default(cuid())
+  categoryId          String
+  category            OfferwallCategory     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  title               String
+  description         String?               @db.Text
+  instructions        String[]              // ordered steps shown to the user
+  imageUrl            String?
+  points              Int                   @default(0)
+  payoutUsd           Decimal?              @db.Decimal(18, 6)
+  countries           String[]              @default([]) // empty = all countries
+  order               Int                   @default(0)  // sequential-unlock order within the category
+  trackingUrlTemplate String?               @db.Text     // Start Work destination; supports {userId}/{clickId}
+  source              String                @default("MANUAL") // MANUAL | PROVIDER
+  providerId          String?               // OfferwallConfig.id when source = PROVIDER
+  externalOfferId     String?               // provider's offer id (postback match + sync upsert)
+  completionMode      String                @default("PROOF") // PROOF | POSTBACK | MANUAL
+  proofScreenshot     Boolean               @default(true)
+  dailyLimit          Int?
+  oneTimePerUser      Boolean               @default(true)
+  holdHours           Int                   @default(0)
+  featured            Boolean               @default(false)
+  isActive            Boolean               @default(true)
+  completions         OfferwallCompletion[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([isActive, categoryId, order])
+  @@index([providerId, externalOfferId])
+}
+
+// One "Start Work" click — the subid glue matched by the provider postback.
+model OfferwallClick {
+  id        String   @id @default(cuid()) // = clickId / subid passed into the tracking URL
+  userId    String
+  offerId   String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, offerId])
+  @@index([createdAt])
+}
+
+model OfferwallCompletion {
+  id              String         @id @default(cuid())
+  userId          String
+  offerId         String
+  offer           OfferwallOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  categoryId      String?
+  status          String         @default("STARTED") // STARTED | PENDING | APPROVED | REJECTED | REVERSED
+  proofImages     String[]
+  points          Int            @default(0)
+  payoutUsd       Decimal?       @db.Decimal(18, 6)
+  providerId      String?
+  txid            String? // provider transaction id (postback dedup)
+  clickId         String?
+  reviewedById    String?
+  reviewNote      String?        @db.Text
+  rejectionReason String?        @db.Text
+  heldUntil       DateTime?
+  creditedAt      DateTime?
+  reversedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Postback idempotency. (providerId,txid) both-null rows are allowed for
+  // proof/manual completions since Postgres treats NULLs as distinct.
+  @@unique([providerId, txid])
+  @@index([userId, status])
+  @@index([offerId, status])
+  @@index([status, heldUntil])
 }
 
 model VideoAdConfig {

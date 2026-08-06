@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
+import { parseOfferwallConfig } from "@/lib/offerwall";
 
 /**
  * Generic offerwall server-to-server postback. Provider-agnostic:
@@ -56,6 +57,10 @@ async function handle(request: NextRequest, provider: string) {
   }
   const offerId = pick(url, body, "offerId", "offer_id") || null;
   const offerName = pick(url, body, "offerName", "offer_name") || null;
+  // Our click id (subid) is echoed back so we can resolve the internal offer.
+  const clickId = pick(url, body, "clickId", "click_id", "s2", "sub2", "aff_sub2") || null;
+  const state = pick(url, body, "state", "status", "type").toLowerCase();
+  const isReversal = /reject|revers|chargeback|declin/.test(state) || payoutAmount < 0;
   const ip = (request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
 
   if (!transactionId || !userId) {
@@ -86,44 +91,129 @@ async function handle(request: NextRequest, provider: string) {
     return NextResponse.json({ error: "Unknown user" }, { status: 400 });
   }
 
-  const cfg = (config.config as { autoCredit?: boolean; testMode?: boolean } | null) ?? {};
+  const pcfg = parseOfferwallConfig(config.config);
+  const multiplier = pcfg.rewardMultiplier || 1;
   // Test mode always queues (no credit) so integrations can be QA'd safely.
-  const autoCredit = !!cfg.autoCredit && !cfg.testMode;
+  const autoCredit = pcfg.autoCredit && !pcfg.testMode;
+  const rawPayload = JSON.parse(JSON.stringify({ ...Object.fromEntries(url.searchParams), ...body }));
 
-  // Idempotency: transactionId is @unique — create first, catch duplicates.
+  // Resolve an internal catalog offer/completion from our click id (subid).
+  type Comp = { id: string; userId: string; offerId: string; points: number; status: string };
+  let completion: Comp | null = null;
+  let internalOfferId: string | null = null;
+  let holdHours = 0;
+  if (clickId) {
+    const click = (await prisma.offerwallClick.findUnique({ where: { id: clickId } })) as
+      | { userId: string; offerId: string }
+      | null;
+    if (click) {
+      internalOfferId = click.offerId;
+      const offer = (await prisma.offerwallOffer.findUnique({
+        where: { id: click.offerId },
+        select: { holdHours: true },
+      })) as { holdHours: number } | null;
+      holdHours = offer?.holdHours ?? 0;
+      completion = (await prisma.offerwallCompletion.findFirst({
+        where: { userId: click.userId, offerId: click.offerId, clickId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, userId: true, offerId: true, points: true, status: true },
+      })) as Comp | null;
+    }
+  }
+
+  const now = new Date();
+
   try {
+    // ── Reversal / chargeback ──
+    if (isReversal) {
+      const back = Math.abs(userPayout) || completion?.points || 0;
+      const ops: unknown[] = [
+        prisma.offerwallCallback.create({
+          data: {
+            userId, offerwallId: config.id, offerId, offerName, transactionId,
+            payoutAmount, userPayout, status: "CHARGEBACK", isReversal: true,
+            internalOfferId, ipAddress: ip, processedAt: now, rawPayload,
+          },
+        }),
+      ];
+      // Only claw back if the completion was actually credited.
+      if (completion && completion.status === "APPROVED" && back > 0) {
+        ops.push(
+          prisma.offerwallCompletion.update({ where: { id: completion.id }, data: { status: "REVERSED", reversedAt: now } }),
+          prisma.user.update({ where: { id: completion.userId }, data: { pointsBalance: { decrement: back } } }),
+          prisma.transaction.create({
+            data: {
+              userId: completion.userId, type: "EARNING", status: "COMPLETED",
+              points: -back, amount: -Math.abs(payoutAmount),
+              description: `Offerwall reversal: ${offerName ?? "offer"}`,
+              reference: `offerwall_rev_${transactionId}`,
+            },
+          })
+        );
+      }
+      await prisma.$transaction(ops as never);
+      return NextResponse.json({ ok: true, reversed: back });
+    }
+
+    // ── Catalog offer completion (resolved via subid) ──
+    if (completion) {
+      const points = completion.points || Math.round(userPayout * multiplier);
+      const held = holdHours > 0;
+      const callbackStatus = held ? "PENDING" : "APPROVED";
+      const ops: unknown[] = [
+        prisma.offerwallCallback.create({
+          data: {
+            userId: completion.userId, offerwallId: config.id, offerId, offerName,
+            transactionId, payoutAmount, userPayout: points, status: callbackStatus,
+            internalOfferId, ipAddress: ip, processedAt: now,
+            creditedAt: held ? null : now, rawPayload,
+          },
+        }),
+      ];
+      if (held) {
+        // Hold: credit later via the release cron.
+        ops.push(
+          prisma.offerwallCompletion.update({
+            where: { id: completion.id },
+            data: { status: "PENDING", points, txid: transactionId, heldUntil: new Date(now.getTime() + holdHours * 3600_000) },
+          })
+        );
+      } else {
+        ops.push(
+          prisma.offerwallCompletion.update({
+            where: { id: completion.id },
+            data: { status: "APPROVED", points, txid: transactionId, creditedAt: now },
+          }),
+          prisma.user.update({ where: { id: completion.userId }, data: { pointsBalance: { increment: points }, totalEarnings: { increment: payoutAmount } } }),
+          prisma.transaction.create({
+            data: {
+              userId: completion.userId, type: "EARNING", status: "COMPLETED",
+              points, amount: payoutAmount,
+              description: `Offer: ${offerName ?? "completion"}`,
+              reference: `offerwall_${transactionId}`,
+            },
+          })
+        );
+      }
+      await prisma.$transaction(ops as never);
+      return NextResponse.json({ ok: true, credited: held ? 0 : points, held });
+    }
+
+    // ── Legacy pure-wall completion (no internal offer) ──
+    const points = Math.round(userPayout * multiplier);
     if (autoCredit) {
       await prisma.$transaction([
         prisma.offerwallCallback.create({
           data: {
-            userId,
-            offerwallId: config.id,
-            offerId,
-            offerName,
-            transactionId,
-            payoutAmount,
-            userPayout,
-            status: "APPROVED",
-            ipAddress: ip,
-            creditedAt: new Date(),
-            processedAt: new Date(),
-            rawPayload: JSON.parse(JSON.stringify({ ...Object.fromEntries(url.searchParams), ...body })),
+            userId, offerwallId: config.id, offerId, offerName, transactionId,
+            payoutAmount, userPayout: points, status: "APPROVED", ipAddress: ip,
+            creditedAt: now, processedAt: now, rawPayload,
           },
         }),
-        prisma.user.update({
-          where: { id: userId },
-          data: {
-            pointsBalance: { increment: userPayout },
-            totalEarnings: { increment: payoutAmount },
-          },
-        }),
+        prisma.user.update({ where: { id: userId }, data: { pointsBalance: { increment: points }, totalEarnings: { increment: payoutAmount } } }),
         prisma.transaction.create({
           data: {
-            userId,
-            type: "EARNING",
-            status: "COMPLETED",
-            points: userPayout,
-            amount: payoutAmount,
+            userId, type: "EARNING", status: "COMPLETED", points, amount: payoutAmount,
             description: `Offerwall: ${offerName ?? offerId ?? "completion"}`,
             reference: `offerwall_${transactionId}`,
           },
@@ -132,19 +222,12 @@ async function handle(request: NextRequest, provider: string) {
     } else {
       await prisma.offerwallCallback.create({
         data: {
-          userId,
-          offerwallId: config.id,
-          offerId,
-          offerName,
-          transactionId,
-          payoutAmount,
-          userPayout,
-          status: "PENDING",
-          ipAddress: ip,
-          rawPayload: JSON.parse(JSON.stringify({ ...Object.fromEntries(url.searchParams), ...body })),
+          userId, offerwallId: config.id, offerId, offerName, transactionId,
+          payoutAmount, userPayout: points, status: "PENDING", ipAddress: ip, rawPayload,
         },
       });
     }
+    return NextResponse.json({ ok: true, credited: autoCredit ? points : 0 });
   } catch (err) {
     // Unique violation on transactionId → provider retry; already handled.
     if ((err as { code?: string })?.code === "P2002") {
@@ -152,8 +235,6 @@ async function handle(request: NextRequest, provider: string) {
     }
     return NextResponse.json({ error: "Callback failed" }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true, credited: autoCredit ? userPayout : 0 });
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {

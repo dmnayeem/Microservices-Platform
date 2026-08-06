@@ -31,6 +31,7 @@ interface Offerwall {
 interface Props {
   initial: Offerwall[];
   canManage: boolean;
+  categories?: Array<{ id: string; name: string }>;
 }
 
 const KNOWN_PROVIDERS = [
@@ -44,11 +45,35 @@ const KNOWN_PROVIDERS = [
   "AYET",
 ];
 
-export function OfferwallsClient({ initial, canManage }: Props) {
+export function OfferwallsClient({ initial, canManage, categories = [] }: Props) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Offerwall | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const syncOffers = async (o: Offerwall) => {
+    setBusyId(o.id);
+    try {
+      const res = await fetch(`/api/admin/offerwall/providers/${o.id}/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "Sync failed");
+      toast.success(`Synced ${d.synced ?? 0} offer(s)`, {
+        description: d.note ?? "Offers added to the catalog under this provider's category.",
+      });
+      router.refresh();
+    } catch (err) {
+      toast.error("Sync failed", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+  void categories;
 
   const toggleActive = async (o: Offerwall) => {
     setBusyId(o.id);
@@ -192,6 +217,16 @@ export function OfferwallsClient({ initial, canManage }: Props) {
                     <Pencil className="w-3.5 h-3.5" />
                     Configure
                   </button>
+                  {((o.config ?? {}) as { integrationType?: string }).integrationType === "API" && (
+                    <button
+                      onClick={() => syncOffers(o)}
+                      disabled={busyId === o.id}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-300 text-sm rounded hover:bg-emerald-500/20 disabled:opacity-50"
+                      title="Fetch this provider's offers into the catalog"
+                    >
+                      {busyId === o.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Sync offers"}
+                    </button>
+                  )}
                   <button
                     onClick={() => remove(o)}
                     disabled={busyId === o.id}
@@ -246,6 +281,10 @@ function ProviderModal({
     rewardMultiplier?: number;
     iframeUrl?: string;
     autoCredit?: boolean;
+    integrationType?: string;
+    kind?: string;
+    apiEndpoint?: string;
+    holdHours?: number;
   };
   const [form, setForm] = useState({
     provider: provider?.provider ?? KNOWN_PROVIDERS[0],
@@ -257,6 +296,10 @@ function ProviderModal({
     rewardMultiplier: cfg.rewardMultiplier ?? 1,
     iframeUrl: cfg.iframeUrl ?? "",
     autoCredit: cfg.autoCredit ?? false,
+    integrationType: cfg.integrationType === "API" ? "API" : "IFRAME",
+    kind: cfg.kind === "SURVEY" ? "SURVEY" : "OFFER",
+    apiEndpoint: cfg.apiEndpoint ?? "",
+    holdHours: cfg.holdHours ?? 0,
   });
 
   const autoCallback =
@@ -284,6 +327,10 @@ function ProviderModal({
             : 1,
           iframeUrl: form.iframeUrl.trim() || undefined,
           autoCredit: form.autoCredit,
+          integrationType: form.integrationType,
+          kind: form.kind,
+          apiEndpoint: form.apiEndpoint.trim() || undefined,
+          holdHours: Number.isFinite(form.holdHours) ? form.holdHours : 0,
         },
       };
       const res = await fetch(
@@ -420,6 +467,41 @@ function ProviderModal({
               </button>
             </div>
           </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Integration">
+              <select
+                value={form.integrationType}
+                onChange={(e) => setForm({ ...form, integrationType: e.target.value })}
+                className={inp}
+              >
+                <option value="IFRAME">Embedded wall (iframe)</option>
+                <option value="API">API catalog (native cards)</option>
+              </select>
+            </Field>
+            <Field label="Kind">
+              <select
+                value={form.kind}
+                onChange={(e) => setForm({ ...form, kind: e.target.value })}
+                className={inp}
+              >
+                <option value="OFFER">Offers</option>
+                <option value="SURVEY">Surveys</option>
+              </select>
+            </Field>
+          </div>
+          {form.integrationType === "API" && (
+            <Field label="Offers API endpoint (get-offers URL, with key/params)">
+              <input
+                value={form.apiEndpoint}
+                onChange={(e) => setForm({ ...form, apiEndpoint: e.target.value })}
+                className={inp + " font-mono text-xs"}
+                placeholder="https://api.provider.com/v1/offers?key=...&user_id={userId}"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Used by &quot;Sync offers&quot; to pull the catalog into your offers list.
+              </p>
+            </Field>
+          )}
           <Field label="Postback URL (callback)">
             <div className="flex gap-2">
               <input
