@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { getAdClickCost } from "@/lib/ad-billing";
 import { userCanFeature } from "@/lib/packages";
+import { deductAdCreditTx } from "@/lib/ad-credits";
 import { add, sub, toNum } from "@/lib/money";
 
 export async function GET() {
@@ -114,19 +114,12 @@ export async function POST(request: NextRequest) {
   const advertiserId = session.user.id;
   const amount = v.data.budget;
 
-  // Fund the campaign from the advertiser's wallet, atomically. The conditional
-  // decrement (cashBalance >= amount) is the no-overspend guard; if it matches
-  // zero rows the balance was insufficient and we abort before creating anything.
+  // Fund the campaign from the advertiser's Ad Credit, atomically. The
+  // conditional decrement (adCreditBalance >= amount) is the no-overspend guard;
+  // if it matches zero rows the credit was insufficient and we abort.
   let campaign;
   try {
     campaign = await prisma.$transaction(async (tx) => {
-      const debit = await tx.user.updateMany({
-        where: { id: advertiserId, cashBalance: { gte: amount } },
-        data: { cashBalance: { decrement: amount } },
-      });
-      if (debit.count === 0) {
-        throw new Error("INSUFFICIENT_FUNDS");
-      }
       const c = await tx.adCampaign.create({
         data: {
           title: v.data.title,
@@ -138,30 +131,23 @@ export async function POST(request: NextRequest) {
           endAt: v.data.endAt ? new Date(v.data.endAt) : null,
         },
       });
-      await tx.transaction.create({
-        data: {
-          userId: advertiserId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -amount,
-          points: 0,
-          description: `Ad campaign budget — "${c.title}"`,
-          reference: `campaign_create_${c.id}`,
-          metadata: { campaignId: c.id, kind: "campaign_fund" },
-        },
+      await deductAdCreditTx(tx, advertiserId, amount, {
+        kind: "CAMPAIGN_FUND",
+        reference: `campaign_create_${c.id}`,
+        metadata: { campaignId: c.id },
       });
       return c;
     });
   } catch (err) {
-    if (err instanceof Error && err.message === "INSUFFICIENT_FUNDS") {
+    if (err instanceof Error && err.message === "INSUFFICIENT_CREDIT") {
       const me = await prisma.user.findUnique({
         where: { id: advertiserId },
-        select: { cashBalance: true },
+        select: { adCreditBalance: true },
       });
       return NextResponse.json(
         {
-          error: `Wallet balance is $${toNum(me?.cashBalance).toFixed(2)} — need $${amount.toFixed(2)} to fund this campaign. Top up your wallet, then try again.`,
-          shortBy: sub(amount, me?.cashBalance ?? 0).toNumber(),
+          error: `Ad credit is $${toNum(me?.adCreditBalance).toFixed(2)} — need $${amount.toFixed(2)} to fund this campaign. Add funds first.`,
+          shortBy: sub(amount, me?.adCreditBalance ?? 0).toNumber(),
         },
         { status: 402 }
       );

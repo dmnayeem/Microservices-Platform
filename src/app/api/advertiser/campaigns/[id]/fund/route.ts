@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { userCanFeature } from "@/lib/packages";
+import { deductAdCreditTx } from "@/lib/ad-credits";
 import { sub, toNum } from "@/lib/money";
 
 const fundSchema = z.object({ amount: z.number().min(1).max(100000) });
@@ -54,12 +54,12 @@ export async function POST(
 
   try {
     await prisma.$transaction(async (tx) => {
-      const debit = await tx.user.updateMany({
-        where: { id: advertiserId, cashBalance: { gte: amount } },
-        data: { cashBalance: { decrement: amount } },
+      // Fund the campaign from the advertiser's Ad Credit (not cash).
+      await deductAdCreditTx(tx, advertiserId, amount, {
+        kind: "CAMPAIGN_FUND",
+        reference: `campaign_fund_${campaign.id}_${Date.now()}`,
+        metadata: { campaignId: campaign.id },
       });
-      if (debit.count === 0) throw new Error("INSUFFICIENT_FUNDS");
-
       await tx.adCampaign.update({
         where: { id: campaign.id },
         data: {
@@ -68,29 +68,17 @@ export async function POST(
           ...(campaign.status === "PAUSED" ? { status: "ACTIVE" } : {}),
         },
       });
-      await tx.transaction.create({
-        data: {
-          userId: advertiserId,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          amount: -amount,
-          points: 0,
-          description: "Ad campaign top-up",
-          reference: `campaign_fund_${campaign.id}_${Date.now()}`,
-          metadata: { campaignId: campaign.id, kind: "campaign_fund" },
-        },
-      });
     });
   } catch (err) {
-    if (err instanceof Error && err.message === "INSUFFICIENT_FUNDS") {
+    if (err instanceof Error && err.message === "INSUFFICIENT_CREDIT") {
       const me = await prisma.user.findUnique({
         where: { id: advertiserId },
-        select: { cashBalance: true },
+        select: { adCreditBalance: true },
       });
       return NextResponse.json(
         {
-          error: `Wallet balance is $${toNum(me?.cashBalance).toFixed(2)} — need $${amount.toFixed(2)}.`,
-          shortBy: sub(amount, me?.cashBalance ?? 0).toNumber(),
+          error: `Ad credit is $${toNum(me?.adCreditBalance).toFixed(2)} — need $${amount.toFixed(2)}. Add funds first.`,
+          shortBy: sub(amount, me?.adCreditBalance ?? 0).toNumber(),
         },
         { status: 402 }
       );

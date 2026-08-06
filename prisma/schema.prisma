@@ -80,6 +80,7 @@ enum TransactionType {
   DEPOSIT
   AFFILIATE_COMMISSION
   ADMIN_FEE
+  AD_CREDIT_PURCHASE
 }
 
 // What earning generated a referral commission. Currently only tasks pay
@@ -446,6 +447,22 @@ model AdView {
   @@index([adId])
   @@index([userId, adId, createdAt])
   @@index([createdAt])
+}
+
+// Advertiser ad-credit history. `delta` is the signed USD change to
+// User.adCreditBalance; `kind` classifies it. Bare userId (no back-relation
+// needed on both sides — mirrors other ledger patterns).
+model AdCreditLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  delta        Decimal  @db.Decimal(18, 6)
+  kind         String   // PURCHASE | GRANT | CAMPAIGN_FUND | REFUND
+  balanceAfter Decimal? @db.Decimal(18, 6)
+  reference    String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model PushSubscription {
@@ -841,6 +858,9 @@ model User {
   status            UserStatus  @default(PENDING_VERIFICATION)
   pointsBalance     Int         @default(0)
   cashBalance       Decimal     @default(0) @db.Decimal(18, 6)
+  // Non-withdrawable ad-spend wallet (USD, 1 credit = $1). Bought with cash/
+  // points or admin-granted; campaign budgets are funded from this.
+  adCreditBalance   Decimal     @default(0) @db.Decimal(18, 6)
   totalEarnings     Decimal     @default(0) @db.Decimal(18, 6)
   totalWithdrawals  Decimal     @default(0) @db.Decimal(18, 6)
   xp                Int         @default(0)
