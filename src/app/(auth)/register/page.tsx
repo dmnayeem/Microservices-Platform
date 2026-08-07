@@ -244,7 +244,7 @@ export default function RegisterPage() {
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-400" />
-              Withdraw to bKash, Nagad & more
+              Withdraw to PayPal, bank, crypto & more
             </li>
           </ul>
         </div>

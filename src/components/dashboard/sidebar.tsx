@@ -123,7 +123,7 @@ const navigationGroups: { section: string; items: NavItem[] }[] = [
       { name: "My Package", href: "/my-package", icon: Package },
       { name: "Notifications", href: "/notifications", icon: Bell },
       { name: "Chat", href: "/chat", icon: MessageSquare },
-      { name: "Help", href: "/help", icon: HelpCircle },
+      { name: "Help", href: "/support", icon: HelpCircle },
       { name: "Settings", href: "/settings", icon: Settings },
     ],
   },

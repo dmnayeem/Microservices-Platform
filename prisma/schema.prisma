@@ -2861,6 +2861,22 @@ model CustomRole {
   @@index([isActive])
 }
 
+// Public contact-form submissions (from /contact). Stored server-side and
+// optionally emailed to support when SMTP is configured.
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  category  String?
+  message   String   @db.Text
+  ipAddress String?
+  status    String   @default("NEW") // NEW | READ | RESOLVED
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
 model OfferwallConfig {
   id          String   @id @default(cuid())
   provider    String   @unique

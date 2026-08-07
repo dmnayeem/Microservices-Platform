@@ -5,6 +5,7 @@ import {
   LegalSection,
   LEGAL_CONTACT,
   LEGAL_GOVERNING,
+  LEGAL_ENTITY,
 } from "@/components/legal/legal-ui";
 
 export const metadata: Metadata = {
@@ -172,9 +173,13 @@ export default function TermsPage() {
 
       <LegalSection id="law" title="12. Governing law &amp; changes">
         <p>
-          These Terms are governed by the laws of {LEGAL_GOVERNING}. We may update
-          these Terms from time to time; material changes will be notified in-app
-          or by email, and continued use means you accept them.
+          EarnGPT is a global service operated by {LEGAL_ENTITY}. These Terms are
+          governed by {LEGAL_GOVERNING}. Nothing here removes rights you cannot
+          waive under the laws of your country of residence.
+        </p>
+        <p>
+          We may update these Terms from time to time; material changes will be
+          notified in-app or by email, and continued use means you accept them.
         </p>
       </LegalSection>
 

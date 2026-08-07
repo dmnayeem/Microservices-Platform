@@ -1,9 +1,22 @@
 import type { ReactNode } from "react";
+import { SUPPORT_EMAIL, COMPANY_LEGAL } from "@/config/company";
 
 /** Last time any legal document was revised. Update when policies change. */
 export const LEGAL_UPDATED = "9 July 2026";
-export const LEGAL_CONTACT = "support@earngpt.app";
-export const LEGAL_GOVERNING = "Bangladesh";
+export const LEGAL_CONTACT = SUPPORT_EMAIL;
+/** Operating entity named in the legal documents. */
+export const LEGAL_ENTITY = COMPANY_LEGAL;
+/**
+ * Governing-law framing. Neutral/international rather than a single country: the
+ * service is offered globally, disputes are handled by binding arbitration under
+ * internationally recognized rules, and users keep the mandatory consumer-law
+ * protections of their country of residence.
+ */
+export const LEGAL_GOVERNING =
+  "the laws applicable to international online services, with any disputes " +
+  "resolved by binding arbitration under internationally recognized rules — " +
+  "while the mandatory consumer-protection laws of your country of residence " +
+  "still apply to you";
 
 /** Page title + "last updated" header for a legal document. */
 export function LegalHeader({

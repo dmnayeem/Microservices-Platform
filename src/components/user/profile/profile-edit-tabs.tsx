@@ -465,7 +465,7 @@ export function PrivacyTab({
           ⬇️ Download My Data
         </a>
         <button
-          onClick={() => toast.info("Account deletion request goes to support — open a ticket from /help.")}
+          onClick={() => toast.info("Account deletion request goes to support — open a ticket from /support.")}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold border border-red-500/30"
         >
           🗑 Delete Account

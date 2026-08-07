@@ -44,8 +44,8 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>Financial &amp; transaction data</strong> — your points/cash
-            wallet balance, deposits, withdrawals, payment method details (e.g.
-            bKash, Nagad, Rocket, Binance, PayPal handles), earnings, and
+            wallet balance, deposits, withdrawals, payout details (e.g. PayPal,
+            bank, Wise, Payoneer, Skrill, or crypto wallet handles), earnings, and
             transaction history. We do <em>not</em> store full card numbers;
             card/gateway payments are handled by the payment provider.
           </li>
@@ -87,8 +87,8 @@ export default function PrivacyPolicyPage() {
         </p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
-            <strong>Payment &amp; payout providers</strong> (e.g. SSLCommerz,
-            bKash, and other processors) to move funds.
+            <strong>Payment &amp; payout providers</strong> (e.g. PayPal, Stripe,
+            and other regional processors) to move funds securely.
           </li>
           <li>
             <strong>Cloud &amp; infrastructure providers</strong> — Amazon Web

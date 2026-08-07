@@ -341,7 +341,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         step_number: "04",
         title: "Cash Out",
         description:
-          "Withdraw to PayPal, crypto, bKash, Nagad, or gift cards — fast and secure.",
+          "Withdraw to PayPal, bank transfer, Wise, Payoneer, crypto, or gift cards — fast and secure.",
         gradient: "from-pink-500 to-rose-500",
       },
     ],
@@ -463,7 +463,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         name: "Sarah M.",
         avatar: "SM",
-        country: "USA",
+        country: "🇺🇸 United States",
         earned: "$2,450",
         rating: 5,
         quote:
@@ -473,31 +473,101 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         name: "James K.",
         avatar: "JK",
-        country: "UK",
+        country: "🇬🇧 United Kingdom",
         earned: "$1,890",
         rating: 5,
         quote:
-          "The AI tasks pay really well. I do them during my commute and earn enough to cover my phone bill every month.",
+          "The tasks pay really well. I do them during my commute and earn enough to cover my phone bill every month.",
         gradient: "from-blue-500 to-cyan-500",
+      },
+      {
+        name: "Lukas B.",
+        avatar: "LB",
+        country: "🇩🇪 Germany",
+        earned: "$2,780",
+        rating: 5,
+        quote:
+          "Clean interface, fast payouts to my bank via Wise. This is the first site of its kind I actually trust.",
+        gradient: "from-amber-500 to-orange-500",
+      },
+      {
+        name: "Emily R.",
+        avatar: "ER",
+        country: "🇨🇦 Canada",
+        earned: "$1,640",
+        rating: 5,
+        quote:
+          "I earn on the side while watching TV. Cashed out to PayPal within a day, every single time.",
+        gradient: "from-emerald-500 to-teal-500",
+      },
+      {
+        name: "Daniel W.",
+        avatar: "DW",
+        country: "🇦🇺 Australia",
+        earned: "$2,120",
+        rating: 5,
+        quote:
+          "Surveys and offers add up faster than I expected. Support answered me at 2am — genuinely 24/7.",
+        gradient: "from-sky-500 to-blue-500",
+      },
+      {
+        name: "Sofia G.",
+        avatar: "SG",
+        country: "🇲🇽 Mexico",
+        earned: "$1,375",
+        rating: 5,
+        quote:
+          "Por fin una plataforma que paga de verdad. Retiré a mi cuenta sin problemas.",
+        gradient: "from-rose-500 to-pink-500",
+      },
+      {
+        name: "Omar A.",
+        avatar: "OA",
+        country: "🇦🇪 UAE",
+        earned: "$3,050",
+        rating: 5,
+        quote:
+          "Been using it for months. Payouts are on time and the referral income keeps growing every week.",
+        gradient: "from-violet-500 to-purple-500",
       },
       {
         name: "Priya S.",
         avatar: "PS",
-        country: "India",
+        country: "🇮🇳 India",
         earned: "$3,200",
         rating: 5,
         quote:
           "The referral program is amazing. My team earns passive income for me — it's life-changing.",
         gradient: "from-purple-500 to-violet-500",
       },
+      {
+        name: "Rahim H.",
+        avatar: "RH",
+        country: "🇧🇩 Bangladesh",
+        earned: "$1,980",
+        rating: 5,
+        quote:
+          "Started with a few tasks a day. Now the passive referral income covers most of my monthly expenses.",
+        gradient: "from-green-500 to-emerald-500",
+      },
+      {
+        name: "Yuki T.",
+        avatar: "YT",
+        country: "🇯🇵 Japan",
+        earned: "$2,300",
+        rating: 5,
+        quote:
+          "Simple, fast, and it actually pays out. The crypto withdrawal option is a huge plus for me.",
+        gradient: "from-red-500 to-rose-500",
+      },
     ],
   },
   trust_badges: {
     items: [
       { iconKey: "Shield", label: "SSL Secured" },
-      { iconKey: "Lock", label: "100% Safe" },
+      { iconKey: "Lock", label: "GDPR & CCPA Ready" },
       { iconKey: "Globe", label: "180+ Countries" },
-      { iconKey: "Trophy", label: "Top Rated" },
+      { iconKey: "Trophy", label: "24/7 Support" },
     ],
   },
   faq: {
@@ -517,7 +587,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         question: "When can I withdraw my earnings?",
         answer:
-          "The minimum withdrawal is 5,000 points (≈ $5). Most withdrawals to PayPal, bKash, Nagad, Binance, or gift cards are processed within 24–48 hours.",
+          "The minimum withdrawal is 5,000 points (≈ $5). Most withdrawals to PayPal, bank transfer, Wise, Payoneer, crypto, or gift cards are processed within 24–48 hours.",
       },
       {
         question: "Is EarnGPT available worldwide?",
@@ -527,7 +597,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         question: "How does the referral program work?",
         answer:
-          "When friends sign up with your code, you earn passive commission on their activity: 20% from Level 1 (direct), 10% from Level 2, and 5% from Level 3. Build a team once, earn forever.",
+          "When friends sign up with your code, you earn passive commission on their activity: 10% from Level 1 (direct), 5% from Level 2, and 2% from Level 3. Build a team once, earn forever.",
       },
     ],
   },
@@ -544,7 +614,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     brand_description:
       "The #1 platform for earning money online. Complete tasks, watch videos, refer friends, and withdraw your earnings instantly.",
     payment_methods_label: "Supported Payments",
-    payment_methods: ["bKash", "Nagad", "Rocket", "Binance", "PayPal"],
+    payment_methods: ["PayPal", "Visa", "Mastercard", "Wise", "Payoneer", "Skrill", "Crypto"],
     link_groups: [
       {
         title: "Product",
@@ -580,7 +650,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         links: [
           { label: "Help Center", href: "/help" },
           { label: "Contact Us", href: "/contact" },
-          { label: "Live Chat", href: "#" },
+          { label: "Live Chat", href: "/contact" },
           { label: "Status", href: "/status" },
         ],
       },
