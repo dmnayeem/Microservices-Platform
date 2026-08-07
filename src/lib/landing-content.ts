@@ -586,7 +586,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       },
     ],
     copyright_notice: "© {year} EarnGPT. All rights reserved.",
-    tagline: "Made with love in Bangladesh",
+    tagline: "",
   },
 };
 

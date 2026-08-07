@@ -80,7 +80,7 @@ export function Footer(props: Props) {
                 Refunds
               </Link>
             </nav>
-            <p>{v.tagline}</p>
+            {v.tagline.trim() && <p>{v.tagline}</p>}
           </div>
         </div>
       </div>
