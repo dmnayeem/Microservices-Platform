@@ -21,6 +21,7 @@ export async function GET() {
         id: true,
         pointsBalance: true,
         cashBalance: true,
+        adCreditBalance: true,
         totalEarnings: true,
         totalWithdrawals: true,
         level: true,
@@ -93,6 +94,8 @@ export async function GET() {
       balance: {
         points: user.pointsBalance,
         availablePoints: Math.max(0, availablePoints),
+        cash: toNum(user.cashBalance),
+        adCredit: toNum(user.adCreditBalance),
         cashEquivalent: user.pointsBalance / pointsPerUsd,
         pendingWithdrawal: pendingWithdrawalsAmount,
         totalEarnings: toNum(user.totalEarnings),

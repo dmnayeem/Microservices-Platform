@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, type MoneyInput } from "@/lib/money";
 import { isAdmin, type UserRole } from "@/lib/rbac";
-import { Users, Activity, DollarSign, GitBranch, Clock, TrendingUp, CalendarDays, ListTodo, ClipboardCheck, Wallet, CheckCircle } from "lucide-react";
+import { Users, Activity, DollarSign, GitBranch, Clock, TrendingUp, CalendarDays, ListTodo, ClipboardCheck, Wallet, CheckCircle, Banknote, ArrowDownToLine, Megaphone } from "lucide-react";
 import { StatCard } from "@/components/admin/stat-card";
 import { UserGrowthChart } from "@/components/admin/user-growth-chart";
 import { RevenueTrendChart } from "@/components/admin/revenue-trend-chart";
@@ -105,6 +105,16 @@ export default async function AdminDashboardPage() {
     auditLogs,
     _auditLogActorIds,
     last30DaysRevenue,
+
+    // Finance overview + ops queues (folded into the same batch to avoid waterfalls)
+    pendingDepositsAgg,
+    approvedDepositsAgg,
+    walletLiabilityAgg,
+    adCreditOutstandingAgg,
+    adSpendAgg,
+    pendingOfferwallCount,
+    completedWithdrawalsCount,
+    referralUsersCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -175,6 +185,22 @@ export default async function AdminDashboardPage() {
       where: { createdAt: { gte: thirtyDaysAgo }, isActive: true },
       select: { createdAt: true, amount: true },
     }),
+
+    // Deposits awaiting review — count + $ liability sitting in the queue.
+    prisma.deposit.aggregate({ where: { status: "PENDING" }, _sum: { amount: true }, _count: true }),
+    // Approved deposits — lifetime funded volume.
+    prisma.deposit.aggregate({ where: { status: "APPROVED" }, _sum: { amount: true } }),
+    // Wallet liability — withdrawable cash the platform owes users right now.
+    prisma.user.aggregate({ _sum: { cashBalance: true } }),
+    // Ad credit outstanding — non-withdrawable balance advertisers can still spend.
+    prisma.user.aggregate({ _sum: { adCreditBalance: true } }),
+    // Ad spend — total campaign budgets committed.
+    prisma.adCampaign.aggregate({ _sum: { budget: true } }),
+    // Offerwall completions awaiting manual review.
+    prisma.offerwallCompletion.count({ where: { status: "PENDING" } }),
+    // Moved out of the post-batch waterfall.
+    prisma.withdrawal.count({ where: { status: "COMPLETED" } }),
+    prisma.user.count({ where: { referredById: { not: null } } }),
   ]);
 
   // Resolve admin/user names for the audit log entries
@@ -212,15 +238,29 @@ export default async function AdminDashboardPage() {
     };
   });
 
-  // Derive numbers
-  const pendingPayoutsAmount = pendingWithdrawAgg._sum.amount ?? 0;
+  // Derive numbers — every money `_sum` MUST route through toNum(): a Prisma
+  // Decimal's .toLocaleString(opts) silently ignores the options and drops
+  // thousands-separators + 2dp formatting, so format a plain number instead.
+  const pendingPayoutsAmount = toNum(pendingWithdrawAgg._sum.amount);
   const totalPaid = toNum(paidWithdrawalsAgg._sum.amount);
-  const todayRevenue = todayRevenueAgg._sum.amount ?? 0;
-  const monthRevenue = monthRevenueAgg._sum.amount ?? 0;
-  const totalRevenue = totalRevenueAgg._sum.amount ?? 0;
-  const totalReferralEarnings = referralEarningsAgg._sum.amount ?? 0;
+  const todayRevenue = toNum(todayRevenueAgg._sum.amount);
+  const monthRevenue = toNum(monthRevenueAgg._sum.amount);
+  const totalRevenue = toNum(totalRevenueAgg._sum.amount);
+  const totalReferralEarnings = toNum(referralEarningsAgg._sum.amount);
+
+  // Finance overview
+  const pendingDepositsAmount = toNum(pendingDepositsAgg._sum.amount);
+  const pendingDepositsCount = pendingDepositsAgg._count;
+  const approvedDepositsAmount = toNum(approvedDepositsAgg._sum.amount);
+  const walletLiability = toNum(walletLiabilityAgg._sum.cashBalance);
+  const adCreditOutstanding = toNum(adCreditOutstandingAgg._sum.adCreditBalance);
+  const adSpend = toNum(adSpendAgg._sum.budget);
+
   // activeSubscriptions captured above for future surfacing — no use today.
   void activeSubscriptions;
+
+  const money = (n: number) =>
+    `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // Platform Stats — % rates (capped 0–100)
   const totalSubmissionsAttempted =
@@ -230,19 +270,15 @@ export default async function AdminDashboardPage() {
       ? (completionsMonth / totalSubmissionsAttempted) * 100
       : 0;
   const totalWithdrawalRequests =
-    pendingWithdrawalsCount +
-    (await prisma.withdrawal.count({ where: { status: "COMPLETED" } }));
+    pendingWithdrawalsCount + completedWithdrawalsCount;
   const withdrawalSuccessRate =
     totalWithdrawalRequests > 0
       ? ((totalWithdrawalRequests - pendingWithdrawalsCount) /
           totalWithdrawalRequests) *
         100
       : 0;
-  const referralUsers = await prisma.user.count({
-    where: { referredById: { not: null } },
-  });
   const referralConvRate =
-    totalUsers > 0 ? (referralUsers / totalUsers) * 100 : 0;
+    totalUsers > 0 ? (referralUsersCount / totalUsers) * 100 : 0;
   const subsRate =
     totalUsers > 0 ? (activeSubscriptions / totalUsers) * 100 : 0;
   const kycVerifiedRate =
@@ -273,10 +309,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Subscription Revenue"
-          value={`$${monthRevenue.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value={money(monthRevenue)}
           subtext="this month"
           icon={DollarSign}
           tone="green"
@@ -284,10 +317,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Referral Earnings"
-          value={`$${totalReferralEarnings.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value={money(totalReferralEarnings)}
           subtext="total paid out"
           icon={GitBranch}
           tone="indigo"
@@ -295,10 +325,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Pending Payouts"
-          value={`$${pendingPayoutsAmount.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value={money(pendingPayoutsAmount)}
           subtext={`${pendingWithdrawalsCount} awaiting`}
           icon={Clock}
           tone="orange"
@@ -310,10 +337,7 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           title="Total Revenue"
-          value={`$${totalRevenue.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value={money(totalRevenue)}
           subtext="all time"
           icon={TrendingUp}
           tone="green"
@@ -321,10 +345,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Today Revenue"
-          value={`$${todayRevenue.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value={money(todayRevenue)}
           subtext={format(now, "MMM d, yyyy")}
           icon={CalendarDays}
           tone="blue"
@@ -332,22 +353,68 @@ export default async function AdminDashboardPage() {
         <StatCard
           title="Pending Withdrawals"
           value={pendingWithdrawalsCount}
-          subtext={`$${pendingPayoutsAmount.toFixed(2)} total`}
+          subtext={`${money(pendingPayoutsAmount)} total`}
           icon={Wallet}
           tone="amber"
           href="/admin/withdrawals"
         />
         <StatCard
           title="Total Paid"
-          value={`$${totalPaid.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
+          value={money(totalPaid)}
           subtext="since launch"
           icon={CheckCircle}
           tone="purple"
           href="/admin/withdrawals?status=COMPLETED"
         />
+      </div>
+
+      {/* Finance overview — deposits, liabilities & ad economy */}
+      <div>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">
+          Finance Overview
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <StatCard
+            title="Pending Deposits"
+            value={money(pendingDepositsAmount)}
+            subtext={`${pendingDepositsCount} awaiting review`}
+            icon={Banknote}
+            tone="orange"
+            href="/admin/deposits"
+          />
+          <StatCard
+            title="Deposits Funded"
+            value={money(approvedDepositsAmount)}
+            subtext="approved, all time"
+            icon={ArrowDownToLine}
+            tone="green"
+            href="/admin/deposits?status=APPROVED"
+          />
+          <StatCard
+            title="Wallet Liability"
+            value={money(walletLiability)}
+            subtext="withdrawable cash owed"
+            icon={Wallet}
+            tone="blue"
+            href="/admin/withdrawals"
+          />
+          <StatCard
+            title="Ad Credit Outstanding"
+            value={money(adCreditOutstanding)}
+            subtext="non-withdrawable"
+            icon={Megaphone}
+            tone="indigo"
+            href="/admin/ads"
+          />
+          <StatCard
+            title="Ad Spend"
+            value={money(adSpend)}
+            subtext="campaign budgets"
+            icon={TrendingUp}
+            tone="purple"
+            href="/admin/ads"
+          />
+        </div>
       </div>
 
       {/* Charts row 1 — User growth (2/3) + Platform stats (1/3) */}
@@ -436,6 +503,8 @@ export default async function AdminDashboardPage() {
           pendingKYC={pendingKYC}
           pendingApprovals={pendingAccountApprovals}
           pendingWithdrawals={pendingWithdrawalsCount}
+          pendingDeposits={pendingDepositsCount}
+          pendingOfferwall={pendingOfferwallCount}
           pendingAppeals={pendingAppeals}
           openDisputes={openDisputes}
         />

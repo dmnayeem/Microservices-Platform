@@ -5,10 +5,12 @@ import {
   WalletView,
   type WalletTransaction,
   type ReferralStats,
+  type WalletDeposit,
 } from "@/components/user/wallet/wallet-view";
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 
 export default async function WalletPage() {
   const session = await auth();
@@ -16,13 +18,14 @@ export default async function WalletPage() {
 
   const userId = session.user.id;
 
-  const [user, transactions, pendingWithdrawalsCount, completedWithdrawals, refEarnings, l1Users] =
+  const [user, transactions, pendingWithdrawalsCount, completedWithdrawals, refEarnings, l1Users, deposits] =
     await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
           pointsBalance: true,
           cashBalance: true,
+          adCreditBalance: true,
           totalEarnings: true,
           package: { select: { slug: true, name: true } },
         },
@@ -46,6 +49,12 @@ export default async function WalletPage() {
       prisma.user.findMany({
         where: { referredById: userId },
         select: { id: true },
+      }),
+      prisma.deposit.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: { id: true, amount: true, method: true, status: true, txnId: true, createdAt: true },
       }),
     ]);
 
@@ -100,6 +109,15 @@ export default async function WalletPage() {
     createdAt: tx.createdAt.toISOString(),
   }));
 
+  const depositList: WalletDeposit[] = deposits.map((d) => ({
+    id: d.id,
+    amount: toNum(d.amount),
+    method: d.method,
+    status: d.status,
+    txnId: d.txnId,
+    createdAt: d.createdAt.toISOString(),
+  }));
+
   const kycPrompt = await getKycPromptState(userId);
   const pointsPerUsd = await getPointsPerUsd();
 
@@ -113,10 +131,12 @@ export default async function WalletPage() {
       <WalletView
         pointsBalance={user.pointsBalance}
         cashBalance={Number(user.cashBalance)}
+        adCreditBalance={toNum(user.adCreditBalance)}
         totalEarnings={Number(user.totalEarnings)}
         totalWithdrawn={totalWithdrawn}
         packageTier={user.package?.slug ?? "default"}
         transactions={txList}
+        deposits={depositList}
         referralStats={stats}
         pendingWithdrawals={pendingWithdrawalsCount}
         pointsPerUsd={pointsPerUsd}

@@ -490,9 +490,19 @@ export function AdvertiserDashboard() {
               ))}
             </div>
           </div>
-          <Link href="/deposit" className="block text-center text-xs text-emerald-400 hover:text-emerald-300 font-semibold pt-1">
-            Low balance? Add funds via Binance / manual →
-          </Link>
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
+            <p className="text-xs font-semibold text-white">Out of wallet balance?</p>
+            <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
+              Add money via bKash, Nagad, Binance or PayPal — it lands in your wallet, then you
+              top up ad credit here.
+            </p>
+            <Link
+              href="/deposit?from=ads"
+              className="mt-2 w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add money to wallet
+            </Link>
+          </div>
         </div>
       </BottomSheet>
     </div>

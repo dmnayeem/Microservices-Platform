@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Wallet, ExternalLink, Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Wallet, ExternalLink, Copy, Check, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -22,7 +23,8 @@ const STATUS_TONE: Record<string, string> = {
   REJECTED: "bg-red-500/10 text-red-400",
 };
 
-export function DepositView() {
+export function DepositView({ from }: { from?: string } = {}) {
+  const fromAds = from === "ads";
   const [amount, setAmount] = useState("");
   const [methods, setMethods] = useState<DepositMethod[]>([]);
   const [method, setMethod] = useState<string>("");
@@ -142,6 +144,24 @@ export function DepositView() {
           Top up your balance manually (admin-verified) or via online gateway.
         </p>
       </div>
+
+      {fromAds && (
+        <div className="rounded-xl border border-sky-500/25 bg-sky-500/5 p-3 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-sky-500/15 grid place-items-center text-sky-300 shrink-0">
+            <Megaphone className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white">Funding your ad credit</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              This adds money to your wallet first. Once an admin approves it, head back to{" "}
+              <Link href="/advertiser" className="text-sky-300 font-semibold hover:underline">
+                Run Ads → Top up
+              </Link>{" "}
+              to convert wallet cash into ad credit.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="glass rounded-xl p-4 sm:p-6 space-y-4">
         <div>

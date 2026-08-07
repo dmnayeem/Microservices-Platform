@@ -6,6 +6,8 @@ import {
   ListTodo,
   XCircle,
   ChevronRight,
+  Banknote,
+  Compass,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,8 @@ interface PendingActionsProps {
   pendingKYC: number;
   pendingApprovals: number;
   pendingWithdrawals: number;
+  pendingDeposits?: number;
+  pendingOfferwall?: number;
   pendingAppeals: number;
   openDisputes: number;
 }
@@ -61,10 +65,26 @@ export function PendingActions({
   pendingKYC,
   pendingApprovals,
   pendingWithdrawals,
+  pendingDeposits = 0,
+  pendingOfferwall = 0,
   pendingAppeals,
   openDisputes,
 }: PendingActionsProps) {
   const rows: PendingActionRow[] = [
+    {
+      label: "Deposits to Review",
+      count: pendingDeposits,
+      href: "/admin/deposits",
+      icon: Banknote,
+      tone: "green",
+    },
+    {
+      label: "Withdrawal Requests",
+      count: pendingWithdrawals,
+      href: "/admin/withdrawals",
+      icon: DollarSign,
+      tone: "green",
+    },
     {
       label: "KYC Requests",
       count: pendingKYC,
@@ -80,11 +100,11 @@ export function PendingActions({
       tone: "blue",
     },
     {
-      label: "Withdrawal Requests",
-      count: pendingWithdrawals,
-      href: "/admin/withdrawals",
-      icon: DollarSign,
-      tone: "green",
+      label: "Offerwall Completions",
+      count: pendingOfferwall,
+      href: "/admin/offerwalls",
+      icon: Compass,
+      tone: "blue",
     },
     {
       label: "Verification Appeals",

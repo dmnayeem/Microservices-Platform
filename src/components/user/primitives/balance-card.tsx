@@ -1,12 +1,18 @@
 import { cn } from "@/lib/utils";
-import { Coins, DollarSign, ArrowUpRight } from "lucide-react";
+import { Coins, DollarSign, ArrowUpRight, Megaphone, Plus } from "lucide-react";
 import Link from "next/link";
 
 interface BalanceCardProps {
   points: number;
   cash: number;
+  /** Non-withdrawable ad credit (USD). When set, a third tile + top-up action show. */
+  adCredit?: number;
   packageTier?: string;
   withdrawHref?: string;
+  /** Where "Add funds" points (deposits). When set, an Add-funds action shows. */
+  addFundsHref?: string;
+  /** Where the ad-credit "Top up" points (advertiser page). */
+  adTopUpHref?: string;
   className?: string;
   compact?: boolean;
   /** Admin-configurable points-per-$1 rate (default 1000). */
@@ -16,13 +22,17 @@ interface BalanceCardProps {
 export function BalanceCard({
   points,
   cash,
+  adCredit,
   packageTier,
   withdrawHref = "/withdrawal",
+  addFundsHref,
+  adTopUpHref = "/advertiser",
   className,
   compact = false,
   pointsPerUsd = 1000,
 }: BalanceCardProps) {
   const ptInUsd = points / pointsPerUsd;
+  const showAdCredit = adCredit !== undefined;
   return (
     <div
       className={cn(
@@ -41,6 +51,7 @@ export function BalanceCard({
           <p className="text-2xl font-extrabold text-white tabular-nums mt-0.5">
             ${(cash + ptInUsd).toFixed(2)}
           </p>
+          <p className="text-[10px] text-gray-500">Cash + points value</p>
         </div>
         {packageTier && (
           <span className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase">
@@ -49,7 +60,7 @@ export function BalanceCard({
         )}
       </div>
 
-      <div className={cn("relative grid gap-2", compact ? "grid-cols-2" : "grid-cols-2")}>
+      <div className="relative grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-gray-900/60 border border-gray-800 p-3">
           <div className="flex items-center gap-1.5 text-amber-400 mb-1">
             <Coins className="w-3.5 h-3.5" />
@@ -74,15 +85,48 @@ export function BalanceCard({
           </p>
           <p className="text-[10px] text-gray-500">Withdrawable</p>
         </div>
+
+        {showAdCredit && (
+          <div className="col-span-2 rounded-xl bg-gray-900/60 border border-gray-800 p-3 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5 text-sky-400 mb-1">
+                <Megaphone className="w-3.5 h-3.5" />
+                <span className="text-[10px] uppercase tracking-wider font-bold">
+                  Ad Credit
+                </span>
+              </div>
+              <p className="text-lg font-bold text-white tabular-nums">
+                ${adCredit.toFixed(2)}
+              </p>
+              <p className="text-[10px] text-gray-500">Funds ad campaigns · non-withdrawable</p>
+            </div>
+            <Link
+              href={adTopUpHref}
+              className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-xs font-semibold hover:bg-sky-500/25 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Top up
+            </Link>
+          </div>
+        )}
       </div>
 
       {!compact && (
-        <Link
-          href={withdrawHref}
-          className="relative mt-3 w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white text-sm font-semibold transition-opacity"
-        >
-          Withdraw <ArrowUpRight className="w-4 h-4" />
-        </Link>
+        <div className={cn("relative mt-3 grid gap-2", addFundsHref ? "grid-cols-2" : "grid-cols-1")}>
+          {addFundsHref && (
+            <Link
+              href={addFundsHref}
+              className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-900/70 border border-gray-700 hover:border-emerald-500/40 text-white text-sm font-semibold transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Add funds
+            </Link>
+          )}
+          <Link
+            href={withdrawHref}
+            className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white text-sm font-semibold transition-opacity"
+          >
+            Withdraw <ArrowUpRight className="w-4 h-4" />
+          </Link>
+        </div>
       )}
     </div>
   );

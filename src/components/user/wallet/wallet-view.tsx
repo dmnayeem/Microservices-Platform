@@ -15,6 +15,10 @@ import {
   Trophy,
   Gift,
   Send,
+  Banknote,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { TransactionRow, type TxType } from "@/components/user/primitives/transaction-row";
@@ -42,20 +46,32 @@ export interface ReferralStats {
   totalEarned: number;
 }
 
+export interface WalletDeposit {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  txnId: string | null;
+  createdAt: string;
+}
+
 export interface WalletViewProps {
   pointsBalance: number;
   cashBalance: number;
+  /** Non-withdrawable ad credit (USD). */
+  adCreditBalance?: number;
   totalEarnings: number;
   totalWithdrawn: number;
   packageTier: string;
   transactions: WalletTransaction[];
+  deposits?: WalletDeposit[];
   referralStats: ReferralStats;
   pendingWithdrawals: number;
   /** Admin-configurable points-per-$1 rate (default 1000). */
   pointsPerUsd?: number;
 }
 
-type Tab = "balance" | "referral" | "withdraw";
+type Tab = "balance" | "deposits" | "referral" | "withdraw";
 
 const TX_TYPE_MAP: Record<string, TxType> = {
   EARNING: "EARN_TASK",
@@ -96,6 +112,7 @@ export function WalletView(props: WalletViewProps) {
       <BalanceCard
         points={props.pointsBalance}
         cash={props.cashBalance}
+        adCredit={props.adCreditBalance}
         packageTier={props.packageTier}
         pointsPerUsd={pointsPerUsd}
       />
@@ -122,6 +139,7 @@ export function WalletView(props: WalletViewProps) {
         {(
           [
             { key: "balance", label: "Balance", icon: Coins },
+            { key: "deposits", label: "Deposits", icon: Banknote },
             { key: "referral", label: "Referral", icon: Users },
             { key: "withdraw", label: "Withdraw", icon: ArrowUpRight },
           ] as const
@@ -151,6 +169,10 @@ export function WalletView(props: WalletViewProps) {
           totalWithdrawn={props.totalWithdrawn}
           transactions={props.transactions}
         />
+      )}
+
+      {tab === "deposits" && (
+        <DepositsTab deposits={props.deposits ?? []} />
       )}
 
       {tab === "referral" && (
@@ -358,6 +380,78 @@ function BalanceTab({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deposits tab — funding history (add-money requests)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEPOSIT_STATUS: Record<string, { label: string; tone: string; icon: typeof Clock }> = {
+  PENDING: { label: "Pending review", tone: "text-amber-400 bg-amber-500/10 border-amber-500/30", icon: Clock },
+  APPROVED: { label: "Approved", tone: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30", icon: CheckCircle2 },
+  REJECTED: { label: "Rejected", tone: "text-red-400 bg-red-500/10 border-red-500/30", icon: XCircle },
+};
+
+function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-xl p-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white">Add money to your wallet</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Deposit via bKash, Nagad, Binance or PayPal — an admin verifies it, then your cash
+            balance is credited.
+          </p>
+        </div>
+        <Link
+          href="/deposit"
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add funds
+        </Link>
+      </div>
+
+      {deposits.length === 0 ? (
+        <EmptyState
+          icon={Banknote}
+          title="No deposits yet"
+          description="Add funds to top up your wallet — your deposit history shows up here."
+          action={{ label: "Add funds", href: "/deposit" }}
+        />
+      ) : (
+        <div className="space-y-1.5">
+          {deposits.map((d) => {
+            const meta = DEPOSIT_STATUS[d.status] ?? DEPOSIT_STATUS.PENDING;
+            return (
+              <div
+                key={d.id}
+                className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 p-3"
+              >
+                <div className={cn("w-9 h-9 rounded-lg grid place-items-center border shrink-0", meta.tone)}>
+                  <meta.icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white">
+                    ${d.amount.toFixed(2)}
+                    <span className="ml-2 text-xs font-medium text-gray-500">
+                      {d.method.replace("MANUAL_", "")}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-gray-500 truncate">
+                    {new Date(d.createdAt).toLocaleDateString()}
+                    {d.txnId ? ` · TXN ${d.txnId}` : ""}
+                  </p>
+                </div>
+                <span className={cn("shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold border", meta.tone)}>
+                  {meta.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
