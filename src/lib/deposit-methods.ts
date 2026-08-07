@@ -13,8 +13,14 @@ export interface DepositMethod {
   /** Stable key stored on the Deposit row (e.g. "binance", "bkash", or a slug). */
   key: string;
   label: string;
+  /** What the receiving account IS (e.g. "Binance UID", "bKash number", "PayPal email"). */
+  accountLabel?: string;
   /** Receiving account shown to users: Binance UID, bKash number, email, address… */
   account: string;
+  /** Optional QR image (URL) the user can scan to pay. */
+  qrUrl?: string;
+  /** Optional payment/deep link (e.g. PayPal.me or Binance Pay URL). */
+  payLink?: string;
   instructions: string;
   enabled: boolean;
   minAmount: number;
@@ -24,12 +30,12 @@ export interface DepositMethod {
 const SETTING_KEY = "deposit_methods";
 
 export const DEPOSIT_METHOD_PRESETS: DepositMethod[] = [
-  { key: "binance", label: "Binance Pay", account: "", instructions: "Send via Binance Pay to the ID above, then paste the transaction ID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "bkash", label: "bKash", account: "", instructions: "Send Money to the number above, then enter the bKash TrxID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "nagad", label: "Nagad", account: "", instructions: "Send Money to the number above, then enter the Nagad TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "rocket", label: "Rocket", account: "", instructions: "Send to the number above, then enter the Rocket TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "paypal", label: "PayPal", account: "", instructions: "Send to the PayPal email above (Friends & Family), then paste the transaction id.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "payoneer", label: "Payoneer", account: "", instructions: "Pay to the Payoneer account above, then paste the reference id.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "binance", label: "Binance Pay", accountLabel: "Binance Pay ID / UID", account: "", instructions: "Send via Binance Pay to the ID above, then paste the transaction ID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "bkash", label: "bKash", accountLabel: "bKash number", account: "", instructions: "Send Money to the number above, then enter the bKash TrxID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "nagad", label: "Nagad", accountLabel: "Nagad number", account: "", instructions: "Send Money to the number above, then enter the Nagad TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "rocket", label: "Rocket", accountLabel: "Rocket number", account: "", instructions: "Send to the number above, then enter the Rocket TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "paypal", label: "PayPal", accountLabel: "PayPal email", account: "", instructions: "Send to the PayPal email above (Friends & Family), then paste the transaction id.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  { key: "payoneer", label: "Payoneer", accountLabel: "Payoneer email / account", account: "", instructions: "Pay to the Payoneer account above, then paste the reference id.", enabled: false, minAmount: 1, maxAmount: 100000 },
 ];
 
 const num = (v: unknown, def: number) => {
@@ -47,7 +53,10 @@ function normalize(raw: unknown): DepositMethod[] {
       return {
         key,
         label: String(o.label ?? key),
+        accountLabel: o.accountLabel ? String(o.accountLabel) : undefined,
         account: String(o.account ?? ""),
+        qrUrl: o.qrUrl ? String(o.qrUrl) : undefined,
+        payLink: o.payLink ? String(o.payLink) : undefined,
         instructions: String(o.instructions ?? ""),
         enabled: o.enabled === true,
         minAmount: num(o.minAmount, 1),

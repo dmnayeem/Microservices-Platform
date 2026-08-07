@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Wallet, ExternalLink, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
+import { SmartImage } from "@/components/user/primitives/smart-image";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import type { DepositMethod } from "@/lib/deposit-methods";
 
@@ -162,7 +163,9 @@ export function DepositView() {
             Payment method
           </label>
           {methods.length === 0 ? (
-            <p className="text-xs text-gray-500">No manual methods are available right now.</p>
+            <p className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-xs text-gray-400">
+              No payment methods are available right now. Please check back soon or contact support.
+            </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {methods.map((m) => (
@@ -184,19 +187,56 @@ export function DepositView() {
         </div>
 
         {selected && (
-          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
-            <p className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold">Send payment to</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-sm text-white break-all bg-gray-900/60 rounded px-2 py-1.5">{selected.account}</code>
-              <button
-                type="button"
-                onClick={copyAccount}
-                className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
-              >
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? "Copied" : "Copy"}
-              </button>
+          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-3">
+            <p className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold">
+              Send payment to {selected.label}
+            </p>
+
+            <div>
+              <p className="text-[11px] text-gray-400 mb-1">
+                {selected.accountLabel || "Receiving account"}
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm text-white break-all bg-gray-900/60 rounded px-2 py-1.5">
+                  {selected.account}
+                </code>
+                <button
+                  type="button"
+                  onClick={copyAccount}
+                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
             </div>
+
+            {selected.qrUrl && (
+              <div className="flex flex-col items-center gap-1.5 py-1">
+                <div className="rounded-xl bg-white p-2">
+                  <SmartImage
+                    src={selected.qrUrl}
+                    alt={`${selected.label} payment QR`}
+                    width={176}
+                    height={176}
+                    className="h-44 w-44 object-contain"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400">Scan the QR to pay</p>
+              </div>
+            )}
+
+            {selected.payLink && (
+              <a
+                href={selected.payLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-500/15 text-indigo-200 text-xs font-bold px-3 py-2 hover:bg-indigo-500/25"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Open payment link
+              </a>
+            )}
+
             {selected.instructions && (
               <p className="text-xs text-gray-300 whitespace-pre-wrap">{selected.instructions}</p>
             )}

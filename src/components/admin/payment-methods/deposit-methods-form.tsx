@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import type { DepositMethod } from "@/lib/deposit-methods";
 
 const slug = (s: string) =>
@@ -62,6 +63,10 @@ export function DepositMethodsForm({
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        A method only appears to users when it&apos;s <b>Active</b> and has a{" "}
+        <b>receiving account</b>. Add a QR image and/or a pay link to make paying easier.
+      </p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {methods.map((m, i) => (
           <div
@@ -84,8 +89,19 @@ export function DepositMethodsForm({
                 <span className="text-xs text-slate-400">Active</span>
               </label>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Account label (what it is)">
+                <input value={m.accountLabel ?? ""} onChange={(e) => update(i, { accountLabel: e.target.value })} disabled={!canEdit} placeholder="Binance UID / bKash number / PayPal email" className={inp} />
+              </Field>
+              <Field label="Pay link (optional)">
+                <input value={m.payLink ?? ""} onChange={(e) => update(i, { payLink: e.target.value })} disabled={!canEdit} placeholder="https://paypal.me/… or Binance Pay link" className={inp} />
+              </Field>
+            </div>
             <Field label="Receiving account / address (shown to users)">
               <input value={m.account} onChange={(e) => update(i, { account: e.target.value })} disabled={!canEdit} placeholder="Binance UID / bKash number / PayPal email / wallet address" className={inp} />
+            </Field>
+            <Field label="QR code image (optional — users scan to pay)">
+              <ImageUploadField value={m.qrUrl ?? ""} onChange={(url) => update(i, { qrUrl: url })} previewSize="square" title="Payment QR code" />
             </Field>
             <Field label="Instructions (how to pay)">
               <textarea rows={2} value={m.instructions} onChange={(e) => update(i, { instructions: e.target.value })} disabled={!canEdit} className={inp + " resize-none"} />
