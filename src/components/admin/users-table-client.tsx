@@ -394,7 +394,7 @@ export function UsersTableClient({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {permissions.canImpersonate && (
+                          {permissions.canImpersonate && u.role !== "SUPER_ADMIN" && (
                             <button
                               onClick={() => handleImpersonate(u.id)}
                               className="p-1.5 rounded hover:bg-slate-700 text-indigo-400 hover:text-indigo-300"
@@ -422,7 +422,7 @@ export function UsersTableClient({
                               <Edit className="w-4 h-4" />
                             </Link>
                           )}
-                          {permissions.canBan && (
+                          {permissions.canBan && u.role !== "SUPER_ADMIN" && (
                             <Link
                               href={`/admin/users/${u.id}?ban=1`}
                               className="p-1.5 rounded hover:bg-slate-700 text-yellow-400 hover:text-yellow-300"
@@ -431,7 +431,7 @@ export function UsersTableClient({
                               <Ban className="w-4 h-4" />
                             </Link>
                           )}
-                          {permissions.canDelete && (
+                          {permissions.canDelete && u.role !== "SUPER_ADMIN" && (
                             <Link
                               href={`/admin/users/${u.id}?delete=1`}
                               className="p-1.5 rounded hover:bg-slate-700 text-red-400 hover:text-red-300"

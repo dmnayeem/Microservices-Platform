@@ -13,18 +13,46 @@ code defaults (ROLE_PERMISSIONS)          ← src/lib/rbac.ts
 
 ## Roles
 
-`UserRole` (prisma) — `USER`, `TUTOR`, `SUPER_ADMIN`, `FINANCE_ADMIN`,
+`UserRole` (prisma) — `USER`, `TUTOR`, `SUPER_ADMIN`, **`ADMIN`**, `FINANCE_ADMIN`,
 `CONTENT_ADMIN`, `SUPPORT_ADMIN`, `MARKETING_ADMIN`, `MODERATOR`, **`AGENCY`**,
-**`AD_MANAGER`**.
+**`AD_MANAGER`** — plus **custom roles** (see below).
 
-- **AGENCY** — a user-side advertiser/agency console, **not** an admin-panel role.
-  The role auto-grants the `advertiser` + `agencyMode` + `createTasks` features
-  (see `ROLE_FEATURES` in `src/lib/features.ts`), so `/advertiser` and `/agency`
-  unlock without a plan.
-- **AD_MANAGER** — an admin scoped to the Ads Manager surface (`ads.view`,
-  `ads.manage`, `analytics.view`, dashboard). It is in `ADMIN_ROLES`.
-- **SUPER_ADMIN** always has every permission — the role config and per-user
-  overrides can never strip it (lock-out safety).
+- **SUPER_ADMIN** always has every permission — config/overrides can never strip
+  it (lock-out safety). Only a super admin can do the protected actions below.
+- **ADMIN** — the generic admin below super-admin; broad by default but **never
+  finance and never `admins.manage`**. Super-admin tunes it in the editor.
+- **AGENCY** — a user-side advertiser/agency console, **not** an admin-panel role
+  (auto-grants advertiser/agency/createTasks features via `ROLE_FEATURES`).
+- **AD_MANAGER** — admin scoped to the Ads Manager surface.
+
+## Custom roles (super-admin creates any role)
+
+A super admin can create **named custom roles** with any chosen permissions at
+`/admin/access` → Roles & Permissions → **Custom roles** (model `CustomRole`,
+API `/api/admin/access/custom-roles`). A custom role's permission picker never
+offers finance or `admins.manage` (stripped on save). Assign one from a user's
+**role dropdown** (a `custom:<id>` option) — the user's enum `role` is set to
+`ADMIN` as the admin baseline and `User.customRoleId` points at the role, so
+their effective permissions come entirely from the custom role's set (nav +
+guards filter accordingly). Deleting a custom role drops assigned users back to
+plain `ADMIN` (FK `SetNull`).
+
+## Protected — super-admin-only forever
+
+Enforced regardless of any granted config/override:
+
+- **Finance** (`withdrawals.*`, `payment_methods.*`, `packages.*`, `referrals.*`)
+  is held only by **SUPER_ADMIN + the built-in FINANCE_ADMIN** role. The generic
+  ADMIN and every custom role can never get it — the editor hides it, and
+  `stripProtectedForRole` (in the effective resolver) removes it as a backstop.
+- **`admins.manage`** (editing the role matrix, custom roles, per-user overrides)
+  is SUPER_ADMIN-only.
+- **Acting on a SUPER_ADMIN user** — edit/ban/delete/approve/adjust-balance/
+  impersonate/bulk — requires the actor be SUPER_ADMIN (guarded in every
+  `api/admin/users/**` mutation; the bulk route also blocks non-super admins from
+  acting on any admin account). Assigning the SUPER_ADMIN role (or any admin/
+  custom role) is SUPER_ADMIN-only. The UI hides those controls for super-admin
+  target rows.
 
 ## Who sees what — the super-admin config editor
 

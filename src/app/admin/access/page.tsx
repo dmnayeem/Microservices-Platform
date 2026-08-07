@@ -23,10 +23,13 @@ import {
   ROLE_CONFIG,
   ROLE_PERMISSIONS,
   TASK_CREATE_PERMISSIONS,
+  FINANCE_PERMISSIONS,
+  SUPERADMIN_ONLY_PERMISSIONS,
 } from "@/lib/rbac";
 import { getRolePermissionConfig } from "@/lib/permissions";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { RolePermissionEditor } from "@/components/admin/access/role-permission-editor";
+import { CustomRolesManager } from "@/components/admin/access/custom-roles-manager";
 
 interface PageProps {
   searchParams: Promise<{
@@ -173,6 +176,30 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
 
   // Saved role→permission overrides (for the editable Roles & Permissions tab).
   const savedRolePerms = view === "roles" ? await getRolePermissionConfig() : {};
+  const customRolesRaw =
+    view === "roles"
+      ? await prisma.customRole.findMany({
+          orderBy: { name: "asc" },
+          include: { _count: { select: { users: true } } },
+        })
+      : [];
+  const customRoles = (
+    customRolesRaw as unknown as Array<{
+      id: string;
+      name: string;
+      color: string | null;
+      permissions: string[];
+      isActive: boolean;
+      _count: { users: number };
+    }>
+  ).map((r) => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    permissions: r.permissions,
+    isActive: r.isActive,
+    userCount: r._count.users,
+  }));
 
   // Activity log fetch (only for activity tab)
   const activityLogs =
@@ -462,14 +489,32 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
               ? { ...c, permissions: [...c.permissions, ...TASK_CREATE_PERMISSIONS] }
               : c
           );
+          // Finance is hidden for every editable role except FINANCE_ADMIN;
+          // admins.manage is hidden for all (super-admin-only). Never offered.
+          const hiddenPermsByRole = Object.fromEntries(
+            editableRoles.map((r) => [
+              r.role,
+              [
+                ...SUPERADMIN_ONLY_PERMISSIONS,
+                ...(r.role === "FINANCE_ADMIN" ? [] : FINANCE_PERMISSIONS),
+              ],
+            ])
+          );
           return (
-            <RolePermissionEditor
-              editableRoles={editableRoles}
-              categories={editorCategories}
-              defaults={defaults as Record<string, string[]>}
-              config={savedRolePerms as Record<string, string[]>}
-              canManage={isSuperAdmin(adminRole)}
-            />
+            <div className="space-y-6">
+              <RolePermissionEditor
+                editableRoles={editableRoles}
+                categories={editorCategories}
+                defaults={defaults as Record<string, string[]>}
+                config={savedRolePerms as Record<string, string[]>}
+                canManage={isSuperAdmin(adminRole)}
+                hiddenPermsByRole={hiddenPermsByRole as Record<string, string[]>}
+              />
+              <CustomRolesManager
+                initial={customRoles}
+                canManage={isSuperAdmin(adminRole)}
+              />
+            </div>
           );
         })()}
 

@@ -30,6 +30,14 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Only a super admin may act on a super admin account.
+    if (user.role === "SUPER_ADMIN" && session.user.role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Only a super admin can modify a super admin account" },
+        { status: 403 }
+      );
+    }
+
     if (user.status === "ACTIVE") {
       return NextResponse.json(
         { error: "User is already active" },

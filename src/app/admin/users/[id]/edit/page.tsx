@@ -24,7 +24,7 @@ export default async function EditUserPage({
   }
 
   const { id } = await params;
-  const [userRaw, plans] = await Promise.all([
+  const [userRaw, plans, customRolesRaw] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
       select: {
@@ -36,6 +36,7 @@ export default async function EditUserPage({
         username: true,
         phone: true,
         role: true,
+        customRoleId: true,
         status: true,
         level: true,
         xp: true,
@@ -79,6 +80,11 @@ export default async function EditUserPage({
       where: { isActive: true },
       orderBy: [{ order: "asc" }, { accessLevel: "asc" }],
       select: { id: true, slug: true, name: true },
+    }),
+    prisma.customRole.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -128,9 +134,12 @@ export default async function EditUserPage({
           userEmail={user.email}
           userStatus={user.status}
           canEdit={false}
-          canBan={hasPermission(adminRole, "users.ban")}
-          canDelete={hasPermission(adminRole, "users.delete")}
-          canApprove={hasPermission(adminRole, "users.edit")}
+          canBan={hasPermission(adminRole, "users.ban") && user.role !== "SUPER_ADMIN"}
+          canDelete={hasPermission(adminRole, "users.delete") && user.role !== "SUPER_ADMIN"}
+          canApprove={
+            hasPermission(adminRole, "users.edit") &&
+            (user.role !== "SUPER_ADMIN" || isSuperAdmin)
+          }
           canImpersonate={
             isSuperAdmin &&
             user.role !== "SUPER_ADMIN" &&
@@ -161,7 +170,12 @@ export default async function EditUserPage({
         )}
       </div>
 
-      <UserEditForm user={user} isSuperAdmin={isSuperAdmin} plans={plans} />
+      <UserEditForm
+        user={user}
+        isSuperAdmin={isSuperAdmin}
+        plans={plans}
+        customRoles={customRolesRaw}
+      />
     </div>
   );
 }

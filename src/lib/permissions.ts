@@ -8,6 +8,7 @@ import {
   ROLE_PERMISSIONS,
   isPermission,
   parsePermissionOverrides,
+  stripProtectedForRole,
   getGroupedModulesForPerms,
   moduleForPath,
   type Permission,
@@ -105,21 +106,37 @@ export const getEffectivePermissions = cache(
       getConfiguredRolePermissions(),
       prisma.user.findUnique({
         where: { id: userId },
-        select: { role: true, permissionOverrides: true },
+        select: {
+          role: true,
+          permissionOverrides: true,
+          customRoleId: true,
+          customRole: { select: { permissions: true, isActive: true } },
+        },
       }),
     ]);
     if (!user) return new Set();
     const role = user.role as UserRole;
-    // Super admin is always full — overrides can never strip it.
+    // Super admin is always full — overrides/config can never strip it.
     if (role === "SUPER_ADMIN") return new Set(ROLE_PERMISSIONS.SUPER_ADMIN);
 
-    const perms = new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
+    // Base = active custom-role permissions when assigned, else the configured
+    // (or default) role set. Custom-role users carry role="ADMIN" as baseline.
+    const customRole = user.customRole as
+      | { permissions: string[]; isActive: boolean }
+      | null;
+    const perms =
+      user.customRoleId && customRole?.isActive
+        ? new Set(customRole.permissions.filter(isPermission))
+        : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
+
     const overrides = parsePermissionOverrides(user.permissionOverrides);
     for (const [perm, granted] of Object.entries(overrides)) {
       if (granted) perms.add(perm as Permission);
       else perms.delete(perm as Permission);
     }
-    return perms;
+    // Hard backstop: strip finance + admins.manage for non-super principals
+    // (finance kept only for the built-in FINANCE_ADMIN role).
+    return stripProtectedForRole(perms, role);
   }
 );
 

@@ -90,6 +90,7 @@ const updateUserSchema = z.object({
     "USER",
     "TUTOR",
     "SUPER_ADMIN",
+    "ADMIN",
     "FINANCE_ADMIN",
     "CONTENT_ADMIN",
     "SUPPORT_ADMIN",
@@ -98,6 +99,7 @@ const updateUserSchema = z.object({
     "AGENCY",
     "AD_MANAGER",
   ]).optional(),
+  customRoleId: z.string().optional().nullable(),
   status: z.enum(["ACTIVE", "PENDING_VERIFICATION", "SUSPENDED", "BANNED"]).optional(),
 
   // Balance / progression
@@ -187,6 +189,45 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Hard invariant: only a super admin may modify a super admin account
+    // (any field — status, password, balance, role, etc.).
+    if (existingUser.role === "SUPER_ADMIN" && adminRole !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Only a super admin can modify a super admin account" },
+        { status: 403 }
+      );
+    }
+
+    // Assigning or clearing a custom role is an admin-role change → super-admin
+    // only. A custom-role user carries role="ADMIN" as the admin baseline.
+    let resolvedCustomRoleId: string | null | undefined = undefined;
+    if (
+      data.customRoleId !== undefined &&
+      data.customRoleId !== existingUser.customRoleId
+    ) {
+      if (adminRole !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only a super admin can assign a custom role" },
+          { status: 403 }
+        );
+      }
+      if (data.customRoleId) {
+        const cr = await prisma.customRole.findUnique({
+          where: { id: data.customRoleId },
+          select: { isActive: true },
+        });
+        if (!cr?.isActive) {
+          return NextResponse.json(
+            { error: "Custom role not found or inactive" },
+            { status: 400 }
+          );
+        }
+        resolvedCustomRoleId = data.customRoleId;
+      } else {
+        resolvedCustomRoleId = null;
+      }
+    }
+
     // Admin-role changes are SUPER_ADMIN-only. Role management was consolidated
     // here from the standalone /admin/access editor (feature #8); preserve that
     // page's stricter guard so a non-super `users.edit` admin can't grant or
@@ -248,6 +289,12 @@ export async function PATCH(
     if (data.username !== undefined) updateData.username = data.username;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.role !== undefined) updateData.role = data.role;
+    // Custom role: set the FK + force the ADMIN baseline role; clearing (null)
+    // just drops the FK (role falls back to whatever `data.role` set, else stays).
+    if (resolvedCustomRoleId !== undefined) {
+      updateData.customRoleId = resolvedCustomRoleId;
+      if (resolvedCustomRoleId) updateData.role = "ADMIN";
+    }
     if (data.status !== undefined) updateData.status = data.status;
 
     // Password (hashed)

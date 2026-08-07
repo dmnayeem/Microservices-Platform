@@ -57,10 +57,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Never let admin act on themselves
-    const targetIds = ids.filter((id) => id !== adminId);
-    if (targetIds.length === 0) {
+    const selfFiltered = ids.filter((id) => id !== adminId);
+    if (selfFiltered.length === 0) {
       return NextResponse.json(
         { error: "Cannot act on yourself" },
+        { status: 400 }
+      );
+    }
+
+    // Protect admin accounts: nobody may bulk-act on a SUPER_ADMIN; only a super
+    // admin may bulk-act on any admin account at all (mirrors the single-user
+    // endpoints). Non-super admins are limited to plain USER targets.
+    const targetRows = await prisma.user.findMany({
+      where: { id: { in: selfFiltered } },
+      select: { id: true, role: true },
+    });
+    const actorIsSuper = session.user.role === "SUPER_ADMIN";
+    const targetIds = targetRows
+      .filter((t) => t.role !== "SUPER_ADMIN" && (actorIsSuper || t.role === "USER"))
+      .map((t) => t.id);
+    if (targetIds.length === 0) {
+      return NextResponse.json(
+        { error: "No eligible users — admin accounts are protected." },
         { status: 400 }
       );
     }

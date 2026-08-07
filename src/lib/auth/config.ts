@@ -8,6 +8,7 @@ import { z } from "zod";
 // Must match ADMIN_ROLE_STRINGS in @/lib/rbac
 const ADMIN_ROLES = [
   "SUPER_ADMIN",
+  "ADMIN",
   "FINANCE_ADMIN",
   "CONTENT_ADMIN",
   "SUPPORT_ADMIN",

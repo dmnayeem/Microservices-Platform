@@ -26,6 +26,7 @@ const createUserSchema = z.object({
     .enum([
       "USER",
       "SUPER_ADMIN",
+      "ADMIN",
       "FINANCE_ADMIN",
       "CONTENT_ADMIN",
       "SUPPORT_ADMIN",
@@ -35,6 +36,7 @@ const createUserSchema = z.object({
       "AD_MANAGER",
     ])
     .default("USER"),
+  customRoleId: z.string().optional().nullable(),
   status: z.enum(["ACTIVE", "PENDING_VERIFICATION"]).default("ACTIVE"),
   packageId: z.string().optional().nullable(),
 

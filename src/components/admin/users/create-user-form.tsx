@@ -344,11 +344,14 @@ export function CreateUserForm({ isSuperAdmin }: Props) {
                   <option value="USER">User</option>
                   {isSuperAdmin && (
                     <>
+                      <option value="ADMIN">Admin</option>
                       <option value="MODERATOR">Moderator</option>
                       <option value="SUPPORT_ADMIN">Support Admin</option>
                       <option value="CONTENT_ADMIN">Content Admin</option>
                       <option value="MARKETING_ADMIN">Marketing Admin</option>
                       <option value="FINANCE_ADMIN">Finance Admin</option>
+                      <option value="AD_MANAGER">Ad Manager</option>
+                      <option value="AGENCY">Agency</option>
                       <option value="SUPER_ADMIN">Super Admin</option>
                     </>
                   )}

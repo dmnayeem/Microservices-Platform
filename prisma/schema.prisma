@@ -12,6 +12,9 @@ enum UserRole {
   USER
   TUTOR
   SUPER_ADMIN
+  // Generic admin below super-admin; super-admin grants it powers. Also the
+  // baseline enum role carried by users assigned a CustomRole.
+  ADMIN
   FINANCE_ADMIN
   CONTENT_ADMIN
   SUPPORT_ADMIN
@@ -861,6 +864,10 @@ model User {
   country           String?
   timezone          String?     @default("UTC")
   role              UserRole    @default(USER)
+  // Optional super-admin-defined custom role (permissions come from it; the
+  // user's `role` is kept as ADMIN as the admin-panel baseline). Null = plain role.
+  customRoleId      String?
+  customRole        CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
   status            UserStatus  @default(PENDING_VERIFICATION)
   pointsBalance     Int         @default(0)
   cashBalance       Decimal     @default(0) @db.Decimal(18, 6)
@@ -2834,6 +2841,24 @@ model SystemSetting {
   description String?
   updatedAt DateTime @updatedAt
   @@index([category])
+}
+
+// Super-admin-defined role: any name + a chosen permission set. Assigned to
+// users via customRoleId (their enum role stays ADMIN as the admin baseline).
+// Permissions never include finance or admins.manage (stripped on save + in the
+// effective-permission resolver).
+model CustomRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  color       String?
+  permissions String[] @default([])
+  isActive    Boolean  @default(true)
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
 }
 
 model OfferwallConfig {

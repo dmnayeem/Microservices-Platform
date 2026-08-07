@@ -50,6 +50,14 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Only a super admin may act on a super admin account.
+    if (user.role === "SUPER_ADMIN" && session.user.role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Only a super admin can adjust a super admin's balance" },
+        { status: 403 }
+      );
+    }
+
     // Calculate the adjustment
     const adjustmentAmount = action === "add" ? amount : -amount;
 

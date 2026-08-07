@@ -7,6 +7,8 @@ export type UserRole =
   | "USER"
   | "TUTOR"
   | "SUPER_ADMIN"
+  // Generic admin below super-admin; also the baseline role of custom-role users.
+  | "ADMIN"
   | "FINANCE_ADMIN"
   | "CONTENT_ADMIN"
   | "SUPPORT_ADMIN"
@@ -21,6 +23,7 @@ export type UserRole =
 // AGENCY is intentionally excluded — it is a user-side advertiser console.
 export const ADMIN_ROLES: UserRole[] = [
   "SUPER_ADMIN",
+  "ADMIN",
   "FINANCE_ADMIN",
   "CONTENT_ADMIN",
   "SUPPORT_ADMIN",
@@ -32,6 +35,7 @@ export const ADMIN_ROLES: UserRole[] = [
 // String array version for client components
 export const ADMIN_ROLE_STRINGS = [
   "SUPER_ADMIN",
+  "ADMIN",
   "FINANCE_ADMIN",
   "CONTENT_ADMIN",
   "SUPPORT_ADMIN",
@@ -261,6 +265,44 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "offers.view", "offers.manage",
   ],
 
+  // Generic admin — broad by default, but NEVER finance and NEVER admins.manage
+  // (super admin tunes it down further via the editor; the resolver also strips
+  // finance + admins.manage as a hard backstop). Custom-role users share this base.
+  ADMIN: [
+    "dashboard.view",
+    "users.view", "users.edit", "users.ban", "users.delete", "users.adjust_balance",
+    "kyc.view", "kyc.approve", "kyc.reject",
+    "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
+    ...TASK_CREATE_PERMISSIONS,
+    "boards.view", "boards.manage",
+    "submissions.view", "submissions.approve", "submissions.reject",
+    "leaderboards.view", "leaderboards.manage",
+    "marketplace.view", "marketplace.manage", "marketplace.disputes", "marketplace.mediate",
+    "lottery.view", "lottery.manage",
+    "courses.view", "courses.manage", "courses.approve",
+    "tutor.applications.review",
+    "missions.view", "missions.manage",
+    "quizzes.view", "quizzes.manage",
+    "offerwalls.view", "offerwalls.manage",
+    "fraud.view", "fraud.manage",
+    "proxy.view", "proxy.manage",
+    "moderation.view", "moderation.manage", "social.moderate", "social.post", "social.promote",
+    "logs.view",
+    "campaigns.view", "campaigns.manage",
+    "notifications.view", "notifications.send",
+    "banners.view", "banners.manage",
+    "games.view", "games.manage",
+    "ads.view", "ads.manage",
+    "landing.view", "landing.edit",
+    "ticker.view", "ticker.edit",
+    "analytics.view", "analytics.export",
+    "ai.view", "ai.manage",
+    "settings.view", "settings.edit",
+    "admins.view",
+    "media.view", "media.manage",
+    "offers.view", "offers.manage",
+  ],
+
   FINANCE_ADMIN: [
     "dashboard.view",
     "users.view",
@@ -339,6 +381,45 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "analytics.view",
   ],
 };
+
+// ── Protected capabilities (super-admin-only, enforced everywhere) ──
+// FINANCE is grantable ONLY to SUPER_ADMIN + the built-in FINANCE_ADMIN role.
+// admins.manage (editing roles / custom roles / per-user overrides) is
+// SUPER_ADMIN-only. `stripProtectedForRole` is the hard backstop applied in the
+// effective-permission resolver so a mis-saved config/override can never leak
+// these to a lower admin or custom role.
+export const FINANCE_PERMISSIONS: Permission[] = [
+  "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
+  "payment_methods.view", "payment_methods.manage",
+  "packages.view", "packages.edit",
+  "referrals.view", "referrals.configure",
+];
+export const SUPERADMIN_ONLY_PERMISSIONS: Permission[] = ["admins.manage"];
+
+const FINANCE_SET = new Set<Permission>(FINANCE_PERMISSIONS);
+const SUPERADMIN_ONLY_SET = new Set<Permission>(SUPERADMIN_ONLY_PERMISSIONS);
+
+/** True if a permission is finance-scoped (only SUPER_ADMIN + FINANCE_ADMIN). */
+export function isFinancePermission(p: Permission): boolean {
+  return FINANCE_SET.has(p);
+}
+
+/**
+ * Remove protected capabilities a role may never hold. SUPER_ADMIN keeps
+ * everything; FINANCE_ADMIN keeps finance; everyone else loses finance +
+ * admins.manage. Mutates and returns the given set.
+ */
+export function stripProtectedForRole(
+  perms: Set<Permission>,
+  role: UserRole | undefined
+): Set<Permission> {
+  if (role === "SUPER_ADMIN") return perms;
+  for (const p of SUPERADMIN_ONLY_SET) perms.delete(p);
+  if (role !== "FINANCE_ADMIN") {
+    for (const p of FINANCE_SET) perms.delete(p);
+  }
+  return perms;
+}
 
 // Runtime list of every known permission. Derived from the role matrix — since
 // SUPER_ADMIN holds every permission, this stays complete automatically. Used to
@@ -877,6 +958,7 @@ export const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bgCol
   USER: { label: "User", color: "text-gray-400", bgColor: "bg-gray-500/10" },
   TUTOR: { label: "Tutor", color: "text-teal-300", bgColor: "bg-teal-500/10" },
   SUPER_ADMIN: { label: "Super Admin", color: "text-purple-400", bgColor: "bg-purple-500/10" },
+  ADMIN: { label: "Admin", color: "text-indigo-300", bgColor: "bg-indigo-500/10" },
   FINANCE_ADMIN: { label: "Finance Admin", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
   CONTENT_ADMIN: { label: "Content Admin", color: "text-blue-400", bgColor: "bg-blue-500/10" },
   SUPPORT_ADMIN: { label: "Support Admin", color: "text-amber-400", bgColor: "bg-amber-500/10" },

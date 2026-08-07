@@ -367,10 +367,10 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           userName={user.name}
           userEmail={user.email}
           userStatus={user.status}
-          canEdit={hasPermission(adminRole, "users.edit")}
-          canBan={hasPermission(adminRole, "users.ban")}
-          canDelete={hasPermission(adminRole, "users.delete")}
-          canApprove={hasPermission(adminRole, "users.edit")}
+          canEdit={hasPermission(adminRole, "users.edit") && (user.role !== "SUPER_ADMIN" || adminRole === "SUPER_ADMIN")}
+          canBan={hasPermission(adminRole, "users.ban") && user.role !== "SUPER_ADMIN"}
+          canDelete={hasPermission(adminRole, "users.delete") && user.role !== "SUPER_ADMIN"}
+          canApprove={hasPermission(adminRole, "users.edit") && (user.role !== "SUPER_ADMIN" || adminRole === "SUPER_ADMIN")}
           initialAction={ban ? "ban" : del ? "delete" : undefined}
           canImpersonate={adminRole === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN" && user.id !== session.user.id}
         />

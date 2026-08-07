@@ -21,6 +21,8 @@ interface Props {
   defaults: Record<string, string[]>;
   config: Record<string, string[]>;
   canManage: boolean;
+  /** Per-role permissions to hide from the picker (e.g. finance/super-only). */
+  hiddenPermsByRole?: Record<string, string[]>;
 }
 
 export function RolePermissionEditor({
@@ -29,6 +31,7 @@ export function RolePermissionEditor({
   defaults,
   config,
   canManage,
+  hiddenPermsByRole,
 }: Props) {
   // Seed each role's permission set from saved config, else code defaults.
   const seed = useMemo(() => {
@@ -46,6 +49,13 @@ export function RolePermissionEditor({
   const [saving, setSaving] = useState(false);
 
   const cur = sets[selected] ?? new Set<string>();
+
+  // Hide permissions this role may never hold (finance for non-finance roles,
+  // admins.manage for all editable roles) — never-offered, not just stripped.
+  const hidden = new Set(hiddenPermsByRole?.[selected] ?? []);
+  const visibleCategories = categories
+    .map((c) => ({ ...c, permissions: c.permissions.filter((p) => !hidden.has(p)) }))
+    .filter((c) => c.permissions.length > 0);
 
   const mutate = (fn: (s: Set<string>) => void) => {
     if (!canManage) return;
@@ -169,7 +179,7 @@ export function RolePermissionEditor({
 
       {/* Category toggles + advanced */}
       <div className="mt-5 space-y-3">
-        {categories.map((cat) => {
+        {visibleCategories.map((cat) => {
           const state = catState(cat);
           const open = expanded[cat.label] ?? false;
           return (

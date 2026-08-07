@@ -51,6 +51,7 @@ export interface EditUserData {
   username: string | null;
   phone: string | null;
   role: string;
+  customRoleId?: string | null;
   status: string;
   // Balance / progression
   level: number;
@@ -101,6 +102,8 @@ interface UserEditFormProps {
   isSuperAdmin: boolean;
   /** All active plans, used to populate the plan picker. */
   plans: Array<{ id: string; slug: string; name: string }>;
+  /** Active super-admin-defined custom roles, for the role dropdown. */
+  customRoles?: Array<{ id: string; name: string }>;
   /** Called when admin clicks Cancel or after successful Save. Defaults to router.back(). */
   onDone?: () => void;
 }
@@ -149,9 +152,13 @@ export function UserEditForm({
   user,
   isSuperAdmin,
   plans,
+  customRoles = [],
   onDone,
 }: UserEditFormProps) {
   const router = useRouter();
+  // Combined role dropdown value: a custom role is `custom:<id>`, else the enum.
+  const initialRoleValue = user.customRoleId ? `custom:${user.customRoleId}` : user.role;
+  const [roleValue, setRoleValue] = useState(initialRoleValue);
   const handleDone = () => {
     if (onDone) {
       onDone();
@@ -247,7 +254,17 @@ export function UserEditForm({
         payload.username = form.username || null;
       if (form.password) payload.password = form.password;
       if (form.phone !== (user.phone ?? "")) payload.phone = form.phone || null;
-      if (form.role !== user.role) payload.role = form.role;
+      // Role: a `custom:<id>` value assigns a custom role (server forces the
+      // ADMIN baseline); a plain value is a built-in role + clears any custom role.
+      if (roleValue !== initialRoleValue) {
+        if (roleValue.startsWith("custom:")) {
+          payload.customRoleId = roleValue.slice("custom:".length);
+          payload.role = "ADMIN";
+        } else {
+          payload.role = roleValue;
+          if (user.customRoleId) payload.customRoleId = null;
+        }
+      }
       if (form.status !== user.status) payload.status = form.status;
       // Balance
       if (form.level !== user.level) payload.level = Number(form.level);
@@ -510,8 +527,8 @@ export function UserEditForm({
                       admins can only set USER/TUTOR and can't touch a user who
                       already holds an admin role. Server enforces this too. */}
                   <select
-                    value={form.role}
-                    onChange={(e) => set("role", e.target.value)}
+                    value={roleValue}
+                    onChange={(e) => setRoleValue(e.target.value)}
                     className={fieldCls}
                     disabled={roleLocked}
                   >
@@ -519,19 +536,33 @@ export function UserEditForm({
                     <option value="TUTOR">Tutor</option>
                     {isSuperAdmin ? (
                       <>
+                        <option value="ADMIN">Admin</option>
                         <option value="MODERATOR">Moderator</option>
                         <option value="SUPPORT_ADMIN">Support Admin</option>
                         <option value="CONTENT_ADMIN">Content Admin</option>
                         <option value="MARKETING_ADMIN">Marketing Admin</option>
                         <option value="FINANCE_ADMIN">Finance Admin</option>
+                        <option value="AD_MANAGER">Ad Manager</option>
+                        <option value="AGENCY">Agency</option>
                         <option value="SUPER_ADMIN">Super Admin</option>
+                        {customRoles.length > 0 && (
+                          <optgroup label="Custom roles">
+                            {customRoles.map((cr) => (
+                              <option key={cr.id} value={`custom:${cr.id}`}>
+                                {cr.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
                       </>
                     ) : (
-                      // Keep the current admin role visible (read-only) so the
-                      // select isn't blank when a non-super admin views it.
+                      // Keep the current role visible (read-only) so the select
+                      // isn't blank when a non-super admin views an admin user.
                       roleLocked && (
-                        <option value={user.role}>
-                          {user.role.replace(/_/g, " ")}
+                        <option value={roleValue}>
+                          {user.customRoleId
+                            ? customRoles.find((c) => `custom:${c.id}` === roleValue)?.name ?? "Custom role"
+                            : user.role.replace(/_/g, " ")}
                         </option>
                       )
                     )}
