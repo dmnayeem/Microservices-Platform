@@ -1,3 +1,4 @@
+import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -168,7 +169,7 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const view: ViewId = (VIEW_TABS.find((t) => t.id === params.view)?.id ??
     "admins") as ViewId;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
   const roleFilter = params.role || "";

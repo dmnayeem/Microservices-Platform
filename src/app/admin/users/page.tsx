@@ -14,6 +14,8 @@ import {
 import Link from "next/link";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma/client";
+import { UserStatus, UserRole as UserRoleEnum, KYCStatus } from "@/generated/prisma";
+import { parsePage } from "@/lib/paginate";
 import {
   ExportUsersButton,
   AddUserButton,
@@ -48,20 +50,22 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   if (!hasPermission(userRole, "users.view")) redirect("/admin");
 
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
 
-  // Build where clause based on filters
+  // Build where clause based on filters. Enum filters are validated against the
+  // generated enum value sets — a raw `as` cast would let an out-of-enum query
+  // string (e.g. ?status=active) reach Prisma and throw a validation error.
   const where: Prisma.UserWhereInput = {};
 
-  if (params.status && params.status !== "all") {
+  if (params.status && params.status !== "all" && params.status in UserStatus) {
     where.status = params.status as Prisma.EnumUserStatusFilter["equals"];
   }
-  if (params.role && params.role !== "all") {
+  if (params.role && params.role !== "all" && params.role in UserRoleEnum) {
     where.role = params.role as Prisma.EnumUserRoleFilter["equals"];
   }
-  if (params.kyc && params.kyc !== "all") {
+  if (params.kyc && params.kyc !== "all" && params.kyc in KYCStatus) {
     where.kycStatus = params.kyc as Prisma.EnumKYCStatusFilter["equals"];
   }
   if (params.package && params.package !== "all") {

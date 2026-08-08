@@ -1,3 +1,4 @@
+import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -76,7 +77,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   }
 
   const params = await searchParams;
-  const page = Math.max(1, parseInt(params.page || "1"));
+  const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
 
