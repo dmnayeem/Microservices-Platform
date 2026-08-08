@@ -7,6 +7,10 @@ export const APP_DESCRIPTION = "Complete tasks, earn rewards, and grow your inco
 // Economy
 export const DEFAULT_POINTS_TO_USD_RATE = 1000; // 1000 points = $1
 export const MINIMUM_WITHDRAWAL_USD = 50;
+// Minimum points a user must accumulate before the "convert points → cash"
+// option unlocks (whole-balance conversion). Admin-configurable via the
+// `points_convert_threshold` SystemSetting.
+export const DEFAULT_POINTS_CONVERT_THRESHOLD = 10000; // 10,000 pts = $10 at default rate
 
 // MLM Levels (10 levels)
 export const DEFAULT_REFERRAL_LEVELS = 10;

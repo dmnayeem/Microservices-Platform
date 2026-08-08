@@ -88,6 +88,7 @@ enum TransactionType {
   AFFILIATE_COMMISSION
   ADMIN_FEE
   AD_CREDIT_PURCHASE
+  POINTS_CONVERSION
 }
 
 // What earning generated a referral commission. Currently only tasks pay

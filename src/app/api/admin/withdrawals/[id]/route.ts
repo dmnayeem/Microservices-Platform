@@ -211,14 +211,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      // Withdrawal creation debits POINTS (pointsBalance). Refund the exact
-      // points that were held — recovered from the original WITHDRAWAL
-      // transaction — NOT cashBalance (which would mint free USD).
+      // Refund in the SAME currency the hold was taken in. New withdrawals hold
+      // CASH (txn points == 0, amount < 0); legacy in-flight withdrawals held
+      // POINTS (txn points < 0). Read the original WITHDRAWAL transaction and
+      // refund accordingly — never mint the other currency.
       const debitTx = await prisma.transaction.findFirst({
         where: { reference: `withdrawal_${id}`, type: "WITHDRAWAL" },
         select: { points: true },
       });
-      const refundPoints = debitTx ? Math.abs(debitTx.points) : 0;
+      const heldPoints = debitTx ? Math.abs(debitTx.points) : 0;
+      const refundPoints = heldPoints > 0 ? heldPoints : 0;
+      // Cash hold when no points were held (new-style). Refund the gross amount.
+      const refundCash = heldPoints > 0 ? 0 : toNum(existingWithdrawal.amount);
 
       const [withdrawal] = await prisma.$transaction([
         prisma.withdrawal.update({
@@ -234,6 +238,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           where: { id: existingWithdrawal.userId },
           data: {
             pointsBalance: { increment: refundPoints },
+            cashBalance: { increment: refundCash },
           },
         }),
         prisma.transaction.create({
@@ -242,7 +247,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             type: "REFUND",
             status: "COMPLETED",
             points: refundPoints,
-            amount: 0,
+            amount: refundCash,
             description: `Withdrawal rejected: ${
               rejectionReason || "Rejected by admin"
             }`,

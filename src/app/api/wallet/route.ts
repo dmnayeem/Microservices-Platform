@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { WithdrawalStatus } from "@/generated/prisma";
 import { getSubscriptionStatus } from "@/lib/packages";
-import { getPointsPerUsd } from "@/lib/economy";
+import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 
 // GET /api/wallet - Get user wallet details
@@ -85,21 +85,36 @@ export async function GET() {
       },
     });
 
-    const pointsPerUsd = await getPointsPerUsd();
-    const availablePoints = user.pointsBalance - Math.floor(pendingWithdrawalsAmount * pointsPerUsd);
+    const [pointsPerUsd, convertThreshold] = await Promise.all([
+      getPointsPerUsd(),
+      getPointsConvertThreshold(),
+    ]);
+    // Withdrawable is now the CASH balance (pending withdrawals already decrement
+    // it at request time). Points convert to cash once they reach the threshold.
+    const cash = toNum(user.cashBalance);
+    const pointsAsUsd = user.pointsBalance / pointsPerUsd;
+    const canConvert = user.pointsBalance >= convertThreshold;
 
     const pkg = sub.effective;
 
     return NextResponse.json({
       balance: {
         points: user.pointsBalance,
-        availablePoints: Math.max(0, availablePoints),
-        cash: toNum(user.cashBalance),
+        cash,
         adCredit: toNum(user.adCreditBalance),
-        cashEquivalent: user.pointsBalance / pointsPerUsd,
+        withdrawable: cash,
+        pointsAsUsd,
+        cashEquivalent: pointsAsUsd,
         pendingWithdrawal: pendingWithdrawalsAmount,
         totalEarnings: toNum(user.totalEarnings),
         totalWithdrawals: toNum(user.totalWithdrawals),
+      },
+      convert: {
+        threshold: convertThreshold,
+        points: user.pointsBalance,
+        canConvert,
+        pointsAsUsd,
+        pointsPerUsd,
       },
       stats: {
         todayEarnings: todayEarningsPoints,
@@ -125,7 +140,7 @@ export async function GET() {
       canWithdraw:
         !!pkg?.withdrawalsEnabled &&
         user.kycStatus === "APPROVED" &&
-        availablePoints >= (pkg?.minWithdrawal ?? 5) * pointsPerUsd,
+        cash >= (pkg?.minWithdrawal ?? 5),
     });
   } catch (error) {
     console.error("Error fetching wallet:", error);

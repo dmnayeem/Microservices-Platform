@@ -9,7 +9,7 @@ import {
 } from "@/components/user/wallet/wallet-view";
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
-import { getPointsPerUsd } from "@/lib/economy";
+import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 
 export default async function WalletPage() {
@@ -119,7 +119,10 @@ export default async function WalletPage() {
   }));
 
   const kycPrompt = await getKycPromptState(userId);
-  const pointsPerUsd = await getPointsPerUsd();
+  const [pointsPerUsd, convertThreshold] = await Promise.all([
+    getPointsPerUsd(),
+    getPointsConvertThreshold(),
+  ]);
 
   return (
     <>
@@ -140,6 +143,7 @@ export default async function WalletPage() {
         referralStats={stats}
         pendingWithdrawals={pendingWithdrawalsCount}
         pointsPerUsd={pointsPerUsd}
+        convertThreshold={convertThreshold}
       />
     </>
   );

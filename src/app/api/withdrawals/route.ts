@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { getPointsPerUsd } from "@/lib/economy";
 import {
   WithdrawalStatus,
   PaymentMethod,
@@ -175,7 +174,7 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       select: {
         id: true,
-        pointsBalance: true,
+        cashBalance: true,
         kycStatus: true,
         featureOverrides: true,
       },
@@ -235,19 +234,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert amount to points needed (admin-configurable rate)
-    const pointsPerUsd = await getPointsPerUsd();
-    const pointsNeeded = Math.ceil(amount * pointsPerUsd);
-
-    // Check pending withdrawals
-    const pendingWithdrawalsList = await prisma.withdrawal.findMany({
-      where: {
-        userId: session.user.id,
-        status: { in: [WithdrawalStatus.PENDING, WithdrawalStatus.PROCESSING] },
-      },
-      select: { amount: true },
-    });
-    const pendingWithdrawalsTotal = pendingWithdrawalsList.reduce((sum, w) => sum + toNum(w.amount), 0);
+    // Withdrawals now draw from the withdrawable CASH balance (USD). Points are
+    // earned separately and must be converted to cash first (see /api/wallet/convert);
+    // only cash is withdrawable under the unified wallet model.
+    const availableCash = toNum(user.cashBalance);
 
     // Check cooldown (24 hours between withdrawals)
     const lastWithdrawal = await prisma.withdrawal.findFirst({
@@ -271,11 +261,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user has enough balance (including pending)
-    const pendingAmountPoints = pendingWithdrawalsTotal * pointsPerUsd;
-    const availablePoints = user.pointsBalance - pendingAmountPoints;
-
-    if (pointsNeeded > availablePoints) {
+    // Pending/processing withdrawals already decremented cashBalance at request
+    // time (the CAS hold below), so the current balance already excludes them —
+    // this pre-check is just for a friendly error; the atomic CAS is the guard.
+    if (amount > availableCash) {
       return NextResponse.json(
         { error: "Insufficient balance" },
         { status: 400 }
@@ -289,15 +278,15 @@ export async function POST(request: NextRequest) {
     const fee = (amount * feePercentage / 100) + feeConfig.fixed;
     const netAmount = amount - fee;
 
-    // Atomic + no-overspend: hold the points with a CAS guard, then create the
+    // Atomic + no-overspend: hold the CASH with a CAS guard, then create the
     // withdrawal + transaction in ONE transaction. Concurrent requests can't
     // both pass (the second matches 0 rows and aborts) → no overdraft race.
     let withdrawal;
     try {
       withdrawal = await prisma.$transaction(async (tx) => {
         const held = await tx.user.updateMany({
-          where: { id: session.user.id, pointsBalance: { gte: pointsNeeded } },
-          data: { pointsBalance: { decrement: pointsNeeded } },
+          where: { id: session.user.id, cashBalance: { gte: amount } },
+          data: { cashBalance: { decrement: amount } },
         });
         if (held.count === 0) throw new Error("INSUFFICIENT_BALANCE");
 
@@ -318,7 +307,7 @@ export async function POST(request: NextRequest) {
             userId: session.user.id,
             type: TransactionType.WITHDRAWAL,
             status: TransactionStatus.PENDING,
-            points: -pointsNeeded,
+            points: 0,
             amount: -amount,
             description: `Withdrawal request via ${method}`,
             reference: `withdrawal_${w.id}`,

@@ -16,6 +16,7 @@ import {
   GraduationCap,
   Gamepad2,
   Compass,
+  ArrowRightLeft,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -33,7 +34,7 @@ import {
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { taskRunHref } from "@/lib/task-routes";
 import { toNum } from "@/lib/money";
-import { getPointsPerUsd } from "@/lib/economy";
+import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { ProfileCompletionBanner } from "@/components/user/primitives/profile-completion-banner";
@@ -150,13 +151,14 @@ export default async function DashboardPage() {
       getPointsPerUsd(),
     ]);
 
-  const [gate, kycPrompt, dashAd, features] = await Promise.all([
+  const [gate, kycPrompt, dashAd, features, convertThreshold] = await Promise.all([
     getProfileGateState(session.user.id),
     getKycPromptState(session.user.id),
     // SSR the dashboard banner so it's in the initial HTML (ad-blocker can't hide
     // markup that's already there). AdRenderer paints this, then rotates client-side.
     serveAd({ placement: "DASHBOARD", userId: session.user.id }),
     getEffectiveFeatures(session.user.id),
+    getPointsConvertThreshold(),
   ]);
 
   const user = session.user;
@@ -164,6 +166,7 @@ export default async function DashboardPage() {
   const cash = toNum(userData?.cashBalance ?? 0);
   const adCredit = toNum(userData?.adCreditBalance ?? 0);
   const isAdvertiser = features.enabled.has("advertiser");
+  const canConvertPoints = points >= convertThreshold;
   const xp = userData?.xp ?? 0;
   const level = userData?.level ?? 1;
   const streak = userData?.streak ?? 0;
@@ -233,6 +236,25 @@ export default async function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Convert-points nudge — points become withdrawable cash at the threshold */}
+      {canConvertPoints && (
+        <Link
+          href="/wallet"
+          className="flex items-center gap-3 rounded-xl border border-sky-500/25 bg-linear-to-r from-sky-500/10 to-indigo-500/5 p-3 hover:border-sky-500/40 transition-colors"
+        >
+          <div className="w-9 h-9 rounded-lg bg-sky-500/15 grid place-items-center text-sky-300 shrink-0">
+            <ArrowRightLeft className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white">Convert points to cash</p>
+            <p className="text-xs text-gray-400">
+              You have enough points to convert into withdrawable cash.
+            </p>
+          </div>
+          <span className="text-xs font-bold text-sky-300 shrink-0">Convert →</span>
+        </Link>
+      )}
 
       {/* Quick actions — compact chips (no cramped 2-up on phones) */}
       <div>

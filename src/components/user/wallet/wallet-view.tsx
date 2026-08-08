@@ -3,6 +3,9 @@ import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {
   Wallet,
   Users,
@@ -19,6 +22,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  ArrowRightLeft,
+  Loader2,
 } from "lucide-react";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { TransactionRow, type TxType } from "@/components/user/primitives/transaction-row";
@@ -69,6 +74,8 @@ export interface WalletViewProps {
   pendingWithdrawals: number;
   /** Admin-configurable points-per-$1 rate (default 1000). */
   pointsPerUsd?: number;
+  /** Min points before the convert-to-cash option unlocks. */
+  convertThreshold?: number;
 }
 
 type Tab = "balance" | "deposits" | "referral" | "withdraw";
@@ -86,13 +93,10 @@ const TX_TYPE_MAP: Record<string, TxType> = {
   PENALTY: "EARN_OTHER",
 };
 
-const MIN_WITHDRAW_PTS = 5000;
-
 export function WalletView(props: WalletViewProps) {
   const [tab, setTab] = useState<Tab>("balance");
 
   const isFreeTier = props.packageTier === "FREE";
-  const withdrawablePts = Math.max(0, props.pointsBalance);
   const pointsPerUsd = props.pointsPerUsd ?? 1000;
 
   return (
@@ -114,6 +118,12 @@ export function WalletView(props: WalletViewProps) {
         cash={props.cashBalance}
         adCredit={props.adCreditBalance}
         packageTier={props.packageTier}
+        pointsPerUsd={pointsPerUsd}
+      />
+
+      <ConvertCard
+        points={props.pointsBalance}
+        threshold={props.convertThreshold ?? 10000}
         pointsPerUsd={pointsPerUsd}
       />
 
@@ -182,12 +192,93 @@ export function WalletView(props: WalletViewProps) {
       {tab === "withdraw" && (
         <WithdrawTab
           isFreeTier={isFreeTier}
-          withdrawablePts={withdrawablePts}
+          cashBalance={props.cashBalance}
+          points={props.pointsBalance}
+          convertThreshold={props.convertThreshold ?? 10000}
           pendingWithdrawals={props.pendingWithdrawals}
           packageTier={props.packageTier}
-          pointsPerUsd={pointsPerUsd}
         />
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Convert points → cash
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ConvertCard({
+  points,
+  threshold,
+  pointsPerUsd,
+}: {
+  points: number;
+  threshold: number;
+  pointsPerUsd: number;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const canConvert = points >= threshold;
+  const asUsd = points / pointsPerUsd;
+  const pct = Math.min(100, threshold > 0 ? (points / threshold) * 100 : 0);
+  const remaining = Math.max(0, threshold - points);
+
+  if (points <= 0) return null;
+
+  const convert = async () => {
+    if (!canConvert || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/wallet/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      toast.success(d.message ?? "Points converted to cash");
+      router.refresh();
+    } catch (err) {
+      toast.error("Couldn't convert", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-sky-500/25 bg-linear-to-br from-sky-500/10 to-indigo-500/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white flex items-center gap-1.5">
+            <ArrowRightLeft className="w-4 h-4 text-sky-400" />
+            Convert points to cash
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {canConvert
+              ? `Move your ${points.toLocaleString()} points into withdrawable cash (~$${asUsd.toFixed(2)}).`
+              : `Earn ${remaining.toLocaleString()} more points to unlock — points become withdrawable cash at ${threshold.toLocaleString()}.`}
+          </p>
+        </div>
+        <button
+          onClick={convert}
+          disabled={!canConvert || busy}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+          {canConvert ? `Convert ~$${asUsd.toFixed(2)}` : "Locked"}
+        </button>
+      </div>
+      {/* Threshold progress */}
+      <div className="mt-3">
+        <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+          <div className="h-full bg-linear-to-r from-sky-400 to-indigo-400" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="flex justify-between text-[10px] text-gray-500 mt-1 tabular-nums">
+          <span>{points.toLocaleString()} pts</span>
+          <span>{threshold.toLocaleString()} pts</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -575,21 +666,24 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
 
 function WithdrawTab({
   isFreeTier,
-  withdrawablePts,
+  cashBalance,
+  points,
+  convertThreshold,
   pendingWithdrawals,
   packageTier,
-  pointsPerUsd,
 }: {
   isFreeTier: boolean;
-  withdrawablePts: number;
+  cashBalance: number;
+  points: number;
+  convertThreshold: number;
   pendingWithdrawals: number;
   packageTier: string;
-  pointsPerUsd: number;
 }) {
-  const PT_TO_USD = 1 / pointsPerUsd;
-  const meetsThreshold = withdrawablePts >= MIN_WITHDRAW_PTS;
-  const usdValue = withdrawablePts * PT_TO_USD;
-  const minUsd = MIN_WITHDRAW_PTS * PT_TO_USD;
+  // Only CASH is withdrawable. Points must be converted to cash first (see the
+  // Convert card on the Balance tab). Show a nudge when the user has convertible
+  // points but not enough cash yet.
+  const hasCash = cashBalance > 0;
+  const canConvertPoints = points >= convertThreshold;
 
   return (
     <div className="space-y-4">
@@ -619,21 +713,23 @@ function WithdrawTab({
 
       <div className="glass rounded-2xl p-5">
         <p className="text-xs uppercase tracking-wider text-gray-500 font-bold">
-          Withdrawable
+          Withdrawable cash
         </p>
         <p className="text-4xl font-extrabold text-white tabular-nums mt-1">
-          {withdrawablePts.toLocaleString()}
-          <span className="text-base font-bold text-gray-400 ml-1">pts</span>
+          ${cashBalance.toFixed(2)}
         </p>
         <p className="text-sm text-gray-500 mt-0.5">
-          ≈ ${usdValue.toFixed(2)} USD
+          From course/marketplace/affiliate sales, deposits &amp; converted points
         </p>
 
         <div className="mt-4 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Minimum payout</span>
+            <span className="text-gray-400">Your points</span>
             <span className="text-white tabular-nums font-semibold">
-              {MIN_WITHDRAW_PTS.toLocaleString()} pts (${minUsd.toFixed(2)})
+              {points.toLocaleString()} pts
+              {canConvertPoints && (
+                <span className="text-sky-400 ml-1">· convertible</span>
+              )}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
@@ -648,11 +744,17 @@ function WithdrawTab({
           </div>
         </div>
 
+        {!hasCash && canConvertPoints && (
+          <p className="mt-3 text-[11px] text-sky-300">
+            Convert your points to cash on the Balance tab to withdraw.
+          </p>
+        )}
+
         <Link
           href="/withdrawal"
           className={cn(
             "mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
-            isFreeTier || !meetsThreshold
+            isFreeTier || !hasCash
               ? "bg-gray-800 text-gray-500 cursor-not-allowed pointer-events-none"
               : "bg-linear-to-r from-indigo-500 to-purple-600 text-white hover:scale-[1.02]"
           )}
@@ -660,8 +762,8 @@ function WithdrawTab({
           <ArrowUpRight className="w-4 h-4" />
           {isFreeTier
             ? "Locked — Upgrade required"
-            : !meetsThreshold
-              ? `Need ${(MIN_WITHDRAW_PTS - withdrawablePts).toLocaleString()} more pts`
+            : !hasCash
+              ? "No withdrawable cash yet"
               : "Request Withdrawal"}
         </Link>
       </div>

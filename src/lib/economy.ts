@@ -1,5 +1,8 @@
 import { getSetting } from "@/lib/system-settings";
-import { DEFAULT_POINTS_TO_USD_RATE } from "@/config/constants";
+import {
+  DEFAULT_POINTS_TO_USD_RATE,
+  DEFAULT_POINTS_CONVERT_THRESHOLD,
+} from "@/config/constants";
 
 /**
  * Points ⇆ USD conversion rate, admin-configurable.
@@ -39,4 +42,19 @@ export function pointsToUsd(points: number, pointsPerUsd: number): number {
 /** Convert a USD amount to whole points at the given rate. */
 export function usdToPoints(usd: number, pointsPerUsd: number): number {
   return Math.round(usd * pointsPerUsd);
+}
+
+/**
+ * Minimum points a user must hold before the "convert points → cash" option
+ * unlocks. Admin-configurable via SystemSetting `points_convert_threshold`
+ * (category `financial`); falls back to DEFAULT_POINTS_CONVERT_THRESHOLD.
+ */
+export async function getPointsConvertThreshold(): Promise<number> {
+  const raw = await getSetting<number>(
+    "points_convert_threshold",
+    DEFAULT_POINTS_CONVERT_THRESHOLD
+  );
+  return typeof raw === "number" && isFinite(raw) && raw > 0
+    ? Math.floor(raw)
+    : DEFAULT_POINTS_CONVERT_THRESHOLD;
 }

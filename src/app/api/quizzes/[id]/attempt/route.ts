@@ -6,7 +6,7 @@ import {
   TransactionStatus,
   NotificationType,
 } from "@/generated/prisma/client";
-import { getPointsPerUsd } from "@/lib/economy";
+import { getPointsPerUsd, usdToPoints } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 
@@ -112,10 +112,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   let pointsAwarded = 0;
   let xpAwarded = 0;
   if (passed && !everPassed) {
-    pointsAwarded = quiz.pointsReward;
     xpAwarded = quiz.xpReward;
+    // Quizzes are a platform activity → the reward is POINTS (which convert to
+    // cash at the wallet threshold), never direct cash. Any configured cashReward
+    // is folded into points at the current rate so it can't bypass the convert gate.
     const cash = toNum(quiz.cashReward);
     const pointsPerUsd = await getPointsPerUsd();
+    pointsAwarded = quiz.pointsReward + usdToPoints(cash, pointsPerUsd);
     try {
       await prisma.$transaction([
         prisma.user.update({
@@ -123,8 +126,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           data: {
             pointsBalance: { increment: pointsAwarded },
             xp: { increment: xpAwarded },
-            cashBalance: { increment: cash },
-            totalEarnings: { increment: pointsAwarded / pointsPerUsd + cash },
+            totalEarnings: { increment: pointsAwarded / pointsPerUsd },
           },
         }),
         prisma.transaction.create({
@@ -133,10 +135,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             type: TransactionType.EARNING,
             status: TransactionStatus.COMPLETED,
             points: pointsAwarded,
-            amount: pointsAwarded / pointsPerUsd + cash,
+            amount: pointsAwarded / pointsPerUsd,
             description: `Passed quiz: ${quiz.title}`,
             reference: `quiz_reward_${userId}_${id}`,
-            metadata: { quizId: id, attemptId: attempt.id, percent, xp: xpAwarded, cash },
+            metadata: { quizId: id, attemptId: attempt.id, percent, xp: xpAwarded, cashFoldedToPoints: cash },
           },
         }),
         prisma.notification.create({
