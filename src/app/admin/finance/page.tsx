@@ -53,9 +53,29 @@ const money = (n: number) =>
 
 type GroupRow = {
   type: string;
-  _sum: { amount: unknown; points: number | null };
+  _sum: { amount: number | null; points: number | null };
   _count: number;
 };
+// Prisma's aggregate/groupBy generics degrade to `{}` inside this large
+// Promise.all tuple, so the result shapes are declared explicitly. (Money fields
+// are Decimals at runtime; typed loosely as number|null since toNum() coerces.)
+type SumAmount = { _sum: { amount: number | null } };
+type SumAmountCount = { _sum: { amount: number | null }; _count: number };
+type FinanceBatch = [
+  GroupRow[],
+  GroupRow[],
+  SumAmount,
+  SumAmount,
+  SumAmountCount,
+  SumAmount,
+  { _sum: { cashBalance: number | null; pointsBalance: number | null; adCreditBalance: number | null } },
+  { _sum: { budget: number | null } },
+  SumAmountCount,
+  SumAmount,
+  number,
+  number,
+  number,
+];
 
 export default async function AdminFinancePage() {
   const session = await auth();
@@ -78,7 +98,7 @@ export default async function AdminFinancePage() {
     offerwallPending,
     disputesOpen,
     pointsPerUsd,
-  ] = await Promise.all([
+  ] = (await Promise.all([
     // All money movement bucketed by ledger type — the full "hisab kitab".
     prisma.transaction.groupBy({
       by: ["type"],
@@ -114,12 +134,10 @@ export default async function AdminFinancePage() {
       where: { status: { in: ["OPEN", "IN_REVIEW", "ESCALATED"] } },
     }),
     getPointsPerUsd(),
-  ]);
+  ])) as unknown as FinanceBatch;
 
   // Index the month buckets by type for the ledger table.
-  const monthByType = new Map(
-    (txMonth as GroupRow[]).map((r) => [r.type, r])
-  );
+  const monthByType = new Map(txMonth.map((r) => [r.type, r]));
 
   // Clean top-line finance figures.
   const subscriptionRevenue = toNum(subAll._sum.amount);
@@ -134,7 +152,7 @@ export default async function AdminFinancePage() {
   const totalPaid = toNum(withdrawPaid._sum.amount);
 
   // Ledger rows sorted by absolute all-time volume.
-  const ledger = (txAll as GroupRow[])
+  const ledger = txAll
     .map((r) => {
       const meta = TX_META[r.type] ?? { label: r.type, kind: "neutral" as const };
       const m = monthByType.get(r.type);

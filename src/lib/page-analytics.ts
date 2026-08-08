@@ -106,6 +106,7 @@ export async function recordPageEvent(evt: PageEvent): Promise<void> {
       await prisma.pageDailyStat.upsert({
         where: { kind_key_date: { kind: t.kind, key: t.key, date } },
         create: {
+          date,
           kind: t.kind,
           key: t.key,
           label: t.label,

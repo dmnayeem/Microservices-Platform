@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-export default function ImpersonatePage() {
+function ImpersonateInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -79,5 +79,14 @@ export default function ImpersonatePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for the static build shell.
+export default function ImpersonatePage() {
+  return (
+    <Suspense fallback={null}>
+      <ImpersonateInner />
+    </Suspense>
   );
 }

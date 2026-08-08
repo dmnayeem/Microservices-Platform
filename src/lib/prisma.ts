@@ -38,7 +38,13 @@ function isTransientAccelerateError(e: unknown): boolean {
   );
 }
 
-const RETRY_MAX = 3;
+// Backoff schedule (ms) between read retries. Sized to ride out a Prisma
+// Postgres cold-wake on a serverless cold start (~a few seconds) — local dev
+// keeps the DB warm, but on Vercel the first requests after idle/deploy can hit
+// a waking instance and get a transient "communicating with Query Engine" error.
+// Each delay runs ONLY after a caught transient error on a read; the happy path
+// returns on the first attempt with zero added latency.
+const RETRY_BACKOFF_MS = [250, 500, 1000, 2000];
 
 function createPrismaClient() {
   return new PrismaClient({
@@ -57,15 +63,15 @@ function createPrismaClient() {
             try {
               return await query(args);
             } catch (e) {
-              attempt++;
               if (
                 !retryable ||
-                attempt >= RETRY_MAX ||
+                attempt >= RETRY_BACKOFF_MS.length ||
                 !isTransientAccelerateError(e)
               ) {
                 throw e;
               }
-              await new Promise((r) => setTimeout(r, 150 * attempt));
+              await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS[attempt]));
+              attempt++;
             }
           }
         },

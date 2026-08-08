@@ -236,7 +236,9 @@ export async function GET(request: NextRequest) {
     } else if (reportType === "traffic") {
       // Page/task-page traffic export (from the PageDailyStat rollup).
       const from = startOfDay(startDate);
-      const [pages, taskPages] = await Promise.all([
+      // Prisma groupBy generics degrade to `{}` in this tuple — declare shapes.
+      type TSum = { views: number | null; uniqueVisitors: number | null; totalDwellSec: number | null };
+      const [pages, taskPages] = (await Promise.all([
         prisma.pageDailyStat.groupBy({
           by: ["key"],
           where: { kind: "PAGE", date: { gte: from } },
@@ -251,7 +253,10 @@ export async function GET(request: NextRequest) {
           orderBy: { _sum: { views: "desc" } },
           take: 500,
         }),
-      ]);
+      ])) as unknown as [
+        Array<{ key: string; _sum: TSum }>,
+        Array<{ key: string; label: string | null; _sum: TSum }>,
+      ];
       const taskIds = taskPages.map((t) => t.key);
       const taskRows = taskIds.length
         ? await prisma.task.findMany({ where: { id: { in: taskIds } }, select: { id: true, title: true } })

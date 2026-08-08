@@ -22,6 +22,14 @@ export default function MainError({
         <p className="mt-2 text-gray-400 text-sm">
           This section failed to load. Try again.
         </p>
+        {error.digest && (
+          <p className="mt-3 text-[11px] text-gray-600 font-mono">Ref: {error.digest}</p>
+        )}
+        {process.env.NODE_ENV !== "production" && error.message && (
+          <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-gray-900 border border-gray-800 p-2 text-left text-[11px] text-red-400/90 whitespace-pre-wrap">
+            {error.message}
+          </pre>
+        )}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={reset}

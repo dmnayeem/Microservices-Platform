@@ -33,6 +33,11 @@ export default function GlobalError({
           <p style={{ color: "#9ca3af", marginTop: 8 }}>
             A critical error occurred. Please try again.
           </p>
+          {error.digest && (
+            <p style={{ color: "#4b5563", marginTop: 12, fontSize: 11, fontFamily: "monospace" }}>
+              Ref: {error.digest}
+            </p>
+          )}
           <button
             onClick={reset}
             style={{

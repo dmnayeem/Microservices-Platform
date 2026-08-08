@@ -15,6 +15,18 @@ interface PageProps {
   }>;
 }
 
+// Prisma's aggregate/groupBy generics degrade to `{}` inside this large
+// Promise.all tuple, so the traffic result shapes are declared explicitly.
+type TrafficSum = { views: number | null; uniqueVisitors: number | null; totalDwellSec: number | null };
+type TrafficBatch = [
+  { _sum: TrafficSum },
+  { _sum: { views: number | null; uniqueVisitors: number | null } },
+  Array<{ key: string; _sum: TrafficSum }>,
+  Array<{ key: string; label: string | null; _sum: TrafficSum }>,
+  Array<{ date: Date; _sum: { views: number | null; uniqueVisitors: number | null } }>,
+  Array<{ type: string; _count: { _all: number } }>,
+];
+
 export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   const session = await auth();
 
@@ -202,7 +214,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
     topTaskPagesRaw,
     trafficDailyRaw,
     taskTypeDist,
-  ] = await Promise.all([
+  ] = (await Promise.all([
     prisma.pageDailyStat.aggregate({
       where: { kind: "PAGE", date: { gte: trafficStart } },
       _sum: { views: true, uniqueVisitors: true, totalDwellSec: true },
@@ -232,7 +244,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       orderBy: { date: "asc" },
     }),
     prisma.task.groupBy({ by: ["type"], _count: { _all: true } }),
-  ]);
+  ])) as unknown as TrafficBatch;
 
   // Resolve task titles for the task-page rows.
   const taskIds = topTaskPagesRaw.map((t) => t.key);
