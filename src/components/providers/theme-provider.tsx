@@ -4,8 +4,8 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 
 export type Theme = "dark" | "light" | "system";
@@ -47,14 +47,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const ACCENT_KEY = "earngpt-accent";
 
-function useHasMounted() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-}
-
 /** Resolve the raw theme preference to the concrete "dark"/"light" applied. */
 function resolveTheme(theme: Theme): "dark" | "light" {
   if (theme === "system") {
@@ -78,25 +70,28 @@ export function ThemeProvider({
   defaultTheme?: Theme;
   storageKey?: string;
 }) {
-  const hasMounted = useHasMounted();
+  // Start from defaults on BOTH server and first client render so the tree
+  // renders identically (no hydration mismatch) — then hydrate the stored
+  // preference in a post-mount effect below. The actual visual theme is already
+  // applied to <html> by the inline script in layout.tsx before first paint, so
+  // there's no flash while the context catches up.
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const [accent, setAccentState] = useState<Accent>("indigo");
 
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(storageKey) as Theme | null;
-      if (stored === "dark" || stored === "light" || stored === "system") {
-        return stored;
-      }
+  // Hydrate persisted preferences once, after mount. Reading localStorage here
+  // (not in the useState initializer) is deliberate: it keeps the server and
+  // first client render identical (default values) so there's no hydration
+  // mismatch, then syncs the real preference in. The one-time setState is the
+  // intended pattern for this — hence the rule disable.
+  useEffect(() => {
+    const storedTheme = localStorage.getItem(storageKey) as Theme | null;
+    if (storedTheme === "dark" || storedTheme === "light" || storedTheme === "system") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setThemeState(storedTheme);
     }
-    return defaultTheme;
-  });
-
-  const [accent, setAccentState] = useState<Accent>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(ACCENT_KEY) as Accent | null;
-      if (stored && ACCENTS.includes(stored)) return stored;
-    }
-    return "indigo";
-  });
+    const storedAccent = localStorage.getItem(ACCENT_KEY) as Accent | null;
+    if (storedAccent && ACCENTS.includes(storedAccent)) setAccentState(storedAccent);
+  }, [storageKey]);
 
   const setTheme = (next: Theme) => {
     setThemeState(next);
@@ -108,28 +103,37 @@ export function ThemeProvider({
     if (typeof window !== "undefined") localStorage.setItem(ACCENT_KEY, next);
   };
 
-  // Apply the resolved theme; when "system", follow OS changes live.
+  // Apply the resolved theme; when "system", follow OS changes live. The inline
+  // script in layout.tsx already set the correct data-theme before first paint,
+  // so skip the initial run (avoids a flash before the stored pref hydrates) —
+  // only take over on actual preference changes.
+  const themeInited = useRef(false);
   useEffect(() => {
-    if (!hasMounted) return;
     const apply = () =>
       document.documentElement.setAttribute("data-theme", resolveTheme(theme));
-    apply();
+    if (themeInited.current) apply();
+    else themeInited.current = true;
     if (theme === "system" && window.matchMedia) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       mq.addEventListener("change", apply);
       return () => mq.removeEventListener("change", apply);
     }
-  }, [theme, hasMounted]);
+  }, [theme]);
 
-  // Apply the accent as a data attribute (CSS remaps the brand ramp).
+  // Apply the accent as a data attribute (CSS remaps the brand ramp). Same
+  // skip-initial rule — the inline script already set data-accent pre-paint.
+  const accentInited = useRef(false);
   useEffect(() => {
-    if (hasMounted) {
+    if (accentInited.current) {
       document.documentElement.setAttribute("data-accent", accent);
+    } else {
+      accentInited.current = true;
     }
-  }, [accent, hasMounted]);
+  }, [accent]);
 
-  if (!hasMounted) return null;
-
+  // NOTE: intentionally NO `if (!hasMounted) return null` gate — that blanked the
+  // entire app (page + loading skeleton) until the client bundle hydrated,
+  // defeating SSR streaming. Children now render on the server and stream in.
   return (
     <ThemeContext.Provider value={{ theme, setTheme, accent, setAccent }}>
       {children}

@@ -94,9 +94,21 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Fetch user data from database
-  const [userData, tasksCompleted, referralsCount, availableTasks, recentTx, pointsPerUsd] =
-    await Promise.all([
+  // Fetch everything in ONE batch — none of these depend on each other, so they
+  // run as a single parallel round-trip instead of two serial phases.
+  const [
+    userData,
+    tasksCompleted,
+    referralsCount,
+    availableTasks,
+    recentTx,
+    pointsPerUsd,
+    gate,
+    kycPrompt,
+    dashAd,
+    features,
+    convertThreshold,
+  ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
         select: {
@@ -149,17 +161,14 @@ export default async function DashboardPage() {
         },
       }),
       getPointsPerUsd(),
+      getProfileGateState(session.user.id),
+      getKycPromptState(session.user.id),
+      // SSR the dashboard banner so it's in the initial HTML (ad-blocker can't hide
+      // markup that's already there). AdRenderer paints this, then rotates client-side.
+      serveAd({ placement: "DASHBOARD", userId: session.user.id }),
+      getEffectiveFeatures(session.user.id),
+      getPointsConvertThreshold(),
     ]);
-
-  const [gate, kycPrompt, dashAd, features, convertThreshold] = await Promise.all([
-    getProfileGateState(session.user.id),
-    getKycPromptState(session.user.id),
-    // SSR the dashboard banner so it's in the initial HTML (ad-blocker can't hide
-    // markup that's already there). AdRenderer paints this, then rotates client-side.
-    serveAd({ placement: "DASHBOARD", userId: session.user.id }),
-    getEffectiveFeatures(session.user.id),
-    getPointsConvertThreshold(),
-  ]);
 
   const user = session.user;
   const points = userData?.pointsBalance ?? 0;

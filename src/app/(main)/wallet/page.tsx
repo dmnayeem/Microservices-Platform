@@ -18,8 +18,18 @@ export default async function WalletPage() {
 
   const userId = session.user.id;
 
-  const [user, transactions, pendingWithdrawalsCount, completedWithdrawals, refEarnings, l1Users, deposits] =
-    await Promise.all([
+  const [
+    user,
+    transactions,
+    pendingWithdrawalsCount,
+    completedWithdrawals,
+    refEarnings,
+    l1Users,
+    deposits,
+    kycPrompt,
+    pointsPerUsd,
+    convertThreshold,
+  ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -56,6 +66,10 @@ export default async function WalletPage() {
         take: 30,
         select: { id: true, amount: true, method: true, status: true, txnId: true, createdAt: true },
       }),
+      // Independent of the queries above — batched here to avoid extra serial hops.
+      getKycPromptState(userId),
+      getPointsPerUsd(),
+      getPointsConvertThreshold(),
     ]);
 
   if (!user) redirect("/login");
@@ -117,12 +131,6 @@ export default async function WalletPage() {
     txnId: d.txnId,
     createdAt: d.createdAt.toISOString(),
   }));
-
-  const kycPrompt = await getKycPromptState(userId);
-  const [pointsPerUsd, convertThreshold] = await Promise.all([
-    getPointsPerUsd(),
-    getPointsConvertThreshold(),
-  ]);
 
   return (
     <>
