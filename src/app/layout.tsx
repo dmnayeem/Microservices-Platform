@@ -25,6 +25,7 @@ import { ConfirmHost } from "@/components/providers/confirm-host";
 import { NotifyCenterHost } from "@/components/providers/notify-center-host";
 import { RewardInterstitialHost } from "@/components/providers/reward-interstitial-host";
 import { AdblockHost } from "@/components/providers/adblock-host";
+import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import "./globals.css";
 
@@ -104,6 +105,7 @@ export default async function RootLayout({
         />
         <ThemeProvider defaultTheme="dark" storageKey="earngpt-theme">
           {children}
+          <PageViewTracker />
           <ServiceWorkerRegister />
           <SplashScreen />
           <CookieConsent enabled={ui.cookiesPopup} />

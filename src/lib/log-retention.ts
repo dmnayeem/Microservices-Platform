@@ -71,6 +71,12 @@ export async function pruneOldLogs(): Promise<Record<string, number>> {
     () => prisma.courseListingView.findMany({ where: { viewedAt: { lt: cViews } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.courseListingView.deleteMany({ where: { id: { in: ids } } })
   );
+  // Raw per-visitor dedup rows for page analytics. The PageDailyStat rollup is
+  // NOT pruned (aggregates kept long-term, like AdDailyStat).
+  r.pageVisitDaily = await pruneBatched(
+    () => prisma.pageVisitDaily.findMany({ where: { createdAt: { lt: cViews } }, select: { id: true }, take: BATCH }),
+    (ids) => prisma.pageVisitDaily.deleteMany({ where: { id: { in: ids } } })
+  );
   r.auditLog = await pruneBatched(
     () => prisma.auditLog.findMany({ where: { createdAt: { lt: cAudit } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.auditLog.deleteMany({ where: { id: { in: ids } } })

@@ -233,6 +233,63 @@ export async function GET(request: NextRequest) {
             `"${t.id}","${t.user.email}","${t.user.name || ""}","${t.type}","${t.status}",${t.points},${t.amount},"${t.description || ""}","${t.reference || ""}","${format(t.createdAt, "yyyy-MM-dd HH:mm:ss")}"`
         )
         .join("\n");
+    } else if (reportType === "traffic") {
+      // Page/task-page traffic export (from the PageDailyStat rollup).
+      const from = startOfDay(startDate);
+      const [pages, taskPages] = await Promise.all([
+        prisma.pageDailyStat.groupBy({
+          by: ["key"],
+          where: { kind: "PAGE", date: { gte: from } },
+          _sum: { views: true, uniqueVisitors: true, totalDwellSec: true },
+          orderBy: { _sum: { views: "desc" } },
+          take: 500,
+        }),
+        prisma.pageDailyStat.groupBy({
+          by: ["key", "label"],
+          where: { kind: "TASK", date: { gte: from } },
+          _sum: { views: true, uniqueVisitors: true, totalDwellSec: true },
+          orderBy: { _sum: { views: "desc" } },
+          take: 500,
+        }),
+      ]);
+      const taskIds = taskPages.map((t) => t.key);
+      const taskRows = taskIds.length
+        ? await prisma.task.findMany({ where: { id: { in: taskIds } }, select: { id: true, title: true } })
+        : [];
+      const titleById = new Map(taskRows.map((t) => [t.id, t.title]));
+      const avg = (d: number | null, v: number | null) => (v && v > 0 ? Math.round((d ?? 0) / v) : 0);
+
+      csvContent = "Kind,Page/Task,Views,Unique Visitors,Avg Time (s)\n";
+      csvContent += pages
+        .map((p) =>
+          [
+            "PAGE",
+            p.key,
+            p._sum.views ?? 0,
+            p._sum.uniqueVisitors ?? 0,
+            avg(p._sum.totalDwellSec, p._sum.views),
+          ]
+            .map((c) => csvEscape(String(c)))
+            .join(",")
+        )
+        .join("\n");
+      if (taskPages.length) {
+        csvContent +=
+          "\n" +
+          taskPages
+            .map((t) =>
+              [
+                `TASK:${t.label ?? ""}`,
+                titleById.get(t.key) ?? t.key,
+                t._sum.views ?? 0,
+                t._sum.uniqueVisitors ?? 0,
+                avg(t._sum.totalDwellSec, t._sum.views),
+              ]
+                .map((c) => csvEscape(String(c)))
+                .join(",")
+            )
+            .join("\n");
+      }
     } else {
       // Summary report (daily metrics)
       const dailyData = await Promise.all(

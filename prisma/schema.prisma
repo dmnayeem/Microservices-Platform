@@ -3104,3 +3104,38 @@ model Media {
   @@index([createdAt])
   @@index([s3Key])
 }
+
+// ── Page/traffic analytics ──────────────────────────────────────────────────
+// Per-day rollup of page & task-page traffic (views, unique visitors, dwell).
+// Modeled on AdDailyStat: written by a best-effort upsert-increment; never
+// pruned (aggregate kept long-term). `kind`: "PAGE" (normalized route template)
+// or "TASK" (individual task id, with `label` = task type).
+model PageDailyStat {
+  id             String   @id @default(cuid())
+  date           DateTime @db.Date
+  kind           String // "PAGE" | "TASK"
+  key            String // normalized route template, or task id
+  label          String? // task type for kind=TASK
+  views          Int      @default(0)
+  uniqueVisitors Int      @default(0)
+  totalDwellSec  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([kind, key, date])
+  @@index([kind, date])
+  @@index([date])
+}
+
+// Raw per-visitor dedup rows so unique-visitor counts stay correct. Append-only,
+// pruned by log-retention (the `views` window). visitorHash = sha256(userId||ip:ua).
+model PageVisitDaily {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  kind        String
+  key         String
+  visitorHash String
+  createdAt   DateTime @default(now())
+
+  @@unique([kind, key, date, visitorHash])
+  @@index([createdAt])
+}

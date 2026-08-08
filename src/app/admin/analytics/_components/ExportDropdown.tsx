@@ -10,6 +10,7 @@ import {
   Activity,
   DollarSign,
   ArrowRightLeft,
+  Eye,
   Loader2,
 } from "lucide-react";
 
@@ -47,6 +48,12 @@ const EXPORT_OPTIONS = [
     label: "Transactions Report",
     description: "All financial transactions",
     icon: ArrowRightLeft,
+  },
+  {
+    type: "traffic",
+    label: "Traffic Report",
+    description: "Page & task-page views, visitors, time",
+    icon: Eye,
   },
 ];
 

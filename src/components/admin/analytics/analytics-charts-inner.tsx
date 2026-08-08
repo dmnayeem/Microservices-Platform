@@ -28,9 +28,16 @@ interface TaskBreakdown {
   value: number;
 }
 
+interface TrafficPoint {
+  date: string;
+  views: number;
+  visitors: number;
+}
+
 export interface AnalyticsChartsProps {
   daily: DailyPoint[];
   taskBreakdown?: TaskBreakdown[];
+  traffic?: TrafficPoint[];
 }
 
 const PIE_COLORS = [
@@ -54,18 +61,35 @@ const TOOLTIP_STYLE = {
 export function AnalyticsChartsInner({
   daily,
   taskBreakdown,
+  traffic,
 }: AnalyticsChartsProps) {
-  const defaultBreakdown: TaskBreakdown[] = [
-    { name: "Video Watch", value: 35 },
-    { name: "Social", value: 28 },
-    { name: "Surveys", value: 15 },
-    { name: "Referrals", value: 12 },
-    { name: "Other", value: 10 },
-  ];
-  const breakdown = taskBreakdown ?? defaultBreakdown;
+  const breakdown = (taskBreakdown ?? []).filter((b) => b.value > 0);
 
   return (
     <div className="space-y-4">
+      {/* Traffic trend — pageviews & visitors per day */}
+      {traffic && traffic.length > 0 && (
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
+          <h3 className="text-sm font-semibold text-white mb-3">
+            Traffic — Pageviews & Visitors
+          </h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart
+              data={traffic}
+              margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgb(30 41 59)" />
+              <XAxis dataKey="date" stroke="rgb(100 116 139)" fontSize={11} tickLine={false} />
+              <YAxis stroke="rgb(100 116 139)" fontSize={11} tickLine={false} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: "rgb(51 65 85)" }} />
+              <Legend wrapperStyle={{ fontSize: "12px" }} />
+              <Line type="monotone" dataKey="views" name="Pageviews" stroke="#06b6d4" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="visitors" name="Visitors" stroke="#a855f7" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* User & Task line chart + Revenue bar chart side-by-side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
@@ -158,6 +182,11 @@ export function AnalyticsChartsInner({
         <h3 className="text-sm font-semibold text-white mb-3">
           Task Type Distribution
         </h3>
+        {breakdown.length === 0 ? (
+          <p className="text-sm text-slate-500 py-16 text-center">
+            No completed task submissions in this period.
+          </p>
+        ) : (
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie
@@ -167,7 +196,7 @@ export function AnalyticsChartsInner({
               outerRadius={100}
               innerRadius={60}
               paddingAngle={2}
-              label={({ name, value }) => `${name} ${value}%`}
+              label={({ name, value }) => `${name}: ${value}`}
               labelLine={false}
               dataKey="value"
             >
@@ -186,6 +215,7 @@ export function AnalyticsChartsInner({
             />
           </PieChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
