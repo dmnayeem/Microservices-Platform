@@ -23,7 +23,7 @@ import {
   ADMIN_ROLES,
   ROLE_CONFIG,
   ROLE_PERMISSIONS,
-  TASK_CREATE_PERMISSIONS,
+  PERMISSION_CATALOG,
   FINANCE_PERMISSIONS,
   SUPERADMIN_ONLY_PERMISSIONS,
 } from "@/lib/rbac";
@@ -47,111 +47,6 @@ const VIEW_TABS: Array<{ id: ViewId; label: string; icon: typeof Shield }> = [
   { id: "admins", label: "Admin Accounts", icon: Users },
   { id: "activity", label: "Activity Log", icon: Activity },
   { id: "roles", label: "Roles & Permissions", icon: Key },
-];
-
-const PERMISSION_CATEGORIES: Array<{ label: string; permissions: string[] }> = [
-  {
-    label: "Users & KYC",
-    permissions: [
-      "users.view",
-      "users.edit",
-      "users.ban",
-      "users.delete",
-      "users.adjust_balance",
-      "users.impersonate",
-      "kyc.view",
-      "kyc.approve",
-      "kyc.reject",
-    ],
-  },
-  {
-    label: "Content & Earning",
-    permissions: [
-      "tasks.view",
-      "tasks.create",
-      "tasks.edit",
-      "tasks.delete",
-      "submissions.view",
-      "submissions.approve",
-      "submissions.reject",
-      "boards.view",
-      "courses.view",
-      "courses.manage",
-      "quizzes.view",
-      "quizzes.manage",
-      "missions.view",
-      "missions.manage",
-      "lottery.view",
-      "lottery.manage",
-    ],
-  },
-  {
-    label: "Finance",
-    permissions: [
-      "withdrawals.view",
-      "withdrawals.process",
-      "withdrawals.approve",
-      "withdrawals.reject",
-      "payment_methods.view",
-      "payment_methods.manage",
-      "packages.view",
-      "packages.edit",
-      "referrals.view",
-      "referrals.configure",
-    ],
-  },
-  {
-    label: "Marketplace & Social",
-    permissions: [
-      "marketplace.view",
-      "marketplace.manage",
-      "marketplace.disputes",
-      "social.moderate",
-      "moderation.view",
-      "moderation.manage",
-    ],
-  },
-  {
-    label: "Marketing",
-    permissions: [
-      "campaigns.view",
-      "campaigns.manage",
-      "notifications.view",
-      "notifications.send",
-      "banners.view",
-      "banners.manage",
-      "ads.view",
-      "ads.manage",
-      "landing.view",
-      "landing.edit",
-      "ticker.view",
-      "ticker.edit",
-    ],
-  },
-  {
-    label: "System",
-    permissions: [
-      "analytics.view",
-      "analytics.export",
-      "ai.view",
-      "ai.manage",
-      "settings.view",
-      "settings.edit",
-      "admins.view",
-      "admins.manage",
-      "logs.view",
-      "fraud.view",
-      "fraud.manage",
-      "proxy.view",
-      "proxy.manage",
-      "media.view",
-      "media.manage",
-      "leaderboards.view",
-      "leaderboards.manage",
-      "offerwalls.view",
-      "offerwalls.manage",
-    ],
-  },
 ];
 
 export default async function AdminAccessPage({ searchParams }: PageProps) {
@@ -484,12 +379,13 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
           const defaults = Object.fromEntries(
             editableRoles.map((r) => [r.role, ROLE_PERMISSIONS[r.role as UserRole]])
           );
-          // Fold the per-task-type create permissions into "Content & Earning".
-          const editorCategories = PERMISSION_CATEGORIES.map((c) =>
-            c.label === "Content & Earning"
-              ? { ...c, permissions: [...c.permissions, ...TASK_CREATE_PERMISSIONS] }
-              : c
-          );
+          // Use the canonical permission catalog (rbac.ts) — the single source of
+          // truth, already grouped and inclusive of every key (finance.view,
+          // task-create subtypes, marketplace.mediate, etc.).
+          const editorCategories = PERMISSION_CATALOG.map((c) => ({
+            label: c.label,
+            permissions: [...c.permissions],
+          }));
           // Finance is hidden for every editable role except FINANCE_ADMIN;
           // admins.manage is hidden for all (super-admin-only). Never offered.
           const hiddenPermsByRole = Object.fromEntries(

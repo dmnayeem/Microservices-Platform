@@ -8,6 +8,8 @@ import {
   PERMISSION_CATALOG,
   FINANCE_PERMISSIONS,
   SUPERADMIN_ONLY_PERMISSIONS,
+  permissionLabel,
+  permissionDescription,
 } from "@/lib/rbac";
 
 interface CustomRole {
@@ -180,11 +182,16 @@ export function CustomRolesManager({
                         {cat.permissions.map((p) => {
                           const on = perms.has(p);
                           return (
-                            <button key={p} onClick={() => togglePerm(p)} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-slate-800/60">
-                              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${on ? "border-emerald-500 bg-emerald-500/20 text-emerald-400" : "border-slate-600 text-transparent"}`}>
+                            <button key={p} onClick={() => togglePerm(p)} title={p} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-slate-800/60">
+                              <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${on ? "border-emerald-500 bg-emerald-500/20 text-emerald-400" : "border-slate-600 text-transparent"}`}>
                                 {on ? <Check className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                               </span>
-                              <span className="font-mono text-xs text-slate-300">{p}</span>
+                              <span className="min-w-0">
+                                <span className="block text-xs font-medium text-slate-200">{permissionLabel(p)}</span>
+                                {permissionDescription(p) && (
+                                  <span className="block text-[10px] text-slate-500 leading-tight">{permissionDescription(p)}</span>
+                                )}
+                              </span>
                             </button>
                           );
                         })}

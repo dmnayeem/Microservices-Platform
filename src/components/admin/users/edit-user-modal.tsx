@@ -21,7 +21,7 @@ import {
   type VerifiedBadgeStyle,
 } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
-import { isAdmin, PERMISSION_CATALOG, type UserRole } from "@/lib/rbac";
+import { isAdmin, PERMISSION_CATALOG, permissionLabel, permissionDescription, type UserRole } from "@/lib/rbac";
 import { FEATURES } from "@/lib/features";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -1361,10 +1361,18 @@ export function UserEditForm({
                     return (
                       <div
                         key={perm}
+                        title={perm}
                         className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-950/50 border border-slate-800"
                       >
-                        <span className="font-mono text-xs text-slate-300">
-                          {perm}
+                        <span className="min-w-0">
+                          <span className="block text-xs font-medium text-slate-200">
+                            {permissionLabel(perm)}
+                          </span>
+                          {permissionDescription(perm) && (
+                            <span className="block text-[10px] text-slate-500 leading-tight">
+                              {permissionDescription(perm)}
+                            </span>
+                          )}
                         </span>
                         <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden text-xs font-semibold shrink-0">
                           {opts.map(({ lbl, val }) => {

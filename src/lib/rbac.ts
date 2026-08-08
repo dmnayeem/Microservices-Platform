@@ -120,6 +120,8 @@ export type Permission =
   // Referrals
   | "referrals.view"
   | "referrals.configure"
+  // Finance hub (aggregate financial reporting across every money flow)
+  | "finance.view"
   // Lottery
   | "lottery.view"
   | "lottery.manage"
@@ -239,6 +241,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "marketplace.view", "marketplace.manage", "marketplace.disputes", "marketplace.mediate",
     "packages.view", "packages.edit",
     "referrals.view", "referrals.configure",
+    "finance.view",
     "lottery.view", "lottery.manage",
     "courses.view", "courses.manage", "courses.approve",
     "tutor.dashboard", "tutor.courses.manage", "tutor.applications.review",
@@ -305,11 +308,18 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 
   FINANCE_ADMIN: [
     "dashboard.view",
+    "finance.view",
     "users.view",
     "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
     "payment_methods.view", "payment_methods.manage",
-    "marketplace.view",
     "packages.view", "packages.edit",
+    "referrals.view", "referrals.configure",
+    // Read-only visibility of every revenue source so finance can reconcile
+    // income end-to-end (they manage payouts, not the content itself).
+    "marketplace.view",
+    "courses.view",
+    "ads.view",
+    "offerwalls.view",
     "analytics.view", "analytics.export",
   ],
 
@@ -389,6 +399,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 // effective-permission resolver so a mis-saved config/override can never leak
 // these to a lower admin or custom role.
 export const FINANCE_PERMISSIONS: Permission[] = [
+  "finance.view",
   "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
   "payment_methods.view", "payment_methods.manage",
   "packages.view", "packages.edit",
@@ -478,6 +489,7 @@ export const PERMISSION_CATALOG: Array<{ label: string; permissions: Permission[
   {
     label: "Finance",
     permissions: [
+      "finance.view",
       "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
       "payment_methods.view", "payment_methods.manage",
       "packages.view", "packages.edit",
@@ -522,6 +534,70 @@ export const PERMISSION_CATALOG: Array<{ label: string; permissions: Permission[
     ],
   },
 ];
+
+// Human-readable label + one-line description per permission, so admin UIs show
+// meaningful text instead of raw `font-mono` keys. Finance/commerce keys are
+// fully described (that's where clarity matters most); anything omitted falls
+// back to a humanized version of the key via permissionLabel().
+export const PERMISSION_META: Partial<Record<Permission, { label: string; description: string }>> = {
+  // Finance hub
+  "finance.view": { label: "Finance Hub", description: "Open the finance dashboard — income by source, payouts, wallet liabilities, and reports." },
+  // Withdrawals (payouts to users)
+  "withdrawals.view": { label: "View withdrawals", description: "See users' withdrawal requests, amounts, methods and history." },
+  "withdrawals.process": { label: "Process withdrawals", description: "Act on withdrawal requests (also gates the Deposits queue)." },
+  "withdrawals.approve": { label: "Approve withdrawals", description: "Move a request to Processing and mark it paid." },
+  "withdrawals.reject": { label: "Reject withdrawals", description: "Reject a request and refund the held balance." },
+  // Deposits reuse the withdrawals keys (no separate deposit permission).
+  // Payment methods
+  "payment_methods.view": { label: "View payment methods", description: "See the deposit/withdrawal channels (bKash, Binance, PayPal…)." },
+  "payment_methods.manage": { label: "Manage payment methods", description: "Add, edit or disable receiving accounts and gateways." },
+  // Packages / subscriptions (recurring revenue)
+  "packages.view": { label: "View packages", description: "See subscription tiers, pricing and revenue." },
+  "packages.edit": { label: "Edit packages", description: "Change tier pricing, limits and features." },
+  // Referrals / affiliate payouts
+  "referrals.view": { label: "View referrals", description: "See referral tree, commissions and affiliate earnings." },
+  "referrals.configure": { label: "Configure referrals", description: "Set commission rates and referral rules." },
+  // Revenue-source visibility (read-only reconciliation)
+  "marketplace.view": { label: "View marketplace", description: "See listings, orders, sales volume and fees." },
+  "marketplace.manage": { label: "Manage marketplace", description: "Moderate listings and manage marketplace settings." },
+  "marketplace.disputes": { label: "Marketplace disputes", description: "Review buyer/seller disputes." },
+  "marketplace.mediate": { label: "Mediate escrow deals", description: "Release or refund escrowed marketplace deals." },
+  "courses.view": { label: "View courses", description: "See course catalog, sales and tutor earnings." },
+  "courses.manage": { label: "Manage courses", description: "Edit, unpublish or remove courses." },
+  "courses.approve": { label: "Approve courses", description: "Approve submitted courses for publishing." },
+  "ads.view": { label: "View ads", description: "See ad campaigns, spend and advertiser credit." },
+  "ads.manage": { label: "Manage ads", description: "Create/edit campaigns and placements in the Ad Manager." },
+  "offerwalls.view": { label: "View offerwalls", description: "See offerwall providers, offers and completions." },
+  "offerwalls.manage": { label: "Manage offerwalls", description: "Configure providers, offers and payout rules." },
+  // Analytics
+  "analytics.view": { label: "View analytics", description: "Open platform analytics and reports." },
+  "analytics.export": { label: "Export analytics", description: "Download CSV/data exports." },
+  // Users
+  "users.view": { label: "View users", description: "Browse the user directory and profiles." },
+  "users.adjust_balance": { label: "Adjust balances", description: "Manually credit or debit a user's points/cash." },
+  // Admin control
+  "admins.view": { label: "View admins", description: "See admin accounts, roles and activity." },
+  "admins.manage": { label: "Manage admins & roles", description: "Edit the role matrix, custom roles and per-user permissions (super-admin only)." },
+  "dashboard.view": { label: "Admin dashboard", description: "Open the main admin overview." },
+};
+
+/** Turn a permission key like `withdrawals.approve` into "Withdrawals: Approve". */
+function humanizePermission(p: string): string {
+  return p
+    .split(".")
+    .map((seg) => seg.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))
+    .join(": ");
+}
+
+/** Friendly label for a permission (meta override, else humanized key). */
+export function permissionLabel(p: string): string {
+  return PERMISSION_META[p as Permission]?.label ?? humanizePermission(p);
+}
+
+/** One-line description for a permission, or null if none is defined. */
+export function permissionDescription(p: string): string | null {
+  return PERMISSION_META[p as Permission]?.description ?? null;
+}
 
 // Check if a role has a specific permission
 export function hasPermission(role: UserRole | undefined, permission: Permission): boolean {
@@ -615,6 +691,13 @@ export const ADMIN_MODULES: AdminModule[] = [
   },
 
   // ── FINANCE ──
+  {
+    name: "Finance Hub",
+    href: "/admin/finance",
+    icon: "Landmark",
+    permissions: ["finance.view"],
+    category: "FINANCE",
+  },
   {
     name: "Withdrawals",
     href: "/admin/withdrawals",
