@@ -799,6 +799,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
+    name: "Seller Access",
+    href: "/admin/sellers",
+    icon: "Store",
+    permissions: ["users.edit"],
+    category: "PLATFORM",
+  },
+  {
     name: "Daily Missions",
     href: "/admin/missions",
     icon: "Target",
