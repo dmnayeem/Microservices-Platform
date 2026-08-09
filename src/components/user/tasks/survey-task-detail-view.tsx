@@ -48,10 +48,13 @@ interface UserStatus {
   hasActiveSubmission: boolean;
   activeSubmissionId?: string | null;
   completedToday: boolean;
+  /** True when the active submission was already submitted (awaiting review). */
+  awaitingReview?: boolean;
 }
 
 type SubmitState =
   | { kind: "ready"; submissionId: string }
+  | { kind: "awaiting_review" }
   | { kind: "completed_today" }
   | { kind: "blocked"; reason: string }
   | { kind: "loading" };
@@ -90,6 +93,11 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
         const t = tData.task as SurveyTask;
         const userStatus = (tData.userStatus ?? {}) as UserStatus;
         setTask(t);
+
+        if (userStatus.awaitingReview) {
+          setSubmitState({ kind: "awaiting_review" });
+          return;
+        }
 
         if (userStatus.hasActiveSubmission && userStatus.activeSubmissionId) {
           setSubmitState({
@@ -208,9 +216,13 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
       });
       router.push("/survey-tasks?tab=pending");
     } catch (err) {
-      toast.error("Failed", {
-        description: err instanceof Error ? err.message : "Try again",
-      });
+      const msg = err instanceof Error ? err.message : "Try again";
+      if (/already submitted/i.test(msg)) {
+        setSubmitState({ kind: "awaiting_review" });
+        toast("Already submitted — awaiting review.");
+      } else {
+        toast.error("Failed", { description: msg });
+      }
     } finally {
       setBusy(false);
     }
@@ -329,6 +341,30 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
       )}
 
       {/* States */}
+      {submitState.kind === "awaiting_review" && (
+        <section className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <Clock className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h2 className="text-base font-bold text-white">Awaiting review</h2>
+              <p className="text-xs text-sky-200/80 mt-1">
+                You&apos;ve already submitted this survey — it&apos;s awaiting admin review.
+                {task && task.pointsReward > 0
+                  ? ` You'll get ${task.pointsReward.toLocaleString()} pts once approved.`
+                  : ""}
+              </p>
+              <Link
+                href="/survey-tasks"
+                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/30"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to surveys
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {submitState.kind === "completed_today" && (
         <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:p-5">
           <div className="flex items-start gap-3">

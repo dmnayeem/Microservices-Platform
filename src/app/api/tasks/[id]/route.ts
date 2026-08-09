@@ -91,6 +91,10 @@ export async function GET(
       userStatus: {
         hasActiveSubmission: !!activeSubmission,
         activeSubmissionId: activeSubmission?.id,
+        // `submittedAt` set ⇒ the user already submitted (awaiting review); null ⇒
+        // still in-progress (started but not yet submitted). Views use this to show
+        // an "awaiting review" state instead of the submit form.
+        awaitingReview: !!activeSubmission?.submittedAt,
         // Back-compat alias — older clients still read this field.
         completedToday: dailyLimitReached || totalLimitReached,
         // Explicit, accurate flags for the new UI.

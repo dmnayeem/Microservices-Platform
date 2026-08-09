@@ -52,6 +52,8 @@ interface ArticleTask {
 interface UserStatus {
   hasActiveSubmission: boolean;
   activeSubmissionId?: string | null;
+  /** True when the active submission was already submitted (awaiting review). */
+  awaitingReview?: boolean;
   /** Back-compat: true when the user is blocked from starting a new attempt. */
   completedToday: boolean;
   /** Per-user daily limit reached. */
@@ -68,6 +70,7 @@ type LimitKind = "daily" | "total" | "generic";
 
 type SubmitState =
   | { kind: "ready"; submissionId: string }
+  | { kind: "awaiting_review" } // already submitted — pending admin review
   | {
       kind: "completed_today";
       limit: LimitKind;
@@ -108,7 +111,14 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
         const userStatus = (tData.userStatus ?? {}) as UserStatus;
         setTask(t);
 
-        // 2. If user has a pending submission, reuse it — never call /start
+        // 1b. Already submitted (awaiting admin review) — show a status card,
+        //     never the submit form (re-submitting would 409).
+        if (userStatus.awaitingReview) {
+          setSubmitState({ kind: "awaiting_review" });
+          return;
+        }
+
+        // 2. If user has an in-progress submission, reuse it — never call /start
         if (userStatus.hasActiveSubmission && userStatus.activeSubmissionId) {
           setSubmitState({
             kind: "ready",
@@ -247,9 +257,15 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       });
       router.push("/article-tasks");
     } catch (err) {
-      toast.error("Failed", {
-        description: err instanceof Error ? err.message : "Try again",
-      });
+      const msg = err instanceof Error ? err.message : "Try again";
+      // Already-submitted race: land softly on the awaiting-review state, not a
+      // scary red "Failed" toast.
+      if (/already submitted/i.test(msg)) {
+        setSubmitState({ kind: "awaiting_review" });
+        toast("Already submitted — awaiting review.");
+      } else {
+        toast.error("Failed", { description: msg });
+      }
     } finally {
       setBusy(false);
     }
@@ -496,6 +512,32 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       )}
 
       {/* Submission section — depends on state */}
+      {submitState.kind === "awaiting_review" && (
+        <section className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 sm:p-5">
+          <div className="flex items-start gap-3">
+            <Clock className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-white">
+                Awaiting review
+              </h2>
+              <p className="text-xs text-sky-200/80 mt-1">
+                You&apos;ve already submitted this — it&apos;s awaiting admin review.
+                {task.pointsReward > 0
+                  ? ` You'll get ${task.pointsReward.toLocaleString()} pts once approved.`
+                  : ""}
+              </p>
+              <Link
+                href="/article-tasks"
+                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/30"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to article tasks
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {submitState.kind === "completed_today" && (
         <section
           className={
