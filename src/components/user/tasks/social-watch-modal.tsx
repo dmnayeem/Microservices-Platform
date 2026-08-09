@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { X, Loader2, PlayCircle, CheckCircle2 } from "lucide-react";
 import { formatDuration } from "@/lib/video-tasks";
 import { confirmDialog } from "@/lib/confirm";
+import { VideoOverlayAd } from "@/components/user/primitives/video-overlay-ad";
 
 const ReactPlayer = dynamic(() => import("react-player"), {
   ssr: false,
@@ -311,6 +312,15 @@ export function SocialWatchModal({
               >
                 Continue
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* In-video overlay banner strip (above the HUD, watch phase only) */}
+        {phase === "watch" && (
+          <div className="absolute bottom-16 inset-x-0 z-30 px-3 pointer-events-none">
+            <div className="pointer-events-auto max-w-md mx-auto">
+              <VideoOverlayAd />
             </div>
           </div>
         )}

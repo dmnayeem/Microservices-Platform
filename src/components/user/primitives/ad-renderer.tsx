@@ -15,6 +15,7 @@ export type AdPlacement =
   | "TASK_START"
   | "VIDEO_ABOVE"
   | "VIDEO_BELOW"
+  | "VIDEO_OVERLAY"
   | "TASK_COMPLETE"
   | "GAME_INTERSTITIAL"
   | "VIDEO_INTERSTITIAL"

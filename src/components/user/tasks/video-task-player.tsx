@@ -19,6 +19,7 @@ import { formatDuration, engagementSteps } from "@/lib/video-tasks";
 import { confirmDialog } from "@/lib/confirm";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { AdInterstitialOverlay } from "@/components/user/primitives/ad-interstitial-overlay";
+import { VideoOverlayAd } from "@/components/user/primitives/video-overlay-ad";
 
 const ReactPlayer = dynamic(() => import("react-player"), {
   ssr: false,
@@ -535,6 +536,15 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
             <AdRenderer placement="VIDEO_BELOW" />
           </div>
         </div>
+
+        {/* In-video overlay banner strip (pinned above the HUD, watch phase only) */}
+        {phase === "watch" && (
+          <div className="absolute bottom-16 inset-x-0 z-30 px-3 pointer-events-none">
+            <div className="pointer-events-auto max-w-md mx-auto">
+              <VideoOverlayAd />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom HUD — scrollable + safe-area padding so the proof inputs and
