@@ -6,6 +6,7 @@ import { Menu, X, Sparkles } from "lucide-react";
 import type { NavbarContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { ThemeToggle } from "./theme-toggle";
+import { MarketingNavLink } from "./marketing-link";
 
 type Props = Partial<NavbarContent>;
 
@@ -42,13 +43,13 @@ export function Navbar(props: Props) {
 
           <nav className="hidden lg:flex items-center gap-8">
             {v.nav_links.map((link, i) => (
-              <a
+              <MarketingNavLink
                 key={`${link.href}-${i}`}
                 href={link.href}
                 className="text-(--mk-muted) hover:text-(--mk-text) transition-colors text-sm font-medium"
               >
                 {link.label}
-              </a>
+              </MarketingNavLink>
             ))}
           </nav>
 
@@ -85,14 +86,14 @@ export function Navbar(props: Props) {
         <div className="lg:hidden bg-(--mk-nav-scrolled) backdrop-blur-xl border-t border-(--mk-border)">
           <div className="px-4 py-4 space-y-3">
             {v.nav_links.map((link, i) => (
-              <a
+              <MarketingNavLink
                 key={`${link.href}-${i}`}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block py-2 text-(--mk-text) hover:text-indigo-600 transition-colors"
               >
                 {link.label}
-              </a>
+              </MarketingNavLink>
             ))}
             <div className="pt-4 space-y-3 border-t border-(--mk-border)">
               <Link

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import type { FooterContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
+import { MarketingNavLink } from "./marketing-link";
 
 type Props = Partial<FooterContent>;
 
@@ -52,12 +53,12 @@ export function Footer(props: Props) {
               <ul className="space-y-3">
                 {group.links.map((link, li) => (
                   <li key={li}>
-                    <Link
+                    <MarketingNavLink
                       href={link.href}
                       className="text-(--mk-muted) hover:text-(--mk-text) transition-colors text-sm"
                     >
                       {link.label}
-                    </Link>
+                    </MarketingNavLink>
                   </li>
                 ))}
               </ul>
