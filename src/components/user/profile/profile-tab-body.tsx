@@ -24,6 +24,7 @@ import {
   Droplet,
   GraduationCap,
   ShoppingBag,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BecomeTutorCard } from "@/components/user/profile/become-tutor-card";
@@ -420,6 +421,30 @@ export function ProfileTabBody({
           </Card>
 
           <BecomeTutorCard />
+
+          {/* Sell & earn — apply for marketplace / advertiser / agency / affiliate access */}
+          <Link
+            href="/profile/become-creator"
+            className="block rounded-2xl border border-fuchsia-500/30 bg-linear-to-br from-fuchsia-500/10 via-indigo-500/5 to-transparent p-4 hover:border-fuchsia-500/50 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-fuchsia-500/20 text-fuchsia-300 flex items-center justify-center shrink-0">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">Sell &amp; earn as a creator</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Apply to sell on the marketplace, run ads, become an affiliate, or start a
+                    promotion agency. Admin reviews each request.
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold whitespace-nowrap">
+                Explore <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </Link>
 
           <Card
             title="Connected Social Accounts"

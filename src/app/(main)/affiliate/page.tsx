@@ -10,12 +10,15 @@ export default async function AffiliatePage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [me, cfg] = await Promise.all([
+  const [me, cfg, pendingAffApp] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { referralCode: true, affiliateJoinedAt: true },
     }),
     getAffiliateConfig(),
+    prisma.creatorApplication.count({
+      where: { userId, type: "AFFILIATE", status: "PENDING" },
+    }),
   ]);
   if (!me) redirect("/login");
 
@@ -101,6 +104,8 @@ export default async function AffiliatePage() {
     <AffiliateDashboardView
       joined={joined}
       programEnabled={cfg.enabled}
+      requireApproval={cfg.requireApproval}
+      pendingApplication={pendingAffApp > 0}
       code={me.referralCode}
       totalEarned={toNum(agg?._sum.commissionAmount ?? 0)}
       salesCount={agg?._count._all ?? 0}

@@ -21,10 +21,16 @@ export interface AffiliateAttribution {
 interface AffiliateConfig {
   enabled: boolean;
   cookieWindowDays: number;
+  /** When true, joining requires an approved CreatorApplication (not self-serve). */
+  requireApproval: boolean;
 }
 
 const SETTING_KEY = "affiliate_config";
-const DEFAULT_CONFIG: AffiliateConfig = { enabled: true, cookieWindowDays: 30 };
+const DEFAULT_CONFIG: AffiliateConfig = {
+  enabled: true,
+  cookieWindowDays: 30,
+  requireApproval: true,
+};
 
 export async function getAffiliateConfig(): Promise<AffiliateConfig> {
   const row = await prisma.systemSetting.findUnique({ where: { key: SETTING_KEY } });
@@ -36,6 +42,10 @@ export async function getAffiliateConfig(): Promise<AffiliateConfig> {
       typeof v.cookieWindowDays === "number" && v.cookieWindowDays > 0
         ? Math.min(365, Math.round(v.cookieWindowDays))
         : DEFAULT_CONFIG.cookieWindowDays,
+    requireApproval:
+      typeof v.requireApproval === "boolean"
+        ? v.requireApproval
+        : DEFAULT_CONFIG.requireApproval,
   };
 }
 

@@ -10,7 +10,7 @@ export default async function CreateListingPage() {
 
   const { enabled } = await getEffectiveFeatures(session.user.id);
   if (!enabled.has("sellMarketplace"))
-    return <FeatureLock title="Sell on Marketplace" />;
+    return <FeatureLock title="Sell on Marketplace" applyHref="/profile/become-creator" />;
 
   return <CreateListingView />;
 }

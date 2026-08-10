@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Banknote,
   Compass,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ interface PendingActionsProps {
   pendingWithdrawals: number;
   pendingDeposits?: number;
   pendingOfferwall?: number;
+  pendingCreatorApps?: number;
   pendingAppeals: number;
   openDisputes: number;
 }
@@ -67,10 +69,18 @@ export function PendingActions({
   pendingWithdrawals,
   pendingDeposits = 0,
   pendingOfferwall = 0,
+  pendingCreatorApps = 0,
   pendingAppeals,
   openDisputes,
 }: PendingActionsProps) {
   const rows: PendingActionRow[] = [
+    {
+      label: "Creator Applications",
+      count: pendingCreatorApps,
+      href: "/admin/creators",
+      icon: BadgeCheck,
+      tone: "purple",
+    },
     {
       label: "Deposits to Review",
       count: pendingDeposits,

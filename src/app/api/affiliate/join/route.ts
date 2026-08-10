@@ -13,6 +13,13 @@ export async function POST() {
   if (!cfg.enabled) {
     return NextResponse.json({ error: "Affiliate program is closed" }, { status: 403 });
   }
+  // When approval is required, joining is gated behind an approved CreatorApplication.
+  if (cfg.requireApproval) {
+    return NextResponse.json(
+      { error: "Apply for approval to join the affiliate program.", requireApproval: true },
+      { status: 403 }
+    );
+  }
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { affiliateJoinedAt: true, referralCode: true },

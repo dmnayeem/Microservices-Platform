@@ -41,6 +41,10 @@ interface Props {
   salesCount: number;
   recent: RecentCommission[];
   items: PromoItem[];
+  /** When true, joining requires an approved application (not instant). */
+  requireApproval?: boolean;
+  /** True when the user has a pending AFFILIATE application. */
+  pendingApplication?: boolean;
 }
 
 export function AffiliateDashboardView({
@@ -51,6 +55,8 @@ export function AffiliateDashboardView({
   salesCount,
   recent,
   items,
+  requireApproval = false,
+  pendingApplication = false,
 }: Props) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
@@ -99,7 +105,26 @@ export function AffiliateDashboardView({
             your link, you earn the reward the seller set — paid straight to your
             wallet.
           </p>
-          {programEnabled ? (
+          {!programEnabled ? (
+            <p className="mt-4 text-sm text-amber-400">
+              The affiliate program is currently closed.
+            </p>
+          ) : requireApproval ? (
+            pendingApplication ? (
+              <p className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-amber-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Application pending review
+              </p>
+            ) : (
+              <Link
+                href="/profile/become-creator"
+                className="mt-5 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold"
+              >
+                <Handshake className="w-4 h-4" />
+                Apply to become an affiliate
+              </Link>
+            )
+          ) : (
             <button
               onClick={join}
               disabled={joining}
@@ -112,10 +137,6 @@ export function AffiliateDashboardView({
               )}
               Join the program
             </button>
-          ) : (
-            <p className="mt-4 text-sm text-amber-400">
-              The affiliate program is currently closed.
-            </p>
           )}
         </div>
       </div>

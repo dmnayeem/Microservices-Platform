@@ -115,6 +115,7 @@ export default async function AdminDashboardPage() {
     pendingOfferwallCount,
     completedWithdrawalsCount,
     referralUsersCount,
+    pendingCreatorAppsCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -201,6 +202,8 @@ export default async function AdminDashboardPage() {
     // Moved out of the post-batch waterfall.
     prisma.withdrawal.count({ where: { status: "COMPLETED" } }),
     prisma.user.count({ where: { referredById: { not: null } } }),
+    // Creator/seller applications awaiting review.
+    prisma.creatorApplication.count({ where: { status: "PENDING" } }),
   ]);
 
   // Resolve admin/user names for the audit log entries
@@ -505,6 +508,7 @@ export default async function AdminDashboardPage() {
           pendingWithdrawals={pendingWithdrawalsCount}
           pendingDeposits={pendingDepositsCount}
           pendingOfferwall={pendingOfferwallCount}
+          pendingCreatorApps={pendingCreatorAppsCount}
           pendingAppeals={pendingAppeals}
           openDisputes={openDisputes}
         />

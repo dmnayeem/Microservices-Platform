@@ -967,6 +967,8 @@ model User {
   tutorProfile      TutorProfile?
   tutorApplications TutorApplication[]
   tutorApplicationsReviewed TutorApplication[] @relation("TutorAppReviewer")
+  creatorApplications CreatorApplication[]
+  creatorApplicationsReviewed CreatorApplication[] @relation("CreatorAppReviewer")
   coursesTaught     Course[]              @relation("CourseTutor")
   courseReviews     CourseReview[]
   courseQuestionsAsked    CourseQuestion[]  @relation("CourseQuestionAsker")
@@ -2292,6 +2294,43 @@ model TutorApplication {
   reviewedAt      DateTime?
   @@index([userId])
   @@index([status])
+}
+
+enum CreatorApplicationType {
+  MARKETPLACE_SELLER
+  ADVERTISER
+  AGENCY
+  AFFILIATE
+}
+
+enum CreatorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Unified "become a creator/seller" application (marketplace seller, advertiser,
+// promotion agency, affiliate). Tutor keeps its own TutorApplication flow. On
+// approve, the grant flips the matching User.featureOverrides key (or sets
+// affiliateJoinedAt) — see src/lib/creator-application.ts.
+model CreatorApplication {
+  id           String                   @id @default(cuid())
+  userId       String
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         CreatorApplicationType
+  status       CreatorApplicationStatus @default(PENDING)
+  message      String                   @db.Text
+  links        String[]                 @default([])
+  payload      Json? // type-specific extras (brand/org name, channels, etc.)
+  adminNote    String?
+  reviewedById String?
+  reviewedBy   User?                    @relation("CreatorAppReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime                 @default(now())
+  reviewedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
 }
 
 model TutorProfile {

@@ -11,7 +11,8 @@ export default async function AdvertiserPage() {
   if (!session?.user) redirect("/login");
 
   const { enabled } = await getEffectiveFeatures(session.user.id);
-  if (!enabled.has("advertiser")) return <FeatureLock title="Create Ad" />;
+  if (!enabled.has("advertiser"))
+    return <FeatureLock title="Create Ad" applyHref="/profile/become-creator" />;
 
   return <AdvertiserDashboard />;
 }
