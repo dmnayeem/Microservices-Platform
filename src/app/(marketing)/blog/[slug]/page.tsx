@@ -31,7 +31,7 @@ export default async function BlogArticlePage({
 
   return (
     <Section width="narrow">
-      <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
+      <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900">
         <ArrowLeft className="h-4 w-4" /> All articles
       </Link>
 
@@ -39,24 +39,24 @@ export default async function BlogArticlePage({
         {post.emoji}
       </div>
 
-      <div className="mt-6 flex items-center gap-3 text-xs text-slate-400">
-        <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 px-2.5 py-1 font-semibold uppercase tracking-wider">{post.category}</span>
+      <div className="mt-6 flex items-center gap-3 text-xs text-slate-600">
+        <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-indigo-600 px-2.5 py-1 font-semibold uppercase tracking-wider">{post.category}</span>
         <span>{formatBlogDate(post.date)}</span>
         <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{post.readMinutes} min read</span>
       </div>
 
-      <h1 className="mt-4 text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{post.title}</h1>
+      <h1 className="mt-4 text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">{post.title}</h1>
       <p className="mt-2 text-sm text-slate-500">By {post.author}</p>
 
       <article className="mt-8 space-y-6">
         {post.body.map((b, i) => (
           <div key={i} className="space-y-3">
-            {b.heading && <h2 className="text-xl font-bold text-white">{b.heading}</h2>}
+            {b.heading && <h2 className="text-xl font-bold text-slate-900">{b.heading}</h2>}
             {b.paragraphs.map((p, j) => (
-              <p key={j} className="text-[15px] leading-relaxed text-slate-300/90">{p}</p>
+              <p key={j} className="text-[15px] leading-relaxed text-slate-700/90">{p}</p>
             ))}
             {b.bullets && (
-              <ul className="ml-5 list-disc space-y-1 text-[15px] text-slate-300/90">
+              <ul className="ml-5 list-disc space-y-1 text-[15px] text-slate-700/90">
                 {b.bullets.map((li, k) => <li key={k}>{li}</li>)}
               </ul>
             )}
@@ -64,9 +64,9 @@ export default async function BlogArticlePage({
         ))}
       </article>
 
-      <div className="mt-10 rounded-2xl bg-white/5 border border-white/10 p-6 text-center">
-        <h3 className="text-lg font-bold text-white">Start earning today</h3>
-        <p className="mt-1 text-sm text-slate-400">Create a free account and put this into practice.</p>
+      <div className="mt-10 rounded-2xl bg-white border border-slate-200 p-6 text-center">
+        <h3 className="text-lg font-bold text-slate-900">Start earning today</h3>
+        <p className="mt-1 text-sm text-slate-600">Create a free account and put this into practice.</p>
         <div className="mt-4 flex justify-center"><PrimaryButton href="/register">Get started free</PrimaryButton></div>
       </div>
 
@@ -74,9 +74,9 @@ export default async function BlogArticlePage({
         <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">More articles</h3>
         <div className="grid gap-3 sm:grid-cols-3">
           {more.map((p) => (
-            <Link key={p.slug} href={`/blog/${p.slug}`} className="rounded-xl bg-white/5 border border-white/10 p-4 hover:border-blue-500/30 transition-all">
+            <Link key={p.slug} href={`/blog/${p.slug}`} className="rounded-xl bg-white border border-slate-200 p-4 hover:border-blue-500/30 transition-all">
               <div className="text-3xl">{p.emoji}</div>
-              <p className="mt-2 text-sm font-semibold text-white leading-snug">{p.title}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-900 leading-snug">{p.title}</p>
             </Link>
           ))}
         </div>

@@ -135,36 +135,36 @@ export function EarningsCalculator(props: Props) {
   return (
     <section
       id="calculator"
-      className="relative py-16 sm:py-24 px-4 scroll-mt-20 overflow-hidden"
+      className="relative py-16 sm:py-24 px-4 scroll-mt-20 overflow-hidden bg-slate-50"
     >
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8 sm:mb-12">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold mb-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold mb-4">
             <Calculator className="w-3.5 h-3.5" />
             {v.badge}
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
             {v.heading}
           </h2>
-          <p className="text-slate-400 mt-3 max-w-xl mx-auto text-sm sm:text-base">
+          <p className="text-slate-600 mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
             {v.subheading}
           </p>
         </div>
 
         <div className="relative">
-          <div className="absolute -inset-px rounded-[1.75rem] bg-linear-to-br from-blue-500/30 via-purple-500/20 to-emerald-500/30 blur-sm opacity-60" />
+          <div className="absolute -inset-px rounded-[1.75rem] bg-linear-to-br from-indigo-200 via-violet-200 to-emerald-200 opacity-70" />
 
-          <div className="relative rounded-3xl border border-white/10 bg-slate-950/70 backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/40">
+          <div className="relative rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xl shadow-slate-300/40">
             <div className="grid lg:grid-cols-[1.1fr_1fr] gap-0">
               {/* LEFT — Inputs */}
-              <div className="p-5 sm:p-7 lg:p-8 border-b lg:border-b-0 lg:border-r border-white/10 space-y-6 sm:space-y-7">
+              <div className="p-5 sm:p-7 lg:p-8 border-b lg:border-b-0 lg:border-r border-slate-200 space-y-6 sm:space-y-7">
                 {/* Plan picker */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
                       Choose your plan
                     </label>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-slate-400">
                       {v.plans.length} plans
                     </span>
                   </div>
@@ -186,14 +186,14 @@ export function EarningsCalculator(props: Props) {
                           aria-pressed={active}
                           className={`group relative rounded-xl p-3 text-left transition-all duration-200 border ${
                             active
-                              ? `bg-linear-to-br ${gradient} border-white/30 shadow-lg shadow-black/30 scale-[1.02]`
-                              : "bg-white/4 border-white/10 hover:bg-white/8 hover:border-white/20"
+                              ? `bg-linear-to-br ${gradient} border-transparent shadow-md scale-[1.02]`
+                              : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                           }`}
                         >
                             <div className="flex items-center justify-between">
                               <span
                                 className={`text-[11px] sm:text-xs font-extrabold tracking-wide ${
-                                  active ? "text-white" : "text-slate-200"
+                                  active ? "text-white" : "text-slate-700"
                                 }`}
                               >
                                 {p.name}
@@ -204,14 +204,14 @@ export function EarningsCalculator(props: Props) {
                             </div>
                             <div
                               className={`mt-1.5 text-[11px] tabular-nums font-semibold ${
-                                active ? "text-white/90" : "text-slate-400"
+                                active ? "text-white/90" : "text-slate-500"
                               }`}
                             >
                               ${p.per_task}/task
                             </div>
                             <div
                               className={`mt-0.5 text-[10px] ${
-                                active ? "text-white/70" : "text-slate-500"
+                                active ? "text-white/70" : "text-slate-400"
                               }`}
                             >
                               {p.team_levels === 0
@@ -225,17 +225,17 @@ export function EarningsCalculator(props: Props) {
 
                   <p className="text-[11px] text-slate-500 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-blue-400" />
+                      <span className="w-1 h-1 rounded-full bg-indigo-500" />
                       Rate{" "}
-                      <span className="text-slate-300 tabular-nums">
+                      <span className="text-slate-700 tabular-nums">
                         ${activePlan?.per_task ?? 0}
                       </span>
                       /task
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-purple-400" />
+                      <span className="w-1 h-1 rounded-full bg-violet-500" />
                       Multiplier{" "}
-                      <span className="text-slate-300 tabular-nums">
+                      <span className="text-slate-700 tabular-nums">
                         {activePlan?.multiplier ?? 1}×
                       </span>
                     </span>
@@ -245,26 +245,26 @@ export function EarningsCalculator(props: Props) {
                 {/* Daily tasks */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
                       Daily tasks
                     </label>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => adjustTasks(-5)}
-                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-300 transition-colors disabled:opacity-30"
+                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 transition-colors disabled:opacity-30"
                         disabled={dailyTasks <= 0}
                         aria-label="Decrease daily tasks"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="min-w-[3.5rem] text-center text-base sm:text-lg font-extrabold text-blue-300 tabular-nums">
+                      <span className="min-w-[3.5rem] text-center text-base sm:text-lg font-extrabold text-indigo-600 tabular-nums">
                         {dailyTasks}
                       </span>
                       <button
                         type="button"
                         onClick={() => adjustTasks(5)}
-                        className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-300 transition-colors disabled:opacity-30"
+                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 transition-colors disabled:opacity-30"
                         disabled={dailyTasks >= 500}
                         aria-label="Increase daily tasks"
                       >
@@ -297,8 +297,8 @@ export function EarningsCalculator(props: Props) {
                           onClick={() => setDailyTasks(preset)}
                           className={`px-2.5 py-1 rounded-md text-[11px] font-semibold tabular-nums transition-colors ${
                             active
-                              ? "bg-blue-500/20 text-blue-200 border border-blue-400/40"
-                              : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10 hover:text-slate-200"
+                              ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                              : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-700"
                           }`}
                         >
                           {preset}
@@ -311,27 +311,27 @@ export function EarningsCalculator(props: Props) {
                 {/* Team size */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
                       Team size
                     </label>
                     {teamLevels > 0 && (
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-400">
                         {teamLevels} level{teamLevels > 1 ? "s" : ""} unlocked
                       </span>
                     )}
                   </div>
 
                   {teamLevels === 0 ? (
-                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 sm:p-4 flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                        <Lock className="w-4 h-4 text-amber-300" />
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 sm:p-4 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Lock className="w-4 h-4 text-amber-600" />
                       </div>
-                      <div className="flex-1 text-xs text-amber-100/90 leading-relaxed">
-                        <span className="font-bold text-amber-200">
+                      <div className="flex-1 text-xs text-amber-800 leading-relaxed">
+                        <span className="font-bold text-amber-900">
                           {activePlan?.name ?? "This"} plan
                         </span>{" "}
                         is solo-only. Upgrade to{" "}
-                        <span className="font-semibold text-amber-200">
+                        <span className="font-semibold text-amber-900">
                           STARTER
                         </span>{" "}
                         or higher to unlock referral commissions and team
@@ -350,10 +350,10 @@ export function EarningsCalculator(props: Props) {
                             value: l1,
                             set: setL1,
                             color: "emerald",
-                            dot: "bg-emerald-400",
+                            dot: "bg-emerald-500",
                             badge:
-                              "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-                            valueText: "text-emerald-300",
+                              "bg-emerald-50 text-emerald-700 border-emerald-200",
+                            valueText: "text-emerald-600",
                             rangeClass: "ec-range-emerald",
                           },
                           {
@@ -364,10 +364,10 @@ export function EarningsCalculator(props: Props) {
                             value: l2,
                             set: setL2,
                             color: "purple",
-                            dot: "bg-purple-400",
+                            dot: "bg-violet-500",
                             badge:
-                              "bg-purple-500/15 text-purple-300 border-purple-500/30",
-                            valueText: "text-purple-300",
+                              "bg-violet-50 text-violet-700 border-violet-200",
+                            valueText: "text-violet-600",
                             rangeClass: "ec-range-purple",
                           },
                           {
@@ -378,10 +378,10 @@ export function EarningsCalculator(props: Props) {
                             value: l3,
                             set: setL3,
                             color: "amber",
-                            dot: "bg-amber-400",
+                            dot: "bg-amber-500",
                             badge:
-                              "bg-amber-500/15 text-amber-300 border-amber-500/30",
-                            valueText: "text-amber-300",
+                              "bg-amber-50 text-amber-700 border-amber-200",
+                            valueText: "text-amber-600",
                             rangeClass: "ec-range-amber",
                           },
                         ] as const
@@ -390,14 +390,14 @@ export function EarningsCalculator(props: Props) {
                         .map((row) => (
                           <div
                             key={row.key}
-                            className="rounded-xl bg-white/[0.03] border border-white/10 p-3"
+                            className="rounded-xl bg-slate-50 border border-slate-200 p-3"
                           >
                             <div className="flex items-center justify-between text-xs mb-2">
                               <div className="flex items-center gap-2">
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${row.dot}`}
                                 />
-                                <span className="font-semibold text-slate-200">
+                                <span className="font-semibold text-slate-700">
                                   {row.label}
                                 </span>
                                 <span
@@ -435,24 +435,24 @@ export function EarningsCalculator(props: Props) {
               </div>
 
               {/* RIGHT — Results */}
-              <div className="relative p-5 sm:p-7 lg:p-8 bg-linear-to-br from-blue-600/15 via-purple-600/10 to-transparent">
+              <div className="relative p-5 sm:p-7 lg:p-8 bg-linear-to-br from-indigo-50 via-white to-white">
                 <div
                   aria-hidden
-                  className={`absolute -top-20 -right-20 w-64 h-64 rounded-full bg-linear-to-br ${activeGradient} opacity-20 blur-3xl pointer-events-none transition-all duration-500`}
+                  className={`absolute -top-20 -right-20 w-64 h-64 rounded-full bg-linear-to-br ${activeGradient} opacity-10 blur-3xl pointer-events-none transition-all duration-500`}
                 />
 
                 <div className="relative">
                   <div className="text-center">
-                    <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-slate-400">
+                    <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-slate-500">
                       <TrendingUp className="w-3.5 h-3.5" />
                       Monthly Potential
                     </p>
-                    <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent tabular-nums leading-none">
+                    <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent tabular-nums leading-none">
                       ${formatCurrency(animatedMonthly)}
                     </p>
-                    <p className="text-xs sm:text-sm text-slate-400 mt-2 tabular-nums">
+                    <p className="text-xs sm:text-sm text-slate-500 mt-2 tabular-nums">
                       ≈{" "}
-                      <span className="text-slate-200 font-semibold">
+                      <span className="text-slate-800 font-semibold">
                         ${formatCompact(dailyTotal)}
                       </span>{" "}
                       per day
@@ -462,28 +462,28 @@ export function EarningsCalculator(props: Props) {
                   {/* Breakdown bar */}
                   <div className="mt-6">
                     <div className="flex items-center justify-between text-[11px] mb-2">
-                      <span className="inline-flex items-center gap-1.5 text-slate-400">
-                        <span className="w-2 h-2 rounded-sm bg-blue-400" />
+                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                        <span className="w-2 h-2 rounded-sm bg-indigo-500" />
                         Tasks{" "}
-                        <span className="text-slate-200 font-bold tabular-nums">
+                        <span className="text-slate-800 font-bold tabular-nums">
                           {directShare}%
                         </span>
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-slate-400">
-                        <span className="text-slate-200 font-bold tabular-nums">
+                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                        <span className="text-slate-800 font-bold tabular-nums">
                           {teamShare}%
                         </span>{" "}
                         Team
-                        <span className="w-2 h-2 rounded-sm bg-purple-400" />
+                        <span className="w-2 h-2 rounded-sm bg-violet-500" />
                       </span>
                     </div>
-                    <div className="h-2 w-full rounded-full overflow-hidden bg-white/5 border border-white/10 flex">
+                    <div className="h-2 w-full rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex">
                       <div
-                        className="h-full bg-linear-to-r from-blue-500 to-cyan-400 transition-all duration-500"
+                        className="h-full bg-linear-to-r from-indigo-500 to-cyan-400 transition-all duration-500"
                         style={{ width: `${directShare}%` }}
                       />
                       <div
-                        className="h-full bg-linear-to-r from-purple-500 to-pink-400 transition-all duration-500"
+                        className="h-full bg-linear-to-r from-violet-500 to-fuchsia-400 transition-all duration-500"
                         style={{ width: `${teamShare}%` }}
                       />
                     </div>
@@ -491,48 +491,48 @@ export function EarningsCalculator(props: Props) {
 
                   {/* Stat cards */}
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-5">
-                    <div className="min-w-0 rounded-xl bg-white/4 border border-white/10 p-2.5 sm:p-3 text-center">
-                      <ListChecks className="w-4 h-4 text-blue-300 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <div className="min-w-0 rounded-xl bg-white border border-slate-200 shadow-sm p-2.5 sm:p-3 text-center">
+                      <ListChecks className="w-4 h-4 text-indigo-600 mx-auto mb-1" />
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                         From Tasks
                       </p>
-                      <p className="text-sm sm:text-base font-bold text-white tabular-nums mt-0.5">
+                      <p className="text-sm sm:text-base font-bold text-slate-900 tabular-nums mt-0.5">
                         ${formatCompact(dailyDirect * 30)}
                       </p>
-                      <p className="text-[9px] text-slate-500 mt-0.5">/mo</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">/mo</p>
                     </div>
-                    <div className="min-w-0 rounded-xl bg-white/4 border border-white/10 p-2.5 sm:p-3 text-center">
-                      <Users className="w-4 h-4 text-purple-300 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <div className="min-w-0 rounded-xl bg-white border border-slate-200 shadow-sm p-2.5 sm:p-3 text-center">
+                      <Users className="w-4 h-4 text-violet-600 mx-auto mb-1" />
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                         From Team
                       </p>
-                      <p className="text-sm sm:text-base font-bold text-white tabular-nums mt-0.5">
+                      <p className="text-sm sm:text-base font-bold text-slate-900 tabular-nums mt-0.5">
                         ${formatCompact(dailyTeam * 30)}
                       </p>
-                      <p className="text-[9px] text-slate-500 mt-0.5">/mo</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">/mo</p>
                     </div>
-                    <div className="min-w-0 rounded-xl bg-white/4 border border-white/10 p-2.5 sm:p-3 text-center">
-                      <Coins className="w-4 h-4 text-amber-300 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <div className="min-w-0 rounded-xl bg-white border border-slate-200 shadow-sm p-2.5 sm:p-3 text-center">
+                      <Coins className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                         Daily
                       </p>
-                      <p className="text-sm sm:text-base font-bold text-white tabular-nums mt-0.5">
+                      <p className="text-sm sm:text-base font-bold text-slate-900 tabular-nums mt-0.5">
                         ${formatCompact(dailyTotal)}
                       </p>
-                      <p className="text-[9px] text-slate-500 mt-0.5">/day</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">/day</p>
                     </div>
                   </div>
 
                   {/* Yearly callout */}
-                  <div className="mt-4 rounded-xl bg-linear-to-r from-amber-500/15 to-orange-500/10 border border-amber-500/30 p-3 sm:p-4 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-4 h-4 text-amber-300" />
+                  <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-3 sm:p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] uppercase tracking-wider font-bold text-amber-300/90">
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-amber-700">
                         Yearly Projection
                       </p>
-                      <p className="text-lg sm:text-xl font-extrabold text-white tabular-nums">
+                      <p className="text-lg sm:text-xl font-extrabold text-slate-900 tabular-nums">
                         ${formatCompact(yearly)}
                       </p>
                     </div>
@@ -541,7 +541,7 @@ export function EarningsCalculator(props: Props) {
                   {/* CTA */}
                   <Link
                     href="/register"
-                    className="group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm sm:text-base font-bold transition-all shadow-lg shadow-purple-900/30 hover:shadow-purple-700/40 active:scale-[0.99]"
+                    className="group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm sm:text-base font-bold transition-all shadow-lg shadow-indigo-600/25 active:scale-[0.99]"
                   >
                     Start Earning Now
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -565,10 +565,10 @@ export function EarningsCalculator(props: Props) {
           border-radius: 9999px;
           background: linear-gradient(
             to right,
-            rgb(59 130 246) 0%,
-            rgb(168 85 247) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) 100%
+            rgb(79 70 229) 0%,
+            rgb(124 58 237) var(--ec-progress, 0%),
+            rgb(226 232 240) var(--ec-progress, 0%),
+            rgb(226 232 240) 100%
           );
           outline: none;
           cursor: pointer;
@@ -581,8 +581,8 @@ export function EarningsCalculator(props: Props) {
           height: 20px;
           border-radius: 9999px;
           background: white;
-          border: 3px solid rgb(59 130 246);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+          border: 3px solid rgb(79 70 229);
+          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
           cursor: grab;
           transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
@@ -592,15 +592,15 @@ export function EarningsCalculator(props: Props) {
         .ec-range::-webkit-slider-thumb:active {
           cursor: grabbing;
           transform: scale(1.05);
-          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.6);
+          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.5);
         }
         .ec-range::-moz-range-thumb {
           width: 20px;
           height: 20px;
           border-radius: 9999px;
           background: white;
-          border: 3px solid rgb(59 130 246);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+          border: 3px solid rgb(79 70 229);
+          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
           cursor: grab;
           transition: transform 0.15s ease;
         }
@@ -612,51 +612,51 @@ export function EarningsCalculator(props: Props) {
             to right,
             rgb(16 185 129) 0%,
             rgb(20 184 166) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) 100%
+            rgb(226 232 240) var(--ec-progress, 0%),
+            rgb(226 232 240) 100%
           );
         }
         .ec-range-emerald::-webkit-slider-thumb {
           border-color: rgb(16 185 129);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
         }
         .ec-range-emerald::-moz-range-thumb {
           border-color: rgb(16 185 129);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
         }
         .ec-range-purple {
           background: linear-gradient(
             to right,
-            rgb(168 85 247) 0%,
+            rgb(139 92 246) 0%,
             rgb(217 70 239) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) 100%
+            rgb(226 232 240) var(--ec-progress, 0%),
+            rgb(226 232 240) 100%
           );
         }
         .ec-range-purple::-webkit-slider-thumb {
-          border-color: rgb(168 85 247);
-          box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+          border-color: rgb(139 92 246);
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
         }
         .ec-range-purple::-moz-range-thumb {
-          border-color: rgb(168 85 247);
-          box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+          border-color: rgb(139 92 246);
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
         }
         .ec-range-amber {
           background: linear-gradient(
             to right,
             rgb(245 158 11) 0%,
             rgb(249 115 22) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) var(--ec-progress, 0%),
-            rgba(255, 255, 255, 0.08) 100%
+            rgb(226 232 240) var(--ec-progress, 0%),
+            rgb(226 232 240) 100%
           );
         }
         .ec-range-amber::-webkit-slider-thumb {
           border-color: rgb(245 158 11);
-          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
         }
         .ec-range-amber::-moz-range-thumb {
           border-color: rgb(245 158 11);
-          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
         }
         .scrollbar-thin::-webkit-scrollbar {
           height: 4px;

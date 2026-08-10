@@ -34,32 +34,32 @@ export default function StatusPage() {
     <Section width="narrow">
       <div className="text-center">
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30">
-          <Activity className="h-7 w-7 text-emerald-400" />
+          <Activity className="h-7 w-7 text-emerald-600" />
         </div>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">System status</h1>
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">System status</h1>
       </div>
 
       <div className="mt-8 flex items-center gap-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-5">
-        <CheckCircle2 className="h-7 w-7 text-emerald-400 shrink-0" />
+        <CheckCircle2 className="h-7 w-7 text-emerald-600 shrink-0" />
         <div>
-          <p className="text-lg font-bold text-white">All systems operational</p>
-          <p className="text-sm text-emerald-200/70">Everything is running smoothly.</p>
+          <p className="text-lg font-bold text-slate-900">All systems operational</p>
+          <p className="text-sm text-emerald-600">Everything is running smoothly.</p>
         </div>
       </div>
 
       <div className="mt-6 space-y-3">
         {COMPONENTS.map((c) => (
-          <div key={c.name} className="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <div key={c.name} className="rounded-2xl bg-white border border-slate-200 p-5">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-white">{c.name}</p>
-              <span className="inline-flex items-center gap-1.5 text-sm text-emerald-400">
+              <p className="font-semibold text-slate-900">{c.name}</p>
+              <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
                 <CheckCircle2 className="h-4 w-4" /> Operational
               </span>
             </div>
             <div className="mt-3"><UptimeBar /></div>
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
               <span>90 days ago</span>
-              <span className="text-slate-400">{c.uptime} uptime</span>
+              <span className="text-slate-600">{c.uptime} uptime</span>
               <span>Today</span>
             </div>
           </div>
@@ -68,7 +68,7 @@ export default function StatusPage() {
 
       <div className="mt-8">
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">Incident history</h2>
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-6 text-center text-sm text-slate-400">
+        <div className="rounded-2xl bg-white border border-slate-200 p-6 text-center text-sm text-slate-600">
           No incidents reported in the last 90 days.
         </div>
       </div>

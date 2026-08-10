@@ -12,19 +12,19 @@ export function FAQ(props: Props) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-20 sm:py-28">
+    <section id="faq" className="py-20 sm:py-28 bg-slate-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <span className="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-4">
+          <span className="inline-block px-3 py-1 rounded-full bg-sky-50 border border-sky-100 text-sky-700 text-xs font-semibold uppercase tracking-wider mb-4">
             {v.badge}
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
             {v.heading_line1}{" "}
-            <span className="bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">
               {v.heading_line2}
             </span>
           </h2>
-          <p className="text-slate-400 text-lg">{v.subheading}</p>
+          <p className="text-slate-600 text-lg">{v.subheading}</p>
         </div>
 
         <div className="space-y-3">
@@ -33,10 +33,10 @@ export function FAQ(props: Props) {
             return (
               <div
                 key={i}
-                className={`rounded-2xl border bg-white/5 backdrop-blur-xl transition-colors ${
+                className={`rounded-2xl border bg-white shadow-sm transition-colors ${
                   isOpen
-                    ? "border-blue-500/40"
-                    : "border-white/10 hover:border-blue-500/30"
+                    ? "border-indigo-300"
+                    : "border-slate-200 hover:border-slate-300"
                 }`}
               >
                 <button
@@ -46,7 +46,7 @@ export function FAQ(props: Props) {
                 >
                   <span
                     className={`font-semibold pr-4 ${
-                      isOpen ? "text-white" : "text-slate-200"
+                      isOpen ? "text-slate-900" : "text-slate-700"
                     }`}
                   >
                     {faq.question}
@@ -54,8 +54,8 @@ export function FAQ(props: Props) {
                   <span
                     className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                       isOpen
-                        ? "bg-blue-500/20 text-blue-300"
-                        : "bg-white/5 text-slate-400"
+                        ? "bg-indigo-50 text-indigo-600"
+                        : "bg-slate-100 text-slate-500"
                     }`}
                   >
                     {isOpen ? (
@@ -67,7 +67,7 @@ export function FAQ(props: Props) {
                 </button>
                 {isOpen && (
                   <div className="px-5 pb-5">
-                    <p className="text-slate-300 leading-relaxed">{faq.answer}</p>
+                    <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
                   </div>
                 )}
               </div>
@@ -76,10 +76,10 @@ export function FAQ(props: Props) {
         </div>
 
         <div className="text-center mt-10">
-          <p className="text-slate-400 mb-1">{v.contact_prompt}</p>
+          <p className="text-slate-500 mb-1">{v.contact_prompt}</p>
           <a
             href={`mailto:${v.contact_email}`}
-            className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+            className="text-indigo-600 hover:text-indigo-700 font-semibold transition-colors"
           >
             {v.contact_label}
           </a>

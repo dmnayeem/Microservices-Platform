@@ -54,14 +54,14 @@ export default function AboutPage() {
 
       <Section width="narrow">
         <GlassCard className="sm:p-10">
-          <div className="mb-4 inline-flex items-center gap-2 text-blue-400">
+          <div className="mb-4 inline-flex items-center gap-2 text-indigo-600">
             <Target className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Our mission</span>
           </div>
-          <p className="text-xl sm:text-2xl font-semibold text-white leading-relaxed">
+          <p className="text-xl sm:text-2xl font-semibold text-slate-900 leading-relaxed">
             To give everyone, everywhere, a fair and simple way to earn online — with payouts they can trust and rules they can understand.
           </p>
-          <p className="mt-5 text-slate-400 leading-relaxed">
+          <p className="mt-5 text-slate-600 leading-relaxed">
             {COMPANY_NAME} began in {FOUNDED_YEAR} with a frustration shared by millions: the internet is full of &ldquo;earn money online&rdquo; promises, and almost none of them pay. We built the opposite — a platform where the tasks are real, the payments are guaranteed, and it works the same whether you&apos;re in New York, Lagos, Dhaka, Berlin, or Manila. Operated by {COMPANY_LEGAL}, a remote-first company with team members across continents, we serve a community that never sleeps.
           </p>
         </GlassCard>
@@ -80,8 +80,8 @@ export default function AboutPage() {
               <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-purple-600">
                 <v.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-white">{v.title}</h3>
-              <p className="mt-2 text-sm text-slate-400 leading-relaxed">{v.body}</p>
+              <h3 className="text-lg font-bold text-slate-900">{v.title}</h3>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{v.body}</p>
             </GlassCard>
           ))}
         </div>
@@ -98,8 +98,8 @@ export default function AboutPage() {
                 </div>
               </div>
               <GlassCard className="flex-1">
-                <h3 className="font-bold text-white">{m.title}</h3>
-                <p className="mt-1 text-sm text-slate-400">{m.body}</p>
+                <h3 className="font-bold text-slate-900">{m.title}</h3>
+                <p className="mt-1 text-sm text-slate-600">{m.body}</p>
               </GlassCard>
             </div>
           ))}
@@ -108,12 +108,12 @@ export default function AboutPage() {
 
       <Section>
         <GlassCard className="text-center sm:p-12">
-          <div className="mb-3 inline-flex items-center gap-2 text-emerald-400">
+          <div className="mb-3 inline-flex items-center gap-2 text-emerald-600">
             <TrendingUp className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Join us</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Start earning in minutes</h2>
-          <p className="mx-auto mt-3 max-w-xl text-slate-400">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Start earning in minutes</h2>
+          <p className="mx-auto mt-3 max-w-xl text-slate-600">
             Create a free account and complete your first task today — or join the team building the future of online earning.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">

@@ -26,17 +26,17 @@ export function Navbar(props: Props) {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 backdrop-blur-xl border-b ${
         isScrolled
-          ? "bg-slate-950/90 shadow-2xl border-white/20"
-          : "bg-slate-950/50 border-white/10"
+          ? "bg-white/95 shadow-sm border-slate-200"
+          : "bg-white/70 border-slate-200/70"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-600/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold bg-linear-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               EarnGPT
             </span>
           </Link>
@@ -46,7 +46,7 @@ export function Navbar(props: Props) {
               <a
                 key={`${link.href}-${i}`}
                 href={link.href}
-                className="text-slate-300 hover:text-white transition-colors text-sm font-medium"
+                className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium"
               >
                 {link.label}
               </a>
@@ -56,13 +56,13 @@ export function Navbar(props: Props) {
           <div className="hidden lg:flex items-center gap-4">
             <Link
               href={v.cta_signin_href}
-              className="text-slate-300 hover:text-white transition-colors text-sm font-medium"
+              className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium"
             >
               {v.cta_signin_label}
             </Link>
             <Link
               href={v.cta_signup_href}
-              className="px-5 py-2.5 bg-linear-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold rounded-xl hover:scale-105 transition-transform"
+              className="px-5 py-2.5 bg-linear-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 hover:from-indigo-500 hover:to-violet-500 transition-colors"
             >
               {v.cta_signup_label}
             </Link>
@@ -70,7 +70,7 @@ export function Navbar(props: Props) {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-slate-300 hover:text-white"
+            className="lg:hidden p-2 text-slate-600 hover:text-slate-900"
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -79,30 +79,30 @@ export function Navbar(props: Props) {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="lg:hidden bg-slate-950/95 backdrop-blur-xl border-t border-white/10">
+        <div className="lg:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200">
           <div className="px-4 py-4 space-y-3">
             {v.nav_links.map((link, i) => (
               <a
                 key={`${link.href}-${i}`}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block py-2 text-slate-300 hover:text-white transition-colors"
+                className="block py-2 text-slate-700 hover:text-slate-900 transition-colors"
               >
                 {link.label}
               </a>
             ))}
-            <div className="pt-4 space-y-3 border-t border-white/10">
+            <div className="pt-4 space-y-3 border-t border-slate-200">
               <Link
                 href={v.cta_signin_href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block w-full py-2.5 text-center text-slate-200 border border-white/20 rounded-xl hover:bg-white/5 transition-colors"
+                className="block w-full py-2.5 text-center text-slate-700 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors"
               >
                 {v.cta_signin_label}
               </Link>
               <Link
                 href={v.cta_signup_href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block w-full py-2.5 text-center bg-linear-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:scale-105 transition-transform"
+                className="block w-full py-2.5 text-center bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold rounded-xl hover:from-indigo-500 hover:to-violet-500 transition-colors"
               >
                 {v.cta_signup_label}
               </Link>

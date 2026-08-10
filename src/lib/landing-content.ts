@@ -41,6 +41,8 @@ export interface FeatureItem {
   title: string;
   description: string;
   gradient: string;
+  /** Optional deep-link to a dedicated marketing page (e.g. /features/marketplace). */
+  href?: string;
 }
 
 export interface FeaturesContent {
@@ -203,7 +205,7 @@ export const LANDING_SECTIONS: ReadonlyArray<{
 }> = [
   { key: "navbar",       label: "Navbar",       description: "Top nav links + sign-in / sign-up CTAs", icon: "Menu" },
   { key: "hero",         label: "Hero",         description: "Trust badge, headline, CTAs, stat cards", icon: "Star" },
-  { key: "features",     label: "Features",     description: "6 earning method cards", icon: "Sparkles" },
+  { key: "features",     label: "Features",     description: "Earning method cards", icon: "Sparkles" },
   { key: "how_it_works", label: "How It Works", description: "4-step onboarding flow", icon: "ListOrdered" },
   { key: "calculator",   label: "Calculator",   description: "Plans, commissions, team economics", icon: "Calculator" },
   { key: "packages",     label: "Packages",     description: "Pricing tiers", icon: "Package" },
@@ -228,9 +230,10 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   navbar: {
     nav_links: [
       { label: "Features", href: "#features" },
-      { label: "How It Works", href: "#how-it-works" },
-      { label: "Calculator", href: "#calculator" },
-      { label: "Reviews", href: "#testimonials" },
+      { label: "Marketplace", href: "/features/marketplace" },
+      { label: "Courses", href: "/features/courses" },
+      { label: "Affiliate", href: "/features/affiliate" },
+      { label: "Pricing", href: "#pricing" },
       { label: "FAQ", href: "#faq" },
     ],
     cta_signin_label: "Sign In",
@@ -239,14 +242,14 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     cta_signup_href: "/register",
   },
   hero: {
-    badge: "Trusted by 100,000+ users worldwide",
-    title_line1: "Earn Money Online",
-    title_line2: "From Anywhere",
+    badge: "Trusted by 100,000+ earners worldwide",
+    title_line1: "Earn Smarter. Scale Faster.",
+    title_line2: "All in One Platform.",
     subtitle:
-      "Complete simple tasks, watch videos, share opinions, and build passive income with our AI-powered earning platform. Start earning in minutes.",
-    cta_primary_label: "Start Earning Now",
+      "Complete micro tasks, sell digital products, launch online courses, grow through affiliate commissions, build your team, and earn from games, quizzes, and tournaments. Everything you need to work, sell, promote, and earn — built into one powerful platform designed to help you create multiple income streams and scale your passive income with ease.",
+    cta_primary_label: "Get Started Free",
     cta_primary_href: "/register",
-    cta_secondary_label: "Watch Demo",
+    cta_secondary_label: "See how it works",
     cta_secondary_href: "#how-it-works",
     stats: [
       { iconKey: "Users", value: "100K+", label: "Active Users" },
@@ -257,52 +260,76 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   },
   features: {
     badge: "Multiple Ways to Earn",
-    heading_line1: "6 Earning Methods,",
-    heading_line2: "Unlimited Potential",
+    heading_line1: "One Account,",
+    heading_line2: "Every Way to Earn",
     subheading:
-      "Pick the methods that fit your day. Mix and match to maximize daily payouts.",
+      "Mix and match income streams — from quick micro-tasks to selling your own products. The more surfaces you use, the more you earn.",
     items: [
       {
-        iconKey: "Pin",
-        title: "Board Tasks",
+        iconKey: "ClipboardList",
+        title: "Micro Tasks",
         description:
-          "Complete curated high-value tasks from boards. Pinned premium offers refreshed daily.",
+          "Watch videos, take surveys, test apps, read articles, and complete social actions. Hundreds of quick tasks refreshed daily.",
         gradient: "from-blue-500 to-indigo-600",
       },
       {
-        iconKey: "Video",
-        title: "Watch Videos",
+        iconKey: "ShoppingBag",
+        title: "Digital Marketplace",
         description:
-          "Earn credits by watching short sponsored videos. Auto-submit when the timer ends.",
-        gradient: "from-red-500 to-pink-600",
-      },
-      {
-        iconKey: "FileText",
-        title: "Read Articles",
-        description:
-          "Stay informed and get paid for reading curated news and partner content.",
+          "Buy and sell digital products — templates, graphics, ebooks, music, and more. Turn your skills into a global storefront.",
         gradient: "from-emerald-500 to-teal-600",
+        href: "/features/marketplace",
       },
       {
-        iconKey: "ClipboardList",
-        title: "Surveys",
+        iconKey: "GraduationCap",
+        title: "Online Courses",
         description:
-          "Share your opinion on quick surveys and feedback prompts for instant rewards.",
+          "Learn new skills and earn certificates — or become a tutor and sell your own courses and live classes to students worldwide.",
         gradient: "from-amber-500 to-orange-600",
+        href: "/features/courses",
       },
       {
-        iconKey: "Send",
-        title: "Social Media",
+        iconKey: "Handshake",
+        title: "Affiliate Commissions",
         description:
-          "Follow, like, share, and comment on partner accounts across 15+ platforms.",
-        gradient: "from-cyan-500 to-blue-600",
+          "Promote products and courses with your personal link and earn a commission on every sale you drive — paid to your wallet.",
+        gradient: "from-fuchsia-500 to-pink-600",
+        href: "/features/affiliate",
       },
       {
         iconKey: "Users",
-        title: "Build Team",
+        title: "Team & Referrals",
         description:
-          "Invite friends, build a 3-level MLM network, and earn passive commission forever.",
+          "Invite friends, build a 3-level team, and earn passive commission on their activity — build it once, earn forever.",
         gradient: "from-purple-500 to-violet-600",
+      },
+      {
+        iconKey: "MessageSquare",
+        title: "Social Feed",
+        description:
+          "Post like on a social network and get paid for it. Earn from the likes, comments, and engagement your content receives.",
+        gradient: "from-sky-500 to-blue-600",
+      },
+      {
+        iconKey: "Gamepad2",
+        title: "Games & Tournaments",
+        description:
+          "Play HTML5 games, enter quiz competitions and tournaments, and win from prize pools, lotteries, and daily draws.",
+        gradient: "from-rose-500 to-red-600",
+      },
+      {
+        iconKey: "Megaphone",
+        title: "Advertiser Slots",
+        description:
+          "Run your own ads and campaigns across the platform, or create paid tasks to reach a global, engaged audience.",
+        gradient: "from-cyan-500 to-sky-600",
+      },
+      {
+        iconKey: "Wallet",
+        title: "Instant Withdrawals",
+        description:
+          "Cash out to PayPal, bank, Wise, Payoneer, crypto, and more — fast, secure, and available across 180+ countries.",
+        gradient: "from-indigo-500 to-blue-600",
       },
     ],
   },
@@ -599,6 +626,16 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         answer:
           "When friends sign up with your code, you earn passive commission on their activity: 10% from Level 1 (direct), 5% from Level 2, and 2% from Level 3. Build a team once, earn forever.",
       },
+      {
+        question: "Is EarnGPT legit and safe to use?",
+        answer:
+          "Yes. Every account is protected with SSL encryption, we follow GDPR & CCPA data standards, and withdrawals are reviewed by a real team before payout. You never share your bank or card details to earn — you only add a payout method when you're ready to cash out.",
+      },
+      {
+        question: "Do I need to pay anything to start?",
+        answer:
+          "No. Creating an account and earning from tasks, the social feed, referrals, and more is completely free — no credit card required. Paid plans are optional and simply unlock higher daily limits and lower withdrawal fees.",
+      },
     ],
   },
   cta: {
@@ -620,11 +657,11 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         title: "Product",
         links: [
           { label: "Features", href: "#features" },
-          { label: "How It Works", href: "#how-it-works" },
+          { label: "Marketplace", href: "/features/marketplace" },
+          { label: "Courses", href: "/features/courses" },
+          { label: "Affiliate", href: "/features/affiliate" },
           { label: "Calculator", href: "#calculator" },
           { label: "Pricing", href: "#pricing" },
-          { label: "Reviews", href: "#testimonials" },
-          { label: "FAQ", href: "#faq" },
         ],
       },
       {

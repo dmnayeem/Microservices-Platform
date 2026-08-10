@@ -45,18 +45,18 @@ export default function PressPage() {
       <Section width="narrow">
         <SectionHeading title="About the company" />
         <GlassCard className="sm:p-8">
-          <p className="text-slate-300/90 leading-relaxed">{COMPANY_BOILERPLATE}</p>
+          <p className="text-slate-700/90 leading-relaxed">{COMPANY_BOILERPLATE}</p>
         </GlassCard>
       </Section>
 
       <Section width="narrow">
         <SectionHeading badge="At a glance" tone="cyan" title="Fast facts" />
         <GlassCard className="p-0 overflow-hidden">
-          <dl className="divide-y divide-white/10">
+          <dl className="divide-y divide-slate-200">
             {FACTS.map((f) => (
               <div key={f.k} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                <dt className="text-sm text-slate-400">{f.k}</dt>
-                <dd className="text-sm font-semibold text-white text-right">{f.v}</dd>
+                <dt className="text-sm text-slate-600">{f.k}</dt>
+                <dd className="text-sm font-semibold text-slate-900 text-right">{f.v}</dd>
               </div>
             ))}
           </dl>
@@ -71,19 +71,19 @@ export default function PressPage() {
               <Sparkles className="h-7 w-7 text-white" />
             </div>
             <div>
-              <p className="text-lg font-bold bg-linear-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">{COMPANY_NAME}</p>
+              <p className="text-lg font-bold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{COMPANY_NAME}</p>
               <p className="text-xs text-slate-500">Primary logo (mark + wordmark)</p>
             </div>
           </GlassCard>
           <GlassCard>
-            <div className="mb-3 inline-flex items-center gap-2 text-slate-300">
+            <div className="mb-3 inline-flex items-center gap-2 text-slate-700">
               <Palette className="h-4 w-4" /> <span className="text-sm font-semibold">Brand colors</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {COLORS.map((c) => (
                 <div key={c.name} className="text-center">
-                  <div className="h-12 w-full rounded-lg border border-white/10" style={{ background: c.hex }} />
-                  <p className="mt-1 text-[10px] text-slate-400">{c.name}</p>
+                  <div className="h-12 w-full rounded-lg border border-slate-200" style={{ background: c.hex }} />
+                  <p className="mt-1 text-[10px] text-slate-600">{c.name}</p>
                   <p className="text-[10px] font-mono text-slate-500">{c.hex}</p>
                 </div>
               ))}
@@ -94,11 +94,11 @@ export default function PressPage() {
 
       <Section width="narrow">
         <GlassCard className="text-center sm:p-10">
-          <div className="mb-3 inline-flex items-center gap-2 text-blue-400">
+          <div className="mb-3 inline-flex items-center gap-2 text-indigo-600">
             <Mail className="h-5 w-5" /><span className="text-sm font-bold uppercase tracking-wider">Media inquiries</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-white">Let&apos;s talk</h2>
-          <p className="mx-auto mt-2 max-w-lg text-slate-400">
+          <h2 className="text-2xl font-extrabold text-slate-900">Let&apos;s talk</h2>
+          <p className="mx-auto mt-2 max-w-lg text-slate-600">
             Writing a story, need a quote, or want higher-resolution assets? Reach our press team directly.
           </p>
           <div className="mt-6 flex justify-center"><PrimaryButton href={`mailto:${PRESS_EMAIL}`}>{PRESS_EMAIL}</PrimaryButton></div>

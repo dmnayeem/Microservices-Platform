@@ -68,8 +68,8 @@ export default function PublicHelpPage() {
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-blue-500 to-purple-600">
           <LifeBuoy className="h-7 w-7 text-white" />
         </div>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">How can we help?</h1>
-        <p className="mt-4 text-slate-400">Search our guides or browse the topics below. Still stuck? We&apos;re here 24/7.</p>
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">How can we help?</h1>
+        <p className="mt-4 text-slate-600">Search our guides or browse the topics below. Still stuck? We&apos;re here 24/7.</p>
       </div>
 
       <div className="relative mt-8">
@@ -78,29 +78,29 @@ export default function PublicHelpPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search help articles…"
-          className="w-full rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl pl-12 pr-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/40"
+          className="w-full rounded-2xl bg-white border border-slate-200 backdrop-blur-xl pl-12 pr-4 py-4 text-slate-900 placeholder-slate-500 focus:outline-none focus:border-blue-500/40"
         />
       </div>
 
       <div className="mt-8 space-y-4">
         {filtered.length === 0 && <p className="text-center text-sm text-slate-500 py-8">No articles match your search.</p>}
         {filtered.map((c) => (
-          <div key={c.title} className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-white/10">
-              <c.icon className="h-4 w-4 text-blue-400" />
-              <p className="text-sm font-bold text-white">{c.title}</p>
+          <div key={c.title} className="rounded-2xl bg-white border border-slate-200 backdrop-blur-xl overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-slate-200">
+              <c.icon className="h-4 w-4 text-indigo-600" />
+              <p className="text-sm font-bold text-slate-900">{c.title}</p>
             </div>
-            <ul className="divide-y divide-white/10">
+            <ul className="divide-y divide-slate-200">
               {c.articles.map((a) => {
                 const id = c.title + a.q;
                 const isOpen = open === id;
                 return (
                   <li key={a.q}>
-                    <button onClick={() => setOpen(isOpen ? null : id)} className="w-full text-left px-5 py-3.5 flex items-center gap-3 hover:bg-white/5">
-                      {isOpen ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span className="text-sm text-white flex-1">{a.q}</span>
+                    <button onClick={() => setOpen(isOpen ? null : id)} className="w-full text-left px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50">
+                      {isOpen ? <ChevronDown className="w-4 h-4 text-slate-600 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />}
+                      <span className="text-sm text-slate-900 flex-1">{a.q}</span>
                     </button>
-                    {isOpen && <p className="px-12 pb-4 text-sm text-slate-400 leading-relaxed">{a.a}</p>}
+                    {isOpen && <p className="px-12 pb-4 text-sm text-slate-600 leading-relaxed">{a.a}</p>}
                   </li>
                 );
               })}
@@ -109,12 +109,12 @@ export default function PublicHelpPage() {
         ))}
       </div>
 
-      <div className="mt-10 rounded-2xl bg-white/5 border border-white/10 p-6 text-center">
-        <div className="mb-2 inline-flex items-center gap-2 text-blue-400"><Mail className="h-4 w-4" /><span className="text-sm font-bold uppercase tracking-wider">Still need help?</span></div>
-        <p className="text-slate-400 text-sm">Our support team replies around the clock.</p>
+      <div className="mt-10 rounded-2xl bg-white border border-slate-200 p-6 text-center">
+        <div className="mb-2 inline-flex items-center gap-2 text-indigo-600"><Mail className="h-4 w-4" /><span className="text-sm font-bold uppercase tracking-wider">Still need help?</span></div>
+        <p className="text-slate-600 text-sm">Our support team replies around the clock.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link href="/contact" className="rounded-xl bg-linear-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-bold text-white hover:scale-105 transition-transform">Contact support</Link>
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10">{SUPPORT_EMAIL}</a>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-100">{SUPPORT_EMAIL}</a>
         </div>
       </div>
     </div>
