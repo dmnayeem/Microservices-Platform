@@ -64,7 +64,7 @@ export function Hero(props: Props) {
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-(--mk-muted) max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base sm:text-lg lg:text-xl text-(--mk-muted) max-w-xl sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed text-balance">
             {v.subtitle}
           </p>
 

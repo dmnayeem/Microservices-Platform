@@ -255,7 +255,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     title_line1: "Earn Smarter. Scale Faster.",
     title_line2: "All in One Platform.",
     subtitle:
-      "Complete micro tasks, sell digital products, launch online courses, grow through affiliate commissions, build your team, and earn from games, quizzes, and tournaments. Everything you need to work, sell, promote, and earn — built into one powerful platform designed to help you create multiple income streams and scale your passive income with ease.",
+      "Tasks, digital sales, courses, affiliate, team, and games — every way to earn, in one platform built to grow your passive income.",
     cta_primary_label: "Get Started Free",
     cta_primary_href: "/register",
     cta_secondary_label: "See how it works",
