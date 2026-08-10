@@ -58,10 +58,10 @@ export default function AboutPage() {
             <Target className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Our mission</span>
           </div>
-          <p className="text-xl sm:text-2xl font-semibold text-slate-900 leading-relaxed">
+          <p className="text-xl sm:text-2xl font-semibold text-(--mk-text) leading-relaxed">
             To give everyone, everywhere, a fair and simple way to earn online — with payouts they can trust and rules they can understand.
           </p>
-          <p className="mt-5 text-slate-600 leading-relaxed">
+          <p className="mt-5 text-(--mk-muted) leading-relaxed">
             {COMPANY_NAME} began in {FOUNDED_YEAR} with a frustration shared by millions: the internet is full of &ldquo;earn money online&rdquo; promises, and almost none of them pay. We built the opposite — a platform where the tasks are real, the payments are guaranteed, and it works the same whether you&apos;re in New York, Lagos, Dhaka, Berlin, or Manila. Operated by {COMPANY_LEGAL}, a remote-first company with team members across continents, we serve a community that never sleeps.
           </p>
         </GlassCard>
@@ -80,8 +80,8 @@ export default function AboutPage() {
               <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-purple-600">
                 <v.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">{v.title}</h3>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{v.body}</p>
+              <h3 className="text-lg font-bold text-(--mk-text)">{v.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{v.body}</p>
             </GlassCard>
           ))}
         </div>
@@ -98,8 +98,8 @@ export default function AboutPage() {
                 </div>
               </div>
               <GlassCard className="flex-1">
-                <h3 className="font-bold text-slate-900">{m.title}</h3>
-                <p className="mt-1 text-sm text-slate-600">{m.body}</p>
+                <h3 className="font-bold text-(--mk-text)">{m.title}</h3>
+                <p className="mt-1 text-sm text-(--mk-muted)">{m.body}</p>
               </GlassCard>
             </div>
           ))}
@@ -112,8 +112,8 @@ export default function AboutPage() {
             <TrendingUp className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Join us</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Start earning in minutes</h2>
-          <p className="mx-auto mt-3 max-w-xl text-slate-600">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">Start earning in minutes</h2>
+          <p className="mx-auto mt-3 max-w-xl text-(--mk-muted)">
             Create a free account and complete your first task today — or join the team building the future of online earning.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">

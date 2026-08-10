@@ -1,18 +1,31 @@
 import { Navbar, Footer } from "@/components/landing";
+import {
+  MarketingThemeScript,
+  MarketingBlobs,
+} from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
 
 // Shared chrome for public marketing pages (About, Careers, Blog, Press, Help,
-// Contact, Status) — the exact landing gradient shell + content-driven Navbar
-// and Footer, so every page reads as one consistent, premium brand. Content is
-// pushed below the fixed navbar with top padding.
+// Contact, Status, and the /features/* pages) — the content-driven Navbar and
+// Footer plus the marketing theme surface (data-mk-theme / --mk-* tokens), so
+// every page reads as one consistent brand and flips light/dark with the
+// visitor's landing toggle. Content is pushed below the fixed navbar.
 export default async function MarketingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const content = await getLandingContent();
+  const { theme, animations } = content.appearance;
   return (
-    <main className="relative min-h-screen bg-white text-slate-900 overflow-x-hidden">
+    <main
+      id="mk-root"
+      data-mk-theme={theme}
+      data-mk-anim={animations ? "on" : "off"}
+      className="relative min-h-screen bg-(--mk-bg) text-(--mk-text) overflow-x-hidden"
+    >
+      <MarketingThemeScript />
+      {animations && <MarketingBlobs />}
       <div className="relative z-10">
         <Navbar {...content.navbar} />
         <div className="pt-16 lg:pt-20">{children}</div>

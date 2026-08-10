@@ -135,36 +135,36 @@ export function EarningsCalculator(props: Props) {
   return (
     <section
       id="calculator"
-      className="relative py-16 sm:py-24 px-4 scroll-mt-20 overflow-hidden bg-slate-50"
+      className="relative py-16 sm:py-24 px-4 scroll-mt-20 overflow-hidden bg-(--mk-band)"
     >
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8 sm:mb-12">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold mb-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 text-xs font-semibold mb-4">
             <Calculator className="w-3.5 h-3.5" />
             {v.badge}
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-(--mk-text) tracking-tight">
             {v.heading}
           </h2>
-          <p className="text-slate-600 mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
+          <p className="text-(--mk-muted) mt-3 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
             {v.subheading}
           </p>
         </div>
 
         <div className="relative">
-          <div className="absolute -inset-px rounded-[1.75rem] bg-linear-to-br from-indigo-200 via-violet-200 to-emerald-200 opacity-70" />
+          <div className="absolute -inset-px rounded-[1.75rem] bg-linear-to-br from-indigo-500/20 via-violet-500/20 to-emerald-500/20" />
 
-          <div className="relative rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xl shadow-slate-300/40">
+          <div className="relative rounded-3xl border border-(--mk-border) bg-(--mk-surface) overflow-hidden shadow-xl shadow-black/5">
             <div className="grid lg:grid-cols-[1.1fr_1fr] gap-0">
               {/* LEFT — Inputs */}
-              <div className="p-5 sm:p-7 lg:p-8 border-b lg:border-b-0 lg:border-r border-slate-200 space-y-6 sm:space-y-7">
+              <div className="p-5 sm:p-7 lg:p-8 border-b lg:border-b-0 lg:border-r border-(--mk-border) space-y-6 sm:space-y-7">
                 {/* Plan picker */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-(--mk-subtle)">
                       Choose your plan
                     </label>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-(--mk-subtle)">
                       {v.plans.length} plans
                     </span>
                   </div>
@@ -187,13 +187,13 @@ export function EarningsCalculator(props: Props) {
                           className={`group relative rounded-xl p-3 text-left transition-all duration-200 border ${
                             active
                               ? `bg-linear-to-br ${gradient} border-transparent shadow-md scale-[1.02]`
-                              : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                              : "bg-(--mk-surface) border-(--mk-border) hover:bg-(--mk-surface-2) hover:border-(--mk-border-strong)"
                           }`}
                         >
                             <div className="flex items-center justify-between">
                               <span
                                 className={`text-[11px] sm:text-xs font-extrabold tracking-wide ${
-                                  active ? "text-white" : "text-slate-700"
+                                  active ? "text-white" : "text-(--mk-text)"
                                 }`}
                               >
                                 {p.name}
@@ -204,14 +204,14 @@ export function EarningsCalculator(props: Props) {
                             </div>
                             <div
                               className={`mt-1.5 text-[11px] tabular-nums font-semibold ${
-                                active ? "text-white/90" : "text-slate-500"
+                                active ? "text-white/90" : "text-(--mk-subtle)"
                               }`}
                             >
                               ${p.per_task}/task
                             </div>
                             <div
                               className={`mt-0.5 text-[10px] ${
-                                active ? "text-white/70" : "text-slate-400"
+                                active ? "text-white/70" : "text-(--mk-subtle)"
                               }`}
                             >
                               {p.team_levels === 0
@@ -223,11 +223,11 @@ export function EarningsCalculator(props: Props) {
                       })}
                     </div>
 
-                  <p className="text-[11px] text-slate-500 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-[11px] text-(--mk-subtle) mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="inline-flex items-center gap-1">
                       <span className="w-1 h-1 rounded-full bg-indigo-500" />
                       Rate{" "}
-                      <span className="text-slate-700 tabular-nums">
+                      <span className="text-(--mk-text) tabular-nums">
                         ${activePlan?.per_task ?? 0}
                       </span>
                       /task
@@ -235,7 +235,7 @@ export function EarningsCalculator(props: Props) {
                     <span className="inline-flex items-center gap-1">
                       <span className="w-1 h-1 rounded-full bg-violet-500" />
                       Multiplier{" "}
-                      <span className="text-slate-700 tabular-nums">
+                      <span className="text-(--mk-text) tabular-nums">
                         {activePlan?.multiplier ?? 1}×
                       </span>
                     </span>
@@ -245,14 +245,14 @@ export function EarningsCalculator(props: Props) {
                 {/* Daily tasks */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-(--mk-subtle)">
                       Daily tasks
                     </label>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => adjustTasks(-5)}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 transition-colors disabled:opacity-30"
+                        className="w-7 h-7 rounded-lg bg-(--mk-surface) hover:bg-(--mk-surface-2) border border-(--mk-border) flex items-center justify-center text-(--mk-muted) transition-colors disabled:opacity-30"
                         disabled={dailyTasks <= 0}
                         aria-label="Decrease daily tasks"
                       >
@@ -264,7 +264,7 @@ export function EarningsCalculator(props: Props) {
                       <button
                         type="button"
                         onClick={() => adjustTasks(5)}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 transition-colors disabled:opacity-30"
+                        className="w-7 h-7 rounded-lg bg-(--mk-surface) hover:bg-(--mk-surface-2) border border-(--mk-border) flex items-center justify-center text-(--mk-muted) transition-colors disabled:opacity-30"
                         disabled={dailyTasks >= 500}
                         aria-label="Increase daily tasks"
                       >
@@ -297,8 +297,8 @@ export function EarningsCalculator(props: Props) {
                           onClick={() => setDailyTasks(preset)}
                           className={`px-2.5 py-1 rounded-md text-[11px] font-semibold tabular-nums transition-colors ${
                             active
-                              ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                              : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-700"
+                              ? "bg-indigo-500/10 text-indigo-600 border border-indigo-500/30"
+                              : "bg-(--mk-surface) text-(--mk-subtle) border border-(--mk-border) hover:bg-(--mk-surface-2) hover:text-(--mk-text)"
                           }`}
                         >
                           {preset}
@@ -311,27 +311,27 @@ export function EarningsCalculator(props: Props) {
                 {/* Team size */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-(--mk-subtle)">
                       Team size
                     </label>
                     {teamLevels > 0 && (
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[11px] text-(--mk-subtle)">
                         {teamLevels} level{teamLevels > 1 ? "s" : ""} unlocked
                       </span>
                     )}
                   </div>
 
                   {teamLevels === 0 ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 sm:p-4 flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 sm:p-4 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
                         <Lock className="w-4 h-4 text-amber-600" />
                       </div>
-                      <div className="flex-1 text-xs text-amber-800 leading-relaxed">
-                        <span className="font-bold text-amber-900">
+                      <div className="flex-1 text-xs text-(--mk-muted) leading-relaxed">
+                        <span className="font-bold text-amber-600">
                           {activePlan?.name ?? "This"} plan
                         </span>{" "}
                         is solo-only. Upgrade to{" "}
-                        <span className="font-semibold text-amber-900">
+                        <span className="font-semibold text-amber-600">
                           STARTER
                         </span>{" "}
                         or higher to unlock referral commissions and team
@@ -352,7 +352,7 @@ export function EarningsCalculator(props: Props) {
                             color: "emerald",
                             dot: "bg-emerald-500",
                             badge:
-                              "bg-emerald-50 text-emerald-700 border-emerald-200",
+                              "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
                             valueText: "text-emerald-600",
                             rangeClass: "ec-range-emerald",
                           },
@@ -366,7 +366,7 @@ export function EarningsCalculator(props: Props) {
                             color: "purple",
                             dot: "bg-violet-500",
                             badge:
-                              "bg-violet-50 text-violet-700 border-violet-200",
+                              "bg-violet-500/10 text-violet-600 border-violet-500/30",
                             valueText: "text-violet-600",
                             rangeClass: "ec-range-purple",
                           },
@@ -380,7 +380,7 @@ export function EarningsCalculator(props: Props) {
                             color: "amber",
                             dot: "bg-amber-500",
                             badge:
-                              "bg-amber-50 text-amber-700 border-amber-200",
+                              "bg-amber-500/10 text-amber-600 border-amber-500/30",
                             valueText: "text-amber-600",
                             rangeClass: "ec-range-amber",
                           },
@@ -390,14 +390,14 @@ export function EarningsCalculator(props: Props) {
                         .map((row) => (
                           <div
                             key={row.key}
-                            className="rounded-xl bg-slate-50 border border-slate-200 p-3"
+                            className="rounded-xl bg-(--mk-surface-2) border border-(--mk-border) p-3"
                           >
                             <div className="flex items-center justify-between text-xs mb-2">
                               <div className="flex items-center gap-2">
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${row.dot}`}
                                 />
-                                <span className="font-semibold text-slate-700">
+                                <span className="font-semibold text-(--mk-text)">
                                   {row.label}
                                 </span>
                                 <span
@@ -435,7 +435,7 @@ export function EarningsCalculator(props: Props) {
               </div>
 
               {/* RIGHT — Results */}
-              <div className="relative p-5 sm:p-7 lg:p-8 bg-linear-to-br from-indigo-50 via-white to-white">
+              <div className="relative p-5 sm:p-7 lg:p-8 bg-linear-to-br from-indigo-500/[0.07] via-transparent to-transparent">
                 <div
                   aria-hidden
                   className={`absolute -top-20 -right-20 w-64 h-64 rounded-full bg-linear-to-br ${activeGradient} opacity-10 blur-3xl pointer-events-none transition-all duration-500`}
@@ -443,16 +443,16 @@ export function EarningsCalculator(props: Props) {
 
                 <div className="relative">
                   <div className="text-center">
-                    <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-slate-500">
+                    <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-(--mk-subtle)">
                       <TrendingUp className="w-3.5 h-3.5" />
                       Monthly Potential
                     </p>
                     <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent tabular-nums leading-none">
                       ${formatCurrency(animatedMonthly)}
                     </p>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-2 tabular-nums">
+                    <p className="text-xs sm:text-sm text-(--mk-subtle) mt-2 tabular-nums">
                       ≈{" "}
-                      <span className="text-slate-800 font-semibold">
+                      <span className="text-(--mk-text) font-semibold">
                         ${formatCompact(dailyTotal)}
                       </span>{" "}
                       per day
@@ -462,22 +462,22 @@ export function EarningsCalculator(props: Props) {
                   {/* Breakdown bar */}
                   <div className="mt-6">
                     <div className="flex items-center justify-between text-[11px] mb-2">
-                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                      <span className="inline-flex items-center gap-1.5 text-(--mk-subtle)">
                         <span className="w-2 h-2 rounded-sm bg-indigo-500" />
                         Tasks{" "}
-                        <span className="text-slate-800 font-bold tabular-nums">
+                        <span className="text-(--mk-text) font-bold tabular-nums">
                           {directShare}%
                         </span>
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-slate-500">
-                        <span className="text-slate-800 font-bold tabular-nums">
+                      <span className="inline-flex items-center gap-1.5 text-(--mk-subtle)">
+                        <span className="text-(--mk-text) font-bold tabular-nums">
                           {teamShare}%
                         </span>{" "}
                         Team
                         <span className="w-2 h-2 rounded-sm bg-violet-500" />
                       </span>
                     </div>
-                    <div className="h-2 w-full rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex">
+                    <div className="h-2 w-full rounded-full overflow-hidden bg-(--mk-surface-2) border border-(--mk-border) flex">
                       <div
                         className="h-full bg-linear-to-r from-indigo-500 to-cyan-400 transition-all duration-500"
                         style={{ width: `${directShare}%` }}
@@ -491,48 +491,48 @@ export function EarningsCalculator(props: Props) {
 
                   {/* Stat cards */}
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-5">
-                    <div className="min-w-0 rounded-xl bg-white border border-slate-200 shadow-sm p-2.5 sm:p-3 text-center">
+                    <div className="min-w-0 rounded-xl bg-(--mk-surface) border border-(--mk-border) shadow-sm p-2.5 sm:p-3 text-center">
                       <ListChecks className="w-4 h-4 text-indigo-600 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
                         From Tasks
                       </p>
-                      <p className="text-sm sm:text-base font-bold text-slate-900 tabular-nums mt-0.5">
+                      <p className="text-sm sm:text-base font-bold text-(--mk-text) tabular-nums mt-0.5">
                         ${formatCompact(dailyDirect * 30)}
                       </p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">/mo</p>
+                      <p className="text-[9px] text-(--mk-subtle) mt-0.5">/mo</p>
                     </div>
-                    <div className="min-w-0 rounded-xl bg-white border border-slate-200 shadow-sm p-2.5 sm:p-3 text-center">
+                    <div className="min-w-0 rounded-xl bg-(--mk-surface) border border-(--mk-border) shadow-sm p-2.5 sm:p-3 text-center">
                       <Users className="w-4 h-4 text-violet-600 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
                         From Team
                       </p>
-                      <p className="text-sm sm:text-base font-bold text-slate-900 tabular-nums mt-0.5">
+                      <p className="text-sm sm:text-base font-bold text-(--mk-text) tabular-nums mt-0.5">
                         ${formatCompact(dailyTeam * 30)}
                       </p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">/mo</p>
+                      <p className="text-[9px] text-(--mk-subtle) mt-0.5">/mo</p>
                     </div>
-                    <div className="min-w-0 rounded-xl bg-white border border-slate-200 shadow-sm p-2.5 sm:p-3 text-center">
+                    <div className="min-w-0 rounded-xl bg-(--mk-surface) border border-(--mk-border) shadow-sm p-2.5 sm:p-3 text-center">
                       <Coins className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
                         Daily
                       </p>
-                      <p className="text-sm sm:text-base font-bold text-slate-900 tabular-nums mt-0.5">
+                      <p className="text-sm sm:text-base font-bold text-(--mk-text) tabular-nums mt-0.5">
                         ${formatCompact(dailyTotal)}
                       </p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">/day</p>
+                      <p className="text-[9px] text-(--mk-subtle) mt-0.5">/day</p>
                     </div>
                   </div>
 
                   {/* Yearly callout */}
-                  <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-3 sm:p-4 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                  <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 sm:p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
                       <Sparkles className="w-4 h-4 text-amber-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] uppercase tracking-wider font-bold text-amber-700">
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-amber-600">
                         Yearly Projection
                       </p>
-                      <p className="text-lg sm:text-xl font-extrabold text-slate-900 tabular-nums">
+                      <p className="text-lg sm:text-xl font-extrabold text-(--mk-text) tabular-nums">
                         ${formatCompact(yearly)}
                       </p>
                     </div>
@@ -546,7 +546,7 @@ export function EarningsCalculator(props: Props) {
                     Start Earning Now
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 text-center mt-2.5">
+                  <p className="text-[10px] sm:text-[11px] text-(--mk-subtle) text-center mt-2.5">
                     Estimates only · Actual earnings vary by activity
                   </p>
                 </div>
@@ -567,8 +567,8 @@ export function EarningsCalculator(props: Props) {
             to right,
             rgb(79 70 229) 0%,
             rgb(124 58 237) var(--ec-progress, 0%),
-            rgb(226 232 240) var(--ec-progress, 0%),
-            rgb(226 232 240) 100%
+            var(--mk-border) var(--ec-progress, 0%),
+            var(--mk-border) 100%
           );
           outline: none;
           cursor: pointer;
@@ -612,8 +612,8 @@ export function EarningsCalculator(props: Props) {
             to right,
             rgb(16 185 129) 0%,
             rgb(20 184 166) var(--ec-progress, 0%),
-            rgb(226 232 240) var(--ec-progress, 0%),
-            rgb(226 232 240) 100%
+            var(--mk-border) var(--ec-progress, 0%),
+            var(--mk-border) 100%
           );
         }
         .ec-range-emerald::-webkit-slider-thumb {
@@ -629,8 +629,8 @@ export function EarningsCalculator(props: Props) {
             to right,
             rgb(139 92 246) 0%,
             rgb(217 70 239) var(--ec-progress, 0%),
-            rgb(226 232 240) var(--ec-progress, 0%),
-            rgb(226 232 240) 100%
+            var(--mk-border) var(--ec-progress, 0%),
+            var(--mk-border) 100%
           );
         }
         .ec-range-purple::-webkit-slider-thumb {
@@ -646,8 +646,8 @@ export function EarningsCalculator(props: Props) {
             to right,
             rgb(245 158 11) 0%,
             rgb(249 115 22) var(--ec-progress, 0%),
-            rgb(226 232 240) var(--ec-progress, 0%),
-            rgb(226 232 240) 100%
+            var(--mk-border) var(--ec-progress, 0%),
+            var(--mk-border) 100%
           );
         }
         .ec-range-amber::-webkit-slider-thumb {

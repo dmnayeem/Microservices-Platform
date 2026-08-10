@@ -17,6 +17,7 @@ import {
   HelpCircle,
   Rocket,
   PanelBottom,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ import { TrustBadgesEditor } from "./sections/trust-badges-editor";
 import { FaqEditor } from "./sections/faq-editor";
 import { CtaEditor } from "./sections/cta-editor";
 import { FooterEditor } from "./sections/footer-editor";
+import { AppearanceEditor } from "./sections/appearance-editor";
 
 interface Props {
   initial: LandingContent;
@@ -56,6 +58,7 @@ const ICONS: Record<string, LucideIcon> = {
   HelpCircle,
   Rocket,
   PanelBottom,
+  Palette,
 };
 
 export function LandingEditor({ initial, canEdit }: Props) {
@@ -259,6 +262,13 @@ export function LandingEditor({ initial, canEdit }: Props) {
             <FooterEditor
               value={content.footer}
               onChange={(v) => setSection("footer", v)}
+              disabled={!canEdit}
+            />
+          )}
+          {active === "appearance" && (
+            <AppearanceEditor
+              value={content.appearance}
+              onChange={(v) => setSection("appearance", v)}
               disabled={!canEdit}
             />
           )}

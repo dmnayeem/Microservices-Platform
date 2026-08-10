@@ -699,3 +699,71 @@ html[data-theme="light"] .hover\:border-slate-700:hover { border-color: #cbd5e1 
 html[data-theme="light"] ::-webkit-scrollbar-track { background: #eaeef5; }
 html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c3ccd9; }
 html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #9aa6b8; }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Marketing surface theme (isolated from the app's data-theme).
+   Driven by `data-mk-theme` on the marketing root (#mk-root). Landing/marketing
+   components use bg/text/border-[var(--mk-*)] so a visitor's landing toggle flips
+   the whole surface WITHOUT touching their in-app dashboard theme. Colored brand
+   accents (indigo/violet gradients, emerald money, colored chips) stay literal.
+   ──────────────────────────────────────────────────────────────────────────── */
+[data-mk-theme="light"] {
+  --mk-bg: #ffffff;
+  --mk-band: #f8fafc;         /* slate-50 */
+  --mk-surface: #ffffff;
+  --mk-surface-2: #f8fafc;
+  --mk-border: #e2e8f0;       /* slate-200 */
+  --mk-border-strong: #cbd5e1;/* slate-300 */
+  --mk-text: #0f172a;         /* slate-900 */
+  --mk-muted: #475569;        /* slate-600 */
+  --mk-subtle: #64748b;       /* slate-500 */
+  --mk-nav: rgba(255, 255, 255, 0.72);
+  --mk-nav-scrolled: rgba(255, 255, 255, 0.95);
+  --mk-quote: #e2e8f0;        /* faint quote glyph */
+  --mk-grid: rgba(15, 23, 42, 0.05);
+  --mk-blob-a: rgba(99, 102, 241, 0.14);
+  --mk-blob-b: rgba(139, 92, 246, 0.12);
+  --mk-blob-c: rgba(56, 189, 248, 0.10);
+}
+[data-mk-theme="dark"] {
+  --mk-bg: #0a0b11;
+  --mk-band: #0f1119;
+  --mk-surface: #14161f;
+  --mk-surface-2: #10121b;
+  --mk-border: #232734;
+  --mk-border-strong: #313746;
+  --mk-text: #f1f5f9;
+  --mk-muted: #94a3b8;
+  --mk-subtle: #7c8699;
+  --mk-nav: rgba(10, 11, 17, 0.72);
+  --mk-nav-scrolled: rgba(10, 11, 17, 0.92);
+  --mk-quote: #232734;
+  --mk-grid: rgba(255, 255, 255, 0.045);
+  --mk-blob-a: rgba(99, 102, 241, 0.22);
+  --mk-blob-b: rgba(139, 92, 246, 0.20);
+  --mk-blob-c: rgba(56, 189, 248, 0.16);
+}
+
+/* Animation gate — hover-zoom + blob pulse only when admin has animations ON. */
+.mk-zoom {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+[data-mk-anim="on"] .mk-zoom:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+.mk-blob {
+  opacity: 0.7;
+}
+[data-mk-anim="on"] .mk-blob {
+  animation: mk-pulse 6s ease-in-out infinite;
+}
+[data-mk-anim="on"] .mk-blob.mk-blob-delay-1 { animation-delay: 1s; }
+[data-mk-anim="on"] .mk-blob.mk-blob-delay-2 { animation-delay: 0.5s; }
+@keyframes mk-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-mk-anim="on"] .mk-zoom:hover { transform: none; }
+  [data-mk-anim="on"] .mk-blob { animation: none; }
+}

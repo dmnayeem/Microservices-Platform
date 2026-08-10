@@ -25,10 +25,10 @@ export function BadgePill({
   tone?: "blue" | "purple" | "cyan" | "emerald";
 }) {
   const tones: Record<string, string> = {
-    blue: "bg-indigo-50 border-indigo-100 text-indigo-700",
-    purple: "bg-violet-50 border-violet-100 text-violet-700",
-    cyan: "bg-sky-50 border-sky-100 text-sky-700",
-    emerald: "bg-emerald-50 border-emerald-100 text-emerald-700",
+    blue: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600",
+    purple: "bg-violet-500/10 border-violet-500/20 text-violet-600",
+    cyan: "bg-sky-500/10 border-sky-500/20 text-sky-600",
+    emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600",
   };
   return (
     <span
@@ -55,7 +55,7 @@ export function MarketingHero({
     <section className="relative overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-indigo-50/70 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-indigo-500/10 to-transparent"
       />
       <div className="relative pt-16 pb-10 sm:pt-24 sm:pb-14">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -64,7 +64,7 @@ export function MarketingHero({
               <BadgePill>{badge}</BadgePill>
             </div>
           )}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             {title}
             {highlight && (
               <>
@@ -76,7 +76,7 @@ export function MarketingHero({
             )}
           </h1>
           {subtitle && (
-            <p className="mt-6 text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
               {subtitle}
             </p>
           )}
@@ -121,11 +121,11 @@ export function SectionHeading({
           <BadgePill tone={tone}>{badge}</BadgePill>
         </div>
       )}
-      <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+      <h2 className="text-3xl sm:text-4xl font-extrabold text-(--mk-text) tracking-tight">
         {title}
       </h2>
       {subtitle && (
-        <p className="mt-4 text-slate-600 max-w-2xl mx-auto leading-relaxed">
+        <p className="mt-4 text-(--mk-muted) max-w-2xl mx-auto leading-relaxed">
           {subtitle}
         </p>
       )}
@@ -143,7 +143,7 @@ export function GlassCard({
 }) {
   return (
     <div
-      className={`rounded-2xl bg-white border border-slate-200 shadow-sm p-6 ${className}`}
+      className={`rounded-2xl bg-(--mk-surface) border border-(--mk-border) shadow-sm p-6 ${className}`}
     >
       {children}
     </div>
@@ -165,7 +165,7 @@ export function StatGrid({
           <p className="text-3xl sm:text-4xl font-extrabold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
             {s.value}
           </p>
-          <p className="mt-1 text-sm text-slate-500">{s.label}</p>
+          <p className="mt-1 text-sm text-(--mk-subtle)">{s.label}</p>
         </GlassCard>
       ))}
     </div>
@@ -183,7 +183,7 @@ export function CountryFlags({
       {countries.map((c) => (
         <span
           key={c.name}
-          className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-sm text-slate-700 shadow-sm"
+          className="inline-flex items-center gap-1.5 rounded-full bg-(--mk-surface) border border-(--mk-border) px-3 py-1.5 text-sm text-(--mk-text) shadow-sm"
         >
           <span className="text-base leading-none">{c.flag}</span>
           {c.name}
@@ -220,7 +220,7 @@ export function GhostButton({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-(--mk-border-strong) bg-(--mk-surface) px-6 py-3 text-sm font-semibold text-(--mk-text) hover:bg-(--mk-surface-2) transition-colors"
     >
       {children}
     </Link>

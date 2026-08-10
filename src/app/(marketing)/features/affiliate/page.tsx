@@ -62,19 +62,19 @@ export default function AffiliateFeaturePage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-fuchsia-50/70 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-fuchsia-500/10 to-transparent"
         />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="mb-5">
             <BadgePill tone="purple">Affiliate Program</BadgePill>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             Promote great products,{" "}
             <span className="bg-linear-to-r from-fuchsia-600 to-pink-600 bg-clip-text text-transparent">
               earn on every sale
             </span>
           </h1>
-          <p className="mt-6 text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
             Share products and courses with your personal link. When someone buys
             through it, you earn the commission the seller set — paid straight to
             your wallet. No inventory, no upfront cost.
@@ -88,7 +88,7 @@ export default function AffiliateFeaturePage() {
         </div>
       </section>
 
-      <Section className="bg-slate-50">
+      <Section className="bg-(--mk-band)">
         <StatGrid stats={STATS} />
       </Section>
 
@@ -105,18 +105,18 @@ export default function AffiliateFeaturePage() {
               <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-fuchsia-600 to-pink-600 text-sm font-extrabold text-white shadow-sm">
                 {i + 1}
               </span>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-50 border border-fuchsia-100">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20">
                 <s.icon className="h-5 w-5 text-fuchsia-600" />
               </div>
-              <h3 className="font-bold text-slate-900">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{s.body}</p>
+              <h3 className="font-bold text-(--mk-text)">{s.title}</h3>
+              <p className="mt-1.5 text-sm text-(--mk-muted) leading-relaxed">{s.body}</p>
             </GlassCard>
           ))}
         </div>
       </Section>
 
       {/* What you can promote */}
-      <Section className="bg-slate-50">
+      <Section className="bg-(--mk-band)">
         <SectionHeading
           badge="What you can promote"
           tone="emerald"
@@ -125,15 +125,15 @@ export default function AffiliateFeaturePage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {PROMOTE.map((p) => (
             <Link key={p.title} href={p.href} className="group block">
-              <GlassCard className="h-full transition-all group-hover:shadow-md group-hover:border-slate-300">
+              <GlassCard className="h-full transition-all group-hover:shadow-md group-hover:border-(--mk-border-strong)">
                 <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-fuchsia-500 to-pink-600 shadow-sm">
                   <p.icon className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-1.5">
+                <h3 className="text-lg font-bold text-(--mk-text) flex items-center gap-1.5">
                   {p.title}
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-fuchsia-600 transition-colors" />
+                  <ArrowRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-fuchsia-600 transition-colors" />
                 </h3>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{p.body}</p>
+                <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{p.body}</p>
               </GlassCard>
             </Link>
           ))}
@@ -149,8 +149,8 @@ export default function AffiliateFeaturePage() {
               <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 shadow-sm">
                 <b.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">{b.title}</h3>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{b.body}</p>
+              <h3 className="text-lg font-bold text-(--mk-text)">{b.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{b.body}</p>
             </GlassCard>
           ))}
         </div>
@@ -163,26 +163,26 @@ export default function AffiliateFeaturePage() {
             <Users className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Affiliate vs referrals</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">
             Two ways to earn from your network
           </h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-              <p className="font-bold text-slate-900">Affiliate</p>
-              <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+            <div className="rounded-xl bg-(--mk-surface-2) border border-(--mk-border) p-4">
+              <p className="font-bold text-(--mk-text)">Affiliate</p>
+              <p className="mt-1 text-sm text-(--mk-muted) leading-relaxed">
                 Earn a commission when people buy the specific products and
                 courses you promote with your links.
               </p>
             </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-              <p className="font-bold text-slate-900">Referrals</p>
-              <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+            <div className="rounded-xl bg-(--mk-surface-2) border border-(--mk-border) p-4">
+              <p className="font-bold text-(--mk-text)">Referrals</p>
+              <p className="mt-1 text-sm text-(--mk-muted) leading-relaxed">
                 Invite friends to join and earn passive commission on their
                 everyday activity across a 3-level team.
               </p>
             </div>
           </div>
-          <p className="mt-5 text-sm text-slate-500">
+          <p className="mt-5 text-sm text-(--mk-subtle)">
             You can use both at the same time — they stack.
           </p>
         </GlassCard>

@@ -59,19 +59,19 @@ export function Features(props: Props) {
   const v: FeaturesContent = { ...DEFAULT_LANDING_CONTENT.features, ...props };
 
   return (
-    <section id="features" className="py-20 sm:py-28 bg-slate-50">
+    <section id="features" className="py-20 sm:py-28 bg-(--mk-band)">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <span className="inline-block px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold uppercase tracking-wider mb-4">
+          <span className="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 text-xs font-semibold uppercase tracking-wider mb-4">
             {v.badge}
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-(--mk-text) tracking-tight mb-4">
             {v.heading_line1}{" "}
             <span className="bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
               {v.heading_line2}
             </span>
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto text-lg leading-relaxed">
+          <p className="text-(--mk-muted) max-w-2xl mx-auto text-lg leading-relaxed">
             {v.subheading}
           </p>
         </div>
@@ -81,7 +81,7 @@ export function Features(props: Props) {
             const Icon = ICONS[feature.iconKey] ?? Sparkles;
             const href = feature.href?.trim();
             const cardClass =
-              "group relative flex flex-col h-full p-6 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-300";
+              "mk-zoom group relative flex flex-col h-full p-6 rounded-2xl bg-(--mk-surface) border border-(--mk-border) shadow-sm hover:border-(--mk-border-strong)";
             const inner = (
               <>
                 <div
@@ -89,13 +89,13 @@ export function Features(props: Props) {
                 >
                   <Icon className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+                <h3 className="text-lg font-bold text-(--mk-text) mb-2 flex items-center gap-1.5">
                   {feature.title}
                   {href && (
-                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    <ArrowUpRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-indigo-600 transition-colors" />
                   )}
                 </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <p className="text-sm text-(--mk-muted) leading-relaxed">
                   {feature.description}
                 </p>
                 {href && (

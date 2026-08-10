@@ -64,19 +64,19 @@ export default function CoursesFeaturePage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-amber-50/70 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-amber-500/10 to-transparent"
         />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="mb-5">
             <BadgePill>Courses & Learning</BadgePill>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             Learn new skills, or{" "}
             <span className="bg-linear-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
               teach and earn
             </span>
           </h1>
-          <p className="mt-6 text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
             Take expert-led courses and earn recognized certificates — or become
             a tutor and turn your knowledge into income with your own courses and
             live classes.
@@ -90,7 +90,7 @@ export default function CoursesFeaturePage() {
         </div>
       </section>
 
-      <Section className="bg-slate-50">
+      <Section className="bg-(--mk-band)">
         <StatGrid stats={STATS} />
       </Section>
 
@@ -107,15 +107,15 @@ export default function CoursesFeaturePage() {
               <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-amber-500 to-orange-600 shadow-sm">
                 <c.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">{c.title}</h3>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{c.body}</p>
+              <h3 className="text-lg font-bold text-(--mk-text)">{c.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{c.body}</p>
             </GlassCard>
           ))}
         </div>
       </Section>
 
       {/* Become a tutor */}
-      <Section className="bg-slate-50">
+      <Section className="bg-(--mk-band)">
         <SectionHeading
           badge="Become a tutor"
           tone="purple"
@@ -128,11 +128,11 @@ export default function CoursesFeaturePage() {
               <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-amber-500 to-orange-600 text-sm font-extrabold text-white shadow-sm">
                 {i + 1}
               </span>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 border border-amber-100">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <s.icon className="h-5 w-5 text-amber-600" />
               </div>
-              <h3 className="font-bold text-slate-900">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{s.body}</p>
+              <h3 className="font-bold text-(--mk-text)">{s.title}</h3>
+              <p className="mt-1.5 text-sm text-(--mk-muted) leading-relaxed">{s.body}</p>
             </GlassCard>
           ))}
         </div>
@@ -156,8 +156,8 @@ export default function CoursesFeaturePage() {
               <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-sm">
                 <b.icon className="h-5 w-5 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">{b.title}</h3>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{b.body}</p>
+              <h3 className="text-lg font-bold text-(--mk-text)">{b.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{b.body}</p>
             </GlassCard>
           ))}
         </div>

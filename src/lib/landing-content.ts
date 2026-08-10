@@ -177,6 +177,13 @@ export interface FooterContent {
   tagline: string;
 }
 
+export interface AppearanceContent {
+  /** Default theme shown to first-time visitors (they can toggle their own). */
+  theme: "light" | "dark";
+  /** Master switch for landing background blobs + hover-zoom animations. */
+  animations: boolean;
+}
+
 export interface LandingContent {
   navbar: NavbarContent;
   hero: HeroContent;
@@ -189,6 +196,7 @@ export interface LandingContent {
   faq: FaqContent;
   cta: CtaContent;
   footer: FooterContent;
+  appearance: AppearanceContent;
 }
 
 export type SectionKey = keyof LandingContent;
@@ -214,6 +222,7 @@ export const LANDING_SECTIONS: ReadonlyArray<{
   { key: "faq",          label: "FAQ",          description: "Frequently asked questions", icon: "HelpCircle" },
   { key: "cta",          label: "Final CTA",    description: "Closing call-to-action card", icon: "Rocket" },
   { key: "footer",       label: "Footer",       description: "Brand, link groups, payment methods", icon: "PanelBottom" },
+  { key: "appearance",   label: "Appearance",   description: "Default light/dark theme + animations", icon: "Palette" },
 ] as const;
 
 export const SECTION_KEYS = LANDING_SECTIONS.map((s) => s.key) as readonly SectionKey[];
@@ -694,6 +703,10 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     ],
     copyright_notice: "© {year} EarnGPT. All rights reserved.",
     tagline: "",
+  },
+  appearance: {
+    theme: "light",
+    animations: true,
   },
 };
 
