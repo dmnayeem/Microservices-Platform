@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { getEnabledDepositMethods } from "@/lib/deposit-methods";
+import { toNum } from "@/lib/money";
 
 /** List the current user's deposits. */
 export async function GET() {
@@ -15,7 +16,11 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return NextResponse.json({ deposits });
+  // amount is a Prisma Decimal → serializes to a string; the client does
+  // amount.toFixed(), so convert to a real number here (else the page crashes).
+  return NextResponse.json({
+    deposits: deposits.map((d) => ({ ...d, amount: toNum(d.amount) })),
+  });
 }
 
 /** Create a manual deposit request (PENDING → admin approves and credits). */
