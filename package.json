@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "npm run prisma:generate",
     "dev": "next dev",
     "prisma:generate": "npx prisma generate && node scripts/post-prisma-generate.js",
     "build": "npm run prisma:generate && next build",
