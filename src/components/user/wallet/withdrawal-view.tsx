@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import { TIER_LIMITS, TIER_FEE_DISCOUNT, BASE_FEE_PCT } from "@/lib/tiers";
 
 interface PaymentMethod {
   id: string;
@@ -20,7 +19,14 @@ interface PaymentMethod {
 interface WithdrawalViewProps {
   cashBalance: number;
   pointsBalance: number;
-  packageTier: string;
+  /** Admin-configured minimum withdrawal (USD). */
+  min: number;
+  /** Admin-configured maximum withdrawal (USD). */
+  max: number;
+  /** Effective fee percentage (0–100), after any package discount. */
+  feePct: number;
+  /** Whether this user may withdraw (global switch + package feature). */
+  withdrawalsEnabled: boolean;
   methods: PaymentMethod[];
   kycStatus: string;
   requireKyc: boolean;
@@ -31,33 +37,52 @@ interface WithdrawalViewProps {
 export function WithdrawalView({
   cashBalance,
   pointsBalance,
-  packageTier,
+  min,
+  max,
+  feePct,
+  withdrawalsEnabled,
   methods,
   kycStatus,
   requireKyc,
   pointsPerUsd = 1000,
 }: WithdrawalViewProps) {
   const router = useRouter();
-  const limits = TIER_LIMITS[packageTier] ?? TIER_LIMITS.FREE;
-  const feePct = BASE_FEE_PCT * (1 - (TIER_FEE_DISCOUNT[packageTier] ?? 0));
 
-  const [amount, setAmount] = useState(limits.min);
+  // Amount is a STRING so the field can be cleared/edited freely — binding a
+  // number left a stuck leading "0" (e.g. "020"). Numeric value derives from it.
+  const [amountStr, setAmountStr] = useState<string>(min > 0 ? String(min) : "");
+  const amount = parseFloat(amountStr) || 0;
   const [methodId, setMethodId] = useState(
     methods.find((m) => m.isDefault)?.id ?? methods[0]?.id ?? ""
   );
   const [busy, setBusy] = useState(false);
 
-  const fee = amount * feePct;
-  const youReceive = amount - fee;
+  const onAmountChange = (raw: string) => {
+    // Digits + a single decimal point, and no leading zeros ("020" → "20",
+    // but keep "0" and "0.5").
+    let s = raw.replace(/[^\d.]/g, "");
+    const parts = s.split(".");
+    if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
+    s = s.replace(/^0+(?=\d)/, "");
+    setAmountStr(s);
+  };
 
-  const isFree = packageTier === "FREE";
+  const fee = amount * (feePct / 100);
+  const youReceive = Math.max(0, amount - fee);
+
   const kycLocked = requireKyc && kycStatus !== "APPROVED";
   const kycPending = kycStatus === "PENDING";
-  const tooLow = amount < limits.min;
-  const tooHigh = amount > limits.max;
+  const tooLow = amount < min;
+  const tooHigh = amount > max;
   const overBalance = amount > cashBalance;
   const valid =
-    !isFree && !kycLocked && !tooLow && !tooHigh && !overBalance && !!methodId;
+    withdrawalsEnabled &&
+    !kycLocked &&
+    amount > 0 &&
+    !tooLow &&
+    !tooHigh &&
+    !overBalance &&
+    !!methodId;
 
   const submit = async () => {
     if (!valid) return;
@@ -93,7 +118,7 @@ export function WithdrawalView({
         compact
       />
 
-      {isFree && (
+      {!withdrawalsEnabled && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4">
           <div className="flex items-start gap-3">
             <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -102,8 +127,8 @@ export function WithdrawalView({
                 Withdrawals locked
               </p>
               <p className="text-xs text-amber-400/80 mt-0.5">
-                Upgrade from FREE to STARTER or higher to unlock withdrawals.
-                Min withdrawal on STARTER: $5.
+                Withdrawals aren&apos;t available on your current plan. Upgrade to
+                unlock cashing out your earnings.
               </p>
               <Link
                 href="/packages"
@@ -117,7 +142,7 @@ export function WithdrawalView({
         </div>
       )}
 
-      {!isFree && kycLocked && (
+      {withdrawalsEnabled && kycLocked && (
         <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 p-4">
           <div className="flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
@@ -144,7 +169,7 @@ export function WithdrawalView({
         </div>
       )}
 
-      {!isFree && !kycLocked && (
+      {withdrawalsEnabled && !kycLocked && (
         <>
           <div className="glass rounded-xl p-4 space-y-3">
             <div>
@@ -156,22 +181,22 @@ export function WithdrawalView({
                   $
                 </span>
                 <input
-                  type="number"
-                  step="0.01"
-                  min={limits.min}
-                  max={limits.max}
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
+                  type="text"
+                  inputMode="decimal"
+                  value={amountStr}
+                  onChange={(e) => onAmountChange(e.target.value)}
+                  placeholder={String(min)}
                   className="w-full pl-7 pr-3 py-2.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-base font-bold tabular-nums focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="flex items-center justify-between text-[11px] mt-1.5">
                 <span className="text-gray-500">
-                  Min: ${limits.min} · Max: $
-                  {limits.max.toLocaleString()}
+                  Min: ${min.toLocaleString()} · Max: ${max.toLocaleString()}
                 </span>
                 <button
-                  onClick={() => setAmount(Math.min(cashBalance, limits.max))}
+                  onClick={() =>
+                    setAmountStr(String(Math.floor(Math.min(cashBalance, max) * 100) / 100))
+                  }
                   className="text-indigo-400 font-semibold hover:text-indigo-300"
                 >
                   Max
@@ -185,14 +210,7 @@ export function WithdrawalView({
                 <span className="tabular-nums">${amount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-400">
-                <span>
-                  Fee ({(feePct * 100).toFixed(1)}%
-                  {TIER_FEE_DISCOUNT[packageTier] > 0 && (
-                    <span className="text-emerald-400 ml-1">
-                      −{(TIER_FEE_DISCOUNT[packageTier] * 100).toFixed(0)}% tier discount
-                    </span>
-                  )})
-                </span>
+                <span>Fee ({feePct.toFixed(1)}%)</span>
                 <span className="tabular-nums text-red-400">
                   −${fee.toFixed(2)}
                 </span>
@@ -253,15 +271,15 @@ export function WithdrawalView({
             )}
           </div>
 
-          {(tooLow || tooHigh || overBalance) && (
+          {amount > 0 && (tooLow || tooHigh || overBalance) && (
             <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-3 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
               <p className="text-xs text-red-300">
                 {overBalance
                   ? "Amount exceeds your available cash balance."
                   : tooLow
-                    ? `Minimum withdrawal is $${limits.min}.`
-                    : `Maximum withdrawal is $${limits.max.toLocaleString()}.`}
+                    ? `Minimum withdrawal is $${min.toLocaleString()}.`
+                    : `Maximum withdrawal is $${max.toLocaleString()}.`}
               </p>
             </div>
           )}

@@ -11,30 +11,8 @@ import {
   NotificationType,
   KYCStatus,
 } from "@/generated/prisma";
-import {
-  getEffectivePackage,
-  resolveUserFeature,
-  parseFeatureOverrides,
-} from "@/lib/packages";
 import { getUiToggles } from "@/lib/ui-toggles-server";
-
-// Fee configuration per payment method
-const PAYMENT_FEES: Record<PaymentMethod, { percentage: number; fixed: number }> = {
-  BKASH: { percentage: 1.5, fixed: 0 },
-  NAGAD: { percentage: 1.5, fixed: 0 },
-  ROCKET: { percentage: 1.8, fixed: 0 },
-  BINANCE: { percentage: 0.5, fixed: 0 },
-  PAYPAL: { percentage: 2.5, fixed: 0 },
-};
-
-// Minimum withdrawal per method
-const MIN_WITHDRAWAL: Record<PaymentMethod, number> = {
-  BKASH: 5,
-  NAGAD: 5,
-  ROCKET: 5,
-  BINANCE: 20,
-  PAYPAL: 10,
-};
+import { getWithdrawalConfig } from "@/lib/withdrawal";
 
 // GET /api/withdrawals - Get user's withdrawal history
 export async function GET(request: NextRequest) {
@@ -175,15 +153,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check minimum withdrawal for method
-    const minAmount = MIN_WITHDRAWAL[method as PaymentMethod];
-    if (amount < minAmount) {
-      return NextResponse.json(
-        { error: `Minimum withdrawal for ${method} is $${minAmount}` },
-        { status: 400 }
-      );
-    }
-
     // Validate account details
     if (!accountDetails || !accountDetails.accountNumber) {
       return NextResponse.json(
@@ -196,10 +165,8 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
-        id: true,
         cashBalance: true,
         kycStatus: true,
-        featureOverrides: true,
       },
     });
 
@@ -207,19 +174,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Effective package (handles expiry + isDefault fallback).
-    const userPackage = await getEffectivePackage(session.user.id);
-
-    if (
-      !resolveUserFeature(
-        userPackage,
-        parseFeatureOverrides(user.featureOverrides),
-        "withdrawals"
-      )
-    ) {
+    // Admin-configured limits + fee (Financial settings ∪ the user's package),
+    // the SAME source the client display uses — so they always agree.
+    const wcfg = await getWithdrawalConfig(session.user.id);
+    if (!wcfg.enabled) {
       return NextResponse.json(
         { error: "Withdrawals are disabled for your plan" },
         { status: 403 }
+      );
+    }
+    if (amount < wcfg.min) {
+      return NextResponse.json(
+        { error: `Minimum withdrawal is $${wcfg.min}` },
+        { status: 400 }
+      );
+    }
+    if (amount > wcfg.max) {
+      return NextResponse.json(
+        { error: `Maximum withdrawal is $${wcfg.max}` },
+        { status: 400 }
       );
     }
 
@@ -237,23 +210,6 @@ export async function POST(request: NextRequest) {
             : "KYC verification required for withdrawals over $100",
         },
         { status: 403 }
-      );
-    }
-
-    // Use the resolved package row directly — no extra fetch needed.
-    const packageInfo = userPackage
-      ? {
-          minWithdrawal: userPackage.minWithdrawal,
-          withdrawalFee: userPackage.withdrawalFeeDiscount,
-        }
-      : null;
-
-    // Check package minimum withdrawal
-    const packageMinWithdrawal = packageInfo?.minWithdrawal || 5;
-    if (amount < packageMinWithdrawal) {
-      return NextResponse.json(
-        { error: `Minimum withdrawal for your package is $${packageMinWithdrawal}` },
-        { status: 400 }
       );
     }
 
@@ -294,11 +250,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate fee
-    const feeConfig = PAYMENT_FEES[method as PaymentMethod];
-    const packageFeeDiscount = packageInfo?.withdrawalFee || 0; // Package can reduce fee
-    const feePercentage = Math.max(0, feeConfig.percentage - packageFeeDiscount);
-    const fee = (amount * feePercentage / 100) + feeConfig.fixed;
+    // Calculate fee — admin-configured percentage (package discount already
+    // applied in getWithdrawalConfig), matching what the client showed.
+    const fee = amount * (wcfg.feePct / 100);
     const netAmount = amount - fee;
 
     // Atomic + no-overspend: hold the CASH with a CAS guard, then create the
