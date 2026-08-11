@@ -116,14 +116,23 @@ function toPackageRow(pkg: unknown): PackageRow {
 export const getEffectivePackage = cache(async function getEffectivePackage(
   userId: string
 ): Promise<PackageRow | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      packageId: true,
-      packageExpiresAt: true,
-      package: true,
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        packageId: true,
+        packageExpiresAt: true,
+        package: true,
+      },
+      // Accelerate edge cache: the user's plan changes rarely; serve stale
+      // through a transient DB blip instead of failing the request.
+      cacheStrategy: { ttl: 30, swr: 60 },
+    });
+  } catch {
+    // DB blip → degrade to the (resilient, memoized) default plan.
+    return defaultPackage().catch(() => null);
+  }
 
   if (!user) return defaultPackage();
 
@@ -190,52 +199,85 @@ export async function userAccessLevel(userId: string): Promise<number> {
   return pkg?.accessLevel ?? 0;
 }
 
-/**
- * The user's effective feature set = package flags with per-user overrides
- * applied. One query. Use `enabled.has(key)` for nav hiding + page gating.
- */
-// `React.cache` dedupes this per request — the (main) layout + several child
-// pages all resolve features in the same render, so this collapses ~7 identical
-// user queries into one.
-export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
-  userId: string
-): Promise<{
+export type FeatureResult = {
   pkg: PackageRow | null;
   overrides: FeatureOverrides;
   enabled: Set<PackageFeatureKey>;
-}> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      role: true,
-      packageExpiresAt: true,
-      package: true,
-      featureOverrides: true,
-    },
-  });
+};
 
-  const subActive =
-    user?.package &&
-    user.package.isActive &&
-    (user.packageExpiresAt == null ||
-      user.packageExpiresAt.getTime() > Date.now());
-  const pkg: PackageRow | null = subActive
-    ? (user!.package as unknown as PackageRow)
-    : await defaultPackage();
+// Cross-request memo for the per-navigation feature set. The (main) layout
+// resolves this on EVERY authenticated page load; React.cache only dedupes
+// within one render, so this short module TTL also cuts the repeat User⋈Package
+// join across navigations. Combined with the guard below, a transient DB blip
+// serves the last-known set instead of crashing the whole shell to "Try again".
+const _featCache = new Map<string, { value: FeatureResult; at: number }>();
+const FEAT_TTL_MS = 20_000;
 
-  const overrides = parseFeatureOverrides(user?.featureOverrides);
-  const enabled = new Set<PackageFeatureKey>();
-  for (const key of FEATURE_KEYS) {
-    if (resolveUserFeature(pkg, overrides, key)) enabled.add(key);
+/** Drop a user's cached feature set so a plan / override change reflects at
+ *  once (otherwise it self-heals within ~20-30s). No arg = clear everyone. */
+export function invalidateUserFeatures(userId?: string) {
+  if (userId) _featCache.delete(userId);
+  else _featCache.clear();
+}
+
+/**
+ * The user's effective feature set = package flags with per-user overrides
+ * applied. Use `enabled.has(key)` for nav hiding + page gating. Cached and
+ * fail-safe: never throws (returns last-known / default-plan features on error).
+ */
+export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
+  userId: string
+): Promise<FeatureResult> {
+  const cached = _featCache.get(userId);
+  if (cached && Date.now() - cached.at < FEAT_TTL_MS) return cached.value;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        packageExpiresAt: true,
+        package: true,
+        featureOverrides: true,
+      },
+      cacheStrategy: { ttl: 30, swr: 60 },
+    });
+
+    const subActive =
+      user?.package &&
+      user.package.isActive &&
+      (user.packageExpiresAt == null ||
+        user.packageExpiresAt.getTime() > Date.now());
+    const pkg: PackageRow | null = subActive
+      ? (user!.package as unknown as PackageRow)
+      : await defaultPackage();
+
+    const overrides = parseFeatureOverrides(user?.featureOverrides);
+    const enabled = new Set<PackageFeatureKey>();
+    for (const key of FEATURE_KEYS) {
+      if (resolveUserFeature(pkg, overrides, key)) enabled.add(key);
+    }
+    // Role-granted features (e.g. AGENCY → advertiser/agency console) union on
+    // top, unless a per-user override explicitly turns the feature OFF.
+    const roleFeatures = ROLE_FEATURES[(user?.role as UserRole) ?? "USER"] ?? [];
+    for (const key of roleFeatures) {
+      if (overrides[key] === false) continue;
+      enabled.add(key);
+    }
+    const value: FeatureResult = { pkg, overrides, enabled };
+    _featCache.set(userId, { value, at: Date.now() });
+    return value;
+  } catch {
+    // Fail-safe: ride out a DB blip on the last-known set, else degrade to the
+    // default plan's features. Never throw → the shell never hits "Try again".
+    if (cached) return cached.value;
+    const pkg = await defaultPackage().catch(() => null);
+    const enabled = new Set<PackageFeatureKey>();
+    for (const key of FEATURE_KEYS) {
+      if (packageHasFeature(pkg, key)) enabled.add(key);
+    }
+    return { pkg, overrides: {}, enabled };
   }
-  // Role-granted features (e.g. AGENCY → advertiser/agency console) union on top,
-  // unless the user has an explicit per-user override turning the feature OFF.
-  const roleFeatures = ROLE_FEATURES[(user?.role as UserRole) ?? "USER"] ?? [];
-  for (const key of roleFeatures) {
-    if (overrides[key] === false) continue;
-    enabled.add(key);
-  }
-  return { pkg, overrides, enabled };
 });
 
 /** True if the user can use a feature (override-aware). */

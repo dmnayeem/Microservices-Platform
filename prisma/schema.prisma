@@ -1,7 +1,11 @@
 // EarnGPT Database Schema
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  // CommonJS output avoids the ESM `import.meta.url` + top-level side-effect
+  // pattern in the generated client that crashed the Turbopack DEV server
+  // ("Expected export to be in eval context"), letting us keep fast Turbopack dev.
+  moduleFormat = "cjs"
 }
 
 datasource db {

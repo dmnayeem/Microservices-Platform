@@ -16,12 +16,13 @@ import {
  * Server-only — keeps prisma out of the client bundle.
  */
 export async function getLandingContent(): Promise<LandingContent> {
-  const merged: LandingContent = JSON.parse(
-    JSON.stringify(DEFAULT_LANDING_CONTENT)
-  );
+  const merged: LandingContent = structuredClone(DEFAULT_LANDING_CONTENT);
   try {
     const rows = await prisma.systemSetting.findMany({
       where: { category: "landing" },
+      // Landing/marketing pages read this on every render; changes are rare and
+      // admin edits already call invalidateSettingsCache — cache at the edge.
+      cacheStrategy: { ttl: 60, swr: 120 },
     });
     for (const row of rows) {
       if (!row.key.startsWith(LANDING_SETTING_KEY_PREFIX)) continue;

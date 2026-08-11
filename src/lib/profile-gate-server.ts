@@ -41,18 +41,24 @@ export async function getProfileGateState(
   const { requireProfileCompletion } = await getUiToggles();
   if (!requireProfileCompletion) return OPEN;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      avatar: true,
-      firstName: true,
-      lastName: true,
-      dateOfBirth: true,
-      gender: true,
-      country: true,
-      phone: true,
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        avatar: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        gender: true,
+        country: true,
+        phone: true,
+      },
+    });
+  } catch {
+    // Fail-open on a DB blip — don't crash/lock the page.
+    return OPEN;
+  }
   const snap: RequiredSnapshot = user ?? {};
   const progress = requiredProfileProgress(snap);
   const complete = isProfileComplete(snap);

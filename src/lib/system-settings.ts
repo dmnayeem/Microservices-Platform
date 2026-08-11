@@ -23,7 +23,11 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
     return (hit.value ?? fallback) as T;
   }
   try {
-    const row = await prisma.systemSetting.findUnique({ where: { key } });
+    const row = await prisma.systemSetting.findUnique({
+      where: { key },
+      // Accelerate edge cache complements the in-memory map for cold instances.
+      cacheStrategy: { ttl: 45, swr: 90 },
+    });
     const value =
       row?.value === undefined || row?.value === null ? null : row.value;
     _settingsCache.set(key, { value, at: Date.now() });
