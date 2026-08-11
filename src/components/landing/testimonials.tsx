@@ -31,7 +31,8 @@ export function Testimonials(props: Props) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {v.items.map((t, i) => (
+          {/* Landing shows at most 6 reviews (2 rows of 3); the rest stay hidden. */}
+          {v.items.slice(0, 6).map((t, i) => (
             <div
               key={i}
               className="mk-zoom relative p-6 rounded-2xl bg-(--mk-surface) border border-(--mk-border) shadow-sm hover:border-(--mk-border-strong)"
