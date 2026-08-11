@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Flag, Loader2 } from "lucide-react";
 import { BottomSheet } from "./bottom-sheet";
 

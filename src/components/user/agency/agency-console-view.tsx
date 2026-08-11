@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, EyeOff, Check, ArrowUpRight, Inbox } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type Priority = "URGENT" | "HIGH" | "NORMAL";
 

@@ -21,7 +21,7 @@ import { ROLE_CONFIG, type UserRole } from "@/lib/rbac";
 import { BulkActionsBar } from "@/components/admin/bulk-actions-bar";
 import { PackageBadge } from "@/components/user/profile/badges";
 import { userDisplayId } from "@/lib/display-id";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 interface UserRow {

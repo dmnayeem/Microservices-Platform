@@ -15,7 +15,7 @@ import {
   X as XIcon,
   Hash,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   ALL_LOCATION_TYPES,

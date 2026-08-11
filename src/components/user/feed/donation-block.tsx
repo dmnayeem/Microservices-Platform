@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import type { FeedPost } from "./social-feed-view.types";
 

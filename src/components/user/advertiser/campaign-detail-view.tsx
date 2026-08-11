@@ -16,7 +16,7 @@ import {
 import { StatCard } from "@/components/user/primitives/stat-card";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { promptDialog, confirmDialog } from "@/lib/confirm";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { CreateAdSheet } from "@/components/user/advertiser/create-ad-sheet";

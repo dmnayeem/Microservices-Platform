@@ -20,7 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 type ActivityKey =

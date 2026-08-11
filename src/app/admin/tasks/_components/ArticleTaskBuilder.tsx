@@ -36,7 +36,7 @@ import {
   sanitizePopupHtml,
   DEFAULT_POPUP_THEME,
 } from "@/lib/article-tasks";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Props {
   value: ArticleConfig;

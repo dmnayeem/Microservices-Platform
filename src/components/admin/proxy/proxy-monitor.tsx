@@ -10,7 +10,7 @@ import {
   Loader2,
   Save,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
 

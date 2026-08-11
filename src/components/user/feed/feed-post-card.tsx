@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { profileHref } from "@/lib/user-href";
 import { formatDistanceToNow } from "date-fns";

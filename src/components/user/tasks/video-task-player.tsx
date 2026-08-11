@@ -12,7 +12,7 @@ import {
   ExternalLink,
   CheckCircle2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import type { VideoConfig, EngagementKey } from "@/lib/video-tasks";
 import { formatDuration, engagementSteps } from "@/lib/video-tasks";

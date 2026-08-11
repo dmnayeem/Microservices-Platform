@@ -5,7 +5,7 @@ import { promptDialog } from "@/lib/confirm";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, Loader2, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { normalizeSocialConfig, getAction } from "@/lib/social-tasks";
 
 interface Props {

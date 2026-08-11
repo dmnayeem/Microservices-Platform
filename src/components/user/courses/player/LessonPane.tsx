@@ -16,7 +16,7 @@ import {
   Bookmark,
   Download,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { LessonVideoPlayer } from "./LessonVideoPlayer";
 import { LessonNotesPanel } from "./LessonNotesPanel";
 import { LessonBookmarksPanel } from "./LessonBookmarksPanel";

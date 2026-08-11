@@ -13,7 +13,7 @@ import {
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { SmartImage } from "@/components/user/primitives/smart-image";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 interface CartItem {

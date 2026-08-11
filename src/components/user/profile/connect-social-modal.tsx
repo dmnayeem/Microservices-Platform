@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import type { SocialAccount } from "./profile-view.types";
 import { PLATFORM_META, inp } from "./profile-view.constants";

@@ -11,7 +11,7 @@ import {
   Send,
 } from "lucide-react";
 import { Avatar } from "@/components/user/primitives/avatar";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";

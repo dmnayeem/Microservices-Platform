@@ -16,7 +16,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { MediaSelector } from "@/components/media/MediaSelector";

@@ -7,7 +7,7 @@
 //   uiToast.pending("Submitted — pending review");
 //
 // (Named `uiToast` to avoid clashing with the server-side `notifyUser` DB helper.)
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type ToastOpts = Parameters<typeof toast.success>[1];
 

@@ -27,7 +27,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { SurveyQuestionType } from "@/lib/survey-tasks";
 import { SURVEY_QUESTION_TYPE_LABEL } from "@/lib/survey-tasks";
 

@@ -7,7 +7,7 @@ import { StatCard } from "@/components/user/primitives/stat-card";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { promptDialog } from "@/lib/confirm";
 
 interface Campaign {

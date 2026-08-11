@@ -19,7 +19,7 @@ import {
   Zap,
   Trophy,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 

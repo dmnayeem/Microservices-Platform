@@ -4,7 +4,7 @@ import { confirmDialog } from "@/lib/confirm";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Plus,
   Loader2,

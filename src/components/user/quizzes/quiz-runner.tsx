@@ -16,7 +16,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 

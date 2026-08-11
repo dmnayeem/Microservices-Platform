@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, Play, Loader2, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Lesson {
   id: string;

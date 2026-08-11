@@ -19,7 +19,7 @@ import {
   Gavel,
   ShieldCheck,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   CATEGORIES,
   getCategory,

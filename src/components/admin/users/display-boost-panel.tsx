@@ -10,7 +10,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Props {
   userId: string;

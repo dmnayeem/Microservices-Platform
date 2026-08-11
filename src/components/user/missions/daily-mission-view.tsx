@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";

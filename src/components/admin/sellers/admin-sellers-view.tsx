@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Search, GraduationCap, Store, Megaphone, Check, Store as StoreIcon } from "lucide-react";
 
 type Cap = "sellCourses" | "sellMarketplace" | "advertiser";

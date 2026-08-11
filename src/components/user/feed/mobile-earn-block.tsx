@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Coins, Flame, Gift, Check, Loader2, Zap } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { notifyCenter } from "@/lib/notify-center";
 import {

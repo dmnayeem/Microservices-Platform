@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   Info,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import {
   type SurveyConfig,

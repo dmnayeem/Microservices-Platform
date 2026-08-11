@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Loader2, Save, Megaphone } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { format } from "date-fns";
 
 interface Campaign {

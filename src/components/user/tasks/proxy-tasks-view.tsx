@@ -20,7 +20,7 @@ import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";

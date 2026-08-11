@@ -18,7 +18,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { RenderedContent } from "@/components/user/feed/feed-content";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { format } from "date-fns";
 
 interface GroupPost {

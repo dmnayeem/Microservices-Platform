@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Send, Share2, Sparkles, Wallet } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type TaskType = "SOCIAL" | "CUSTOM";
 

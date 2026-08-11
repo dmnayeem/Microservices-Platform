@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Clock, Loader2, Trophy, AlertTriangle, ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import {

@@ -37,7 +37,7 @@ import { OfferPanel } from "./offer-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { format, formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Megaphone, Save } from "lucide-react";
 import type { PromoPackage } from "@/lib/promotion";
 

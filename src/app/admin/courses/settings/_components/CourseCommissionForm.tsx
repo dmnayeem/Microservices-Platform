@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Save, Percent } from "lucide-react";
 import type { CourseCommissionConfig } from "@/lib/course-commission";
 

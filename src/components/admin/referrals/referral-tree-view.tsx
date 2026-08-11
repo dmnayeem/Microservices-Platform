@@ -14,7 +14,7 @@ import {
   Search,
   Network,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Avatar } from "@/components/user/primitives/avatar";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, Eye, EyeOff, Loader2, Key } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface ChangePasswordModalProps {
   userId: string;

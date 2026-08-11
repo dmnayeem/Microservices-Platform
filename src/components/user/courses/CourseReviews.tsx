@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Star, Loader2, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar } from "@/components/user/primitives/avatar";

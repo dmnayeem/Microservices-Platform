@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Check, X, Loader2 } from "lucide-react";
 
 export function CreatorDecisionButtons({ id }: { id: string }) {

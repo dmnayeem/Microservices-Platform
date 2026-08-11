@@ -10,7 +10,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface SubmissionActionsProps {
   submissionId: string;

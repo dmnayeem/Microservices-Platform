@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   Circle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { profileHref } from "@/lib/user-href";
 import { missionItemLabel } from "@/lib/mission-labels";

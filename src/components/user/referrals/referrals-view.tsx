@@ -14,7 +14,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 // `qrcode` is loaded lazily (only when the QR panel renders) so it stays out of

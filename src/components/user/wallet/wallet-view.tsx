@@ -4,7 +4,7 @@ import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {
   Wallet,

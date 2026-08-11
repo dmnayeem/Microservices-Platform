@@ -19,7 +19,7 @@ import {
   Zap,
   GripVertical,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const TASK_TYPES = [

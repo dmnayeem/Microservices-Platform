@@ -20,7 +20,7 @@ import {
   Zap,
   Clock,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { format } from "date-fns";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 

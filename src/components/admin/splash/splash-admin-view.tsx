@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, ArrowUp, ArrowDown, Eye } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import {
   DEFAULT_SPLASH,

@@ -7,7 +7,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type Tab = "available" | "submissions";
 

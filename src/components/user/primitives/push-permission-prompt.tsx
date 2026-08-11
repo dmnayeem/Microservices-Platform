@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { subscribeToPush } from "@/lib/push-client";
 
 const STORAGE_KEY = "push_prompt_dismissed_at";

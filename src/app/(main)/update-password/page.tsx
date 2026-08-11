@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function UpdatePasswordPage() {
   const router = useRouter();

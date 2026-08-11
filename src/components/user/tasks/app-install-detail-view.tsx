@@ -14,7 +14,7 @@ import {
   ExternalLink,
   Download,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";

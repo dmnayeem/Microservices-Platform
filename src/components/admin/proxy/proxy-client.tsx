@@ -13,7 +13,7 @@ import {
   Trash2,
   Globe,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   AdminTable,
   type AdminColumn,

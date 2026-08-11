@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Plus, X, Send, Upload, Image as ImageIcon } from "lucide-react";
 
 export function BecomeTutorForm() {

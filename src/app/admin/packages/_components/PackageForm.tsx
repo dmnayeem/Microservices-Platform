@@ -20,7 +20,7 @@ import {
   Power,
   ListChecks,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type Mode = "create" | "edit";
 

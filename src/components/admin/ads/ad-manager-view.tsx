@@ -31,7 +31,7 @@ import {
   Ban,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
 import { SmartImage } from "@/components/user/primitives/smart-image";

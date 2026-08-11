@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 
 export const inAppToast = {

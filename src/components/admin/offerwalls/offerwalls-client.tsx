@@ -16,7 +16,7 @@ import {
   EyeOff,
   Copy,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Offerwall {
   id: string;

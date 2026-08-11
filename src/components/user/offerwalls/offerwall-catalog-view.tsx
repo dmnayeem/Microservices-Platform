@@ -11,7 +11,7 @@ import {
   ArrowLeft,
   Coins,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 

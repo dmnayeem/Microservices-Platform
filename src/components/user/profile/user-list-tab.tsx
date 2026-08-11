@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Users, Coins, UserCheck, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { profileHref } from "@/lib/user-href";

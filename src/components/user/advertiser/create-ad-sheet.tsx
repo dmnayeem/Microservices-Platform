@@ -6,7 +6,7 @@ import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { AD_PLACEMENTS } from "@/lib/ad-placements";

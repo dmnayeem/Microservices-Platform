@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Check, X } from "lucide-react";
 
 export function ApplicationDecisionButtons({

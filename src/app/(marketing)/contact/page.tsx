@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Mail, MessageSquare, Clock, Globe2, Loader2, CheckCircle2, LifeBuoy } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { SUPPORT_EMAIL, COMPANY_NAME } from "@/config/company";
 
 const inp = "w-full rounded-xl bg-(--mk-surface) border border-(--mk-border) px-4 py-3 text-(--mk-text) placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500/40";

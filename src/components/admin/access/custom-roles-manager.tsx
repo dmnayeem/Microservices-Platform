@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Plus, Trash2, Loader2, Pencil, Shield, ChevronDown, ChevronRight, Check, Minus } from "lucide-react";
 import {
   PERMISSION_CATALOG,

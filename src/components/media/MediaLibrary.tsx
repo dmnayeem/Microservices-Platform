@@ -5,7 +5,7 @@ import { Search, Grid3x3, List, Upload, Edit, Trash2, X, Loader2, Image as Image
 import { Button } from "@/components/ui/button";
 import type { MediaItem, MediaFilter } from "@/types/media";
 import { MediaUploader } from "./MediaUploader";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export function MediaLibrary() {

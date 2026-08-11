@@ -9,7 +9,7 @@ import {
   AlertCircle,
   DollarSign,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface WithdrawalActionsProps {
   withdrawalId: string;

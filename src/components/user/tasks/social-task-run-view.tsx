@@ -15,7 +15,7 @@ import {
   Lock,
   ShieldCheck,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import { cn } from "@/lib/utils";
 import {

@@ -19,7 +19,7 @@ import {
   History,
 } from "lucide-react";
 import { format } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 

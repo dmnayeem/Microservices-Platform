@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Loader2, Upload, X, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { CustomField, CustomAnswer } from "@/lib/custom-tasks";
 
 interface Props {

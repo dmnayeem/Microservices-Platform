@@ -11,7 +11,7 @@ import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embe
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { format } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";

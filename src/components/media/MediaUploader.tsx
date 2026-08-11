@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, X, Loader2, CheckCircle, AlertCircle, File, Image as ImageIcon } from "lucide-react";
 import { uploadMediaFile } from "@/lib/s3-multipart-upload";
 import type { UploadProgress, MediaItem } from "@/types/media";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface MediaUploaderProps {
   onUploadComplete?: (mediaItems: MediaItem[]) => void;

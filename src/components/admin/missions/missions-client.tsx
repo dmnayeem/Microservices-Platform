@@ -5,7 +5,7 @@ import { confirmDialog } from "@/lib/confirm";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X, Loader2, Save, Target, Pencil, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   AdminTable,
   type AdminColumn,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldCheck, Banknote } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { BalanceCard } from "@/components/user/primitives/balance-card";

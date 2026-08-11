@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TAG_OPTIONS } from "./profile-view.constants";

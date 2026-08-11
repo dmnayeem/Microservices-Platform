@@ -23,7 +23,7 @@ import {
   Slash,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Avatar as AvatarPrimitive } from "@/components/user/primitives/avatar";

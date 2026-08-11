@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Loader2, Sparkles, Crown, Zap, Shield, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { TIER_GRADIENT } from "@/lib/tiers";

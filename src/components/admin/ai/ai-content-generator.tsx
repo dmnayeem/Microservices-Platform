@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles, Loader2, Copy, RefreshCw, Check } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const TYPES = [
   { value: "quiz", label: "Quiz Questions" },

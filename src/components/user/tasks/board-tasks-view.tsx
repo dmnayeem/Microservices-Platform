@@ -24,7 +24,7 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { format } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import { ensureAdsAllowed } from "@/lib/adblock";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { FeedPost } from "./social-feed-view.types";

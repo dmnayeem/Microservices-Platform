@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2, Save, ChevronDown, ChevronUp } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 
 interface Lesson {

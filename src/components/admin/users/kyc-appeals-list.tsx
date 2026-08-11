@@ -12,7 +12,7 @@ import {
   FileText,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";

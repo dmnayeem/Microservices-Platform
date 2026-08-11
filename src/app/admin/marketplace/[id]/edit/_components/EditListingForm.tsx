@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X, Loader2, Package, Image as ImageIcon, Trash2, Plus, ArrowLeft, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import { MediaSelector } from "@/components/media/MediaSelector";
 import { SmartImage } from "@/components/user/primitives/smart-image";

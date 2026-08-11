@@ -12,7 +12,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface KycReviewActionsProps {
   documentId: string;

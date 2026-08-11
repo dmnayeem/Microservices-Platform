@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, Loader2, Gamepad2, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { SmartImage } from "@/components/user/primitives/smart-image";

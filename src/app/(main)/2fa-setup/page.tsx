@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, ShieldCheck, Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function TwoFactorSetupPage() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);

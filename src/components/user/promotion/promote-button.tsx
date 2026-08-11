@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Megaphone, Loader2, Coins, DollarSign } from "lucide-react";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { newIdempotencyKey } from "@/lib/idempotency-key";

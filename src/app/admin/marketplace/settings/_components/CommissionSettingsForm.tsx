@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save, Percent, Info } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { CommissionRatesConfig } from "@/lib/marketplace-commission";
 
 interface Props {

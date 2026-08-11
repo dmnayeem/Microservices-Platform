@@ -17,7 +17,7 @@ import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 import { RenderedContent } from "@/components/user/feed/feed-content";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   SocialStatsGroup,

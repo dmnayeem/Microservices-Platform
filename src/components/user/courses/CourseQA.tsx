@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, MessageCircleQuestion, Pin, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { SmartImage } from "@/components/user/primitives/smart-image";

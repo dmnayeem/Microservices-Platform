@@ -134,7 +134,30 @@ export async function POST(request: NextRequest) {
   return withIdempotency(request, session.user.id, async () => {
   try {
     const body = await request.json();
-    const { amount, method, accountDetails } = body;
+    const { amount } = body;
+    let method = body.method;
+    let accountDetails = body.accountDetails;
+
+    // The client sends the saved method's id (`methodId`). Resolve it
+    // server-side so we trust the stored enum + account details (never the
+    // client-supplied ones) and confirm the method belongs to this user.
+    if (body.methodId) {
+      const pm = await prisma.userPaymentMethod.findFirst({
+        where: { id: body.methodId, userId: session.user.id },
+        select: { method: true, accountNumber: true, accountName: true },
+      });
+      if (!pm) {
+        return NextResponse.json(
+          { error: "Payment method not found" },
+          { status: 400 }
+        );
+      }
+      method = pm.method;
+      accountDetails = {
+        accountNumber: pm.accountNumber,
+        accountName: pm.accountName ?? undefined,
+      };
+    }
 
     // Validate payment method
     if (!Object.keys(PaymentMethod).includes(method)) {

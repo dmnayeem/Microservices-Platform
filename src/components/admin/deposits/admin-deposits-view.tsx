@@ -3,7 +3,7 @@
 import { confirmDialog } from "@/lib/confirm";
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, Check, X, Download, Search } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
 
 interface Person { name: string | null; email: string }

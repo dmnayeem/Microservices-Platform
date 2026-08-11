@@ -13,7 +13,7 @@ import {
   Trash2,
   Image as ImageIcon,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   VerifiedBadge,

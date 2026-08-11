@@ -11,7 +11,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 

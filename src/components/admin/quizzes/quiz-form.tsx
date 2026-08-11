@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Sparkles, Loader2, Save, X } from "lucide-react";
 // (icons all imported above)
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 
 interface Question {

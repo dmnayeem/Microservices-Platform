@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Users } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { EmptyState } from "@/components/user/primitives/empty-state";

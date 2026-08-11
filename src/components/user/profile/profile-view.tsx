@@ -23,7 +23,7 @@ import {
   Coins,
   Briefcase,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { LifetimeStatsGroup } from "@/components/user/profile/profile-stat-groups";
 import { useTheme, type Accent } from "@/components/providers/theme-provider";

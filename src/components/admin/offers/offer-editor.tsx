@@ -15,7 +15,7 @@ import {
   Loader2,
   ArrowLeft,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 // Tiptap is heavy (~200KB) and only mounts inside this admin editor — load it

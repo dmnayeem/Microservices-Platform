@@ -9,7 +9,7 @@ import {
   Percent,
   Hash,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { CategoryField } from "@/lib/marketplace-categories";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 

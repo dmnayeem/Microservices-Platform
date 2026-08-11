@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
