@@ -122,6 +122,27 @@ export async function POST(
       );
     }
 
+    // Step-based VIDEO: every step that requires a screenshot must have one.
+    {
+      const vcfg = task.videoConfig as VideoConfig | null;
+      if (task.type === "VIDEO" && vcfg?.steps?.length) {
+        const requiredShots = vcfg.steps.filter(
+          (s) => s.requireScreenshot
+        ).length;
+        const provided = Array.isArray(proofImages)
+          ? proofImages.filter(
+              (u: unknown) => typeof u === "string" && u.trim()
+            ).length
+          : 0;
+        if (provided < requiredShots) {
+          return NextResponse.json(
+            { error: "Please upload a screenshot for every step." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Check if the required watch time was met.
     // VIDEO tasks are gated on videoConfig.watchSeconds (what the player enforces),
     // NOT task.duration — the two can diverge (duration is often the full video
@@ -786,6 +807,15 @@ export async function POST(
       (task.videoConfig as VideoConfig | null)?.proofRequirements?.screenshot
     ) {
       shouldAutoApprove = false;
+    }
+
+    // Step-based VIDEO tasks respect the per-task auto-approve toggle: OFF →
+    // Pending (admin approval pays out), ON → auto-approve after the ad.
+    {
+      const vcfg = task.videoConfig as VideoConfig | null;
+      if (task.type === "VIDEO" && vcfg?.steps && vcfg.steps.length > 0) {
+        shouldAutoApprove = !uniqueKeyMismatch && vcfg.autoApprove === true;
+      }
     }
 
     // Anti-fraud gate: even if the submission qualifies for auto-approval, hold

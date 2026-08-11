@@ -31,11 +31,15 @@ export function AdInterstitialOverlay({
   onDone,
   skipSeconds = 5,
   placement = "GAME_INTERSTITIAL",
+  allowClose = false,
 }: {
   open: boolean;
   onDone: () => void;
   skipSeconds?: number;
   placement?: AdPlacementName;
+  /** Show an always-available × so the viewer can close the ad immediately,
+   *  without waiting out the forced-watch countdown (used for video tasks). */
+  allowClose?: boolean;
 }) {
   const [ad, setAd] = useState<Ad | null>(null);
   const [left, setLeft] = useState(skipSeconds);
@@ -102,6 +106,16 @@ export function AdInterstitialOverlay({
       <span className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider text-white/60">
         Sponsored
       </span>
+      {allowClose && (
+        <button
+          type="button"
+          onClick={onDone}
+          aria-label="Close ad"
+          className="absolute top-3 right-3 z-10 w-9 h-9 grid place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Creative — pick by what the ad actually carries (a house video is
           stored as type LOCAL with a videoUrl), so key off presence not type. */}

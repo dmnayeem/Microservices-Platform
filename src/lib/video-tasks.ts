@@ -37,6 +37,23 @@ export interface VideoEngagement {
   commentTemplate?: string;
 }
 
+/**
+ * One sequential proof step shown after the video ends. Steps unlock in order:
+ * the user does the action, uploads a screenshot (if required), presses Save →
+ * the step completes and the next unlocks. When all steps are done a Complete
+ * button appears (→ interstitial ad → submit). Used instead of the legacy flat
+ * engagement checklist when `steps` is set on the config.
+ */
+export interface VideoStep {
+  id: string;
+  /** Instruction shown to the user, e.g. "Subscribe to the channel". */
+  label: string;
+  /** Optional external link the user opens to perform the action. */
+  actionUrl?: string;
+  /** Require a screenshot upload to complete this step. */
+  requireScreenshot: boolean;
+}
+
 export interface VideoConfig {
   videoUrl: string;
   provider: VideoProvider;
@@ -52,8 +69,21 @@ export interface VideoConfig {
   };
   uniqueKey?: string;
   uniqueKeyHint?: string;
-  /** Optional engagement steps (subscribe/like/comment). */
+  /** Optional engagement steps (subscribe/like/comment) — legacy flat checklist. */
   engagement?: VideoEngagement;
+  /** Ordered sequential proof steps (new flow). When non-empty, the player
+   *  shows steps one at a time with per-step screenshot upload + Save. */
+  steps?: VideoStep[];
+  /** For step-based video tasks: auto-approve on submit (→ instant points) vs
+   *  hold for admin review (→ Pending, points on approval). Default false. */
+  autoApprove?: boolean;
+}
+
+/** Ordered sequential proof steps for a task (empty when not configured). */
+export function effectiveSteps(
+  cfg: VideoConfig | null | undefined
+): VideoStep[] {
+  return cfg?.steps ?? [];
 }
 
 export type EngagementKey = "subscribe" | "like" | "comment";

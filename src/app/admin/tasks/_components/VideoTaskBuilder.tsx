@@ -8,9 +8,17 @@ import {
   Send,
   KeyRound,
   AlertCircle,
+  ListChecks,
+  Camera,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  ShieldCheck,
 } from "lucide-react";
 import {
   type VideoConfig,
+  type VideoStep,
   detectProvider,
   getProviderMeta,
   formatDuration,
@@ -301,6 +309,152 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
                   className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
                 />
               </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Sequential proof steps (new flow) — one at a time, screenshot per step */}
+      {(() => {
+        const steps = value.steps ?? [];
+        const setSteps = (next: VideoStep[]) =>
+          onChange({ ...value, steps: next });
+        const addStep = () =>
+          setSteps([
+            ...steps,
+            { id: crypto.randomUUID(), label: "", requireScreenshot: true },
+          ]);
+        const updateStep = (i: number, patch: Partial<VideoStep>) =>
+          setSteps(steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+        const removeStep = (i: number) =>
+          setSteps(steps.filter((_, idx) => idx !== i));
+        const moveStep = (i: number, dir: -1 | 1) => {
+          const j = i + dir;
+          if (j < 0 || j >= steps.length) return;
+          const next = [...steps];
+          [next[i], next[j]] = [next[j], next[i]];
+          setSteps(next);
+        };
+        const inp =
+          "w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500";
+        return (
+          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-bold text-white inline-flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-indigo-400" />
+                Proof steps <span className="text-gray-500 font-normal">(sequential)</span>
+              </p>
+              <button
+                type="button"
+                onClick={addStep}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add step
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 -mt-1">
+              Shown one at a time after the video: the user does each step,
+              uploads a screenshot, and taps Save to unlock the next. When all
+              steps are done a Complete button appears (→ ad → submit). Leave
+              empty to use the simple checklist above.
+            </p>
+
+            {steps.length === 0 ? (
+              <p className="text-xs text-gray-600">No steps yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {steps.map((s, i) => (
+                  <div
+                    key={s.id}
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-3 space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400">
+                        Step {i + 1}
+                      </span>
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveStep(i, -1)}
+                          disabled={i === 0}
+                          className="p-1 rounded text-gray-400 hover:text-white disabled:opacity-30"
+                          aria-label="Move up"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveStep(i, 1)}
+                          disabled={i === steps.length - 1}
+                          className="p-1 rounded text-gray-400 hover:text-white disabled:opacity-30"
+                          aria-label="Move down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeStep(i)}
+                          className="p-1 rounded text-red-400 hover:text-red-300"
+                          aria-label="Remove step"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      value={s.label}
+                      onChange={(e) => updateStep(i, { label: e.target.value })}
+                      placeholder="Instruction, e.g. Subscribe to the channel"
+                      className={inp}
+                    />
+                    <input
+                      value={s.actionUrl ?? ""}
+                      onChange={(e) =>
+                        updateStep(i, { actionUrl: e.target.value })
+                      }
+                      placeholder="Action link (optional), e.g. https://youtube.com/@channel"
+                      className={inp}
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={s.requireScreenshot}
+                        onChange={(e) =>
+                          updateStep(i, { requireScreenshot: e.target.checked })
+                        }
+                        className="rounded bg-gray-800 border-gray-600 text-indigo-500"
+                      />
+                      <Camera className="w-3.5 h-3.5" />
+                      Require screenshot
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {steps.length > 0 && (
+              <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-800 bg-gray-900 cursor-pointer hover:border-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!!value.autoApprove}
+                  onChange={(e) =>
+                    onChange({ ...value, autoApprove: e.target.checked })
+                  }
+                  className="mt-0.5 rounded bg-gray-800 border-gray-600 text-emerald-500"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-white inline-flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    Auto-approve
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    On: the user is approved right after the ad (instant points).
+                    Off: the submission goes to <b>Pending</b> — you approve it in
+                    the review queue to pay out.
+                  </p>
+                </div>
+              </label>
             )}
           </div>
         );

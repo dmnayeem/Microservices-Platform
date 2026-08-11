@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Megaphone } from "lucide-react";
+import { ExternalLink, Megaphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
 import { placementSizeKey } from "@/lib/ad-placements";
@@ -54,6 +54,8 @@ interface AdRendererProps {
   // impression was already counted server-side). Rotation continues client-side.
   initialAd?: AdResponse | null;
   initialRotateMs?: number;
+  /** Show a × so the viewer can dismiss the ad (used for the video overlay slots). */
+  dismissible?: boolean;
 }
 
 // How many recently-shown ad ids to remember per placement, so reloads +
@@ -65,10 +67,12 @@ export function AdRenderer({
   className,
   initialAd = null,
   initialRotateMs = 0,
+  dismissible = false,
 }: AdRendererProps) {
   const [ad, setAd] = useState<AdResponse | null>(initialAd);
   const [error, setError] = useState(false);
   const [fading, setFading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   // Reserve space during the first fetch (no SSR ad) so the slot doesn't jump.
   const [loading, setLoading] = useState(!initialAd);
   // Rotation interval (ms) reported by the server; 0 = don't auto-rotate
@@ -190,7 +194,7 @@ export function AdRenderer({
     };
   }, [loadAd, initialAd, placement]);
 
-  if (error) return null;
+  if (error || dismissed) return null;
   if (!ad) {
     // Truly no ad → collapse (no permanent blank box).
     if (!loading) return null;
@@ -247,7 +251,17 @@ export function AdRenderer({
     ad.html
   ) {
     return (
-      <div className={cn("mx-auto", className)} style={outerStyle}>
+      <div className={cn("relative mx-auto", className)} style={outerStyle}>
+        {dismissible && (
+          <button
+            type="button"
+            aria-label="Hide ad"
+            onClick={() => setDismissed(true)}
+            className="absolute top-1.5 left-1.5 z-20 w-6 h-6 grid place-items-center rounded-full bg-black/60 backdrop-blur text-white/70 hover:text-white hover:bg-black/80"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
         <SandboxedAdFrame
           html={ad.html}
           height={dim?.h ?? 250}
@@ -273,6 +287,20 @@ export function AdRenderer({
         <Megaphone className="w-2.5 h-2.5" />
         Sponsored
       </span>
+      {dismissible && (
+        <button
+          type="button"
+          aria-label="Hide ad"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDismissed(true);
+          }}
+          className="absolute top-2 left-2 z-20 w-6 h-6 grid place-items-center rounded-full bg-black/60 backdrop-blur text-white/70 hover:text-white hover:bg-black/80"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
       {ad.impressionPixel ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={ad.impressionPixel} alt="" width={1} height={1} className="absolute bottom-0 right-0 opacity-0 pointer-events-none" />

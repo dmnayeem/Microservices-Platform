@@ -15,11 +15,13 @@ import {
 import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import type { VideoConfig, EngagementKey } from "@/lib/video-tasks";
-import { formatDuration, engagementSteps } from "@/lib/video-tasks";
+import { formatDuration, engagementSteps, effectiveSteps } from "@/lib/video-tasks";
 import { confirmDialog } from "@/lib/confirm";
+import { cn } from "@/lib/utils";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { AdInterstitialOverlay } from "@/components/user/primitives/ad-interstitial-overlay";
 import { VideoOverlayAd } from "@/components/user/primitives/video-overlay-ad";
+import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 
 const ReactPlayer = dynamic(() => import("react-player"), {
   ssr: false,
@@ -77,6 +79,15 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
   });
   const allEngDone = engSteps.every((s) => engDone[s.key]);
   const [copiedComment, setCopiedComment] = useState(false);
+  // Sequential proof steps (new flow): shown one at a time after the video.
+  // `stepIndex` = how many steps are done (the active step is at this index);
+  // `stepShots` holds the uploaded screenshot URL per step id.
+  const steps = useMemo(() => effectiveSteps(cfg), [cfg]);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [stepShots, setStepShots] = useState<Record<string, string>>({});
+  // True once the user presses Complete — opens the outro ad, then submits.
+  const [completePressed, setCompletePressed] = useState(false);
+  const allStepsDone = steps.length > 0 && stepIndex >= steps.length;
   // Interstitial ad gates — playback waits for the intro ad; the reward flow
   // waits for the outro ad. Both resolve immediately when no ad is available.
   const [introAdDone, setIntroAdDone] = useState(false);
@@ -220,8 +231,9 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
   // Auto-submit on complete (if configured & nothing to confirm)
   const needsProofForm =
     proofReq.screenshot || proofReq.uniqueKey;
-  // Engagement steps also require a manual confirm, so they block auto-submit.
-  const needsInteraction = needsProofForm || engSteps.length > 0;
+  // Engagement/step proof also require manual confirm, so they block auto-submit.
+  const needsInteraction =
+    needsProofForm || engSteps.length > 0 || steps.length > 0;
   useEffect(() => {
     if (phase !== "complete") return;
     if (!outroAdDone) return; // let the outro interstitial finish first
@@ -231,6 +243,27 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
     void doSubmit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, autoSubmit, needsInteraction, outroAdDone]);
+
+  // Step flow: after the user presses Complete and the outro ad is closed,
+  // create the submission.
+  useEffect(() => {
+    if (steps.length === 0) return;
+    if (!completePressed || !outroAdDone) return;
+    if (submittedRef.current) return;
+    void doSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completePressed, outroAdDone]);
+
+  // Advance to the next step (current step's screenshot must be uploaded).
+  const saveStep = () => {
+    const s = steps[stepIndex];
+    if (!s) return;
+    if (s.requireScreenshot && !stepShots[s.id]?.trim()) {
+      toast.error("Upload a screenshot for this step first");
+      return;
+    }
+    setStepIndex((i) => Math.min(i + 1, steps.length));
+  };
 
   const doSubmit = async () => {
     if (submittedRef.current) return;
@@ -244,6 +277,15 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
     }
     if (!allEngDone) {
       toast.error("Please complete all the steps first");
+      return;
+    }
+    // Sequential steps: every required-screenshot step must have an upload.
+    const stepImages = steps.map((s) => stepShots[s.id] ?? "");
+    if (
+      steps.length > 0 &&
+      steps.some((s, i) => s.requireScreenshot && !stepImages[i]?.trim())
+    ) {
+      toast.error("Upload a screenshot for every step");
       return;
     }
     submittedRef.current = true;
@@ -260,7 +302,12 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
           submissionId,
           videoDuration: durationRef.current || undefined,
           proof: videoUrl,
-          proofImages: screenshotUrl ? [screenshotUrl] : [],
+          proofImages:
+            steps.length > 0
+              ? stepImages.filter((u) => u.trim())
+              : screenshotUrl
+                ? [screenshotUrl]
+                : [],
           uniqueKey,
           engagement: engSteps.length
             ? engSteps.reduce(
@@ -528,12 +575,12 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
         {/* Sponsored slots above and below the video (opt-in; null when no ad) */}
         <div className="absolute top-14 inset-x-0 z-30 px-3 pointer-events-none">
           <div className="pointer-events-auto max-w-md mx-auto">
-            <AdRenderer placement="VIDEO_ABOVE" />
+            <AdRenderer placement="VIDEO_ABOVE" dismissible />
           </div>
         </div>
         <div className="absolute bottom-28 inset-x-0 z-30 px-3 pointer-events-none">
           <div className="pointer-events-auto max-w-md mx-auto">
-            <AdRenderer placement="VIDEO_BELOW" />
+            <AdRenderer placement="VIDEO_BELOW" dismissible />
           </div>
         </div>
 
@@ -581,6 +628,94 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
 
         {phase === "complete" && (
           <div className="space-y-3">
+            {steps.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-white">
+                  Finish these steps to earn:
+                </p>
+                {steps.map((s, i) => {
+                  const done = i < stepIndex;
+                  const active = i === stepIndex;
+                  const shot = stepShots[s.id] ?? "";
+                  return (
+                    <div
+                      key={s.id}
+                      className={cn(
+                        "rounded-lg border p-2.5 space-y-2 transition-colors",
+                        done
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : active
+                            ? "border-indigo-500/40 bg-gray-900"
+                            : "border-gray-800 bg-gray-950 opacity-50"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-white inline-flex items-center gap-1.5">
+                          {done ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          ) : (
+                            <span className="text-xs font-bold text-gray-500">
+                              {i + 1}.
+                            </span>
+                          )}
+                          {s.label || `Step ${i + 1}`}
+                        </span>
+                        {active && s.actionUrl && (
+                          <a
+                            href={s.actionUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-semibold shrink-0"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Open
+                          </a>
+                        )}
+                      </div>
+                      {active && (
+                        <>
+                          {s.requireScreenshot && (
+                            <ProofImageUpload
+                              value={shot}
+                              onChange={(url) =>
+                                setStepShots((p) => ({ ...p, [s.id]: url }))
+                              }
+                              placeholder="Upload a screenshot of this step"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={saveStep}
+                            disabled={s.requireScreenshot && !shot.trim()}
+                            className="w-full py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Save &amp; continue
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+                {allStepsDone && (
+                  <button
+                    type="button"
+                    onClick={() => setCompletePressed(true)}
+                    disabled={busy}
+                    className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {busy ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    Complete
+                  </button>
+                )}
+              </div>
+            )}
+            {steps.length === 0 && (
+              <>
             {engSteps.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-white">
@@ -702,6 +837,8 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
                   : "Complete the steps above"}
               </button>
             )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -711,14 +848,19 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
       <AdInterstitialOverlay
         open={!introAdDone}
         placement="VIDEO_INTERSTITIAL"
+        allowClose
         onDone={() => setIntroAdDone(true)}
       />
 
       {/* Outro interstitial — shown once watching completes, before the reward
           is claimed. Also resolves immediately when no ad is available. */}
       <AdInterstitialOverlay
-        open={phase === "complete" && !outroAdDone}
+        open={
+          (steps.length > 0 ? completePressed : phase === "complete") &&
+          !outroAdDone
+        }
         placement="VIDEO_INTERSTITIAL"
+        allowClose
         onDone={() => setOutroAdDone(true)}
       />
     </div>
