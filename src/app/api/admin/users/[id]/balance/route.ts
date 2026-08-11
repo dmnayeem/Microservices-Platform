@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { lt } from "@/lib/money";
+import { getPointsPerUsd } from "@/lib/economy";
 import { z } from "zod";
 
 const adjustBalanceSchema = z.object({
@@ -89,6 +90,12 @@ export async function POST(
       }
     }
 
+    // Points ↔ USD rate: a points gift must also raise lifetime `totalEarnings`
+    // (the profile "total points" is derived from it), matching the bulk-adjust
+    // route and every normal earn path — otherwise gifted points never show in
+    // the profile total.
+    const pointsPerUsd = await getPointsPerUsd();
+
     // Update user balance/progression and create transaction
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -99,6 +106,12 @@ export async function POST(
           type === "cash" ? { increment: adjustmentAmount } : undefined,
         level: type === "level" ? { increment: adjustmentAmount } : undefined,
         xp: type === "xp" ? { increment: adjustmentAmount } : undefined,
+        // Only positive points credits raise lifetime earnings (a deduct never
+        // lowers lifetime earned — mirrors the bulk route).
+        totalEarnings:
+          type === "points" && adjustmentAmount > 0
+            ? { increment: adjustmentAmount / pointsPerUsd }
+            : undefined,
       },
     });
 
@@ -109,7 +122,12 @@ export async function POST(
           userId: id,
           type: action === "add" ? "BONUS" : "PENALTY",
           points: type === "points" ? adjustmentAmount : 0,
-          amount: type === "cash" ? adjustmentAmount : 0,
+          amount:
+            type === "cash"
+              ? adjustmentAmount
+              : type === "points"
+              ? adjustmentAmount / pointsPerUsd
+              : 0,
           description:
             reason || `Admin ${action === "add" ? "credit" : "debit"} - ${type}`,
           status: "COMPLETED",
