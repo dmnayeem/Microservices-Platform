@@ -4,23 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import {
   isSuperAdmin,
-  isPermission,
-  stripProtectedForRole,
-  type Permission,
+  sanitizeCustomRolePermissions,
   type UserRole,
 } from "@/lib/rbac";
 import { z } from "zod";
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "role";
-
-/** Keep only real permissions and drop protected caps (finance + admins.manage). */
-export function sanitizeCustomRolePermissions(raw: unknown): string[] {
-  const list = Array.isArray(raw) ? raw : [];
-  const set = new Set<Permission>(list.filter(isPermission) as Permission[]);
-  // "ADMIN" role → strips finance + admins.manage (custom roles never hold them).
-  return Array.from(stripProtectedForRole(set, "ADMIN"));
-}
 
 const schema = z.object({
   name: z.string().min(1).max(50),

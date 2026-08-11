@@ -449,6 +449,15 @@ export function isPermission(v: unknown): v is Permission {
   return typeof v === "string" && ALL_PERMISSION_SET.has(v as Permission);
 }
 
+/** Keep only real permissions and drop protected caps (finance + admins.manage).
+ *  Used when creating/updating custom roles — custom roles never hold them. */
+export function sanitizeCustomRolePermissions(raw: unknown): string[] {
+  const list = Array.isArray(raw) ? raw : [];
+  const set = new Set<Permission>(list.filter(isPermission) as Permission[]);
+  // "ADMIN" role → strips finance + admins.manage.
+  return Array.from(stripProtectedForRole(set, "ADMIN"));
+}
+
 /** Sparse per-user permission grants/denials (true = grant, false = deny). */
 export type PermissionOverrides = Partial<Record<Permission, boolean>>;
 

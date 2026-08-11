@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
-import { isSuperAdmin, type UserRole } from "@/lib/rbac";
-import { sanitizeCustomRolePermissions } from "../route";
+import {
+  isSuperAdmin,
+  sanitizeCustomRolePermissions,
+  type UserRole,
+} from "@/lib/rbac";
 import { z } from "zod";
 
 interface RouteParams {
