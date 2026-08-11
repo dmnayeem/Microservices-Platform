@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { toNum } from "@/lib/money";
 
 /** Admin: list deposits, filterable by status. */
 export async function GET(request: NextRequest) {
@@ -45,6 +46,9 @@ export async function GET(request: NextRequest) {
     methods,
     deposits: deposits.map((d) => ({
       ...d,
+      // amount is a Prisma Decimal → serializes to a string; the client does
+      // amount.toFixed(), so convert to a real number here.
+      amount: toNum(d.amount),
       user: byId[d.userId] ?? null,
       reviewer: d.reviewedBy ? byId[d.reviewedBy] ?? null : null,
     })),
