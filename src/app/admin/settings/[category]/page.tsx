@@ -74,6 +74,8 @@ const DEFAULT_SETTINGS: Record<string, Array<{ key: string; label: string; descr
     { key: "min_withdrawal", label: "Minimum Withdrawal ($)", description: "Minimum amount for withdrawal", type: "number", defaultValue: 5 },
     { key: "max_withdrawal", label: "Maximum Withdrawal ($)", description: "Maximum amount per withdrawal", type: "number", defaultValue: 1000 },
     { key: "withdrawal_fee_percent", label: "Withdrawal Fee (%)", description: "Fee percentage on withdrawals", type: "number", defaultValue: 5 },
+    { key: "withdrawal_requires_subscription", label: "Require Subscription for Withdrawal", description: "Users on the free/default plan must buy a subscription before they can withdraw", type: "boolean", defaultValue: false },
+    { key: "withdrawal_payout_time_message", label: "Payout Time Message", description: "Shown to users as the estimated time to receive funds after a withdrawal request", type: "text", defaultValue: "1-3 business days" },
     { key: "daily_earning_limit", label: "Daily Earning Limit", description: "Maximum points a user can earn per day", type: "number", defaultValue: 1000 },
   ],
   security: [

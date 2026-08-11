@@ -179,7 +179,11 @@ export async function POST(request: NextRequest) {
     const wcfg = await getWithdrawalConfig(session.user.id);
     if (!wcfg.enabled) {
       return NextResponse.json(
-        { error: "Withdrawals are disabled for your plan" },
+        {
+          error: wcfg.subscriptionRequired
+            ? "An active subscription is required to withdraw."
+            : "Withdrawals are disabled for your plan",
+        },
         { status: 403 }
       );
     }
@@ -306,7 +310,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         type: NotificationType.WALLET,
         title: "Withdrawal Request Submitted",
-        message: `Your withdrawal request for $${amount.toFixed(2)} via ${method} has been submitted and is pending approval.`,
+        message: `Your withdrawal request for $${amount.toFixed(2)} via ${method} has been submitted and is pending approval. You'll receive your funds within ${wcfg.payoutMessage} after approval.`,
         data: {
           withdrawalId: withdrawal.id,
           amount,
@@ -325,7 +329,7 @@ export async function POST(request: NextRequest) {
         netAmount,
         method,
         status: "PENDING",
-        estimatedProcessingTime: "1-3 business days",
+        estimatedProcessingTime: wcfg.payoutMessage,
       },
     });
   } catch (error) {

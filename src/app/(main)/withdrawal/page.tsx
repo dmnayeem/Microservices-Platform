@@ -37,6 +37,8 @@ export default async function WithdrawalPage() {
       max={wcfg.max}
       feePct={wcfg.feePct}
       withdrawalsEnabled={wcfg.enabled}
+      subscriptionRequired={wcfg.subscriptionRequired}
+      payoutMessage={wcfg.payoutMessage}
       kycStatus={user?.kycStatus ?? "NOT_SUBMITTED"}
       requireKyc={toggles.requireKycForWithdrawal}
       pointsPerUsd={pointsPerUsd}

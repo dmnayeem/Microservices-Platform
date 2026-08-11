@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldCheck, Banknote } from "lucide-react";
+import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldCheck, Banknote, Clock } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,10 @@ interface WithdrawalViewProps {
   feePct: number;
   /** Whether this user may withdraw (global switch + package feature). */
   withdrawalsEnabled: boolean;
+  /** True when the lock is specifically because an active subscription is required. */
+  subscriptionRequired: boolean;
+  /** Admin-configured estimated payout time, e.g. "1-3 business days". */
+  payoutMessage: string;
   methods: PaymentMethod[];
   kycStatus: string;
   requireKyc: boolean;
@@ -41,6 +45,8 @@ export function WithdrawalView({
   max,
   feePct,
   withdrawalsEnabled,
+  subscriptionRequired,
+  payoutMessage,
   methods,
   kycStatus,
   requireKyc,
@@ -94,7 +100,9 @@ export function WithdrawalView({
         body: JSON.stringify({ amount, methodId }),
       });
       if (!res.ok) throw new Error(await res.text());
-      toast.success("Withdrawal request submitted");
+      toast.success("Withdrawal request submitted", {
+        description: `You'll receive your funds within ${payoutMessage} after approval.`,
+      });
       router.push("/wallet?tab=transactions");
     } catch (err) {
       toast.error("Failed", {
@@ -118,7 +126,31 @@ export function WithdrawalView({
         compact
       />
 
-      {!withdrawalsEnabled && (
+      {subscriptionRequired && (
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4">
+          <div className="flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-300">
+                Subscription required to withdraw
+              </p>
+              <p className="text-xs text-amber-400/80 mt-0.5">
+                Withdrawals are only available with an active subscription.
+                Subscribe to a plan to unlock cashing out your earnings.
+              </p>
+              <Link
+                href="/packages"
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-gray-900 text-xs font-bold"
+              >
+                Get Subscription
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!withdrawalsEnabled && !subscriptionRequired && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4">
           <div className="flex items-start gap-3">
             <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -222,6 +254,13 @@ export function WithdrawalView({
                 </span>
               </div>
             </div>
+
+            <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              Funds arrive within{" "}
+              <span className="text-gray-300 font-medium">{payoutMessage}</span>{" "}
+              after approval.
+            </p>
           </div>
 
           <div className="glass rounded-xl p-4">
