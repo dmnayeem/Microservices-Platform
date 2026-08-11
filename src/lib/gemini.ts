@@ -83,6 +83,8 @@ export async function generateText(
 
 export interface ExtractedId {
   fullName?: string;
+  /** Name in Latin/English letters if the document also prints it (BD NID does). */
+  fullNameEnglish?: string;
   dateOfBirth?: string; // ISO yyyy-mm-dd
   idNumber?: string;
   documentType?: string;
@@ -114,16 +116,23 @@ export async function extractIdData(
     "You are an ID document OCR engine. Read the attached government ID image(s) " +
     "(a national ID / NID, passport, or driving licence — front and, if present, back) " +
     "and return ONLY a compact JSON object (no markdown, no prose) with these keys: " +
-    '{"isIdDocument": boolean, "fullName": string|null, "dateOfBirth": "YYYY-MM-DD"|null, ' +
+    '{"isIdDocument": boolean, "fullName": string|null, "fullNameEnglish": string|null, ' +
+    '"dateOfBirth": "YYYY-MM-DD"|null, ' +
     '"idNumber": string|null, "documentType": string|null, "expiry": "YYYY-MM-DD"|null, ' +
     '"fatherName": string|null, "motherName": string|null, "address": string|null, ' +
     '"bloodGroup": string|null, "confidence": number}. ' +
+    "CRITICAL: preserve the ORIGINAL script exactly as printed on the document. Do NOT " +
+    "translate or transliterate. Return Bengali/Bangla (and any non-Latin) text in its native " +
+    "script — e.g. a Bengali name/father/mother/address must be returned in Bangla letters, not " +
+    "romanized. fullName is the name in its printed (possibly Bangla) script; fullNameEnglish is " +
+    "the name in English/Latin letters ONLY if the document also prints an English name line (a " +
+    "Bangladesh NID does), else null. " +
     "isIdDocument is true ONLY if the image is genuinely a government identity document; " +
     "set it false for selfies, random photos, screenshots, or anything that is not an ID. " +
     "confidence is 0..1 for how clearly the document + fields are readable and look genuine. " +
     "If the image is not an ID or is unreadable, set isIdDocument false and confidence low (<0.2). " +
     "fatherName/motherName/address/bloodGroup appear on a Bangladesh NID (parents on the front, " +
-    "address + blood group on the back) — fill them when visible. Dates must be ISO. " +
+    "address + blood group on the back) — fill them when visible, in their native script. Dates must be ISO. " +
     "Do not invent values — use null when a field is not visible.";
 
   try {
@@ -157,6 +166,7 @@ export async function extractIdData(
       success: true,
       data: {
         fullName: str(json.fullName),
+        fullNameEnglish: str(json.fullNameEnglish),
         dateOfBirth: str(json.dateOfBirth),
         idNumber: str(json.idNumber),
         documentType: str(json.documentType),

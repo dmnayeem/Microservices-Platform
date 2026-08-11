@@ -466,6 +466,7 @@ export default async function KYCQueuePage({ searchParams }: PageProps) {
 function AutoKycPanel({ extracted }: { extracted: unknown }) {
   const e = (extracted ?? {}) as {
     fullName?: string;
+    fullNameEnglish?: string;
     dateOfBirth?: string;
     idNumber?: string;
     expiry?: string;
@@ -531,7 +532,15 @@ function AutoKycPanel({ extracted }: { extracted: unknown }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2.5">
-        <Field label="Name" value={e.fullName} />
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">Name</p>
+          <p className="text-white truncate text-sm">
+            {e.fullName && e.fullName.trim() ? e.fullName : "—"}
+          </p>
+          {e.fullNameEnglish && e.fullNameEnglish.trim() && (
+            <p className="text-[11px] text-slate-400 truncate">{e.fullNameEnglish}</p>
+          )}
+        </div>
         <Field label="DOB" value={e.dateOfBirth} />
         <Field label="ID #" value={e.idNumber} mono />
         <Field label="Expiry" value={e.expiry} />

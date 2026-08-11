@@ -114,12 +114,17 @@ export async function runAutoKyc(input: AutoKycInput): Promise<AutoKycResult> {
     reasons.push("Selfie or ID image missing.");
   }
 
-  // 4) Name check against the profile.
+  // 4) Name check against the profile. Prefer the card's English name (a BD NID
+  // prints one) so a Bangla-script name doesn't force a mismatch. Only assert a
+  // mismatch when BOTH names have comparable Latin tokens — if either normalizes
+  // to empty (different scripts), we can't compare, so skip rather than false-flag.
   const profileName =
     input.user.name?.trim() ||
     [input.user.firstName, input.user.lastName].filter(Boolean).join(" ").trim();
-  if (extracted.fullName && profileName) {
-    if (!nameMatches(profileName, extracted.fullName)) {
+  const ocrName = extracted.fullNameEnglish || extracted.fullName;
+  if (ocrName && profileName) {
+    const comparable = norm(profileName).length > 0 && norm(ocrName).length > 0;
+    if (comparable && !nameMatches(profileName, ocrName)) {
       reasons.push("Name on the ID didn't match your profile name.");
     }
   } else if (!extracted.fullName) {
