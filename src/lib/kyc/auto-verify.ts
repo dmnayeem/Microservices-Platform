@@ -15,7 +15,9 @@ export interface AutoKycInput {
 }
 
 export interface AutoKycResult {
-  decision: "APPROVED" | "REVIEW";
+  // REJECT is only used when OCR positively determines the image is NOT an ID —
+  // real-but-imperfect IDs still go to REVIEW (never a false hard-reject).
+  decision: "APPROVED" | "REVIEW" | "REJECT";
   reasons: string[];
   extracted: ExtractedId & {
     faceSimilarity?: number;
@@ -52,9 +54,10 @@ function nameMatches(profile: string, ocr: string): boolean {
  * the existing manual admin queue instead of blocking a genuine user.
  */
 export async function runAutoKyc(input: AutoKycInput): Promise<AutoKycResult> {
-  const [faceMin, ocrMin] = await Promise.all([
+  const [faceMin, ocrMin, ocrRejectBelow] = await Promise.all([
     getSetting<number>("kyc.faceMinSimilarity", 88),
     getSetting<number>("kyc.ocrMinConfidence", 0.7),
+    getSetting<number>("kyc.ocrRejectBelow", 0.2),
   ]);
 
   const reasons: string[] = [];
@@ -76,10 +79,24 @@ export async function runAutoKyc(input: AutoKycInput): Promise<AutoKycResult> {
   // 2) OCR the ID.
   const ocr = await extractIdData(idImgs);
   if (!ocr.success || !ocr.data) {
+    // OCR couldn't run (e.g. Gemini not configured / transient error). We can't
+    // tell whether it's a real ID → route to manual review, never hard-reject.
     reasons.push("Couldn't read the ID document clearly.");
   } else {
     Object.assign(extracted, ocr.data);
     extracted.ocrConfidence = ocr.data.confidence;
+    // Hard reject only on a POSITIVE "this isn't an ID" signal from a successful
+    // read: the model flagged it as not an ID, or confidence is floor-low. This
+    // is what surfaces a clear error when someone uploads a non-ID / random photo.
+    if (ocr.data.isIdDocument === false || ocr.data.confidence < ocrRejectBelow) {
+      return {
+        decision: "REJECT",
+        reasons: [
+          "The uploaded image doesn't look like a valid government ID. Please upload a clear photo of your ID.",
+        ],
+        extracted,
+      };
+    }
     if (ocr.data.confidence < ocrMin) reasons.push("ID image wasn't clear enough.");
   }
 

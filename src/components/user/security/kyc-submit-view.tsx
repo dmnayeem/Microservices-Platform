@@ -13,6 +13,10 @@ import {
   Send,
   Zap,
   ScanFace,
+  AlertTriangle,
+  Lightbulb,
+  IdCard,
+  Camera,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -50,10 +54,13 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"auto" | "manual">(autoEnabled ? "auto" : "manual");
   const [verifying, setVerifying] = useState(false);
+  // Prominent inline error (e.g. "not a valid ID") — not just a toast.
+  const [autoError, setAutoError] = useState<string | null>(null);
 
   const canSubmit = kycStatus === "NOT_SUBMITTED" || kycStatus === "REJECTED";
 
   const submitAuto = async () => {
+    setAutoError(null);
     if (!front.trim() || !selfie.trim()) {
       toast.error("Add your ID photo and a selfie to verify instantly");
       return;
@@ -67,7 +74,12 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
         body: JSON.stringify({ documentType, idImages, selfie: selfie.trim() }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        const msg = d.error ?? `HTTP ${res.status}`;
+        // A rejected (non-ID) image gets a persistent inline banner so it's clear.
+        if (res.status === 422 || d.status === "REJECTED") setAutoError(msg);
+        throw new Error(msg);
+      }
       if (d.status === "APPROVED") {
         toast.success("Verified instantly", {
           description: "Your identity is confirmed — withdrawals unlocked.",
@@ -244,7 +256,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
           )}
 
           {/* Document type — shared */}
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 space-y-4">
+          <div className="card p-4 sm:p-5 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1.5">
                 Document type
@@ -272,20 +284,51 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                     manual check.
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                      ID photo <span className="text-red-400">*</span>
+                    <label className="flex items-center gap-1 text-xs font-medium text-gray-400 mb-1.5">
+                      <IdCard className="w-3.5 h-3.5 text-indigo-400" /> ID front{" "}
+                      <span className="text-red-400">*</span>
                     </label>
                     <ProofImageUpload value={front} onChange={setFront} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                      Selfie <span className="text-red-400">*</span>
+                    <label className="flex items-center gap-1 text-xs font-medium text-gray-400 mb-1.5">
+                      <IdCard className="w-3.5 h-3.5 text-gray-500" /> ID back
+                      <span className="text-gray-600">(NID)</span>
+                    </label>
+                    <ProofImageUpload value={back} onChange={setBack} />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-1 text-xs font-medium text-gray-400 mb-1.5">
+                      <Camera className="w-3.5 h-3.5 text-indigo-400" /> Selfie{" "}
+                      <span className="text-red-400">*</span>
                     </label>
                     <ProofImageUpload value={selfie} onChange={setSelfie} />
                   </div>
                 </div>
+
+                <div className="flex items-start gap-2 rounded-lg bg-gray-800/50 border border-gray-800 p-2.5">
+                  <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    Tips: capture the full ID with all four corners visible, avoid
+                    glare and blur, and make sure the text is readable. For a National
+                    ID, add the back too. Max 5&nbsp;MB per image.
+                  </p>
+                </div>
+
+                {autoError && (
+                  <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-400">
+                        We couldn&apos;t verify this image
+                      </p>
+                      <p className="text-xs text-gray-300 mt-0.5">{autoError}</p>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={submitAuto}
                   disabled={verifying}

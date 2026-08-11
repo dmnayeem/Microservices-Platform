@@ -11,6 +11,8 @@ import {
   FileImage,
   BadgeCheck,
   Activity,
+  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
@@ -467,6 +469,10 @@ function AutoKycPanel({ extracted }: { extracted: unknown }) {
     dateOfBirth?: string;
     idNumber?: string;
     expiry?: string;
+    fatherName?: string;
+    motherName?: string;
+    address?: string;
+    bloodGroup?: string;
     ocrConfidence?: number;
     faceSimilarity?: number;
     faceMatched?: boolean;
@@ -476,50 +482,77 @@ function AutoKycPanel({ extracted }: { extracted: unknown }) {
   const sim = typeof e.faceSimilarity === "number" ? e.faceSimilarity : null;
   const conf =
     typeof e.ocrConfidence === "number" ? Math.round(e.ocrConfidence * 100) : null;
+
+  // Decision pill tone.
+  const decision = (e.decision ?? "").toUpperCase();
+  const pill =
+    decision === "APPROVED"
+      ? { label: "Auto-approved", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" }
+      : decision === "REJECT" || decision === "REJECTED"
+      ? { label: "Auto-rejected", cls: "bg-red-500/15 text-red-300 border-red-500/30" }
+      : { label: "Needs review", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" };
+
+  const chip = (label: string, value: string, ok: boolean | null) => (
+    <span
+      className={
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold " +
+        (ok == null
+          ? "border-slate-700 bg-slate-800/60 text-slate-400"
+          : ok
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          : "border-amber-500/30 bg-amber-500/10 text-amber-300")
+      }
+    >
+      <span className="text-slate-500 font-normal">{label}</span> {value}
+    </span>
+  );
+
+  const Field = ({ label, value, mono }: { label: string; value?: string; mono?: boolean }) => (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
+      <p className={"text-white truncate " + (mono ? "font-mono text-xs" : "text-sm")}>
+        {value && value.trim() ? value : "—"}
+      </p>
+    </div>
+  );
+
   return (
-    <div className="mb-6 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-2">
-      <div className="flex items-center gap-2">
-        <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
-          ⚡ Auto (AI)
+    <div className="mb-6 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
+          <Sparkles className="w-3 h-3" /> Auto (AI)
+        </span>
+        <span className={"rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider " + pill.cls}>
+          {pill.label}
         </span>
         <span className="text-xs text-slate-400">
           AI-extracted — verify against the images before approving.
         </span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-        <div>
-          <p className="text-[10px] uppercase text-slate-500">Name</p>
-          <p className="text-white truncate">{e.fullName ?? "—"}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase text-slate-500">DOB</p>
-          <p className="text-white">{e.dateOfBirth ?? "—"}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase text-slate-500">ID #</p>
-          <p className="text-white font-mono text-xs truncate">{e.idNumber ?? "—"}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase text-slate-500">Expiry</p>
-          <p className="text-white">{e.expiry ?? "—"}</p>
-        </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2.5">
+        <Field label="Name" value={e.fullName} />
+        <Field label="DOB" value={e.dateOfBirth} />
+        <Field label="ID #" value={e.idNumber} mono />
+        <Field label="Expiry" value={e.expiry} />
+        <Field label="Father" value={e.fatherName} />
+        <Field label="Mother" value={e.motherName} />
+        <Field label="Blood" value={e.bloodGroup} />
+        <Field label="Address" value={e.address} />
       </div>
-      <div className="flex items-center gap-3 text-xs">
-        <span
-          className={
-            sim != null && sim >= 88
-              ? "text-emerald-400 font-bold"
-              : "text-amber-400 font-bold"
-          }
-        >
-          Face match: {sim != null ? `${sim}%` : "n/a"}
-        </span>
-        <span className="text-slate-400">OCR confidence: {conf != null ? `${conf}%` : "n/a"}</span>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {chip("Face match:", sim != null ? `${sim}%` : "n/a", sim == null ? null : sim >= 88)}
+        {chip("OCR confidence:", conf != null ? `${conf}%` : "n/a", conf == null ? null : conf >= 70)}
       </div>
+
       {Array.isArray(e.reasons) && e.reasons.length > 0 && (
-        <ul className="list-disc list-inside text-[11px] text-amber-300/90 space-y-0.5">
+        <ul className="space-y-1 pt-0.5">
           {e.reasons.map((r, i) => (
-            <li key={i}>{r}</li>
+            <li key={i} className="flex items-start gap-1.5 text-[11px] text-amber-300/90">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px text-amber-400" />
+              <span>{r}</span>
+            </li>
           ))}
         </ul>
       )}

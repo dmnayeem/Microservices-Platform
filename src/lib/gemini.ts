@@ -88,6 +88,14 @@ export interface ExtractedId {
   documentType?: string;
   expiry?: string; // ISO yyyy-mm-dd
   confidence: number; // 0..1
+  /** Whether the image actually looks like a government ID document. */
+  isIdDocument?: boolean;
+  // Extra fields commonly present on a Bangladesh NID (front: parents; back:
+  // address + blood group). Nullable — only filled when visible.
+  fatherName?: string;
+  motherName?: string;
+  address?: string;
+  bloodGroup?: string;
 }
 
 /**
@@ -104,11 +112,18 @@ export async function extractIdData(
 
   const prompt =
     "You are an ID document OCR engine. Read the attached government ID image(s) " +
+    "(a national ID / NID, passport, or driving licence — front and, if present, back) " +
     "and return ONLY a compact JSON object (no markdown, no prose) with these keys: " +
-    '{"fullName": string, "dateOfBirth": "YYYY-MM-DD"|null, "idNumber": string|null, ' +
-    '"documentType": string|null, "expiry": "YYYY-MM-DD"|null, "confidence": number}. ' +
+    '{"isIdDocument": boolean, "fullName": string|null, "dateOfBirth": "YYYY-MM-DD"|null, ' +
+    '"idNumber": string|null, "documentType": string|null, "expiry": "YYYY-MM-DD"|null, ' +
+    '"fatherName": string|null, "motherName": string|null, "address": string|null, ' +
+    '"bloodGroup": string|null, "confidence": number}. ' +
+    "isIdDocument is true ONLY if the image is genuinely a government identity document; " +
+    "set it false for selfies, random photos, screenshots, or anything that is not an ID. " +
     "confidence is 0..1 for how clearly the document + fields are readable and look genuine. " +
-    "If the image is not an ID or is unreadable, set confidence low (<0.3). Dates must be ISO. " +
+    "If the image is not an ID or is unreadable, set isIdDocument false and confidence low (<0.2). " +
+    "fatherName/motherName/address/bloodGroup appear on a Bangladesh NID (parents on the front, " +
+    "address + blood group on the back) — fill them when visible. Dates must be ISO. " +
     "Do not invent values — use null when a field is not visible.";
 
   try {
@@ -147,6 +162,13 @@ export async function extractIdData(
         documentType: str(json.documentType),
         expiry: str(json.expiry),
         confidence: Number.isFinite(conf) ? Math.min(Math.max(conf, 0), 1) : 0,
+        // Default to true when the model omits the flag, so a missing key never
+        // triggers a false rejection — the caller also gates on confidence.
+        isIdDocument: typeof json.isIdDocument === "boolean" ? json.isIdDocument : true,
+        fatherName: str(json.fatherName),
+        motherName: str(json.motherName),
+        address: str(json.address),
+        bloodGroup: str(json.bloodGroup),
       },
     };
   } catch (e) {

@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       lastName: true,
       dateOfBirth: true,
       nidNumber: true,
+      bloodGroup: true,
     },
   });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -94,6 +95,31 @@ export async function POST(request: NextRequest) {
     JSON.stringify({ ...result.extracted, decision: result.decision, reasons: result.reasons })
   );
 
+  // Clear non-ID (or floor-low confidence): don't pollute the manual queue —
+  // surface an error so the user retries with a real ID. kycStatus is untouched
+  // (stays NOT_SUBMITTED) so they can resubmit immediately.
+  if (result.decision === "REJECT") {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: "KYC_AUTO_REJECTED",
+        entity: "User",
+        entityId: userId,
+        newData: { reasons: result.reasons },
+      },
+    });
+    return NextResponse.json(
+      {
+        status: "REJECTED",
+        error:
+          result.reasons[0] ??
+          "The uploaded image doesn't look like a valid government ID.",
+        reasons: result.reasons,
+      },
+      { status: 422 }
+    );
+  }
+
   if (result.decision === "APPROVED") {
     await prisma.$transaction(async (tx) => {
       await tx.kYCDocument.create({
@@ -116,6 +142,9 @@ export async function POST(request: NextRequest) {
       if (!user.dateOfBirth && result.extracted.dateOfBirth) {
         const d = new Date(result.extracted.dateOfBirth);
         if (!Number.isNaN(d.getTime())) patch.dateOfBirth = d;
+      }
+      if (!user.bloodGroup && result.extracted.bloodGroup) {
+        patch.bloodGroup = result.extracted.bloodGroup;
       }
       await tx.user.update({ where: { id: userId }, data: patch });
       await tx.notification.create({
