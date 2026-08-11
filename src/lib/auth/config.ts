@@ -85,7 +85,17 @@ export const authConfig: NextAuthConfig = {
         "/privacy",
         "/terms",
         "/refund",
+        "/cookies",
         "/offer",
+        // Public marketing site — reachable without an account.
+        "/features",
+        "/about",
+        "/careers",
+        "/blog",
+        "/press",
+        "/help",
+        "/contact",
+        "/status",
       ];
 
       // Admin routes that require admin role

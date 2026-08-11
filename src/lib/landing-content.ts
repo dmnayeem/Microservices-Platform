@@ -705,7 +705,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     tagline: "",
   },
   appearance: {
-    theme: "light",
+    theme: "dark",
     animations: true,
   },
 };
