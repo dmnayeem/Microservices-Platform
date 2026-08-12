@@ -21,7 +21,7 @@ import {
   PENDING_GROUP_LABELS,
   type PendingGroup,
   type PendingSource,
-} from "@/lib/admin/pending-counts";
+} from "@/lib/admin/pending-sources";
 
 const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
