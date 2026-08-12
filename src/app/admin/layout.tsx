@@ -10,6 +10,7 @@ import {
   getEffectiveModules,
   pathAllowed,
 } from "@/lib/permissions";
+import { getPendingCounts, badgesByModule } from "@/lib/admin/pending-counts";
 
 export default async function AdminLayout({
   children,
@@ -44,10 +45,14 @@ export default async function AdminLayout({
 
   const modules = await getEffectiveModules(session.user.id);
 
+  // Live "pending work" counts → per-nav badges (permission-scoped, fail-safe).
+  const pendingCounts = await getPendingCounts(perms);
+  const badges = badgesByModule(pendingCounts, perms);
+
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Admin Sidebar (client component, manages its own collapse state) */}
-      <AdminSidebar user={session.user} modules={modules} />
+      <AdminSidebar user={session.user} modules={modules} badges={badges} />
 
       {/* Client-side shell adjusts padding based on collapse state */}
       <AdminLayoutShell header={<AdminHeader user={session.user} />}>

@@ -69,6 +69,8 @@ interface AdminSidebarProps {
   // Server-resolved, effective (config + per-user override aware) nav modules.
   // Falls back to role-default modules when not provided.
   modules?: ReturnType<typeof getGroupedModules>;
+  // Live pending-request counts keyed by module href (badge on the nav item).
+  badges?: Record<string, number>;
 }
 
 // Icon mapping for dynamic rendering
@@ -123,9 +125,15 @@ interface AdminSidebarContentProps {
   roleConfig: (typeof ROLE_CONFIG)[keyof typeof ROLE_CONFIG];
   pathname: string;
   collapsed: boolean;
+  badges?: Record<string, number>;
   onNavigate: () => void;
   onSignOut: () => void;
   onToggleCollapse?: () => void;
+}
+
+/** Format a badge count compactly (e.g. 1000 → "999+"). */
+function badgeText(n: number): string {
+  return n > 999 ? "999+" : String(n);
 }
 
 function AdminSidebarContent({
@@ -134,6 +142,7 @@ function AdminSidebarContent({
   roleConfig,
   pathname,
   collapsed,
+  badges,
   onNavigate,
   onSignOut,
   onToggleCollapse,
@@ -218,6 +227,7 @@ function AdminSidebarContent({
                   pathname === module.href ||
                   (module.href !== "/admin" &&
                     pathname.startsWith(`${module.href}/`));
+                const pending = badges?.[module.href] ?? 0;
 
                 return (
                   <li key={module.name}>
@@ -226,21 +236,35 @@ function AdminSidebarContent({
                       onClick={onNavigate}
                       title={collapsed ? module.name : undefined}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        "relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                         collapsed && "justify-center",
                         isActive
                           ? "bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/25"
                           : "text-slate-400 hover:text-white hover:bg-slate-800/70"
                       )}
                     >
-                      <Icon className="w-5 h-5 shrink-0" />
+                      <span className="relative shrink-0">
+                        <Icon className="w-5 h-5" />
+                        {/* Collapsed rail: a compact count badge on the icon corner. */}
+                        {collapsed && pending > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 grid place-items-center text-[9px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded-full tabular-nums">
+                            {badgeText(pending)}
+                          </span>
+                        )}
+                      </span>
                       {!collapsed && (
                         <>
                           <span className="flex-1 truncate">{module.name}</span>
-                          {module.badge && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded">
-                              {module.badge}
+                          {pending > 0 ? (
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded tabular-nums">
+                              {badgeText(pending)}
                             </span>
+                          ) : (
+                            module.badge && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded">
+                                {module.badge}
+                              </span>
+                            )
                           )}
                         </>
                       )}
@@ -288,7 +312,7 @@ function AdminSidebarContent({
   );
 }
 
-export function AdminSidebar({ user, modules }: AdminSidebarProps) {
+export function AdminSidebar({ user, modules, badges }: AdminSidebarProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const collapsed = useAdminUI((s) => s.sidebarCollapsed);
@@ -346,6 +370,7 @@ export function AdminSidebar({ user, modules }: AdminSidebarProps) {
             roleConfig={roleConfig}
             pathname={pathname}
             collapsed={false}
+            badges={badges}
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
           />
@@ -367,6 +392,7 @@ export function AdminSidebar({ user, modules }: AdminSidebarProps) {
             roleConfig={roleConfig}
             pathname={pathname}
             collapsed={collapsed}
+            badges={badges}
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
             onToggleCollapse={toggleCollapse}

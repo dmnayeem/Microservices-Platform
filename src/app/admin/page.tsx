@@ -8,9 +8,11 @@ import { StatCard } from "@/components/admin/stat-card";
 import { UserGrowthChart } from "@/components/admin/user-growth-chart";
 import { RevenueTrendChart } from "@/components/admin/revenue-trend-chart";
 import { PlatformStats } from "@/components/admin/platform-stats";
-import { PendingActions } from "@/components/admin/pending-actions";
+import { PendingRequestsHub } from "@/components/admin/pending-requests-hub";
 import { PlatformOverview } from "@/components/admin/platform-overview";
 import { RecentActivityFeed, type ActivityLogEntry } from "@/components/admin/recent-activity-feed";
+import { getEffectivePermissions } from "@/lib/permissions";
+import { getPendingSources } from "@/lib/admin/pending-counts";
 import { format, startOfDay, subDays, startOfMonth } from "date-fns";
 
 // Auto-revalidate every 30 seconds (matches PROTOTYPE_ADMIN.md §38 spec)
@@ -59,6 +61,11 @@ export default async function AdminDashboardPage() {
   if (!session?.user) redirect("/login");
   if (!isAdmin(session.user.role as UserRole)) redirect("/dashboard");
 
+  // Every pending request/application this admin may review, with live counts —
+  // feeds the "Pending Requests" hub below (permission-scoped, fail-safe).
+  const perms = await getEffectivePermissions(session.user.id);
+  const pendingSources = await getPendingSources(perms);
+
   const now = new Date();
   const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -79,9 +86,11 @@ export default async function AdminDashboardPage() {
     completionsMonth,
     pendingApprovalsCount,
 
-    pendingKYC,
-    pendingAppeals,
-    pendingAccountApprovals,
+    // Pending-review counts now come from the Pending Requests hub
+    // (getPendingSources); these batch slots are kept for positional alignment.
+    _pendingKYC,
+    _pendingAppeals,
+    _pendingAccountApprovals,
 
     pendingWithdrawAgg,
     pendingWithdrawalsCount,
@@ -96,7 +105,7 @@ export default async function AdminDashboardPage() {
     totalListings,
     totalOrders,
     pendingOrders,
-    openDisputes,
+    _openDisputes,
 
     totalCourses,
     totalEnrollments,
@@ -112,10 +121,10 @@ export default async function AdminDashboardPage() {
     walletLiabilityAgg,
     adCreditOutstandingAgg,
     adSpendAgg,
-    pendingOfferwallCount,
+    _pendingOfferwallCount,
     completedWithdrawalsCount,
     referralUsersCount,
-    pendingCreatorAppsCount,
+    _pendingCreatorAppsCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -371,6 +380,9 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
+      {/* Pending requests hub — all reviewable applications/submissions at a glance */}
+      <PendingRequestsHub sources={pendingSources} />
+
       {/* Finance overview — deposits, liabilities & ad economy */}
       <div>
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 px-1">
@@ -500,20 +512,8 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      {/* Pending Actions + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <PendingActions
-          pendingKYC={pendingKYC}
-          pendingApprovals={pendingAccountApprovals}
-          pendingWithdrawals={pendingWithdrawalsCount}
-          pendingDeposits={pendingDepositsCount}
-          pendingOfferwall={pendingOfferwallCount}
-          pendingCreatorApps={pendingCreatorAppsCount}
-          pendingAppeals={pendingAppeals}
-          openDisputes={openDisputes}
-        />
-        <RecentActivityFeed entries={recentEntries} />
-      </div>
+      {/* Recent Activity (pending requests now live in the hub above) */}
+      <RecentActivityFeed entries={recentEntries} />
     </div>
   );
 }
