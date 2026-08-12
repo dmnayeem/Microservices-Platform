@@ -332,7 +332,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             >
               <div>
                 <p className="text-sm font-semibold text-white">
-                  ${d.amount.toFixed(2)}{" "}
+                  ${Number(d.amount ?? 0).toFixed(2)}{" "}
                   <span className="text-gray-500 font-normal">
                     · {methods.find((m) => m.key === d.method)?.label ?? d.method.replace("MANUAL_", "")}
                   </span>
