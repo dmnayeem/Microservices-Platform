@@ -1,5 +1,6 @@
 import { ExternalLink, AtSign, Sparkles, Info, AlertTriangle } from "lucide-react";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { getPlatform, getAction, normalizeSocialConfig } from "@/lib/social-tasks";
 import type { PanelSubmission, PanelTask } from "./types";
 
@@ -73,6 +74,7 @@ export function SocialProofPanel({ submission, task }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         {platform && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-pink-500/10 border border-pink-500/30 text-pink-300">
+            <BrandIcon brand={platform.key} fallback={platform.emoji} colored className="w-3.5 h-3.5" />
             {platform.label}
           </span>
         )}

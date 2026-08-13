@@ -25,6 +25,7 @@ import {
   GripVertical,
   ShieldCheck,
 } from "lucide-react";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
 interface Props {
@@ -134,7 +135,12 @@ export function SocialTaskBuilder({ value, onChange }: Props) {
                           : "bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600"
                       }`}
                     >
-                      <span className="text-2xl leading-none">{p.emoji}</span>
+                      <BrandIcon
+                        brand={p.key}
+                        fallback={p.emoji}
+                        colored={!selected}
+                        className={selected ? "w-6 h-6 text-white" : "w-6 h-6"}
+                      />
                       <span className="text-[11px] font-semibold">{p.label}</span>
                     </button>
                   );

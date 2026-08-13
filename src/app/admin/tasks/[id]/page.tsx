@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import {
   ArrowLeft,
   Video,
@@ -274,7 +275,8 @@ export default async function TaskDetailPage({ params }: PageProps) {
                     </h2>
                     {platform && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-pink-500/10 border border-pink-500/30 text-pink-300">
-                        {platform.emoji} {platform.label}
+                        <BrandIcon brand={platform.key} fallback={platform.emoji} colored className="w-3.5 h-3.5" />
+                        {platform.label}
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">

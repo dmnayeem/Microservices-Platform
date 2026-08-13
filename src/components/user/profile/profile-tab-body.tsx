@@ -27,6 +27,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { BecomeTutorCard } from "@/components/user/profile/become-tutor-card";
 import type { ProfileResponse, EditTab, SocialAccount } from "./profile-view.types";
 import { COUNTRIES, LANGUAGES, PLATFORM_META } from "./profile-view.constants";
@@ -476,7 +477,7 @@ export function ProfileTabBody({
                           meta.gradient
                         )}
                       >
-                        <meta.icon className="w-4 h-4" />
+                        <BrandIcon brand={acc.platform} fallback="🔗" className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-white truncate">

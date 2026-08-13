@@ -8,6 +8,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { cn } from "@/lib/utils";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import {
   SOCIAL_PLATFORMS,
   getAction,
@@ -117,7 +118,7 @@ export function SocialTasksView() {
                   : "bg-gray-800 text-gray-300 hover:bg-gray-700"
               )}
             >
-              <span>{p.emoji}</span>
+              <BrandIcon brand={p.key} fallback={p.emoji} className="w-3.5 h-3.5" />
               {p.label}
             </button>
           ))}
@@ -148,11 +149,11 @@ export function SocialTasksView() {
               <div className="flex items-start gap-3">
                 <div
                   className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0",
+                    "w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0",
                     platform.brandColor
                   )}
                 >
-                  {platform.emoji}
+                  <BrandIcon brand={platform.key} fallback={platform.emoji} className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">

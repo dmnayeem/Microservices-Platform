@@ -18,6 +18,7 @@ import {
 import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import { cn } from "@/lib/utils";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import {
   SOCIAL_PLATFORMS,
   getAction,
@@ -569,11 +570,11 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         <div className="flex items-start gap-3">
           <div
             className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0",
+              "w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0",
               platform.brandColor
             )}
           >
-            {platform.emoji}
+            <BrandIcon brand={platform.key} fallback={platform.emoji} className="w-6 h-6" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
