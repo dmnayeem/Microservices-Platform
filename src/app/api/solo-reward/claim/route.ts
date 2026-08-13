@@ -4,6 +4,7 @@ import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getUserDayContext } from "@/lib/user-day";
+import { getPointsPerUsd } from "@/lib/economy";
 
 const CRITERIA = { tasksToday: 5, earningsToday: 1 };
 const REWARD = { points: 500, xp: 100 };
@@ -72,11 +73,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const pointsPerUsd = await getPointsPerUsd();
+  const rewardUsd = pointsPerUsd > 0 ? REWARD.points / pointsPerUsd : 0;
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
       data: {
         pointsBalance: { increment: REWARD.points },
+        totalEarnings: { increment: rewardUsd },
         xp: { increment: REWARD.xp },
       },
     }),
@@ -86,6 +90,7 @@ export async function POST(request: NextRequest) {
         type: "BONUS",
         status: "COMPLETED",
         points: REWARD.points,
+        amount: rewardUsd,
         description: "Solo reward (daily)",
         // Per-day idempotency key (backs up the auditLog "already claimed" guard).
         reference: `solo_${todayKey}`,

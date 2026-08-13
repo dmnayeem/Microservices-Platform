@@ -6,6 +6,7 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email";
 import { isValidUsername, slugifyUsername } from "@/lib/username";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { defaultPackage } from "@/lib/packages";
+import { getPointsPerUsd } from "@/lib/economy";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -297,12 +298,15 @@ export async function verifyEmail(token: string) {
   // Award welcome bonus if configured
   const welcomeBonus = parseInt(process.env.WELCOME_BONUS_POINTS || "0", 10);
   if (welcomeBonus > 0) {
+    const pointsPerUsd = await getPointsPerUsd();
+    const bonusUsd = pointsPerUsd > 0 ? welcomeBonus / pointsPerUsd : 0;
     await prisma.transaction.create({
       data: {
         userId: user.id,
         type: "BONUS",
         status: "COMPLETED",
         points: welcomeBonus,
+        amount: bonusUsd,
         description: "Welcome bonus",
         // Once per user — (userId, reference) unique prevents a double award if
         // verification is ever replayed (token deletion above already guards it).
@@ -314,6 +318,7 @@ export async function verifyEmail(token: string) {
       where: { id: user.id },
       data: {
         pointsBalance: { increment: welcomeBonus },
+        totalEarnings: { increment: bonusUsd },
       },
     });
   }

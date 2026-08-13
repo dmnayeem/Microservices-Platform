@@ -1,5 +1,8 @@
 import { randomInt } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { creditPoints } from "@/lib/ledger";
+import { getPointsPerUsd } from "@/lib/economy";
+import { TransactionType } from "@/generated/prisma";
 
 export interface LotteryWinner {
   position: number;
@@ -61,6 +64,8 @@ export async function drawLottery(lotteryId: string): Promise<DrawResult> {
   // Draw ONCE: a CAS on status inside the transaction means only the first
   // caller (admin button OR auto-draw cron) actually pays out — the loser
   // matches 0 rows and aborts, so winners are never double-credited.
+  // Rate fetched once up front so the payout transaction stays lean.
+  const pointsPerUsd = await getPointsPerUsd();
   try {
     const drawn = await prisma.$transaction(async (tx) => {
       const claim = await tx.lottery.updateMany({
@@ -75,9 +80,16 @@ export async function drawLottery(lotteryId: string): Promise<DrawResult> {
           where: { id: w.ticketId },
           data: { isWinner: true, prizeAmount: w.amount },
         });
-        await tx.user.update({
-          where: { id: w.userId },
-          data: { pointsBalance: { increment: w.amount } },
+        // Credit via the ledger so the win bumps totalEarnings AND appears in
+        // transaction history (previously it did neither).
+        await creditPoints(tx, {
+          userId: w.userId,
+          points: w.amount,
+          type: TransactionType.LOTTERY_WIN,
+          description: `Lottery win: ${lottery.title}`,
+          reference: `lottery_win_${lotteryId}_${w.ticketId}`,
+          metadata: { lotteryId, position: w.position },
+          pointsPerUsd,
         });
         await tx.notification.create({
           data: {

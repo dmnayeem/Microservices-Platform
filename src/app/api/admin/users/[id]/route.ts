@@ -3,8 +3,11 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_ROLES, parsePermissionOverrides, type UserRole } from "@/lib/rbac";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, TransactionType } from "@/generated/prisma/client";
 import { parseFeatureOverrides } from "@/lib/packages";
+import { recordTransaction } from "@/lib/ledger";
+import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
 import { z } from "zod";
 
 // GET /api/admin/users/[id] - Get user details
@@ -396,6 +399,19 @@ export async function PATCH(
     if (data.street !== undefined) updateData.street = data.street;
     if (data.postalCode !== undefined) updateData.postalCode = data.postalCode;
 
+    // This modal SETS pointsBalance/cashBalance to absolute values. Capture the
+    // prior values so we can journal the delta — otherwise an admin balance edit
+    // would be invisible in the user's transaction history.
+    const settingPoints = data.pointsBalance !== undefined;
+    const settingCash = data.cashBalance !== undefined;
+    const priorBal =
+      settingPoints || settingCash
+        ? await prisma.user.findUnique({
+            where: { id },
+            select: { pointsBalance: true, cashBalance: true },
+          })
+        : null;
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -410,6 +426,35 @@ export async function PATCH(
         kycStatus: true,
       },
     });
+
+    // Journal balance deltas from the absolute set + keep totalEarnings in sync
+    // on a positive points delta (matching the bulk-adjust route).
+    if (priorBal) {
+      const pointsDelta = settingPoints
+        ? (data.pointsBalance as number) - priorBal.pointsBalance
+        : 0;
+      const cashDelta = settingCash
+        ? (data.cashBalance as number) - toNum(priorBal.cashBalance)
+        : 0;
+      if (pointsDelta !== 0 || cashDelta !== 0) {
+        const pointsPerUsd = await getPointsPerUsd();
+        if (pointsDelta > 0 && pointsPerUsd > 0) {
+          await prisma.user.update({
+            where: { id },
+            data: { totalEarnings: { increment: pointsDelta / pointsPerUsd } },
+          });
+        }
+        await recordTransaction(prisma, {
+          userId: id,
+          type: pointsDelta + cashDelta >= 0 ? TransactionType.BONUS : TransactionType.PENALTY,
+          points: pointsDelta,
+          amountUsd: cashDelta,
+          description: `Admin balance ${pointsDelta + cashDelta >= 0 ? "credit" : "debit"}`,
+          reference: `admin_edit_${id}_${Date.now()}`,
+          metadata: { adminId: session.user.id, via: "edit-user" },
+        });
+      }
+    }
 
     // If admin flipped the role to TUTOR, make sure a TutorProfile exists so
     // the tutor dashboard renders right away (no need to go through the

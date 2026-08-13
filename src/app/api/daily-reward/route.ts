@@ -170,6 +170,7 @@ export async function POST() {
         where: { id: session.user.id },
         data: {
           pointsBalance: { increment: pointsEarned },
+          totalEarnings: { increment: pointsEarned / pointsPerUsd },
           xp: { increment: xpEarned },
           streak: newStreak,
           lastCheckIn: new Date(),
@@ -293,7 +294,10 @@ async function claimMysteryBox(
     const pointsPerUsd = await getPointsPerUsd();
     await prisma.user.update({
       where: { id: userId },
-      data: { pointsBalance: { increment: value } },
+      data: {
+        pointsBalance: { increment: value },
+        totalEarnings: { increment: value / pointsPerUsd },
+      },
     });
 
     await prisma.transaction.create({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
+import { getPointsPerUsd } from "@/lib/economy";
 
 const REWARDS: Record<string, number> = {
   tasks_5: 100,
@@ -55,10 +56,16 @@ export async function POST(
     );
   }
 
+  // Milestone rewards count toward lifetime earnings — keep totalEarnings in sync.
+  const pointsPerUsd = await getPointsPerUsd();
+  const rewardUsd = pointsPerUsd > 0 ? reward / pointsPerUsd : 0;
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
-      data: { pointsBalance: { increment: reward } },
+      data: {
+        pointsBalance: { increment: reward },
+        totalEarnings: { increment: rewardUsd },
+      },
     }),
     prisma.transaction.create({
       data: {
@@ -66,6 +73,7 @@ export async function POST(
         type: "BONUS",
         status: "COMPLETED",
         points: reward,
+        amount: rewardUsd,
         description: `Milestone reward: ${id}`,
         reference: id,
       },

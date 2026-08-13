@@ -102,6 +102,20 @@ export async function POST(
           metadata: { postId: id, recipientId: post.userId },
         },
       });
+      // Recipient-side ledger row so the received donation shows in THEIR history
+      // (their totalEarnings is already incremented above).
+      await tx.transaction.create({
+        data: {
+          userId: post.userId,
+          type: TransactionType.GIFT,
+          status: TransactionStatus.COMPLETED,
+          points: v.data.points,
+          amount: v.data.points / pointsPerUsd,
+          description: `Donation received`,
+          reference: `donation_recv_${id}_${donorId}_${Date.now()}`,
+          metadata: { postId: id, donorId },
+        },
+      });
       const d = await tx.donation.create({
         data: { postId: id, donorId, points: v.data.points },
         select: { id: true },

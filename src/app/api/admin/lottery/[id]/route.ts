@@ -142,6 +142,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         })
       );
 
+      // Ledger row per refund so the returned points show in history (a refund
+      // returns spent points — it does NOT count as new earnings).
+      const refundTxnPromises = lottery.tickets.map((ticket) =>
+        prisma.transaction.create({
+          data: {
+            userId: ticket.userId,
+            type: "REFUND",
+            status: "COMPLETED",
+            points: lottery.ticketPrice,
+            description: `Lottery cancelled refund: ${lottery.title}`,
+            reference: `lottery_refund_${id}_${ticket.id}`,
+          },
+        })
+      );
+
       // Update lottery status
       await Promise.all([
         prisma.lottery.update({
@@ -149,6 +164,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           data: { status: "CANCELLED" },
         }),
         ...refundPromises,
+        ...refundTxnPromises,
         ...notificationPromises,
       ]);
 
