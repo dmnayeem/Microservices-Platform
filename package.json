@@ -28,7 +28,7 @@
     "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
-    "@prisma/client": "^7.1.0",
+    "@prisma/client": "^7.9.1",
     "@prisma/extension-accelerate": "^3.0.1",
     "@tanstack/react-query": "^5.90.12",
     "@tiptap/extension-color": "^3.27.3",
@@ -93,7 +93,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "pg": "^8.16.3",
-    "prisma": "^7.2.0",
+    "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
