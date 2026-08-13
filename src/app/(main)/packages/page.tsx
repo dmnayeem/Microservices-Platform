@@ -2,13 +2,14 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { getEffectivePackage } from "@/lib/packages";
 import { PackagesView } from "@/components/user/packages/packages-view";
 
 export default async function PackagesPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [packages, user] = await Promise.all([
+  const [packages, user, effectivePkg] = await Promise.all([
     prisma.package.findMany({
       where: { isActive: true },
       orderBy: { priceMonthly: "asc" },
@@ -21,6 +22,9 @@ export default async function PackagesPage() {
         pointsBalance: true,
       },
     }),
+    // The plan the user is really on right now — resolves null/expired → free
+    // default — so the "Current" badge is correct even for implicit-free users.
+    getEffectivePackage(session.user.id),
   ]);
 
   return (
@@ -35,7 +39,8 @@ export default async function PackagesPage() {
         dailyTaskLimit: p.dailyTaskLimit,
         withdrawalFee: p.withdrawalFeeDiscount,
       }))}
-      currentTier={user?.package?.slug ?? "default"}
+      currentTier={effectivePkg?.slug ?? user?.package?.slug ?? "default"}
+      currentPackageId={effectivePkg?.id ?? null}
       cashBalance={Number(user?.cashBalance ?? 0)}
       pointsBalance={user?.pointsBalance ?? 0}
     />

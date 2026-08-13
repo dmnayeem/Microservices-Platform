@@ -154,17 +154,31 @@ export const getEffectivePackage = cache(async function getEffectivePackage(
  */
 // The default package changes rarely — a short module TTL avoids a `findFirst`
 // on every free/expired user (the majority) on every navigation.
-let _defaultPkg: { row: PackageRow | null; at: number } | null = null;
+let _defaultPkg: { row: PackageRow; at: number } | null = null;
 const DEFAULT_PKG_TTL_MS = 60_000;
 export async function defaultPackage(): Promise<PackageRow | null> {
   if (_defaultPkg && Date.now() - _defaultPkg.at < DEFAULT_PKG_TTL_MS) {
     return _defaultPkg.row;
   }
-  const row = await prisma.package.findFirst({
-    where: { isDefault: true, isActive: true },
-  });
+  // Resilient resolution so free users always land on a real plan even if no row
+  // is flagged default (e.g. an unseeded prod, or the flag was toggled off in
+  // /admin/packages): prefer the flagged default → else the lowest active FREE
+  // ($0) plan → else the lowest active plan.
+  const row =
+    (await prisma.package.findFirst({ where: { isDefault: true, isActive: true } })) ??
+    (await prisma.package.findFirst({
+      where: { isActive: true, priceMonthly: 0 },
+      orderBy: { accessLevel: "asc" },
+    })) ??
+    (await prisma.package.findFirst({
+      where: { isActive: true },
+      orderBy: [{ accessLevel: "asc" }, { priceMonthly: "asc" }],
+    }));
   const value = row ? toPackageRow(row) : null;
-  _defaultPkg = { row: value, at: Date.now() };
+  // Only cache a real result — never cache a null, so a freshly-seeded/re-flagged
+  // default takes effect on the very next request instead of staying broken 60s.
+  if (value) _defaultPkg = { row: value, at: Date.now() };
+  else _defaultPkg = null;
   return value;
 }
 

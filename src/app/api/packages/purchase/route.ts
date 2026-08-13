@@ -56,11 +56,54 @@ export async function POST(request: NextRequest) {
   if (!pkg) {
     return NextResponse.json({ error: "Package not found" }, { status: 404 });
   }
+  // Free/default plan: activate directly — no charge, no payment step, no
+  // admin verification. This is the self-serve "Switch to Free" / activation path.
   if (toNum(pkg.priceMonthly) === 0 && pkg.priceYearly == null) {
-    return NextResponse.json(
-      { error: "Free plans don't need to be purchased" },
-      { status: 400 }
-    );
+    const now = new Date();
+    const freeExpiry =
+      pkg.validityDays && pkg.validityDays > 0
+        ? new Date(now.getTime() + pkg.validityDays * 86_400_000)
+        : null; // null = permanent (free plans usually never expire)
+    // Subscription.endDate is non-null; for a permanent free plan use a far-future
+    // sentinel — real access is governed by User.packageExpiresAt (null = forever).
+    const subEnd =
+      freeExpiry ?? new Date(now.getTime() + DURATION_DAYS.LIFETIME * 86_400_000);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { packageId: pkg.id, packageExpiresAt: freeExpiry },
+      });
+      const subscription = await tx.subscription.create({
+        data: {
+          userId,
+          packageId: pkg.id,
+          startDate: now,
+          endDate: subEnd,
+          amount: 0,
+          isActive: true,
+          autoRenew: false,
+        },
+        select: { id: true },
+      });
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: "PURCHASE",
+          status: "COMPLETED",
+          amount: 0,
+          points: 0,
+          description: `${pkg.name} plan activated`,
+          reference: `subscription_${subscription.id}`,
+        },
+      });
+    });
+    return NextResponse.json({
+      success: true,
+      activated: true,
+      expiresAt: freeExpiry ? freeExpiry.toISOString() : null,
+      checkoutUrl: null,
+      message: `${pkg.name} activated`,
+    });
   }
 
   const months = DURATION_MONTHS[v.data.duration];
