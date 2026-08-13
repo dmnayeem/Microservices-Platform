@@ -43,54 +43,54 @@ export function BalanceCard({
       <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-16 -left-10 w-40 h-40 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
 
-      <div className="relative flex items-start justify-between mb-3">
-        <div>
+      <div className="relative flex items-start justify-between gap-2 mb-3">
+        <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
             Total Balance
           </p>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-0.5">
+          <p className="text-2xl font-extrabold text-white tabular-nums mt-0.5 truncate">
             ${(cash + ptInUsd).toFixed(2)}
           </p>
           <p className="text-[10px] text-gray-500">Cash + points value</p>
         </div>
         {packageTier && (
-          <span className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase">
+          <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase">
             {packageTier}
           </span>
         )}
       </div>
 
       <div className="relative grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-gray-900/60 border border-gray-800 p-3">
+        <div className="min-w-0 rounded-xl bg-gray-900/60 border border-gray-800 p-3">
           <div className="flex items-center gap-1.5 text-amber-400 mb-1">
-            <Coins className="w-3.5 h-3.5" />
+            <Coins className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[10px] uppercase tracking-wider font-bold">
               Points
             </span>
           </div>
-          <p className="text-lg font-bold text-white tabular-nums">
+          <p className="text-lg font-bold text-white tabular-nums truncate">
             {points.toLocaleString()}
           </p>
           <p className="text-[10px] text-gray-500">${ptInUsd.toFixed(2)}</p>
         </div>
-        <div className="rounded-xl bg-gray-900/60 border border-gray-800 p-3">
+        <div className="min-w-0 rounded-xl bg-gray-900/60 border border-gray-800 p-3">
           <div className="flex items-center gap-1.5 text-emerald-400 mb-1">
-            <DollarSign className="w-3.5 h-3.5" />
+            <DollarSign className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[10px] uppercase tracking-wider font-bold">
               Cash
             </span>
           </div>
-          <p className="text-lg font-bold text-white tabular-nums">
+          <p className="text-lg font-bold text-white tabular-nums truncate">
             ${cash.toFixed(2)}
           </p>
           <p className="text-[10px] text-gray-500">Withdrawable</p>
         </div>
 
         {showAdCredit && (
-          <div className="col-span-2 rounded-xl bg-gray-900/60 border border-gray-800 p-3 flex items-center justify-between">
-            <div>
+          <div className="col-span-2 rounded-xl bg-gray-900/60 border border-gray-800 p-3 flex items-center justify-between gap-2">
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-sky-400 mb-1">
-                <Megaphone className="w-3.5 h-3.5" />
+                <Megaphone className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-[10px] uppercase tracking-wider font-bold">
                   Ad Credit
                 </span>
@@ -98,7 +98,7 @@ export function BalanceCard({
               <p className="text-lg font-bold text-white tabular-nums">
                 ${adCredit.toFixed(2)}
               </p>
-              <p className="text-[10px] text-gray-500">Funds ad campaigns · non-withdrawable</p>
+              <p className="text-[10px] text-gray-500 truncate">Funds ad campaigns · non-withdrawable</p>
             </div>
             <Link
               href={adTopUpHref}

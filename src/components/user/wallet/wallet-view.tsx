@@ -391,25 +391,25 @@ function BalanceTab({
     <div className="space-y-4">
       {/* Lifetime stats */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+        <div className="min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
           <div className="flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400">
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 truncate">
               Total Earned
             </span>
           </div>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-1">
+          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
             ${totalEarnings.toFixed(2)}
           </p>
         </div>
-        <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
+        <div className="min-w-0 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
           <div className="flex items-center gap-1.5">
-            <ArrowUpRight className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400">
+            <ArrowUpRight className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400 truncate">
               Total Withdrawn
             </span>
           </div>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-1">
+          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
             ${totalWithdrawn.toFixed(2)}
           </p>
         </div>
@@ -450,12 +450,12 @@ function BalanceTab({
           {/* Legend */}
           <div className="grid grid-cols-2 gap-1.5">
             {breakdown.map((b) => (
-              <div key={b.key} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 text-gray-300">
-                  <span className={cn("w-2 h-2 rounded-full", b.color)} />
-                  {b.label}
+              <div key={b.key} className="flex items-center justify-between gap-1.5 text-xs min-w-0">
+                <div className="flex items-center gap-1.5 text-gray-300 min-w-0">
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", b.color)} />
+                  <span className="truncate">{b.label}</span>
                 </div>
-                <span className="text-gray-500 tabular-nums">
+                <span className="text-gray-500 tabular-nums shrink-0">
                   {b.pct.toFixed(0)}% · {b.value.toLocaleString()}
                 </span>
               </div>

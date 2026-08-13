@@ -55,6 +55,7 @@ export function TransactionHistory() {
   const [items, setItems] = useState<HistoryTx[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [pendingEarnings, setPendingEarnings] = useState(0);
+  const [bySource, setBySource] = useState<Record<string, { points: number; amount: number }>>({});
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
@@ -70,6 +71,7 @@ export function TransactionHistory() {
         setItems(d.transactions ?? []);
         setTotalPages(d.pagination?.totalPages ?? 1);
         setPendingEarnings(d.summary?.pendingEarnings ?? 0);
+        setBySource(d.summary?.bySource ?? {});
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
@@ -149,6 +151,37 @@ export function TransactionHistory() {
           </button>
         ))}
       </div>
+
+      {/* Income by source over the selected range */}
+      {(() => {
+        const rows = Object.entries(bySource)
+          .filter(([, v]) => v.points > 0 || v.amount > 0.005)
+          .sort((a, b) => b[1].points + b[1].amount * 1000 - (a[1].points + a[1].amount * 1000));
+        if (rows.length === 0) return null;
+        return (
+          <div className="glass rounded-xl p-3">
+            <p className="text-xs font-bold text-white mb-2">By source</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
+              {rows.map(([key, v]) => {
+                const meta = SOURCE_META[key as SourceKey] ?? SOURCE_META.other;
+                return (
+                  <div key={key} className="flex items-center justify-between gap-2 text-xs min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 text-gray-300">
+                      <span className={cn("w-2 h-2 rounded-full shrink-0", meta.swatch)} />
+                      <span className="truncate">{meta.label}</span>
+                    </div>
+                    <span className="tabular-nums text-gray-400 shrink-0">
+                      {v.points > 0 && `${v.points.toLocaleString()} pts`}
+                      {v.points > 0 && v.amount > 0.005 && " · "}
+                      {v.amount > 0.005 && `$${v.amount.toFixed(2)}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* List */}
       {loading ? (
