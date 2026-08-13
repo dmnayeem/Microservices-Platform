@@ -66,3 +66,22 @@ export function isEmbeddableVideoUrl(url: string): boolean {
   const kind = resolveVideoUrl(url).kind;
   return kind === "youtube" || kind === "vimeo" || kind === "file" || kind === "iframe";
 }
+
+/**
+ * Normalize a URL into a form the in-app player (react-player v3) reliably
+ * recognises. react-player's own YouTube/Vimeo matchers are strict and reject
+ * many valid links (mobile `m.youtube.com`, extra query params, etc.), silently
+ * falling back to a broken `<video>` element → black screen. For YouTube/Vimeo
+ * we hand it the canonical embed URL (which its regex DOES match); everything
+ * else (direct files, unknown) passes through unchanged. Returns "" for input
+ * that isn't a usable URL so callers can show a clear error instead of a black box.
+ */
+export function playerSource(url: string): string {
+  if (!url) return "";
+  const r = resolveVideoUrl(url);
+  if (r.kind === "youtube" || r.kind === "vimeo" || r.kind === "iframe") {
+    return r.embedUrl;
+  }
+  // Direct video file or an unrecognised URL — let the player try the raw URL.
+  return url;
+}

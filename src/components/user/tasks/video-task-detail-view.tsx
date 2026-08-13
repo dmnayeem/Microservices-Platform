@@ -50,6 +50,8 @@ interface UserStatus {
   completedToday: boolean;
   /** True when the active submission was already submitted (awaiting review). */
   awaitingReview?: boolean;
+  /** Server-accrued watch seconds — used to resume instead of restart. */
+  watchedSeconds?: number;
 }
 
 type State =
@@ -68,6 +70,8 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
   const [lockedMsg, setLockedMsg] = useState<string | null>(null);
   const [adBlocked, setAdBlocked] = useState(false);
+  // Server-accrued watch seconds for the active submission (resume-from point).
+  const [resumeSeconds, setResumeSeconds] = useState(0);
 
   useEffect(() => {
     let cancel = false;
@@ -82,6 +86,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
         const t = tData.task as VideoTask;
         const userStatus = (tData.userStatus ?? {}) as UserStatus;
         setTask(t);
+        setResumeSeconds(Math.max(0, Math.floor(userStatus.watchedSeconds ?? 0)));
 
         // Already submitted (awaiting admin review) — status card, never the player.
         if (userStatus.awaitingReview) {
@@ -162,11 +167,18 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
           contentUrl: task.contentUrl,
         }}
         submissionId={state.submissionId}
-        onClose={(didSubmit) => {
+        initialWatchedSeconds={resumeSeconds}
+        onClose={(didSubmit, status) => {
           if (didSubmit) {
-            // VIDEO auto-approves — send to the Approved tab, not the
-            // pending-review "Submitted" tab (which only lists PENDING).
-            router.push("/video-tasks?tab=approved");
+            // Land on the tab that actually holds the result: an auto-approved
+            // video → back to the Available list (do the next task); a manual-
+            // review video → the Submitted tab where PENDING submissions live.
+            // (Previously always ?tab=approved → empty tab for review tasks.)
+            if (status === "PENDING") {
+              router.push("/video-tasks?tab=submitted");
+            } else {
+              router.push("/video-tasks");
+            }
           } else {
             // User backed out — keep the submission resumable
             setState({ kind: "ready", submissionId: state.submissionId });
@@ -470,7 +482,13 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               className="flex-1 py-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
             >
               <PlayCircle className="w-4 h-4" />
-              {hasVideoUrl ? "Start Watching" : "No video URL configured"}
+              {!hasVideoUrl
+                ? "No video URL configured"
+                : resumeSeconds > 0
+                  ? `Resume watching (${Math.floor(resumeSeconds / 60)}:${String(
+                      resumeSeconds % 60
+                    ).padStart(2, "0")})`
+                  : "Start Watching"}
             </button>
           </div>
         </section>

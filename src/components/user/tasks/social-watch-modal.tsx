@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { X, Loader2, PlayCircle, CheckCircle2 } from "lucide-react";
+import { X, Loader2, PlayCircle, CheckCircle2, ExternalLink } from "lucide-react";
 import { formatDuration } from "@/lib/video-tasks";
+import { playerSource } from "@/lib/video-url";
 import { confirmDialog } from "@/lib/confirm";
 import { VideoOverlayAd } from "@/components/user/primitives/video-overlay-ad";
 
@@ -48,10 +49,13 @@ export function SocialWatchModal({
   onClose,
 }: Props) {
   const target = Math.max(1, watchSeconds || 30);
+  // Normalize YouTube/Vimeo so react-player v3 actually loads it (see video-url.ts).
+  const playerSrc = playerSource(url);
   const [phase, setPhase] = useState<Phase>("warmup");
   const [warmupLeft, setWarmupLeft] = useState(WARMUP);
   const [watched, setWatched] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const watchedRef = useRef(0);
   const lastTimeRef = useRef(0);
   const visibleRef = useRef(
@@ -210,10 +214,10 @@ export function SocialWatchModal({
 
       {/* Player */}
       <div className="relative flex-1">
-        {url ? (
+        {playerSrc ? (
           <ReactPlayer
             ref={playerRef}
-            src={url}
+            src={playerSrc}
             playing={phase === "watch"}
             playsInline
             controls={false}
@@ -237,6 +241,7 @@ export function SocialWatchModal({
             onError={() => {
               playingRef.current = false;
               setIsPlaying(false);
+              setLoadError(true);
             }}
             onTimeUpdate={handleTimeUpdate}
             config={{ youtube: { disablekb: 1, rel: 0, fs: 0 } }}
@@ -244,6 +249,27 @@ export function SocialWatchModal({
         ) : (
           <div className="absolute inset-0 grid place-items-center text-gray-400">
             <p>No target URL configured.</p>
+          </div>
+        )}
+
+        {/* Load error — clear message + external link instead of a black box. */}
+        {loadError && (
+          <div className="absolute inset-0 z-40 grid place-items-center bg-black/95 px-6 text-center">
+            <div className="max-w-xs space-y-3">
+              <p className="text-sm font-semibold text-white">
+                Couldn&apos;t load this video
+              </p>
+              {url && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+                >
+                  <ExternalLink className="w-4 h-4" /> Open video
+                </a>
+              )}
+            </div>
           </div>
         )}
 

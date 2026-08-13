@@ -91,6 +91,9 @@ export async function GET(
       userStatus: {
         hasActiveSubmission: !!activeSubmission,
         activeSubmissionId: activeSubmission?.id,
+        // Server-accrued watch seconds so a VIDEO task resumes instead of
+        // restarting at 0 when the user navigates away and back.
+        watchedSeconds: activeSubmission?.watchedSeconds ?? 0,
         // `submittedAt` set ⇒ the user already submitted (awaiting review); null ⇒
         // still in-progress (started but not yet submitted). Views use this to show
         // an "awaiting review" state instead of the submit form.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import {
   X,
@@ -16,6 +17,7 @@ import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
 import type { VideoConfig, EngagementKey } from "@/lib/video-tasks";
 import { formatDuration, engagementSteps, effectiveSteps } from "@/lib/video-tasks";
+import { playerSource } from "@/lib/video-url";
 import { confirmDialog } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
@@ -44,17 +46,30 @@ interface PlayerTask {
 interface Props {
   task: PlayerTask;
   submissionId: string;
-  onClose: (didSubmit: boolean) => void;
+  /** Server-accrued watch seconds so far — resume instead of restarting at 0. */
+  initialWatchedSeconds?: number;
+  onClose: (didSubmit: boolean, status?: string) => void;
 }
 
 type Phase = "warmup" | "watch" | "complete" | "submitted";
 
-export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
+export function VideoTaskPlayer({
+  task,
+  submissionId,
+  initialWatchedSeconds = 0,
+  onClose,
+}: Props) {
   const cfg = task.videoConfig;
   const watchTarget = cfg?.watchSeconds ?? 30;
   const warmupTarget = cfg?.warmupSeconds ?? 0;
   const autoSubmit = cfg?.autoSubmit ?? true;
   const videoUrl = cfg?.videoUrl || task.contentUrl || "";
+  // react-player v3's URL matchers are strict; normalize YouTube/Vimeo to their
+  // canonical embed form so the player actually loads instead of black-screening.
+  const playerSrc = useMemo(() => playerSource(videoUrl), [videoUrl]);
+  // Clamp resume progress just below target so the player still enters the watch
+  // phase (the completion gate re-checks server seconds on submit anyway).
+  const resumeFrom = Math.max(0, Math.min(initialWatchedSeconds, Math.max(0, watchTarget - 1)));
   const proofReq = cfg?.proofRequirements ?? {
     screenshot: false,
     uniqueKey: false,
@@ -64,10 +79,19 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
     warmupTarget > 0 ? "warmup" : "watch"
   );
   const [warmupLeft, setWarmupLeft] = useState(warmupTarget);
-  const [watched, setWatched] = useState(0);
+  const [watched, setWatched] = useState(resumeFrom);
   const [isPlaying, setIsPlaying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [autoFailed, setAutoFailed] = useState(false);
+  // Player couldn't load the media (bad/unsupported URL) — show a clear error
+  // + external link instead of a silent black box.
+  const [loadError, setLoadError] = useState(false);
+  // Final server-decided status (APPROVED/AUTO_APPROVED/PENDING) — used to land
+  // the user on the right tab after they press Done.
+  const [finalStatus, setFinalStatus] = useState<string | undefined>(undefined);
+  // Portal-mount guard so we only render into document.body on the client.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [screenshotUrl, setScreenshotUrl] = useState("");
   const [uniqueKey, setUniqueKey] = useState("");
   // YouTube-style engagement steps + the user's honor confirmations.
@@ -93,8 +117,10 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
   const [introAdDone, setIntroAdDone] = useState(false);
   const [outroAdDone, setOutroAdDone] = useState(false);
   const submittedRef = useRef(false);
-  const watchedRef = useRef(0);
+  const watchedRef = useRef(resumeFrom);
   const lastTimeRef = useRef(0);
+  // Seek-to-resume runs once, on the first real playback tick.
+  const seekedRef = useRef(false);
   // Actual media duration (seconds), captured from the player. Sent on submit
   // so the server can cap the required watch time at the real video length —
   // otherwise a video shorter than watchSeconds is impossible to complete.
@@ -323,12 +349,13 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
       }
       const data = await res.json();
       const status = data?.submission?.status as string | undefined;
+      setFinalStatus(status);
       if (status === "REJECTED") {
         toast.error("Submission rejected", {
           description: data?.submission?.rejectionReason ?? undefined,
         });
         // Brief pause so the user sees the toast, then close
-        setTimeout(() => onClose(true), 1500);
+        setTimeout(() => onClose(true, status), 1500);
         return;
       }
       setPhase("submitted");
@@ -356,11 +383,11 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
 
   const handleCancel = async () => {
     if (phase === "submitted") {
-      onClose(true);
+      onClose(true, finalStatus);
       return;
     }
     if (phase === "complete" && submittedRef.current) {
-      onClose(true);
+      onClose(true, finalStatus);
       return;
     }
     if (
@@ -419,7 +446,12 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
     [watched, watchTarget]
   );
 
-  return (
+  if (!mounted) return null;
+
+  // Portal to <body> so the full-screen player lives in the ROOT stacking
+  // context — otherwise an ancestor transform/opacity (pull-to-refresh, page
+  // fade) traps its z-index and the sidebar/header/bottom-bar paint over it.
+  return createPortal(
     <div className="fixed inset-0 z-100 bg-black flex flex-col">
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/80 to-transparent">
@@ -443,10 +475,10 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
 
       {/* Player */}
       <div className="relative flex-1">
-        {videoUrl ? (
+        {playerSrc ? (
           <ReactPlayer
             ref={playerRef}
-            src={videoUrl}
+            src={playerSrc}
             playing={phase === "watch" && introAdDone}
             controls={false}
             playsInline
@@ -461,6 +493,19 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
             onPlay={() => {
               playingRef.current = true;
               setIsPlaying(true);
+              // Resume: seek to the server-accrued position once, so navigating
+              // away and back doesn't restart the video from 0.
+              if (!seekedRef.current) {
+                seekedRef.current = true;
+                if (resumeFrom > 0 && playerRef.current) {
+                  try {
+                    playerRef.current.currentTime = resumeFrom;
+                    lastTimeRef.current = resumeFrom;
+                  } catch {
+                    /* seek unsupported on this source — accrue from here instead */
+                  }
+                }
+              }
               // Anchor the server clock at real playback start (first beat
               // credits 0), so short videos don't fail the gate on a race.
               void sendBeat();
@@ -477,6 +522,7 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
             onError={() => {
               playingRef.current = false;
               setIsPlaying(false);
+              setLoadError(true);
             }}
             onTimeUpdate={handleTimeUpdate}
             config={{
@@ -494,6 +540,38 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
         ) : (
           <div className="absolute inset-0 grid place-items-center text-gray-400">
             <p>No video URL configured.</p>
+          </div>
+        )}
+
+        {/* Load error — the media couldn't play (bad/unsupported URL). Show a
+            clear message + external link instead of a silent black screen. */}
+        {loadError && (
+          <div className="absolute inset-0 z-40 grid place-items-center bg-black/95 px-6 text-center">
+            <div className="max-w-xs space-y-3">
+              <p className="text-sm font-semibold text-white">
+                Couldn&apos;t load this video
+              </p>
+              <p className="text-xs text-gray-400">
+                The video link may be invalid or unsupported for in-app playback.
+                You can open it directly and try again.
+              </p>
+              {videoUrl && (
+                <a
+                  href={videoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+                >
+                  <ExternalLink className="w-4 h-4" /> Open video
+                </a>
+              )}
+              <button
+                onClick={handleCancel}
+                className="block w-full text-xs text-gray-400 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
 
@@ -599,7 +677,7 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
       <div className="absolute bottom-0 inset-x-0 z-20 max-h-[70vh] overflow-y-auto bg-linear-to-t from-black via-black/90 to-transparent px-4 pt-6 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-3">
         {phase === "submitted" && (
           <button
-            onClick={() => onClose(true)}
+            onClick={() => onClose(true, finalStatus)}
             className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5"
           >
             Done — back to tasks
@@ -863,6 +941,7 @@ export function VideoTaskPlayer({ task, submissionId, onClose }: Props) {
         allowClose
         onDone={() => setOutroAdDone(true)}
       />
-    </div>
+    </div>,
+    document.body
   );
 }
