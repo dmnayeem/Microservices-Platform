@@ -6,6 +6,7 @@ import { Loader2, Wallet, ExternalLink, Copy, Check, Megaphone } from "lucide-re
 import { toast } from "@/lib/toast";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import type { DepositMethod } from "@/lib/deposit-methods";
 
@@ -193,13 +194,14 @@ export function DepositView({ from }: { from?: string } = {}) {
                   key={m.key}
                   type="button"
                   onClick={() => setMethod(m.key)}
-                  className={`p-2.5 rounded-lg border text-sm font-semibold ${
+                  className={`p-2.5 rounded-lg border text-sm font-semibold inline-flex items-center justify-center gap-1.5 ${
                     method === m.key
                       ? "border-indigo-500 bg-indigo-500/10 text-white"
                       : "border-gray-700 bg-gray-800 text-gray-300"
                   }`}
                 >
-                  {m.label}
+                  <BrandIcon brand={m.key} colored className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{m.label}</span>
                 </button>
               ))}
             </div>

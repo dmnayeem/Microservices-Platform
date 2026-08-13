@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import type { FooterContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { MarketingNavLink } from "./marketing-link";
+import { BrandIcon } from "@/components/ui/brand-icon";
 
 type Props = Partial<FooterContent>;
 
@@ -37,8 +38,9 @@ export function Footer(props: Props) {
                   {v.payment_methods.map((method, i) => (
                     <span
                       key={i}
-                      className="px-3 py-1.5 rounded-lg bg-(--mk-surface) border border-(--mk-border) text-sm text-(--mk-text) shadow-sm"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--mk-surface) border border-(--mk-border) text-sm text-(--mk-text) shadow-sm"
                     >
+                      <BrandIcon brand={method} colored className="w-4 h-4" />
                       {method}
                     </span>
                   ))}

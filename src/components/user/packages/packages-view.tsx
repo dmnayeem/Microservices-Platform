@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { TIER_GRADIENT } from "@/lib/tiers";
+import { BrandIcon } from "@/components/ui/brand-icon";
 
 type Tier = "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP";
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
@@ -332,7 +333,10 @@ export function PackagesView({
                 onChange={() => setMethod(m.value)}
                 className="accent-indigo-500"
               />
-              <div className="flex-1">
+              {m.value !== "CASH" && m.value !== "POINTS" && (
+                <BrandIcon brand={m.value} colored className="w-5 h-5 shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white">{m.label}</p>
                 <p className="text-[11px] text-gray-500">{m.info}</p>
               </div>

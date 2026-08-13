@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, AlertTriangle, CreditCard, Loader2, Lock, Plus, ShieldCheck, Banknote, Clock } from "lucide-react";
+import { ArrowUpRight, AlertTriangle, Loader2, Lock, Plus, ShieldCheck, Banknote, Clock } from "lucide-react";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -297,7 +298,7 @@ export function WithdrawalView({
                       onChange={() => setMethodId(m.id)}
                       className="accent-indigo-500"
                     />
-                    <CreditCard className="w-4 h-4 text-gray-400" />
+                    <BrandIcon brand={m.type} fallback="💳" colored className="w-4 h-4" />
                     <span className="flex-1 text-sm text-white">{m.label}</span>
                     {m.isDefault && (
                       <span className="text-[10px] font-bold text-emerald-400">

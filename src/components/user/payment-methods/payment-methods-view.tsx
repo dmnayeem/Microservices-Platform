@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
+import { BrandIcon } from "@/components/ui/brand-icon";
 
 interface SavedMethod {
   id: string;
@@ -182,9 +183,7 @@ export function PaymentMethodsView() {
                 key={m.id}
                 className="flex items-center gap-3 p-3 rounded-lg bg-gray-950 border border-gray-800"
               >
-                <span className="text-lg" aria-hidden>
-                  {iconFor(m.method)}
-                </span>
+                <BrandIcon brand={m.method} fallback={iconFor(m.method)} colored className="w-5 h-5" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm text-white font-medium">
