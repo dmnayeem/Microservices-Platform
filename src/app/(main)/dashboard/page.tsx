@@ -28,46 +28,18 @@ import { StatCard } from "@/components/user/primitives/stat-card";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import {
   TransactionRow,
-  type TxType,
   type TxStatus,
 } from "@/components/user/primitives/transaction-row";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { taskRunHref } from "@/lib/task-routes";
 import { toNum } from "@/lib/money";
+import { deriveSource } from "@/lib/tx-sources";
 import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { ProfileCompletionBanner } from "@/components/user/primitives/profile-completion-banner";
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
-
-// Map the DB transaction type → the TransactionRow visual type.
-function toTxType(t: string): TxType {
-  switch (t) {
-    case "REFERRAL":
-      return "EARN_REFERRAL";
-    case "LOTTERY_WIN":
-      return "EARN_LOTTERY";
-    case "BONUS":
-    case "CHECKIN":
-    case "GIFT":
-      return "EARN_BONUS";
-    case "WITHDRAWAL":
-      return "WITHDRAWAL";
-    case "PURCHASE":
-    case "COURSE_PURCHASE":
-    case "DEPOSIT":
-      return "PURCHASE";
-    case "REFUND":
-    case "COURSE_REFUND":
-      return "REFUND";
-    case "EARNING":
-    case "COURSE_TUTOR_EARNING":
-      return "EARN_TASK";
-    default:
-      return "EARN_OTHER";
-  }
-}
 
 const QUICK_ACTIONS = [
   { label: "Tasks", href: "/tasks", icon: CheckCircle, tone: "bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20" },
@@ -156,6 +128,7 @@ export default async function DashboardPage() {
           status: true,
           points: true,
           amount: true,
+          reference: true,
           description: true,
           createdAt: true,
         },
@@ -338,13 +311,21 @@ export default async function DashboardPage() {
         ) : (
           <div>
             {recentTx.map((tx) => {
+              const isOutflow =
+                tx.type === "WITHDRAWAL" ||
+                tx.type === "PURCHASE" ||
+                tx.type === "PENALTY" ||
+                tx.type === "AD_CREDIT_PURCHASE";
               const usePoints = tx.points !== 0;
+              const magnitude = usePoints
+                ? Math.abs(tx.points)
+                : Math.abs(toNum(tx.amount));
               return (
                 <TransactionRow
                   key={tx.id}
-                  type={toTxType(tx.type)}
+                  source={deriveSource(tx.type, tx.reference)}
                   description={tx.description ?? tx.type.replace(/_/g, " ")}
-                  amount={usePoints ? tx.points : toNum(tx.amount)}
+                  amount={isOutflow ? -magnitude : magnitude}
                   unit={usePoints ? "pts" : "USD"}
                   status={tx.status as TxStatus}
                   date={tx.createdAt}

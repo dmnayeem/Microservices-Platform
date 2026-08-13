@@ -123,9 +123,20 @@ export async function GET(request: NextRequest) {
     // Pending task earnings (not yet credited) so the user sees points coming.
     const pendingSubs = await prisma.taskSubmission.findMany({
       where: { userId, status: "PENDING" },
-      select: { task: { select: { pointsReward: true } } },
+      select: { taskId: true },
     });
-    const pendingEarnings = pendingSubs.reduce((s, sub) => s + (sub.task?.pointsReward ?? 0), 0);
+    const rewardByTask = new Map<string, number>();
+    if (pendingSubs.length) {
+      const pendingTasks = await prisma.task.findMany({
+        where: { id: { in: pendingSubs.map((s) => s.taskId) } },
+        select: { id: true, pointsReward: true },
+      });
+      for (const t of pendingTasks) rewardByTask.set(t.id, t.pointsReward);
+    }
+    const pendingEarnings = pendingSubs.reduce(
+      (sum, sub) => sum + (rewardByTask.get(sub.taskId) ?? 0),
+      0
+    );
 
     return NextResponse.json({
       transactions: transactions.map((tx) => ({

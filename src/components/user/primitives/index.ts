@@ -9,7 +9,7 @@ export { TaskCard } from "./task-card";
 export type { TaskStatus, TaskDifficulty } from "./task-card";
 export { TaskSubmissionRow } from "./task-submission-row";
 export { TransactionRow } from "./transaction-row";
-export type { TxType, TxStatus } from "./transaction-row";
+export type { TxStatus } from "./transaction-row";
 export { ListingCard } from "./listing-card";
 export { NotificationItem } from "./notification-item";
 export type { NotificationType } from "./notification-item";
