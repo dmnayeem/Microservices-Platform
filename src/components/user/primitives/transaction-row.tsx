@@ -1,72 +1,47 @@
 import { cn } from "@/lib/utils";
 import {
-  ArrowDownLeft,
   ArrowUpRight,
+  ArrowDownToLine,
   Coins,
   Gift,
   ShoppingBag,
+  ShoppingCart,
   Trophy,
   Users,
   Sparkles,
+  Handshake,
+  GraduationCap,
+  MessageSquare,
+  ListChecks,
+  CalendarCheck,
+  Megaphone,
+  Repeat,
+  Undo2,
+  Shield,
+  type LucideIcon,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-
-export type TxType =
-  | "EARN_TASK"
-  | "EARN_REFERRAL"
-  | "EARN_LOTTERY"
-  | "EARN_BONUS"
-  | "EARN_OTHER"
-  | "WITHDRAWAL"
-  | "PURCHASE"
-  | "REFUND";
+import { SOURCE_META, type SourceKey } from "@/lib/tx-sources";
 
 export type TxStatus = "PENDING" | "COMPLETED" | "FAILED" | "CANCELLED";
 
+const ICONS: Record<string, LucideIcon> = {
+  ListChecks, MessageSquare, Users, Handshake, GraduationCap, ShoppingBag,
+  ArrowDownToLine, ArrowUpRight, Repeat, Sparkles, Trophy, CalendarCheck,
+  Megaphone, ShoppingCart, Undo2, Shield, Coins, Gift,
+};
+
 interface TransactionRowProps {
-  type: TxType;
+  /** Transaction source — drives icon + color (see tx-sources SOURCE_META). */
+  source: SourceKey;
   description: string;
+  /** Signed value: positive = inflow (green +), negative = outflow (red −). */
   amount: number;
   unit?: "pts" | "USD";
   status?: TxStatus;
   date: Date | string;
   className?: string;
 }
-
-const TYPE_META: Record<TxType, { icon: React.ReactNode; tone: string }> = {
-  EARN_TASK: {
-    icon: <Coins className="w-4 h-4" />,
-    tone: "bg-amber-500/10 text-amber-400",
-  },
-  EARN_REFERRAL: {
-    icon: <Users className="w-4 h-4" />,
-    tone: "bg-indigo-500/10 text-indigo-400",
-  },
-  EARN_LOTTERY: {
-    icon: <Trophy className="w-4 h-4" />,
-    tone: "bg-purple-500/10 text-purple-400",
-  },
-  EARN_BONUS: {
-    icon: <Sparkles className="w-4 h-4" />,
-    tone: "bg-pink-500/10 text-pink-400",
-  },
-  EARN_OTHER: {
-    icon: <Gift className="w-4 h-4" />,
-    tone: "bg-emerald-500/10 text-emerald-400",
-  },
-  WITHDRAWAL: {
-    icon: <ArrowUpRight className="w-4 h-4" />,
-    tone: "bg-red-500/10 text-red-400",
-  },
-  PURCHASE: {
-    icon: <ShoppingBag className="w-4 h-4" />,
-    tone: "bg-orange-500/10 text-orange-400",
-  },
-  REFUND: {
-    icon: <ArrowDownLeft className="w-4 h-4" />,
-    tone: "bg-emerald-500/10 text-emerald-400",
-  },
-};
 
 const STATUS_TONE: Record<TxStatus, string> = {
   PENDING: "bg-amber-500/10 text-amber-400",
@@ -76,7 +51,7 @@ const STATUS_TONE: Record<TxStatus, string> = {
 };
 
 export function TransactionRow({
-  type,
+  source,
   description,
   amount,
   unit = "pts",
@@ -84,9 +59,10 @@ export function TransactionRow({
   date,
   className,
 }: TransactionRowProps) {
-  const meta = TYPE_META[type];
-  const isOutflow = type === "WITHDRAWAL" || type === "PURCHASE";
-  const sign = isOutflow ? "-" : "+";
+  const meta = SOURCE_META[source] ?? SOURCE_META.other;
+  const Icon = ICONS[meta.icon] ?? Coins;
+  const isOutflow = amount < 0;
+  const sign = isOutflow ? "−" : "+";
   const absVal = Math.abs(amount);
   const dt = typeof date === "string" ? new Date(date) : date;
 
@@ -103,18 +79,21 @@ export function TransactionRow({
           meta.tone
         )}
       >
-        {meta.icon}
+        <Icon className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white truncate">{description}</p>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] text-gray-500" title={format(dt, "PPp")}>
+        <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-gray-800 text-gray-400 shrink-0">
+            {meta.label}
+          </span>
+          <span className="text-[10px] text-gray-500 truncate" title={format(dt, "PPp")}>
             {formatDistanceToNow(dt, { addSuffix: true })}
           </span>
-          {status && (
+          {status && status !== "COMPLETED" && (
             <span
               className={cn(
-                "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0",
                 STATUS_TONE[status]
               )}
             >

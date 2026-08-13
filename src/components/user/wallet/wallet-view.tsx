@@ -1,7 +1,7 @@
 "use client";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
@@ -26,8 +26,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
-import { TransactionRow, type TxType } from "@/components/user/primitives/transaction-row";
+import { TransactionRow } from "@/components/user/primitives/transaction-row";
+import { TransactionHistory } from "@/components/user/wallet/transaction-history";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { deriveSource } from "@/lib/tx-sources";
+import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface WalletTransaction {
@@ -78,23 +81,18 @@ export interface WalletViewProps {
   convertThreshold?: number;
 }
 
-type Tab = "balance" | "deposits" | "referral" | "withdraw";
-
-const TX_TYPE_MAP: Record<string, TxType> = {
-  EARNING: "EARN_TASK",
-  BONUS: "EARN_BONUS",
-  REFERRAL: "EARN_REFERRAL",
-  LOTTERY_WIN: "EARN_LOTTERY",
-  CHECKIN: "EARN_BONUS",
-  GIFT: "EARN_BONUS",
-  WITHDRAWAL: "WITHDRAWAL",
-  PURCHASE: "PURCHASE",
-  REFUND: "REFUND",
-  PENALTY: "EARN_OTHER",
-};
+type Tab = "balance" | "history" | "deposits" | "referral" | "withdraw";
 
 export function WalletView(props: WalletViewProps) {
   const [tab, setTab] = useState<Tab>("balance");
+
+  // Honor ?tab= deep-links (the withdrawal page links to ?tab=transactions).
+  // Done in an effect (not the initializer) to avoid an SSR hydration mismatch.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "transactions" || t === "history") setTab("history");
+    else if (t === "deposits" || t === "referral" || t === "withdraw") setTab(t);
+  }, []);
 
   const isFreeTier = props.packageTier === "FREE";
   const pointsPerUsd = props.pointsPerUsd ?? 1000;
@@ -149,6 +147,7 @@ export function WalletView(props: WalletViewProps) {
         {(
           [
             { key: "balance", label: "Balance", icon: Coins },
+            { key: "history", label: "History", icon: History },
             { key: "deposits", label: "Deposits", icon: Banknote },
             { key: "referral", label: "Referral", icon: Users },
             { key: "withdraw", label: "Withdraw", icon: ArrowUpRight },
@@ -180,6 +179,8 @@ export function WalletView(props: WalletViewProps) {
           transactions={props.transactions}
         />
       )}
+
+      {tab === "history" && <TransactionHistory />}
 
       {tab === "deposits" && (
         <DepositsTab deposits={props.deposits ?? []} />
@@ -440,23 +441,22 @@ function BalanceTab({
         ) : (
           <div className="space-y-1.5">
             {transactions.slice(0, 10).map((tx) => {
-              const txType = TX_TYPE_MAP[tx.type] ?? "EARN_OTHER";
-              const isEarning =
-                tx.type !== "WITHDRAWAL" &&
-                tx.type !== "PURCHASE" &&
-                tx.type !== "PENALTY";
-              const showPoints = tx.points > 0;
+              const isOutflow =
+                tx.type === "WITHDRAWAL" ||
+                tx.type === "PURCHASE" ||
+                tx.type === "PENALTY" ||
+                tx.type === "AD_CREDIT_PURCHASE";
+              const usePoints = tx.points !== 0;
+              const magnitude = usePoints
+                ? Math.abs(tx.points)
+                : Math.abs(tx.amount);
               return (
                 <TransactionRow
                   key={tx.id}
-                  type={txType}
-                  description={tx.description ?? tx.type.replace("_", " ")}
-                  amount={
-                    showPoints
-                      ? (isEarning ? tx.points : -tx.points)
-                      : (isEarning ? tx.amount : -tx.amount)
-                  }
-                  unit={showPoints ? "pts" : "USD"}
+                  source={deriveSource(tx.type, tx.reference)}
+                  description={tx.description ?? tx.type.replace(/_/g, " ")}
+                  amount={isOutflow ? -magnitude : magnitude}
+                  unit={usePoints ? "pts" : "USD"}
                   status={
                     tx.status as
                       | "PENDING"
