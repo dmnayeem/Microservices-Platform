@@ -1,11 +1,15 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-// For seeding, use Prisma Accelerate
-const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL!,
-});
+// Connect with the matching option for the DATABASE_URL scheme: Accelerate proxy
+// (prisma://) vs a direct postgres:// connection via the pg driver adapter.
+const seedUrl = process.env.DATABASE_URL!;
+const prisma =
+  seedUrl.startsWith("prisma://") || seedUrl.startsWith("prisma+postgres://")
+    ? new PrismaClient({ accelerateUrl: seedUrl })
+    : new PrismaClient({ adapter: new PrismaPg({ connectionString: seedUrl }) });
 
 async function main() {
   // SAFETY: this seed wipes ALL users. Never allow it to run against production.

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
@@ -47,8 +48,19 @@ function isTransientAccelerateError(e: unknown): boolean {
 const RETRY_BACKOFF_MS = [250, 500, 1000, 2000];
 
 function createPrismaClient() {
+  const url = process.env.DATABASE_URL!;
+  // Accelerate proxy URLs use the prisma:// (prisma+postgres://) scheme; a plain
+  // postgres:// is a DIRECT connection, made via the pg driver adapter. Pick the
+  // matching constructor option so the same client works with either.
+  // withAccelerate() stays applied — its `cacheStrategy` is a no-op on a direct
+  // connection, so every existing cacheStrategy call still runs (just uncached).
+  const isAccelerate =
+    url.startsWith("prisma://") || url.startsWith("prisma+postgres://");
+  const connOption = isAccelerate
+    ? { accelerateUrl: url }
+    : { adapter: new PrismaPg({ connectionString: url }) };
   return new PrismaClient({
-    accelerateUrl: process.env.DATABASE_URL!,
+    ...connOption,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   })
     .$extends(withAccelerate())
