@@ -79,6 +79,8 @@ export interface WalletViewProps {
   pointsPerUsd?: number;
   /** Min points before the convert-to-cash option unlocks. */
   convertThreshold?: number;
+  /** Effective withdrawal fee % (admin setting minus package discount). */
+  withdrawalFeePct?: number;
 }
 
 type Tab = "balance" | "history" | "deposits" | "referral" | "withdraw";
@@ -198,6 +200,7 @@ export function WalletView(props: WalletViewProps) {
           convertThreshold={props.convertThreshold ?? 10000}
           pendingWithdrawals={props.pendingWithdrawals}
           packageTier={props.packageTier}
+          feePct={props.withdrawalFeePct ?? 0}
         />
       )}
     </div>
@@ -219,20 +222,32 @@ function ConvertCard({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  // Amount of points the user chooses to convert (defaults to the whole balance).
+  const [amountStr, setAmountStr] = useState<string>(String(points));
   const canConvert = points >= threshold;
-  const asUsd = points / pointsPerUsd;
   const pct = Math.min(100, threshold > 0 ? (points / threshold) * 100 : 0);
   const remaining = Math.max(0, threshold - points);
+  const minConvert = Math.max(1, Math.ceil(pointsPerUsd)); // ≥ $1 worth
+
+  const amount = Math.min(points, Math.max(0, Math.floor(Number(amountStr) || 0)));
+  const previewUsd = amount / pointsPerUsd;
+  const amountValid = canConvert && amount >= minConvert && amount <= points;
 
   if (points <= 0) return null;
 
+  const onAmountChange = (raw: string) => {
+    const digits = raw.replace(/[^\d]/g, "").replace(/^0+(?=\d)/, "");
+    setAmountStr(digits);
+  };
+
   const convert = async () => {
-    if (!canConvert || busy) return;
+    if (!amountValid || busy) return;
     setBusy(true);
     try {
       const res = await fetch("/api/wallet/convert", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        body: JSON.stringify({ points: amount }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? "Failed");
@@ -249,37 +264,65 @@ function ConvertCard({
 
   return (
     <div className="rounded-2xl border border-sky-500/25 bg-linear-to-br from-sky-500/10 to-indigo-500/5 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-white flex items-center gap-1.5">
-            <ArrowRightLeft className="w-4 h-4 text-sky-400" />
-            Convert points to cash
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {canConvert
-              ? `Move your ${points.toLocaleString()} points into withdrawable cash (~$${asUsd.toFixed(2)}).`
-              : `Earn ${remaining.toLocaleString()} more points to unlock — points become withdrawable cash at ${threshold.toLocaleString()}.`}
-          </p>
-        </div>
-        <button
-          onClick={convert}
-          disabled={!canConvert || busy}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
-          {canConvert ? `Convert ~$${asUsd.toFixed(2)}` : "Locked"}
-        </button>
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-white flex items-center gap-1.5">
+          <ArrowRightLeft className="w-4 h-4 text-sky-400 shrink-0" />
+          Convert points to cash
+        </p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {canConvert
+            ? "Choose how many points to move into withdrawable cash."
+            : `Earn ${remaining.toLocaleString()} more points to unlock — converting opens at ${threshold.toLocaleString()} pts.`}
+        </p>
       </div>
-      {/* Threshold progress */}
-      <div className="mt-3">
-        <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
-          <div className="h-full bg-linear-to-r from-sky-400 to-indigo-400" style={{ width: `${pct}%` }} />
+
+      {canConvert ? (
+        <>
+          <div className="mt-3 flex items-stretch gap-2">
+            <div className="relative flex-1 min-w-0">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountStr}
+                onChange={(e) => onAmountChange(e.target.value)}
+                placeholder={String(minConvert)}
+                className="w-full pl-3 pr-14 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white text-sm font-bold tabular-nums focus:outline-none focus:border-sky-500"
+              />
+              <button
+                type="button"
+                onClick={() => setAmountStr(String(points))}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md bg-gray-800 text-[10px] font-bold text-sky-300 hover:bg-gray-700"
+              >
+                MAX
+              </button>
+            </div>
+            <button
+              onClick={convert}
+              disabled={!amountValid || busy}
+              className="shrink-0 inline-flex items-center gap-1.5 px-4 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+              Convert
+            </button>
+          </div>
+          <div className="flex items-center justify-between text-[11px] mt-1.5">
+            <span className="text-gray-500">
+              Balance {points.toLocaleString()} pts · min {minConvert.toLocaleString()}
+            </span>
+            <span className="text-sky-300 font-semibold tabular-nums">≈ ${previewUsd.toFixed(2)}</span>
+          </div>
+        </>
+      ) : (
+        <div className="mt-3">
+          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div className="h-full bg-linear-to-r from-sky-400 to-indigo-400" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] text-gray-500 mt-1 tabular-nums">
+            <span>{points.toLocaleString()} pts</span>
+            <span>{threshold.toLocaleString()} pts</span>
+          </div>
         </div>
-        <div className="flex justify-between text-[10px] text-gray-500 mt-1 tabular-nums">
-          <span>{points.toLocaleString()} pts</span>
-          <span>{threshold.toLocaleString()} pts</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -671,6 +714,7 @@ function WithdrawTab({
   convertThreshold,
   pendingWithdrawals,
   packageTier,
+  feePct,
 }: {
   isFreeTier: boolean;
   cashBalance: number;
@@ -678,6 +722,7 @@ function WithdrawTab({
   convertThreshold: number;
   pendingWithdrawals: number;
   packageTier: string;
+  feePct: number;
 }) {
   // Only CASH is withdrawable. Points must be converted to cash first (see the
   // Convert card on the Balance tab). Show a nudge when the user has convertible
@@ -739,10 +784,22 @@ function WithdrawTab({
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-400">Withdrawal fee</span>
+            <span className="text-white tabular-nums font-semibold">
+              {feePct > 0 ? `${feePct.toFixed(1)}%` : "No fee"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
             <span className="text-gray-400">Your tier</span>
             <span className="text-white font-semibold">{packageTier}</span>
           </div>
         </div>
+        {feePct > 0 && cashBalance > 0 && (
+          <p className="mt-2 text-[11px] text-gray-500">
+            On ${cashBalance.toFixed(2)} you&apos;d receive ~$
+            {(cashBalance * (1 - feePct / 100)).toFixed(2)} after the {feePct.toFixed(1)}% fee.
+          </p>
+        )}
 
         {!hasCash && canConvertPoints && (
           <p className="mt-3 text-[11px] text-sky-300">

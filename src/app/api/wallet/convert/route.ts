@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
-import { convertAllPointsToCash } from "@/lib/points-convert";
+import { convertPointsToCash } from "@/lib/points-convert";
 import { deliverToUser } from "@/lib/notify";
 
-// POST /api/wallet/convert — move the user's ENTIRE points balance into
-// withdrawable cash, once they hold at least the admin-set threshold.
+// POST /api/wallet/convert — move points into withdrawable cash, once the user
+// holds at least the admin-set threshold. Body `{ points? }` converts a partial
+// amount; omit it to convert the entire balance.
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -13,7 +14,13 @@ export async function POST(request: NextRequest) {
   }
 
   return withIdempotency(request, session.user.id, async () => {
-    const result = await convertAllPointsToCash(session.user.id);
+    const body = await request.json().catch(() => ({}));
+    const requested =
+      body && typeof body.points === "number" && isFinite(body.points) && body.points > 0
+        ? Math.floor(body.points)
+        : undefined;
+
+    const result = await convertPointsToCash(session.user.id, requested);
 
     if (!result.ok) {
       if (result.reason === "BELOW_THRESHOLD") {
@@ -21,6 +28,18 @@ export async function POST(request: NextRequest) {
           {
             error: `You need at least ${result.threshold.toLocaleString()} points to convert. You have ${result.points.toLocaleString()}.`,
           },
+          { status: 400 }
+        );
+      }
+      if (result.reason === "TOO_SMALL") {
+        return NextResponse.json(
+          { error: `Convert at least ${(result.min ?? 0).toLocaleString()} points (worth ~$1).` },
+          { status: 400 }
+        );
+      }
+      if (result.reason === "INSUFFICIENT") {
+        return NextResponse.json(
+          { error: `You only have ${result.points.toLocaleString()} points.` },
           { status: 400 }
         );
       }

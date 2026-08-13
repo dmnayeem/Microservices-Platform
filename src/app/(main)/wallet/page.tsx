@@ -10,6 +10,7 @@ import {
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
+import { getWithdrawalConfig } from "@/lib/withdrawal";
 import { toNum } from "@/lib/money";
 
 export default async function WalletPage() {
@@ -71,6 +72,10 @@ export default async function WalletPage() {
       getPointsPerUsd(),
       getPointsConvertThreshold(),
     ]);
+
+  // Effective withdrawal fee % (admin setting − package discount) so the wallet
+  // Withdraw tab can show it too, matching the /withdrawal page.
+  const wcfg = await getWithdrawalConfig(userId);
 
   if (!user) redirect("/login");
 
@@ -152,6 +157,7 @@ export default async function WalletPage() {
         pendingWithdrawals={pendingWithdrawalsCount}
         pointsPerUsd={pointsPerUsd}
         convertThreshold={convertThreshold}
+        withdrawalFeePct={wcfg.feePct}
       />
     </>
   );

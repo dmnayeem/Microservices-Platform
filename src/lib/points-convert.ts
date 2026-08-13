@@ -4,20 +4,30 @@ import { toNum } from "@/lib/money";
 
 export type ConvertResult =
   | { ok: true; pointsConverted: number; cashAdded: number; newCash: number }
-  | { ok: false; reason: "BELOW_THRESHOLD" | "CONFLICT"; threshold: number; points: number };
+  | {
+      ok: false;
+      reason: "BELOW_THRESHOLD" | "CONFLICT" | "TOO_SMALL" | "INSUFFICIENT";
+      threshold: number;
+      points: number;
+      min?: number;
+    };
 
 /**
- * Convert a user's ENTIRE points balance into withdrawable cash, once they hold
- * at least the admin-configured threshold. Points-type income (tasks, referral,
- * social, daily) accumulates as points; this is the single gate that moves it
- * into the main cash balance so it can be withdrawn.
+ * Convert points into withdrawable cash. Pass `requestedPoints` to convert a
+ * partial amount; omit it to convert the entire balance. Requires the user to
+ * hold at least the admin-configured threshold, and the converted chunk must be
+ * ≥ `pointsPerUsd` (i.e. worth ≥ $1). Points-type income (tasks, referral,
+ * social, daily) accumulates as points; this is the gate that moves it into the
+ * main cash balance so it can be withdrawn.
  *
- * Atomic + no-race: reads the current points, then CAS-updates on the exact
- * value — a concurrent earn/spend changes the row and the update matches 0 rows,
- * returning CONFLICT so the caller can retry. `totalEarnings` is NOT touched
- * (points were already mirrored there when earned).
+ * Atomic + no-overdraft: a CAS decrement (`pointsBalance >= amount`) keeps the
+ * credited cash matched to the debited points; a concurrent drain matches 0 rows
+ * → CONFLICT. `totalEarnings` is NOT touched (points were mirrored there when earned).
  */
-export async function convertAllPointsToCash(userId: string): Promise<ConvertResult> {
+export async function convertPointsToCash(
+  userId: string,
+  requestedPoints?: number
+): Promise<ConvertResult> {
   const [rate, threshold] = await Promise.all([
     getPointsPerUsd(),
     getPointsConvertThreshold(),
@@ -27,22 +37,33 @@ export async function convertAllPointsToCash(userId: string): Promise<ConvertRes
     where: { id: userId },
     select: { pointsBalance: true },
   });
-  const points = user?.pointsBalance ?? 0;
+  const balance = user?.pointsBalance ?? 0;
+  const minConvert = Math.max(1, Math.ceil(rate)); // ≥ $1 worth of points
 
-  if (points < threshold) {
-    return { ok: false, reason: "BELOW_THRESHOLD", threshold, points };
+  if (balance < threshold) {
+    return { ok: false, reason: "BELOW_THRESHOLD", threshold, points: balance };
   }
 
-  const usd = Math.round(pointsToUsd(points, rate) * 100) / 100;
+  // Default to the whole balance; otherwise the requested (floored) amount.
+  const amount = requestedPoints == null ? balance : Math.floor(requestedPoints);
+  if (amount > balance) {
+    return { ok: false, reason: "INSUFFICIENT", threshold, points: balance };
+  }
+  if (amount < minConvert) {
+    return { ok: false, reason: "TOO_SMALL", threshold, points: balance, min: minConvert };
+  }
+
+  const usd = Math.round(pointsToUsd(amount, rate) * 100) / 100;
+  if (usd <= 0) {
+    return { ok: false, reason: "TOO_SMALL", threshold, points: balance, min: minConvert };
+  }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // CAS on the exact points value read — blocks concurrent double-convert
-      // and keeps the credited cash matched to the debited points.
       const moved = await tx.user.updateMany({
-        where: { id: userId, pointsBalance: points },
+        where: { id: userId, pointsBalance: { gte: amount } },
         data: {
-          pointsBalance: { decrement: points },
+          pointsBalance: { decrement: amount },
           cashBalance: { increment: usd },
         },
       });
@@ -53,9 +74,9 @@ export async function convertAllPointsToCash(userId: string): Promise<ConvertRes
           userId,
           type: "POINTS_CONVERSION",
           status: "COMPLETED",
-          points: -points,
+          points: -amount,
           amount: usd,
-          description: `Converted ${points.toLocaleString()} points to $${usd.toFixed(2)}`,
+          description: `Converted ${amount.toLocaleString()} points to $${usd.toFixed(2)}`,
           reference: `convert_${userId}_${Date.now()}`,
         },
       });
@@ -69,14 +90,19 @@ export async function convertAllPointsToCash(userId: string): Promise<ConvertRes
 
     return {
       ok: true,
-      pointsConverted: points,
+      pointsConverted: amount,
       cashAdded: usd,
       newCash: toNum(result?.cashBalance),
     };
   } catch (e) {
     if (e instanceof Error && e.message === "CONFLICT") {
-      return { ok: false, reason: "CONFLICT", threshold, points };
+      return { ok: false, reason: "CONFLICT", threshold, points: balance };
     }
     throw e;
   }
+}
+
+/** Back-compat wrapper — converts the entire balance. */
+export async function convertAllPointsToCash(userId: string): Promise<ConvertResult> {
+  return convertPointsToCash(userId);
 }
