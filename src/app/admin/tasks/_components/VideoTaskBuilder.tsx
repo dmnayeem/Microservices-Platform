@@ -23,6 +23,7 @@ import {
   getProviderMeta,
   formatDuration,
 } from "@/lib/video-tasks";
+import { BrandIcon } from "@/components/ui/brand-icon";
 
 interface Props {
   value: VideoConfig;
@@ -78,7 +79,7 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
           <span
             className={`inline-flex items-center gap-1 px-3 rounded-lg text-xs font-bold border ${meta.tone}`}
           >
-            <span>{meta.emoji}</span>
+            <BrandIcon brand={value.provider} fallback={meta.emoji} colored className="w-3.5 h-3.5" />
             {meta.label}
           </span>
         </div>

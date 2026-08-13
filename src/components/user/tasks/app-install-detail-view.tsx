@@ -12,9 +12,9 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  Download,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -286,7 +286,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold"
             >
-              <Download className="w-4 h-4" /> Install on Google Play
+              <BrandIcon brand="googleplay" className="w-4 h-4 text-white" /> Install on Google Play
               <ExternalLink className="w-3.5 h-3.5 opacity-70" />
             </a>
           )}
@@ -297,7 +297,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold"
             >
-              <Download className="w-4 h-4" /> Install on App Store
+              <BrandIcon brand="appstore" className="w-4 h-4 text-white" /> Install on App Store
               <ExternalLink className="w-3.5 h-3.5 opacity-70" />
             </a>
           )}

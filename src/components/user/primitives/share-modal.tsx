@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "@/lib/toast";
 import { Copy, Check, Share2 } from "lucide-react";
 import { BottomSheet } from "./bottom-sheet";
+import { BrandIcon } from "@/components/ui/brand-icon";
 
 interface ShareModalProps {
   open: boolean;
@@ -134,7 +135,7 @@ export function ShareModal({
                 onClick={() => onShare?.(p.key)}
                 className={`flex flex-col items-center justify-center gap-1 py-3 rounded-lg ${p.color} text-[10px] font-semibold`}
               >
-                <span className="text-base">{p.name[0]}</span>
+                <BrandIcon brand={p.key} className="w-5 h-5 text-white" />
                 <span>{p.name.split(" ")[0]}</span>
               </a>
             ))}

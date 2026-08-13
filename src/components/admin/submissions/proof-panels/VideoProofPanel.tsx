@@ -1,5 +1,6 @@
 import { ExternalLink, Key, CheckCircle2, XCircle } from "lucide-react";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { DurationCard } from "../duration-card";
 import {
   getProviderMeta,
@@ -51,7 +52,7 @@ export function VideoProofPanel({ submission, task }: Props) {
         <span
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${providerMeta.tone}`}
         >
-          <span>{providerMeta.emoji}</span>
+          <BrandIcon brand={provider} fallback={providerMeta.emoji} colored className="w-3.5 h-3.5" />
           {providerMeta.label}
         </span>
         {videoUrl && (
