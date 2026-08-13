@@ -391,6 +391,28 @@ export function getPublicUrl(key: string): string {
 }
 
 /**
+ * Read an object straight from S3 using the server's IAM credentials, for
+ * same-origin proxying. The public CloudFront/S3 URLs are NOT readable (the
+ * bucket is private and CloudFront has no OAC), so avatars/media served by the
+ * `/api/media` proxy stream through here instead of relying on the public URL.
+ */
+export async function getObjectStream(key: string): Promise<{
+  body: import("@aws-sdk/client-s3").GetObjectCommandOutput["Body"];
+  contentType: string;
+  contentLength?: number;
+}> {
+  const client = getS3Client();
+  const out = await client.send(
+    new GetObjectCommand({ Bucket: AWS_S3_BUCKET, Key: key })
+  );
+  return {
+    body: out.Body,
+    contentType: out.ContentType ?? "application/octet-stream",
+    contentLength: out.ContentLength,
+  };
+}
+
+/**
  * Get CloudFront URL if configured, otherwise S3 URL
  */
 export function getMediaUrl(s3Key: string): { s3Url: string; cloudFrontUrl?: string } {

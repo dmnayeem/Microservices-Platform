@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { ReactEventHandler } from "react";
+import { mediaSrc } from "@/lib/media-url";
 
 /**
  * `next/image` wrapper that never throws on an un-whitelisted host.
@@ -61,12 +62,15 @@ type SmartImageProps = BaseProps &
 
 export function SmartImage(props: SmartImageProps) {
   const { src, alt, className, sizes, priority, onError, ...rest } = props;
-  const unoptimized = !isOptimizable(src);
+  // Our private-bucket CloudFront/S3 URLs 403 on the public URL, so route them
+  // through the same-origin `/api/media` proxy (which reads via server creds).
+  const finalSrc = mediaSrc(src);
+  const unoptimized = !isOptimizable(finalSrc);
 
   if (rest.fill) {
     return (
       <Image
-        src={src}
+        src={finalSrc}
         alt={alt}
         fill
         sizes={sizes}
@@ -80,7 +84,7 @@ export function SmartImage(props: SmartImageProps) {
 
   return (
     <Image
-      src={src}
+      src={finalSrc}
       alt={alt}
       width={rest.width}
       height={rest.height}
