@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Loader2,
@@ -55,6 +56,11 @@ export function AdWizard({
 }) {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Render in a portal so the overlay is isolated from the admin page's DOM
+  // (and its click-outside handlers); stopPropagation below stops clicks from
+  // ever reaching elements behind the modal.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Step 1 — campaign & budget
   const [campaignMode, setCampaignMode] = useState<"existing" | "new">(
@@ -184,8 +190,14 @@ export function AdWizard({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="w-full max-w-lg flex flex-col max-h-[90vh] rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
         {/* Header + step indicator */}
         <div className="px-4 py-3 border-b border-slate-800 shrink-0">
@@ -531,6 +543,7 @@ export function AdWizard({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

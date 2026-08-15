@@ -3,6 +3,7 @@
 import { confirmDialog } from "@/lib/confirm";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Newspaper,
   Megaphone,
@@ -1421,8 +1422,17 @@ function IconBtn({ children, onClick, title, danger }: { children: React.ReactNo
 }
 
 function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+  // Portal + stopPropagation so clicks inside the modal never reach the admin
+  // page behind it (and the overlay is DOM-isolated from click-outside handlers).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Cap the panel to the viewport and scroll the BODY internally so a tall
           form never clips its header/top (the old items-center + scrim-scroll
           pushed the header above the viewport). */}
@@ -1433,7 +1443,8 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
         </div>
         <div className="p-4 overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

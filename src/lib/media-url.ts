@@ -12,8 +12,15 @@
  * Everything else (Google avatars, pasted URLs, relative/data/blob) is returned
  * unchanged.
  */
-export function mediaSrc(src?: string | null): string {
-  if (!src) return "";
+/**
+ * If `src` is one of OUR storage URLs (CloudFront / S3) pointing at the public
+ * `media/` prefix, return the bare S3 object key (e.g. `media/images/…`).
+ * Otherwise null. Used to read the object via server IAM creds (the public URL
+ * 403s). Ignores presigned URLs (they carry a query string) so gated flows are
+ * left alone.
+ */
+export function ownMediaKey(src?: string | null): string | null {
+  if (!src) return null;
   try {
     const u = new URL(src);
     const host = u.hostname.toLowerCase();
@@ -21,10 +28,16 @@ export function mediaSrc(src?: string | null): string {
       host.endsWith(".cloudfront.net") ||
       /\.s3[.-][a-z0-9-]+\.amazonaws\.com$/.test(host);
     if (ours && !u.search && u.pathname.startsWith("/media/")) {
-      return `/api/media${u.pathname}`;
+      return u.pathname.slice(1); // drop leading "/"
     }
   } catch {
-    // relative path, data:, blob: → leave as-is
+    // relative path, data:, blob: → not ours
   }
-  return src;
+  return null;
+}
+
+export function mediaSrc(src?: string | null): string {
+  if (!src) return "";
+  const key = ownMediaKey(src);
+  return key ? `/api/media/${key}` : src;
 }

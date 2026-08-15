@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertPublicUrl } from "@/lib/link-preview";
 import { AD_MEDIA_COLUMN, type AdMediaField } from "@/lib/ad-proxy";
+import { ownMediaKey } from "@/lib/media-url";
+import { getObjectStream } from "@/lib/s3";
+
+export const runtime = "nodejs";
 
 /**
  * First-party ad-creative proxy. The browser requests this same-origin,
@@ -79,6 +83,31 @@ export async function GET(
   const stored = ad?.[column];
   if (!stored) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
+  // Our own creatives live in a PRIVATE S3 bucket (public CloudFront/S3 URLs
+  // 403), so HTTP-fetching the stored URL fails. Read the object with server
+  // IAM creds instead and stream it. External creatives (network ads hosted
+  // elsewhere) still go through the SSRF-guarded fetch below.
+  const key = ownMediaKey(stored);
+  if (key) {
+    try {
+      const { body, contentType } = await getObjectStream(key);
+      if (body) {
+        const webStream = (
+          body as { transformToWebStream: () => ReadableStream }
+        ).transformToWebStream();
+        return new NextResponse(webStream, {
+          status: 200,
+          headers: {
+            "Content-Type": contentType || FIELD_FALLBACK_TYPE[fieldParam],
+            "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
+          },
+        });
+      }
+    } catch {
+      return NextResponse.json({ error: "unavailable" }, { status: 404 });
+    }
   }
 
   let target: URL;
