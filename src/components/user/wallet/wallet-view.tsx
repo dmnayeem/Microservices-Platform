@@ -24,6 +24,7 @@ import {
   XCircle,
   ArrowRightLeft,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { TransactionRow } from "@/components/user/primitives/transaction-row";
@@ -70,6 +71,10 @@ export interface WalletViewProps {
   adCreditBalance?: number;
   totalEarnings: number;
   totalWithdrawn: number;
+  /** Withdrawn this month (USD). */
+  monthlyIncome?: number;
+  /** Referral earnings credited today (USD). */
+  todayReferralBonus?: number;
   packageTier: string;
   transactions: WalletTransaction[];
   deposits?: WalletDeposit[];
@@ -178,6 +183,8 @@ export function WalletView(props: WalletViewProps) {
         <BalanceTab
           totalEarnings={props.totalEarnings}
           totalWithdrawn={props.totalWithdrawn}
+          monthlyIncome={props.monthlyIncome}
+          todayReferralBonus={props.todayReferralBonus}
           transactions={props.transactions}
         />
       )}
@@ -334,10 +341,14 @@ function ConvertCard({
 function BalanceTab({
   totalEarnings,
   totalWithdrawn,
+  monthlyIncome = 0,
+  todayReferralBonus = 0,
   transactions,
 }: {
   totalEarnings: number;
   totalWithdrawn: number;
+  monthlyIncome?: number;
+  todayReferralBonus?: number;
   transactions: WalletTransaction[];
 }) {
   // Aggregate earnings by type for the breakdown chart. Social credits are
@@ -389,13 +400,13 @@ function BalanceTab({
 
   return (
     <div className="space-y-4">
-      {/* Lifetime stats */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Earnings dashboard — lifetime + this-month + today at a glance */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 truncate">
-              Total Earned
+              Total Earn
             </span>
           </div>
           <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
@@ -406,14 +417,45 @@ function BalanceTab({
           <div className="flex items-center gap-1.5">
             <ArrowUpRight className="w-3.5 h-3.5 text-purple-400 shrink-0" />
             <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400 truncate">
-              Total Withdrawn
+              Total Income
             </span>
           </div>
           <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
             ${totalWithdrawn.toFixed(2)}
           </p>
         </div>
+        <div className="min-w-0 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="text-[10px] uppercase tracking-wider font-bold text-blue-400 truncate">
+              Monthly Income
+            </span>
+          </div>
+          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
+            ${monthlyIncome.toFixed(2)}
+          </p>
+        </div>
+        <div className="min-w-0 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+          <div className="flex items-center gap-1.5">
+            <Gift className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 truncate">
+              Today&apos;s Referral
+            </span>
+          </div>
+          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
+            ${todayReferralBonus.toFixed(2)}
+          </p>
+        </div>
       </div>
+
+      {/* Clarifier — answers "where do converted points show in Total Earn?" */}
+      <p className="text-[11px] leading-relaxed text-gray-400 -mt-1">
+        <span className="font-semibold text-gray-300">Total Earn</span> is the $
+        value of everything you&apos;ve earned — points count the moment you earn
+        them, so converting points to cash doesn&apos;t change it.{" "}
+        <span className="font-semibold text-gray-300">Total Income</span> is what
+        you&apos;ve withdrawn.
+      </p>
 
       {/* Earnings Breakdown bar — always shown (empty-state when no points yet) */}
       {breakdown.length === 0 ? (

@@ -12,6 +12,7 @@ import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner"
 import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { getWithdrawalConfig } from "@/lib/withdrawal";
 import { toNum } from "@/lib/money";
+import { resolveUserTimezone, localStartOfDayUtc } from "@/lib/user-day";
 
 export default async function WalletPage() {
   const session = await auth();
@@ -38,6 +39,8 @@ export default async function WalletPage() {
           cashBalance: true,
           adCreditBalance: true,
           totalEarnings: true,
+          country: true,
+          timezone: true,
           package: { select: { slug: true, name: true } },
         },
       }),
@@ -51,11 +54,11 @@ export default async function WalletPage() {
       }),
       prisma.withdrawal.findMany({
         where: { userId, status: "COMPLETED" },
-        select: { amount: true },
+        select: { amount: true, createdAt: true },
       }),
       prisma.referralEarning.findMany({
         where: { userId },
-        select: { level: true, amount: true },
+        select: { level: true, amount: true, createdAt: true },
       }),
       prisma.user.findMany({
         where: { referredById: userId },
@@ -81,6 +84,26 @@ export default async function WalletPage() {
 
   const totalWithdrawn = completedWithdrawals.reduce(
     (sum, w) => sum + Number(w.amount),
+    0
+  );
+
+  // Time boundaries in the user's local day (matches the daily-reset boundary).
+  const tz = resolveUserTimezone({
+    country: user.country,
+    timezone: user.timezone,
+  });
+  const now = new Date();
+  const dayStart = localStartOfDayUtc(tz, now);
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+  // Income = money withdrawn. Monthly income = withdrawn this month.
+  const monthlyIncome = completedWithdrawals.reduce(
+    (sum, w) => (w.createdAt >= monthStart ? sum + Number(w.amount) : sum),
+    0
+  );
+  // Today's referral bonus (USD) — referral earnings credited since local midnight.
+  const todayReferralBonus = refEarnings.reduce(
+    (sum, r) => (r.createdAt >= dayStart ? sum + Number(r.amount ?? 0) : sum),
     0
   );
 
@@ -150,6 +173,8 @@ export default async function WalletPage() {
         adCreditBalance={toNum(user.adCreditBalance)}
         totalEarnings={Number(user.totalEarnings)}
         totalWithdrawn={totalWithdrawn}
+        monthlyIncome={monthlyIncome}
+        todayReferralBonus={todayReferralBonus}
         packageTier={user.package?.slug ?? "default"}
         transactions={txList}
         deposits={depositList}
