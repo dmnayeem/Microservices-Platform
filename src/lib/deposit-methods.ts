@@ -25,6 +25,10 @@ export interface DepositMethod {
   enabled: boolean;
   minAmount: number;
   maxAmount: number;
+  /** Extra charge % the user pays on top (e.g. bKash personal Send Money fee). */
+  chargePct?: number;
+  /** How the charge applies: personal → charge, cash-out/none → no charge. */
+  chargeType?: "none" | "personal" | "cashout";
 }
 
 const SETTING_KEY = "deposit_methods";
@@ -61,7 +65,12 @@ function normalize(raw: unknown): DepositMethod[] {
         enabled: o.enabled === true,
         minAmount: num(o.minAmount, 1),
         maxAmount: num(o.maxAmount, 100000),
-      };
+        chargePct: num(o.chargePct, 0),
+        chargeType:
+          o.chargeType === "personal" || o.chargeType === "cashout"
+            ? o.chargeType
+            : "none",
+      } satisfies DepositMethod;
     })
     .filter((m) => m.key);
 }

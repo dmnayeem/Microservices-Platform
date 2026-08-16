@@ -114,6 +114,36 @@ export function DepositMethodsForm({
                 <input type="number" step={1} value={m.maxAmount} onChange={(e) => update(i, { maxAmount: parseFloat(e.target.value) || 0 })} disabled={!canEdit} className={inp} />
               </Field>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Charge type">
+                <select
+                  value={m.chargeType ?? "none"}
+                  onChange={(e) =>
+                    update(i, {
+                      chargeType: e.target.value as DepositMethod["chargeType"],
+                    })
+                  }
+                  disabled={!canEdit}
+                  className={inp}
+                >
+                  <option value="none">No charge</option>
+                  <option value="personal">Personal (add charge)</option>
+                  <option value="cashout">Cash out (no charge)</option>
+                </select>
+              </Field>
+              <Field label="Charge (%) — for Personal">
+                <input
+                  type="number"
+                  step={0.05}
+                  min={0}
+                  value={m.chargePct ?? 0}
+                  onChange={(e) => update(i, { chargePct: parseFloat(e.target.value) || 0 })}
+                  disabled={!canEdit || m.chargeType !== "personal"}
+                  placeholder="e.g. 1.85"
+                  className={inp}
+                />
+              </Field>
+            </div>
             {canEdit && (
               <button onClick={() => remove(i)} className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300">
                 <Trash2 className="w-3.5 h-3.5" /> Remove

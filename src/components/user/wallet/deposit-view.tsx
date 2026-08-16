@@ -9,6 +9,12 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import type { DepositMethod } from "@/lib/deposit-methods";
+import type { Currency } from "@/lib/currencies";
+import {
+  computeDepositBreakdown,
+  formatLocal,
+  effectiveChargePct,
+} from "@/lib/deposit-pricing";
 
 interface Deposit {
   id: string;
@@ -35,6 +41,11 @@ export function DepositView({ from }: { from?: string } = {}) {
   const [copied, setCopied] = useState(false);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [gateways, setGateways] = useState<{ key: string; label: string }[]>([]);
+  const [currency, setCurrency] = useState<Currency | null>(null);
+  const [vat, setVat] = useState<{ enabled: boolean; pct: number }>({
+    enabled: false,
+    pct: 0,
+  });
 
   const load = () => {
     fetch("/api/deposits")
@@ -50,6 +61,8 @@ export function DepositView({ from }: { from?: string } = {}) {
         const list: DepositMethod[] = d.methods ?? [];
         setMethods(list);
         setMethod((cur) => cur || list[0]?.key || "");
+        setCurrency((d.currency as Currency | null) ?? null);
+        if (d.vat) setVat({ enabled: !!d.vat.enabled, pct: Number(d.vat.pct) || 0 });
       })
       .catch(() => setMethods([]));
     fetch("/api/deposits/gateway/providers")
@@ -59,6 +72,15 @@ export function DepositView({ from }: { from?: string } = {}) {
   }, []);
 
   const selected = methods.find((m) => m.key === method) ?? null;
+  const chargePct = selected ? effectiveChargePct(selected) : 0;
+  const breakdown = computeDepositBreakdown({
+    amountUsd: Number(amount) || 0,
+    currency,
+    chargePct,
+    vatEnabled: vat.enabled,
+    vatPct: vat.pct,
+  });
+  const hasLocal = !!currency && breakdown.amountUsd > 0;
   const copyAccount = async () => {
     if (!selected?.account) return;
     try {
@@ -177,7 +199,80 @@ export function DepositView({ from }: { from?: string } = {}) {
             placeholder="10"
             className={inputCls}
           />
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {[5, 10, 25, 50, 100].map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setAmount(String(a))}
+                className={`px-3 py-1 rounded-lg text-xs font-bold border ${
+                  Number(amount) === a
+                    ? "border-indigo-500 bg-indigo-500/15 text-white"
+                    : "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600"
+                }`}
+              >
+                ${a}
+                {currency && (
+                  <span className="text-gray-500 font-normal">
+                    {" "}
+                    · {formatLocal(a * currency.usdRate, currency)}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Live local-currency + charge + VAT breakdown */}
+        {hasLocal && (
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3.5 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-300">
+                You add{" "}
+                <span className="font-bold text-white">
+                  ${breakdown.amountUsd.toFixed(2)}
+                </span>
+              </span>
+              <span className="text-gray-300 tabular-nums">
+                ≈ {formatLocal(breakdown.localBase, currency)}
+              </span>
+            </div>
+            {breakdown.charge > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">
+                  {selected?.label} charge ({chargePct}%)
+                </span>
+                <span className="text-orange-300 tabular-nums">
+                  + {formatLocal(breakdown.charge, currency)}
+                </span>
+              </div>
+            )}
+            {selected && chargePct === 0 && selected.chargeType === "cashout" && (
+              <p className="text-[11px] text-emerald-400">
+                Cash out — no extra charge
+              </p>
+            )}
+            {breakdown.vat > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-400">VAT ({vat.pct}%)</span>
+                <span className="text-orange-300 tabular-nums">
+                  + {formatLocal(breakdown.vat, currency)}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-indigo-500/20 pt-2 text-sm">
+              <span className="font-semibold text-white">Total to pay</span>
+              <span className="font-bold text-indigo-300 tabular-nums">
+                {formatLocal(breakdown.totalLocal, currency)}
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-500">
+              Your wallet is credited ${breakdown.amountUsd.toFixed(2)} on
+              approval. The {currency?.code} total includes the method charge
+              {vat.enabled ? " + VAT" : ""}.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-1.5">

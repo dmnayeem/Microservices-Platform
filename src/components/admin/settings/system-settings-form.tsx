@@ -63,6 +63,8 @@ const DEFAULTS: SettingsBag = {
   referral_l3_pct: 2,
   task_reward_multiplier: 1.0,
   points_per_usd: 1000,
+  vat_enabled: false,
+  vat_pct: 15,
   // Security
   session_timeout_seconds: 3600,
   max_login_attempts: 5,
@@ -136,6 +138,7 @@ const CATEGORY_FOR_KEY: Record<string, string> = {
   withdrawal_fee_pct: "financial", referral_l1_pct: "financial",
   referral_l2_pct: "financial", referral_l3_pct: "financial",
   task_reward_multiplier: "financial", points_per_usd: "financial",
+  vat_enabled: "financial", vat_pct: "financial",
   // Security
   session_timeout_seconds: "security", max_login_attempts: "security",
   password_min_length: "security", require_kyc: "security", require_2fa: "security",
@@ -494,6 +497,28 @@ export function SystemSettingsForm({
                 className={inp}
               />
             </Field>
+            <Toggle
+              label="Charge VAT on deposits"
+              description="Add VAT on top of the deposit amount (shown on the deposit page)"
+              checked={!!values.vat_enabled}
+              onChange={(v) => set("vat_enabled", v)}
+              disabled={!canEdit}
+              tone="amber"
+            />
+            {!!values.vat_enabled && (
+              <Field label="VAT (%)" hint="Applied to the deposit amount + method charge">
+                <input
+                  type="number"
+                  step={0.5}
+                  min={0}
+                  max={100}
+                  value={Number(values.vat_pct ?? 15)}
+                  onChange={(e) => set("vat_pct", parseFloat(e.target.value))}
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+            )}
           </div>
         )}
 

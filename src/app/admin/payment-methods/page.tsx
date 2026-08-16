@@ -5,7 +5,9 @@ import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CreditCard, Save, Wallet } from "lucide-react";
 import { PaymentMethodsForm } from "@/components/admin/payment-methods/payment-methods-form";
 import { DepositMethodsForm } from "@/components/admin/payment-methods/deposit-methods-form";
+import { CurrenciesForm } from "@/components/admin/payment-methods/currencies-form";
 import { getDepositMethods } from "@/lib/deposit-methods";
+import { getCurrencies } from "@/lib/currencies";
 
 const DEFAULT_METHODS = [
   // Mobile banking
@@ -156,6 +158,7 @@ export default async function PaymentMethodsPage() {
   });
 
   const depositMethods = await getDepositMethods();
+  const currencies = await getCurrencies();
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -190,6 +193,19 @@ export default async function PaymentMethodsPage() {
           and instructions for each.
         </p>
         <DepositMethodsForm initial={depositMethods} canEdit={canManage} />
+      </div>
+
+      <div className="pt-2 border-t border-slate-800">
+        <h2 className="text-lg font-bold text-white inline-flex items-center gap-2 mt-4">
+          <CreditCard className="w-5 h-5 text-amber-400" />
+          Local currencies (deposit conversion)
+        </h2>
+        <p className="text-slate-400 text-sm mt-1 mb-3">
+          Popular currencies + USD rate shown on the deposit page based on the
+          user&apos;s country (e.g. $1 = ৳125). Toggle VAT under Settings →
+          Financial.
+        </p>
+        <CurrenciesForm initial={currencies} canEdit={canManage} />
       </div>
 
       <p className="text-xs text-slate-500 inline-flex items-center gap-2">
