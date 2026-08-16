@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ArrowLeft, Calendar, Eye, ShoppingCart, DollarSign, Tag, FileText, Image as ImageIcon, Download, ShieldCheck, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ListingActions } from "./_components/ListingActions";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -56,6 +57,7 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
               id: true,
               name: true,
               email: true,
+              avatar: true,
             },
           },
         },
@@ -90,7 +92,7 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
       sellerAmount: number;
       status: string;
       createdAt: Date;
-      buyer: { id: string; name: string | null; email: string };
+      buyer: { id: string; name: string | null; email: string; avatar: string | null };
     }>;
   };
   const typedListing = listing as ListingWithRelations;
@@ -199,9 +201,11 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
                     className="p-4 bg-gray-800/50 rounded-lg flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                        {purchase.buyer.name?.charAt(0) || purchase.buyer.email.charAt(0)}
-                      </div>
+                      <Avatar
+                        src={purchase.buyer.avatar}
+                        name={purchase.buyer.name || purchase.buyer.email}
+                        size={40}
+                      />
                       <div>
                         <Link
                           href={`/admin/users/${purchase.buyer.id}`}
@@ -308,9 +312,11 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
           <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Seller</h2>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium">
-                {typedListing.seller.name?.charAt(0) || typedListing.seller.email.charAt(0)}
-              </div>
+              <Avatar
+                src={typedListing.seller.avatar}
+                name={typedListing.seller.name || typedListing.seller.email}
+                size={48}
+              />
               <div>
                 <Link
                   href={`/admin/users/${typedListing.seller.id}`}

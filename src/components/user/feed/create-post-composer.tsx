@@ -27,6 +27,7 @@ import {
 import { compressImageToTarget } from "@/lib/image-compress";
 import { ComposerToolBtn, EmojiPopover } from "./composer-bits";
 import { LinkPreviewCard } from "./link-preview-card";
+import { Avatar } from "@/components/user/primitives/avatar";
 import {
   InlineVideoEmbed,
   isEmbeddableVideoUrl,
@@ -330,8 +331,6 @@ export function CreatePostComposer({
     }
   };
 
-  const initial = (user.name ?? "U").charAt(0).toUpperCase();
-
   if (!expanded) {
     const firstName = user.name?.split(" ")[0] ?? "there";
     const quickActions = [
@@ -370,9 +369,12 @@ export function CreatePostComposer({
           onClick={() => setExpanded(true)}
           className="w-full flex items-center gap-3 group"
         >
-          <div className="w-11 h-11 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0 ring-2 ring-indigo-500/30">
-            {initial}
-          </div>
+          <Avatar
+            src={user.avatar}
+            name={user.name}
+            size={44}
+            className="shrink-0 ring-2 ring-indigo-500/30"
+          />
           <span className="flex-1 text-left rounded-full bg-gray-950/80 border border-gray-700 group-hover:border-indigo-500/50 px-4 py-2.5 text-sm text-gray-400 transition-colors truncate">
             What&apos;s on your mind, {firstName}?
           </span>
@@ -402,9 +404,12 @@ export function CreatePostComposer({
   return (
     <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-3">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium shrink-0">
-          {initial}
-        </div>
+        <Avatar
+          src={user.avatar}
+          name={user.name}
+          size={40}
+          className="shrink-0"
+        />
         <div className="flex-1">
           <p className="text-sm font-semibold text-white">
             {user.name ?? "You"}

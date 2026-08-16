@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Header } from "@/components/dashboard/header";
 import { BottomTabBar } from "@/components/dashboard/bottom-tab-bar";
@@ -23,15 +24,27 @@ export default async function MainLayout({
   const { enabled } = await getEffectiveFeatures(session.user.id);
   const features = Array.from(enabled);
 
+  // The session doesn't carry the avatar, so fetch it here (cheap indexed read)
+  // and pass it to the shells so the header/sidebar show the real picture. Kept
+  // fresh (short cache) so a new upload appears after PhotoModal's router.refresh.
+  const dbUser = await prisma.user
+    .findUnique({
+      where: { id: session.user.id },
+      select: { avatar: true },
+      cacheStrategy: { ttl: 10, swr: 30 },
+    })
+    .catch(() => null);
+  const avatar = dbUser?.avatar ?? null;
+
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Sidebar */}
-      <Sidebar user={session.user} features={features} />
+      <Sidebar user={session.user} features={features} avatar={avatar} />
 
       {/* Main Content */}
       <div className="lg:pl-72">
         {/* Header */}
-        <Header user={session.user} />
+        <Header user={session.user} avatar={avatar} />
 
         {/* Page Content */}
         <main className="py-6 px-4 sm:px-6 lg:px-8 pb-24 lg:pb-8">

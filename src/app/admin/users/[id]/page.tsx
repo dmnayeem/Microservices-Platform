@@ -118,6 +118,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               id: true,
               name: true,
               email: true,
+              avatar: true,
               createdAt: true,
               status: true,
             },
@@ -200,6 +201,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       id: string;
       name: string | null;
       email: string;
+      avatar: string | null;
       status: string;
       createdAt: Date;
     }>;
@@ -1154,9 +1156,11 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                 primary: true,
                 cell: (referral) => (
                   <Link href={`/admin/users/${referral.id}`} className="flex items-center gap-3 hover:text-indigo-400 transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                      {referral.name?.charAt(0) || referral.email?.charAt(0) || "U"}
-                    </div>
+                    <Avatar
+                      src={referral.avatar}
+                      name={referral.name || referral.email}
+                      size={32}
+                    />
                     <div>
                       <p className="text-sm font-medium text-white">{referral.name || "Unnamed"}</p>
                       <p className="text-xs text-gray-500">{referral.email}</p>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Avatar } from "@/components/user/primitives/avatar";
 import {
   Home,
   LayoutDashboard,
@@ -57,6 +58,8 @@ interface SidebarProps {
   /** Effective feature keys the user has; items tagged with a `feature` not in
    *  this list are hidden. Omitted → show everything (e.g. admin surfaces). */
   features?: string[];
+  /** The user's real profile picture (from User.avatar) — session omits it. */
+  avatar?: string | null;
 }
 
 type NavItem = {
@@ -144,9 +147,10 @@ interface SidebarContentProps {
   onNavigate: () => void;
   onSignOut: () => void;
   features?: string[];
+  avatar?: string | null;
 }
 
-function SidebarContent({ user, pathname, onNavigate, onSignOut, features }: SidebarContentProps) {
+function SidebarContent({ user, pathname, onNavigate, onSignOut, features, avatar }: SidebarContentProps) {
   const visible = (item: NavItem) =>
     !item.feature || !features || features.includes(item.feature);
   return (
@@ -176,9 +180,12 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features }: Sid
               : "hover:bg-gray-800"
           )}
         >
-          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium shrink-0">
-            {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
-          </div>
+          <Avatar
+            src={avatar}
+            name={user.name || user.email}
+            size={40}
+            className="shrink-0"
+          />
           <div className="flex-1 min-w-0">
             <p
               className={cn(
@@ -312,7 +319,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features }: Sid
   );
 }
 
-export function Sidebar({ user, features }: SidebarProps) {
+export function Sidebar({ user, features, avatar }: SidebarProps) {
   const pathname = usePathname();
   // Single shared mobile-drawer signal — opened by BOTH the header hamburger
   // and the bottom-bar Menu button (both write this store). This canonical,
@@ -358,6 +365,7 @@ export function Sidebar({ user, features }: SidebarProps) {
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
             features={features}
+            avatar={avatar}
           />
         </div>
       </div>
@@ -371,6 +379,7 @@ export function Sidebar({ user, features }: SidebarProps) {
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
             features={features}
+            avatar={avatar}
           />
         </div>
       </div>

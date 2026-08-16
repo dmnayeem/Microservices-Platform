@@ -15,6 +15,7 @@ import {
 import { toast } from "@/lib/toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
 
 interface AppealUser {
@@ -333,11 +334,13 @@ function AppealCard({
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-            {(appeal.user?.name ?? appeal.user?.email ?? "?")
-              .charAt(0)
-              .toUpperCase()}
-          </div>
+          <Avatar
+            src={appeal.user?.avatar}
+            name={appeal.user?.name ?? appeal.user?.email}
+            fallbackText={appeal.user?.name || appeal.user?.email ? undefined : "?"}
+            size={40}
+            className="shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-sm font-bold text-white truncate">
               {appeal.user?.name ?? appeal.user?.email ?? "Unknown user"}

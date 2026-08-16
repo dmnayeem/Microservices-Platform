@@ -7,6 +7,7 @@ import { Loader2, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeedComment } from "./social-feed-view.types";
 import { RenderedContent } from "./feed-content";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Comments
@@ -102,9 +103,12 @@ export function CommentsSection({
           c.user?.id === currentUserId && depth === 0 && "flex-row-reverse"
         )}
       >
-        <div className="w-7 h-7 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-          {(c.user?.name ?? "U").charAt(0).toUpperCase()}
-        </div>
+        <Avatar
+          src={c.user?.avatar}
+          name={c.user?.name}
+          size={28}
+          className="shrink-0"
+        />
         <div
           className={cn(
             "flex-1 min-w-0 rounded-lg px-2.5 py-1.5 max-w-[85%]",

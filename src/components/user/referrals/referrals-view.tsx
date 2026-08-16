@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { ShareModal } from "@/components/user/primitives/share-modal";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { cn } from "@/lib/utils";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
@@ -357,9 +358,13 @@ export function ReferralsView({
                   key={m.id}
                   className="flex items-center gap-3 px-3 py-2.5"
                 >
-                  <div className="w-9 h-9 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                    {(m.name ?? "?").charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar
+                    src={m.avatar}
+                    name={m.name}
+                    fallbackText={m.name ? undefined : "?"}
+                    size={36}
+                    className="shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">
                       {m.name ?? "Anonymous"}

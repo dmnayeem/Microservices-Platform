@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ClipboardCheck, Filter, Clock, CheckCircle, XCircle, RotateCcw, ChevronLeft, ChevronRight, Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Star, Layers, ChevronDown, Smartphone } from "lucide-react";
 import { SubmissionActions } from "@/components/admin/submissions/submission-actions";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { SocialReviewActions } from "@/components/admin/submissions/social-review-actions";
 import { SubmissionProofPanel } from "@/components/admin/submissions/proof-panels";
 import { DurationCard } from "@/components/admin/submissions/duration-card";
@@ -383,9 +384,11 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
                   {/* User Info */}
                   <div className="flex items-start gap-3 shrink-0 w-full lg:w-64">
                     <Link href={`/admin/users/${submission.user.id}`}>
-                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium">
-                        {submission.user.name?.charAt(0) || submission.user.email?.charAt(0) || "U"}
-                      </div>
+                      <Avatar
+                        src={submission.user.avatar}
+                        name={submission.user.name || submission.user.email}
+                        size={40}
+                      />
                     </Link>
                     <div>
                       <Link

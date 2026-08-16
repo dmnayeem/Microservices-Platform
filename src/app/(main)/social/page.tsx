@@ -101,6 +101,16 @@ export default async function SocialPage() {
 
   const adDensity = await getAdDensity();
 
+  // The session doesn't carry the avatar — fetch it so the composer shows the
+  // user's real picture (kept fresh; PhotoModal calls router.refresh on upload).
+  const me = await prisma.user
+    .findUnique({
+      where: { id: userId },
+      select: { avatar: true },
+      cacheStrategy: { ttl: 10, swr: 30 },
+    })
+    .catch(() => null);
+
   const canBoost = effectiveFeatures.enabled.has("boost");
   const canShareLinks = effectiveFeatures.enabled.has("shareLinks");
   const canShareYouTube = effectiveFeatures.enabled.has("shareYouTube");
@@ -161,7 +171,7 @@ export default async function SocialPage() {
         user={{
         id: session.user.id,
         name: session.user.name ?? null,
-        avatar: session.user.image ?? null,
+        avatar: me?.avatar ?? null,
         role: session.user.role ?? null,
       }}
       initialBanners={banners}

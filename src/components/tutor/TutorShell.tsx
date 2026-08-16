@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { usePathname } from "next/navigation";
 import {
   GraduationCap,
@@ -111,19 +111,14 @@ export function TutorShell({ user, children }: Props) {
 
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800 bg-slate-900">
           <div className="flex items-center gap-2 mb-2">
-            {user.avatar ? (
-              <Image
-                src={user.avatar}
-                alt=""
-                width={36}
-                height={36}
-                className="w-9 h-9 rounded-full object-cover bg-slate-800"
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white font-bold">
-                {(user.name ?? user.email ?? "?").slice(0, 1).toUpperCase()}
-              </div>
-            )}
+            <Avatar
+              src={user.avatar}
+              name={user.name || user.email}
+              fallbackText={user.name || user.email ? undefined : "?"}
+              size={36}
+              fallbackStyle="solid-slate"
+              className="shrink-0"
+            />
             <div className="min-w-0">
               <p className="text-sm font-bold text-white truncate">
                 {user.name ?? "Tutor"}

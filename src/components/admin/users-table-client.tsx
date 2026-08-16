@@ -20,6 +20,7 @@ import {
 import { ROLE_CONFIG, type UserRole } from "@/lib/rbac";
 import { BulkActionsBar } from "@/components/admin/bulk-actions-bar";
 import { PackageBadge } from "@/components/user/profile/badges";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { userDisplayId } from "@/lib/display-id";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -280,11 +281,11 @@ export function UsersTableClient({
                           href={`/admin/users/${u.id}`}
                           className="flex items-center gap-3 group"
                         >
-                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium">
-                            {u.name?.charAt(0) ||
-                              u.email?.charAt(0) ||
-                              "U"}
-                          </div>
+                          <Avatar
+                            src={u.avatar}
+                            name={u.name || u.email}
+                            size={40}
+                          />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-white group-hover:text-indigo-400 transition-colors">
                               {u.name || "Unnamed"}
@@ -482,9 +483,12 @@ export function UsersTableClient({
                       href={`/admin/users/${u.id}`}
                       className="flex items-center gap-3 min-w-0 flex-1"
                     >
-                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-medium shrink-0">
-                        {u.name?.charAt(0) || u.email?.charAt(0) || "U"}
-                      </div>
+                      <Avatar
+                        src={u.avatar}
+                        name={u.name || u.email}
+                        size={40}
+                        className="shrink-0"
+                      />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-white truncate">
                           {u.name || "Unnamed"}

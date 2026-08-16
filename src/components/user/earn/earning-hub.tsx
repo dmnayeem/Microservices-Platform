@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { TaskCard } from "@/components/user/primitives/task-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
+import { Avatar } from "@/components/user/primitives/avatar";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { GlobalSearch } from "@/components/user/primitives/global-search";
@@ -801,9 +802,13 @@ function LeaderboardTab({ user }: { user: UserSummary }) {
                 <span className="w-7 text-right text-xs text-gray-500 font-mono">
                   #{e.rank}
                 </span>
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {(e.name ?? "?").charAt(0).toUpperCase()}
-                </div>
+                <Avatar
+                  src={e.avatar}
+                  name={e.name}
+                  fallbackText={e.name ? undefined : "?"}
+                  size={32}
+                  className="shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">
                     {e.name ?? "Anon"}

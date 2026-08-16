@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { useAppRefresh } from "@/hooks/use-app-refresh";
+import { Avatar } from "@/components/user/primitives/avatar";
 
 interface HeaderProps {
   user: {
@@ -17,6 +18,8 @@ interface HeaderProps {
     image?: string | null;
     role?: string;
   };
+  /** The user's real profile picture (from User.avatar) — the session doesn't carry it. */
+  avatar?: string | null;
 }
 
 interface Notification {
@@ -28,7 +31,7 @@ interface Notification {
   createdAt: string;
 }
 
-export function Header({ user }: HeaderProps) {
+export function Header({ user, avatar }: HeaderProps) {
   // The hamburger opens the shared mobile drawer (rendered by Sidebar, the
   // canonical feature-filtered menu). Also opened by the bottom-bar Menu tab.
   const setIsMobileMenuOpen = useMobileNav((s) => s.setOpen);
@@ -255,9 +258,11 @@ export function Header({ user }: HeaderProps) {
                 }}
                 className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                  {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
-                </div>
+                <Avatar
+                  src={avatar}
+                  name={user.name || user.email}
+                  size={32}
+                />
                 <ChevronDown className="hidden sm:block w-4 h-4 text-gray-400" />
               </button>
 

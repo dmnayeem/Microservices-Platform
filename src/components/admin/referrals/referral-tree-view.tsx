@@ -337,18 +337,12 @@ function TreeBranch({
           {node.treeDepth === 0 ? "ROOT" : `L${node.treeDepth}`}
         </span>
 
-        <div className="w-7 h-7 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
-          {node.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={node.avatar}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            (node.name ?? node.email).charAt(0).toUpperCase()
-          )}
-        </div>
+        <Avatar
+          src={node.avatar}
+          name={node.name ?? node.email}
+          size={28}
+          className="shrink-0"
+        />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
