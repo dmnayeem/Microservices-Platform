@@ -920,11 +920,30 @@ export function VideoTaskPlayer({
                     </div>
                   );
                 })}
+                {allStepsDone && proofReq.uniqueKey && (
+                  <div>
+                    <label className="flex text-xs font-medium text-gray-400 mb-1 items-center gap-1">
+                      <KeyRound className="w-3 h-3" />
+                      Unique Key <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      value={uniqueKey}
+                      onChange={(e) => setUniqueKey(e.target.value)}
+                      placeholder="Enter the key shown in the video"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                    />
+                    {cfg?.uniqueKeyHint && (
+                      <p className="text-[11px] text-amber-400/80 mt-1">
+                        💡 {cfg.uniqueKeyHint}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {allStepsDone && (
                   <button
                     type="button"
                     onClick={() => setCompletePressed(true)}
-                    disabled={busy}
+                    disabled={busy || (proofReq.uniqueKey && !uniqueKey.trim())}
                     className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {busy ? (

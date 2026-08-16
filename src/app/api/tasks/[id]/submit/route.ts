@@ -18,6 +18,7 @@ import {
 import {
   hasEngagement,
   stepIsRequired,
+  effectiveSteps,
   type VideoConfig,
   type VideoStepProof,
 } from "@/lib/video-tasks";
@@ -136,10 +137,11 @@ export async function POST(
       : [];
     {
       const vcfg = task.videoConfig as VideoConfig | null;
-      if (task.type === "VIDEO" && vcfg?.steps?.length) {
+      const vSteps = effectiveSteps(vcfg);
+      if (task.type === "VIDEO" && vSteps.length) {
         if (videoStepProofs.length > 0) {
           const byId = new Map(videoStepProofs.map((p) => [p.id, p]));
-          for (const s of vcfg.steps) {
+          for (const s of vSteps) {
             if (!stepIsRequired(s)) continue;
             const p = byId.get(s.id);
             const missingShot = s.requireScreenshot && !p?.screenshotUrl?.trim();
@@ -153,7 +155,7 @@ export async function POST(
           }
         } else {
           // Back-compat (older clients that only send positional proofImages).
-          const requiredShots = vcfg.steps.filter(
+          const requiredShots = vSteps.filter(
             (s) => stepIsRequired(s) && s.requireScreenshot
           ).length;
           const provided = Array.isArray(proofImages)
@@ -842,12 +844,13 @@ export async function POST(
       shouldAutoApprove = false;
     }
 
-    // Step-based VIDEO tasks respect the per-task auto-approve toggle: OFF →
-    // Pending (admin approval pays out), ON → auto-approve after the ad.
+    // Step-based VIDEO tasks (incl. legacy engagement synthesized into steps)
+    // respect the per-task auto-approve toggle: OFF → Pending (admin approval
+    // pays out), ON → auto-approve after the ad.
     {
       const vcfg = task.videoConfig as VideoConfig | null;
-      if (task.type === "VIDEO" && vcfg?.steps && vcfg.steps.length > 0) {
-        shouldAutoApprove = !uniqueKeyMismatch && vcfg.autoApprove === true;
+      if (task.type === "VIDEO" && effectiveSteps(vcfg).length > 0) {
+        shouldAutoApprove = !uniqueKeyMismatch && vcfg?.autoApprove === true;
       }
     }
 

@@ -129,11 +129,50 @@ export interface VideoConfig {
   autoApprove?: boolean;
 }
 
-/** Ordered sequential proof steps for a task (empty when not configured). */
+/**
+ * Convert the legacy flat engagement checklist into proof-capable typed steps.
+ * Lets old "require subscribe/like/comment" tasks use the single typed-step flow
+ * (with a screenshot upload) instead of the honor-based "I did this" checkbox.
+ * Screenshot is required by default so the user gets a proof place; admins can
+ * edit the task to adjust per-step proof.
+ */
+export function synthesizeStepsFromEngagement(
+  cfg: VideoConfig | null | undefined
+): VideoStep[] {
+  const e = cfg?.engagement;
+  if (!e) return [];
+  const mk = (
+    type: VideoStepType,
+    actionUrl: string,
+    extra: Partial<VideoStep> = {}
+  ): VideoStep => ({
+    id: `eng-${type}`,
+    type,
+    label: STEP_TYPE_META[type].verb,
+    actionUrl,
+    requireScreenshot: true,
+    requireLink: false,
+    required: true,
+    ...extra,
+  });
+  const url = cfg?.videoUrl ?? "";
+  const out: VideoStep[] = [];
+  if (e.requireSubscribe) out.push(mk("subscribe", e.channelUrl || url));
+  if (e.requireLike) out.push(mk("like", url));
+  if (e.requireComment)
+    out.push(mk("comment", url, { commentTemplate: e.commentTemplate }));
+  return out;
+}
+
+/**
+ * Ordered sequential proof steps for a task. Uses the configured `steps` when
+ * present; otherwise falls back to steps synthesized from the legacy engagement
+ * checklist — so both old and new tasks flow through the single typed-step UI.
+ */
 export function effectiveSteps(
   cfg: VideoConfig | null | undefined
 ): VideoStep[] {
-  return cfg?.steps ?? [];
+  return cfg?.steps?.length ? cfg.steps : synthesizeStepsFromEngagement(cfg);
 }
 
 export type EngagementKey = "subscribe" | "like" | "comment";

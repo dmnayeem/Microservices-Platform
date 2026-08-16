@@ -23,6 +23,7 @@ import {
   type VideoStepType,
   STEP_TYPE_META,
   defaultStepLabel,
+  synthesizeStepsFromEngagement,
   detectProvider,
   getProviderMeta,
   formatDuration,
@@ -44,6 +45,18 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
       onChange({ ...value, provider });
     }
   }, [value.videoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Migrate a legacy engagement checklist into editable typed steps once, so the
+  // old like/comment/subscribe config shows in the Proof steps editor (with real
+  // screenshot/link proof) instead of the removed honor-checkbox UI.
+  useEffect(() => {
+    if (value.engagement && !value.steps?.length) {
+      const synthesized = synthesizeStepsFromEngagement(value);
+      if (synthesized.length) {
+        onChange({ ...value, steps: synthesized, engagement: undefined });
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setProof = (
     key: keyof VideoConfig["proofRequirements"],
@@ -249,94 +262,29 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
         </div>
       )}
 
-      {/* YouTube-style engagement (optional) — subscribe / like / comment */}
-      {(() => {
-        const eng = value.engagement ?? {
-          requireSubscribe: false,
-          requireLike: false,
-          requireComment: false,
-        };
-        const setEng = (patch: Partial<NonNullable<VideoConfig["engagement"]>>) =>
-          onChange({ ...value, engagement: { ...eng, ...patch } });
-        return (
-          <div className="rounded-lg border border-gray-800 bg-gray-950 p-4 space-y-3">
-            <p className="text-sm font-bold text-white">
-              ▶️ YouTube engagement <span className="text-gray-500 font-normal">(optional)</span>
-            </p>
-            <p className="text-[11px] text-gray-500 -mt-1">
-              Bundle subscribe/like/comment with the watch. If <b>Screenshot</b> proof
-              is on, engagement is manually reviewed; otherwise it&apos;s honor-based and
-              auto-approves (guarded by the user&apos;s trust score).
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <ProofToggle
-                label="Require Subscribe"
-                help="User subscribes to the channel"
-                checked={eng.requireSubscribe}
-                onChange={(v) => setEng({ requireSubscribe: v })}
-              />
-              <ProofToggle
-                label="Require Like"
-                help="User likes the video"
-                checked={eng.requireLike}
-                onChange={(v) => setEng({ requireLike: v })}
-              />
-              <ProofToggle
-                label="Require Comment"
-                help="User comments on the video"
-                checked={eng.requireComment}
-                onChange={(v) => setEng({ requireComment: v })}
-              />
-            </div>
-            {eng.requireSubscribe && (
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                  Channel URL <span className="text-red-400">*</span>
-                </label>
-                <input
-                  value={eng.channelUrl ?? ""}
-                  onChange={(e) => setEng({ channelUrl: e.target.value })}
-                  placeholder="https://youtube.com/@channel"
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            )}
-            {eng.requireComment && (
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                  Suggested comment (optional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={eng.commentTemplate ?? ""}
-                  onChange={(e) => setEng({ commentTemplate: e.target.value })}
-                  placeholder="Text the user can copy and post as their comment"
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
-                />
-              </div>
-            )}
-          </div>
-        );
-      })()}
+      {/* The legacy honor-based engagement checklist was replaced by the typed
+          Proof steps below (Like / Comment / Subscribe with real screenshot +
+          link proof). Existing tasks are auto-converted to steps on load. */}
 
       {/* Sequential proof steps (new flow) — one at a time, screenshot per step */}
       {(() => {
         const steps = value.steps ?? [];
         const setSteps = (next: VideoStep[]) =>
           onChange({ ...value, steps: next });
-        const addStep = () =>
+        const addStepOfType = (type: VideoStepType) =>
           setSteps([
             ...steps,
             {
               id: crypto.randomUUID(),
-              type: "like",
-              label: defaultStepLabel("like"),
+              type,
+              label: defaultStepLabel(type),
               actionUrl: "",
               requireScreenshot: true,
               requireLink: false,
               required: true,
             },
           ]);
+        const addStep = () => addStepOfType("like");
         const updateStep = (i: number, patch: Partial<VideoStep>) =>
           setSteps(steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
         // Changing the type refreshes the (untouched) default label + sets a
@@ -386,6 +334,22 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
               steps are done a Complete button appears (→ ad → submit). Preferred
               over the simple checklist above (these capture real proof).
             </p>
+
+            <div className="flex flex-wrap gap-1.5">
+              {(["like", "comment", "subscribe", "link"] as VideoStepType[]).map(
+                (tt) => (
+                  <button
+                    key={tt}
+                    type="button"
+                    onClick={() => addStepOfType(tt)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {STEP_TYPE_META[tt].emoji} {STEP_TYPE_META[tt].label}
+                  </button>
+                )
+              )}
+            </div>
 
             {steps.length === 0 ? (
               <p className="text-xs text-gray-600">No steps yet.</p>

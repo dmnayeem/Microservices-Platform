@@ -5,6 +5,7 @@ import { DurationCard } from "../duration-card";
 import {
   getProviderMeta,
   engagementSteps,
+  effectiveSteps,
   STEP_TYPE_META,
   type VideoConfig,
   type EngagementKey,
@@ -154,7 +155,7 @@ export function VideoProofPanel({ submission, task }: Props) {
           <div className="space-y-2">
             {stepProofs.map((p, i) => {
               const meta = STEP_TYPE_META[p.type] ?? STEP_TYPE_META.custom;
-              const cfgStep = cfg?.steps?.find((s) => s.id === p.id);
+              const cfgStep = effectiveSteps(cfg).find((s) => s.id === p.id);
               return (
                 <div
                   key={p.id}
