@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Lock,
   ShieldCheck,
+  ChevronDown,
+  Play,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
@@ -24,6 +26,7 @@ import {
   getAction,
   isWatchAction,
   mapSocialTaskRow,
+  primarySocialVideo,
   type SocialTaskView,
   type SocialTaskItemView,
 } from "@/lib/social-tasks";
@@ -367,10 +370,15 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   };
 
   // Whether an item is interactive. Non-sequential tasks are all unlocked; a
-  // sequential task unlocks item N only once item N-1 is done.
+  // sequential task unlocks item N only once item N-1 is done. YouTube/video
+  // tasks are ALWAYS sequential (the capslock flow).
   const isItemUnlocked = (idx: number): boolean => {
-    if (!task?.sequential || idx === 0) return true;
-    const prev = task.items[idx - 1];
+    const videoFlow =
+      !!task &&
+      (task.platform === "YOUTUBE" ||
+        task.items.some((it) => isWatchAction(it.action)));
+    if ((!task?.sequential && !videoFlow) || idx === 0) return true;
+    const prev = task!.items[idx - 1];
     return !!prev && isItemDone(prev, idx - 1);
   };
 
@@ -555,6 +563,32 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const total = task.items.length;
   const pct = total > 0 ? (readyCount / total) * 100 : 0;
 
+  // ── YouTube/video flow: play the video first (player collapses when watched),
+  //    then the actions run strictly one-at-a-time (capslock). ──
+  const videoFlow =
+    task.platform === "YOUTUBE" || task.items.some((it) => isWatchAction(it.action));
+  const primaryVideo = videoFlow ? primarySocialVideo(task.items) : null;
+  // The primary video is "watched" when: it needs no enforced watch (0s), or its
+  // watch item has been completed. Non-video tasks are always "watched".
+  const videoWatched =
+    !primaryVideo ||
+    primaryVideo.watchSeconds === 0 ||
+    !!watchedByIndex[primaryVideo.itemIndex];
+  // A pure WATCH action that IS the primary video is represented by the hero, so
+  // it isn't re-rendered as its own step.
+  const heroWatchIdx =
+    primaryVideo && isWatchAction(task.items[primaryVideo.itemIndex]?.action)
+      ? primaryVideo.itemIndex
+      : -1;
+  const openPrimaryVideo = () =>
+    primaryVideo &&
+    setWatchModal({
+      idx: primaryVideo.itemIndex,
+      url: primaryVideo.url,
+      seconds: primaryVideo.watchSeconds || 30,
+      title: task.title,
+    });
+
   // ── Run page ──────────────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
@@ -665,8 +699,53 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         </div>
       )}
 
+      {/* Video-first player — for YouTube/video tasks the video opens in the
+          player first; once watched it collapses to a bar and the steps unlock. */}
+      {primaryVideo && (
+        videoWatched ? (
+          <button
+            type="button"
+            onClick={openPrimaryVideo}
+            className="w-full flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 text-left"
+          >
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold text-white truncate">
+                Video watched
+              </span>
+              <span className="block text-[11px] text-emerald-200/80">
+                Tap to replay the video
+              </span>
+            </span>
+            <ChevronDown className="w-4 h-4 text-emerald-300 shrink-0" />
+          </button>
+        ) : (
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 flex flex-col items-center text-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-indigo-500/20 grid place-items-center">
+              <PlayCircle className="w-8 h-8 text-indigo-300" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Watch the video first</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Watch {primaryVideo.watchSeconds}s to unlock the steps below.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openPrimaryVideo}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+            >
+              <Play className="w-4 h-4" />
+              Play video
+            </button>
+          </div>
+        )
+      )}
+
       {/* Ordered action cards */}
       {task.items.map((item, idx) => {
+        // The primary watch video is shown by the hero above — skip its card.
+        if (idx === heroWatchIdx) return null;
         const def = getAction(task.platform, item.action);
         const proof = proofByIndex[idx] ?? EMPTY_PROOF;
         const aiOutput = aiOutputByIndex[idx] ?? "";
@@ -675,6 +754,41 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         const unlocked = isItemUnlocked(idx);
         const noReq = !itemHasRequirement(item);
         const markedDone = !!doneByIndex[idx];
+        const done = isItemDone(item, idx);
+        // Capslock (video flow): completed steps collapse to a ✓ row; locked
+        // future steps show a compact locked row; only the active step expands.
+        if (videoFlow && done) {
+          return (
+            <div
+              key={idx}
+              className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-sm text-white truncate">
+                {def ? `${def.emoji} ${def.label}` : item.action}
+              </span>
+              <span className="ml-auto text-emerald-400 font-bold text-xs tabular-nums shrink-0">
+                +{item.points}
+              </span>
+            </div>
+          );
+        }
+        if (videoFlow && (!unlocked || !videoWatched)) {
+          return (
+            <div
+              key={idx}
+              className="flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900/60 px-3 py-2.5 opacity-60"
+            >
+              <Lock className="w-4 h-4 text-gray-500 shrink-0" />
+              <span className="text-sm text-gray-400 truncate">
+                {def ? `${def.emoji} ${def.label}` : item.action}
+              </span>
+              <span className="ml-auto text-[10px] font-semibold uppercase text-gray-600 shrink-0">
+                Locked
+              </span>
+            </div>
+          );
+        }
         return (
           <div
             key={idx}

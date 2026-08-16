@@ -3601,6 +3601,38 @@ export function socialWatchTargetSeconds(rawSocialConfig: unknown): number {
   }, 0);
 }
 
+/** Actions whose target is a specific VIDEO (playable in-app), not a channel. */
+const VIDEO_URL_ACTIONS = new Set([
+  ...WATCH_ACTIONS,
+  "LIKE_VIDEO",
+  "COMMENT_VIDEO",
+  "SHARE_VIDEO",
+]);
+
+/**
+ * The single video to play "first" for a YouTube/video SOCIAL task: prefer an
+ * enforced watch action (watchSeconds > 0), then any watch action, then a
+ * like/comment/share-video action's URL (optional watch, watchSeconds 0).
+ * Returns null when the task has no playable video (e.g. subscribe-only).
+ */
+export function primarySocialVideo(
+  items: SocialTaskItemView[]
+): { url: string; watchSeconds: number; itemIndex: number } | null {
+  let idx = items.findIndex(
+    (it) => isWatchAction(it.action) && (it.watchSeconds ?? 0) > 0 && it.targetUrl
+  );
+  if (idx < 0) idx = items.findIndex((it) => isWatchAction(it.action) && it.targetUrl);
+  if (idx < 0)
+    idx = items.findIndex((it) => VIDEO_URL_ACTIONS.has(it.action) && it.targetUrl);
+  if (idx < 0) return null;
+  const it = items[idx];
+  return {
+    url: it.targetUrl,
+    watchSeconds: isWatchAction(it.action) ? it.watchSeconds ?? 0 : 0,
+    itemIndex: idx,
+  };
+}
+
 /** Sort bundle items into the natural worker flow (stable within a tier). */
 export function sortBundleItems(items: BundleItem[]): BundleItem[] {
   return [...items].sort(
