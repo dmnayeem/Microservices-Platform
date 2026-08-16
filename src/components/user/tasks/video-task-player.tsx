@@ -338,16 +338,21 @@ export function VideoTaskPlayer({
 
   const doSubmit = async () => {
     if (submittedRef.current) return;
-    if (proofReq.screenshot && !screenshotUrl.trim()) {
-      toast.error("Screenshot URL is required");
-      return;
+    // Legacy engagement/proof-form checks only apply to the old flow (no steps).
+    // When typed steps are present (incl. steps synthesized from engagement),
+    // proof is per-step and validated below.
+    if (steps.length === 0) {
+      if (proofReq.screenshot && !screenshotUrl.trim()) {
+        toast.error("Screenshot URL is required");
+        return;
+      }
+      if (!allEngDone) {
+        toast.error("Please complete all the steps first");
+        return;
+      }
     }
     if (proofReq.uniqueKey && !uniqueKey.trim()) {
       toast.error("Unique key is required");
-      return;
-    }
-    if (!allEngDone) {
-      toast.error("Please complete all the steps first");
       return;
     }
     // Sequential steps: every REQUIRED step must carry its required proof
@@ -394,12 +399,14 @@ export function VideoTaskPlayer({
                 : [],
           videoSteps: steps.length > 0 ? videoSteps : undefined,
           uniqueKey,
-          engagement: engSteps.length
-            ? engSteps.reduce(
-                (acc, s) => ({ ...acc, [s.key]: engDone[s.key] }),
-                {} as Record<EngagementKey, boolean>
-              )
-            : undefined,
+          // Legacy honor confirmations only when NOT using typed steps.
+          engagement:
+            steps.length === 0 && engSteps.length
+              ? engSteps.reduce(
+                  (acc, s) => ({ ...acc, [s.key]: engDone[s.key] }),
+                  {} as Record<EngagementKey, boolean>
+                )
+              : undefined,
         }),
       });
       if (!res.ok) {
