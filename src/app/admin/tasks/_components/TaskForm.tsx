@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Save, X, Plus, Trash2, AlertCircle, Loader2, Image as ImageIcon, Smartphone } from "lucide-react";
 import { MediaSelector } from "@/components/media/MediaSelector";
@@ -17,6 +17,7 @@ import {
   normalizeSocialConfig,
   validateSocialBundle,
   bundleTotalPoints,
+  isWatchAction,
   type SocialBundleConfig,
 } from "@/lib/social-tasks";
 import { emptyArticleConfig, validateArticleConfig, type ArticleConfig } from "@/lib/article-tasks";
@@ -236,11 +237,71 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
   );
 
   // Media selector state
-  const [mediaSelectorOpen, setMediaSelectorOpen] = useState(false);
   const [mediaSelectorTarget, setMediaSelectorTarget] = useState<"thumbnail" | { type: "quiz"; index: number } | null>(null);
+  const [mediaSelectorOpen, setMediaSelectorOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ── Auto-thumbnail from the task's link ─────────────────────────────────────
+  // When the admin pastes/edits the task's primary link, fetch a preview image
+  // (YouTube/Vimeo poster or the page's og:image) and use it as the thumbnail —
+  // unless the admin has set one manually. `thumbnailAuto` stays true while the
+  // thumbnail is auto-managed; picking one via MediaSelector turns it off.
+  const [thumbnailAuto, setThumbnailAuto] = useState(!task?.thumbnailUrl);
+  const [thumbLoading, setThumbLoading] = useState(false);
+  const lastPreviewedUrlRef = useRef<string | null>(null);
+
+  // The link that drives the thumbnail, per task type.
+  const primaryLink = useMemo(() => {
+    switch (formData.type) {
+      case "VIDEO":
+        return videoConfig.videoUrl?.trim() ?? "";
+      case "SOCIAL": {
+        const it =
+          socialConfig.items.find(
+            (i) => isWatchAction(i.action) && i.fields?.targetUrl?.trim()
+          ) ?? socialConfig.items.find((i) => i.fields?.targetUrl?.trim());
+        return it?.fields?.targetUrl?.trim() ?? "";
+      }
+      case "ARTICLE": {
+        const url = articleConfig.useKeyPool
+          ? articleConfig.pages?.[0]?.url
+          : articleConfig.links?.[0]?.url;
+        return url?.trim() ?? "";
+      }
+      default:
+        return formData.contentUrl?.trim() ?? "";
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    formData.type,
+    formData.contentUrl,
+    videoConfig.videoUrl,
+    socialConfig,
+    articleConfig,
+  ]);
+
+  // Debounced fetch: paste a link → the thumbnail appears (~0.7s later).
+  useEffect(() => {
+    if (!thumbnailAuto) return;
+    const url = primaryLink;
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    if (lastPreviewedUrlRef.current === url) return;
+    const timer = setTimeout(() => {
+      lastPreviewedUrlRef.current = url;
+      setThumbLoading(true);
+      fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          const img = (d?.preview?.image as string | undefined)?.trim();
+          if (img) setFormData((f) => ({ ...f, thumbnailUrl: img }));
+        })
+        .catch(() => {})
+        .finally(() => setThumbLoading(false));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [primaryLink, thumbnailAuto]);
 
   /**
    * Save the task without redirecting away from the form. Used by the
@@ -495,6 +556,7 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
 
     if (mediaSelectorTarget === "thumbnail") {
       setFormData({ ...formData, thumbnailUrl: url });
+      setThumbnailAuto(false); // admin chose one manually → stop auto-overwriting
     } else if (mediaSelectorTarget && typeof mediaSelectorTarget === "object" && mediaSelectorTarget.type === "quiz") {
       updateQuestion(mediaSelectorTarget.index, "imageUrl", url);
     }
@@ -653,9 +715,7 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
             />
           </div>
 
-          {(formData.type === "VIDEO" ||
-            formData.type === "ARTICLE" ||
-            formData.type === "SOCIAL") && (
+          {formData.type !== "APPINSTALL" && (
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 Thumbnail
@@ -672,9 +732,12 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setFormData({ ...formData, thumbnailUrl: "" })
-                      }
+                      onClick={() => {
+                        // Clear + re-enable auto so a link can re-derive it.
+                        setFormData({ ...formData, thumbnailUrl: "" });
+                        setThumbnailAuto(true);
+                        lastPreviewedUrlRef.current = null;
+                      }}
                       className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600 transition-colors"
                     >
                       <X className="w-3 h-3" />
@@ -682,7 +745,11 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
                   </div>
                 ) : (
                   <div className="w-32 h-20 bg-gray-800 border border-gray-700 border-dashed rounded-lg flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-gray-600" />
+                    {thumbLoading ? (
+                      <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-gray-600" />
+                    )}
                   </div>
                 )}
                 <button
@@ -693,6 +760,15 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
                   <ImageIcon className="w-4 h-4" />
                   {formData.thumbnailUrl ? "Change Thumbnail" : "Select Thumbnail"}
                 </button>
+                {thumbnailAuto && (
+                  <p className="text-[11px] text-gray-500">
+                    {thumbLoading
+                      ? "Fetching thumbnail from the link…"
+                      : formData.thumbnailUrl
+                        ? "Auto-filled from the link — click ✕ or “Change” to override."
+                        : "Paste the task’s link and a thumbnail will be fetched automatically."}
+                  </p>
+                )}
               </div>
             </div>
           )}

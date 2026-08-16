@@ -14,6 +14,7 @@ import {
   validateSocialBundle,
   bundleTotalPoints,
 } from "@/lib/social-tasks";
+import { resolveTaskThumbnail } from "@/lib/task-thumbnail";
 
 export async function POST(request: NextRequest) {
   try {
@@ -166,6 +167,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Auto-derive a thumbnail from the task's link when none was set.
+    const resolvedThumbnailUrl = await resolveTaskThumbnail({
+      thumbnailUrl,
+      contentUrl,
+      socialConfig,
+      socialUrl: socialUrlOut,
+    });
+
     // Create the task
     const task = await prisma.task.create({
       data: {
@@ -187,7 +196,7 @@ export async function POST(request: NextRequest) {
         order: order != null ? parseInt(String(order)) || 0 : 0,
         countries: countries || [],
         contentUrl: contentUrl || null,
-        thumbnailUrl: thumbnailUrl || null,
+        thumbnailUrl: resolvedThumbnailUrl,
         duration: duration ? parseInt(duration.toString()) : null,
         questions: questions || null,
         socialPlatform: socialPlatformOut,
