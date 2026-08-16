@@ -43,6 +43,8 @@ export interface FeedPost {
   isPromoted?: boolean;
   promotedUntil?: string | null;
   promotedNote?: string | null;
+  /** Active-boost expiry (user self-serve boost). */
+  boostedUntil?: string | null;
   likesCount: number;
   commentsCount: number;
   sharesCount: number;

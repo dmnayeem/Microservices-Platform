@@ -14,6 +14,7 @@ import {
 import { toast } from "@/lib/toast";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 interface Offer {
   id: string;
@@ -172,9 +173,11 @@ export function OfferwallCatalogView() {
         <TabBtn active={tab === "history"} onClick={() => { setTab("history"); loadHistory(); }}>History</TabBtn>
       </div>
 
+      <AdRenderer placement="TASK_LIST" />
+
       {/* Featured provider walls (offers or surveys) */}
       {(tab === "featured" || tab === "surveys") && (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {wallsForTab.map((w) => (
             <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900 p-4 hover:border-emerald-600/50">
@@ -212,7 +215,7 @@ export function OfferwallCatalogView() {
 
       {/* Offer cards for a category */}
       {tab !== "featured" && tab !== "surveys" && tab !== "history" && (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {catOffers.length === 0 && <p className="text-sm text-gray-500">No offers here yet.</p>}
           {catOffers.map((o) => (
             <button key={o.id} onClick={() => openDetail(o)} disabled={o.locked || o.done}

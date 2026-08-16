@@ -176,6 +176,8 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {
       status: TaskStatus.ACTIVE,
+      // Super-admin hard hide (feature #3) — excluded from all user lists.
+      hidden: false,
       AND: andClauses,
     };
 

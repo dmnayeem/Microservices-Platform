@@ -102,6 +102,8 @@ enum ReferralSourceType {
   PURCHASE
   SUBSCRIPTION
   COURSE
+  SIGNUP
+  MONTHLY_BONUS
 }
 
 enum TransactionStatus {
@@ -174,9 +176,9 @@ model Banner {
   title       String
   subtitle    String?
   imageUrl    String?
-  videoUrl    String?        // optional background video (takes precedence over imageUrl)
+  videoUrl    String? // optional background video (takes precedence over imageUrl)
   iconEmoji   String?
-  bgGradient  String?        // e.g. "from-blue-600 to-purple-600"
+  bgGradient  String? // e.g. "from-blue-600 to-purple-600"
   linkUrl     String?
   location    BannerLocation @default(HOME)
   order       Int            @default(0)
@@ -212,24 +214,24 @@ model Offer {
 }
 
 model Campaign {
-  id              String   @id @default(cuid())
-  title           String
-  description     String?  @db.Text
-  type            String   // XP_MULTIPLIER | BONUS_POINTS | FREE_TICKETS | DISCOUNT | REFERRAL_BOOST | SEASONAL
-  value           Float    @default(1)
-  startDate       DateTime
-  endDate         DateTime
-  targetType      String   @default("ALL") // ALL | TIER | NEW_USERS | COUNTRY
-  targetValue     String?
-  budget          Decimal? @db.Decimal(18, 6)
-  bannerImage     String?
-  termsAndConditions String? @db.Text
-  status          String   @default("SCHEDULED") // SCHEDULED | ACTIVE | PAUSED | ENDED
-  participantCount Int     @default(0)
-  rewardsDistributed Decimal @default(0) @db.Decimal(18, 6)
-  createdById     String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  title              String
+  description        String?  @db.Text
+  type               String // XP_MULTIPLIER | BONUS_POINTS | FREE_TICKETS | DISCOUNT | REFERRAL_BOOST | SEASONAL
+  value              Float    @default(1)
+  startDate          DateTime
+  endDate            DateTime
+  targetType         String   @default("ALL") // ALL | TIER | NEW_USERS | COUNTRY
+  targetValue        String?
+  budget             Decimal? @db.Decimal(18, 6)
+  bannerImage        String?
+  termsAndConditions String?  @db.Text
+  status             String   @default("SCHEDULED") // SCHEDULED | ACTIVE | PAUSED | ENDED
+  participantCount   Int      @default(0)
+  rewardsDistributed Decimal  @default(0) @db.Decimal(18, 6)
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([status])
   @@index([startDate, endDate])
@@ -239,10 +241,10 @@ model Mission {
   id            String   @id @default(cuid())
   title         String
   description   String?  @db.Text
-  type          String   // TASK_COMPLETION | LOGIN_STREAK | REFERRAL | SPEND | EARN
+  type          String // TASK_COMPLETION | LOGIN_STREAK | REFERRAL | SPEND | EARN
   targetValue   Int
   pointsReward  Int      @default(0)
-  cashReward    Decimal    @default(0) @db.Decimal(18, 6)
+  cashReward    Decimal  @default(0) @db.Decimal(18, 6)
   xpReward      Int      @default(0)
   duration      String   @default("DAILY") // DAILY | WEEKLY
   autoRefresh   Boolean  @default(true)
@@ -259,23 +261,23 @@ model Mission {
 // several "complete N tasks of type X" buckets. Users see today's mission for
 // their tier, work through every bucket, then claim the final reward.
 model DailyMissionTemplate {
-  id                      String      @id @default(cuid())
-  name                    String
-  description             String?     @db.Text
-  requiredAccessLevel     Int         @default(0)
-  requiredLevel           Int         @default(1)
-  completionXpReward      Int         @default(0)
-  completionPointsReward  Int         @default(0)
-  isActive                Boolean     @default(true)
-  autoRefresh             Boolean     @default(true)
-  linkReferralBonus       Boolean     @default(false)
-  order                   Int         @default(0)
-  createdById             String?
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @updatedAt
+  id                     String   @id @default(cuid())
+  name                   String
+  description            String?  @db.Text
+  requiredAccessLevel    Int      @default(0)
+  requiredLevel          Int      @default(1)
+  completionXpReward     Int      @default(0)
+  completionPointsReward Int      @default(0)
+  isActive               Boolean  @default(true)
+  autoRefresh            Boolean  @default(true)
+  linkReferralBonus      Boolean  @default(false)
+  order                  Int      @default(0)
+  createdById            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  items   DailyMissionItem[]
-  claims  DailyMissionClaim[]
+  items  DailyMissionItem[]
+  claims DailyMissionClaim[]
 
   @@index([requiredAccessLevel])
   @@index([isActive])
@@ -285,12 +287,12 @@ model DailyMissionItem {
   id                String               @id @default(cuid())
   missionId         String
   mission           DailyMissionTemplate @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  taskType          String               // ARTICLE | VIDEO | QUIZ | SURVEY | SOCIAL | PROXY | OFFERWALL | BOARD | MANUAL | CUSTOM
+  taskType          String // ARTICLE | VIDEO | QUIZ | SURVEY | SOCIAL | PROXY | OFFERWALL | BOARD | MANUAL | CUSTOM
   description       String?              @db.Text
   targetCount       Int                  @default(1)
   xpPerComplete     Int                  @default(0)
   pointsPerComplete Int                  @default(0)
-  duration          Int?                 // minutes (display-only)
+  duration          Int? // minutes (display-only)
   requiredLevel     Int?
   order             Int                  @default(0)
 
@@ -298,14 +300,14 @@ model DailyMissionItem {
 }
 
 model DailyMissionClaim {
-  id          String                @id @default(cuid())
-  userId      String
-  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  missionId   String
-  mission     DailyMissionTemplate  @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  date        String                // YYYY-MM-DD (UTC)
-  streak      Int                   @default(1)
-  claimedAt   DateTime              @default(now())
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId String
+  mission   DailyMissionTemplate @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  date      String // YYYY-MM-DD (UTC)
+  streak    Int                  @default(1)
+  claimedAt DateTime             @default(now())
 
   @@unique([userId, missionId, date])
   @@index([userId, date])
@@ -316,8 +318,8 @@ model DailyReferralClaim {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date      String   // YYYY-MM-DD (UTC)
-  amount    Decimal @db.Decimal(18, 6)
+  date      String // YYYY-MM-DD (UTC)
+  amount    Decimal  @db.Decimal(18, 6)
   points    Int
   claimedAt DateTime @default(now())
 
@@ -326,19 +328,19 @@ model DailyReferralClaim {
 }
 
 model AdCampaign {
-  id            String   @id @default(cuid())
-  advertiserId  String?
-  advertiser    User?    @relation("UserAdCampaigns", fields: [advertiserId], references: [id], onDelete: SetNull)
-  title         String
-  description   String?  @db.Text
-  budget        Decimal    @default(0) @db.Decimal(18, 6)
-  status        String   @default("ACTIVE") // ACTIVE | PAUSED | ENDED
+  id           String    @id @default(cuid())
+  advertiserId String?
+  advertiser   User?     @relation("UserAdCampaigns", fields: [advertiserId], references: [id], onDelete: SetNull)
+  title        String
+  description  String?   @db.Text
+  budget       Decimal   @default(0) @db.Decimal(18, 6)
+  status       String    @default("ACTIVE") // ACTIVE | PAUSED | ENDED
   // Optional flight window — ads only serve while now is within [startAt, endAt].
-  startAt       DateTime?
-  endAt         DateTime?
-  ads           Ad[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  startAt      DateTime?
+  endAt        DateTime?
+  ads          Ad[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([advertiserId])
   @@index([status])
@@ -346,18 +348,18 @@ model AdCampaign {
 }
 
 model AdPlacement {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  platform  String   @default("ALL")
-  isActive  Boolean  @default(true)
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  platform            String   @default("ALL")
+  isActive            Boolean  @default(true)
   // Per-space ad-rotation interval (seconds). Null = use the global
   // `ads.rotation_seconds` setting. Clamped 5–60 when set.
-  rotationSeconds Int?
+  rotationSeconds     Int?
   // Per-space interstitial ad duration (seconds) — how long the full-screen ad
   // shows before it can be closed. Null = default 5s. Clamped 3–60 when set.
   interstitialSeconds Int?
-  ads       Ad[]
-  createdAt DateTime @default(now())
+  ads                 Ad[]
+  createdAt           DateTime @default(now())
 }
 
 model AdNetwork {
@@ -373,57 +375,57 @@ model AdNetwork {
 }
 
 model Ad {
-  id          String      @id @default(cuid())
-  campaignId  String
-  campaign    AdCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  placementId String
-  placement   AdPlacement @relation(fields: [placementId], references: [id])
-  type        String      @default("LOCAL") // LOCAL | HTML | ADSENSE | GAM
-  format      String      @default("BANNER") // BANNER | NATIVE (feed post-like)
-  contentUrl  String?     // image / GIF creative URL
-  videoUrl    String?     // MP4/WebM video creative URL
-  targetUrl   String?
-  htmlContent String?     @db.Text
+  id                String        @id @default(cuid())
+  campaignId        String
+  campaign          AdCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  placementId       String
+  placement         AdPlacement   @relation(fields: [placementId], references: [id])
+  type              String        @default("LOCAL") // LOCAL | HTML | ADSENSE | GAM
+  format            String        @default("BANNER") // BANNER | NATIVE (feed post-like)
+  contentUrl        String? // image / GIF creative URL
+  videoUrl          String? // MP4/WebM video creative URL
+  targetUrl         String?
+  htmlContent       String?       @db.Text
   // Third-party ad-network config (type ADSENSE | GAM). The self-contained
   // creative HTML is composed server-side in src/lib/ad-network.ts.
-  adSlot      String?     // AdSense ad-slot id (data-ad-slot)
-  adUnitPath  String?     // Google Ad Manager ad-unit path (/network/unit)
-  adClient    String?     // optional per-ad AdSense client override (ca-pub-…)
+  adSlot            String? // AdSense ad-slot id (data-ad-slot)
+  adUnitPath        String? // Google Ad Manager ad-unit path (/network/unit)
+  adClient          String? // optional per-ad AdSense client override (ca-pub-…)
   // Optional third-party tracking pixels (any type).
-  impressionPixel String? // 1×1 beacon fired on view
-  clickTracker    String? // pinged on click (local creatives)
+  impressionPixel   String? // 1×1 beacon fired on view
+  clickTracker      String? // pinged on click (local creatives)
   // Creative size — preset key (see src/lib/ad-sizes.ts); width/height used for "custom"
-  size        String?     @default("responsive")
-  width       Int?
-  height      Int?
-  weight      Int         @default(10)
+  size              String?       @default("responsive")
+  width             Int?
+  height            Int?
+  weight            Int           @default(10)
   // ACTIVE | PAUSED | INACTIVE | PENDING (awaiting admin review) | REJECTED
-  status      String      @default("ACTIVE")
+  status            String        @default("ACTIVE")
   // Review workflow (advertiser-submitted ads land as PENDING until an admin acts)
-  submittedById   String?
-  reviewedById    String?
-  reviewedAt      DateTime?
-  rejectionReason String?  @db.Text
-  impressions Int         @default(0)
-  clicks      Int         @default(0)
+  submittedById     String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  rejectionReason   String?       @db.Text
+  impressions       Int           @default(0)
+  clicks            Int           @default(0)
   // Native (post-like) creative fields — used when format = NATIVE
-  headline    String?     @db.Text     // post-like ad copy
-  brandName   String?                  // shown as author name
-  brandLogo   String?                  // author avatar URL
-  ctaLabel    String?                  // CTA button label (e.g. "Learn More")
+  headline          String?       @db.Text // post-like ad copy
+  brandName         String? // shown as author name
+  brandLogo         String? // author avatar URL
+  ctaLabel          String? // CTA button label (e.g. "Learn More")
   // Promote-a-real-post: when set, the native ad renders this post + its author
-  promotedPostId String?
-  promotedPost   Post?    @relation("PostAds", fields: [promotedPostId], references: [id], onDelete: SetNull)
+  promotedPostId    String?
+  promotedPost      Post?         @relation("PostAds", fields: [promotedPostId], references: [id], onDelete: SetNull)
   // Simple targeting: { countries?, genders?, minLevel?, packages? } (null = everyone)
-  targeting   Json?
+  targeting         Json?
   // Viewer-reward (watch-and-earn)
-  rewardPoints      Int    @default(0)
-  rewardCooldownSec Int    @default(3600)
-  watchSeconds      Int    @default(15)
-  views       AdView[]
-  dailyStats  AdDailyStat[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  rewardPoints      Int           @default(0)
+  rewardCooldownSec Int           @default(3600)
+  watchSeconds      Int           @default(15)
+  views             AdView[]
+  dailyStats        AdDailyStat[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   @@index([campaignId])
   @@index([placementId])
@@ -440,7 +442,7 @@ model AdDailyStat {
   date        DateTime @db.Date
   impressions Int      @default(0)
   clicks      Int      @default(0)
-  spendUsd    Decimal    @default(0) @db.Decimal(18, 6)
+  spendUsd    Decimal  @default(0) @db.Decimal(18, 6)
 
   @@unique([adId, date])
   @@index([adId, date])
@@ -468,7 +470,7 @@ model AdCreditLedger {
   id           String   @id @default(cuid())
   userId       String
   delta        Decimal  @db.Decimal(18, 6)
-  kind         String   // PURCHASE | GRANT | CAMPAIGN_FUND | REFUND
+  kind         String // PURCHASE | GRANT | CAMPAIGN_FUND | REFUND
   balanceAfter Decimal? @db.Decimal(18, 6)
   reference    String?
   metadata     Json?
@@ -489,21 +491,21 @@ model PushSubscription {
 }
 
 model Deposit {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
-  amount     Decimal @db.Decimal(18, 6)
-  method     String   // MANUAL_BKASH | MANUAL_NAGAD | SSLCOMMERZ | ...
-  status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  amount     Decimal   @db.Decimal(18, 6)
+  method     String // MANUAL_BKASH | MANUAL_NAGAD | SSLCOMMERZ | ...
+  status     String    @default("PENDING") // PENDING | APPROVED | REJECTED
   gatewayRef String?
   // Manual deposit provider txn id — unique so the same payment can't be
   // submitted/approved twice (double-credit).
-  txnId      String?  @unique
+  txnId      String?   @unique
   proofUrl   String?
   adminNote  String?
   reviewedBy String?
   reviewedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -518,18 +520,18 @@ enum FraudSeverity {
 }
 
 model FraudEvent {
-  id          String        @id @default(cuid())
-  userId      String?
-  eventType   String   // MULTIPLE_ACCOUNTS, VPN_DETECTED, etc.
-  severity    FraudSeverity @default(MEDIUM)
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-  status      String   @default("OPEN") // OPEN | DISMISSED | ACTED
-  resolverNote String? @db.Text
+  id           String        @id @default(cuid())
+  userId       String?
+  eventType    String // MULTIPLE_ACCOUNTS, VPN_DETECTED, etc.
+  severity     FraudSeverity @default(MEDIUM)
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  status       String        @default("OPEN") // OPEN | DISMISSED | ACTED
+  resolverNote String?       @db.Text
   resolvedById String?
-  resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
 
   @@index([userId])
   @@index([eventType])
@@ -539,51 +541,51 @@ model FraudEvent {
 }
 
 model ProxyServer {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   name            String
   host            String
   port            Int
-  protocol        String   @default("HTTPS") // HTTP | HTTPS | SOCKS5
-  country         String?  // ISO code
-  status          String   @default("ACTIVE") // ACTIVE | INACTIVE | ERROR
-  loadPercent     Int      @default(0)
-  maxConcurrent   Int      @default(50)
-  bandwidthMbUser Int      @default(100)
+  protocol        String    @default("HTTPS") // HTTP | HTTPS | SOCKS5
+  country         String? // ISO code
+  status          String    @default("ACTIVE") // ACTIVE | INACTIVE | ERROR
+  loadPercent     Int       @default(0)
+  maxConcurrent   Int       @default(50)
+  bandwidthMbUser Int       @default(100)
   responseTimeMs  Int?
   lastHealthCheck DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([status])
   @@index([country])
 }
 
 model OfferwallCallback {
-  id            String   @id @default(cuid())
-  userId        String
-  offerwallId   String
-  offerId       String?
-  offerName     String?
-  transactionId String   @unique
-  payoutAmount  Decimal @db.Decimal(18, 6)
-  userPayout    Int     // points
-  currency      String   @default("USD")
-  status        String   @default("PENDING") // PENDING | APPROVED | REJECTED | FRAUD | CHARGEBACK
+  id              String    @id @default(cuid())
+  userId          String
+  offerwallId     String
+  offerId         String?
+  offerName       String?
+  transactionId   String    @unique
+  payoutAmount    Decimal   @db.Decimal(18, 6)
+  userPayout      Int // points
+  currency        String    @default("USD")
+  status          String    @default("PENDING") // PENDING | APPROVED | REJECTED | FRAUD | CHARGEBACK
   internalOfferId String? // resolved OfferwallOffer.id from the subid (catalog credit)
-  isReversal    Boolean  @default(false) // chargeback / reconciliation negative postback
-  fraudScore    Int     @default(0)
-  fraudReasons  String[]
-  ipAddress     String?
-  userAgent     String?  @db.Text
-  countryCode   String?
-  deviceType    String?
-  rawPayload    Json?
-  reviewedById  String?
-  reviewNote    String?  @db.Text
-  rejectionReason String? @db.Text
-  processedAt   DateTime?
-  creditedAt    DateTime?
-  createdAt     DateTime @default(now())
+  isReversal      Boolean   @default(false) // chargeback / reconciliation negative postback
+  fraudScore      Int       @default(0)
+  fraudReasons    String[]
+  ipAddress       String?
+  userAgent       String?   @db.Text
+  countryCode     String?
+  deviceType      String?
+  rawPayload      Json?
+  reviewedById    String?
+  reviewNote      String?   @db.Text
+  rejectionReason String?   @db.Text
+  processedAt     DateTime?
+  creditedAt      DateTime?
+  createdAt       DateTime  @default(now())
 
   @@index([status])
   @@index([offerwallId])
@@ -592,29 +594,29 @@ model OfferwallCallback {
 }
 
 model TaskBoard {
-  id           String   @id @default(cuid())
-  title        String
-  description  String?  @db.Text
-  iconEmoji    String?
-  imageUrl     String?
+  id            String      @id @default(cuid())
+  title         String
+  description   String?     @db.Text
+  iconEmoji     String?
+  imageUrl      String?
   // "Marketing" | "Development" | "Design" | "Sales" | "Learning" | "Other"
-  category     String?
+  category      String?
   // null = no deadline
-  expiresAt    DateTime?
-  pointsReward Int      @default(0)
-  xpReward     Int      @default(0)
-  isActive     Boolean  @default(true)
-  order        Int      @default(0)
+  expiresAt     DateTime?
+  pointsReward  Int         @default(0)
+  xpReward      Int         @default(0)
+  isActive      Boolean     @default(true)
+  order         Int         @default(0)
   // Optional prerequisite board — user must claim this board first to unlock.
   unlockBoardId String?
   unlockBoard   TaskBoard?  @relation("BoardUnlockChain", fields: [unlockBoardId], references: [id], onDelete: SetNull)
   unlocks       TaskBoard[] @relation("BoardUnlockChain")
-  createdById  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  tasks   Task[]
-  claims  BoardClaim[]
+  tasks  Task[]
+  claims BoardClaim[]
 
   @@index([isActive])
   @@index([order])
@@ -644,19 +646,19 @@ model BoardClaim {
 }
 
 model SocialReport {
-  id          String   @id @default(cuid())
-  contentType String   // POST | COMMENT | USER | LISTING
-  contentId   String
-  reporterId  String
-  reason      String   // SPAM | HARASSMENT | FRAUD | INAPPROPRIATE | OTHER
-  details     String?  @db.Text
-  priority    String   @default("NORMAL") // URGENT | HIGH | NORMAL
-  status      String   @default("PENDING") // PENDING | RESOLVED
-  resolution  String?  // DISMISSED | WARNED | SUSPENDED | BANNED | DELETED
-  resolverNote String? @db.Text
+  id           String    @id @default(cuid())
+  contentType  String // POST | COMMENT | USER | LISTING
+  contentId    String
+  reporterId   String
+  reason       String // SPAM | HARASSMENT | FRAUD | INAPPROPRIATE | OTHER
+  details      String?   @db.Text
+  priority     String    @default("NORMAL") // URGENT | HIGH | NORMAL
+  status       String    @default("PENDING") // PENDING | RESOLVED
+  resolution   String? // DISMISSED | WARNED | SUSPENDED | BANNED | DELETED
+  resolverNote String?   @db.Text
   resolvedById String?
-  resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
 
   @@index([status])
   @@index([contentType])
@@ -667,28 +669,28 @@ model SocialReport {
 }
 
 model Quiz {
-  id              String         @id @default(cuid())
-  title           String
-  description     String?        @db.Text
-  category        String         @default("General")
-  difficulty      TaskDifficulty @default(MEDIUM)
-  status          QuizStatus     @default(DRAFT)
-  timeLimitSec    Int            @default(180)
-  passingScore    Int            @default(60)
-  pointsReward    Int            @default(50)
-  xpReward        Int            @default(25)
-  cashReward      Decimal          @default(0) @db.Decimal(18, 6)
-  maxAttempts     Int            @default(3)
-  cooldownHours   Int            @default(24)
-  requiredLevel   Int            @default(1)
+  id                  String         @id @default(cuid())
+  title               String
+  description         String?        @db.Text
+  category            String         @default("General")
+  difficulty          TaskDifficulty @default(MEDIUM)
+  status              QuizStatus     @default(DRAFT)
+  timeLimitSec        Int            @default(180)
+  passingScore        Int            @default(60)
+  pointsReward        Int            @default(50)
+  xpReward            Int            @default(25)
+  cashReward          Decimal        @default(0) @db.Decimal(18, 6)
+  maxAttempts         Int            @default(3)
+  cooldownHours       Int            @default(24)
+  requiredLevel       Int            @default(1)
   requiredAccessLevel Int?
-  questions       QuizQuestion[]
-  aiGenerated     Boolean        @default(false)
-  aiPrompt        String?        @db.Text
-  createdById     String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  attempts        QuizAttempt[]
+  questions           QuizQuestion[]
+  aiGenerated         Boolean        @default(false)
+  aiPrompt            String?        @db.Text
+  createdById         String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  attempts            QuizAttempt[]
 
   @@index([status])
   @@index([category])
@@ -696,12 +698,12 @@ model Quiz {
 }
 
 model QuizQuestion {
-  id            String   @id @default(cuid())
-  quizId        String
-  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  quizId           String
+  quiz             Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   order            Int      @default(0)
   question         String   @db.Text
-  questionImageUrl String?              // optional image shown as the question
+  questionImageUrl String? // optional image shown as the question
   options          String[]
   optionImageUrls  String[] @default([]) // optional per-option images (index-aligned)
   correctIndex     Int
@@ -712,16 +714,16 @@ model QuizQuestion {
 }
 
 model QuizAttempt {
-  id          String    @id @default(cuid())
-  quizId      String
-  quiz        Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  userId      String
-  score       Int       @default(0)
-  passed      Boolean   @default(false)
-  answers     Json      // user's answers per question
-  timeTakenSec Int      @default(0)
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
+  id           String    @id @default(cuid())
+  quizId       String
+  quiz         Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId       String
+  score        Int       @default(0)
+  passed       Boolean   @default(false)
+  answers      Json // user's answers per question
+  timeTakenSec Int       @default(0)
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
 
   @@index([quizId])
   @@index([userId])
@@ -741,8 +743,8 @@ enum MarketplaceListingStatus {
 enum MarketplaceBidStatus {
   ACTIVE // current high bid (only one ACTIVE per listing)
   OUTBID // a later, higher bid replaced this one
-  WON    // auction closed and this bid won
-  LOST   // auction closed and this bid didn't win
+  WON // auction closed and this bid won
+  LOST // auction closed and this bid didn't win
   CANCELLED
 }
 
@@ -758,13 +760,13 @@ enum MarketplaceOfferStatus {
 // Escrow "deal" lifecycle. A deal holds the buyer's funds until delivery is
 // confirmed (or auto-released), instead of the instant-settle checkout path.
 enum MarketplaceDealStatus {
-  PROPOSED  // terms proposed in a thread; awaiting acceptance + funding
-  FUNDED    // buyer funded escrow; funds held, awaiting delivery
+  PROPOSED // terms proposed in a thread; awaiting acceptance + funding
+  FUNDED // buyer funded escrow; funds held, awaiting delivery
   DELIVERED // seller marked delivered; awaiting buyer confirm / auto-release
-  RELEASED  // funds released to seller — completed
-  REFUNDED  // funds returned to buyer (clawback)
+  RELEASED // funds released to seller — completed
+  REFUNDED // funds returned to buyer (clawback)
   CANCELLED // cancelled before funding
-  DISPUTED  // under admin mediation
+  DISPUTED // under admin mediation
 }
 
 enum CourseStatus {
@@ -852,185 +854,197 @@ enum NotificationType {
   COURSE
   MESSAGE
 }
+
 model User {
-  id                String      @id @default(cuid())
-  email             String      @unique
-  emailVerified     DateTime?
-  phone             String?
-  phoneVerified     DateTime?
-  password          String?
-  name              String?
-  firstName         String?
-  lastName          String?
-  username          String?     @unique
-  avatar            String?
-  coverPhoto        String?
-  bio               String?
-  country           String?
-  timezone          String?     @default("UTC")
-  role              UserRole    @default(USER)
+  id                                String                       @id @default(cuid())
+  email                             String                       @unique
+  emailVerified                     DateTime?
+  phone                             String?
+  phoneVerified                     DateTime?
+  password                          String?
+  name                              String?
+  firstName                         String?
+  lastName                          String?
+  username                          String?                      @unique
+  avatar                            String?
+  coverPhoto                        String?
+  bio                               String?
+  country                           String?
+  timezone                          String?                      @default("UTC")
+  role                              UserRole                     @default(USER)
   // Optional super-admin-defined custom role (permissions come from it; the
   // user's `role` is kept as ADMIN as the admin-panel baseline). Null = plain role.
-  customRoleId      String?
-  customRole        CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
-  status            UserStatus  @default(PENDING_VERIFICATION)
-  pointsBalance     Int         @default(0)
-  cashBalance       Decimal     @default(0) @db.Decimal(18, 6)
+  customRoleId                      String?
+  customRole                        CustomRole?                  @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  status                            UserStatus                   @default(PENDING_VERIFICATION)
+  pointsBalance                     Int                          @default(0)
+  cashBalance                       Decimal                      @default(0) @db.Decimal(18, 6)
   // Non-withdrawable ad-spend wallet (USD, 1 credit = $1). Bought with cash/
   // points or admin-granted; campaign budgets are funded from this.
-  adCreditBalance   Decimal     @default(0) @db.Decimal(18, 6)
-  totalEarnings     Decimal     @default(0) @db.Decimal(18, 6)
-  totalWithdrawals  Decimal     @default(0) @db.Decimal(18, 6)
-  xp                Int         @default(0)
-  level             Int         @default(1)
-  streak            Int         @default(0)
-  lastCheckIn       DateTime?
+  adCreditBalance                   Decimal                      @default(0) @db.Decimal(18, 6)
+  totalEarnings                     Decimal                      @default(0) @db.Decimal(18, 6)
+  totalWithdrawals                  Decimal                      @default(0) @db.Decimal(18, 6)
+  xp                                Int                          @default(0)
+  level                             Int                          @default(1)
+  streak                            Int                          @default(0)
+  lastCheckIn                       DateTime?
   // Anti-fraud reputation: 0–100, starts neutral. Approvals nudge up, fraud
   // rejections nudge down; low trust forces manual review of otherwise
   // auto-approvable submissions (see src/lib/trust.ts).
-  trustScore        Int         @default(50)
-  fraudStrikes      Int         @default(0)
-  packageId         String?
-  package           Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  packageExpiresAt  DateTime?
-  kycStatus         KYCStatus   @default(NOT_SUBMITTED)
-  kycSubmittedAt    DateTime?
-  kycApprovedAt     DateTime?
-  kycPromptedAt     DateTime?   // set once when we nudge a completed-profile user to do KYC
-  featureOverrides  Json?       // per-user feature grants/denials { [featureKey]: boolean } overriding the package
-  permissionOverrides Json?     // per-user RBAC permission grants/denials { [permission]: boolean } on top of the role
-  isBlueVerified    Boolean     @default(false)
+  trustScore                        Int                          @default(50)
+  fraudStrikes                      Int                          @default(0)
+  packageId                         String?
+  package                           Package?                     @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  packageExpiresAt                  DateTime?
+  kycStatus                         KYCStatus                    @default(NOT_SUBMITTED)
+  kycSubmittedAt                    DateTime?
+  kycApprovedAt                     DateTime?
+  kycPromptedAt                     DateTime? // set once when we nudge a completed-profile user to do KYC
+  featureOverrides                  Json? // per-user feature grants/denials { [featureKey]: boolean } overriding the package
+  permissionOverrides               Json? // per-user RBAC permission grants/denials { [permission]: boolean } on top of the role
+  pageOverrides                     Json? // per-user page-visibility grants/denials { [path]: boolean } — super-admin page hiding
+  // Anti-fraud: IP captured at signup + most recent request IP (per-IP account
+  // cap + VPN/proxy heuristic). @@index on signupIp for the per-IP count.
+  signupIp                          String?
+  lastIp                            String?
+  isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render
   // a richer gradient — set by admin from the user-edit screen.
-  verifiedBadgeStyle String?    @default("BLUE")
-  twoFactorEnabled  Boolean     @default(false)
-  twoFactorSecret   String?
-  referralCode      String      @unique
-  referredById      String?
-  referredBy        User?       @relation("ReferralRelation", fields: [referredById], references: [id])
-  referrals         User[]      @relation("ReferralRelation")
+  verifiedBadgeStyle                String?                      @default("BLUE")
+  twoFactorEnabled                  Boolean                      @default(false)
+  twoFactorSecret                   String?
+  referralCode                      String                       @unique
+  referredById                      String?
+  referredBy                        User?                        @relation("ReferralRelation", fields: [referredById], references: [id])
+  referrals                         User[]                       @relation("ReferralRelation")
   // Affiliate program opt-in (earn commission promoting marketplace/course items).
-  affiliateJoinedAt DateTime?
-  affiliateCommissions AffiliateCommission[] @relation("AffiliateCommissions")
+  affiliateJoinedAt                 DateTime?
+  affiliateCommissions              AffiliateCommission[]        @relation("AffiliateCommissions")
+  // Events/quests progress (feature #10).
+  eventProgress                     UserEventProgress[]
+  // Per-viewer boosted-post impression caps (feed boost frequency cap).
+  postBoostViews                    PostBoostView[]
   // Extended profile fields (admin_oo.md §5.02)
-  gender            String?
-  dateOfBirth       DateTime?
-  nidNumber         String?
-  profession        String?
-  maritalStatus     String?
-  studyLevel        String?
-  nationality       String?
-  bloodGroup        String?
-  secondaryEmail    String?
-  secondaryPhone    String?
+  gender                            String?
+  dateOfBirth                       DateTime?
+  nidNumber                         String?
+  profession                        String?
+  maritalStatus                     String?
+  studyLevel                        String?
+  nationality                       String?
+  bloodGroup                        String?
+  secondaryEmail                    String?
+  secondaryPhone                    String?
   // Extended address fields
-  street            String?
-  village           String?
-  city              String?
-  subDistrict       String?
-  district          String?
-  subDivision       String?
-  division          String?
-  region            String?
-  postalCode        String?
+  street                            String?
+  village                           String?
+  city                              String?
+  subDistrict                       String?
+  district                          String?
+  subDivision                       String?
+  division                          String?
+  region                            String?
+  postalCode                        String?
   // Profile tags (Early Adopter / Crypto / Trader / Pro / etc.) — max 3 picked from a fixed set
-  tags              String[]    @default([])
+  tags                              String[]                     @default([])
   // Settings
-  theme             String      @default("dark")
-  themeAccent       String?     @default("indigo")
-  language          String      @default("en")
-  notificationsEnabled Boolean  @default(true)
-  emailNotifications Boolean    @default(true)
-  pushNotifications  Boolean    @default(true)
+  theme                             String                       @default("dark")
+  themeAccent                       String?                      @default("indigo")
+  language                          String                       @default("en")
+  notificationsEnabled              Boolean                      @default(true)
+  emailNotifications                Boolean                      @default(true)
+  pushNotifications                 Boolean                      @default(true)
   // Privacy visibility ("PUBLIC" | "FRIENDS" | "PRIVATE") — defaults match spec
-  privacyAvatar     String      @default("PUBLIC")
-  privacyBio        String      @default("PUBLIC")
-  privacyStats      String      @default("PUBLIC")
-  privacyEarnings   String      @default("PRIVATE")
-  privacyLocation   String      @default("FRIENDS")
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  lastLoginAt       DateTime?
-  accounts          Account[]
-  sessions          Session[]
-  kycDocuments      KYCDocument[]
-  kycAppeals        KYCAppeal[]
-  taskSubmissions   TaskSubmission[]
-  transactions      Transaction[]
-  withdrawals       Withdrawal[]
-  paymentMethods    UserPaymentMethod[]
-  notifications     Notification[]
-  marketplaceListings MarketplaceListing[]
-  marketplacePurchases MarketplacePurchase[]
-  marketplaceWatches  MarketplaceWatch[]
-  marketplaceViews    MarketplaceListingView[]
-  marketplaceBids     MarketplaceBid[]
-  marketplaceOffers   MarketplaceOffer[]
-  courseEnrollments CourseEnrollment[]
-  tutorProfile      TutorProfile?
-  tutorApplications TutorApplication[]
-  tutorApplicationsReviewed TutorApplication[] @relation("TutorAppReviewer")
-  creatorApplications CreatorApplication[]
-  creatorApplicationsReviewed CreatorApplication[] @relation("CreatorAppReviewer")
-  coursesTaught     Course[]              @relation("CourseTutor")
-  courseReviews     CourseReview[]
-  courseQuestionsAsked    CourseQuestion[]  @relation("CourseQuestionAsker")
-  courseQuestionsAnswered CourseQuestion[]  @relation("CourseQuestionAnswerer")
-  courseBookmarks   CourseBookmark[]
-  courseAnnouncements CourseAnnouncement[]
-  courseQuizAttempts  CourseQuizAttempt[]
-  courseAssignmentSubmissions CourseAssignmentSubmission[]
+  privacyAvatar                     String                       @default("PUBLIC")
+  privacyBio                        String                       @default("PUBLIC")
+  privacyStats                      String                       @default("PUBLIC")
+  privacyEarnings                   String                       @default("PRIVATE")
+  privacyLocation                   String                       @default("FRIENDS")
+  createdAt                         DateTime                     @default(now())
+  updatedAt                         DateTime                     @updatedAt
+  lastLoginAt                       DateTime?
+  accounts                          Account[]
+  sessions                          Session[]
+  kycDocuments                      KYCDocument[]
+  kycAppeals                        KYCAppeal[]
+  taskSubmissions                   TaskSubmission[]
+  transactions                      Transaction[]
+  withdrawals                       Withdrawal[]
+  paymentMethods                    UserPaymentMethod[]
+  notifications                     Notification[]
+  marketplaceListings               MarketplaceListing[]
+  marketplacePurchases              MarketplacePurchase[]
+  marketplaceWatches                MarketplaceWatch[]
+  marketplaceViews                  MarketplaceListingView[]
+  marketplaceBids                   MarketplaceBid[]
+  marketplaceOffers                 MarketplaceOffer[]
+  courseEnrollments                 CourseEnrollment[]
+  tutorProfile                      TutorProfile?
+  tutorApplications                 TutorApplication[]
+  tutorApplicationsReviewed         TutorApplication[]           @relation("TutorAppReviewer")
+  creatorApplications               CreatorApplication[]
+  creatorApplicationsReviewed       CreatorApplication[]         @relation("CreatorAppReviewer")
+  coursesTaught                     Course[]                     @relation("CourseTutor")
+  courseReviews                     CourseReview[]
+  courseQuestionsAsked              CourseQuestion[]             @relation("CourseQuestionAsker")
+  courseQuestionsAnswered           CourseQuestion[]             @relation("CourseQuestionAnswerer")
+  courseBookmarks                   CourseBookmark[]
+  courseAnnouncements               CourseAnnouncement[]
+  courseQuizAttempts                CourseQuizAttempt[]
+  courseAssignmentSubmissions       CourseAssignmentSubmission[]
   courseAssignmentSubmissionsGraded CourseAssignmentSubmission[] @relation("AssignmentGrader")
-  courseCertificates  CourseCertificate[]
-  courseCoupons       CourseCoupon[]
-  courseRefundsRequested CourseRefundRequest[] @relation("CourseRefundUser")
-  courseRefundsProcessed CourseRefundRequest[] @relation("CourseRefundAdmin")
-  courseViews         CourseListingView[]
-  lotteryTickets    LotteryTicket[]
-  adCampaigns       AdCampaign[]       @relation("UserAdCampaigns")
-  posts             Post[]
-  comments          Comment[]
-  likes             Like[]
-  badges            UserBadge[]
-  achievements      UserAchievement[]
-  referralEarnings  ReferralEarning[]
-  pointGifts        PointGift[]         @relation("PointGiftSender")
-  receivedGifts     PointGift[]         @relation("PointGiftReceiver")
-  mediaUploads      Media[]
-  cartItems         CartItem[]
-  votes             Vote[]
-  donations         Donation[]
-  ownedGroups       Group[]            @relation("GroupOwner")
-  groupMemberships  GroupMember[]
-  groupJoinRequests GroupJoinRequest[]
-  dailyMissionClaims  DailyMissionClaim[]
-  dailyReferralClaims DailyReferralClaim[]
-  socialAccounts      SocialAccount[]
-  linkedAccounts      LinkedPlatformAccount[]
+  courseCertificates                CourseCertificate[]
+  courseCoupons                     CourseCoupon[]
+  courseRefundsRequested            CourseRefundRequest[]        @relation("CourseRefundUser")
+  courseRefundsProcessed            CourseRefundRequest[]        @relation("CourseRefundAdmin")
+  courseViews                       CourseListingView[]
+  lotteryTickets                    LotteryTicket[]
+  adCampaigns                       AdCampaign[]                 @relation("UserAdCampaigns")
+  posts                             Post[]
+  comments                          Comment[]
+  likes                             Like[]
+  badges                            UserBadge[]
+  achievements                      UserAchievement[]
+  referralEarnings                  ReferralEarning[]
+  pointGifts                        PointGift[]                  @relation("PointGiftSender")
+  receivedGifts                     PointGift[]                  @relation("PointGiftReceiver")
+  mediaUploads                      Media[]
+  cartItems                         CartItem[]
+  votes                             Vote[]
+  donations                         Donation[]
+  ownedGroups                       Group[]                      @relation("GroupOwner")
+  groupMemberships                  GroupMember[]
+  groupJoinRequests                 GroupJoinRequest[]
+  dailyMissionClaims                DailyMissionClaim[]
+  dailyReferralClaims               DailyReferralClaim[]
+  socialAccounts                    SocialAccount[]
+  linkedAccounts                    LinkedPlatformAccount[]
   // Native social graph
-  followers          Follow[]    @relation("Followers")
-  following          Follow[]    @relation("Following")
-  followerBoostBatches FollowerBoostBatch[] @relation("FollowerBoostTarget")
-  followersCount     Int         @default(0)
-  followingCount     Int         @default(0)
+  followers                         Follow[]                     @relation("Followers")
+  following                         Follow[]                     @relation("Following")
+  followerBoostBatches              FollowerBoostBatch[]         @relation("FollowerBoostTarget")
+  followersCount                    Int                          @default(0)
+  followingCount                    Int                          @default(0)
   // Admin-set vanity offsets. Display = max(0, real + boost).
   // Can be negative (admin can lower the visible count).
-  displayFollowersBoost Int       @default(0)
-  displayFollowingBoost Int       @default(0)
-  displayPostsBoost     Int       @default(0)
-  postViews          PostView[]
-  postLinkClicks     PostLinkClick[]
-  postShares         PostShare[]
-  socialActions      SocialActionLog[]
-  boardClaims        BoardClaim[]
-  articleKeys        ArticleTaskKey[]
-  mentionsReceived   Mention[]   @relation("Mentioned")
-  mentionsMade       Mention[]   @relation("MentionedBy")
+  displayFollowersBoost             Int                          @default(0)
+  displayFollowingBoost             Int                          @default(0)
+  displayPostsBoost                 Int                          @default(0)
+  postViews                         PostView[]
+  postLinkClicks                    PostLinkClick[]
+  postShares                        PostShare[]
+  socialActions                     SocialActionLog[]
+  boardClaims                       BoardClaim[]
+  articleKeys                       ArticleTaskKey[]
+  mentionsReceived                  Mention[]                    @relation("Mentioned")
+  mentionsMade                      Mention[]                    @relation("MentionedBy")
+
   // NB: email + referralCode are already @unique (own B-tree) — no extra @@index.
   @@index([referredById])
   @@index([status])
   @@index([role])
+  @@index([signupIp])
   @@index([totalEarnings])
   @@index([referredById, createdAt])
   @@index([packageId])
@@ -1050,7 +1064,8 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
@@ -1063,28 +1078,30 @@ model LinkedPlatformAccount {
   id             String   @id @default(cuid())
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platform       String   // "TELEGRAM" | "DISCORD"
+  platform       String // "TELEGRAM" | "DISCORD"
   platformUserId String
   username       String?
   linkedAt       DateTime @default(now())
+
   @@unique([userId, platform])
   @@index([platform, platformUserId])
 }
 
 // Connected social account — one row per (user × platform)
 model SocialAccount {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platform       String   // TWITTER | FACEBOOK | INSTAGRAM | YOUTUBE | TIKTOK | LINKEDIN | TELEGRAM | DISCORD
-  username       String
-  url            String?
-  followers      Int      @default(0)
-  following      Int      @default(0)
-  postsCount     Int      @default(0)
-  verified       Boolean  @default(false)
-  connectedAt    DateTime @default(now())
-  lastSyncedAt   DateTime?
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     String // TWITTER | FACEBOOK | INSTAGRAM | YOUTUBE | TIKTOK | LINKEDIN | TELEGRAM | DISCORD
+  username     String
+  url          String?
+  followers    Int       @default(0)
+  following    Int       @default(0)
+  postsCount   Int       @default(0)
+  verified     Boolean   @default(false)
+  connectedAt  DateTime  @default(now())
+  lastSyncedAt DateTime?
+
   @@unique([userId, platform])
   @@index([userId])
 }
@@ -1095,6 +1112,7 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
@@ -1103,24 +1121,26 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
   type       String   @default("EMAIL")
+
   @@unique([identifier, token])
 }
 
 model KYCDocument {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documentType String
-  documentUrl String
-  status      KYCStatus @default(PENDING)
-  method      String    @default("MANUAL") // MANUAL | AUTO (Gemini OCR + face match)
-  extracted   Json?     // auto results: { fullName, dateOfBirth, idNumber, expiry, ocrConfidence, faceSimilarity, faceMatched, decision, reasons[] }
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentType    String
+  documentUrl     String
+  status          KYCStatus   @default(PENDING)
+  method          String      @default("MANUAL") // MANUAL | AUTO (Gemini OCR + face match)
+  extracted       Json? // auto results: { fullName, dateOfBirth, idNumber, expiry, ocrConfidence, faceSimilarity, faceMatched, decision, reasons[] }
   rejectionReason String?
-  reviewedBy  String?
-  reviewedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  appeals     KYCAppeal[]
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  appeals         KYCAppeal[]
+
   @@index([userId])
   @@index([status])
 }
@@ -1132,19 +1152,20 @@ enum KYCAppealStatus {
 }
 
 model KYCAppeal {
-  id             String          @id @default(cuid())
-  userId         String
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kycDocumentId  String
-  kycDocument    KYCDocument     @relation(fields: [kycDocumentId], references: [id], onDelete: Cascade)
-  reason         String          @db.Text
-  evidence       String[]
-  status         KYCAppealStatus @default(PENDING)
-  adminNote      String?         @db.Text
-  reviewedById   String?
-  reviewedAt     DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kycDocumentId String
+  kycDocument   KYCDocument     @relation(fields: [kycDocumentId], references: [id], onDelete: Cascade)
+  reason        String          @db.Text
+  evidence      String[]
+  status        KYCAppealStatus @default(PENDING)
+  adminNote     String?         @db.Text
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
   @@index([userId])
   @@index([kycDocumentId])
   @@index([status])
@@ -1152,58 +1173,62 @@ model KYCAppeal {
 }
 
 model Task {
-  id              String       @id @default(cuid())
-  title           String
-  description     String       @db.Text
-  instructions    String?      @db.Text
+  id                  String           @id @default(cuid())
+  title               String
+  description         String           @db.Text
+  instructions        String?          @db.Text
   instructionVideoUrl String?
-  type            TaskType
-  status          TaskStatus   @default(ACTIVE)
-  difficulty      TaskDifficulty @default(MEDIUM)
-  pointsReward    Int
-  cashReward      Decimal        @default(0) @db.Decimal(18, 6)
-  xpReward        Int          @default(0)
-  isBoardOnly     Boolean      @default(false)
-  boardId         String?
-  board           TaskBoard?   @relation(fields: [boardId], references: [id], onDelete: SetNull)
-  dailyLimit      Int?
-  totalLimit      Int?
-  completedCount  Int          @default(0)
-  minLevel        Int          @default(1)
-  requiredAccessLevel Int      @default(0)
+  type                TaskType
+  status              TaskStatus       @default(ACTIVE)
+  difficulty          TaskDifficulty   @default(MEDIUM)
+  pointsReward        Int
+  cashReward          Decimal          @default(0) @db.Decimal(18, 6)
+  xpReward            Int              @default(0)
+  isBoardOnly         Boolean          @default(false)
+  boardId             String?
+  board               TaskBoard?       @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  dailyLimit          Int?
+  totalLimit          Int?
+  completedCount      Int              @default(0)
+  minLevel            Int              @default(1)
+  requiredAccessLevel Int              @default(0)
+  // Super-admin hard hide — excludes the task from all user-facing lists
+  // regardless of level/access/type gating. Admin-only visibility control.
+  hidden              Boolean          @default(false)
   // Sequential-unlock ordering — lower shows/unlocks first (feature #7).
-  order           Int          @default(0)
-  countries       String[]     @default([])
-  contentUrl      String?
-  thumbnailUrl    String?
-  duration        Int?
-  questions       Json?
-  socialPlatform  String?
-  socialAction    String?
-  socialUrl       String?
-  socialConfig    Json?      // Platform×action specific config (see lib/social-tasks.ts SocialConfig)
-  articleConfig   Json?      // Article task config (see lib/article-tasks.ts ArticleConfig)
-  videoConfig     Json?      // Video task config (see lib/video-tasks.ts VideoConfig)
-  surveyConfig    Json?      // Survey task config (see lib/survey-tasks.ts SurveyConfig)
-  customConfig    Json?      // Custom task config (see lib/custom-tasks.ts CustomConfig)
-  appInstallConfig Json?     // App-install task config (see lib/app-install-tasks.ts AppInstallConfig)
-  proxyInstructions String?    @db.Text
-  startsAt        DateTime?
-  expiresAt       DateTime?
-  cooldownMinutes Int          @default(0)
-  autoApprove     Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  createdById     String?
+  order               Int              @default(0)
+  countries           String[]         @default([])
+  contentUrl          String?
+  thumbnailUrl        String?
+  duration            Int?
+  questions           Json?
+  socialPlatform      String?
+  socialAction        String?
+  socialUrl           String?
+  socialConfig        Json? // Platform×action specific config (see lib/social-tasks.ts SocialConfig)
+  articleConfig       Json? // Article task config (see lib/article-tasks.ts ArticleConfig)
+  videoConfig         Json? // Video task config (see lib/video-tasks.ts VideoConfig)
+  surveyConfig        Json? // Survey task config (see lib/survey-tasks.ts SurveyConfig)
+  customConfig        Json? // Custom task config (see lib/custom-tasks.ts CustomConfig)
+  appInstallConfig    Json? // App-install task config (see lib/app-install-tasks.ts AppInstallConfig)
+  proxyInstructions   String?          @db.Text
+  startsAt            DateTime?
+  expiresAt           DateTime?
+  cooldownMinutes     Int              @default(0)
+  autoApprove         Boolean          @default(false)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  createdById         String?
   // User-created tasks fund their reward pool from the creator's wallet.
-  fundedByUserId  String?
-  budgetPoints    Int          @default(0)
-  remainingBudget Int          @default(0)
-  rejectionReason String?      @db.Text
-  submissions     TaskSubmission[]
-  categories      TaskCategory[]
+  fundedByUserId      String?
+  budgetPoints        Int              @default(0)
+  remainingBudget     Int              @default(0)
+  rejectionReason     String?          @db.Text
+  submissions         TaskSubmission[]
+  categories          TaskCategory[]
   // Article-task key-pool relations (only used when articleConfig.useKeyPool=true)
-  articleKeys     ArticleTaskKey[]
+  articleKeys         ArticleTaskKey[]
+
   @@index([status])
   @@index([type])
   @@index([requiredAccessLevel])
@@ -1227,43 +1252,44 @@ model TaskCategory {
 }
 
 model TaskSubmission {
-  id            String           @id @default(cuid())
-  taskId        String
-  task          Task             @relation(fields: [taskId], references: [id])
-  userId        String
-  user          User             @relation(fields: [userId], references: [id])
-  status        SubmissionStatus @default(PENDING)
-  proof         String?          @db.Text
-  proofImages   String[]
-  answers       Json?
-  score         Int?
-  reviewedBy    String?
-  reviewedAt    DateTime?
+  id              String                    @id @default(cuid())
+  taskId          String
+  task            Task                      @relation(fields: [taskId], references: [id])
+  userId          String
+  user            User                      @relation(fields: [userId], references: [id])
+  status          SubmissionStatus          @default(PENDING)
+  proof           String?                   @db.Text
+  proofImages     String[]
+  answers         Json?
+  score           Int?
+  reviewedBy      String?
+  reviewedAt      DateTime?
   rejectionReason String?
   // Free-text admin feedback shown to the user on approve/reject/redo (distinct
   // from the structured `rejectionReason`).
-  feedback      String?          @db.Text
+  feedback        String?                   @db.Text
   // Points deducted from the user's balance as a penalty on rejection (record).
-  penaltyPoints Int?
-  pointsEarned  Int?
-  xpEarned      Int?
+  penaltyPoints   Int?
+  pointsEarned    Int?
+  xpEarned        Int?
   // Server-authoritative watch tracking (VIDEO + SOCIAL watch actions). The
   // heartbeat route accrues real, playing+focused seconds here so the submit
   // gate never has to trust a client-claimed watch count.
-  watchedSeconds Int             @default(0)
-  lastBeatAt     DateTime?
+  watchedSeconds  Int                       @default(0)
+  lastBeatAt      DateTime?
   // Set the moment the user actually SUBMITS proof (vs. merely /start-ing the
   // task). Distinguishes "in progress" (PENDING, submittedAt null) from
   // "submitted / pending review" (PENDING, submittedAt set) for the task list.
-  submittedAt    DateTime?
+  submittedAt     DateTime?
   // Type-specific proof bag — used by SOCIAL ({ socialUsername, socialGeneratedContent }),
   // forward-flexible for future task types.
-  metadata      Json?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  metadata        Json?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
   // Article key-pool relations (only populated for ARTICLE tasks with useKeyPool=true)
-  articleKey    ArticleTaskKey?
-  pageProgress  ArticleTaskPageProgress[]
+  articleKey      ArticleTaskKey?
+  pageProgress    ArticleTaskPageProgress[]
+
   @@unique([taskId, userId, createdAt])
   @@index([userId])
   @@index([taskId])
@@ -1283,7 +1309,7 @@ model SocialProofFingerprint {
   taskId       String
   userId       String
   submissionId String
-  kind         String   // "URL" | "SCREENSHOT" | "USERNAME"
+  kind         String // "URL" | "SCREENSHOT" | "USERNAME"
   // SHA-256 of the normalized proof value — fixed length so the equality index
   // is safe for arbitrarily long URLs (a raw-text btree index can overflow).
   valueHash    String
@@ -1347,11 +1373,7 @@ model Transaction {
   metadata    Json?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
-  @@index([userId])
-  @@index([type])
-  @@index([status])
-  @@index([createdAt])
-  @@index([userId, createdAt])
+
   // Idempotency backstop: a deterministic `reference` for a once-only money event
   // is unique per user, so a retry / concurrent-double / replay that reuses the
   // same reference hits P2002 and is caught (see src/lib/idempotency.ts). Scoped
@@ -1361,6 +1383,11 @@ model Transaction {
   // (Postgres treats NULLs as distinct), so legitimately-repeatable events that
   // use per-occurrence-distinct references are unaffected.
   @@unique([userId, reference])
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, createdAt])
   // Kept for reference-only lookups (findFirst by reference) that can't use the
   // composite (userId, reference) index.
   @@index([reference])
@@ -1381,6 +1408,7 @@ model IdempotencyKey {
   responseStatus Int      @default(0)
   response       Json     @default("{}")
   createdAt      DateTime @default(now())
+
   @@unique([userId, key])
   @@index([createdAt])
 }
@@ -1389,9 +1417,9 @@ model Withdrawal {
   id              String           @id @default(cuid())
   userId          String
   user            User             @relation(fields: [userId], references: [id])
-  amount          Decimal @db.Decimal(18, 6)
-  fee             Decimal            @default(0) @db.Decimal(18, 6)
-  netAmount       Decimal @db.Decimal(18, 6)
+  amount          Decimal          @db.Decimal(18, 6)
+  fee             Decimal          @default(0) @db.Decimal(18, 6)
+  netAmount       Decimal          @db.Decimal(18, 6)
   method          PaymentMethod
   accountDetails  Json
   status          WithdrawalStatus @default(PENDING)
@@ -1401,6 +1429,7 @@ model Withdrawal {
   rejectionReason String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
   @@index([userId])
   @@index([status])
   @@index([createdAt])
@@ -1419,35 +1448,36 @@ model UserPaymentMethod {
   isVerified    Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
   @@index([userId])
 }
 
 model Package {
-  id              String   @id @default(cuid())
-  slug            String   @unique
-  name            String
-  description     String?
-  accessLevel     Int      @default(0)
-  isDefault       Boolean  @default(false)
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+  accessLevel Int     @default(0)
+  isDefault   Boolean @default(false)
 
   // Pricing
-  priceMonthly    Decimal @db.Decimal(18, 6)
-  priceYearly     Decimal? @db.Decimal(18, 6)
-  validityDays    Int?
+  priceMonthly Decimal  @db.Decimal(18, 6)
+  priceYearly  Decimal? @db.Decimal(18, 6)
+  validityDays Int?
 
   // Section-level feature toggles
-  tasksEnabled        Boolean @default(true)
-  socialFeedEnabled   Boolean @default(true)
-  referralsEnabled    Boolean @default(true)
-  withdrawalsEnabled  Boolean @default(true)
-  marketplaceEnabled  Boolean @default(true)
-  boostEnabled        Boolean @default(false)
-  dailyMissionEnabled Boolean @default(true)
-  lotteryEnabled      Boolean @default(true)
-  coursesEnabled      Boolean @default(true)
-  advertiserEnabled   Boolean @default(true)
-  gamesEnabled        Boolean @default(true)
-  adFree              Boolean @default(false)
+  tasksEnabled           Boolean @default(true)
+  socialFeedEnabled      Boolean @default(true)
+  referralsEnabled       Boolean @default(true)
+  withdrawalsEnabled     Boolean @default(true)
+  marketplaceEnabled     Boolean @default(true)
+  boostEnabled           Boolean @default(false)
+  dailyMissionEnabled    Boolean @default(true)
+  lotteryEnabled         Boolean @default(true)
+  coursesEnabled         Boolean @default(true)
+  advertiserEnabled      Boolean @default(true)
+  gamesEnabled           Boolean @default(true)
+  adFree                 Boolean @default(false)
   // Creator/monetization capabilities — default OFF (granted per-user by admin)
   createTasksEnabled     Boolean @default(false)
   sellCoursesEnabled     Boolean @default(false)
@@ -1468,30 +1498,30 @@ model Package {
   appInstallEnabled     Boolean @default(true)
 
   // Limits
-  dailyTaskLimit        Int   @default(-1)
-  dailyPostLimit        Int   @default(-1)
-  withdrawalFeeDiscount Float @default(0)
+  dailyTaskLimit        Int     @default(-1)
+  dailyPostLimit        Int     @default(-1)
+  withdrawalFeeDiscount Float   @default(0)
   minWithdrawal         Decimal @db.Decimal(18, 6)
 
   // Social earning (per-package). `socialEarningEnabled` is a hard on/off gate;
   // `socialEarningConfig` overrides the global per-action recipient points for
   // this plan, e.g. { likePoints, commentPoints, postPoints, sharePoints,
   // votePoints } — null keys fall back to the global social_earning config.
-  socialEarningEnabled  Boolean @default(true)
-  socialEarningConfig   Json?
+  socialEarningEnabled Boolean @default(true)
+  socialEarningConfig  Json?
 
   // Multipliers
-  xpMultiplier            Float @default(1)
-  taskRewardMultiplier    Float @default(1)
-  socialEarningMultiplier Float @default(1)
-  dailyReferralPoints     Float @default(5)
+  xpMultiplier             Float @default(1)
+  taskRewardMultiplier     Float @default(1)
+  socialEarningMultiplier  Float @default(1)
+  dailyReferralPoints      Float @default(5)
   // Number of upline referral levels this plan unlocks. 0 = user can refer
   // but earns no commission at any level. 1 = L1 only. N = L1..L_N.
-  referralCommissionLevels Int  @default(0)
+  referralCommissionLevels Int   @default(0)
 
   // Marketing
-  features    String[]
-  badgeColor  String?
+  features   String[]
+  badgeColor String?
 
   // System
   isActive  Boolean  @default(true)
@@ -1508,19 +1538,20 @@ model Package {
 }
 
 model Subscription {
-  id            String      @id @default(cuid())
+  id            String         @id @default(cuid())
   userId        String
   packageId     String?
-  package       Package?    @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  startDate     DateTime    @default(now())
+  package       Package?       @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  startDate     DateTime       @default(now())
   endDate       DateTime
-  amount        Decimal @db.Decimal(18, 6)
+  amount        Decimal        @db.Decimal(18, 6)
   paymentMethod PaymentMethod?
   transactionId String?
-  isActive      Boolean     @default(true)
-  autoRenew     Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  isActive      Boolean        @default(true)
+  autoRenew     Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
   @@index([userId])
   @@index([isActive])
   @@index([packageId])
@@ -1536,7 +1567,7 @@ model ReferralLevel {
   level           Int            @unique
   commissionType  CommissionType @default(PERCENTAGE)
   commissionValue Float          @default(0)
-  commissionRate  Float?         // Legacy field, will be migrated
+  commissionRate  Float? // Legacy field, will be migrated
   description     String?
   isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
@@ -1544,15 +1575,16 @@ model ReferralLevel {
 }
 
 model ReferralEarning {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  referredUserId  String
-  level           Int
-  amount          Decimal @db.Decimal(18, 6)
-  sourceType      ReferralSourceType
-  sourceId        String?
-  createdAt       DateTime @default(now())
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id])
+  referredUserId String
+  level          Int
+  amount         Decimal            @db.Decimal(18, 6)
+  sourceType     ReferralSourceType
+  sourceId       String?
+  createdAt      DateTime           @default(now())
+
   @@index([userId])
   @@index([createdAt])
   @@index([userId, createdAt])
@@ -1566,9 +1598,10 @@ model ReferralEarning {
 model AffiliateClick {
   id              String   @id @default(cuid())
   affiliateUserId String
-  targetType      String   // "MARKETPLACE" | "COURSE"
+  targetType      String // "MARKETPLACE" | "COURSE"
   targetId        String
   createdAt       DateTime @default(now())
+
   @@index([affiliateUserId, createdAt])
   @@index([targetType, targetId])
 }
@@ -1577,104 +1610,106 @@ model AffiliateCommission {
   id               String   @id @default(cuid())
   affiliateUserId  String
   affiliate        User     @relation("AffiliateCommissions", fields: [affiliateUserId], references: [id])
-  sourceType       String   // "MARKETPLACE" | "COURSE"
-  sourceId         String   // listingId | courseId
-  orderRef         String   // purchaseId | enrollmentId (dedupe)
+  sourceType       String // "MARKETPLACE" | "COURSE"
+  sourceId         String // listingId | courseId
+  orderRef         String // purchaseId | enrollmentId (dedupe)
   buyerId          String
   saleAmount       Decimal  @db.Decimal(18, 6)
   commissionAmount Decimal  @db.Decimal(18, 6)
   createdAt        DateTime @default(now())
+
   @@unique([sourceType, orderRef])
   @@index([affiliateUserId, createdAt])
 }
 
 model MarketplaceListing {
-  id              String                   @id @default(cuid())
-  sellerId        String
-  seller          User                     @relation(fields: [sellerId], references: [id])
-  title           String
-  description     String                   @db.Text
+  id                       String                   @id @default(cuid())
+  sellerId                 String
+  seller                   User                     @relation(fields: [sellerId], references: [id])
+  title                    String
+  description              String                   @db.Text
   // Free-form category retained for back-compat (existing rows). New listings
   // should use assetType + subType instead. See src/lib/marketplace-categories.ts.
-  category        String
+  category                 String
   // Typed asset taxonomy. Drives the dynamic listing form + per-category
   // commission. Defaults to "DIGITAL_PRODUCT" so legacy rows stay valid.
-  assetType       String                   @default("DIGITAL_PRODUCT")
-  subType         String?
+  assetType                String                   @default("DIGITAL_PRODUCT")
+  subType                  String?
   // Category-specific structured data (mirrors customConfig pattern on Task).
-  details         Json?
-  price           Decimal @db.Decimal(18, 6)
-  currency        String                   @default("USD")
-  images          String[]
+  details                  Json?
+  price                    Decimal                  @db.Decimal(18, 6)
+  currency                 String                   @default("USD")
+  images                   String[]
   // Proof-of-asset screenshots (Search Console, analytics, ad dashboards,
   // payout history). Kept separate from `images` (which is the marketing gallery).
-  screenshots     String[]
+  screenshots              String[]
   // PDFs, traffic reports, P&L docs.
-  attachments     String[]
-  files           String[]
+  attachments              String[]
+  files                    String[]
   // Long-form description (markdown). Short `description` stays for cards/list.
-  richDescription String?                  @db.Text
+  richDescription          String?                  @db.Text
   // Asset financials (where relevant — null for non-monetized assets).
-  monthlyRevenue  Decimal? @db.Decimal(18, 6)
-  monthlyProfit   Decimal? @db.Decimal(18, 6)
-  monthlyExpenses Decimal? @db.Decimal(18, 6)
-  monthlyTraffic  Int?
-  assetAgeMonths  Int?
-  niche           String?
-  reasonsForSelling String?                @db.Text
-  whatsIncluded   String?                  @db.Text
-  whatsNotIncluded String?                 @db.Text
+  monthlyRevenue           Decimal?                 @db.Decimal(18, 6)
+  monthlyProfit            Decimal?                 @db.Decimal(18, 6)
+  monthlyExpenses          Decimal?                 @db.Decimal(18, 6)
+  monthlyTraffic           Int?
+  assetAgeMonths           Int?
+  niche                    String?
+  reasonsForSelling        String?                  @db.Text
+  whatsIncluded            String?                  @db.Text
+  whatsNotIncluded         String?                  @db.Text
   // Admin-set after reviewing proof screenshots. Surfaces a green badge.
-  verifiedMetrics Boolean                  @default(false)
+  verifiedMetrics          Boolean                  @default(false)
   // Adult / quarantined content. Hidden from default browsing.
-  nsfw            Boolean                  @default(false)
+  nsfw                     Boolean                  @default(false)
   // Revenue figures hidden until buyer signs an NDA.
-  ndaGated        Boolean                  @default(false)
+  ndaGated                 Boolean                  @default(false)
   // Auction support. When false the listing is fixed-price buy-now only.
-  auctionMode     Boolean                  @default(false)
-  startingBid     Decimal? @db.Decimal(18, 6)
-  reservePrice    Decimal? @db.Decimal(18, 6)
-  buyNowPrice     Decimal? @db.Decimal(18, 6)
-  auctionEndsAt   DateTime?
-  isFeatured      Boolean                  @default(false)
-  featuredUntil   DateTime?
-  isPromoted      Boolean                  @default(false)
-  promotedUntil   DateTime?
+  auctionMode              Boolean                  @default(false)
+  startingBid              Decimal?                 @db.Decimal(18, 6)
+  reservePrice             Decimal?                 @db.Decimal(18, 6)
+  buyNowPrice              Decimal?                 @db.Decimal(18, 6)
+  auctionEndsAt            DateTime?
+  isFeatured               Boolean                  @default(false)
+  featuredUntil            DateTime?
+  isPromoted               Boolean                  @default(false)
+  promotedUntil            DateTime?
   // Override platform commission in basis points (100 bps = 1%).
   // Falls back to setting `marketplace_commission_rates` when null.
-  commissionRateBps Int?
+  commissionRateBps        Int?
   // Seller-set affiliate reward paid (from the seller's own cut) to an affiliate
   // who drives a sale. type = "PERCENT" (value = % of sale) | "FIXED" (value =
   // USD). null / 0 ⇒ not affiliate-eligible. See src/lib/affiliate.ts.
   affiliateCommissionType  String?
-  affiliateCommissionValue Decimal? @db.Decimal(18, 6)
+  affiliateCommissionValue Decimal?                 @db.Decimal(18, 6)
   // Pre-aggregated counters for fast list rendering.
-  bidsCount       Int                      @default(0)
-  bidderCount     Int                      @default(0)
-  uniqueViewers   Int                      @default(0)
-  directPurchasesCount Int                 @default(0)
+  bidsCount                Int                      @default(0)
+  bidderCount              Int                      @default(0)
+  uniqueViewers            Int                      @default(0)
+  directPurchasesCount     Int                      @default(0)
   // Seller-listing moderation (admin approve/reject). New user listings start
   // PENDING_REVIEW; rejection stores a reason shown back to the seller.
-  rejectionReason String?                  @db.Text
-  reviewedAt      DateTime?
-  reviewedById    String?
+  rejectionReason          String?                  @db.Text
+  reviewedAt               DateTime?
+  reviewedById             String?
   // Extracted micro-data of the uploaded deliverable (stock media): EXIF,
   // codec/duration, hash, perceptual hash + heuristic hints. Surfaced to the
   // admin to judge original vs downloaded/edited. See src/lib/media-metadata.ts.
-  fileMeta        Json?
-  status          MarketplaceListingStatus @default(ACTIVE)
-  views           Int                      @default(0)
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  expiresAt       DateTime?
-  purchases       MarketplacePurchase[]
-  cartItems       CartItem[]
-  watches         MarketplaceWatch[]
-  viewLog         MarketplaceListingView[]
-  bids            MarketplaceBid[]
-  offers          MarketplaceOffer[]
-  threads         MarketplaceThread[]
-  deals           MarketplaceDeal[]
+  fileMeta                 Json?
+  status                   MarketplaceListingStatus @default(ACTIVE)
+  views                    Int                      @default(0)
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  expiresAt                DateTime?
+  purchases                MarketplacePurchase[]
+  cartItems                CartItem[]
+  watches                  MarketplaceWatch[]
+  viewLog                  MarketplaceListingView[]
+  bids                     MarketplaceBid[]
+  offers                   MarketplaceOffer[]
+  threads                  MarketplaceThread[]
+  deals                    MarketplaceDeal[]
+
   @@index([sellerId])
   @@index([status])
   @@index([category])
@@ -1683,17 +1718,18 @@ model MarketplaceListing {
 }
 
 model MarketplacePurchase {
-  id          String             @id @default(cuid())
-  listingId   String
-  listing     MarketplaceListing @relation(fields: [listingId], references: [id])
-  buyerId     String
-  buyer       User               @relation(fields: [buyerId], references: [id])
-  amount      Decimal @db.Decimal(18, 6)
-  fee         Decimal @db.Decimal(18, 6)
-  sellerAmount Decimal @db.Decimal(18, 6)
-  status      String             @default("COMPLETED")
-  createdAt   DateTime           @default(now())
-  disputes    MarketplaceDispute[]
+  id           String               @id @default(cuid())
+  listingId    String
+  listing      MarketplaceListing   @relation(fields: [listingId], references: [id])
+  buyerId      String
+  buyer        User                 @relation(fields: [buyerId], references: [id])
+  amount       Decimal              @db.Decimal(18, 6)
+  fee          Decimal              @db.Decimal(18, 6)
+  sellerAmount Decimal              @db.Decimal(18, 6)
+  status       String               @default("COMPLETED")
+  createdAt    DateTime             @default(now())
+  disputes     MarketplaceDispute[]
+
   @@index([listingId])
   @@index([buyerId])
 }
@@ -1715,6 +1751,7 @@ model MarketplaceThread {
   createdAt       DateTime                   @default(now())
   messages        MarketplaceThreadMessage[]
   deals           MarketplaceDeal[]
+
   @@unique([listingId, buyerId])
   @@index([buyerId])
   @@index([sellerId])
@@ -1730,6 +1767,7 @@ model MarketplaceThreadMessage {
   body        String            @db.Text
   attachments String[]
   createdAt   DateTime          @default(now())
+
   @@index([threadId])
   @@index([senderId])
 }
@@ -1767,6 +1805,7 @@ model MarketplaceDeal {
   cancelledAt     DateTime?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
+
   @@index([threadId])
   @@index([listingId])
   @@index([buyerId])
@@ -1777,13 +1816,13 @@ model MarketplaceDeal {
 }
 
 model CartItem {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   listingId String
   listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  quantity  Int      @default(1)
-  addedAt   DateTime @default(now())
+  quantity  Int                @default(1)
+  addedAt   DateTime           @default(now())
 
   @@unique([userId, listingId])
   @@index([userId])
@@ -1832,7 +1871,7 @@ model MarketplaceBid {
   listing   MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bidderId  String
   bidder    User                 @relation(fields: [bidderId], references: [id], onDelete: Cascade)
-  amount    Decimal @db.Decimal(18, 6)
+  amount    Decimal              @db.Decimal(18, 6)
   status    MarketplaceBidStatus @default(ACTIVE)
   message   String?              @db.Text
   createdAt DateTime             @default(now())
@@ -1847,19 +1886,19 @@ model MarketplaceBid {
 // offer any amount; the seller accepts / rejects / counters. Accepting an
 // offer turns it into a MarketplacePurchase at the agreed price.
 model MarketplaceOffer {
-  id            String                 @id @default(cuid())
-  listingId     String
-  listing       MarketplaceListing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  buyerId       String
-  buyer         User                   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  amount        Decimal @db.Decimal(18, 6)
-  message       String?                @db.Text
-  status        MarketplaceOfferStatus @default(PENDING)
-  counterAmount Decimal? @db.Decimal(18, 6)
-  counterMessage String?               @db.Text
-  expiresAt     DateTime?
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  id             String                 @id @default(cuid())
+  listingId      String
+  listing        MarketplaceListing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId        String
+  buyer          User                   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  amount         Decimal                @db.Decimal(18, 6)
+  message        String?                @db.Text
+  status         MarketplaceOfferStatus @default(PENDING)
+  counterAmount  Decimal?               @db.Decimal(18, 6)
+  counterMessage String?                @db.Text
+  expiresAt      DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([listingId])
   @@index([buyerId])
@@ -1867,75 +1906,76 @@ model MarketplaceOffer {
 }
 
 model Course {
-  id              String        @id @default(cuid())
-  title           String
-  slug            String?       @unique
-  subtitle        String?
-  description     String        @db.Text
-  thumbnail       String?
-  bannerUrl       String?
-  promoVideoUrl   String?
-  category        String
-  categoryId      String?
-  category_rel    CourseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  subcategoryId   String?
-  subcategory_rel CourseSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
-  difficulty      String        @default("BEGINNER")
-  skillLevel      CourseSkillLevel @default(BEGINNER)
-  language        String        @default("en")
-  price           Decimal         @default(0) @db.Decimal(18, 6)
-  originalPrice   Decimal? @db.Decimal(18, 6)
-  discountPrice   Decimal? @db.Decimal(18, 6)
-  discountEndsAt  DateTime?
-  isFree          Boolean       @default(false)
-  totalLessons    Int           @default(0)
-  totalDuration   Int           @default(0)
-  status          CourseStatus  @default(DRAFT)
-  enrollmentCount Int           @default(0)
-  rating          Float         @default(0)
-  totalRatings    Int           @default(0)
-  avgRating       Float         @default(0)
-  totalReviews    Int           @default(0)
-  totalQuestions  Int           @default(0)
-  totalRevenueCents Int         @default(0)
-  uniqueViewers   Int           @default(0)
-  learningOutcomes String[]     @default([])
-  requirements    String[]      @default([])
-  whatsIncluded   String[]      @default([])
-  faqs            Json?
-  seoTitle        String?
-  seoDescription  String?
-  seoKeywords     String[]      @default([])
-  tutorId         String?
-  tutor           User?         @relation("CourseTutor", fields: [tutorId], references: [id], onDelete: SetNull)
-  certificateEnabled Boolean    @default(true)
-  commissionRateBps Int?
+  id                       String                @id @default(cuid())
+  title                    String
+  slug                     String?               @unique
+  subtitle                 String?
+  description              String                @db.Text
+  thumbnail                String?
+  bannerUrl                String?
+  promoVideoUrl            String?
+  category                 String
+  categoryId               String?
+  category_rel             CourseCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subcategoryId            String?
+  subcategory_rel          CourseSubcategory?    @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  difficulty               String                @default("BEGINNER")
+  skillLevel               CourseSkillLevel      @default(BEGINNER)
+  language                 String                @default("en")
+  price                    Decimal               @default(0) @db.Decimal(18, 6)
+  originalPrice            Decimal?              @db.Decimal(18, 6)
+  discountPrice            Decimal?              @db.Decimal(18, 6)
+  discountEndsAt           DateTime?
+  isFree                   Boolean               @default(false)
+  totalLessons             Int                   @default(0)
+  totalDuration            Int                   @default(0)
+  status                   CourseStatus          @default(DRAFT)
+  enrollmentCount          Int                   @default(0)
+  rating                   Float                 @default(0)
+  totalRatings             Int                   @default(0)
+  avgRating                Float                 @default(0)
+  totalReviews             Int                   @default(0)
+  totalQuestions           Int                   @default(0)
+  totalRevenueCents        Int                   @default(0)
+  uniqueViewers            Int                   @default(0)
+  learningOutcomes         String[]              @default([])
+  requirements             String[]              @default([])
+  whatsIncluded            String[]              @default([])
+  faqs                     Json?
+  seoTitle                 String?
+  seoDescription           String?
+  seoKeywords              String[]              @default([])
+  tutorId                  String?
+  tutor                    User?                 @relation("CourseTutor", fields: [tutorId], references: [id], onDelete: SetNull)
+  certificateEnabled       Boolean               @default(true)
+  commissionRateBps        Int?
   // Tutor-set affiliate reward (from the tutor's cut) — see MarketplaceListing.
   affiliateCommissionType  String?
-  affiliateCommissionValue Decimal? @db.Decimal(18, 6)
-  isFeatured      Boolean       @default(false)
-  featuredUntil   DateTime?
-  isPromoted      Boolean       @default(false)
-  promotedUntil   DateTime?
-  nsfw            Boolean       @default(false)
-  createdById     String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  publishedAt     DateTime?
-  lastContentUpdate DateTime?
-  modules         CourseModule[]
-  lessons         CourseLesson[]
-  enrollments     CourseEnrollment[]
-  reviews         CourseReview[]
-  questions       CourseQuestion[]
-  bookmarks       CourseBookmark[]
-  announcements   CourseAnnouncement[]
-  quizzes         CourseQuiz[]
-  assignments     CourseAssignment[]
-  liveClasses     CourseLiveClass[]
-  certificates    CourseCertificate[]
-  refundRequests  CourseRefundRequest[]
-  views           CourseListingView[]
+  affiliateCommissionValue Decimal?              @db.Decimal(18, 6)
+  isFeatured               Boolean               @default(false)
+  featuredUntil            DateTime?
+  isPromoted               Boolean               @default(false)
+  promotedUntil            DateTime?
+  nsfw                     Boolean               @default(false)
+  createdById              String?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  publishedAt              DateTime?
+  lastContentUpdate        DateTime?
+  modules                  CourseModule[]
+  lessons                  CourseLesson[]
+  enrollments              CourseEnrollment[]
+  reviews                  CourseReview[]
+  questions                CourseQuestion[]
+  bookmarks                CourseBookmark[]
+  announcements            CourseAnnouncement[]
+  quizzes                  CourseQuiz[]
+  assignments              CourseAssignment[]
+  liveClasses              CourseLiveClass[]
+  certificates             CourseCertificate[]
+  refundRequests           CourseRefundRequest[]
+  views                    CourseListingView[]
+
   @@index([status])
   @@index([category])
   @@index([categoryId])
@@ -1945,151 +1985,159 @@ model Course {
 }
 
 model CourseCategory {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  description String?
-  iconKey     String?
-  color       String?
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String              @id @default(cuid())
+  slug          String              @unique
+  name          String
+  description   String?
+  iconKey       String?
+  color         String?
+  order         Int                 @default(0)
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   subcategories CourseSubcategory[]
-  courses     Course[]
+  courses       Course[]
+
   @@index([isActive])
   @@index([order])
 }
 
 model CourseSubcategory {
-  id         String   @id @default(cuid())
+  id         String         @id @default(cuid())
   categoryId String
   category   CourseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   slug       String
   name       String
-  order      Int      @default(0)
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  order      Int            @default(0)
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
   courses    Course[]
+
   @@unique([categoryId, slug])
   @@index([categoryId])
 }
 
 model CourseModule {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title       String
   description String?
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  order       Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   lessons     CourseLesson[]
+
   @@index([courseId])
 }
 
 model CourseLesson {
-  id           String   @id @default(cuid())
+  id           String                 @id @default(cuid())
   courseId     String
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course       Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
   moduleId     String?
-  module       CourseModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  module       CourseModule?          @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   title        String
   description  String?
-  content      String?  @db.Text
+  content      String?                @db.Text
   videoUrl     String?
   subtitlesUrl String?
-  transcript   String?  @db.Text
-  duration     Int      @default(0)
+  transcript   String?                @db.Text
+  duration     Int                    @default(0)
   order        Int
-  isFree       Boolean  @default(false)
-  isPreview    Boolean  @default(false)
-  lessonType   CourseLessonType @default(VIDEO)
+  isFree       Boolean                @default(false)
+  isPreview    Boolean                @default(false)
+  lessonType   CourseLessonType       @default(VIDEO)
   resources    Json?
   quizId       String?
-  quiz         CourseQuiz? @relation("LessonQuiz", fields: [quizId], references: [id], onDelete: SetNull)
+  quiz         CourseQuiz?            @relation("LessonQuiz", fields: [quizId], references: [id], onDelete: SetNull)
   assignmentId String?
-  assignment   CourseAssignment? @relation("LessonAssignment", fields: [assignmentId], references: [id], onDelete: SetNull)
+  assignment   CourseAssignment?      @relation("LessonAssignment", fields: [assignmentId], references: [id], onDelete: SetNull)
   liveClassId  String?
-  liveClass    CourseLiveClass? @relation("LessonLive", fields: [liveClassId], references: [id], onDelete: SetNull)
+  liveClass    CourseLiveClass?       @relation("LessonLive", fields: [liveClassId], references: [id], onDelete: SetNull)
   progress     CourseLessonProgress[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
   @@index([courseId])
   @@index([moduleId])
 }
 
 model CourseEnrollment {
-  id              String   @id @default(cuid())
-  courseId        String
-  course          Course   @relation(fields: [courseId], references: [id])
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  progress        Int      @default(0)
-  completedLessons String[] @default([])
-  completedAt     DateTime?
-  pricePaid       Decimal    @default(0) @db.Decimal(18, 6)
-  couponCode      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  lessonProgress  CourseLessonProgress[]
-  refundRequests  CourseRefundRequest[]
+  id               String                 @id @default(cuid())
+  courseId         String
+  course           Course                 @relation(fields: [courseId], references: [id])
+  userId           String
+  user             User                   @relation(fields: [userId], references: [id])
+  progress         Int                    @default(0)
+  completedLessons String[]               @default([])
+  completedAt      DateTime?
+  pricePaid        Decimal                @default(0) @db.Decimal(18, 6)
+  couponCode       String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  lessonProgress   CourseLessonProgress[]
+  refundRequests   CourseRefundRequest[]
+
   @@unique([courseId, userId])
   @@index([userId])
 }
 
 model CourseLessonProgress {
-  id             String   @id @default(cuid())
+  id             String           @id @default(cuid())
   enrollmentId   String
   enrollment     CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   lessonId       String
   lesson         CourseLesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  watchedSeconds Int      @default(0)
-  totalSeconds   Int      @default(0)
-  isCompleted    Boolean  @default(false)
-  lastPosition   Int      @default(0)
+  watchedSeconds Int              @default(0)
+  totalSeconds   Int              @default(0)
+  isCompleted    Boolean          @default(false)
+  lastPosition   Int              @default(0)
   notes          Json?
   bookmarks      Json?
-  updatedAt      DateTime @updatedAt
-  createdAt      DateTime @default(now())
+  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime         @default(now())
+
   @@unique([enrollmentId, lessonId])
   @@index([enrollmentId])
   @@index([lessonId])
 }
 
 model CourseReview {
-  id           String   @id @default(cuid())
-  courseId     String
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating       Int
-  title        String?
-  comment      String?  @db.Text
-  helpfulCount Int      @default(0)
-  reportedCount Int     @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating        Int
+  title         String?
+  comment       String?  @db.Text
+  helpfulCount  Int      @default(0)
+  reportedCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
   @@unique([courseId, userId])
   @@index([courseId])
 }
 
 model CourseQuestion {
-  id            String    @id @default(cuid())
-  courseId      String
-  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessonId      String?
-  askerId       String
-  asker         User      @relation("CourseQuestionAsker", fields: [askerId], references: [id], onDelete: Cascade)
-  question      String    @db.Text
-  answer        String?   @db.Text
-  answeredById  String?
-  answeredBy    User?     @relation("CourseQuestionAnswerer", fields: [answeredById], references: [id], onDelete: SetNull)
-  answeredAt    DateTime?
-  isPinned      Boolean   @default(false)
-  upvotes       Int       @default(0)
-  createdAt     DateTime  @default(now())
+  id           String    @id @default(cuid())
+  courseId     String
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId     String?
+  askerId      String
+  asker        User      @relation("CourseQuestionAsker", fields: [askerId], references: [id], onDelete: Cascade)
+  question     String    @db.Text
+  answer       String?   @db.Text
+  answeredById String?
+  answeredBy   User?     @relation("CourseQuestionAnswerer", fields: [answeredById], references: [id], onDelete: SetNull)
+  answeredAt   DateTime?
+  isPinned     Boolean   @default(false)
+  upvotes      Int       @default(0)
+  createdAt    DateTime  @default(now())
+
   @@index([courseId])
   @@index([askerId])
 }
@@ -2101,6 +2149,7 @@ model CourseBookmark {
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
   @@unique([userId, courseId])
   @@index([userId])
 }
@@ -2114,24 +2163,26 @@ model CourseAnnouncement {
   title     String
   body      String   @db.Text
   createdAt DateTime @default(now())
+
   @@index([courseId])
 }
 
 model CourseQuiz {
-  id                String   @id @default(cuid())
-  courseId          String
-  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title             String
-  description       String?
-  passMarkPercent   Int      @default(60)
-  timeLimitMinutes  Int?
-  maxAttempts       Int?
-  shuffleQuestions  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  questions         CourseQuizQuestion[]
-  attempts          CourseQuizAttempt[]
-  lessons           CourseLesson[] @relation("LessonQuiz")
+  id               String               @id @default(cuid())
+  courseId         String
+  course           Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  passMarkPercent  Int                  @default(60)
+  timeLimitMinutes Int?
+  maxAttempts      Int?
+  shuffleQuestions Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  questions        CourseQuizQuestion[]
+  attempts         CourseQuizAttempt[]
+  lessons          CourseLesson[]       @relation("LessonQuiz")
+
   @@index([courseId])
 }
 
@@ -2146,6 +2197,7 @@ model CourseQuizQuestion {
   points         Int              @default(1)
   order          Int              @default(0)
   createdAt      DateTime         @default(now())
+
   @@index([quizId])
 }
 
@@ -2160,23 +2212,25 @@ model CourseQuizAttempt {
   passed      Boolean    @default(false)
   startedAt   DateTime   @default(now())
   submittedAt DateTime?
+
   @@index([quizId])
   @@index([userId])
 }
 
 model CourseAssignment {
-  id           String   @id @default(cuid())
+  id           String                       @id @default(cuid())
   courseId     String
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course       Course                       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title        String
-  instructions String   @db.Text
+  instructions String                       @db.Text
   dueDays      Int?
-  maxMarks     Int      @default(100)
+  maxMarks     Int                          @default(100)
   fields       Json
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
   submissions  CourseAssignmentSubmission[]
-  lessons      CourseLesson[] @relation("LessonAssignment")
+  lessons      CourseLesson[]               @relation("LessonAssignment")
+
   @@index([courseId])
 }
 
@@ -2195,24 +2249,26 @@ model CourseAssignmentSubmission {
   gradedBy     User?                      @relation("AssignmentGrader", fields: [gradedById], references: [id], onDelete: SetNull)
   submittedAt  DateTime                   @default(now())
   gradedAt     DateTime?
+
   @@index([assignmentId])
   @@index([userId])
 }
 
 model CourseLiveClass {
-  id                String          @id @default(cuid())
-  courseId          String
-  course            Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title             String
-  scheduledAt       DateTime
-  durationMinutes   Int             @default(60)
-  meetingUrl        String
-  meetingPassword   String?
-  status            LiveClassStatus @default(UPCOMING)
-  recordingUrl      String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  lessons           CourseLesson[]  @relation("LessonLive")
+  id              String          @id @default(cuid())
+  courseId        String
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title           String
+  scheduledAt     DateTime
+  durationMinutes Int             @default(60)
+  meetingUrl      String
+  meetingPassword String?
+  status          LiveClassStatus @default(UPCOMING)
+  recordingUrl    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  lessons         CourseLesson[]  @relation("LessonLive")
+
   @@index([courseId])
 }
 
@@ -2226,6 +2282,7 @@ model CourseCertificate {
   sharedUrl String   @unique
   pdfUrl    String?
   issuedAt  DateTime @default(now())
+
   @@unique([courseId, userId])
   @@index([userId])
 }
@@ -2238,7 +2295,7 @@ model CourseCoupon {
   scope            CouponScope @default(ALL)
   categoryIds      String[]    @default([])
   courseIds        String[]    @default([])
-  minPurchase      Decimal? @db.Decimal(18, 6)
+  minPurchase      Decimal?    @db.Decimal(18, 6)
   maxRedemptions   Int?
   redemptionsCount Int         @default(0)
   perUserLimit     Int         @default(1)
@@ -2249,25 +2306,27 @@ model CourseCoupon {
   createdBy        User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+
   @@index([isActive])
 }
 
 model CourseRefundRequest {
-  id              String              @id @default(cuid())
-  enrollmentId    String
-  enrollment      CourseEnrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  courseId        String
-  course          Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User                @relation("CourseRefundUser", fields: [userId], references: [id], onDelete: Cascade)
-  reason          String              @db.Text
-  status          CourseRefundStatus  @default(PENDING)
-  adminNote       String?
-  refundedAmount  Decimal? @db.Decimal(18, 6)
-  processedById   String?
-  processedBy     User?               @relation("CourseRefundAdmin", fields: [processedById], references: [id], onDelete: SetNull)
-  createdAt       DateTime            @default(now())
-  processedAt     DateTime?
+  id             String             @id @default(cuid())
+  enrollmentId   String
+  enrollment     CourseEnrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User               @relation("CourseRefundUser", fields: [userId], references: [id], onDelete: Cascade)
+  reason         String             @db.Text
+  status         CourseRefundStatus @default(PENDING)
+  adminNote      String?
+  refundedAmount Decimal?           @db.Decimal(18, 6)
+  processedById  String?
+  processedBy    User?              @relation("CourseRefundAdmin", fields: [processedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now())
+  processedAt    DateTime?
+
   @@index([status])
   @@index([userId])
 }
@@ -2281,26 +2340,28 @@ model CourseListingView {
   sessionHash String
   source      String?
   viewedAt    DateTime @default(now())
+
   @@index([courseId])
   @@index([viewedAt])
   @@index([courseId, sessionHash])
 }
 
 model TutorApplication {
-  id              String                 @id @default(cuid())
-  userId          String
-  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio             String                 @db.Text
-  expertise       String[]               @default([])
-  sampleOutline   String?                @db.Text
-  portfolioUrl    String?
-  idDocumentUrl   String?
-  status          TutorApplicationStatus @default(PENDING)
-  adminNote       String?
-  reviewedById    String?
-  reviewedBy      User?                  @relation("TutorAppReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  createdAt       DateTime               @default(now())
-  reviewedAt      DateTime?
+  id            String                 @id @default(cuid())
+  userId        String
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio           String                 @db.Text
+  expertise     String[]               @default([])
+  sampleOutline String?                @db.Text
+  portfolioUrl  String?
+  idDocumentUrl String?
+  status        TutorApplicationStatus @default(PENDING)
+  adminNote     String?
+  reviewedById  String?
+  reviewedBy    User?                  @relation("TutorAppReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime               @default(now())
+  reviewedAt    DateTime?
+
   @@index([userId])
   @@index([status])
 }
@@ -2343,63 +2404,66 @@ model CreatorApplication {
 }
 
 model TutorProfile {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  headline            String?
-  bio                 String   @db.Text
-  expertise           String[] @default([])
-  avatarUrl           String?
-  websiteUrl          String?
-  twitterUrl          String?
-  linkedinUrl         String?
-  youtubeUrl          String?
-  totalStudents       Int      @default(0)
-  totalCourses        Int      @default(0)
-  totalRatings        Int      @default(0)
-  avgRating           Float    @default(0)
-  totalEarningsCents  Int      @default(0)
-  payoutMethod        String?
-  payoutDetails       Json?
-  isSuspended         Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline           String?
+  bio                String   @db.Text
+  expertise          String[] @default([])
+  avatarUrl          String?
+  websiteUrl         String?
+  twitterUrl         String?
+  linkedinUrl        String?
+  youtubeUrl         String?
+  totalStudents      Int      @default(0)
+  totalCourses       Int      @default(0)
+  totalRatings       Int      @default(0)
+  avgRating          Float    @default(0)
+  totalEarningsCents Int      @default(0)
+  payoutMethod       String?
+  payoutDetails      Json?
+  isSuspended        Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
   @@index([isSuspended])
 }
 
 model Lottery {
-  id              String        @id @default(cuid())
-  title           String
-  description     String?
-  startDate       DateTime
-  endDate         DateTime
-  drawDate        DateTime
-  ticketPrice     Int
-  maxTickets      Int?
-  ticketsSold     Int           @default(0)
-  maxTicketsPerUser Int         @default(10)
-  prizes          Json
-  status          LotteryStatus @default(UPCOMING)
-  winningNumbers  String?
-  winners         Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  tickets         LotteryTicket[]
+  id                String          @id @default(cuid())
+  title             String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime
+  drawDate          DateTime
+  ticketPrice       Int
+  maxTickets        Int?
+  ticketsSold       Int             @default(0)
+  maxTicketsPerUser Int             @default(10)
+  prizes            Json
+  status            LotteryStatus   @default(UPCOMING)
+  winningNumbers    String?
+  winners           Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  tickets           LotteryTicket[]
+
   @@index([status])
   @@index([drawDate])
 }
 
 model LotteryTicket {
-  id          String   @id @default(cuid())
-  lotteryId   String
-  lottery     Lottery  @relation(fields: [lotteryId], references: [id])
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  lotteryId    String
+  lottery      Lottery  @relation(fields: [lotteryId], references: [id])
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
   ticketNumber String
-  numbers     String?
-  isWinner    Boolean  @default(false)
-  prizeAmount Int?
-  createdAt   DateTime @default(now())
+  numbers      String?
+  isWinner     Boolean  @default(false)
+  prizeAmount  Int?
+  createdAt    DateTime @default(now())
+
   @@unique([lotteryId, ticketNumber])
   @@index([lotteryId])
   @@index([userId])
@@ -2407,80 +2471,87 @@ model LotteryTicket {
 }
 
 model Post {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  content     String    @db.Text
-  images      String[]
+  id                    String          @id @default(cuid())
+  userId                String
+  user                  User            @relation(fields: [userId], references: [id])
+  content               String          @db.Text
+  images                String[]
   // Facebook-style colored background for text-only posts. Stores a palette id
   // from src/lib/post-backgrounds.ts (e.g. "ocean"); null = plain post.
-  backgroundStyle String?
-  isPublic    Boolean   @default(true)
-  isPinned    Boolean   @default(false)
+  backgroundStyle       String?
+  isPublic              Boolean         @default(true)
+  isPinned              Boolean         @default(false)
   // Soft-moderation: hidden by an agency moderator (kept for audit, excluded from feed)
-  isHidden    Boolean   @default(false)
+  isHidden              Boolean         @default(false)
   // Admin-set OFFICIAL announcement. Pinned to the very top of the feed
   // and shown with an OFFICIAL badge. Created via /api/admin/feed/announce.
-  isAnnouncement   Boolean   @default(false)
+  isAnnouncement        Boolean         @default(false)
   // Admin-set PROMOTED post. Appears with a PROMOTED badge and is
   // interleaved through the feed. Auto-expires when promotedUntil < now().
-  isPromoted       Boolean   @default(false)
-  promotedUntil    DateTime?
+  isPromoted            Boolean         @default(false)
+  promotedUntil         DateTime?
   // Optional sponsor name shown next to the PROMOTED badge (e.g. "NordVPN").
-  promotedNote     String?   @db.VarChar(120)
-  likesCount  Int       @default(0)
-  commentsCount Int     @default(0)
-  sharesCount Int       @default(0)
-  viewsCount  Int       @default(0)
+  promotedNote          String?         @db.VarChar(120)
+  // User self-serve boost: while > now() the post recirculates near the top of
+  // the feed (not a permanent pin), capped per-viewer via PostBoostView.
+  boostedUntil          DateTime?
+  boostViews            PostBoostView[]
+  likesCount            Int             @default(0)
+  commentsCount         Int             @default(0)
+  sharesCount           Int             @default(0)
+  viewsCount            Int             @default(0)
   // Link-click report (owner-only): total clicks (spam-guarded by a short
   // cooldown) and distinct clickers (one per user, via PostLinkClick).
-  linkClicksCount Int   @default(0)
-  uniqueLinkClicksCount Int @default(0)
-  socialEarnings Int    @default(0)
-  pollOptions Json?     // [{ id, label, voteCount }]
-  pollEndsAt  DateTime?
+  linkClicksCount       Int             @default(0)
+  uniqueLinkClicksCount Int             @default(0)
+  socialEarnings        Int             @default(0)
+  pollOptions           Json? // [{ id, label, voteCount }]
+  pollEndsAt            DateTime?
   // OpenGraph preview of the first URL in `content`, fetched best-effort at
   // create time: { url, title, description, image, siteName }. Null = no card.
-  linkPreview Json?
-  donationGoal      Int?
-  donationCollected Int       @default(0)
-  groupId           String?
-  group             Group?    @relation(fields: [groupId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  linkPreview           Json?
+  donationGoal          Int?
+  donationCollected     Int             @default(0)
+  groupId               String?
+  group                 Group?          @relation(fields: [groupId], references: [id])
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
   // Freshness signal for the smart feed: bumped when a new comment arrives so
   // the post resurfaces. Defaults to createdAt for new/legacy rows.
-  lastActivityAt DateTime @default(now())
-  comments    Comment[]
-  likes       Like[]
-  votes       Vote[]
-  donations   Donation[]
-  views       PostView[]
-  linkClicks  PostLinkClick[]
-  shares      PostShare[]
-  mentions    Mention[]
-  adPromotions Ad[]     @relation("PostAds")
+  lastActivityAt        DateTime        @default(now())
+  comments              Comment[]
+  likes                 Like[]
+  votes                 Vote[]
+  donations             Donation[]
+  views                 PostView[]
+  linkClicks            PostLinkClick[]
+  shares                PostShare[]
+  mentions              Mention[]
+  adPromotions          Ad[]            @relation("PostAds")
+
   @@index([userId])
   @@index([createdAt])
   @@index([groupId])
   @@index([isAnnouncement])
   @@index([isPromoted, promotedUntil])
+  @@index([boostedUntil])
   @@index([isPublic, createdAt])
   @@index([isPublic, isHidden, isPinned, createdAt])
   @@index([isPublic, isHidden, lastActivityAt])
 }
 
 model Follow {
-  id          String   @id @default(cuid())
-  followerId  String
-  follower    User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
-  followingId String
-  following   User     @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  id           String              @id @default(cuid())
+  followerId   String
+  follower     User                @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId  String
+  following    User                @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
   // When this follow was created by an admin's bulk-boost operation. Null
   // means the follow is organic (real user-initiated).
   boostBatchId String?
   boostBatch   FollowerBoostBatch? @relation(fields: [boostBatchId], references: [id], onDelete: SetNull)
+
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
@@ -2492,36 +2563,38 @@ model Follow {
 // Records each admin "bulk-add followers" operation. Used for audit and
 // one-click undo (delete all Follow rows tagged with this batch id).
 model FollowerBoostBatch {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   targetUserId   String
-  target         User     @relation("FollowerBoostTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
-  criteria       Json                              // saved filter snapshot
-  mode           String                            // "ALL" or "RANDOM"
-  requestedCount Int                               // sample size requested
-  addedCount     Int      @default(0)              // actually-created Follow rows
+  target         User      @relation("FollowerBoostTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  criteria       Json // saved filter snapshot
+  mode           String // "ALL" or "RANDOM"
+  requestedCount Int // sample size requested
+  addedCount     Int       @default(0) // actually-created Follow rows
   // The user ids that this batch added as followers. Persisted independently
   // of Follow rows so that a revert (which deletes the Follow rows) still
   // remembers who was added — those users are then permanently excluded
   // from future boost runs for the same target.
-  sourceUserIds  String[] @default([])
-  notifyTarget   Boolean  @default(false)          // if true, target got 1 combined notification
-  performedBy    String?                           // admin user id
-  status         String   @default("APPLIED")      // APPLIED | REVERTED
+  sourceUserIds  String[]  @default([])
+  notifyTarget   Boolean   @default(false) // if true, target got 1 combined notification
+  performedBy    String? // admin user id
+  status         String    @default("APPLIED") // APPLIED | REVERTED
   revertedAt     DateTime?
   revertedBy     String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
   follows        Follow[]
+
   @@index([targetUserId, createdAt])
   @@index([status])
 }
 
 model PostView {
-  id        String   @id @default(cuid())
-  postId    String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  viewedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  postId   String
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now())
+
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
@@ -2537,6 +2610,7 @@ model PostLinkClick {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   clickedAt DateTime @default(now())
+
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
@@ -2554,6 +2628,7 @@ model Mention {
   mentionedById   String
   mentionedBy     User     @relation("MentionedBy", fields: [mentionedById], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
+
   @@index([mentionedUserId])
   @@index([postId])
   @@index([commentId])
@@ -2568,6 +2643,7 @@ model Vote {
   user      User     @relation(fields: [userId], references: [id])
   optionId  String
   createdAt DateTime @default(now())
+
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId, postId])
@@ -2581,6 +2657,7 @@ model Donation {
   donor     User     @relation(fields: [donorId], references: [id])
   points    Int
   createdAt DateTime @default(now())
+
   @@index([postId])
   @@index([donorId])
 }
@@ -2593,6 +2670,7 @@ model PostShare {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel   String?
   createdAt DateTime @default(now())
+
   @@unique([postId, userId])
   @@index([userId, createdAt])
   @@index([postId])
@@ -2606,6 +2684,7 @@ model SocialActionLog {
   postId    String?
   dateKey   String
   createdAt DateTime @default(now())
+
   @@index([userId, dateKey, action])
   @@index([postId])
   // Lifetime distinct-post count per actor+action (social-earning batch reward).
@@ -2621,49 +2700,53 @@ model AiUsageDaily {
   dateKey   String
   count     Int      @default(0)
   updatedAt DateTime @updatedAt
+
   @@unique([userId, dateKey])
 }
 
 model Group {
-  id          String   @id @default(cuid())
-  name        String
-  description String?  @db.Text
-  type        GroupType @default(PUBLIC)
-  avatarUrl   String?
-  bannerUrl   String?
-  ownerId     String
-  owner       User     @relation("GroupOwner", fields: [ownerId], references: [id])
-  memberCount Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  members     GroupMember[]
+  id           String             @id @default(cuid())
+  name         String
+  description  String?            @db.Text
+  type         GroupType          @default(PUBLIC)
+  avatarUrl    String?
+  bannerUrl    String?
+  ownerId      String
+  owner        User               @relation("GroupOwner", fields: [ownerId], references: [id])
+  memberCount  Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  members      GroupMember[]
   joinRequests GroupJoinRequest[]
-  posts       Post[]
+  posts        Post[]
+
   @@index([ownerId])
   @@index([type])
 }
 
 model GroupMember {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   groupId  String
-  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId   String
-  user     User     @relation(fields: [userId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
   role     GroupRole @default(MEMBER)
-  joinedAt DateTime @default(now())
+  joinedAt DateTime  @default(now())
+
   @@unique([groupId, userId])
   @@index([userId])
 }
 
 model GroupJoinRequest {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   groupId   String
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
   status    JoinRequestStatus @default(PENDING)
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
   decidedAt DateTime?
+
   @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
@@ -2687,20 +2770,21 @@ enum JoinRequestStatus {
 }
 
 model Comment {
-  id          String   @id @default(cuid())
-  postId      String
-  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  content     String
-  parentId    String?
-  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
-  replies     Comment[] @relation("CommentReplies")
-  mentions    Mention[]
+  id        String    @id @default(cuid())
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  content   String
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  mentions  Mention[]
   // Soft-moderation: hidden by an agency moderator
-  isHidden    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isHidden  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
   @@index([postId])
   @@index([userId])
   @@index([parentId])
@@ -2714,6 +2798,7 @@ model Like {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId, postId])
@@ -2733,28 +2818,29 @@ model Badge {
 }
 
 model UserBadge {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  badgeId   String
-  badge     Badge    @relation(fields: [badgeId], references: [id])
-  earnedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt DateTime @default(now())
+
   @@unique([userId, badgeId])
   @@index([userId])
 }
 
 model Achievement {
-  id          String            @id @default(cuid())
-  name        String            @unique
-  description String?
-  icon        String?
-  type        String
-  threshold   Int
-  pointsReward Int              @default(0)
-  xpReward    Int               @default(0)
-  isActive    Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  users       UserAchievement[]
+  id           String            @id @default(cuid())
+  name         String            @unique
+  description  String?
+  icon         String?
+  type         String
+  threshold    Int
+  pointsReward Int               @default(0)
+  xpReward     Int               @default(0)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  users        UserAchievement[]
 }
 
 model UserAchievement {
@@ -2768,35 +2854,38 @@ model UserAchievement {
   completedAt   DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
   @@unique([userId, achievementId])
   @@index([userId])
 }
 
 model PointGift {
-  id          String   @id @default(cuid())
-  senderId    String
-  sender      User     @relation("PointGiftSender", fields: [senderId], references: [id])
-  receiverId  String
-  receiver    User     @relation("PointGiftReceiver", fields: [receiverId], references: [id])
-  points      Int
-  message     String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     User     @relation("PointGiftSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("PointGiftReceiver", fields: [receiverId], references: [id])
+  points     Int
+  message    String?
+  createdAt  DateTime @default(now())
+
   @@index([senderId])
   @@index([receiverId])
   @@index([createdAt])
 }
 
 model Notification {
-  id          String           @id @default(cuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id])
-  type        NotificationType
-  title       String
-  message     String
-  data        Json?
-  isRead      Boolean          @default(false)
-  readAt      DateTime?
-  createdAt   DateTime         @default(now())
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
@@ -2823,14 +2912,14 @@ model Conversation {
 }
 
 model ChatMessage {
-  id              String       @id @default(cuid())
-  conversationId  String
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId        String
-  content         String       @db.Text
-  read            Boolean      @default(false)
-  readAt          DateTime?
-  createdAt       DateTime     @default(now())
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  content        String       @db.Text
+  read           Boolean      @default(false)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
 
   @@index([conversationId])
   @@index([senderId])
@@ -2858,24 +2947,26 @@ model Country {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   locations     Location[]
+
   @@index([isActive, name])
 }
 
 model Location {
-  id          String     @id @default(cuid())
-  countryId   String
-  country     Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      Location?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Location[] @relation("LocationHierarchy")
-  name        String
+  id         String     @id @default(cuid())
+  countryId  String
+  country    Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  parentId   String?
+  parent     Location?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children   Location[] @relation("LocationHierarchy")
+  name       String
   // STATE | REGION | DIVISION | SUB_DIVISION | DISTRICT | SUB_DISTRICT | CITY | VILLAGE
-  type        String
-  postalCode  String?
-  metadata    Json?
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  type       String
+  postalCode String?
+  metadata   Json?
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
   @@unique([countryId, parentId, name, type])
   @@index([countryId, type, isActive])
   @@index([parentId, type, isActive])
@@ -2883,12 +2974,13 @@ model Location {
 }
 
 model SystemSetting {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     Json
-  category  String   @default("general")
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  category    String   @default("general")
   description String?
-  updatedAt DateTime @updatedAt
+  updatedAt   DateTime @updatedAt
+
   @@index([category])
 }
 
@@ -2965,16 +3057,16 @@ model OfferwallOffer {
   category            OfferwallCategory     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   title               String
   description         String?               @db.Text
-  instructions        String[]              // ordered steps shown to the user
+  instructions        String[] // ordered steps shown to the user
   imageUrl            String?
   points              Int                   @default(0)
   payoutUsd           Decimal?              @db.Decimal(18, 6)
   countries           String[]              @default([]) // empty = all countries
-  order               Int                   @default(0)  // sequential-unlock order within the category
-  trackingUrlTemplate String?               @db.Text     // Start Work destination; supports {userId}/{clickId}
+  order               Int                   @default(0) // sequential-unlock order within the category
+  trackingUrlTemplate String?               @db.Text // Start Work destination; supports {userId}/{clickId}
   source              String                @default("MANUAL") // MANUAL | PROVIDER
-  providerId          String?               // OfferwallConfig.id when source = PROVIDER
-  externalOfferId     String?               // provider's offer id (postback match + sync upsert)
+  providerId          String? // OfferwallConfig.id when source = PROVIDER
+  externalOfferId     String? // provider's offer id (postback match + sync upsert)
   completionMode      String                @default("PROOF") // PROOF | POSTBACK | MANUAL
   proofScreenshot     Boolean               @default(true)
   dailyLimit          Int?
@@ -3033,27 +3125,28 @@ model OfferwallCompletion {
 }
 
 model VideoAdConfig {
-  id          String   @id @default(cuid())
-  provider    String   @unique
-  isActive    Boolean  @default(false)
-  appId       String?
-  adUnitId    String?
-  config      Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  provider  String   @unique
+  isActive  Boolean  @default(false)
+  appId     String?
+  adUnitId  String?
+  config    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  action      String
-  entity      String
-  entityId    String?
-  oldData     Json?
-  newData     Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([entity])
   @@index([createdAt])
@@ -3080,23 +3173,24 @@ enum DisputeReason {
 }
 
 model MarketplaceDispute {
-  id              String        @id @default(cuid())
+  id              String              @id @default(cuid())
   purchaseId      String
   purchase        MarketplacePurchase @relation(fields: [purchaseId], references: [id])
-  initiatorId     String        // User who initiated the dispute (buyer or seller)
-  initiatorType   String        @default("BUYER") // BUYER or SELLER
+  initiatorId     String // User who initiated the dispute (buyer or seller)
+  initiatorType   String              @default("BUYER") // BUYER or SELLER
   reason          DisputeReason
-  description     String        @db.Text
-  evidence        String[]      // Array of evidence image/file URLs
-  status          DisputeStatus @default(OPEN)
-  resolution      String?       @db.Text
-  resolvedAmount  Decimal?      @db.Decimal(18, 6) // Amount returned to buyer if any
+  description     String              @db.Text
+  evidence        String[] // Array of evidence image/file URLs
+  status          DisputeStatus       @default(OPEN)
+  resolution      String?             @db.Text
+  resolvedAmount  Decimal?            @db.Decimal(18, 6) // Amount returned to buyer if any
   assignedAdminId String?
-  adminNotes      String?       @db.Text
+  adminNotes      String?             @db.Text
   messages        DisputeMessage[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   resolvedAt      DateTime?
+
   @@index([purchaseId])
   @@index([initiatorId])
   @@index([status])
@@ -3112,6 +3206,7 @@ model DisputeMessage {
   message     String             @db.Text
   attachments String[]
   createdAt   DateTime           @default(now())
+
   @@index([disputeId])
   @@index([senderId])
 }
@@ -3125,26 +3220,26 @@ enum MediaFileType {
 }
 
 model Media {
-  id                String        @id @default(cuid())
-  filename          String        // Server-generated filename
-  originalFilename  String        // Original filename from user
-  fileType          MediaFileType @default(IMAGE)
-  mimeType          String
-  fileSize          Int           // File size in bytes
-  s3Key             String        @unique // S3 object key
-  s3Url             String        // Direct S3 URL
-  cloudFrontUrl     String?       // CloudFront CDN URL (optional)
-  altText           String?
-  caption           String?       @db.Text
-  description       String?       @db.Text
-  folder            String        @default("")  // Optional path-style folder, e.g. "banners" or "2026/april"
-  width             Int?          // Image/video width in pixels
-  height            Int?          // Image/video height in pixels
-  duration          Int?          // Video/audio duration in seconds
-  uploadedById      String
-  uploadedBy        User          @relation(fields: [uploadedById], references: [id])
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  filename         String // Server-generated filename
+  originalFilename String // Original filename from user
+  fileType         MediaFileType @default(IMAGE)
+  mimeType         String
+  fileSize         Int // File size in bytes
+  s3Key            String        @unique // S3 object key
+  s3Url            String // Direct S3 URL
+  cloudFrontUrl    String? // CloudFront CDN URL (optional)
+  altText          String?
+  caption          String?       @db.Text
+  description      String?       @db.Text
+  folder           String        @default("") // Optional path-style folder, e.g. "banners" or "2026/april"
+  width            Int? // Image/video width in pixels
+  height           Int? // Image/video height in pixels
+  duration         Int? // Video/audio duration in seconds
+  uploadedById     String
+  uploadedBy       User          @relation(fields: [uploadedById], references: [id])
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([uploadedById])
   @@index([fileType])
@@ -3186,4 +3281,74 @@ model PageVisitDaily {
 
   @@unique([kind, key, date, visitorHash])
   @@index([createdAt])
+}
+
+// ── Events / Quests (feature #10) ────────────────────────────────────────────
+// Admin-authored, time-boxed challenges: hit a target action count within the
+// window → claim a reward. Progress is computed live from existing activity
+// tables (team adds, task/quiz completions, lottery buys, social actions);
+// UPLOAD_PROOF events store the user's uploaded proof URL instead.
+enum EventActionType {
+  TEAM_ADD
+  TASK_COMPLETE
+  QUIZ_COMPLETE
+  LOTTERY_BUY
+  UPLOAD_PROOF
+  SOCIAL_ACTION
+}
+
+model Event {
+  id                  String              @id @default(cuid())
+  title               String
+  description         String?
+  actionType          EventActionType
+  threshold           Int                 @default(1)
+  rewardPoints        Int                 @default(0)
+  rewardXp            Int                 @default(0)
+  // Optional reward tiers: [{ threshold, rewardPoints, rewardXp }] ascending.
+  // When set, the event is multi-tier and each tier is claimed independently.
+  tiers               Json?
+  requiredAccessLevel Int                 @default(0)
+  startAt             DateTime
+  endAt               DateTime
+  isActive            Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  progress            UserEventProgress[]
+
+  @@index([isActive, startAt, endAt])
+}
+
+model UserEventProgress {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId      String
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  progress     Int       @default(0)
+  proofUrl     String?
+  claimedAt    DateTime?
+  // Which tier thresholds this user has already claimed (multi-tier events).
+  claimedTiers Int[]     @default([])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, eventId])
+  @@index([eventId])
+}
+
+// Per-viewer impression counter for boosted posts (feed boost frequency cap).
+// Once `count` reaches the admin cap (feed.boost_max_per_user), the boosted
+// post stops recirculating to that user.
+model PostBoostView {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  count       Int      @default(0)
+  lastShownAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
 }

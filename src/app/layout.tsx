@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { JsonLd } from "@/components/seo/json-ld";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
@@ -29,16 +30,33 @@ import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import "./globals.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "EarnGPT - Earn Money Online",
     template: "%s | EarnGPT",
   },
   description: "Complete tasks, watch videos, and earn real money with EarnGPT. Join our community and start earning today!",
-  keywords: ["earn money", "online earning", "tasks", "rewards", "cashout", "referral"],
+  keywords: [
+    "earn money online",
+    "make money online",
+    "online earning",
+    "paid tasks",
+    "watch videos for money",
+    "rewards",
+    "cashout",
+    "referral program",
+    "affiliate program",
+    "micro tasks",
+    "surveys for money",
+    "GPT site",
+  ],
   authors: [{ name: "EarnGPT Team" }],
   creator: "EarnGPT",
   publisher: "EarnGPT",
+  alternates: { canonical: "/" },
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -58,15 +76,17 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://earngpt.app",
+    url: SITE_URL,
     siteName: "EarnGPT",
     title: "EarnGPT - Earn Money Online",
     description: "Complete tasks, watch videos, and earn real money with EarnGPT.",
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "EarnGPT" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "EarnGPT - Earn Money Online",
     description: "Complete tasks, watch videos, and earn real money with EarnGPT.",
+    images: ["/icon-512.png"],
   },
   robots: {
     index: true,
@@ -95,6 +115,32 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        {/* Site-wide structured data (Organization + WebSite w/ SearchAction) —
+            sitelinks search box, entity/E-E-A-T + GEO signals. */}
+        <JsonLd
+          data={[
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "EarnGPT",
+              url: SITE_URL,
+              logo: `${SITE_URL}/icon-512.png`,
+              description:
+                "Complete tasks, watch videos, take surveys and courses, and earn real money with EarnGPT.",
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "EarnGPT",
+              url: SITE_URL,
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${SITE_URL}/marketplace?search={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ]}
+        />
         {/* Set the saved theme + accent before first paint so a reload never
             flashes the wrong theme/color. Resolves "system" via prefers-color-
             scheme. Runs synchronously before the body content paints. */}

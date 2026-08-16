@@ -138,6 +138,8 @@ export type Permission =
   // Missions
   | "missions.view"
   | "missions.manage"
+  | "events.view"
+  | "events.manage"
   // Quizzes
   | "quizzes.view"
   | "quizzes.manage"
@@ -247,7 +249,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "lottery.view", "lottery.manage",
     "courses.view", "courses.manage", "courses.approve",
     "tutor.dashboard", "tutor.courses.manage", "tutor.applications.review",
-    "missions.view", "missions.manage",
+    "missions.view", "missions.manage", "events.view", "events.manage",
     "quizzes.view", "quizzes.manage",
     "offerwalls.view", "offerwalls.manage",
     "fraud.view", "fraud.manage",
@@ -287,7 +289,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "courses.view", "courses.manage", "courses.approve",
     "tutor.applications.review",
     "creators.review",
-    "missions.view", "missions.manage",
+    "missions.view", "missions.manage", "events.view", "events.manage",
     "quizzes.view", "quizzes.manage",
     "offerwalls.view", "offerwalls.manage",
     "fraud.view", "fraud.manage",
@@ -339,7 +341,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "courses.view", "courses.manage", "courses.approve",
     "tutor.applications.review",
     "creators.review",
-    "missions.view", "missions.manage",
+    "missions.view", "missions.manage", "events.view", "events.manage",
     "quizzes.view", "quizzes.manage",
     "lottery.view", "lottery.manage",
     "leaderboards.view", "leaderboards.manage",
@@ -494,7 +496,7 @@ export const PERMISSION_CATALOG: Array<{ label: string; permissions: Permission[
       "boards.view", "boards.manage",
       "courses.view", "courses.manage", "courses.approve",
       "quizzes.view", "quizzes.manage",
-      "missions.view", "missions.manage",
+      "missions.view", "missions.manage", "events.view", "events.manage",
       "lottery.view", "lottery.manage",
       "leaderboards.view", "leaderboards.manage",
     ],
@@ -842,6 +844,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
+    name: "Events",
+    href: "/admin/events",
+    icon: "Sparkles",
+    permissions: ["events.view"],
+    category: "PLATFORM",
+  },
+  {
     name: "Quizzes",
     href: "/admin/quizzes",
     icon: "Brain",
@@ -930,6 +939,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "MARKETING",
   },
   {
+    name: "Monetization",
+    href: "/admin/monetization",
+    icon: "DollarSign",
+    permissions: ["ads.view"],
+    category: "MARKETING",
+  },
+  {
     name: "Landing Page",
     href: "/admin/landing-page",
     icon: "Layout",
@@ -992,6 +1008,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/access",
     icon: "Shield",
     permissions: ["admins.view"],
+    category: "SYSTEM",
+  },
+  {
+    name: "Page Visibility",
+    href: "/admin/visibility",
+    icon: "Eye",
+    permissions: ["admins.manage"],
     category: "SYSTEM",
   },
   {

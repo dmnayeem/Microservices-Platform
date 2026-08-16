@@ -26,6 +26,7 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { PollBlock } from "./poll-block";
 import { DonationBlock } from "./donation-block";
 import { PromoteModal } from "./promote-modal";
@@ -57,6 +58,7 @@ export const FeedPostCard = memo(function FeedPostCard({
   onUpdatePost,
   onDeletePost,
   onBumpPost,
+  underPostBanner,
 }: {
   post: FeedPost;
   currentUserId: string;
@@ -66,6 +68,8 @@ export const FeedPostCard = memo(function FeedPostCard({
   onDeletePost: (id: string) => void;
   /** Float this post to the top of the feed (viewer just commented on it). */
   onBumpPost?: (id: string) => void;
+  /** Show a compact sponsor banner under this post, above the reactions row. */
+  underPostBanner?: boolean;
 }) {
   // Re-bind the id-scoped parent handlers to this card's post so all the
   // existing `onUpdated(patch)` / `onDeleted()` call sites below stay unchanged,
@@ -83,6 +87,7 @@ export const FeedPostCard = memo(function FeedPostCard({
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
+  const [boostOpen, setBoostOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
@@ -502,6 +507,13 @@ export const FeedPostCard = memo(function FeedPostCard({
         <DonationBlock post={post} onUpdated={onUpdated} />
       )}
 
+      {/* Compact sponsor banner under the post, above the reactions row. */}
+      {underPostBanner && (
+        <div className="px-4 pb-1">
+          <AdRenderer placement="FEED_POST_BELOW" className="[&_*]:max-h-16" />
+        </div>
+      )}
+
       {/* Reactions row */}
       <div className="flex items-center gap-4 px-4 py-2.5 border-t border-gray-800">
         <button
@@ -538,40 +550,18 @@ export const FeedPostCard = memo(function FeedPostCard({
           <Share2 className="w-4 h-4" />
           Share
         </button>
-        {post.isOwner && !post.isPinned && canBoost && (
-          <button
-            onClick={async () => {
-              if (
-                !(await confirmDialog({
-                  title: "Boost this post for 100 pts?",
-                  description: "Boosted posts pin to the top of the feed.",
-                  tone: "info",
-                  confirmLabel: "Boost",
-                }))
-              )
-                return;
-              try {
-                const res = await fetch(`/api/feed/${post.id}/boost`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-                toast.success("Boosted! Your post is now pinned.");
-                onUpdated({ isPinned: true });
-              } catch (err) {
-                toast.error("Boost failed", {
-                  description: err instanceof Error ? err.message : "Try again",
-                });
-              }
-            }}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-amber-400 ml-auto"
-          >
-            <Megaphone className="w-4 h-4" />
-            Boost
-          </button>
-        )}
-        {post.isPinned && (
+        {post.isOwner &&
+          canBoost &&
+          !(post.boostedUntil && new Date(post.boostedUntil) > new Date()) && (
+            <button
+              onClick={() => setBoostOpen(true)}
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-amber-400 ml-auto"
+            >
+              <Megaphone className="w-4 h-4" />
+              Boost
+            </button>
+          )}
+        {post.boostedUntil && new Date(post.boostedUntil) > new Date() && (
           <span className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-bold">
             <Megaphone className="w-3.5 h-3.5" />
             Boosted
@@ -643,6 +633,71 @@ export const FeedPostCard = memo(function FeedPostCard({
             setPromoteOpen(false);
           }}
         />
+      )}
+
+      {boostOpen && (
+        <div
+          className="fixed inset-0 z-[120] grid place-items-center bg-black/70 p-4"
+          onClick={() => !busy && setBoostOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-900 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-base font-bold text-white inline-flex items-center gap-1.5">
+              <Megaphone className="w-4 h-4 text-amber-400" /> Boost this post
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Boosted posts recirculate near the top of the feed for the chosen
+              period (100 pts). Pick how long:
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {[
+                { d: 1, label: "1 day" },
+                { d: 7, label: "7 days" },
+                { d: 30, label: "30 days" },
+              ].map(({ d, label }) => (
+                <button
+                  key={d}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const res = await fetch(`/api/feed/${post.id}/boost`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "Idempotency-Key": newIdempotencyKey(),
+                        },
+                        body: JSON.stringify({ days: d }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+                      toast.success("Boosted! Your post will recirculate.");
+                      onUpdated({ boostedUntil: data.boostedUntil ?? null });
+                      setBoostOpen(false);
+                    } catch (err) {
+                      toast.error("Boost failed", {
+                        description: err instanceof Error ? err.message : "Try again",
+                      });
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  className="py-2.5 rounded-lg bg-gray-800 hover:bg-amber-500 hover:text-white text-sm font-semibold text-gray-200 disabled:opacity-50"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => !busy && setBoostOpen(false)}
+              className="mt-3 w-full py-2 rounded-lg text-xs text-gray-400 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </article>
   );

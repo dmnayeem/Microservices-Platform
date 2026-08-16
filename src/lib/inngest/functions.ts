@@ -7,6 +7,7 @@ import { closeAuctionById, closeDueAuctions } from "@/lib/marketplace-auctions";
 import { drawLottery } from "@/lib/lottery";
 import { pruneOldLogs } from "@/lib/log-retention";
 import { releaseDeal, releaseDueDeals } from "@/lib/marketplace-deal";
+import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
 
 // ── Periodic sweeps (Inngest cron — replaces Vercel Cron) ────────────────────
 
@@ -107,8 +108,16 @@ export const lotterySweep = inngest.createFunction(
   }
 );
 
+// Month-end referral bonus: pay referrers whose invitees stayed active all of
+// the just-ended month. Runs on the 1st at 00:30 UTC.
+export const referralMonthlyBonus = inngest.createFunction(
+  { id: "referral-monthly-bonus", triggers: [{ cron: "30 0 1 * *" }] },
+  async () => runPreviousMonthReferralBonuses()
+);
+
 export const functions = [
   taskExpiry,
+  referralMonthlyBonus,
   subscriptionExpiry,
   courseReminders,
   courseLiveClasses,

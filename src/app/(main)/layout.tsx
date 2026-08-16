@@ -6,6 +6,8 @@ import { Header } from "@/components/dashboard/header";
 import { BottomTabBar } from "@/components/dashboard/bottom-tab-bar";
 import { AppRefreshShell } from "@/components/pwa/app-refresh-shell";
 import { getEffectiveFeatures } from "@/lib/packages";
+import { getHiddenPaths } from "@/lib/page-visibility-server";
+import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 
 export default async function MainLayout({
   children,
@@ -24,6 +26,10 @@ export default async function MainLayout({
   const { enabled } = await getEffectiveFeatures(session.user.id);
   const features = Array.from(enabled);
 
+  // Super-admin page-visibility (feature #3): paths hidden for this user's
+  // package / role / per-user override. Drives both nav hiding + a route guard.
+  const hiddenPaths = await getHiddenPaths(session.user.id);
+
   // The session doesn't carry the avatar, so fetch it here (cheap indexed read)
   // and pass it to the shells so the header/sidebar show the real picture. Kept
   // fresh (short cache) so a new upload appears after PhotoModal's router.refresh.
@@ -38,8 +44,16 @@ export default async function MainLayout({
 
   return (
     <div className="min-h-screen bg-gray-950">
+      {/* Redirect away from pages an admin has hidden for this user. */}
+      <PageAccessGuard hiddenPaths={hiddenPaths} />
+
       {/* Sidebar */}
-      <Sidebar user={session.user} features={features} avatar={avatar} />
+      <Sidebar
+        user={session.user}
+        features={features}
+        avatar={avatar}
+        hiddenPaths={hiddenPaths}
+      />
 
       {/* Main Content */}
       <div className="lg:pl-72">
@@ -53,7 +67,7 @@ export default async function MainLayout({
       </div>
 
       {/* App-style bottom nav (mobile only) */}
-      <BottomTabBar features={features} />
+      <BottomTabBar features={features} hiddenPaths={hiddenPaths} />
     </div>
   );
 }

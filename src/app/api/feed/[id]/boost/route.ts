@@ -10,6 +10,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { userCanFeature } from "@/lib/packages";
 
 const BOOST_COST_POINTS = 100;
+const BOOST_DAYS: Record<number, boolean> = { 1: true, 7: true, 30: true };
 
 export async function POST(
   _req: NextRequest,
@@ -19,6 +20,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const body = (await _req.json().catch(() => ({}))) as { days?: number };
+  const days = BOOST_DAYS[Number(body.days)] ? Number(body.days) : 7;
+
   return withIdempotency(_req, session.user.id, async () => {
   const userId = session.user.id;
   const { id } = await params;
@@ -33,7 +37,7 @@ export async function POST(
 
   const post = await prisma.post.findUnique({
     where: { id },
-    select: { id: true, userId: true, isPinned: true },
+    select: { id: true, userId: true, boostedUntil: true },
   });
   if (!post) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
@@ -44,7 +48,8 @@ export async function POST(
       { status: 403 }
     );
   }
-  if (post.isPinned) {
+  const now = new Date();
+  if (post.boostedUntil && post.boostedUntil > now) {
     return NextResponse.json(
       { error: "This post is already boosted" },
       { status: 400 }
@@ -62,9 +67,10 @@ export async function POST(
     );
   }
 
+  const boostedUntil = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   const pointsPerUsd = await getPointsPerUsd();
-  // Atomic + no-overspend: CAS on balance AND on `isPinned:false` so concurrent
-  // boosts (double-click / two posts) can't double-charge or go negative.
+  // Atomic + no-overspend: CAS on balance AND on the boost being inactive so
+  // concurrent boosts (double-click) can't double-charge or double-extend.
   try {
     await prisma.$transaction(async (tx) => {
       const paid = await tx.user.updateMany({
@@ -73,11 +79,14 @@ export async function POST(
       });
       if (paid.count === 0) throw new Error("INSUFFICIENT");
 
-      const pinned = await tx.post.updateMany({
-        where: { id, isPinned: false },
-        data: { isPinned: true },
+      const boosted = await tx.post.updateMany({
+        where: {
+          id,
+          OR: [{ boostedUntil: null }, { boostedUntil: { lt: now } }],
+        },
+        data: { boostedUntil },
       });
-      if (pinned.count === 0) throw new Error("ALREADY_BOOSTED");
+      if (boosted.count === 0) throw new Error("ALREADY_BOOSTED");
 
       await tx.transaction.create({
         data: {
@@ -86,9 +95,9 @@ export async function POST(
           status: TransactionStatus.COMPLETED,
           points: -BOOST_COST_POINTS,
           amount: BOOST_COST_POINTS / pointsPerUsd,
-          description: "Boosted social post",
-          reference: `boost_${id}_${Date.now()}`,
-          metadata: { postId: id },
+          description: `Boosted social post (${days}d)`,
+          reference: `boost_${id}_${now.getTime()}`,
+          metadata: { postId: id, days },
         },
       });
     });
@@ -109,7 +118,7 @@ export async function POST(
   return NextResponse.json({
     success: true,
     cost: BOOST_COST_POINTS,
-    isPinned: true,
+    boostedUntil: boostedUntil.toISOString(),
   });
   });
 }

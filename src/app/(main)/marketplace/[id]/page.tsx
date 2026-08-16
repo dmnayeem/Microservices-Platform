@@ -3,6 +3,33 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { ListingDetailView } from "@/components/user/marketplace/listing-detail-view";
+import { JsonLd } from "@/components/seo/json-ld";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const l = await prisma.marketplaceListing
+    .findUnique({
+      where: { id },
+      select: { title: true, description: true, images: true },
+    })
+    .catch(() => null);
+  if (!l) return { title: "Listing not found" };
+  return {
+    title: l.title,
+    description: l.description?.slice(0, 160) ?? undefined,
+    alternates: { canonical: `/marketplace/${id}` },
+    openGraph: {
+      title: l.title,
+      description: l.description?.slice(0, 160) ?? undefined,
+      images: l.images?.length ? [l.images[0]] : undefined,
+    },
+  };
+}
 
 export default async function ListingDetailPage({
   params,
@@ -54,10 +81,29 @@ export default async function ListingDetailPage({
     listing.seller as unknown as { _count: { marketplaceListings: number } }
   )._count;
 
+  const productLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    description: listing.description ?? undefined,
+    image: listing.images?.length ? listing.images : undefined,
+    offers: {
+      "@type": "Offer",
+      price: toNum(listing.price),
+      priceCurrency: (listing.currency || "USD").toUpperCase(),
+      availability:
+        listing.status === "ACTIVE"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+    },
+  };
+
   return (
-    <ListingDetailView
-      listing={{
-        id: listing.id,
+    <>
+      <JsonLd data={productLd} />
+      <ListingDetailView
+        listing={{
+          id: listing.id,
         title: listing.title,
         description: listing.description,
         richDescription: listing.richDescription,
@@ -106,10 +152,11 @@ export default async function ListingDetailPage({
           totalListings: sellerCount.marketplaceListings,
         },
       }}
-      isOwner={isOwner}
-      isWatched={isWatched}
-      hideFinancials={hideFinancials}
-      viewerId={session.user.id}
-    />
+        isOwner={isOwner}
+        isWatched={isWatched}
+        hideFinancials={hideFinancials}
+        viewerId={session.user.id}
+      />
+    </>
   );
 }

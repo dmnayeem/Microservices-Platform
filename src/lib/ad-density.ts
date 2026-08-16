@@ -10,6 +10,8 @@ export interface AdDensity {
   underPostBanner: boolean;
   /** …under every N posts (when enabled). */
   underPostInterval: number;
+  /** Max times a boosted post recirculates to one viewer (0 = unlimited). */
+  boostMaxPerUser: number;
 }
 
 const clampInt = (v: unknown, def: number, min: number, max: number) => {
@@ -19,16 +21,18 @@ const clampInt = (v: unknown, def: number, min: number, max: number) => {
 const asBool = (v: unknown) => v === true || v === "true";
 
 export async function getAdDensity(): Promise<AdDensity> {
-  const [fa, fp, ub, ui] = await Promise.all([
+  const [fa, fp, ub, ui, bm] = await Promise.all([
     getSetting<number>("ads.feed_ad_interval", 2),
     getSetting<number>("ads.feed_promo_interval", 4),
-    getSetting<boolean>("ads.under_post_banner", false),
+    getSetting<boolean>("ads.under_post_banner", true),
     getSetting<number>("ads.under_post_interval", 3),
+    getSetting<number>("feed.boost_max_per_user", 20),
   ]);
   return {
     feedAdInterval: clampInt(fa, 2, 1, 20),
     feedPromoInterval: clampInt(fp, 4, 1, 20),
     underPostBanner: asBool(ub),
     underPostInterval: clampInt(ui, 3, 1, 20),
+    boostMaxPerUser: clampInt(bm, 20, 0, 1000),
   };
 }

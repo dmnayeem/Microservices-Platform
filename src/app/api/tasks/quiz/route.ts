@@ -283,53 +283,68 @@ export async function POST(request: NextRequest) {
     const pointsEarned = passed ? Math.round(task.pointsReward * (score / 100)) : 0;
     const xpEarned = passed ? Math.round(task.xpReward * (score / 100)) : 0;
 
-    // Create submission
-    const submission = await prisma.taskSubmission.create({
-      data: {
-        taskId,
-        userId: session.user.id,
-        status: passed ? "AUTO_APPROVED" : "REJECTED",
-        answers: {
-          questions: questions.map((q: { id: number; question: string }) => q.question),
-          userAnswers: answers,
-          results,
-        },
-        score,
-        pointsEarned,
-        xpEarned,
-      },
-    });
+    const answersJson = {
+      questions: questions.map((q: { id: number; question: string }) => q.question),
+      userAnswers: answers,
+      results,
+    };
 
-    // If passed, update user balance and XP
-    if (passed) {
-      const pointsPerUsd = await getPointsPerUsd();
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: session.user.id },
+    // On a PASS, create the submission ATOMICALLY with the credit: an
+    // interactive transaction so a mid-credit failure rolls the submission back
+    // too. Otherwise a stranded AUTO_APPROVED row would block the retry
+    // ("already completed this quiz today") and the user would lose the day's
+    // reward. On a fail there's no credit, so a plain create is fine.
+    const submission = passed
+      ? await prisma.$transaction(async (tx) => {
+          const pointsPerUsd = await getPointsPerUsd();
+          const sub = await tx.taskSubmission.create({
+            data: {
+              taskId,
+              userId: session.user.id,
+              status: "AUTO_APPROVED",
+              answers: answersJson,
+              score,
+              pointsEarned,
+              xpEarned,
+            },
+          });
+          await tx.user.update({
+            where: { id: session.user.id },
+            data: {
+              pointsBalance: { increment: pointsEarned },
+              xp: { increment: xpEarned },
+              totalEarnings: { increment: pointsEarned / pointsPerUsd },
+            },
+          });
+          await tx.task.update({
+            where: { id: taskId },
+            data: { completedCount: { increment: 1 } },
+          });
+          await tx.transaction.create({
+            data: {
+              userId: session.user.id,
+              type: "EARNING",
+              status: "COMPLETED",
+              points: pointsEarned,
+              amount: pointsEarned / pointsPerUsd,
+              description: `Quiz completed: ${task.title} (Score: ${score}%)`,
+              reference: `quiz_${sub.id}`,
+              metadata: { taskId, score, correctAnswers, totalQuestions },
+            },
+          });
+          return sub;
+        })
+      : await prisma.taskSubmission.create({
           data: {
-            pointsBalance: { increment: pointsEarned },
-            xp: { increment: xpEarned },
-            totalEarnings: { increment: pointsEarned / pointsPerUsd },
-          },
-        }),
-        prisma.task.update({
-          where: { id: taskId },
-          data: { completedCount: { increment: 1 } },
-        }),
-        prisma.transaction.create({
-          data: {
+            taskId,
             userId: session.user.id,
-            type: "EARNING",
-            status: "COMPLETED",
-            points: pointsEarned,
-            amount: pointsEarned / pointsPerUsd,
-            description: `Quiz completed: ${task.title} (Score: ${score}%)`,
-            reference: `quiz_${submission.id}`,
-            metadata: { taskId, score, correctAnswers, totalQuestions },
+            status: "REJECTED",
+            answers: answersJson,
+            score,
+            pointsEarned,
+            xpEarned,
           },
-        }),
-      ]);
-    }
+        });
 
     return NextResponse.json({
       submissionId: submission.id,

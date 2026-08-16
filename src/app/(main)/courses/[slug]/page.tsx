@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { loadCourseLanding } from "@/lib/course-landing";
 import { CourseLanding } from "@/components/user/courses/CourseLanding";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export default async function CourseLandingPage({
   params,
@@ -21,7 +22,33 @@ export default async function CourseLandingPage({
     redirect(`/courses/${data.course.slug}`);
   }
 
-  return <CourseLanding data={data} viewerId={session.user.id} />;
+  const c = data.course;
+  const reviewCount = Object.values(
+    (data.ratingBreakdown ?? {}) as Record<string, number>
+  ).reduce((a, b) => a + Number(b || 0), 0);
+  const courseLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: c.title,
+    description: c.seoDescription ?? c.subtitle ?? undefined,
+    provider: { "@type": "Organization", name: "EarnGPT" },
+    ...(c.avgRating && reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number(c.avgRating).toFixed(1),
+            reviewCount,
+          },
+        }
+      : {}),
+  };
+
+  return (
+    <>
+      <JsonLd data={courseLd} />
+      <CourseLanding data={data} viewerId={session.user.id} />
+    </>
+  );
 }
 
 export async function generateMetadata({
@@ -35,6 +62,9 @@ export async function generateMetadata({
   return {
     title: data.course.seoTitle ?? data.course.title,
     description: data.course.seoDescription ?? data.course.subtitle ?? undefined,
+    alternates: {
+      canonical: `/courses/${data.course.slug ?? data.course.id}`,
+    },
     openGraph: {
       title: data.course.seoTitle ?? data.course.title,
       description: data.course.seoDescription ?? data.course.subtitle ?? undefined,

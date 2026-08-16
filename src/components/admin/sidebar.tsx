@@ -46,6 +46,8 @@ import {
   FolderTree,
   UserCog,
   Landmark,
+  DollarSign,
+  Eye,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -115,6 +117,8 @@ const iconMap: Record<string, LucideIcon> = {
   FolderTree,
   UserCog,
   Landmark,
+  DollarSign,
+  Eye,
 };
 
 // Extract SidebarContent as a separate component

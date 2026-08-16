@@ -45,7 +45,12 @@ export interface ScoreOpts {
   seed: string;
 }
 
-/** Hot score for a post. Higher = higher in the feed. */
+/** Hot score for a post. Higher = higher in the feed.
+ *
+ *  Randomness is the PRIMARY driver: with a fresh seed each load the order
+ *  reshuffles substantially every reload and older posts resurface (no fixed
+ *  chronological serial). Engagement + a gentle, never-vanishing recency give
+ *  quality a mild nudge; a followed author gets a small edge. */
 export function scorePost(post: RankablePost, opts: ScoreOpts): number {
   const engagement =
     post.likesCount + 2 * post.commentsCount + 3 * post.sharesCount;
@@ -54,12 +59,20 @@ export function scorePost(post: RankablePost, opts: ScoreOpts): number {
     0,
     (opts.now.getTime() - post.lastActivityAt.getTime()) / (1000 * 60 * 60)
   );
-  const recency = Math.exp(-ageHours / HALF_LIFE_HOURS);
+  // Soft recency — decays slowly and never reaches 0, so an old post can still
+  // surface when the dice favour it (unlike exp() which buries anything old).
+  const recencySoft = 1 / (1 + ageHours / (HALF_LIFE_HOURS * 4));
 
   const follow = opts.follows.has(post.userId) ? FOLLOW_MULT : 1;
 
-  // ±15% deterministic variety, stable for a given seed (keeps pages consistent).
-  const jitter = 0.85 + 0.3 * rand01(`${post.id}:${opts.seed}`);
+  // 0..1, changes whenever the seed changes (a new seed is issued each load).
+  const random = rand01(`${post.id}:${opts.seed}`);
+  // log-compress engagement so a viral post nudges — never dominates — the shuffle.
+  const quality = Math.log2(2 + engagement);
 
-  return (1 + engagement) * recency * follow * jitter;
+  // (0.2..1.2) random band is the dominant factor (6× spread); quality and
+  // recency are mild multipliers on top.
+  return (
+    (0.2 + random) * (1 + 0.35 * quality) * (0.6 + 0.4 * recencySoft) * follow
+  );
 }

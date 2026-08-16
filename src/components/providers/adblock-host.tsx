@@ -9,7 +9,10 @@ import {
   recheckAdblock,
   dismissAdblockOverlay,
   warmAdblock,
+  setAdblockGateEnabled,
+  detectAdblock,
 } from "@/lib/adblock";
+import { toast } from "@/lib/toast";
 
 /**
  * Single global host for the ad-blocker gate. Warms detection once on load and
@@ -27,7 +30,31 @@ export function AdblockHost() {
   const [stillBlocked, setStillBlocked] = useState(false);
 
   useEffect(() => {
-    warmAdblock();
+    let reminderTimer: ReturnType<typeof setInterval> | undefined;
+    // Load the admin config: toggle the gate + start the periodic reminder.
+    fetch("/api/config/antifraud", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((cfg) => {
+        setAdblockGateEnabled(cfg.adblockGateEnabled !== false);
+        warmAdblock();
+        const mins = Number(cfg.adblockReminderMinutes) || 0;
+        if (cfg.adblockGateEnabled !== false && mins > 0) {
+          reminderTimer = setInterval(async () => {
+            if (await detectAdblock()) {
+              toast.error("Ad blocker detected", {
+                description:
+                  "Please turn off your ad blocker to keep earning on this platform.",
+              });
+            }
+          }, mins * 60 * 1000);
+        }
+      })
+      .catch(() => {
+        warmAdblock();
+      });
+    return () => {
+      if (reminderTimer) clearInterval(reminderTimer);
+    };
   }, []);
 
   if (!open) return null;

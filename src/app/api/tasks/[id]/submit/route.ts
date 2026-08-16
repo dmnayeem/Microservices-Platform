@@ -988,42 +988,45 @@ export async function POST(
         }
       }
 
-      // Update user points and XP
-      const user = await prisma.user.update({
-        where: { id: session.user.id },
-        data: {
-          pointsBalance: { increment: effectivePoints },
-          xp: { increment: effectiveXp },
-          totalEarnings: { increment: effectivePoints / pointsPerUsd },
-        },
-      });
-
-      // Create transaction record
-      await prisma.transaction.create({
-        data: {
-          userId: session.user.id,
-          type: TransactionType.EARNING,
-          status: TransactionStatus.COMPLETED,
-          points: effectivePoints,
-          amount: effectivePoints / pointsPerUsd,
-          description: `Completed task: ${task.title}`,
-          reference: `task_${task.id}_${submission.id}`,
-          metadata: {
-            taskId: task.id,
-            taskType: task.type,
-            submissionId: submission.id,
-            multiplier,
+      // Credit points/XP/earnings + write the ledger row + bump the task's
+      // completed counter ATOMICALLY. These were previously three independent
+      // top-level writes: a throw after the user.update credited points with
+      // NO ledger row (and 500'd the user). The CAS `submittedAt` claim above
+      // already prevents double-pay, so this transaction only needs to
+      // guarantee all-or-nothing integrity.
+      const [user] = await prisma.$transaction([
+        prisma.user.update({
+          where: { id: session.user.id },
+          data: {
+            pointsBalance: { increment: effectivePoints },
+            xp: { increment: effectiveXp },
+            totalEarnings: { increment: effectivePoints / pointsPerUsd },
           },
-        },
-      });
-
-      // Update task completed count
-      await prisma.task.update({
-        where: { id: task.id },
-        data: {
-          completedCount: { increment: 1 },
-        },
-      });
+        }),
+        prisma.transaction.create({
+          data: {
+            userId: session.user.id,
+            type: TransactionType.EARNING,
+            status: TransactionStatus.COMPLETED,
+            points: effectivePoints,
+            amount: effectivePoints / pointsPerUsd,
+            description: `Completed task: ${task.title}`,
+            reference: `task_${task.id}_${submission.id}`,
+            metadata: {
+              taskId: task.id,
+              taskType: task.type,
+              submissionId: submission.id,
+              multiplier,
+            },
+          },
+        }),
+        prisma.task.update({
+          where: { id: task.id },
+          data: {
+            completedCount: { increment: 1 },
+          },
+        }),
+      ]);
 
       // Check for level up
       const newLevel = calculateLevel(user.xp + effectiveXp);

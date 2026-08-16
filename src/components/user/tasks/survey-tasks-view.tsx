@@ -8,6 +8,7 @@ import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +102,8 @@ export function SurveyTasksView() {
         ]}
       />
 
+      <AdRenderer placement="TASK_LIST" />
+
       {loading && <ListSkeleton rows={4} />}
 
       {!loading && tab === "available" && tasks.length === 0 && (
@@ -111,22 +114,24 @@ export function SurveyTasksView() {
         />
       )}
 
-      {!loading &&
-        tab === "available" &&
-        tasks.map((t) => (
-          <TaskCard
-            key={t.id}
-            title={t.title}
-            description={t.description}
-            type="custom"
-            reward={t.pointsReward}
-            xpReward={t.xpReward}
-            durationMin={t.duration ?? undefined}
-            thumbnail={t.thumbnailUrl ?? undefined}
-            actionLabel="Take Survey"
-            onAction={() => router.push(`/survey-tasks/${t.id}`)}
-          />
-        ))}
+      {!loading && tab === "available" && tasks.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {tasks.map((t) => (
+            <TaskCard
+              key={t.id}
+              title={t.title}
+              description={t.description}
+              type="custom"
+              reward={t.pointsReward}
+              xpReward={t.xpReward}
+              durationMin={t.duration ?? undefined}
+              thumbnail={t.thumbnailUrl ?? undefined}
+              actionLabel="Take Survey"
+              onAction={() => router.push(`/survey-tasks/${t.id}`)}
+            />
+          ))}
+        </div>
+      )}
 
       {!loading && tab !== "available" && submissions.length === 0 && (
         <EmptyState

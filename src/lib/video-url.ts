@@ -10,6 +10,26 @@ export type ResolvedVideo =
   | { kind: "iframe"; embedUrl: string }
   | { kind: "unknown" };
 
+/** Append query params to an embed URL, preserving any it already has. iOS
+ *  Safari needs `playsinline=1` or the YouTube/Vimeo iframe forces the native
+ *  fullscreen player and won't play inline. */
+function withParams(embedUrl: string, params: Record<string, string>): string {
+  try {
+    const eu = new URL(embedUrl);
+    for (const [k, v] of Object.entries(params)) {
+      if (!eu.searchParams.has(k)) eu.searchParams.set(k, v);
+    }
+    return eu.toString();
+  } catch {
+    return embedUrl;
+  }
+}
+const YT_PARAMS = { playsinline: "1", enablejsapi: "1", rel: "0" };
+const ytEmbed = (id: string) =>
+  withParams(`https://www.youtube.com/embed/${id}`, YT_PARAMS);
+const vimeoEmbed = (id: string) =>
+  withParams(`https://player.vimeo.com/video/${id}`, { playsinline: "1" });
+
 export function resolveVideoUrl(url: string): ResolvedVideo {
   let u: URL;
   try {
@@ -22,28 +42,28 @@ export function resolveVideoUrl(url: string): ResolvedVideo {
   // YouTube
   if (host === "youtu.be") {
     const id = u.pathname.slice(1);
-    if (id) return { kind: "youtube", embedUrl: `https://www.youtube.com/embed/${id}` };
+    if (id) return { kind: "youtube", embedUrl: ytEmbed(id) };
   }
   if (host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com")) {
     if (u.pathname.startsWith("/embed/")) {
-      return { kind: "youtube", embedUrl: u.toString() };
+      return { kind: "youtube", embedUrl: withParams(u.toString(), YT_PARAMS) };
     }
     if (u.pathname.startsWith("/shorts/")) {
       const id = u.pathname.split("/")[2];
-      if (id) return { kind: "youtube", embedUrl: `https://www.youtube.com/embed/${id}` };
+      if (id) return { kind: "youtube", embedUrl: ytEmbed(id) };
     }
     const v = u.searchParams.get("v");
-    if (v) return { kind: "youtube", embedUrl: `https://www.youtube.com/embed/${v}` };
+    if (v) return { kind: "youtube", embedUrl: ytEmbed(v) };
   }
 
   // Vimeo
   if (host === "vimeo.com" || host === "player.vimeo.com") {
     const parts = u.pathname.split("/").filter(Boolean);
     if (host === "player.vimeo.com" && parts[0] === "video" && parts[1]) {
-      return { kind: "vimeo", embedUrl: u.toString() };
+      return { kind: "vimeo", embedUrl: withParams(u.toString(), { playsinline: "1" }) };
     }
     const id = parts.find((p) => /^\d+$/.test(p));
-    if (id) return { kind: "vimeo", embedUrl: `https://player.vimeo.com/video/${id}` };
+    if (id) return { kind: "vimeo", embedUrl: vimeoEmbed(id) };
   }
 
   // Direct video file
@@ -80,7 +100,10 @@ export function playerSource(url: string): string {
   if (!url) return "";
   const r = resolveVideoUrl(url);
   if (r.kind === "youtube" || r.kind === "vimeo" || r.kind === "iframe") {
-    return r.embedUrl;
+    // react-player's matcher is strict about query params — hand it the CLEAN
+    // canonical embed URL. Inline playback (playsinline) is set via the
+    // ReactPlayer `playsInline` prop + youtube config, not the URL.
+    return r.embedUrl.split("?")[0];
   }
   // Direct video file or an unrecognised URL — let the player try the raw URL.
   return url;

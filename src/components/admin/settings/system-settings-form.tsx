@@ -118,6 +118,11 @@ const DEFAULTS: SettingsBag = {
   "antifraud.auto_approve_min_trust": 0,
   "antifraud.spot_check_percent": 0,
   "antifraud.block_duplicate_proof": false,
+  "antifraud.max_users_per_ip": 0,
+  "antifraud.vpn_block_enabled": false,
+  "antifraud.vpn_ranges": "",
+  "antifraud.adblock_gate_enabled": true,
+  "antifraud.adblock_reminder_minutes": 0,
   // Log retention windows (days) — consumed by the daily pruning cron
   retention_days: { views: 90, logs: 120, audit: 365, notifications: 60 },
   // Popups / install (site-wide)
@@ -172,6 +177,11 @@ const CATEGORY_FOR_KEY: Record<string, string> = {
   "antifraud.auto_approve_min_trust": "limits",
   "antifraud.spot_check_percent": "limits",
   "antifraud.block_duplicate_proof": "limits",
+  "antifraud.max_users_per_ip": "limits",
+  "antifraud.vpn_block_enabled": "limits",
+  "antifraud.vpn_ranges": "limits",
+  "antifraud.adblock_gate_enabled": "limits",
+  "antifraud.adblock_reminder_minutes": "limits",
   retention_days: "limits",
   // Popups / install
   "ui.cookies_popup_enabled": "ui_toggles",
@@ -1025,6 +1035,63 @@ export function SystemSettingsForm({
               onChange={(v) => set("antifraud.block_duplicate_proof", v)}
               disabled={!canEdit}
             />
+
+            <Section title="Network anti-abuse">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Max accounts per IP (0 = off)">
+                  <input
+                    type="number"
+                    min={0}
+                    value={Number(values["antifraud.max_users_per_ip"] ?? 0)}
+                    onChange={(e) =>
+                      set("antifraud.max_users_per_ip", parseInt(e.target.value) || 0)
+                    }
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+                <Field label="Ad-blocker reminder every N minutes (0 = off)">
+                  <input
+                    type="number"
+                    min={0}
+                    value={Number(values["antifraud.adblock_reminder_minutes"] ?? 0)}
+                    onChange={(e) =>
+                      set(
+                        "antifraud.adblock_reminder_minutes",
+                        parseInt(e.target.value) || 0
+                      )
+                    }
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+              </div>
+              <Toggle
+                label="Block VPN / proxy (best-effort)"
+                description="Block task work from IPs that match the datacenter/VPN prefix list below. Heuristic only — catches roughly 50–70%, not 100%. For full accuracy, integrate a detection provider later."
+                checked={values["antifraud.vpn_block_enabled"] === true}
+                onChange={(v) => set("antifraud.vpn_block_enabled", v)}
+                disabled={!canEdit}
+              />
+              <Field label="VPN/datacenter IP prefixes (space or comma separated, e.g. 45.83. 2607:5300:)">
+                <input
+                  type="text"
+                  value={String(values["antifraud.vpn_ranges"] ?? "")}
+                  onChange={(e) => set("antifraud.vpn_ranges", e.target.value)}
+                  disabled={!canEdit}
+                  placeholder="45.83. 185.220. 2607:5300:"
+                  className={inp}
+                />
+              </Field>
+              <Toggle
+                label="Ad-blocker gate on tasks"
+                description="Block opening a task while an ad-blocker is detected (a re-check overlay is shown). Turn off to allow tasks with an ad-blocker on."
+                checked={values["antifraud.adblock_gate_enabled"] !== false}
+                onChange={(v) => set("antifraud.adblock_gate_enabled", v)}
+                disabled={!canEdit}
+              />
+            </Section>
+
             <Section title="Log retention (days)">
               <p className="text-xs text-slate-500 -mt-1 mb-2">
                 The daily pruning job deletes rows older than these windows.

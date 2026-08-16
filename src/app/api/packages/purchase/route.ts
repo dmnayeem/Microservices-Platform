@@ -173,6 +173,7 @@ export async function POST(request: NextRequest) {
 
   // Apply purchase. Debits use an atomic CAS (`balance >= amount`) so a concurrent
   // double-submit can't overspend (the pre-checks above are check-then-act).
+  let activatedSubscriptionId: string | null = null;
   try {
     await prisma.$transaction(async (tx) => {
       if (v.data.method === "CASH") {
@@ -232,6 +233,10 @@ export async function POST(request: NextRequest) {
           reference: `subscription_${subscription.id}`,
         },
       });
+
+      // Only an immediately-activated (on-platform) purchase triggers the
+      // referrer bonus; off-platform stays pending admin verification.
+      if (!isOffPlatform) activatedSubscriptionId = subscription.id;
     });
   } catch (err) {
     if (err instanceof Error && err.message === "INSUFFICIENT") {
@@ -241,6 +246,19 @@ export async function POST(request: NextRequest) {
       );
     }
     throw err;
+  }
+
+  // Referral subscription bonus (feature #9) — pay the referrer when their
+  // invitee upgrades. Best-effort, idempotent per subscription.
+  if (activatedSubscriptionId) {
+    try {
+      const { awardReferralSubscriptionBonus } = await import(
+        "@/lib/referral-bonus"
+      );
+      await awardReferralSubscriptionBonus(userId, activatedSubscriptionId);
+    } catch {
+      /* never block the purchase on the bonus */
+    }
   }
 
   return NextResponse.json({

@@ -114,6 +114,7 @@ const updateUserSchema = z.object({
   packageExpiresAt: z.string().datetime().optional().nullable(),
   featureOverrides: z.record(z.string(), z.boolean()).optional().nullable(),
   permissionOverrides: z.record(z.string(), z.boolean()).optional().nullable(),
+  pageOverrides: z.record(z.string(), z.boolean()).optional().nullable(),
   kycStatus: z.enum(["NOT_SUBMITTED", "PENDING", "APPROVED", "REJECTED"]).optional(),
   twoFactorEnabled: z.boolean().optional(),
   tutorSuspended: z.boolean().optional(),
@@ -352,6 +353,21 @@ export async function PATCH(
           ? {}
           : parsePermissionOverrides(data.permissionOverrides);
       updateData.permissionOverrides = Object.keys(po).length ? po : null;
+    }
+    if (data.pageOverrides !== undefined) {
+      if (adminRole !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only a super admin can edit page visibility" },
+          { status: 403 }
+        );
+      }
+      // Keep only real booleans; empty → null so it clears the override.
+      const raw = data.pageOverrides ?? {};
+      const cleaned: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(raw)) {
+        if (typeof v === "boolean") cleaned[k] = v;
+      }
+      updateData.pageOverrides = Object.keys(cleaned).length ? cleaned : null;
     }
     if (data.kycStatus !== undefined) updateData.kycStatus = data.kycStatus;
     // 2FA reset: admin can only DISABLE (never force-enable) — clear the secret

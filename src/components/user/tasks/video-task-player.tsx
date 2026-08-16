@@ -92,6 +92,9 @@ export function VideoTaskPlayer({
   const [warmupLeft, setWarmupLeft] = useState(warmupTarget);
   const [watched, setWatched] = useState(resumeFrom);
   const [isPlaying, setIsPlaying] = useState(false);
+  // No autoplay: the video only starts after a real user tap (iOS Safari blocks
+  // autoplay-with-sound and doesn't fire play() on cross-origin YouTube iframes).
+  const [userStarted, setUserStarted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [autoFailed, setAutoFailed] = useState(false);
   // Player couldn't load the media (bad/unsupported URL) — show a clear error
@@ -564,7 +567,7 @@ export function VideoTaskPlayer({
           <ReactPlayer
             ref={playerRef}
             src={playerSrc}
-            playing={phase === "watch" && introAdDone}
+            playing={phase === "watch" && introAdDone && userStarted}
             controls={false}
             playsInline
             muted={false}
@@ -678,6 +681,11 @@ export function VideoTaskPlayer({
           <button
             type="button"
             onClick={() => {
+              // Flip react-player's `playing` state — this starts BOTH HTML5
+              // <video> and cross-origin YouTube iframes (a direct DOM .play()
+              // is a no-op on the YT iframe). Also nudge the element for an
+              // instant start on native video.
+              setUserStarted(true);
               const p = playerRef.current;
               if (p && typeof p.play === "function") {
                 const r = p.play();
@@ -721,8 +729,8 @@ export function VideoTaskPlayer({
 
         {/* Phase 4: submitted overlay */}
         {phase === "submitted" && (
-          <div className="absolute inset-0 z-20 grid place-items-center bg-emerald-950/90 pointer-events-none">
-            <div className="text-center">
+          <div className="absolute inset-0 z-20 grid place-items-center bg-emerald-950/90">
+            <div className="text-center px-4">
               <Sparkles className="w-12 h-12 text-amber-400 mx-auto mb-3" />
               <p className="text-xs uppercase tracking-widest text-emerald-300 font-bold mb-1">
                 Earned
@@ -731,6 +739,10 @@ export function VideoTaskPlayer({
                 +{task.pointsReward}
               </p>
               <p className="text-sm text-emerald-200 mt-2">points credited</p>
+              {/* Completion-screen sponsor slot. */}
+              <div className="mt-5 w-full max-w-md mx-auto">
+                <AdRenderer placement="TASK_COMPLETE" />
+              </div>
             </div>
           </div>
         )}

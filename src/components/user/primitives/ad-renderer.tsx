@@ -4,26 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Megaphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
-import { placementSizeKey } from "@/lib/ad-placements";
+import { placementSizeKey, type AdPlacementName } from "@/lib/ad-placements";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 
-export type AdPlacement =
-  | "IN_FEED"
-  | "FEED_POST_BELOW"
-  | "FEED_SIDEBAR"
-  | "TASK_LIST"
-  | "TASK_START"
-  | "VIDEO_ABOVE"
-  | "VIDEO_BELOW"
-  | "VIDEO_OVERLAY"
-  | "TASK_COMPLETE"
-  | "GAME_INTERSTITIAL"
-  | "VIDEO_INTERSTITIAL"
-  | "DASHBOARD"
-  | "EARN_HUB"
-  | "WALLET_TOP"
-  | "MARKETPLACE_TOP"
-  | "PROFILE_BOTTOM";
+// Derive from the canonical catalog so this never drifts again (previously a
+// hand-maintained duplicate that was missing VIDEO_OVERLAY / REWARD_INTERSTITIAL).
+export type AdPlacement = AdPlacementName;
 
 export type AdType = "LOCAL" | "HTML" | "ADSENSE" | "GAM";
 

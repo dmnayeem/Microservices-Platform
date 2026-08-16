@@ -24,7 +24,13 @@ const GRID_COLS: Record<number, string> = {
 };
 
 /** App-style fixed bottom navigation for mobile (hidden on lg+). */
-export function BottomTabBar({ features }: { features?: string[] }) {
+export function BottomTabBar({
+  features,
+  hiddenPaths,
+}: {
+  features?: string[];
+  hiddenPaths?: string[];
+}) {
   const pathname = usePathname();
   const setMenuOpen = useMobileNav((s) => s.setOpen);
   const [unread, setUnread] = useState(0);
@@ -66,8 +72,11 @@ export function BottomTabBar({ features }: { features?: string[] }) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
+  const hidden = new Set(hiddenPaths ?? []);
   const tabs = TABS.filter(
-    (t) => !("feature" in t) || !features || features.includes(t.feature)
+    (t) =>
+      (!("feature" in t) || !features || features.includes(t.feature)) &&
+      !hidden.has(t.href)
   );
 
   return (

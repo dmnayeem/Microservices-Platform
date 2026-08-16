@@ -6,6 +6,7 @@ import { confirmDialog } from "@/lib/confirm";
 import { profileHref } from "@/lib/user-href";
 import { AffiliateAttribution } from "@/components/user/affiliate/affiliate-attribution";
 import { AffiliateShareButton } from "@/components/user/affiliate/affiliate-share-button";
+import { AffiliateRewardBadge } from "@/components/user/affiliate/affiliate-reward-badge";
 import {
   ShoppingCart,
   Eye,
@@ -272,7 +273,10 @@ export function ListingDetailView({
     <div className="space-y-5">
       <AffiliateAttribution targetType="MARKETPLACE" targetId={listing.id} />
       {(listing as { affiliateEligible?: boolean }).affiliateEligible && (
-        <div className="flex justify-end">
+        <div className="flex justify-end items-center gap-2">
+          <AffiliateRewardBadge
+            reward={(listing as { affiliateReward?: string | null }).affiliateReward}
+          />
           <AffiliateShareButton eligible />
         </div>
       )}

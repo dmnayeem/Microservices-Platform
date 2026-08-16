@@ -122,12 +122,23 @@ export function getAdblockServerSnapshot(): boolean {
   return false;
 }
 
+// Admin can disable the whole gate (antifraud.adblock_gate_enabled). The host
+// fetches the config once and flips this; default ON so a config blip stays safe.
+let gateEnabled = true;
+export function setAdblockGateEnabled(on: boolean): void {
+  gateEnabled = on;
+}
+export function isAdblockGateEnabled(): boolean {
+  return gateEnabled;
+}
+
 /**
  * Guard for every task-open action. Resolves true when it's safe to open; when a
  * blocker is detected it opens the overlay ("turn off your ad blocker") and
  * resolves false so the caller aborts the open.
  */
 export async function ensureAdsAllowed(): Promise<boolean> {
+  if (!gateEnabled) return true; // admin turned the gate off
   const blocked = await detectCached();
   if (blocked) {
     setOverlay(true);

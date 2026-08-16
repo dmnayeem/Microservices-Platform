@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { AffiliateRewardBadge } from "@/components/user/affiliate/affiliate-reward-badge";
 import { cn } from "@/lib/utils";
 
 interface Listing {
@@ -56,6 +57,8 @@ interface Listing {
   auctionEndsAt: string | null;
   createdAt: string;
   seller: { name: string | null; avatar: string | null };
+  /** Affiliate-only commission (set by the API only for approved affiliates). */
+  affiliateReward?: string | null;
 }
 
 interface Facet {
@@ -586,6 +589,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
             <p className="text-base font-extrabold text-white tabular-nums">
               ${compactMoney(listing.price)}
             </p>
+            <AffiliateRewardBadge reward={listing.affiliateReward} className="mt-1" />
           </div>
           <div className="text-right text-[10px] text-gray-500">
             <p className="inline-flex items-center gap-1">

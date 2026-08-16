@@ -10,11 +10,17 @@ import {
   TaskUpgradeNotice,
   isUpgradeRequired,
 } from "@/components/user/primitives/task-upgrade-notice";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 interface Question {
-  id: string;
-  prompt: string;
+  // Stored shape from the admin quiz editor (Task.questions JSON). No `id`;
+  // the text field is `question`. `correctAnswer` is echoed back to the API,
+  // which grades by comparing it (matches the existing submit contract).
+  question: string;
   options: string[];
+  imageUrl?: string;
+  correctAnswer: number;
+  explanation?: string;
 }
 
 interface QuizMeta {
@@ -46,31 +52,55 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
   const [meta, setMeta] = useState<QuizMeta | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  // Answers are keyed by question index (stored questions have no id).
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   const [timeLeft, setTimeLeft] = useState(0);
+  const [hasTimer, setHasTimer] = useState(false);
+  const [startedAt, setStartedAt] = useState(0);
   const [result, setResult] = useState<ResultData | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/tasks/quiz/${quizId}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load failed"))))
+    // Real endpoint: taskId is passed as a query param (there is no
+    // /api/tasks/quiz/{id} route). Returns flat { taskId, title, questions, ... }.
+    fetch(`/api/tasks/quiz?taskId=${encodeURIComponent(quizId)}`)
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error || "load failed");
+        return d;
+      })
       .then((d) => {
         if (cancelled) return;
-        setMeta(d.quiz);
-        setQuestions(d.questions ?? []);
-        setTimeLeft((d.quiz?.timeLimitMinutes ?? 5) * 60);
+        const qs: Question[] = Array.isArray(d.questions) ? d.questions : [];
+        setMeta({
+          id: d.taskId,
+          title: d.title,
+          questionCount: qs.length,
+          timeLimitMinutes: Number(d.timeLimitMinutes ?? 0),
+          pointsReward: d.pointsReward ?? 0,
+        });
+        setQuestions(qs);
+        const mins = Number(d.timeLimitMinutes ?? 0);
+        setHasTimer(mins > 0);
+        setTimeLeft(mins * 60);
+        setStartedAt(Date.now());
         setState("active");
       })
-      .catch(() => !cancelled && setState("error"));
+      .catch((err) => {
+        if (cancelled) return;
+        setErrorMsg(err instanceof Error ? err.message : null);
+        setState("error");
+      });
     return () => {
       cancelled = true;
     };
   }, [quizId]);
 
   useEffect(() => {
-    if (state !== "active") return;
+    if (state !== "active" || !hasTimer) return;
     if (timeLeft <= 0) {
       submit();
       return;
@@ -78,15 +108,17 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
     const id = setInterval(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, timeLeft]);
+  }, [state, timeLeft, hasTimer]);
 
   const submit = async () => {
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/tasks/quiz/${quizId}/submit`, {
+      // API grades by index: answers[] positional, questions[] echoed back.
+      const answerArr = questions.map((_, i) => answers[i] ?? -1);
+      const res = await fetch(`/api/tasks/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ taskId: quizId, answers: answerArr, questions }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
@@ -97,9 +129,20 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
         }
         throw new Error(json.error || `HTTP ${res.status}`);
       }
-      const d: ResultData = await res.json();
+      const d = await res.json();
       await runInterstitial();
-      setResult(d);
+      // Map the API's { score(%), correctAnswers, totalQuestions, pointsEarned }
+      // onto the result UI's shape.
+      setResult({
+        score: d.correctAnswers ?? 0,
+        scoreMax: d.totalQuestions ?? questions.length,
+        percent: d.score ?? 0,
+        passed: !!d.passed,
+        pointsAwarded: d.pointsEarned ?? 0,
+        timeTakenSec: startedAt
+          ? Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+          : 0,
+      });
       setState("result");
     } catch (err) {
       toast.error("Submit failed", {
@@ -127,7 +170,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
   }
 
   const cur = questions[idx];
-  const selected = cur ? answers[cur.id] : undefined;
+  const selected = cur ? answers[idx] : undefined;
 
   const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
   const ss = String(timeLeft % 60).padStart(2, "0");
@@ -149,7 +192,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
             Failed to load quiz
           </p>
           <p className="text-sm text-gray-400 mt-1 mb-4">
-            Something went wrong loading the questions.
+            {errorMsg || "Something went wrong loading the questions."}
           </p>
           <button
             onClick={onClose}
@@ -172,17 +215,19 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                   Q{idx + 1} of {questions.length}
                 </p>
               </div>
-              <div
-                className={cn(
-                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-sm tabular-nums",
-                  lowTime
-                    ? "bg-red-500/15 text-red-400"
-                    : "bg-gray-800 text-white"
-                )}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                {mm}:{ss}
-              </div>
+              {hasTimer && (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-sm tabular-nums",
+                    lowTime
+                      ? "bg-red-500/15 text-red-400"
+                      : "bg-gray-800 text-white"
+                  )}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  {mm}:{ss}
+                </div>
+              )}
               <button
                 onClick={async () => {
                   if (
@@ -209,10 +254,25 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           </div>
 
           <div className="max-w-3xl mx-auto px-4 py-6">
+            {/* In-quiz sponsor slot (only on the first question so it doesn't
+                nag between every answer). */}
+            {idx === 0 && (
+              <div className="mb-4">
+                <AdRenderer placement="TASK_START" dismissible />
+              </div>
+            )}
             <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
               <p className="text-base font-semibold text-white mb-4">
-                {cur.prompt}
+                {cur.question}
               </p>
+              {cur.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cur.imageUrl}
+                  alt=""
+                  className="mb-4 max-h-64 w-auto rounded-xl border border-gray-800"
+                />
+              )}
               <div className="space-y-2">
                 {cur.options.map((opt, oi) => {
                   const active = selected === oi;
@@ -220,7 +280,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                     <button
                       key={oi}
                       onClick={() =>
-                        setAnswers((a) => ({ ...a, [cur.id]: oi }))
+                        setAnswers((a) => ({ ...a, [idx]: oi }))
                       }
                       className={cn(
                         "w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors",
@@ -330,6 +390,10 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           >
             {result.passed ? "Claim Reward" : "Try Again Later"}
           </button>
+          {/* Sponsor slot on the completion screen. */}
+          <div className="w-full max-w-md mt-6">
+            <AdRenderer placement="TASK_COMPLETE" />
+          </div>
         </div>
       )}
     </div>

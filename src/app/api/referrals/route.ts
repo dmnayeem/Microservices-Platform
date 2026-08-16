@@ -133,6 +133,9 @@ export async function GET(request: NextRequest) {
       referredById: { in: level2Ids },
     };
 
+    const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+
     const fetchAndMap = async (
       where: Prisma.UserWhereInput,
       tag: number,
@@ -149,9 +152,27 @@ export async function GET(request: NextRequest) {
           avatar: true,
           createdAt: true,
           level: true,
-          totalEarnings: true,
+          lastLoginAt: true,
         },
       });
+      // Per-member earnings = the commission THIS referrer earned from that
+      // downline member (ReferralEarning.referredUserId), NOT the member's own
+      // balance (which would leak a downline user's private earnings). Bounded
+      // to just the page's rows.
+      const ids = rows.map((r) => r.id);
+      const commByMember = new Map<string, number>();
+      if (ids.length > 0) {
+        const grouped = (await prisma.referralEarning.groupBy({
+          by: ["referredUserId"],
+          where: { userId: session.user.id, referredUserId: { in: ids } },
+          _sum: { amount: true },
+        })) as unknown as {
+          referredUserId: string;
+          _sum: { amount: number | null };
+        }[];
+        for (const g of grouped)
+          commByMember.set(g.referredUserId, toNum(g._sum.amount));
+      }
       return rows.map((r) => ({
         id: r.id,
         name: r.name,
@@ -159,7 +180,11 @@ export async function GET(request: NextRequest) {
         joinedAt: r.createdAt,
         level: tag,
         userLevel: r.level,
-        totalEarnings: toNum(r.totalEarnings),
+        // Aligns with the client `ReferralUser` shape (earnings + isActive).
+        earnings: commByMember.get(r.id) ?? 0,
+        isActive: r.lastLoginAt
+          ? nowMs - new Date(r.lastLoginAt).getTime() < ACTIVE_WINDOW_MS
+          : false,
       }));
     };
 

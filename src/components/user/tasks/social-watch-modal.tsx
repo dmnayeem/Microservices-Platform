@@ -55,6 +55,8 @@ export function SocialWatchModal({
   const [warmupLeft, setWarmupLeft] = useState(WARMUP);
   const [watched, setWatched] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  // No autoplay — start only on a real user tap (iOS Safari + YouTube iframes).
+  const [userStarted, setUserStarted] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const watchedRef = useRef(0);
   const lastTimeRef = useRef(0);
@@ -218,7 +220,7 @@ export function SocialWatchModal({
           <ReactPlayer
             ref={playerRef}
             src={playerSrc}
-            playing={phase === "watch"}
+            playing={phase === "watch" && userStarted}
             playsInline
             controls={false}
             muted={false}
@@ -289,6 +291,7 @@ export function SocialWatchModal({
           <button
             type="button"
             onClick={() => {
+              setUserStarted(true);
               const p = playerRef.current;
               if (p && typeof p.play === "function") {
                 const r = p.play();

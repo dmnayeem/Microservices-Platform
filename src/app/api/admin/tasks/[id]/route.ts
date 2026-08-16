@@ -106,6 +106,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       totalLimit,
       minLevel,
       requiredAccessLevel,
+      hidden,
       order,
       countries,
       contentUrl,
@@ -219,6 +220,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           typeof requiredAccessLevel === "number"
             ? requiredAccessLevel
             : parseInt(String(requiredAccessLevel ?? 0)) || 0,
+        ...(hidden !== undefined ? { hidden: hidden === true } : {}),
         order: order != null ? parseInt(String(order)) || 0 : existingTask.order,
         countries: countries || [],
         contentUrl: contentUrl || null,

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { toNumOrNull } from "@/lib/money";
-import { isAffiliateEligible } from "@/lib/affiliate";
+import { isAffiliateEligible, formatAffiliateReward } from "@/lib/affiliate";
 
 /** Load the full landing-page payload for a course (by slug or id) + the
  *  current user's enrollment / bookmark / review status. Used by the
@@ -129,8 +129,9 @@ export async function loadCourseLanding(opts: {
   let enrollment: { id: string; progress: number; completedAt: Date | null } | null = null;
   let bookmarked = false;
   let myReview: { id: string; rating: number; title: string | null; comment: string | null } | null = null;
+  let viewerIsAffiliate = false;
   if (opts.userId) {
-    const [enrollRow, bookRow, reviewRow] = await Promise.all([
+    const [enrollRow, bookRow, reviewRow, meRow] = await Promise.all([
       prisma.courseEnrollment.findUnique({
         where: { courseId_userId: { courseId: course.id, userId: opts.userId } },
         select: { id: true, progress: true, completedAt: true },
@@ -143,10 +144,15 @@ export async function loadCourseLanding(opts: {
         where: { courseId_userId: { courseId: course.id, userId: opts.userId } },
         select: { id: true, rating: true, title: true, comment: true },
       }),
+      prisma.user.findUnique({
+        where: { id: opts.userId },
+        select: { affiliateJoinedAt: true },
+      }),
     ]);
     enrollment = enrollRow;
     bookmarked = !!bookRow;
     myReview = reviewRow;
+    viewerIsAffiliate = !!meRow?.affiliateJoinedAt;
   }
 
   // Reviews block
@@ -230,6 +236,13 @@ export async function loadCourseLanding(opts: {
       course.affiliateCommissionType,
       toNumOrNull(course.affiliateCommissionValue)
     ),
+    // Affiliate-only commission figure — null for non-affiliates.
+    affiliateReward: viewerIsAffiliate
+      ? formatAffiliateReward(
+          course.affiliateCommissionType,
+          toNumOrNull(course.affiliateCommissionValue)
+        )
+      : null,
     enrollment,
     bookmarked,
     myReview,

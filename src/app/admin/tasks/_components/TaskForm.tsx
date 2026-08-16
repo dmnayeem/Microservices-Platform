@@ -89,6 +89,7 @@ interface TaskFormProps {
     totalLimit: number | null;
     minLevel: number;
     requiredAccessLevel: number;
+    hidden?: boolean;
     order: number;
     countries: string[];
     contentUrl: string | null;
@@ -150,6 +151,7 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
     totalLimit: task?.totalLimit || "",
     minLevel: task?.minLevel || 1,
     requiredAccessLevel: task?.requiredAccessLevel ?? 0,
+    hidden: task?.hidden ?? false,
     order: task?.order ?? 0,
     countries: task?.countries || [],
     contentUrl: task?.contentUrl || "",
@@ -448,6 +450,7 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
         startsAt: formData.startsAt ? new Date(formData.startsAt).toISOString() : null,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
         status: isDraft ? "PAUSED" : "ACTIVE",
+        hidden: formData.hidden === true,
         questions: formData.type === "QUIZ" ? questions : null,
         boardId: formData.boardId || null,
       };
@@ -1181,6 +1184,26 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
             />
             <p className="text-[11px] text-gray-500 mt-1">
               Only users on a plan with <code>accessLevel ≥ {formData.requiredAccessLevel}</code> can see / start this task. Default plan is usually 0.
+            </p>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hidden === true}
+                onChange={(e) =>
+                  setFormData({ ...formData, hidden: e.target.checked })
+                }
+                className="w-4 h-4 accent-red-500"
+              />
+              <span className="text-sm font-medium text-gray-300">
+                Hide from users
+              </span>
+            </label>
+            <p className="text-[11px] text-gray-500 mt-1">
+              Hard-hide this task from every user-facing list regardless of level
+              / plan gating. Admin-only visibility control.
             </p>
           </div>
 

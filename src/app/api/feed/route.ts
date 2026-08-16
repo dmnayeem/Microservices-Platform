@@ -15,6 +15,7 @@ import {
 } from "@/lib/feed-ranking";
 import { getUserDayContext } from "@/lib/user-day";
 import { getAdDensity } from "@/lib/ad-density";
+import { getSetting } from "@/lib/system-settings";
 import type { Prisma, Post } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
@@ -100,13 +101,39 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Boost recirculation: actively-boosted posts get a strong score bump so
+      // they cycle back near the top across reloads (not a static pin) — until
+      // the viewer has seen each one `boost_max_per_user` times.
+      const boostedIds = pool
+        .filter((p) => {
+          const b = (p as unknown as { boostedUntil: Date | null }).boostedUntil;
+          return b != null && b > now;
+        })
+        .map((p) => p.id);
+      const boostCap = Math.max(
+        0,
+        Number(await getSetting<number>("feed.boost_max_per_user", 20)) || 20
+      );
+      const boostSeen = new Map<string, number>();
+      if (boostedIds.length > 0 && session?.user?.id) {
+        const views = await prisma.postBoostView.findMany({
+          where: { userId: session.user.id, postId: { in: boostedIds } },
+          select: { postId: true, count: true },
+        });
+        views.forEach((v) => boostSeen.set(v.postId, v.count));
+      }
+      const boostActive = (id: string) =>
+        boostedIds.includes(id) &&
+        (boostCap === 0 || (boostSeen.get(id) ?? 0) < boostCap);
+
       // Per-session seed reshuffles the order each refresh; fall back to the UTC
       // day key so an un-seeded request still gets stable daily variety.
       const jitterSeed = seed || dayKey(now);
       const scoreById = new Map(
         pool.map((p) => [
           p.id,
-          scorePost(p as unknown as RankablePost, { follows, now, seed: jitterSeed }),
+          scorePost(p as unknown as RankablePost, { follows, now, seed: jitterSeed }) *
+            (boostActive(p.id) ? 8 : 1),
         ])
       );
       // The globally most-recent activity is always within the freshest-500 pool.
@@ -121,6 +148,22 @@ export async function GET(request: NextRequest) {
       });
       posts = ranked.slice(skip, skip + limit);
       total = cnt;
+
+      // Count a boosted-post impression once per page-1 surfacing (best-effort,
+      // non-blocking) so the per-user frequency cap advances.
+      if (skip === 0 && session?.user?.id) {
+        const uid = session.user.id;
+        const shownBoosted = posts.filter((p) => boostActive(p.id)).map((p) => p.id);
+        for (const pid of shownBoosted) {
+          void prisma.postBoostView
+            .upsert({
+              where: { userId_postId: { userId: uid, postId: pid } },
+              create: { userId: uid, postId: pid, count: 1 },
+              update: { count: { increment: 1 }, lastShownAt: new Date() },
+            })
+            .catch(() => {});
+        }
+      }
     } else {
       // Filtered feeds, or deep-scroll past the scored pool → chronological.
       const orderBy = isMainFeed
@@ -231,6 +274,7 @@ export async function GET(request: NextRequest) {
       isPromoted: post.isPromoted,
       promotedUntil: post.promotedUntil,
       promotedNote: post.promotedNote,
+      boostedUntil: post.boostedUntil,
       likesCount: post.likesCount,
       commentsCount: post.commentsCount,
       sharesCount: post.sharesCount,

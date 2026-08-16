@@ -323,6 +323,15 @@ export async function verifyEmail(token: string) {
     });
   }
 
+  // Referral signup bonus (feature #9) — pay the referrer now that this account
+  // is verified (real). Best-effort; gated by admin config + referrer activity.
+  try {
+    const { awardReferralSignupBonus } = await import("@/lib/referral-bonus");
+    await awardReferralSignupBonus(user.id);
+  } catch {
+    /* never block verification on the bonus */
+  }
+
   return user;
 }
 

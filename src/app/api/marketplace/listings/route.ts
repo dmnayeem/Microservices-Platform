@@ -14,6 +14,7 @@ import { assertPublicUrl } from "@/lib/link-preview";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { userCanFeature } from "@/lib/packages";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { formatAffiliateReward } from "@/lib/affiliate";
 import { z } from "zod";
 
 // Cap how many bytes we pull back to analyse a deliverable (bounds bandwidth
@@ -175,15 +176,23 @@ export async function GET(request: NextRequest) {
 
     // Which of these has the current viewer watched?
     let myWatchedIds = new Set<string>();
+    let viewerIsAffiliate = false;
     if (session?.user?.id && listings.length > 0) {
-      const watched = await prisma.marketplaceWatch.findMany({
-        where: {
-          userId: session.user.id,
-          listingId: { in: listings.map((l) => l.id) },
-        },
-        select: { listingId: true },
-      });
+      const [watched, me] = await Promise.all([
+        prisma.marketplaceWatch.findMany({
+          where: {
+            userId: session.user.id,
+            listingId: { in: listings.map((l) => l.id) },
+          },
+          select: { listingId: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { affiliateJoinedAt: true },
+        }),
+      ]);
       myWatchedIds = new Set(watched.map((w) => w.listingId));
+      viewerIsAffiliate = !!me?.affiliateJoinedAt;
     }
 
     const formatted = (listings as unknown as ListingWithCounts[]).map((l) => ({
@@ -218,6 +227,14 @@ export async function GET(request: NextRequest) {
       createdAt: l.createdAt,
       seller: l.seller,
       isOwner: session?.user?.id === l.sellerId,
+      // Affiliate-only: the commission figure is included ONLY for approved
+      // affiliates so it never reaches normal users.
+      affiliateReward: viewerIsAffiliate
+        ? formatAffiliateReward(
+            l.affiliateCommissionType,
+            toNumOrNull(l.affiliateCommissionValue)
+          )
+        : null,
     }));
 
     // Asset-type facets (replace category facets for the new UI)

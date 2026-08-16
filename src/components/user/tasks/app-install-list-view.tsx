@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Smartphone, Coins, ChevronRight, Loader2 } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 interface AppTask {
   id: string;
@@ -38,6 +39,8 @@ export function AppInstallListView() {
         </div>
       </div>
 
+      <AdRenderer placement="TASK_LIST" />
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-green-400" />
@@ -49,7 +52,7 @@ export function AppInstallListView() {
           description="Check back soon — new apps to install and earn from will appear here."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
             <Link
               key={t.id}

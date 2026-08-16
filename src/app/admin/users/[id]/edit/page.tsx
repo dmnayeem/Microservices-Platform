@@ -46,6 +46,7 @@ export default async function EditUserPage({
         packageExpiresAt: true,
         featureOverrides: true,
         permissionOverrides: true,
+        pageOverrides: true,
         kycStatus: true,
         twoFactorEnabled: true,
         tutorProfile: { select: { isSuspended: true } },
@@ -104,6 +105,9 @@ export default async function EditUserPage({
       | Record<string, boolean>
       | null,
     permissionOverrides: (userRaw.permissionOverrides ?? null) as
+      | Record<string, boolean>
+      | null,
+    pageOverrides: (userRaw.pageOverrides ?? null) as
       | Record<string, boolean>
       | null,
     // Flatten the tutor relation so the form can show a sell-courses suspend

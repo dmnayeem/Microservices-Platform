@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { TransactionType, TransactionStatus } from "@/generated/prisma";
 
 /**
  * Affiliate program helpers. A joined user shares a product/course link; when a
@@ -18,7 +19,7 @@ export interface AffiliateAttribution {
   ts: number; // epoch ms when set
 }
 
-interface AffiliateConfig {
+export interface AffiliateConfig {
   enabled: boolean;
   cookieWindowDays: number;
   /** When true, joining requires an approved CreatorApplication (not self-serve). */
@@ -55,6 +56,18 @@ export function isAffiliateEligible(
   value: number | null | undefined
 ): boolean {
   return (type === "PERCENT" || type === "FIXED") && !!value && value > 0;
+}
+
+/** Human display of the affiliate reward ("12%" / "$5.00"), or null when not
+ *  eligible. Shown ONLY to approved affiliates (gated by the caller). */
+export function formatAffiliateReward(
+  type: string | null | undefined,
+  value: number | null | undefined
+): string | null {
+  if (!isAffiliateEligible(type, value)) return null;
+  const v = Number(value);
+  if (type === "PERCENT") return `${v % 1 === 0 ? v : v.toFixed(1)}%`;
+  return `$${v.toFixed(2)}`;
 }
 
 /**
@@ -102,4 +115,59 @@ export function parseAttribution(
   if (typeof a.ts !== "number") return null;
   if (now - a.ts > windowDays * 24 * 60 * 60 * 1000) return null;
   return a;
+}
+
+/**
+ * Reverse an affiliate commission when the underlying sale is refunded. Debits
+ * the affiliate's cash (clamped to their available balance — never negative)
+ * and writes a reversing ledger row. Idempotent per (sourceType, orderRef) via
+ * the reversal reference. Best-effort — never throws into the refund flow.
+ */
+export async function reverseAffiliateCommission(
+  sourceType: AffiliateTarget,
+  orderRef: string
+): Promise<void> {
+  try {
+    const comm = await prisma.affiliateCommission.findUnique({
+      where: { sourceType_orderRef: { sourceType, orderRef } },
+      select: { affiliateUserId: true, commissionAmount: true },
+    });
+    if (!comm) return;
+    const ref = `affiliate_reversal_${sourceType}_${orderRef}`;
+    const already = await prisma.transaction.findFirst({
+      where: { userId: comm.affiliateUserId, reference: ref },
+      select: { id: true },
+    });
+    if (already) return; // already reversed
+
+    const amount = Number(comm.commissionAmount);
+    await prisma.$transaction(async (tx) => {
+      const u = await tx.user.findUnique({
+        where: { id: comm.affiliateUserId },
+        select: { cashBalance: true },
+      });
+      const bal = Number(u?.cashBalance ?? 0);
+      const debit = Math.min(bal, amount); // clamp — no negative balance
+      if (debit > 0) {
+        await tx.user.update({
+          where: { id: comm.affiliateUserId },
+          data: { cashBalance: { decrement: debit } },
+        });
+      }
+      await tx.transaction.create({
+        data: {
+          userId: comm.affiliateUserId,
+          type: TransactionType.REFUND,
+          status: TransactionStatus.COMPLETED,
+          points: 0,
+          amount: -amount,
+          description: "Affiliate commission reversed (sale refunded)",
+          reference: ref,
+          metadata: { sourceType, orderRef, clawedBack: debit },
+        },
+      });
+    });
+  } catch (err) {
+    console.error("affiliate reversal failed:", err);
+  }
 }

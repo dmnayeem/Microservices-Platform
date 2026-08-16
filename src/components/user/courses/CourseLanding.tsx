@@ -19,6 +19,7 @@ import { CourseEnrollCta } from "./CourseEnrollCta";
 import { StatCard } from "@/components/user/primitives/stat-card";
 import { AffiliateAttribution } from "@/components/user/affiliate/affiliate-attribution";
 import { AffiliateShareButton } from "@/components/user/affiliate/affiliate-share-button";
+import { AffiliateRewardBadge } from "@/components/user/affiliate/affiliate-reward-badge";
 
 interface Props {
   // From loadCourseLanding — shape is encapsulated here on purpose
@@ -70,7 +71,10 @@ export function CourseLanding({ data, viewerId }: Props) {
     <div className="space-y-10">
       <AffiliateAttribution targetType="COURSE" targetId={course.id} />
       {data.affiliateEligible && (
-        <div className="flex justify-end">
+        <div className="flex justify-end items-center gap-2">
+          <AffiliateRewardBadge
+            reward={(data as { affiliateReward?: string | null }).affiliateReward}
+          />
           <AffiliateShareButton eligible />
         </div>
       )}

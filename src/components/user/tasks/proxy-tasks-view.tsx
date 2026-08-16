@@ -310,43 +310,46 @@ export function ProxyTasksView() {
         />
       )}
 
-      {!loading &&
-        tasks.map((t) => (
-          <div
-            key={t.id}
-            className="rounded-xl border border-gray-800 bg-gray-900 p-3"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
-                <Globe className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">
-                  {t.title}
-                </p>
-                <p className="text-[11px] text-gray-500">
-                  {t.country} · {t.duration} min session
-                </p>
-              </div>
-              <span className="text-amber-400 font-bold text-sm tabular-nums shrink-0">
-                +{t.pointsReward}
-              </span>
-            </div>
-            <button
-              onClick={() => !t.locked && startTask(t)}
-              disabled={starting || t.locked}
-              className="mt-3 w-full py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+      {!loading && tasks.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {tasks.map((t) => (
+            <div
+              key={t.id}
+              className="rounded-xl border border-gray-800 bg-gray-900 p-3"
             >
-              {t.locked ? (
-                <>🔒 Locked</>
-              ) : starting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>Connect →</>
-              )}
-            </button>
-          </div>
-        ))}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">
+                    {t.title}
+                  </p>
+                  <p className="text-[11px] text-gray-500">
+                    {t.country} · {t.duration} min session
+                  </p>
+                </div>
+                <span className="text-amber-400 font-bold text-sm tabular-nums shrink-0">
+                  +{t.pointsReward}
+                </span>
+              </div>
+              <button
+                onClick={() => !t.locked && startTask(t)}
+                disabled={starting || t.locked}
+                className="mt-3 w-full py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+              >
+                {t.locked ? (
+                  <>🔒 Locked</>
+                ) : starting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>Connect →</>
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <BottomSheet
         open={!!active}

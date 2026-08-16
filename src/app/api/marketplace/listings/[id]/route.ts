@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { MarketplaceListingStatus } from "@/generated/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
-import { isAffiliateEligible } from "@/lib/affiliate";
+import { isAffiliateEligible, formatAffiliateReward } from "@/lib/affiliate";
 import { hasPermission } from "@/lib/rbac";
 import type { UserRole } from "@/generated/prisma";
 
@@ -57,13 +57,22 @@ export async function GET(
       data: { views: { increment: 1 } },
     });
 
-    // Is the viewer watching this listing?
+    // Is the viewer watching this listing? Also: is the viewer an approved
+    // affiliate (gates the commission figure below)?
     let isWatched = false;
+    let viewerIsAffiliate = false;
     if (session?.user?.id) {
-      const w = await prisma.marketplaceWatch.findUnique({
-        where: { userId_listingId: { userId: session.user.id, listingId: id } },
-      });
+      const [w, me] = await Promise.all([
+        prisma.marketplaceWatch.findUnique({
+          where: { userId_listingId: { userId: session.user.id, listingId: id } },
+        }),
+        prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { affiliateJoinedAt: true },
+        }),
+      ]);
       isWatched = !!w;
+      viewerIsAffiliate = !!me?.affiliateJoinedAt;
     }
 
     // NDA-gated financials: hide revenue numbers from non-owners until signed.
@@ -94,6 +103,13 @@ export async function GET(
           listing.affiliateCommissionType,
           toNumOrNull(listing.affiliateCommissionValue)
         ),
+        // Affiliate-only commission figure — null for non-affiliates.
+        affiliateReward: viewerIsAffiliate
+          ? formatAffiliateReward(
+              listing.affiliateCommissionType,
+              toNumOrNull(listing.affiliateCommissionValue)
+            )
+          : null,
         subType: listing.subType,
         details: listing.details,
         price: toNum(listing.price),

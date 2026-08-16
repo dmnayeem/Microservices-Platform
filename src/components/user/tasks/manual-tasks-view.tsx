@@ -147,28 +147,31 @@ export function ManualTasksView() {
         />
       )}
 
-      {!loading && tab === "available" &&
-        tasks.map((t) => (
-          <TaskCard
-            key={t.id}
-            title={t.title}
-            description={t.description}
-            type="manual"
-            reward={t.pointsReward}
-            xpReward={t.xpReward}
-            durationMin={t.duration ?? undefined}
-            thumbnail={t.thumbnailUrl ?? undefined}
-            status={t.locked ? "LOCKED" : undefined}
-            actionLabel={t.locked ? "🔒 Locked" : "Submit Proof"}
-            onAction={
-              t.locked
-                ? undefined
-                : async () => {
-                    if (await ensureAdsAllowed()) setSubmitting(t);
-                  }
-            }
-          />
-        ))}
+      {!loading && tab === "available" && tasks.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {tasks.map((t) => (
+            <TaskCard
+              key={t.id}
+              title={t.title}
+              description={t.description}
+              type="manual"
+              reward={t.pointsReward}
+              xpReward={t.xpReward}
+              durationMin={t.duration ?? undefined}
+              thumbnail={t.thumbnailUrl ?? undefined}
+              status={t.locked ? "LOCKED" : undefined}
+              actionLabel={t.locked ? "🔒 Locked" : "Submit Proof"}
+              onAction={
+                t.locked
+                  ? undefined
+                  : async () => {
+                      if (await ensureAdsAllowed()) setSubmitting(t);
+                    }
+              }
+            />
+          ))}
+        </div>
+      )}
 
       {!loading && tab !== "available" && submissions.length === 0 && (
         <EmptyState

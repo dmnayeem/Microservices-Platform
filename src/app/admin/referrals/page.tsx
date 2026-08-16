@@ -6,6 +6,8 @@ import { Users, DollarSign, TrendingUp, ChevronLeft, ChevronRight, Crown, Gift, 
 import Link from "next/link";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { getReferralBonusConfig } from "@/lib/referral-bonus";
+import { ReferralBonusConfigForm } from "@/components/admin/referrals/referral-bonus-config-form";
 
 interface PageProps {
   searchParams: Promise<{
@@ -36,6 +38,8 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
     where: { isActive: true },
     orderBy: { level: "asc" },
   });
+
+  const bonusConfig = await getReferralBonusConfig();
 
   // Fetch top referrers
   const topReferrersRaw = await prisma.user.findMany({
@@ -118,6 +122,9 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
           )}
         </div>
       </div>
+
+      {/* Referral signup bonus config (feature #9) */}
+      {canEdit && <ReferralBonusConfigForm initial={bonusConfig} />}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

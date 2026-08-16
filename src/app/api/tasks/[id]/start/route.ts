@@ -17,6 +17,13 @@ import {
   buildDailyProgress,
   resolveTaskTypeBucket,
 } from "@/lib/daily-mission-progress";
+import { clientIp } from "@/lib/rate-limit";
+import {
+  getFraudConfig,
+  isVpnIp,
+  accountsOnIp,
+  recordFraudEvent,
+} from "@/lib/fraud";
 
 const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
   SOCIAL: "socialTasks",
@@ -40,6 +47,57 @@ export async function POST(
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // ── Anti-fraud gate (all admin-toggleable) ──────────────────────────────
+    const ip = clientIp(request);
+    const ua = request.headers.get("user-agent");
+    const fraud = await getFraudConfig();
+    // Record the most-recent IP (best-effort) for the per-IP account cap.
+    if (ip && ip !== "unknown") {
+      void prisma.user
+        .update({ where: { id: session.user.id }, data: { lastIp: ip } })
+        .catch(() => {});
+    }
+    // VPN/proxy block (best-effort heuristic).
+    if (isVpnIp(ip, fraud)) {
+      await recordFraudEvent({
+        userId: session.user.id,
+        eventType: "VPN_DETECTED",
+        severity: "HIGH",
+        ipAddress: ip,
+        userAgent: ua,
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Please turn off your VPN/proxy to work on tasks.",
+          code: "VPN_BLOCKED",
+        },
+        { status: 403 }
+      );
+    }
+    // Per-IP account/worker cap.
+    if (fraud.maxUsersPerIp > 0) {
+      const n = await accountsOnIp(ip, session.user.id);
+      if (n >= fraud.maxUsersPerIp) {
+        await recordFraudEvent({
+          userId: session.user.id,
+          eventType: "MULTIPLE_ACCOUNTS",
+          severity: "HIGH",
+          ipAddress: ip,
+          userAgent: ua,
+          details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp },
+        });
+        return NextResponse.json(
+          {
+            error:
+              "Too many accounts are working from this network. Only a limited number are allowed per connection.",
+            code: "IP_LIMIT",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const { id } = await params;

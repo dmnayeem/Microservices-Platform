@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       totalLimit,
       minLevel,
       requiredAccessLevel,
+      hidden,
       order,
       countries,
       contentUrl,
@@ -193,6 +194,7 @@ export async function POST(request: NextRequest) {
           typeof requiredAccessLevel === "number"
             ? requiredAccessLevel
             : parseInt(String(requiredAccessLevel ?? 0)) || 0,
+        hidden: hidden === true,
         order: order != null ? parseInt(String(order)) || 0 : 0,
         countries: countries || [],
         contentUrl: contentUrl || null,

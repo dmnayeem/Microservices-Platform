@@ -58,6 +58,8 @@ interface SidebarProps {
   /** Effective feature keys the user has; items tagged with a `feature` not in
    *  this list are hidden. Omitted → show everything (e.g. admin surfaces). */
   features?: string[];
+  /** Paths hidden by super-admin page-visibility (feature #3). */
+  hiddenPaths?: string[];
   /** The user's real profile picture (from User.avatar) — session omits it. */
   avatar?: string | null;
 }
@@ -97,6 +99,7 @@ const navigationGroups: { section: string; items: NavItem[] }[] = [
       { name: "App Install", href: "/app-install-tasks", icon: Smartphone, feature: "appInstall" },
       { name: "Board Tasks", href: "/board-tasks", icon: Pin, feature: "tasks" },
       { name: "Watch & Earn", href: "/watch-ads", icon: Video },
+      { name: "Events", href: "/events", icon: Sparkles },
       { name: "Milestones", href: "/milestones", icon: Target },
       { name: "Achievements", href: "/achievements", icon: Award },
       { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
@@ -147,12 +150,15 @@ interface SidebarContentProps {
   onNavigate: () => void;
   onSignOut: () => void;
   features?: string[];
+  hiddenPaths?: string[];
   avatar?: string | null;
 }
 
-function SidebarContent({ user, pathname, onNavigate, onSignOut, features, avatar }: SidebarContentProps) {
+function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hiddenPaths, avatar }: SidebarContentProps) {
+  const hidden = new Set(hiddenPaths ?? []);
   const visible = (item: NavItem) =>
-    !item.feature || !features || features.includes(item.feature);
+    (!item.feature || !features || features.includes(item.feature)) &&
+    !hidden.has(item.href);
   return (
     <>
       {/* Logo */}
@@ -319,7 +325,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, avata
   );
 }
 
-export function Sidebar({ user, features, avatar }: SidebarProps) {
+export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
   const pathname = usePathname();
   // Single shared mobile-drawer signal — opened by BOTH the header hamburger
   // and the bottom-bar Menu button (both write this store). This canonical,
@@ -365,6 +371,7 @@ export function Sidebar({ user, features, avatar }: SidebarProps) {
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
             features={features}
+            hiddenPaths={hiddenPaths}
             avatar={avatar}
           />
         </div>
@@ -379,6 +386,7 @@ export function Sidebar({ user, features, avatar }: SidebarProps) {
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
             features={features}
+            hiddenPaths={hiddenPaths}
             avatar={avatar}
           />
         </div>

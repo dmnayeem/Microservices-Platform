@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { registerUser } from "@/lib/auth/services";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -31,7 +32,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = registerSchema.parse(body);
 
+    // Anti-fraud: cap accounts per IP (admin-toggleable).
+    const { clientIp } = await import("@/lib/rate-limit");
+    const { getFraudConfig, accountsOnIp, recordFraudEvent } = await import(
+      "@/lib/fraud"
+    );
+    const ip = clientIp(request);
+    const fraud = await getFraudConfig();
+    if (fraud.maxUsersPerIp > 0) {
+      const existing = await accountsOnIp(ip);
+      if (existing >= fraud.maxUsersPerIp) {
+        await recordFraudEvent({
+          eventType: "MULTIPLE_ACCOUNTS",
+          severity: "HIGH",
+          ipAddress: ip,
+          userAgent: request.headers.get("user-agent"),
+          details: { accountsOnIp: existing, cap: fraud.maxUsersPerIp, at: "signup" },
+        });
+        return NextResponse.json(
+          {
+            error:
+              "Too many accounts have been created from this network. Please try from a different connection.",
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     const result = await registerUser(validatedData);
+
+    // Stamp the signup IP for the per-IP cap (best-effort).
+    if (ip && ip !== "unknown" && result?.user?.id) {
+      void prisma.user
+        .update({ where: { id: result.user.id }, data: { signupIp: ip } })
+        .catch(() => {});
+    }
 
     // Dev fallback: when SMTP isn't configured we surface the verification link
     // so the developer/tester can finish the flow without a real inbox.

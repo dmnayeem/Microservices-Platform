@@ -488,9 +488,6 @@ function FeedTab({
             const slot = Math.floor(i / n);
             const ad =
               (i + 1) % n === 0 && slot < feedAds.length ? feedAds[slot] : null;
-            // Optional banner under posts (admin-toggled), every `underPostInterval`.
-            const showBanner =
-              underPostBanner && (i + 1) % Math.max(1, underPostInterval) === 0;
             return (
               <Fragment key={post.id}>
                 <FeedPostCard
@@ -501,9 +498,9 @@ function FeedTab({
                   onUpdatePost={handlePostUpdated}
                   onDeletePost={handlePostDeleted}
                   onBumpPost={handlePostBumped}
+                  underPostBanner={underPostBanner}
                 />
                 {ad && <FeedAdCard key={`ad-${i}-${ad.adId}`} ad={ad} />}
-                {showBanner && <AdRenderer placement="FEED_POST_BELOW" />}
               </Fragment>
             );
           })}

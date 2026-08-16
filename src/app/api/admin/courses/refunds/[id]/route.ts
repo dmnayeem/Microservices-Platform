@@ -202,6 +202,12 @@ export async function PATCH(
       });
     });
 
+    // Reverse any affiliate commission earned on this enrolment (best-effort).
+    if (request.enrollmentId) {
+      const { reverseAffiliateCommission } = await import("@/lib/affiliate");
+      await reverseAffiliateCommission("COURSE", request.enrollmentId);
+    }
+
     await prisma.notification.create({
       data: {
         userId: request.userId,

@@ -22,6 +22,7 @@ import {
 } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
 import { isAdmin, PERMISSION_CATALOG, permissionLabel, permissionDescription, type UserRole } from "@/lib/rbac";
+import { USER_PAGES } from "@/lib/page-visibility";
 import { FEATURES } from "@/lib/features";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -63,6 +64,8 @@ export interface EditUserData {
   featureOverrides?: Record<string, boolean> | null;
   /** Per-user RBAC permission grants/denials (super-admin editable). */
   permissionOverrides?: Record<string, boolean> | null;
+  /** Per-user page-visibility overrides { [path]: true=show | false=hide }. */
+  pageOverrides?: Record<string, boolean> | null;
   kycStatus: string;
   twoFactorEnabled: boolean;
   /** Whether the user has a TutorProfile (controls the sell-courses suspend toggle). */
@@ -195,6 +198,9 @@ export function UserEditForm({
     } as Record<string, boolean>,
     permissionOverrides: {
       ...((user.permissionOverrides ?? {}) as Record<string, boolean>),
+    } as Record<string, boolean>,
+    pageOverrides: {
+      ...((user.pageOverrides ?? {}) as Record<string, boolean>),
     } as Record<string, boolean>,
     kycStatus: user.kycStatus,
     twoFactorEnabled: user.twoFactorEnabled,
@@ -360,6 +366,15 @@ export function UserEditForm({
           JSON.stringify(user.permissionOverrides ?? {})
       ) {
         payload.permissionOverrides = form.permissionOverrides;
+      }
+
+      // Per-user page-visibility overrides (super-admin only).
+      if (
+        isSuperAdmin &&
+        JSON.stringify(form.pageOverrides) !==
+          JSON.stringify(user.pageOverrides ?? {})
+      ) {
+        payload.pageOverrides = form.pageOverrides;
       }
 
       if (Object.keys(payload).length === 0) {
@@ -1404,6 +1419,73 @@ export function UserEditForm({
                   })}
                 </div>
               ))}
+
+              {/* Per-user page visibility (feature #3) — force show/hide a page
+                  for this one user, overriding package/role rules. */}
+              <div className="space-y-2 pt-2 border-t border-slate-800">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                  Page visibility
+                </p>
+                <p className="text-[10px] text-slate-500 -mt-1">
+                  <b>Default</b> follows package/role rules; <b>Show</b>/<b>Hide</b>{" "}
+                  force it for this user only.
+                </p>
+                {USER_PAGES.map((pg) => {
+                  const cur = form.pageOverrides[pg.path];
+                  const setOv = (val: boolean | null) => {
+                    const next = { ...form.pageOverrides };
+                    if (val === null) delete next[pg.path];
+                    else next[pg.path] = val;
+                    set("pageOverrides", next);
+                  };
+                  const opts: Array<{ lbl: string; val: boolean | null }> = [
+                    { lbl: "Default", val: null },
+                    { lbl: "Show", val: true },
+                    { lbl: "Hide", val: false },
+                  ];
+                  return (
+                    <div
+                      key={pg.path}
+                      title={pg.path}
+                      className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-950/50 border border-slate-800"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium text-slate-200">
+                          {pg.label}
+                        </span>
+                        <span className="block text-[10px] text-slate-500 leading-tight">
+                          {pg.group} · {pg.path}
+                        </span>
+                      </span>
+                      <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden text-xs font-semibold shrink-0">
+                        {opts.map(({ lbl, val }) => {
+                          const active =
+                            val === null ? cur === undefined : cur === val;
+                          return (
+                            <button
+                              key={lbl}
+                              type="button"
+                              onClick={() => setOv(val)}
+                              className={cn(
+                                "px-3 py-1.5 transition-colors",
+                                active
+                                  ? val === true
+                                    ? "bg-emerald-500 text-white"
+                                    : val === false
+                                      ? "bg-red-500 text-white"
+                                      : "bg-slate-700 text-white"
+                                  : "text-slate-400 hover:text-white"
+                              )}
+                            >
+                              {lbl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </form>

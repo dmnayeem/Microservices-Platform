@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { cn } from "@/lib/utils";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import {
   SOCIAL_PLATFORMS,
   getAction,
@@ -124,6 +125,8 @@ export function SocialTasksView() {
           ))}
         </div>
       </div>
+
+      <AdRenderer placement="TASK_LIST" />
 
       {loading && <ListSkeleton rows={4} />}
 

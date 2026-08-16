@@ -4,32 +4,53 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { hasPermission, type UserRole } from "@/lib/rbac";
-import { Handshake, Coins, Users, TrendingUp } from "lucide-react";
+import { Handshake, Coins, Users, TrendingUp, MousePointerClick, Percent } from "lucide-react";
+import { getAffiliateConfig } from "@/lib/affiliate";
+import { AffiliateConfigForm } from "@/components/admin/affiliate/affiliate-config-form";
 
 export default async function AdminAffiliatePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   const role = session.user.role as UserRole | undefined;
   if (!hasPermission(role, "marketplace.view")) redirect("/admin");
+  const canManage = hasPermission(role, "marketplace.manage");
 
-  const [agg, activeAffiliates, byAffiliateRaw, recentRaw] = await Promise.all([
-    prisma.affiliateCommission.aggregate({
-      _sum: { commissionAmount: true },
-      _count: { _all: true },
-    }),
-    prisma.user.count({ where: { affiliateJoinedAt: { not: null } } }),
-    prisma.affiliateCommission.groupBy({
-      by: ["affiliateUserId"],
-      _sum: { commissionAmount: true },
-      _count: { _all: true },
-      orderBy: { _sum: { commissionAmount: "desc" } },
-      take: 20,
-    }),
-    prisma.affiliateCommission.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 25,
-    }),
-  ]);
+  const affiliateConfig = await getAffiliateConfig();
+
+  const [agg, activeAffiliates, byAffiliateRaw, recentRaw, totalClicks, clicksByTargetRaw] =
+    await Promise.all([
+      prisma.affiliateCommission.aggregate({
+        _sum: { commissionAmount: true },
+        _count: { _all: true },
+      }),
+      prisma.user.count({ where: { affiliateJoinedAt: { not: null } } }),
+      prisma.affiliateCommission.groupBy({
+        by: ["affiliateUserId"],
+        _sum: { commissionAmount: true },
+        _count: { _all: true },
+        orderBy: { _sum: { commissionAmount: "desc" } },
+        take: 20,
+      }),
+      prisma.affiliateCommission.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 25,
+      }),
+      // Click tracking was recorded but never surfaced — build the funnel.
+      prisma.affiliateClick.count(),
+      prisma.affiliateClick.groupBy({
+        by: ["targetType"],
+        _count: { _all: true },
+      }),
+    ]);
+
+  const clicksByTarget = clicksByTargetRaw as unknown as Array<{
+    targetType: string;
+    _count: { _all: number };
+  }>;
+  const conversions = agg._count._all;
+  // Conversion rate = attributed sales ÷ tracked link clicks.
+  const conversionRate =
+    totalClicks > 0 ? (conversions / totalClicks) * 100 : 0;
 
   const byAffiliate = byAffiliateRaw as unknown as Array<{
     affiliateUserId: string;
@@ -59,11 +80,35 @@ export default async function AdminAffiliatePage() {
         </p>
       </div>
 
+      {canManage && <AffiliateConfigForm initial={affiliateConfig} />}
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Stat icon={<Coins className="w-5 h-5" />} label="Total paid" value={`$${totalPaid.toFixed(2)}`} tone="text-emerald-400" />
-        <Stat icon={<TrendingUp className="w-5 h-5" />} label="Commissions" value={agg._count._all.toLocaleString()} tone="text-indigo-400" />
+        <Stat icon={<TrendingUp className="w-5 h-5" />} label="Commissions" value={conversions.toLocaleString()} tone="text-indigo-400" />
         <Stat icon={<Users className="w-5 h-5" />} label="Affiliates joined" value={activeAffiliates.toLocaleString()} tone="text-amber-400" />
       </div>
+
+      {/* Click → conversion funnel (link clicks were tracked but never shown) */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold text-white">Traffic &amp; conversion</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat icon={<MousePointerClick className="w-5 h-5" />} label="Link clicks" value={totalClicks.toLocaleString()} tone="text-sky-400" />
+          <Stat icon={<TrendingUp className="w-5 h-5" />} label="Conversions" value={conversions.toLocaleString()} tone="text-emerald-400" />
+          <Stat icon={<Percent className="w-5 h-5" />} label="Conversion rate" value={`${conversionRate.toFixed(1)}%`} tone="text-purple-400" />
+          <Stat
+            icon={<Handshake className="w-5 h-5" />}
+            label="Clicks by type"
+            value={
+              clicksByTarget.length === 0
+                ? "—"
+                : clicksByTarget
+                    .map((c) => `${c.targetType === "COURSE" ? "Course" : "Product"} ${c._count._all}`)
+                    .join(" · ")
+            }
+            tone="text-amber-400"
+          />
+        </div>
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold text-white">Top affiliates</h2>
