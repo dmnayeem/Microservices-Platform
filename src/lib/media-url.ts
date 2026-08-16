@@ -27,7 +27,12 @@ export function ownMediaKey(src?: string | null): string | null {
     const ours =
       host.endsWith(".cloudfront.net") ||
       /\.s3[.-][a-z0-9-]+\.amazonaws\.com$/.test(host);
-    if (ours && !u.search && u.pathname.startsWith("/media/")) {
+    // Public prefixes served by the /api/media proxy: admin media + user proof
+    // screenshots (both were already exposed via unguessable CloudFront URLs).
+    const isPublic =
+      u.pathname.startsWith("/media/") ||
+      u.pathname.startsWith("/task-proofs/");
+    if (ours && !u.search && isPublic) {
       return u.pathname.slice(1); // drop leading "/"
     }
   } catch {

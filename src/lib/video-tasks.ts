@@ -37,21 +37,71 @@ export interface VideoEngagement {
   commentTemplate?: string;
 }
 
+/** Typed action for a sequential proof step. Drives the icon/verb/labels and,
+ *  for `comment`, the copyable template. `custom` is a free-form step. */
+export type VideoStepType = "link" | "like" | "comment" | "subscribe" | "custom";
+
 /**
  * One sequential proof step shown after the video ends. Steps unlock in order:
- * the user does the action, uploads a screenshot (if required), presses Save →
- * the step completes and the next unlocks. When all steps are done a Complete
- * button appears (→ interstitial ad → submit). Used instead of the legacy flat
- * engagement checklist when `steps` is set on the config.
+ * the user opens the action link, does the action, uploads a screenshot and/or
+ * pastes a proof link (if required), presses Save → the step completes and the
+ * next unlocks. Optional steps can be skipped. When all REQUIRED steps are done
+ * a Complete button appears (→ interstitial ad → submit). Used instead of the
+ * legacy flat engagement checklist when `steps` is set on the config.
  */
 export interface VideoStep {
   id: string;
+  /** Action type — drives the UI. Undefined on legacy steps ⇒ treat as "custom". */
+  type?: VideoStepType;
   /** Instruction shown to the user, e.g. "Subscribe to the channel". */
   label: string;
-  /** Optional external link the user opens to perform the action. */
+  /** External link the user opens to perform the action. */
   actionUrl?: string;
   /** Require a screenshot upload to complete this step. */
   requireScreenshot: boolean;
+  /** Require the user to paste a link (e.g. their comment/profile URL) as proof. */
+  requireLink?: boolean;
+  /** Whether this step must be completed. Undefined ⇒ required (back-compat). */
+  required?: boolean;
+  /** Copyable suggested text for `comment` steps. */
+  commentTemplate?: string;
+}
+
+/** A step is required unless explicitly marked optional. */
+export function stepIsRequired(s: VideoStep): boolean {
+  return s.required !== false;
+}
+
+/** Normalise a (possibly legacy) step's type. */
+export function stepType(s: VideoStep): VideoStepType {
+  return s.type ?? "custom";
+}
+
+export const STEP_TYPE_META: Record<
+  VideoStepType,
+  { label: string; verb: string; emoji: string; openText: string; urlLabel: string }
+> = {
+  link: { label: "Visit link", verb: "Visit the link", emoji: "🔗", openText: "Open link", urlLabel: "Link to visit" },
+  like: { label: "Like", verb: "Like the video", emoji: "👍", openText: "Open video", urlLabel: "Video URL" },
+  comment: { label: "Comment", verb: "Comment on the video", emoji: "💬", openText: "Open video", urlLabel: "Video URL" },
+  subscribe: { label: "Subscribe", verb: "Subscribe to the channel", emoji: "🔔", openText: "Open channel", urlLabel: "Channel URL" },
+  custom: { label: "Custom", verb: "Complete the action", emoji: "✅", openText: "Open link", urlLabel: "Action link (optional)" },
+};
+
+/** Default instruction text for a freshly-added step of the given type. */
+export function defaultStepLabel(type: VideoStepType): string {
+  return STEP_TYPE_META[type].verb;
+}
+
+/** Per-step proof the runner collects and submits (stored on the submission). */
+export interface VideoStepProof {
+  id: string;
+  type: VideoStepType;
+  /** Screenshot URL (task-proofs/…) when the step required one. */
+  screenshotUrl?: string;
+  /** Pasted proof link when the step required one. */
+  link?: string;
+  status: "done" | "skipped";
 }
 
 export interface VideoConfig {
@@ -232,6 +282,25 @@ export function validateVideoConfig(
       ok: false,
       error: "Channel URL is required when 'Require Subscribe' is enabled",
     };
+  }
+  for (const [i, s] of (cfg.steps ?? []).entries()) {
+    if (!s.label.trim()) {
+      return { ok: false, error: `Step ${i + 1}: an instruction is required` };
+    }
+    // Typed engagement steps need a link to open; only `custom` may omit it.
+    const t = stepType(s);
+    if (t !== "custom" && !s.actionUrl?.trim()) {
+      return {
+        ok: false,
+        error: `Step ${i + 1} (${STEP_TYPE_META[t].label}): a ${STEP_TYPE_META[t].urlLabel} is required`,
+      };
+    }
+    if (!s.requireScreenshot && !s.requireLink && stepIsRequired(s)) {
+      return {
+        ok: false,
+        error: `Step ${i + 1}: a required step needs at least a screenshot or a link as proof`,
+      };
+    }
   }
   return { ok: true };
 }

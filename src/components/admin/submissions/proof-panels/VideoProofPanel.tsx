@@ -5,8 +5,10 @@ import { DurationCard } from "../duration-card";
 import {
   getProviderMeta,
   engagementSteps,
+  STEP_TYPE_META,
   type VideoConfig,
   type EngagementKey,
+  type VideoStepProof,
 } from "@/lib/video-tasks";
 import type { PanelSubmission, PanelTask } from "./types";
 
@@ -45,6 +47,11 @@ export function VideoProofPanel({ submission, task }: Props) {
     ((submission.metadata as Record<string, unknown> | null)
       ?.videoEngagement as Partial<Record<EngagementKey, boolean>> | undefined) ??
     {};
+
+  // Per-step proof (new typed steps flow), stored on metadata.videoSteps.
+  const stepProofs =
+    ((submission.metadata as Record<string, unknown> | null)
+      ?.videoSteps as VideoStepProof[] | undefined) ?? [];
 
   return (
     <div className="space-y-3">
@@ -141,11 +148,60 @@ export function VideoProofPanel({ submission, task }: Props) {
         </div>
       )}
 
-      {submission.proofImages && submission.proofImages.length > 0 && (
+      {stepProofs.length > 0 ? (
         <div>
-          <p className="text-xs text-gray-500 mb-1.5">Screenshots:</p>
-          <ImageZoomGallery images={submission.proofImages} size={72} />
+          <p className="text-xs text-gray-500 mb-1.5">Proof steps:</p>
+          <div className="space-y-2">
+            {stepProofs.map((p, i) => {
+              const meta = STEP_TYPE_META[p.type] ?? STEP_TYPE_META.custom;
+              const cfgStep = cfg?.steps?.find((s) => s.id === p.id);
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-lg border border-gray-700 bg-gray-900 p-2.5 space-y-2"
+                >
+                  <div className="flex items-center gap-2 text-xs">
+                    <span>{meta.emoji}</span>
+                    <span className="text-white font-semibold truncate">
+                      {i + 1}. {cfgStep?.label || meta.label}
+                    </span>
+                    <span
+                      className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        p.status === "skipped"
+                          ? "bg-gray-800 text-gray-400"
+                          : "bg-emerald-500/10 text-emerald-300"
+                      }`}
+                    >
+                      {p.status === "skipped" ? "Skipped" : "Done"}
+                    </span>
+                  </div>
+                  {p.link && (
+                    <a
+                      href={p.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:underline max-w-full"
+                    >
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{p.link}</span>
+                    </a>
+                  )}
+                  {p.screenshotUrl && (
+                    <ImageZoomGallery images={[p.screenshotUrl]} size={72} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
+      ) : (
+        submission.proofImages &&
+        submission.proofImages.length > 0 && (
+          <div>
+            <p className="text-xs text-gray-500 mb-1.5">Screenshots:</p>
+            <ImageZoomGallery images={submission.proofImages} size={72} />
+          </div>
+        )
       )}
     </div>
   );

@@ -15,7 +15,12 @@ import {
   compareUniqueKey,
   type ArticleConfig,
 } from "@/lib/article-tasks";
-import { hasEngagement, type VideoConfig } from "@/lib/video-tasks";
+import {
+  hasEngagement,
+  stepIsRequired,
+  type VideoConfig,
+  type VideoStepProof,
+} from "@/lib/video-tasks";
 import {
   validateAnswers as validateSurveyAnswers,
   type SurveyConfig,
@@ -83,6 +88,8 @@ export async function POST(
       customAnswers,
       // VIDEO YouTube-style engagement confirmations { subscribe?, like?, comment? }
       engagement: videoEngagement,
+      // VIDEO sequential-step proof [{id,type,screenshotUrl?,link?,status}]
+      videoSteps,
       // APPINSTALL structured per-requirement proof [{id,kind,label,target,value?}]
       appInstallProof,
     } = body;
@@ -122,23 +129,44 @@ export async function POST(
       );
     }
 
-    // Step-based VIDEO: every step that requires a screenshot must have one.
+    // Step-based VIDEO: every REQUIRED step must carry its required proof
+    // (screenshot and/or link). Optional/skipped steps are ignored.
+    const videoStepProofs: VideoStepProof[] = Array.isArray(videoSteps)
+      ? (videoSteps as VideoStepProof[])
+      : [];
     {
       const vcfg = task.videoConfig as VideoConfig | null;
       if (task.type === "VIDEO" && vcfg?.steps?.length) {
-        const requiredShots = vcfg.steps.filter(
-          (s) => s.requireScreenshot
-        ).length;
-        const provided = Array.isArray(proofImages)
-          ? proofImages.filter(
-              (u: unknown) => typeof u === "string" && u.trim()
-            ).length
-          : 0;
-        if (provided < requiredShots) {
-          return NextResponse.json(
-            { error: "Please upload a screenshot for every step." },
-            { status: 400 }
-          );
+        if (videoStepProofs.length > 0) {
+          const byId = new Map(videoStepProofs.map((p) => [p.id, p]));
+          for (const s of vcfg.steps) {
+            if (!stepIsRequired(s)) continue;
+            const p = byId.get(s.id);
+            const missingShot = s.requireScreenshot && !p?.screenshotUrl?.trim();
+            const missingLink = s.requireLink && !p?.link?.trim();
+            if (missingShot || missingLink) {
+              return NextResponse.json(
+                { error: "Please complete all required steps first." },
+                { status: 400 }
+              );
+            }
+          }
+        } else {
+          // Back-compat (older clients that only send positional proofImages).
+          const requiredShots = vcfg.steps.filter(
+            (s) => stepIsRequired(s) && s.requireScreenshot
+          ).length;
+          const provided = Array.isArray(proofImages)
+            ? proofImages.filter(
+                (u: unknown) => typeof u === "string" && u.trim()
+              ).length
+            : 0;
+          if (provided < requiredShots) {
+            return NextResponse.json(
+              { error: "Please upload a screenshot for every step." },
+              { status: 400 }
+            );
+          }
         }
       }
     }
@@ -762,6 +790,11 @@ export async function POST(
         videoEngagement && typeof videoEngagement === "object"
           ? videoEngagement
           : {};
+    }
+    // For step-based VIDEO: persist the per-step proof (type + screenshot + link
+    // + done/skipped) so the admin review panel can show each step.
+    if (task.type === "VIDEO" && videoStepProofs.length > 0) {
+      submissionMetadata.videoSteps = videoStepProofs;
     }
     // Hard-block duplicate proof (admin opt-in): if this SOCIAL submission
     // matched another user's proof (URL / username / re-uploaded screenshot) and

@@ -23,8 +23,10 @@ export async function GET(
   const { key: segments } = await params;
   const key = (segments ?? []).map(decodeURIComponent).join("/");
 
-  // Only public media; block traversal and any non-public prefix.
-  if (!key.startsWith("media/") || key.includes("..")) {
+  // Only public prefixes (admin media + user proof screenshots); block traversal
+  // and any non-public prefix (kyc/, deliver/, …).
+  const isPublic = key.startsWith("media/") || key.startsWith("task-proofs/");
+  if (!isPublic || key.includes("..")) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 

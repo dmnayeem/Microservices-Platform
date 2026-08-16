@@ -15,10 +15,14 @@ import {
   ArrowUp,
   ArrowDown,
   ShieldCheck,
+  Link2,
 } from "lucide-react";
 import {
   type VideoConfig,
   type VideoStep,
+  type VideoStepType,
+  STEP_TYPE_META,
+  defaultStepLabel,
   detectProvider,
   getProviderMeta,
   formatDuration,
@@ -323,10 +327,30 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
         const addStep = () =>
           setSteps([
             ...steps,
-            { id: crypto.randomUUID(), label: "", requireScreenshot: true },
+            {
+              id: crypto.randomUUID(),
+              type: "like",
+              label: defaultStepLabel("like"),
+              actionUrl: "",
+              requireScreenshot: true,
+              requireLink: false,
+              required: true,
+            },
           ]);
         const updateStep = (i: number, patch: Partial<VideoStep>) =>
           setSteps(steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+        // Changing the type refreshes the (untouched) default label + sets a
+        // sensible screenshot/link default; keeps a custom label the admin typed.
+        const changeType = (i: number, type: VideoStepType) => {
+          const s = steps[i];
+          const wasDefault =
+            !s.label.trim() ||
+            Object.values(STEP_TYPE_META).some((m) => m.verb === s.label);
+          updateStep(i, {
+            type,
+            ...(wasDefault ? { label: defaultStepLabel(type) } : {}),
+          });
+        };
         const removeStep = (i: number) =>
           setSteps(steps.filter((_, idx) => idx !== i));
         const moveStep = (i: number, dir: -1 | 1) => {
@@ -355,10 +379,12 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
               </button>
             </div>
             <p className="text-[11px] text-gray-500 -mt-1">
-              Shown one at a time after the video: the user does each step,
-              uploads a screenshot, and taps Save to unlock the next. When all
-              steps are done a Complete button appears (→ ad → submit). Leave
-              empty to use the simple checklist above.
+              Shown one at a time after the video collapses: the user opens the
+              link, does the action (like / comment / subscribe / visit), submits
+              the required proof (screenshot and/or link), and taps Save to unlock
+              the next. <b>Optional</b> steps can be skipped. When all <b>required</b>
+              steps are done a Complete button appears (→ ad → submit). Preferred
+              over the simple checklist above (these capture real proof).
             </p>
 
             {steps.length === 0 ? (
@@ -403,10 +429,38 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
                         </button>
                       </div>
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={s.type ?? "custom"}
+                        onChange={(e) =>
+                          changeType(i, e.target.value as VideoStepType)
+                        }
+                        className="px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+                      >
+                        {(
+                          ["like", "comment", "subscribe", "link", "custom"] as VideoStepType[]
+                        ).map((tt) => (
+                          <option key={tt} value={tt}>
+                            {STEP_TYPE_META[tt].emoji} {STEP_TYPE_META[tt].label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="ml-auto flex items-center gap-1.5 cursor-pointer text-xs text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={s.required !== false}
+                          onChange={(e) =>
+                            updateStep(i, { required: e.target.checked })
+                          }
+                          className="rounded bg-gray-800 border-gray-600 text-emerald-500"
+                        />
+                        Required
+                      </label>
+                    </div>
                     <input
                       value={s.label}
                       onChange={(e) => updateStep(i, { label: e.target.value })}
-                      placeholder="Instruction, e.g. Subscribe to the channel"
+                      placeholder="Instruction shown to the user"
                       className={inp}
                     />
                     <input
@@ -414,21 +468,46 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
                       onChange={(e) =>
                         updateStep(i, { actionUrl: e.target.value })
                       }
-                      placeholder="Action link (optional), e.g. https://youtube.com/@channel"
+                      placeholder={`${STEP_TYPE_META[s.type ?? "custom"].urlLabel}, e.g. https://…`}
                       className={inp}
                     />
-                    <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={s.requireScreenshot}
+                    {(s.type ?? "custom") === "comment" && (
+                      <textarea
+                        value={s.commentTemplate ?? ""}
                         onChange={(e) =>
-                          updateStep(i, { requireScreenshot: e.target.checked })
+                          updateStep(i, { commentTemplate: e.target.value })
                         }
-                        className="rounded bg-gray-800 border-gray-600 text-indigo-500"
+                        placeholder="Suggested comment text the user can copy (optional)"
+                        rows={2}
+                        className={inp}
                       />
-                      <Camera className="w-3.5 h-3.5" />
-                      Require screenshot
-                    </label>
+                    )}
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={s.requireScreenshot}
+                          onChange={(e) =>
+                            updateStep(i, { requireScreenshot: e.target.checked })
+                          }
+                          className="rounded bg-gray-800 border-gray-600 text-indigo-500"
+                        />
+                        <Camera className="w-3.5 h-3.5" />
+                        Require screenshot
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={!!s.requireLink}
+                          onChange={(e) =>
+                            updateStep(i, { requireLink: e.target.checked })
+                          }
+                          className="rounded bg-gray-800 border-gray-600 text-indigo-500"
+                        />
+                        <Link2 className="w-3.5 h-3.5" />
+                        Require link
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>
