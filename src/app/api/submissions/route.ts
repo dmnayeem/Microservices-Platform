@@ -68,7 +68,9 @@ export async function GET(request: NextRequest) {
         status: s.status,
         pointsReward: s.pointsEarned ?? 0,
         rejectionReason: s.rejectionReason,
-        adminNote: null,
+        adminNote: s.feedback,
+        score: s.score,
+        penaltyPoints: s.penaltyPoints,
         createdAt: s.createdAt.toISOString(),
       };
     }),

@@ -253,6 +253,51 @@ export async function POST(
       );
     }
 
+    // Admin-requested redo: if the latest submission is REVISION_REQUESTED,
+    // reopen that same row (flip back to PENDING) and skip the cooldown — the
+    // admin explicitly asked the user to redo it.
+    const revisionSub = await prisma.taskSubmission.findFirst({
+      where: {
+        taskId: id,
+        userId: session.user.id,
+        status: SubmissionStatus.REVISION_REQUESTED,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (revisionSub) {
+      const reopened = await prisma.taskSubmission.update({
+        where: { id: revisionSub.id },
+        data: {
+          status: SubmissionStatus.PENDING,
+          submittedAt: null,
+          reviewedAt: null,
+          reviewedBy: null,
+        },
+      });
+      return NextResponse.json({
+        submission: reopened,
+        task: {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          instructions: task.instructions,
+          type: task.type,
+          pointsReward: task.pointsReward,
+          xpReward: task.xpReward,
+          duration: task.duration,
+          contentUrl: task.contentUrl,
+          socialPlatform: task.socialPlatform,
+          socialAction: task.socialAction,
+          socialUrl: task.socialUrl,
+          socialConfig: task.socialConfig,
+          videoConfig: task.videoConfig,
+          questions: task.questions,
+          autoApprove: task.autoApprove,
+        },
+        message: "Redo — your previous submission was reopened.",
+      });
+    }
+
     // Cooldown between attempts on this specific task
     if (task.cooldownMinutes > 0) {
       const cooldownTime = new Date(

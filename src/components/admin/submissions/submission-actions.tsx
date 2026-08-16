@@ -41,6 +41,11 @@ export function SubmissionActions({
   const [reasonKey, setReasonKey] = useState(REJECTION_REASONS[0].value);
   const [otherReason, setOtherReason] = useState("");
   const [adminNote, setAdminNote] = useState("");
+  // Optional admin marking + reward/penalty (all optional).
+  const [showMarks, setShowMarks] = useState(false);
+  const [score, setScore] = useState("");
+  const [points, setPoints] = useState("");
+  const [penalty, setPenalty] = useState("");
 
   const review = async (action: "approved" | "rejected" | "revision_requested") => {
     setBusy(true);
@@ -50,16 +55,17 @@ export function SubmissionActions({
           ? otherReason.trim()
           : REJECTION_REASONS.find((r) => r.value === reasonKey)?.label;
 
-      const body: Record<string, unknown> = {
-        action,
-      };
+      const body: Record<string, unknown> = { action };
+      // Marks apply to any decision (record); custom points only on approve.
+      if (score.trim() !== "") body.score = Number(score);
+      if (action === "approved" && points.trim() !== "")
+        body.pointsOverride = Number(points);
       if (action === "rejected") {
         body.rejectionReason = reasonLabel;
-        body.adminNote = adminNote || undefined;
-      } else if (action === "revision_requested") {
-        body.adminNote = adminNote || undefined;
+        body.feedback = adminNote || undefined;
+        if (penalty.trim() !== "") body.penaltyPoints = Number(penalty);
       } else {
-        body.adminNote = adminNote || undefined;
+        body.feedback = adminNote || undefined;
       }
 
       const res = await fetch(
@@ -83,7 +89,11 @@ export function SubmissionActions({
       );
       setShowReject(false);
       setShowRevise(false);
+      setShowMarks(false);
       setAdminNote("");
+      setScore("");
+      setPoints("");
+      setPenalty("");
       router.refresh();
     } catch (err) {
       toast.error("Failed to review", {
@@ -96,6 +106,30 @@ export function SubmissionActions({
 
   return (
     <>
+      {/* Optional marking + custom reward — applied to Approve. */}
+      {canApprove && showMarks && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 p-2">
+          <label className="text-[11px] text-slate-400">Marks</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={score}
+            onChange={(e) => setScore(e.target.value)}
+            placeholder="0-100"
+            className="w-16 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-white text-xs focus:outline-none focus:border-emerald-500"
+          />
+          <label className="text-[11px] text-slate-400">Points</label>
+          <input
+            type="number"
+            min={0}
+            value={points}
+            onChange={(e) => setPoints(e.target.value)}
+            placeholder="default"
+            className="w-20 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-white text-xs focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {canApprove && (
           <button
@@ -109,6 +143,16 @@ export function SubmissionActions({
               <CheckCircle className="w-4 h-4" />
             )}
             Approve
+          </button>
+        )}
+        {canApprove && (
+          <button
+            onClick={() => setShowMarks((s) => !s)}
+            disabled={busy}
+            title="Add marks / custom points"
+            className="inline-flex items-center gap-1 px-2 py-1.5 bg-slate-700/50 text-slate-300 border border-slate-600 text-sm rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+          >
+            {showMarks ? "Marks ▲" : "Marks ▾"}
           </button>
         )}
         {canReject && (
@@ -189,14 +233,27 @@ export function SubmissionActions({
               )}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                  Admin Note (optional, shown to user)
+                  Feedback (optional, shown to user)
                 </label>
                 <textarea
                   rows={3}
                   value={adminNote}
                   onChange={(e) => setAdminNote(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-red-500 resize-none"
-                  placeholder="Additional context for the user…"
+                  placeholder="Tell the user what went wrong…"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                  Penalty points (optional — deducted from balance)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={penalty}
+                  onChange={(e) => setPenalty(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-red-500"
                 />
               </div>
             </div>

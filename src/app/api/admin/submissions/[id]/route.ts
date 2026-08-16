@@ -7,6 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { getPointsPerUsd } from "@/lib/economy";
 import { bumpTrust, TRUST_APPROVE, TRUST_REJECT } from "@/lib/trust";
+import { notifyUser } from "@/lib/notify";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -69,6 +70,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
     const { action, rejectionReason, adminNote } = body;
+    // Free-text feedback shown to the user (adminNote kept as a back-compat alias).
+    const feedback: string | null =
+      (typeof body.feedback === "string" && body.feedback.trim()) ||
+      (typeof adminNote === "string" && adminNote.trim()) ||
+      null;
+    // Admin marking (0–100) + optional custom points award (approve) / penalty
+    // deduction (reject). All optional.
+    const score: number | null =
+      body.score != null && Number.isFinite(Number(body.score))
+        ? Math.max(0, Math.min(100, Math.round(Number(body.score))))
+        : null;
+    const pointsOverride: number | null =
+      body.pointsOverride != null && Number.isFinite(Number(body.pointsOverride))
+        ? Math.max(0, Math.round(Number(body.pointsOverride)))
+        : null;
+    const penaltyPoints: number =
+      body.penaltyPoints != null && Number.isFinite(Number(body.penaltyPoints))
+        ? Math.max(0, Math.round(Number(body.penaltyPoints)))
+        : 0;
     // SOCIAL bundles may send per-action decisions: { "0":"approved","2":"rejected" }
     const itemDecisions = body.itemDecisions as
       | Record<string, "approved" | "rejected">
@@ -116,10 +136,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const isBoardTask = !!existingSubmission.task.boardId;
       const task = existingSubmission.task;
 
-      // Default: whole-submission approval → full reward.
-      let earnedPoints = isBoardTask ? 0 : task.pointsReward;
-      let earnedXp = isBoardTask ? 0 : task.xpReward;
-      let referralPoints = task.pointsReward;
+      // Apply the submitter's plan reward multiplier (matches the auto-approve
+      // path in submit/route.ts, which the admin path previously ignored).
+      const submitterPlan = await prisma.user.findUnique({
+        where: { id: existingSubmission.userId },
+        select: { package: { select: { taskRewardMultiplier: true } } },
+      });
+      const multiplier =
+        (
+          submitterPlan as unknown as {
+            package: { taskRewardMultiplier: number } | null;
+          }
+        )?.package?.taskRewardMultiplier ?? 1;
+      const basePoints =
+        pointsOverride ?? Math.round(task.pointsReward * multiplier);
+      const baseXp = Math.round(task.xpReward * multiplier);
+
+      // Default: whole-submission approval → full reward (override / multiplied).
+      let earnedPoints = isBoardTask ? 0 : basePoints;
+      let earnedXp = isBoardTask ? 0 : baseXp;
+      let referralPoints = basePoints;
       let finalStatus: "APPROVED" | "REJECTED" = "APPROVED";
       let metadataUpdate: Prisma.InputJsonValue | undefined;
 
@@ -187,6 +223,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             reviewedAt: new Date(),
             pointsEarned: earnedPoints,
             xpEarned: earnedXp,
+            ...(score != null ? { score } : {}),
+            ...(feedback ? { feedback } : {}),
             ...(metadataUpdate ? { metadata: metadataUpdate } : {}),
           },
         });
@@ -281,12 +319,39 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           entity: "TaskSubmission",
           entityId: id,
           newData: {
-            adminNote: adminNote ?? null,
+            feedback: feedback ?? null,
+            score: score ?? null,
             pointsAwarded: earnedPoints,
             finalStatus,
           },
         },
       });
+
+      // Notify the user (in-app + push + email), deep-linked to the task. The
+      // manual-approve path previously sent nothing.
+      if (finalStatus === "APPROVED") {
+        await notifyUser({
+          userId: existingSubmission.userId,
+          type: "TASK",
+          title: "Task approved 🎉",
+          message:
+            `Your submission for "${task.title}" was approved` +
+            (earnedPoints > 0 ? ` — ${earnedPoints} pts credited.` : ".") +
+            (score != null ? ` Marks: ${score}/100.` : "") +
+            (feedback ? `\n\n${feedback}` : ""),
+          link: `/tasks/${existingSubmission.taskId}`,
+        }).catch(() => {});
+      } else {
+        await notifyUser({
+          userId: existingSubmission.userId,
+          type: "TASK",
+          title: "Submission reviewed",
+          message: `Your submission for "${task.title}" was not accepted.${
+            feedback ? `\n\n${feedback}` : ""
+          }`,
+          link: `/tasks/${existingSubmission.taskId}`,
+        }).catch(() => {});
+      }
 
       return NextResponse.json({
         success: true,
@@ -302,6 +367,37 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
+      // Optional penalty: deduct points from the user's balance (clamped so it
+      // can't go negative) + record a PENALTY transaction.
+      let appliedPenalty = 0;
+      if (penaltyPoints > 0) {
+        appliedPenalty = await prisma.$transaction(async (tx) => {
+          const u = await tx.user.findUnique({
+            where: { id: existingSubmission.userId },
+            select: { pointsBalance: true },
+          });
+          const applied = Math.min(penaltyPoints, u?.pointsBalance ?? 0);
+          if (applied > 0) {
+            await tx.user.update({
+              where: { id: existingSubmission.userId },
+              data: { pointsBalance: { decrement: applied } },
+            });
+            await tx.transaction.create({
+              data: {
+                userId: existingSubmission.userId,
+                type: "PENALTY",
+                status: "COMPLETED",
+                points: -applied,
+                amount: 0,
+                description: `Penalty: rejected task "${existingSubmission.task.title}"`,
+                reference: existingSubmission.id,
+              },
+            });
+          }
+          return applied;
+        });
+      }
+
       const submission = await prisma.taskSubmission.update({
         where: { id },
         data: {
@@ -309,23 +405,28 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           reviewedBy: session.user.id,
           reviewedAt: new Date(),
           rejectionReason: rejectionReason || "Submission rejected by admin",
+          ...(feedback ? { feedback } : {}),
+          ...(score != null ? { score } : {}),
+          ...(appliedPenalty > 0 ? { penaltyPoints: appliedPenalty } : {}),
         },
       });
 
       // Reputation: a rejection lowers trust + counts a fraud strike.
       await bumpTrust(existingSubmission.userId, TRUST_REJECT, { strike: true });
 
-      // Notify user
-      await prisma.notification.create({
-        data: {
-          userId: existingSubmission.userId,
-          type: "TASK",
-          title: "Submission rejected",
-          message: `Your submission for "${existingSubmission.task.title}" was rejected. Reason: ${
+      // Notify user (in-app + push + email), deep-linked to the task.
+      await notifyUser({
+        userId: existingSubmission.userId,
+        type: "TASK",
+        title: "Submission rejected",
+        message:
+          `Your submission for "${existingSubmission.task.title}" was rejected. Reason: ${
             rejectionReason || "Not specified"
-          }${adminNote ? `\n\n${adminNote}` : ""}`,
-        },
-      });
+          }` +
+          (appliedPenalty > 0 ? `\nPenalty: −${appliedPenalty} pts.` : "") +
+          (feedback ? `\n\n${feedback}` : ""),
+        link: `/tasks/${existingSubmission.taskId}`,
+      }).catch(() => {});
 
       // Audit log
       await prisma.auditLog.create({
@@ -336,7 +437,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           entityId: id,
           newData: {
             rejectionReason: rejectionReason ?? null,
-            adminNote: adminNote ?? null,
+            feedback: feedback ?? null,
+            penaltyPoints: appliedPenalty,
           },
         },
       });
@@ -358,21 +460,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           status: "REVISION_REQUESTED",
           reviewedBy: session.user.id,
           reviewedAt: new Date(),
-          rejectionReason: adminNote || "Revision requested",
+          rejectionReason: rejectionReason || "Revision requested",
+          feedback: feedback || "Please redo this task.",
         },
       });
 
-      // Notify user
-      await prisma.notification.create({
-        data: {
-          userId: existingSubmission.userId,
-          type: "TASK",
-          title: "Revision requested",
-          message: `Please revise your submission for "${existingSubmission.task.title}". ${
-            adminNote ?? ""
-          }`,
-        },
-      });
+      // Notify user (deep-linked so they can jump straight into the redo).
+      await notifyUser({
+        userId: existingSubmission.userId,
+        type: "TASK",
+        title: "Please redo this task",
+        message: `Your submission for "${existingSubmission.task.title}" needs changes.${
+          feedback ? `\n\n${feedback}` : ""
+        }`,
+        link: `/tasks/${existingSubmission.taskId}`,
+      }).catch(() => {});
 
       // Audit log
       await prisma.auditLog.create({
@@ -381,7 +483,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           action: "SUBMISSION_REVISION_REQUESTED",
           entity: "TaskSubmission",
           entityId: id,
-          newData: { adminNote: adminNote ?? null },
+          newData: { feedback: feedback ?? null },
         },
       });
 

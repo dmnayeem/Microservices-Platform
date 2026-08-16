@@ -38,6 +38,8 @@ interface Submission {
   createdAt: string;
   rejectionReason?: string | null;
   adminNote?: string | null;
+  score?: number | null;
+  penaltyPoints?: number | null;
 }
 
 const TAB_TO_STATUS: Record<Tab, string[]> = {
@@ -178,6 +180,9 @@ export function VideoTasksView() {
               date={s.createdAt}
               rejectionReason={s.rejectionReason}
               adminNote={s.adminNote}
+              score={s.score}
+              penaltyPoints={s.penaltyPoints}
+              redoHref={`/video-tasks/${s.task.id}`}
             />
           ))}
         </div>

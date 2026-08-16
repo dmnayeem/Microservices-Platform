@@ -45,6 +45,26 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
+    // Latest REVIEWED submission (so the detail view can show the admin's
+    // decision + feedback and offer a "Redo" when it was rejected / sent back).
+    const lastReviewed = activeSubmission
+      ? null
+      : await prisma.taskSubmission.findFirst({
+          where: {
+            taskId: id,
+            userId: session.user.id,
+            status: { in: ["REJECTED", "REVISION_REQUESTED"] },
+          },
+          orderBy: { reviewedAt: "desc" },
+          select: {
+            status: true,
+            rejectionReason: true,
+            feedback: true,
+            score: true,
+            penaltyPoints: true,
+          },
+        });
+
     // Count today's submissions for this user (used for dailyLimit gate).
     // Statuses APPROVED/AUTO_APPROVED/PENDING all consume a daily slot —
     // matches the legacy /api/tasks/[id]/start convention. Boundary is the
@@ -105,6 +125,16 @@ export async function GET(
         totalLimitReached,
         remainingToday,
         dailyLimit: effectiveDailyLimit,
+        // Last admin decision + feedback (null while a fresh attempt is active).
+        lastReview: lastReviewed
+          ? {
+              status: lastReviewed.status,
+              rejectionReason: lastReviewed.rejectionReason,
+              feedback: lastReviewed.feedback,
+              score: lastReviewed.score,
+              penaltyPoints: lastReviewed.penaltyPoints,
+            }
+          : null,
       },
     });
   } catch (error) {

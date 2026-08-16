@@ -1240,6 +1240,11 @@ model TaskSubmission {
   reviewedBy    String?
   reviewedAt    DateTime?
   rejectionReason String?
+  // Free-text admin feedback shown to the user on approve/reject/redo (distinct
+  // from the structured `rejectionReason`).
+  feedback      String?          @db.Text
+  // Points deducted from the user's balance as a penalty on rejection (record).
+  penaltyPoints Int?
   pointsEarned  Int?
   xpEarned      Int?
   // Server-authoritative watch tracking (VIDEO + SOCIAL watch actions). The
