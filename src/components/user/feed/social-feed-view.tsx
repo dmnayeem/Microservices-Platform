@@ -24,6 +24,7 @@ import {
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { MobileEarnBlock } from "@/components/user/feed/mobile-earn-block";
+import { ActiveEventsCard } from "@/components/user/feed/active-events-card";
 import { FeedRightRail } from "@/components/user/feed/feed-right-rail";
 import { CreatePostComposer } from "./create-post-composer";
 import { FeedPostCard } from "./feed-post-card";
@@ -69,6 +70,9 @@ export function SocialFeedView({
 
         {/* Mobile/tablet earn strip — Daily Bonus + Quick Earn (desktop uses the rail) */}
         <MobileEarnBlock quickEarn={quickEarn} className="lg:hidden" />
+
+        {/* Mobile/tablet active-events strip — below the banner (desktop uses the rail) */}
+        <ActiveEventsCard className="lg:hidden" />
 
         {/* Top tabs */}
         <nav className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none">
@@ -120,6 +124,7 @@ export function SocialFeedView({
       {/* Right sidebar — desktop/laptop (lg+). Mobile/tablet unchanged. */}
       <aside className="hidden lg:block w-80 shrink-0">
         <div className="sticky top-20 space-y-4">
+          <ActiveEventsCard />
           <FeedRightRail
             bestEarners={bestEarners}
             whoToFollow={whoToFollow}
