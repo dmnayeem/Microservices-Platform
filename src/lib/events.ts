@@ -19,6 +19,19 @@ import {
 
 export type { EventActionType };
 
+/**
+ * The highest package `accessLevel` that exists. An event's `requiredAccessLevel`
+ * is clamped to this on save so an admin can never gate an event ABOVE the top
+ * real tier — which would make it invisible to every user (the classic "I made
+ * an event but nobody sees it" bug). Returns 0 if there are no packages.
+ */
+export async function maxPackageAccessLevel(): Promise<number> {
+  const agg = await prisma.package
+    .aggregate({ _max: { accessLevel: true } })
+    .catch(() => null);
+  return agg?._max.accessLevel ?? 0;
+}
+
 export interface EventRow {
   id: string;
   title: string;

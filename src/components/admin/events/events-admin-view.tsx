@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Plus, Loader2, Trash2, Power } from "lucide-react";
+import { Sparkles, Plus, Loader2, Trash2, Power, Pencil } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
-import { EVENT_ACTION_META, type EventActionType } from "@/lib/events-shared";
+import {
+  EVENT_ACTION_META,
+  parseEventTiers,
+  type EventActionType,
+} from "@/lib/events-shared";
 
 interface AdminEvent {
   id: string;
@@ -18,6 +22,7 @@ interface AdminEvent {
   startAt: string;
   endAt: string;
   isActive: boolean;
+  tiers?: unknown;
   _count?: { progress: number };
 }
 
@@ -29,7 +34,23 @@ interface Tier {
   rewardXp: number;
 }
 
+/**
+ * ISO/Date → a `datetime-local` input value ("YYYY-MM-DDTHH:mm") in the admin's
+ * LOCAL timezone. Pairs with `new Date(value).toISOString()` on submit so the
+ * stored instant matches what the admin picked (a UTC host would otherwise skew
+ * a naive datetime-local string by the admin's UTC offset → SCHEDULED events).
+ */
+const toLocalInput = (d: string | Date): string => {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(
+    dt.getHours()
+  )}:${pad(dt.getMinutes())}`;
+};
+
 const emptyForm = () => ({
+  id: "",
   title: "",
   description: "",
   actionType: "TASK_COMPLETE" as EventActionType,
@@ -37,13 +58,23 @@ const emptyForm = () => ({
   rewardPoints: 100,
   rewardXp: 0,
   requiredAccessLevel: 0,
-  startAt: "",
-  endAt: "",
+  // Default to a live window (now → +7 days) so a freshly created event is
+  // immediately in-window and shows in the feed widget + /events.
+  startAt: toLocalInput(new Date()),
+  endAt: toLocalInput(new Date(Date.now() + 7 * 864e5)),
   tiers: [] as Tier[],
 });
 
+interface AccessLevelOption {
+  level: number;
+  label: string;
+}
+
 export function EventsAdminView({ canManage }: { canManage: boolean }) {
   const [events, setEvents] = useState<AdminEvent[]>([]);
+  const [accessLevels, setAccessLevels] = useState<AccessLevelOption[]>([
+    { level: 0, label: "All users" },
+  ]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm());
   const [creating, setCreating] = useState(false);
@@ -55,6 +86,9 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
       const r = await fetch("/api/admin/events", { cache: "no-store" });
       const d = await r.json();
       setEvents(d.events ?? []);
+      if (Array.isArray(d.accessLevels) && d.accessLevels.length > 0) {
+        setAccessLevels(d.accessLevels);
+      }
     } catch {
       setEvents([]);
     } finally {
@@ -65,22 +99,63 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
     load();
   }, []);
 
-  const create = async () => {
+  const openCreate = () => {
+    setForm(emptyForm());
+    setShowForm(true);
+  };
+
+  const openEdit = (ev: AdminEvent) => {
+    const tiers = parseEventTiers(ev.tiers);
+    setForm({
+      id: ev.id,
+      title: ev.title,
+      description: ev.description ?? "",
+      actionType: ev.actionType,
+      threshold: ev.threshold,
+      rewardPoints: ev.rewardPoints,
+      rewardXp: ev.rewardXp,
+      requiredAccessLevel: ev.requiredAccessLevel,
+      startAt: toLocalInput(ev.startAt),
+      endAt: toLocalInput(ev.endAt),
+      tiers,
+    });
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    const isEdit = !!form.id;
     setCreating(true);
     try {
-      const r = await fetch("/api/admin/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+      const { id, ...rest } = form;
+      // Convert the local `datetime-local` values to real UTC instants on the
+      // client (browser TZ) so the server stores the admin's intended time.
+      const payload = {
+        ...rest,
+        startAt: form.startAt ? new Date(form.startAt).toISOString() : "",
+        endAt: form.endAt ? new Date(form.endAt).toISOString() : "",
+      };
+      const r = await fetch(
+        isEdit ? `/api/admin/events/${id}` : "/api/admin/events",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Failed");
-      toast.success("Event created");
+      toast.success(isEdit ? "Event updated" : "Event created");
       setForm(emptyForm());
       setShowForm(false);
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't create event");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : isEdit
+            ? "Couldn't update event"
+            : "Couldn't create event"
+      );
     } finally {
       setCreating(false);
     }
@@ -133,7 +208,7 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
         </div>
         {canManage && (
           <button
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => (showForm ? setShowForm(false) : openCreate())}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold"
           >
             <Plus className="w-4 h-4" /> New event
@@ -143,6 +218,9 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
 
       {showForm && canManage && (
         <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+          <p className="text-sm font-semibold text-white">
+            {form.id ? "Edit event" : "New event"}
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <input
               className={field}
@@ -209,10 +287,8 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
               />
             </label>
             <label className="text-xs text-slate-400">
-              Min access level
-              <input
-                type="number"
-                min={0}
+              Who can see it
+              <select
                 className={field}
                 value={form.requiredAccessLevel}
                 onChange={(e) =>
@@ -221,7 +297,13 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
                     requiredAccessLevel: Number(e.target.value),
                   })
                 }
-              />
+              >
+                {accessLevels.map((a) => (
+                  <option key={a.level} value={a.level}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -329,18 +411,32 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
               />
             </label>
           </div>
-          <button
-            onClick={create}
-            disabled={creating}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {creating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            Create event
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={save}
+              disabled={creating}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {creating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : form.id ? (
+                <Pencil className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              {form.id ? "Save changes" : "Create event"}
+            </button>
+            <button
+              onClick={() => {
+                setForm(emptyForm());
+                setShowForm(false);
+              }}
+              disabled={creating}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -391,6 +487,13 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
                 </span>
                 {canManage && (
                   <>
+                    <button
+                      onClick={() => openEdit(ev)}
+                      title="Edit"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => toggle(ev)}
                       title={ev.isActive ? "Disable" : "Enable"}

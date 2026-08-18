@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { parseEventTiers } from "@/lib/events-shared";
+import { maxPackageAccessLevel } from "@/lib/events";
 import type { Prisma } from "@/generated/prisma/client";
 
 const ACTION_TYPES = [
@@ -55,12 +56,31 @@ export async function GET() {
   if (!session?.user || !(await can(session.user.id, "events.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const events = await prisma.event.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: { _count: { select: { progress: true } } },
-  });
-  return NextResponse.json({ events });
+  const [events, packages] = await Promise.all([
+    prisma.event.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: { _count: { select: { progress: true } } },
+    }),
+    prisma.package.findMany({
+      orderBy: { accessLevel: "asc" },
+      select: { name: true, accessLevel: true },
+    }),
+  ]);
+  // Access-level options for the form: "All users" (0) + each distinct package
+  // tier, so an admin can only pick a tier that actually exists.
+  const seen = new Set<number>();
+  const accessLevels: { level: number; label: string }[] = [];
+  for (const p of packages) {
+    if (seen.has(p.accessLevel)) continue;
+    seen.add(p.accessLevel);
+    accessLevels.push({
+      level: p.accessLevel,
+      label: p.accessLevel === 0 ? "All users" : `${p.name} (level ${p.accessLevel})`,
+    });
+  }
+  if (!seen.has(0)) accessLevels.unshift({ level: 0, label: "All users" });
+  return NextResponse.json({ events, accessLevels });
 }
 
 export async function POST(request: NextRequest) {
@@ -73,6 +93,12 @@ export async function POST(request: NextRequest) {
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  // Never gate above the top real tier — else the event is invisible to everyone.
+  const maxLevel = await maxPackageAccessLevel();
+  parsed.data.requiredAccessLevel = Math.min(
+    parsed.data.requiredAccessLevel,
+    maxLevel
+  );
   const event = await prisma.event.create({ data: parsed.data });
   return NextResponse.json({ event });
 }
