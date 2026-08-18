@@ -9,6 +9,7 @@ import {
 } from "@/lib/onesignal";
 import { sendNotificationEmail, isSmtpConfigured } from "@/lib/email";
 import { Prisma } from "@/generated/prisma/client";
+import { audienceWhere, type AudienceCriteria } from "@/lib/audience";
 
 interface SendNotificationBody {
   type: string;
@@ -18,13 +19,15 @@ interface SendNotificationBody {
   packageFilter?: string[];
   userIds?: string[];
 
-  // Segment criteria
+  // Segment criteria (legacy flat fields — kept for back-compat)
   packages?: string[];
   minLevel?: number;
   maxLevel?: number;
   country?: string;
   activeWithinDays?: number;
   minTasksCompleted?: number;
+  // Full demographic/location segmentation (preferred).
+  criteria?: AudienceCriteria;
 
   // Optional content
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
@@ -69,6 +72,7 @@ export async function POST(request: NextRequest) {
       country,
       activeWithinDays,
       minTasksCompleted,
+      criteria,
       priority = "NORMAL",
       imageUrl,
       actionUrl,
@@ -139,23 +143,30 @@ export async function POST(request: NextRequest) {
     } else if (target === "specific" && userIds?.length) {
       targetUserIds = userIds;
     } else if (target === "segment") {
-      const where: Prisma.UserWhereInput = { status: "ACTIVE" };
-      if (packages && packages.length > 0) {
-        where.package = { slug: { in: packages as string[] } };
-      }
-      if (typeof minLevel === "number" && minLevel > 0) {
-        where.level = { ...(where.level as object), gte: minLevel };
-      }
-      if (typeof maxLevel === "number" && maxLevel > 0) {
-        where.level = { ...(where.level as object), lte: maxLevel };
-      }
-      if (country && country.trim()) {
-        where.country = { contains: country.trim(), mode: "insensitive" };
-      }
-      if (typeof activeWithinDays === "number" && activeWithinDays > 0) {
-        const since = new Date();
-        since.setDate(since.getDate() - activeWithinDays);
-        where.lastLoginAt = { gte: since };
+      // Prefer the full demographic criteria object; fall back to the legacy
+      // flat fields (packages/level/country-substring/active) when absent.
+      let where: Prisma.UserWhereInput;
+      if (criteria && Object.keys(criteria).length > 0) {
+        where = audienceWhere(criteria);
+      } else {
+        where = { status: "ACTIVE" };
+        if (packages && packages.length > 0) {
+          where.package = { slug: { in: packages as string[] } };
+        }
+        if (typeof minLevel === "number" && minLevel > 0) {
+          where.level = { ...(where.level as object), gte: minLevel };
+        }
+        if (typeof maxLevel === "number" && maxLevel > 0) {
+          where.level = { ...(where.level as object), lte: maxLevel };
+        }
+        if (country && country.trim()) {
+          where.country = { contains: country.trim(), mode: "insensitive" };
+        }
+        if (typeof activeWithinDays === "number" && activeWithinDays > 0) {
+          const since = new Date();
+          since.setDate(since.getDate() - activeWithinDays);
+          where.lastLoginAt = { gte: since };
+        }
       }
 
       let users = await prisma.user.findMany({

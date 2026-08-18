@@ -5,6 +5,7 @@ import { TaskStatus, TaskType } from "@/generated/prisma";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
 import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
+import { taskAudienceWhere } from "@/lib/task-targeting";
 
 import type { PackageFeatureKey } from "@/lib/packages";
 
@@ -45,6 +46,13 @@ export async function GET(request: NextRequest) {
         id: true,
         level: true,
         country: true,
+        region: true,
+        division: true,
+        district: true,
+        subDistrict: true,
+        postalCode: true,
+        gender: true,
+        dateOfBirth: true,
         pointsBalance: true,
         xp: true,
       },
@@ -165,14 +173,11 @@ export async function GET(request: NextRequest) {
       { type: { in: allowedTypes } },
     ];
 
-    if (user.country) {
-      andClauses.push({
-        OR: [
-          { countries: { isEmpty: true } },
-          { countries: { has: user.country } },
-        ],
-      });
-    }
+    // Audience targeting (country + state/division/district/upazila + gender +
+    // age) — STRICT: a user missing a targeted attribute is excluded.
+    andClauses.push(
+      ...(taskAudienceWhere(user) as Array<Record<string, unknown>>)
+    );
 
     const where: Record<string, unknown> = {
       status: TaskStatus.ACTIVE,

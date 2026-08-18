@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
@@ -312,18 +313,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
 
       // Audit log
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "SUBMISSION_APPROVED",
-          entity: "TaskSubmission",
-          entityId: id,
-          newData: {
-            feedback: feedback ?? null,
-            score: score ?? null,
-            pointsAwarded: earnedPoints,
-            finalStatus,
-          },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "SUBMISSION_APPROVED",
+        entity: "TaskSubmission",
+        entityId: id,
+        targetUserId: existingSubmission.userId,
+        summary: `Approved a task submission (+${earnedPoints} pts)`,
+        meta: {
+          taskId: existingSubmission.taskId,
+          feedback: feedback ?? null,
+          score: score ?? null,
+          pointsAwarded: earnedPoints,
+          finalStatus,
         },
       });
 
@@ -429,17 +431,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }).catch(() => {});
 
       // Audit log
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "SUBMISSION_REJECTED",
-          entity: "TaskSubmission",
-          entityId: id,
-          newData: {
-            rejectionReason: rejectionReason ?? null,
-            feedback: feedback ?? null,
-            penaltyPoints: appliedPenalty,
-          },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "SUBMISSION_REJECTED",
+        entity: "TaskSubmission",
+        entityId: id,
+        targetUserId: existingSubmission.userId,
+        summary: `Rejected a task submission${appliedPenalty > 0 ? ` (−${appliedPenalty} pts penalty)` : ""}`,
+        meta: {
+          taskId: existingSubmission.taskId,
+          rejectionReason: rejectionReason ?? null,
+          feedback: feedback ?? null,
+          penaltyPoints: appliedPenalty,
         },
       });
 
@@ -477,14 +480,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }).catch(() => {});
 
       // Audit log
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "SUBMISSION_REVISION_REQUESTED",
-          entity: "TaskSubmission",
-          entityId: id,
-          newData: { feedback: feedback ?? null },
-        },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "SUBMISSION_REVISION_REQUESTED",
+        entity: "TaskSubmission",
+        entityId: id,
+        targetUserId: existingSubmission.userId,
+        summary: "Requested a task revision",
+        meta: { taskId: existingSubmission.taskId, feedback: feedback ?? null },
       });
 
       return NextResponse.json({

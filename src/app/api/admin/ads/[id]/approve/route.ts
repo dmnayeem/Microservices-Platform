@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { notifyUser } from "@/lib/notify";
 import { NotificationType } from "@/generated/prisma/client";
 
@@ -46,6 +47,16 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       link: "/advertiser",
     }).catch(() => {});
   }
+
+  await writeAudit({
+    actorId: session.user.id,
+    action: "AD_APPROVED",
+    entity: "Ad",
+    entityId: id,
+    targetUserId: advertiserId ?? null,
+    summary: `Approved an ad in "${ad.campaign.title}"`,
+    meta: { campaign: ad.campaign.title },
+  });
 
   return NextResponse.json({ ad: updated });
 }

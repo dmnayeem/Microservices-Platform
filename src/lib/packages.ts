@@ -57,6 +57,7 @@ export interface PackageRow {
   agencyModeEnabled: boolean;
   shareLinksEnabled: boolean;
   shareYoutubeEnabled: boolean;
+  targetTasksEnabled: boolean;
   socialTasksEnabled: boolean;
   proxyTasksEnabled: boolean;
   articleTasksEnabled: boolean;

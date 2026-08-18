@@ -1,275 +1,326 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ListTodo,
-  Search,
-  FileText,
   Video,
-  Brain,
-  Send,
+  FileText,
+  HelpCircle,
   ClipboardList,
+  Share2,
   Globe,
-  Pin,
+  Gift,
   Smartphone,
+  Sparkles,
+  Megaphone,
+  Brain,
+  Pin,
+  ArrowRight,
+  Package as PackageIcon,
+  GraduationCap,
+  TrendingUp,
+  Award,
 } from "lucide-react";
-import { TaskCard } from "@/components/user/primitives/task-card";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
-import { FilterChips } from "@/components/user/primitives/filter-chips";
-import { ListSkeleton } from "@/components/user/primitives/skeleton";
-import { EmptyState } from "@/components/user/primitives/empty-state";
-import { taskRunHref } from "@/lib/task-routes";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
+import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/user/primitives/empty-state";
+import { isCategoryVisible } from "@/lib/task-categories";
+// Reuse the Earn-hub tabs (single source of truth — /earn stays unchanged).
+import {
+  LearnTab,
+  LevelUpTab,
+  PromoteTab,
+  LeaderboardTab,
+  OfferwallTab,
+  type UserSummary,
+} from "@/components/user/earn/earning-hub";
 
-interface ApiTask {
-  id: string;
-  title: string;
-  description?: string | null;
-  type: string;
-  pointsReward: number;
-  xpReward: number;
-  difficulty?: string | null;
-  thumbnailUrl?: string | null;
-  duration?: number | null;
-  minLevel?: number;
-  canStart?: boolean;
-  reason?: string | null;
-  locked?: boolean;
-  lockReason?: string | null;
-  userStatus?:
-    | "AVAILABLE"
-    | "IN_PROGRESS"
-    | "SUBMITTED"
-    | "COMPLETED"
-    | "REVISION"
-    | "REJECTED";
-}
-
-// Cohesive tinted chips (not saturated rainbow gradients) — professional look.
-const QA_CHIP: Record<string, string> = {
-  indigo: "bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20",
-  violet: "bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20",
-  emerald: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20",
-  cyan: "bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20",
-  amber: "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20",
-  rose: "bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20",
+type SummaryRow = {
+  available: number;
+  completedToday: number;
+  earnableXp: number;
+};
+type SummaryData = {
+  summary: Record<string, SummaryRow>;
+  board: SummaryRow;
+  quizzes: number;
+  offerwalls: number;
+  /** Admin per-category on/off toggles (missing key ⇒ shown). */
+  visibility: Record<string, boolean>;
 };
 
-const QUICK_ACCESS = [
-  { name: "Articles", href: "/article-tasks", icon: FileText, tone: "indigo" },
-  { name: "Videos", href: "/video-tasks", icon: Video, tone: "rose" },
-  { name: "Quizzes", href: "/quiz-tasks", icon: Brain, tone: "emerald" },
-  { name: "Social", href: "/social-tasks", icon: Send, tone: "cyan" },
-  { name: "Manual", href: "/manual-tasks", icon: ClipboardList, tone: "indigo" },
-  { name: "Proxy", href: "/proxy-tasks", icon: Globe, tone: "violet" },
-  { name: "Boards", href: "/board-tasks", icon: Pin, tone: "amber" },
-  { name: "Offerwall", href: "/earn#offerwall", icon: Smartphone, tone: "violet" },
+type TabKey = "tasks" | "learn" | "rank" | "promote" | "leaderboard" | "offerwall";
+
+const TABS: { key: TabKey; label: string; icon: typeof ListTodo }[] = [
+  { key: "tasks", label: "Tasks", icon: ListTodo },
+  { key: "learn", label: "Learn", icon: GraduationCap },
+  { key: "rank", label: "Rank", icon: TrendingUp },
+  { key: "promote", label: "Promote", icon: Megaphone },
+  { key: "leaderboard", label: "Leaderboard", icon: Award },
+  { key: "offerwall", label: "Offerwall", icon: Globe },
 ];
 
-const FILTERS = [
-  { value: "ALL", label: "All" },
-  { value: "ARTICLE", label: "Article" },
-  { value: "VIDEO", label: "Video" },
-  { value: "QUIZ", label: "Quiz" },
-  { value: "SOCIAL", label: "Social" },
-  { value: "MANUAL", label: "Manual" },
-  { value: "PROXY", label: "Proxy" },
+// Static full class strings (Tailwind can't see `bg-${color}` interpolation).
+const CARD_COLOR: Record<
+  string,
+  { chip: string; hover: string; bar: string }
+> = {
+  red: { chip: "bg-red-500/10 text-red-400", hover: "hover:border-red-500/40", bar: "bg-red-500" },
+  blue: { chip: "bg-blue-500/10 text-blue-400", hover: "hover:border-blue-500/40", bar: "bg-blue-500" },
+  amber: { chip: "bg-amber-500/10 text-amber-400", hover: "hover:border-amber-500/40", bar: "bg-amber-500" },
+  purple: { chip: "bg-purple-500/10 text-purple-400", hover: "hover:border-purple-500/40", bar: "bg-purple-500" },
+  pink: { chip: "bg-pink-500/10 text-pink-400", hover: "hover:border-pink-500/40", bar: "bg-pink-500" },
+  cyan: { chip: "bg-cyan-500/10 text-cyan-400", hover: "hover:border-cyan-500/40", bar: "bg-cyan-500" },
+  emerald: { chip: "bg-emerald-500/10 text-emerald-400", hover: "hover:border-emerald-500/40", bar: "bg-emerald-500" },
+  indigo: { chip: "bg-indigo-500/10 text-indigo-400", hover: "hover:border-indigo-500/40", bar: "bg-indigo-500" },
+  violet: { chip: "bg-violet-500/10 text-violet-400", hover: "hover:border-violet-500/40", bar: "bg-violet-500" },
+};
+
+type Kind = "type" | "board" | "feature";
+interface Category {
+  key: string;
+  label: string;
+  description: string;
+  icon: typeof Video;
+  color: keyof typeof CARD_COLOR;
+  href: string;
+  kind: Kind;
+  /** Real Task.type (kind="type") for daily progress. */
+  taskType?: string;
+  /** Which non-task feature (kind="feature") — drives the hide-empty rule. */
+  feature?: "social-posts" | "quizzes" | "offerwalls";
+}
+
+// Order exactly as requested.
+const CATEGORIES: Category[] = [
+  { key: "article", label: "Article", description: "Read articles to earn", icon: FileText, color: "blue", href: "/article-tasks", kind: "type", taskType: "ARTICLE" },
+  { key: "video", label: "Video", description: "Watch videos to earn", icon: Video, color: "red", href: "/video-tasks", kind: "type", taskType: "VIDEO" },
+  { key: "social-posts", label: "Social Posts", description: "Earn from your posts", icon: Megaphone, color: "violet", href: "/social-posts", kind: "feature", feature: "social-posts" },
+  { key: "social", label: "Social Tasks", description: "Social media engagement", icon: Share2, color: "pink", href: "/social-tasks", kind: "type", taskType: "SOCIAL" },
+  { key: "appinstall", label: "App Install", description: "Install an app + proof", icon: Smartphone, color: "emerald", href: "/app-install-tasks", kind: "type", taskType: "APPINSTALL" },
+  { key: "custom", label: "Custom", description: "Custom tasks to earn", icon: Sparkles, color: "indigo", href: "/custom-tasks", kind: "type", taskType: "CUSTOM" },
+  { key: "survey", label: "Survey", description: "Complete surveys", icon: ClipboardList, color: "purple", href: "/survey-tasks", kind: "type", taskType: "SURVEY" },
+  { key: "quiz", label: "Quiz", description: "Answer quiz questions", icon: HelpCircle, color: "amber", href: "/quiz-tasks", kind: "type", taskType: "QUIZ" },
+  { key: "proxy", label: "Proxy", description: "Geo-targeted browsing", icon: Globe, color: "cyan", href: "/proxy-tasks", kind: "type", taskType: "PROXY" },
+  { key: "board", label: "Board Tasks", description: "Complete a task board", icon: Pin, color: "amber", href: "/board-tasks", kind: "board" },
+  { key: "quizzes", label: "Quizzes", description: "Standalone quiz games", icon: Brain, color: "amber", href: "/quizzes", kind: "feature", feature: "quizzes" },
+  { key: "offerwalls", label: "Offerwalls", description: "Complete partner offers", icon: Gift, color: "emerald", href: "/offerwalls", kind: "feature", feature: "offerwalls" },
 ];
 
-export function TasksHubView() {
-  const [filter, setFilter] = useState<string>("ALL");
-  const [search, setSearch] = useState("");
-  const [tasks, setTasks] = useState<ApiTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    available: 0,
+const EMPTY: SummaryData = {
+  summary: {},
+  board: { available: 0, completedToday: 0, earnableXp: 0 },
+  quizzes: 0,
+  offerwalls: 0,
+  visibility: {},
+};
+
+export function TasksHubView({
+  user,
+  packageName,
+}: {
+  user: UserSummary;
+  packageName: string;
+}) {
+  const [tab, setTab] = useState<TabKey>("tasks");
+  const [data, setData] = useState<SummaryData>(EMPTY);
+  const [today, setToday] = useState({
     completedToday: 0,
     pointsEarned: 0,
     xpEarned: 0,
   });
 
-  // Fetch task list for the active filter. `silent` skips the skeleton so
-  // background auto-refreshes don't flash.
-  const loadTasks = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true);
-      const url =
-        filter === "ALL"
-          ? "/api/tasks?limit=50"
-          : `/api/tasks?type=${filter}&limit=50`;
-      try {
-        const r = await fetch(url, { cache: "no-store" });
-        const d = await r.json();
-        setTasks(d.tasks ?? []);
-        setStats((prev) => ({ ...prev, available: d.tasks?.length ?? 0 }));
-      } catch {
-        if (!silent) setTasks([]);
-      } finally {
-        if (!silent) setLoading(false);
-      }
-    },
-    [filter]
-  );
+  const loadSummary = useCallback(async () => {
+    try {
+      const r = await fetch("/api/tasks/summary", { cache: "no-store" });
+      const d = r.ok ? await r.json() : EMPTY;
+      setData({ ...EMPTY, ...d });
+    } catch {
+      /* keep last */
+    }
+  }, []);
 
-  // Pull today's submission stats (separate small fetch).
   const loadStats = useCallback(async () => {
     try {
       const r = await fetch("/api/profile", { cache: "no-store" });
       if (!r.ok) return;
       const d = await r.json();
       if (!d?.todayStats) return;
-      setStats((prev) => ({
-        ...prev,
+      setToday({
         completedToday: d.todayStats.tasksCompleted ?? 0,
         pointsEarned: d.todayStats.pointsEarned ?? 0,
         xpEarned: d.todayStats.xpEarned ?? 0,
-      }));
+      });
     } catch {
       /* ignore */
     }
   }, []);
 
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
-
-  useEffect(() => {
+    loadSummary();
     loadStats();
-  }, [loadStats]);
+  }, [loadSummary, loadStats]);
 
-  // Live refresh: tab refocus + 15s timer (paused while tab hidden).
   useAutoRefresh(() => {
-    loadTasks(true);
+    loadSummary();
     loadStats();
   });
 
-  const filtered = search.trim()
-    ? tasks.filter(
-        (t) =>
-          t.title.toLowerCase().includes(search.toLowerCase()) ||
-          (t.description ?? "").toLowerCase().includes(search.toLowerCase())
-      )
-    : tasks;
+  const totalAvailable = useMemo(
+    () => Object.values(data.summary).reduce((a, s) => a + s.available, 0),
+    [data.summary]
+  );
+
+  // Which category cards show is controlled by the admin per-category toggle
+  // (SystemSetting `tasks.category_visibility`); missing key ⇒ shown.
+  const visibleCategories = useMemo(
+    () => CATEGORIES.filter((cat) => isCategoryVisible(data.visibility, cat.key)),
+    [data.visibility]
+  );
+
+  const STATS = [
+    { label: "Available Tasks", value: totalAvailable, tone: "text-white" },
+    { label: "Completed Today", value: today.completedToday, tone: "text-white" },
+    { label: "Points Earned", value: today.pointsEarned, tone: "text-amber-400" },
+    { label: "XP Earned", value: today.xpEarned, tone: "text-purple-400" },
+  ];
+
+  const progressFor = (cat: Category): SummaryRow | null => {
+    if (cat.kind === "type") return data.summary[cat.taskType!] ?? null;
+    if (cat.kind === "board") return data.board;
+    return null;
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Tasks</h1>
         <p className="text-gray-400 mt-1">
-          Complete tasks to earn points and XP
+          Pick a task type to start earning points and XP
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="glass rounded-xl p-4">
-          <p className="text-sm text-gray-400">Available Tasks</p>
-          <p className="text-2xl font-bold text-white mt-1 tabular-nums">
-            {stats.available}
-          </p>
+      {/* Stats row: package + today's numbers */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="glass rounded-xl p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-400 grid place-items-center shrink-0">
+            <PackageIcon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] text-gray-400">Your Package</p>
+            <p className="text-sm font-bold text-white truncate">{packageName}</p>
+          </div>
         </div>
-        <div className="glass rounded-xl p-4">
-          <p className="text-sm text-gray-400">Completed Today</p>
-          <p className="text-2xl font-bold text-white mt-1 tabular-nums">
-            {stats.completedToday}
-          </p>
-        </div>
-        <div className="glass rounded-xl p-4">
-          <p className="text-sm text-gray-400">Points Earned</p>
-          <p className="text-2xl font-bold text-amber-400 mt-1 tabular-nums">
-            {stats.pointsEarned}
-          </p>
-        </div>
-        <div className="glass rounded-xl p-4">
-          <p className="text-sm text-gray-400">XP Earned</p>
-          <p className="text-2xl font-bold text-purple-400 mt-1 tabular-nums">
-            {stats.xpEarned}
-          </p>
-        </div>
+        {STATS.map((s) => (
+          <div key={s.label} className="glass rounded-xl p-4">
+            <p className="text-sm text-gray-400">{s.label}</p>
+            <p className={cn("text-2xl font-bold mt-1 tabular-nums", s.tone)}>
+              {s.value}
+            </p>
+          </div>
+        ))}
       </div>
 
-      <AdRenderer placement="TASK_LIST" />
-
-      <section>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2 px-1">
-          Quick Access
-        </p>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {QUICK_ACCESS.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="group card card-interactive flex flex-col items-center justify-center gap-1.5 p-3"
+      {/* Tab row */}
+      <nav className="flex gap-1 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1 sticky top-0 z-10 bg-gray-950/80 backdrop-blur-sm">
+        {TABS.map((t) => {
+          const isActive = t.key === tab;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors border",
+                isActive
+                  ? "bg-indigo-500/15 text-white border-indigo-500/40"
+                  : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white hover:bg-gray-800"
+              )}
             >
-              <div
-                className={`w-10 h-10 rounded-xl grid place-items-center ${QA_CHIP[item.tone]}`}
-              >
-                <item.icon className="w-5 h-5" />
-              </div>
-              <span className="text-[11px] font-medium text-gray-300 group-hover:text-white text-center leading-tight">
-                {item.name}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+              <t.icon className="w-4 h-4" />
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+      {/* Tasks tab — category grid (only non-empty categories) */}
+      {tab === "tasks" &&
+        (visibleCategories.length === 0 ? (
+          <EmptyState
+            icon={ListTodo}
+            title="No tasks available right now"
+            description="New earning opportunities appear here as soon as they're added."
           />
-        </div>
-      </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {visibleCategories.map((cat) => {
+              const c = CARD_COLOR[cat.color];
+              const Icon = cat.icon;
+              const row = progressFor(cat);
+              const hasProgress = !!row && row.available > 0;
+              const pct = hasProgress
+                ? Math.min(100, Math.round((row!.completedToday / row!.available) * 100))
+                : 0;
+              return (
+                <Link
+                  key={cat.key}
+                  href={cat.href}
+                  className={cn(
+                    "card card-interactive p-5 flex flex-col transition-colors",
+                    c.hover
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "w-12 h-12 rounded-xl grid place-items-center shrink-0",
+                        c.chip
+                      )}
+                    >
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-white">{cat.label}</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {cat.description}
+                      </p>
+                    </div>
+                  </div>
 
-      <FilterChips
-        value={filter}
-        onChange={setFilter}
-        options={FILTERS}
-      />
+                  {hasProgress ? (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="text-gray-400">
+                          {row!.completedToday}/{row!.available} done today
+                        </span>
+                        <span className="text-amber-400 font-bold">
+                          Up to {row!.earnableXp} XP
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-[width]", c.bar)}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-gray-400">
+                      Explore <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
 
-      {loading && <ListSkeleton rows={4} />}
-
-      {!loading && filtered.length === 0 && (
-        <EmptyState
-          icon={ListTodo}
-          title="No tasks available right now"
-          description={
-            search
-              ? `Nothing matches "${search}"`
-              : "Check back soon for new earning opportunities!"
-          }
-        />
-      )}
-
-      {!loading && filtered.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((t) => (
-            <TaskCard
-              key={t.id}
-              title={t.title}
-              description={t.description ?? undefined}
-              type={t.type.toLowerCase()}
-              reward={t.pointsReward}
-              xpReward={t.xpReward}
-              difficulty={
-                (t.difficulty?.toUpperCase() as "EASY" | "MEDIUM" | "HARD") ??
-                undefined
-              }
-              durationMin={t.duration ?? undefined}
-              thumbnail={t.thumbnailUrl ?? undefined}
-              href={taskRunHref(t.type, t.id)}
-              status={t.locked ? "LOCKED" : t.userStatus ?? "AVAILABLE"}
-              actionLabel={t.locked ? "🔒 Locked" : undefined}
-            />
-          ))}
-        </div>
-      )}
+      {tab === "learn" && <LearnTab />}
+      {tab === "rank" && <LevelUpTab user={user} />}
+      {tab === "promote" && <PromoteTab />}
+      {tab === "leaderboard" && <LeaderboardTab user={user} />}
+      {tab === "offerwall" && <OfferwallTab />}
     </div>
   );
 }

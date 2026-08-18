@@ -124,8 +124,11 @@ export async function extractIdData(
     "CRITICAL: preserve the ORIGINAL script exactly as printed on the document. Do NOT " +
     "translate or transliterate. Return Bengali/Bangla (and any non-Latin) text in its native " +
     "script — e.g. a Bengali name/father/mother/address must be returned in Bangla letters, not " +
-    "romanized. fullName is the name in its printed (possibly Bangla) script; fullNameEnglish is " +
-    "the name in English/Latin letters ONLY if the document also prints an English name line (a " +
+    "romanized. EXAMPLE: if the card prints the name as মোঃ রহিম, return \"fullName\": \"মোঃ রহিম\" — " +
+    "NEVER \"Md. Rahim\" or \"Mohammad Rahim\". Returning a romanized/English/translated value for " +
+    "fullName, fatherName, motherName or address when the document shows Bangla (or any non-Latin) " +
+    "script is a FAILURE. fullName is the name in its printed (possibly Bangla) script; fullNameEnglish is " +
+    "the name in English/Latin letters ONLY if the document also prints a separate English name line (a " +
     "Bangladesh NID does), else null. " +
     "isIdDocument is true ONLY if the image is genuinely a government identity document; " +
     "set it false for selfies, random photos, screenshots, or anything that is not an ID. " +

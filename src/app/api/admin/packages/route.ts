@@ -44,6 +44,7 @@ const PLAN_INPUT = z
     agencyModeEnabled: z.boolean().optional(),
     shareLinksEnabled: z.boolean().optional(),
     shareYoutubeEnabled: z.boolean().optional(),
+    targetTasksEnabled: z.boolean().optional(),
 
     // Per-task-type toggles
     socialTasksEnabled: z.boolean(),
@@ -185,6 +186,7 @@ export async function POST(req: NextRequest) {
         agencyModeEnabled: data.agencyModeEnabled ?? false,
         shareLinksEnabled: data.shareLinksEnabled ?? false,
         shareYoutubeEnabled: data.shareYoutubeEnabled ?? false,
+        targetTasksEnabled: data.targetTasksEnabled ?? false,
 
         socialTasksEnabled: data.socialTasksEnabled,
         proxyTasksEnabled: data.proxyTasksEnabled,

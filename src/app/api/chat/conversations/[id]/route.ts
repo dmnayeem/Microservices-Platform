@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -21,16 +21,38 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Incremental poll: `?since=<ISO>` returns ONLY messages newer than that
+  // timestamp (and skips the other-user lookup). The 8s poll uses this so it
+  // never re-pulls the whole thread — the key scale fix for many open chats.
+  const sinceParam = request.nextUrl.searchParams.get("since");
+  const since = sinceParam ? new Date(sinceParam) : null;
+  const incremental = !!since && !isNaN(since.getTime());
+
+  const messages = await prisma.chatMessage.findMany({
+    where: {
+      conversationId: id,
+      ...(incremental ? { createdAt: { gt: since! } } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+    take: incremental ? 100 : 200,
+  });
+
+  const mapped = messages.map((m) => ({
+    id: m.id,
+    content: m.content,
+    senderId: m.senderId,
+    createdAt: m.createdAt.toISOString(),
+    read: m.read,
+  }));
+
+  if (incremental) {
+    return NextResponse.json({ messages: mapped, incremental: true });
+  }
+
   const otherId = conv.user1Id === userId ? conv.user2Id : conv.user1Id;
   const otherUser = await prisma.user.findUnique({
     where: { id: otherId },
     select: { id: true, name: true, avatar: true },
-  });
-
-  const messages = await prisma.chatMessage.findMany({
-    where: { conversationId: id },
-    orderBy: { createdAt: "asc" },
-    take: 200,
   });
 
   return NextResponse.json({
@@ -42,12 +64,6 @@ export async function GET(
           isOnline: false,
         }
       : null,
-    messages: messages.map((m) => ({
-      id: m.id,
-      content: m.content,
-      senderId: m.senderId,
-      createdAt: m.createdAt.toISOString(),
-      read: m.read,
-    })),
+    messages: mapped,
   });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { ADMIN_ROLES, parsePermissionOverrides, type UserRole } from "@/lib/rbac";
 import { Prisma, TransactionType } from "@/generated/prisma/client";
 import { parseFeatureOverrides } from "@/lib/packages";
@@ -490,14 +491,14 @@ export async function PATCH(
     }
 
     // Audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "USER_UPDATED",
-        entity: "User",
-        entityId: id,
-        newData: updateData as Prisma.InputJsonValue,
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: "USER_UPDATED",
+      entity: "User",
+      entityId: id,
+      targetUserId: id,
+      summary: `Edited user profile (${Object.keys(updateData).slice(0, 6).join(", ") || "no fields"})`,
+      meta: updateData as Record<string, unknown>,
     });
 
     return NextResponse.json({

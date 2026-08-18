@@ -3420,7 +3420,7 @@ export interface SocialTaskRow {
 export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
   const norm = normalizeSocialConfig(t.socialConfig);
   const platform = (norm.platform ?? t.socialPlatform ?? "FACEBOOK").toUpperCase();
-  const items: SocialTaskItemView[] = norm.items.map((it) => ({
+  let items: SocialTaskItemView[] = norm.items.map((it) => ({
     action: (it.action ?? "FOLLOW").toUpperCase(),
     fields: it.fields ?? {},
     points: it.points ?? 0,
@@ -3435,6 +3435,26 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
     targetUrl: it.fields?.targetUrl ?? it.fields?.targetHandle ?? "",
     verify: it.verify,
   }));
+  // Legacy single-action tasks store the action on the Task columns
+  // (socialPlatform/socialAction/socialUrl) with a null socialConfig → 0 items.
+  // Synthesize a 1-item bundle so the run view shows the action + the Submit
+  // bar instead of a "no actions configured" dead-end.
+  if (items.length === 0) {
+    const targetUrl = t.socialUrl ?? "";
+    items = [
+      {
+        action: (t.socialAction ?? "FOLLOW").toUpperCase(),
+        fields: targetUrl ? { targetUrl } : {},
+        points: t.pointsReward ?? 0,
+        proofRequirements: { url: true, screenshot: true, username: false },
+        aiPromptEnabled: false,
+        aiPrompt: null,
+        watchSeconds: null,
+        targetUrl,
+        verify: undefined,
+      },
+    ];
+  }
   const first = items[0];
   return {
     id: t.id,

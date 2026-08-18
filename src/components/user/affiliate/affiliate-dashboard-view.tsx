@@ -13,16 +13,38 @@ import {
   TrendingUp,
   Package,
   GraduationCap,
+  Eye,
+  MousePointerClick,
+  Percent,
+  BarChart3,
 } from "lucide-react";
 import { StatCard } from "@/components/user/primitives/stat-card";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 
 interface RecentCommission {
   id: string;
-  sourceType: string;
+  type: "MARKETPLACE" | "COURSE";
   title: string;
   amount: number;
   createdAt: string;
+}
+interface ItemStat {
+  key: string;
+  type: "MARKETPLACE" | "COURSE";
+  id: string;
+  title: string;
+  views: number;
+  sales: number;
+  earned: number;
+}
+interface Stats {
+  views: number;
+  clicks: number;
+  sales: number;
+  earnings: number;
+  conversionRate: number;
+  byItem: ItemStat[];
+  recent: RecentCommission[];
 }
 interface PromoItem {
   key: string;
@@ -37,9 +59,7 @@ interface Props {
   joined: boolean;
   programEnabled: boolean;
   code: string;
-  totalEarned: number;
-  salesCount: number;
-  recent: RecentCommission[];
+  stats: Stats | null;
   items: PromoItem[];
   /** When true, joining requires an approved application (not instant). */
   requireApproval?: boolean;
@@ -51,9 +71,7 @@ export function AffiliateDashboardView({
   joined,
   programEnabled,
   code,
-  totalEarned,
-  salesCount,
-  recent,
+  stats,
   items,
   requireApproval = false,
   pendingApplication = false,
@@ -143,6 +161,16 @@ export function AffiliateDashboardView({
     );
   }
 
+  const s = stats ?? {
+    views: 0,
+    clicks: 0,
+    sales: 0,
+    earnings: 0,
+    conversionRate: 0,
+    byItem: [],
+    recent: [],
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -154,10 +182,75 @@ export function AffiliateDashboardView({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={<Coins className="w-5 h-5" />} tone="green" label="Total earned" value={`$${totalEarned.toFixed(2)}`} />
-        <StatCard icon={<TrendingUp className="w-5 h-5" />} tone="blue" label="Sales driven" value={salesCount} />
+      {/* Performance overview */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard icon={<Eye className="w-5 h-5" />} tone="purple" label="Views" value={s.views.toLocaleString()} />
+        <StatCard icon={<MousePointerClick className="w-5 h-5" />} tone="blue" label="Clicks" value={s.clicks.toLocaleString()} />
+        <StatCard icon={<TrendingUp className="w-5 h-5" />} tone="amber" label="Sales" value={s.sales.toLocaleString()} />
+        <StatCard icon={<Coins className="w-5 h-5" />} tone="green" label="Earnings" value={`$${s.earnings.toFixed(2)}`} />
+        <StatCard icon={<Percent className="w-5 h-5" />} tone="pink" label="Conversion" value={`${s.conversionRate.toFixed(1)}%`} />
       </div>
+      <p className="text-[11px] text-gray-500 -mt-2">
+        Views = total link opens · Clicks = unique visitors · Conversion = sales ÷ clicks.
+      </p>
+
+      {/* Per-item performance */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold text-white inline-flex items-center gap-1.5">
+          <BarChart3 className="w-4 h-4 text-indigo-400" /> Performance by link
+        </h2>
+        {s.byItem.length === 0 ? (
+          <EmptyState
+            icon={BarChart3}
+            title="No activity yet"
+            description="Share a link below — views, clicks and sales will show up here per product."
+          />
+        ) : (
+          <div className="glass rounded-xl overflow-hidden">
+            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 border-b border-gray-800/60">
+              <span>Item</span>
+              <span className="text-right w-14">Views</span>
+              <span className="text-right w-14">Sales</span>
+              <span className="text-right w-20">Earned</span>
+            </div>
+            <div className="divide-y divide-gray-800/60">
+              {s.byItem.map((it) => (
+                <div
+                  key={it.key}
+                  className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1 px-4 py-2.5 items-center"
+                >
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="text-gray-500 shrink-0">
+                      {it.type === "COURSE" ? (
+                        <GraduationCap className="w-4 h-4" />
+                      ) : (
+                        <Package className="w-4 h-4" />
+                      )}
+                    </span>
+                    <span className="text-sm text-white truncate">{it.title}</span>
+                  </div>
+                  {/* Mobile: inline metrics */}
+                  <div className="sm:hidden flex items-center gap-3 text-[11px] tabular-nums justify-end">
+                    <span className="text-purple-300">{it.views.toLocaleString()} views</span>
+                    <span className="text-amber-300">{it.sales} sold</span>
+                    <span className="text-emerald-400 font-bold">${it.earned.toFixed(2)}</span>
+                  </div>
+                  {/* Desktop: columns */}
+                  <span className="hidden sm:block text-right w-14 text-sm text-purple-300 tabular-nums">
+                    {it.views.toLocaleString()}
+                  </span>
+                  <span className="hidden sm:block text-right w-14 text-sm text-amber-300 tabular-nums">
+                    {it.sales}
+                  </span>
+                  <span className="hidden sm:block text-right w-20 text-sm font-bold text-emerald-400 tabular-nums">
+                    ${it.earned.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Promotable catalogue */}
       <section className="space-y-2">
@@ -191,16 +284,16 @@ export function AffiliateDashboardView({
       </section>
 
       {/* Recent earnings */}
-      {recent.length > 0 && (
+      {s.recent.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-bold text-white">Recent commissions</h2>
           <div className="glass rounded-xl divide-y divide-gray-800/60">
-            {recent.map((r) => (
+            {s.recent.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0">
                   <p className="text-sm text-white truncate">{r.title}</p>
                   <p className="text-[11px] text-gray-500">
-                    {r.sourceType === "COURSE" ? "Course" : "Product"} ·{" "}
+                    {r.type === "COURSE" ? "Course" : "Product"} ·{" "}
                     {new Date(r.createdAt).toLocaleDateString()}
                   </p>
                 </div>

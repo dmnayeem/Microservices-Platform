@@ -3,6 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
+  TaskAudienceTargeting,
+  type TaskAudienceValue,
+} from "@/components/admin/tasks/task-audience-targeting";
+
+const EMPTY_AUDIENCE: TaskAudienceValue = {
+  countries: [], genders: [], minAge: null, maxAge: null,
+  regions: [], divisions: [], districts: [], subDistricts: [], postalCodes: [],
+};
+import {
   Send,
   X,
   AlertCircle,
@@ -112,6 +121,28 @@ interface SearchedUser {
   packageTier: string;
 }
 
+/** Map the segment fields + audience picker into the AudienceCriteria payload. */
+function buildCriteria(
+  fd: { segPackages: string[]; minLevel: string; maxLevel: string; activeWithinDays: string },
+  a: TaskAudienceValue
+): Record<string, unknown> {
+  const c: Record<string, unknown> = {};
+  if (a.countries.length) c.countries = a.countries;
+  if (a.regions.length) c.regions = a.regions;
+  if (a.divisions.length) c.divisions = a.divisions;
+  if (a.districts.length) c.districts = a.districts;
+  if (a.subDistricts.length) c.subDistricts = a.subDistricts;
+  if (a.postalCodes.length) c.postalCodes = a.postalCodes;
+  if (a.genders.length) c.genders = a.genders;
+  if (a.minAge != null) c.minAge = a.minAge;
+  if (a.maxAge != null) c.maxAge = a.maxAge;
+  if (fd.segPackages.length) c.packages = fd.segPackages;
+  if (fd.minLevel) c.minLevel = parseInt(fd.minLevel, 10);
+  if (fd.maxLevel) c.maxLevel = parseInt(fd.maxLevel, 10);
+  if (fd.activeWithinDays) c.activeWithinDays = parseInt(fd.activeWithinDays, 10);
+  return c;
+}
+
 export function SendNotificationForm() {
   const router = useRouter();
 
@@ -129,7 +160,6 @@ export function SendNotificationForm() {
     segPackages: [] as string[],
     minLevel: "",
     maxLevel: "",
-    country: "",
     activeWithinDays: "",
     minTasksCompleted: "",
 
@@ -148,6 +178,7 @@ export function SendNotificationForm() {
     sendEmail: false,
   });
 
+  const [audience, setAudience] = useState<TaskAudienceValue>(EMPTY_AUDIENCE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -177,14 +208,7 @@ export function SendNotificationForm() {
         } else if (formData.target === "specific") {
           payload.userIds = selectedUsers.map((u) => u.id);
         } else if (formData.target === "segment") {
-          payload.packages = formData.segPackages;
-          if (formData.minLevel)
-            payload.minLevel = parseInt(formData.minLevel, 10);
-          if (formData.maxLevel)
-            payload.maxLevel = parseInt(formData.maxLevel, 10);
-          if (formData.country) payload.country = formData.country;
-          if (formData.activeWithinDays)
-            payload.activeWithinDays = parseInt(formData.activeWithinDays, 10);
+          payload.criteria = buildCriteria(formData, audience);
           if (formData.minTasksCompleted)
             payload.minTasksCompleted = parseInt(
               formData.minTasksCompleted,
@@ -216,9 +240,9 @@ export function SendNotificationForm() {
     formData.segPackages,
     formData.minLevel,
     formData.maxLevel,
-    formData.country,
     formData.activeWithinDays,
     formData.minTasksCompleted,
+    audience,
     selectedUsers,
   ]);
 
@@ -296,12 +320,7 @@ export function SendNotificationForm() {
       } else if (formData.target === "specific") {
         payload.userIds = selectedUsers.map((u) => u.id);
       } else if (formData.target === "segment") {
-        payload.packages = formData.segPackages;
-        if (formData.minLevel) payload.minLevel = parseInt(formData.minLevel);
-        if (formData.maxLevel) payload.maxLevel = parseInt(formData.maxLevel);
-        if (formData.country) payload.country = formData.country;
-        if (formData.activeWithinDays)
-          payload.activeWithinDays = parseInt(formData.activeWithinDays);
+        payload.criteria = buildCriteria(formData, audience);
         if (formData.minTasksCompleted)
           payload.minTasksCompleted = parseInt(formData.minTasksCompleted);
       }
@@ -723,21 +742,7 @@ export function SendNotificationForm() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.country}
-                      onChange={(e) =>
-                        setFormData({ ...formData, country: e.target.value })
-                      }
-                      placeholder="e.g. Bangladesh"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1.5">
                       Active in last (days)
@@ -774,6 +779,19 @@ export function SendNotificationForm() {
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                     />
                   </div>
+                </div>
+
+                {/* Demographic / location targeting — reuses the task audience
+                    builder so pushes go out data-wise (country → upazila, gender, age). */}
+                <div className="border-t border-slate-800 pt-4">
+                  <p className="text-sm font-semibold text-white mb-1">
+                    Demographic &amp; location
+                  </p>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Target by country / division / district / upazila, gender and
+                    age. Leave empty for no demographic filter.
+                  </p>
+                  <TaskAudienceTargeting value={audience} onChange={(patch) => setAudience((a) => ({ ...a, ...patch }))} />
                 </div>
               </div>
             )}

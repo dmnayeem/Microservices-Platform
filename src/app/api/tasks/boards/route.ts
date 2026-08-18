@@ -1,12 +1,30 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { taskAudienceWhere } from "@/lib/task-targeting";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Viewer profile for STRICT audience targeting — the per-board task count must
+  // reflect only the tasks this user can actually do.
+  const viewer = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      country: true,
+      region: true,
+      division: true,
+      district: true,
+      subDistrict: true,
+      postalCode: true,
+      gender: true,
+      dateOfBirth: true,
+    },
+  });
+  const audienceAnd = taskAudienceWhere(viewer ?? {});
 
   const boards = await prisma.taskBoard.findMany({
     where: { isActive: true },
@@ -22,7 +40,9 @@ export async function GET() {
     await Promise.all([
       Promise.all(
         boardIds.map((id) =>
-          prisma.task.count({ where: { boardId: id, status: "ACTIVE" } })
+          prisma.task.count({
+            where: { boardId: id, status: "ACTIVE", AND: audienceAnd },
+          })
         )
       ),
       Promise.all(

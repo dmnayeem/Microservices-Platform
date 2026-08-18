@@ -236,19 +236,33 @@ export function BoardDetailClient({
             <h2 className="text-base font-semibold text-white">
               Add Tasks to Board
             </h2>
-            <button
-              onClick={assignSelected}
-              disabled={busy || picked.size === 0}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {busy ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCheck className="w-4 h-4" />
-              )}
-              Assign {picked.size > 0 ? `(${picked.size})` : ""}
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/admin/tasks/new?boardId=${board.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
+              >
+                <Plus className="w-4 h-4" />
+                New task
+              </Link>
+              <button
+                onClick={assignSelected}
+                disabled={busy || picked.size === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {busy ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCheck className="w-4 h-4" />
+                )}
+                Assign {picked.size > 0 ? `(${picked.size})` : ""}
+              </button>
+            </div>
           </div>
+          <p className="text-[11px] text-slate-500 -mt-2 mb-3">
+            <strong className="text-slate-400">New task</strong> opens the full task
+            form (with audience targeting) and adds it here on save. Or assign an
+            existing task from the list below.
+          </p>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input

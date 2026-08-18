@@ -135,3 +135,19 @@ export async function compressImageToTarget(
     return file; // any failure → upload the original
   }
 }
+
+/**
+ * Folder-aware compression preset used across every uploader so targets stay
+ * consistent. Display images (avatar/post/marketplace/media) are crushed to
+ * ~45 KB WebP; documents that must stay legible for OCR / manual review
+ * (KYC IDs, task-proof screenshots) get a much larger budget + higher resolution.
+ */
+export function compressForUpload(file: File, folder?: string): Promise<File> {
+  const legible = folder === "kyc" || folder === "task-proofs";
+  return compressImageToTarget(
+    file,
+    legible
+      ? { maxBytes: 220 * KB, maxDimension: 2000, minDimension: 1000 }
+      : { maxBytes: 45 * KB, maxDimension: 1400, minDimension: 600 }
+  );
+}

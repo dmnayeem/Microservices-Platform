@@ -46,24 +46,45 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
   // `silent` polls (the 8s timer, post-send refresh) update the message list in
   // place WITHOUT flipping `loading` — otherwise the whole thread collapsed to a
   // spinner every 8s. Only the first load of a conversation shows the spinner.
+  // Newest message timestamp we already have — drives the incremental poll.
+  const lastAtRef = useRef<string | null>(null);
+
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch(`/api/chat/conversations/${conversationId}`);
+      // Silent polls fetch ONLY messages newer than what we have (tiny payload);
+      // the first load pulls the full thread.
+      const inc = silent && lastAtRef.current;
+      const url = inc
+        ? `/api/chat/conversations/${conversationId}?since=${encodeURIComponent(lastAtRef.current!)}`
+        : `/api/chat/conversations/${conversationId}`;
+      const res = await fetch(url);
       const d = await res.json();
-      const msgs: Message[] = d.messages ?? [];
-      setMessages(msgs);
-      setOther(d.otherUser ?? null);
+      const incoming: Message[] = d.messages ?? [];
 
-      // Mark read only when the newest message is incoming and we haven't
-      // already acked it — not on every poll.
-      const last = msgs[msgs.length - 1];
+      let latest: Message | undefined;
+      if (inc) {
+        if (incoming.length === 0) return; // nothing new — no state churn
+        setMessages((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const merged = [...prev, ...incoming.filter((m) => !seen.has(m.id))];
+          return merged;
+        });
+        latest = incoming[incoming.length - 1];
+      } else {
+        setMessages(incoming);
+        setOther(d.otherUser ?? null);
+        latest = incoming[incoming.length - 1];
+      }
+      if (latest) lastAtRef.current = latest.createdAt;
+
+      // Mark read only when the newest message is incoming and unacked.
       if (
-        last &&
-        last.senderId !== currentUserId &&
-        last.id !== lastReadRef.current
+        latest &&
+        latest.senderId !== currentUserId &&
+        latest.id !== lastReadRef.current
       ) {
-        lastReadRef.current = last.id;
+        lastReadRef.current = latest.id;
         await fetch(`/api/chat/conversations/${conversationId}/read`, {
           method: "POST",
         });
@@ -79,6 +100,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
     // Reset per-conversation state so switching threads shows a fresh spinner
     // instead of the previous thread's messages.
     lastReadRef.current = null;
+    lastAtRef.current = null;
     setMessages([]);
     setLoading(true);
     load();

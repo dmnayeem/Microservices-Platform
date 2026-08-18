@@ -189,6 +189,8 @@ export type Permission =
   // Admin control
   | "admins.view"
   | "admins.manage"
+  // Cross-admin audit feed (super-admin only)
+  | "admin.activity"
   // Media
   | "media.view"
   | "media.manage";
@@ -217,6 +219,161 @@ export function taskCreatePermFor(type: string): Permission {
 export const TASK_CREATE_PERMISSIONS: Permission[] =
   TASK_TYPES.map(taskCreatePermFor);
 
+/**
+ * Category-wise permission catalog — the SINGLE SOURCE OF TRUTH for the full
+ * permission set. Every `Permission` appears in exactly one group. The role
+ * editor, custom-role manager and per-user override modal all render straight
+ * off this (`{ label, permissions[] }`), so reorganizing groups here needs no
+ * component changes. `ALL_PERMISSIONS` (below) and `SUPER_ADMIN` are derived
+ * from it, so a new permission added to any group flows everywhere automatically.
+ */
+export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] = [
+  {
+    label: "Dashboard & Analytics",
+    permissions: ["dashboard.view", "analytics.view", "analytics.export"],
+  },
+  {
+    label: "Users & Accounts",
+    permissions: [
+      "users.view",
+      "users.edit",
+      "users.ban",
+      "users.delete",
+      "users.adjust_balance",
+      "users.impersonate",
+    ],
+  },
+  {
+    label: "KYC & Verification",
+    permissions: ["kyc.view", "kyc.approve", "kyc.reject"],
+  },
+  {
+    label: "Tasks & Submissions",
+    permissions: [
+      "tasks.view",
+      "tasks.create",
+      "tasks.edit",
+      "tasks.delete",
+      ...TASK_CREATE_PERMISSIONS,
+      "boards.view",
+      "boards.manage",
+      "submissions.view",
+      "submissions.approve",
+      "submissions.reject",
+    ],
+  },
+  {
+    label: "Courses & Tutors",
+    permissions: [
+      "courses.view",
+      "courses.manage",
+      "courses.approve",
+      "tutor.dashboard",
+      "tutor.courses.manage",
+      "tutor.applications.review",
+      "creators.review",
+    ],
+  },
+  {
+    label: "Marketplace",
+    permissions: [
+      "marketplace.view",
+      "marketplace.manage",
+      "marketplace.disputes",
+      "marketplace.mediate",
+    ],
+  },
+  {
+    label: "Social & Moderation",
+    permissions: [
+      "social.moderate",
+      "social.post",
+      "social.promote",
+      "moderation.view",
+      "moderation.manage",
+    ],
+  },
+  {
+    label: "Engagement & Growth",
+    permissions: [
+      "missions.view",
+      "missions.manage",
+      "events.view",
+      "events.manage",
+      "quizzes.view",
+      "quizzes.manage",
+      "lottery.view",
+      "lottery.manage",
+      "leaderboards.view",
+      "leaderboards.manage",
+      "offerwalls.view",
+      "offerwalls.manage",
+      "games.view",
+      "games.manage",
+    ],
+  },
+  {
+    label: "Finance & Wallet",
+    permissions: [
+      "finance.view",
+      "withdrawals.view",
+      "withdrawals.process",
+      "withdrawals.approve",
+      "withdrawals.reject",
+      "payment_methods.view",
+      "payment_methods.manage",
+      "packages.view",
+      "packages.edit",
+      "referrals.view",
+      "referrals.configure",
+    ],
+  },
+  {
+    label: "Marketing & Ads",
+    permissions: [
+      "campaigns.view",
+      "campaigns.manage",
+      "notifications.view",
+      "notifications.send",
+      "banners.view",
+      "banners.manage",
+      "ads.view",
+      "ads.manage",
+      "offers.view",
+      "offers.manage",
+      "landing.view",
+      "landing.edit",
+      "ticker.view",
+      "ticker.edit",
+    ],
+  },
+  {
+    label: "System & Security",
+    permissions: [
+      "settings.view",
+      "settings.edit",
+      "ai.view",
+      "ai.manage",
+      "media.view",
+      "media.manage",
+      "logs.view",
+      "fraud.view",
+      "fraud.manage",
+      "proxy.view",
+      "proxy.manage",
+      "admins.view",
+      "admins.manage",
+      "admin.activity",
+    ],
+  },
+];
+
+/** Canonical full permission set — derived from the catalog so it is always
+ *  exhaustive (every permission is categorized). */
+export const ALL_PERMISSIONS: Permission[] = PERMISSION_CATALOG.flatMap(
+  (c) => c.permissions
+);
+
 // Permission matrix based on admin_oo.md / PROTOTYPE_ADMIN.md
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   USER: [], // No admin permissions
@@ -230,47 +387,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "media.view",
   ],
 
-  SUPER_ADMIN: [
-    // Full access to everything
-    "dashboard.view",
-    "users.view", "users.edit", "users.ban", "users.delete", "users.adjust_balance", "users.impersonate",
-    "kyc.view", "kyc.approve", "kyc.reject",
-    "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
-    ...TASK_CREATE_PERMISSIONS,
-    "boards.view", "boards.manage",
-    "submissions.view", "submissions.approve", "submissions.reject",
-    "leaderboards.view", "leaderboards.manage",
-    "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
-    "payment_methods.view", "payment_methods.manage",
-    "marketplace.view", "marketplace.manage", "marketplace.disputes", "marketplace.mediate",
-    "packages.view", "packages.edit",
-    "referrals.view", "referrals.configure",
-    "finance.view",
-    "lottery.view", "lottery.manage",
-    "courses.view", "courses.manage", "courses.approve",
-    "tutor.dashboard", "tutor.courses.manage", "tutor.applications.review",
-    "missions.view", "missions.manage", "events.view", "events.manage",
-    "quizzes.view", "quizzes.manage",
-    "offerwalls.view", "offerwalls.manage",
-    "fraud.view", "fraud.manage",
-    "proxy.view", "proxy.manage",
-    "moderation.view", "moderation.manage", "social.moderate",
-    "social.post", "social.promote",
-    "logs.view",
-    "campaigns.view", "campaigns.manage",
-    "notifications.view", "notifications.send",
-    "banners.view", "banners.manage",
-    "games.view", "games.manage",
-    "ads.view", "ads.manage",
-    "landing.view", "landing.edit",
-    "ticker.view", "ticker.edit",
-    "analytics.view", "analytics.export",
-    "ai.view", "ai.manage",
-    "settings.view", "settings.edit",
-    "admins.view", "admins.manage",
-    "media.view", "media.manage",
-    "offers.view", "offers.manage",
-  ],
+  // Full access to EVERYTHING — derived from the catalog so it can never fall
+  // out of sync as new permissions are added.
+  SUPER_ADMIN: [...ALL_PERMISSIONS],
 
   // Generic admin — broad by default, but NEVER finance and NEVER admins.manage
   // (super admin tunes it down further via the editor; the resolver also strips
@@ -332,10 +451,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "dashboard.view",
     "users.view",
     "tasks.view", "tasks.create", "tasks.edit",
-    // All types except app-install by default.
-    "tasks.create.video", "tasks.create.article", "tasks.create.quiz",
-    "tasks.create.survey", "tasks.create.social", "tasks.create.proxy",
-    "tasks.create.offerwall", "tasks.create.custom",
+    // Every task type (incl. app-install) — audience targeting rides along.
+    ...TASK_CREATE_PERMISSIONS,
     "boards.view", "boards.manage",
     "submissions.view", "submissions.approve", "submissions.reject",
     "courses.view", "courses.manage", "courses.approve",
@@ -411,7 +528,7 @@ export const FINANCE_PERMISSIONS: Permission[] = [
   "packages.view", "packages.edit",
   "referrals.view", "referrals.configure",
 ];
-export const SUPERADMIN_ONLY_PERMISSIONS: Permission[] = ["admins.manage"];
+export const SUPERADMIN_ONLY_PERMISSIONS: Permission[] = ["admins.manage", "admin.activity"];
 
 const FINANCE_SET = new Set<Permission>(FINANCE_PERMISSIONS);
 const SUPERADMIN_ONLY_SET = new Set<Permission>(SUPERADMIN_ONLY_PERMISSIONS);
@@ -438,12 +555,8 @@ export function stripProtectedForRole(
   return perms;
 }
 
-// Runtime list of every known permission. Derived from the role matrix — since
-// SUPER_ADMIN holds every permission, this stays complete automatically. Used to
-// validate stored config/overrides and to render the config + per-user UIs.
-export const ALL_PERMISSIONS: Permission[] = Array.from(
-  new Set(Object.values(ROLE_PERMISSIONS).flat())
-);
+// `ALL_PERMISSIONS` is defined above (derived from PERMISSION_CATALOG — the
+// single source of truth). This set validates stored config/overrides.
 const ALL_PERMISSION_SET = new Set<Permission>(ALL_PERMISSIONS);
 
 /** Type guard: is an arbitrary string a known Permission? */
@@ -476,126 +589,134 @@ export function parsePermissionOverrides(v: unknown): PermissionOverrides {
   return out;
 }
 
-// Grouped permission catalog for admin UIs (role editor + per-user overrides).
-// Client-safe (no server imports). Keep labels human-friendly.
-export const PERMISSION_CATALOG: Array<{ label: string; permissions: Permission[] }> = [
-  {
-    label: "Users & KYC",
-    permissions: [
-      "users.view", "users.edit", "users.ban", "users.delete",
-      "users.adjust_balance", "users.impersonate",
-      "kyc.view", "kyc.approve", "kyc.reject",
-    ],
-  },
-  {
-    label: "Content & Earning",
-    permissions: [
-      "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
-      ...TASK_CREATE_PERMISSIONS,
-      "submissions.view", "submissions.approve", "submissions.reject",
-      "boards.view", "boards.manage",
-      "courses.view", "courses.manage", "courses.approve",
-      "quizzes.view", "quizzes.manage",
-      "missions.view", "missions.manage", "events.view", "events.manage",
-      "lottery.view", "lottery.manage",
-      "leaderboards.view", "leaderboards.manage",
-    ],
-  },
-  {
-    label: "Finance",
-    permissions: [
-      "finance.view",
-      "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
-      "payment_methods.view", "payment_methods.manage",
-      "packages.view", "packages.edit",
-      "referrals.view", "referrals.configure",
-    ],
-  },
-  {
-    label: "Marketplace & Social",
-    permissions: [
-      "marketplace.view", "marketplace.manage", "marketplace.disputes", "marketplace.mediate",
-      "social.moderate", "social.post", "social.promote",
-      "moderation.view", "moderation.manage",
-    ],
-  },
-  {
-    label: "Marketing & Ads",
-    permissions: [
-      "campaigns.view", "campaigns.manage",
-      "notifications.view", "notifications.send",
-      "banners.view", "banners.manage",
-      "ads.view", "ads.manage",
-      "games.view", "games.manage",
-      "offers.view", "offers.manage",
-      "landing.view", "landing.edit",
-      "ticker.view", "ticker.edit",
-    ],
-  },
-  {
-    label: "System & Security",
-    permissions: [
-      "dashboard.view",
-      "analytics.view", "analytics.export",
-      "ai.view", "ai.manage",
-      "settings.view", "settings.edit",
-      "admins.view", "admins.manage",
-      "logs.view",
-      "fraud.view", "fraud.manage",
-      "proxy.view", "proxy.manage",
-      "offerwalls.view", "offerwalls.manage",
-      "media.view", "media.manage",
-      "tutor.applications.review",
-    "creators.review",
-    ],
-  },
-];
+// (PERMISSION_CATALOG is defined near the top — it is the single source of truth
+// for the full, categorized permission set.)
 
-// Human-readable label + one-line description per permission, so admin UIs show
-// meaningful text instead of raw `font-mono` keys. Finance/commerce keys are
-// fully described (that's where clarity matters most); anything omitted falls
-// back to a humanized version of the key via permissionLabel().
+// Human-readable label + one-line description for EVERY permission, so the role
+// editor / per-user override UI explains exactly what each toggle grants — a
+// super-admin can grant access understanding what it does. Order mirrors
+// PERMISSION_CATALOG. (Anything somehow missing falls back to a humanized key.)
 export const PERMISSION_META: Partial<Record<Permission, { label: string; description: string }>> = {
-  // Finance hub
-  "finance.view": { label: "Finance Hub", description: "Open the finance dashboard — income by source, payouts, wallet liabilities, and reports." },
-  // Withdrawals (payouts to users)
-  "withdrawals.view": { label: "View withdrawals", description: "See users' withdrawal requests, amounts, methods and history." },
-  "withdrawals.process": { label: "Process withdrawals", description: "Act on withdrawal requests (also gates the Deposits queue)." },
-  "withdrawals.approve": { label: "Approve withdrawals", description: "Move a request to Processing and mark it paid." },
-  "withdrawals.reject": { label: "Reject withdrawals", description: "Reject a request and refund the held balance." },
-  // Deposits reuse the withdrawals keys (no separate deposit permission).
-  // Payment methods
-  "payment_methods.view": { label: "View payment methods", description: "See the deposit/withdrawal channels (bKash, Binance, PayPal…)." },
-  "payment_methods.manage": { label: "Manage payment methods", description: "Add, edit or disable receiving accounts and gateways." },
-  // Packages / subscriptions (recurring revenue)
-  "packages.view": { label: "View packages", description: "See subscription tiers, pricing and revenue." },
-  "packages.edit": { label: "Edit packages", description: "Change tier pricing, limits and features." },
-  // Referrals / affiliate payouts
-  "referrals.view": { label: "View referrals", description: "See referral tree, commissions and affiliate earnings." },
-  "referrals.configure": { label: "Configure referrals", description: "Set commission rates and referral rules." },
-  // Revenue-source visibility (read-only reconciliation)
-  "marketplace.view": { label: "View marketplace", description: "See listings, orders, sales volume and fees." },
-  "marketplace.manage": { label: "Manage marketplace", description: "Moderate listings and manage marketplace settings." },
-  "marketplace.disputes": { label: "Marketplace disputes", description: "Review buyer/seller disputes." },
-  "marketplace.mediate": { label: "Mediate escrow deals", description: "Release or refund escrowed marketplace deals." },
-  "courses.view": { label: "View courses", description: "See course catalog, sales and tutor earnings." },
-  "courses.manage": { label: "Manage courses", description: "Edit, unpublish or remove courses." },
+  // ── Dashboard & Analytics ──
+  "dashboard.view": { label: "Admin dashboard", description: "Open the main admin overview (required to enter the admin panel)." },
+  "analytics.view": { label: "View analytics", description: "Open platform analytics — traffic, earnings, task and user reports." },
+  "analytics.export": { label: "Export analytics", description: "Download CSV / data exports of analytics." },
+
+  // ── Users & Accounts ──
+  "users.view": { label: "View users", description: "Browse the user directory, open profiles and the User Activity feed." },
+  "users.edit": { label: "Edit users", description: "Change a user's profile, role, package, verification and seller access." },
+  "users.ban": { label: "Ban / unban users", description: "Suspend or restore a user account." },
+  "users.delete": { label: "Delete users", description: "Permanently delete a user account (destructive)." },
+  "users.adjust_balance": { label: "Adjust balances", description: "Manually add or deduct a user's points, cash, XP or level." },
+  "users.impersonate": { label: "Impersonate users", description: "Log in as a user to see the app exactly as they do." },
+
+  // ── KYC & Verification ──
+  "kyc.view": { label: "View KYC", description: "See submitted ID documents and blue-badge requests." },
+  "kyc.approve": { label: "Approve KYC", description: "Approve identity verification / blue badge." },
+  "kyc.reject": { label: "Reject KYC", description: "Reject a KYC submission with a reason." },
+
+  // ── Tasks & Submissions ──
+  "tasks.view": { label: "View tasks", description: "See all tasks, task categories and task boards." },
+  "tasks.create": { label: "Create tasks", description: "Create new tasks (umbrella — plus the per-type permissions below)." },
+  "tasks.edit": { label: "Edit tasks", description: "Edit tasks, audience targeting and task-category visibility." },
+  "tasks.delete": { label: "Delete tasks", description: "Delete tasks (destructive)." },
+  "tasks.create.video": { label: "Create Video tasks", description: "Create video-watch tasks." },
+  "tasks.create.article": { label: "Create Article tasks", description: "Create article-read tasks." },
+  "tasks.create.quiz": { label: "Create Quiz tasks", description: "Create quiz tasks." },
+  "tasks.create.survey": { label: "Create Survey tasks", description: "Create survey tasks." },
+  "tasks.create.social": { label: "Create Social tasks", description: "Create social-engagement tasks." },
+  "tasks.create.proxy": { label: "Create Proxy tasks", description: "Create geo/proxy browsing tasks." },
+  "tasks.create.offerwall": { label: "Create Offerwall tasks", description: "Create offerwall tasks." },
+  "tasks.create.custom": { label: "Create Custom tasks", description: "Create custom-type tasks." },
+  "tasks.create.appinstall": { label: "Create App-Install tasks", description: "Create app-install-with-proof tasks." },
+  "boards.view": { label: "View task boards", description: "See task boards (bundled task sets) and their progress." },
+  "boards.manage": { label: "Manage task boards", description: "Create, edit and assign tasks to task boards." },
+  "submissions.view": { label: "View submissions", description: "See users' task submissions and their proof." },
+  "submissions.approve": { label: "Approve submissions", description: "Approve a submission and release its reward." },
+  "submissions.reject": { label: "Reject submissions", description: "Reject a submission (with an optional penalty) or request a revision." },
+
+  // ── Courses & Tutors ──
+  "courses.view": { label: "View courses", description: "See the course catalog, sales and tutor earnings." },
+  "courses.manage": { label: "Manage courses", description: "Edit, unpublish or remove courses and course categories." },
   "courses.approve": { label: "Approve courses", description: "Approve submitted courses for publishing." },
-  "ads.view": { label: "View ads", description: "See ad campaigns, spend and advertiser credit." },
-  "ads.manage": { label: "Manage ads", description: "Create/edit campaigns and placements in the Ad Manager." },
+  "tutor.dashboard": { label: "Tutor dashboard", description: "Access the tutor console (tutor self-service)." },
+  "tutor.courses.manage": { label: "Manage own courses", description: "A tutor manages their own courses (ownership enforced)." },
+  "tutor.applications.review": { label: "Review tutor applications", description: "Approve or reject tutor applications." },
+  "creators.review": { label: "Review creator applications", description: "Approve/reject marketplace-seller, advertiser, agency and affiliate applications." },
+
+  // ── Marketplace ──
+  "marketplace.view": { label: "View marketplace", description: "See listings, orders, sales volume, fees and the affiliate overview." },
+  "marketplace.manage": { label: "Manage marketplace", description: "Moderate listings and manage marketplace settings, commission and pricing." },
+  "marketplace.disputes": { label: "Marketplace disputes", description: "Review and resolve buyer/seller disputes." },
+  "marketplace.mediate": { label: "Mediate escrow deals", description: "Release or refund escrowed marketplace deals." },
+
+  // ── Social & Moderation ──
+  "social.moderate": { label: "Moderate social feed", description: "Review reports and moderate posts, comments and the feed." },
+  "social.post": { label: "Post as platform", description: "Create posts / announcements from the platform account." },
+  "social.promote": { label: "Promote posts", description: "Boost or promote posts in the feed." },
+  "moderation.view": { label: "View moderation", description: "See the moderation queue and reports." },
+  "moderation.manage": { label: "Manage moderation", description: "Take moderation actions (hide/remove/warn)." },
+
+  // ── Engagement & Growth ──
+  "missions.view": { label: "View missions", description: "See daily missions and daily-task-mission setup." },
+  "missions.manage": { label: "Manage missions", description: "Create and configure daily missions and task missions." },
+  "events.view": { label: "View events", description: "See events / quests." },
+  "events.manage": { label: "Manage events", description: "Create and configure events / quests and their rewards." },
+  "quizzes.view": { label: "View quizzes", description: "See standalone published quizzes." },
+  "quizzes.manage": { label: "Manage quizzes", description: "Create, edit and publish quizzes." },
+  "lottery.view": { label: "View lottery", description: "See lottery draws, tickets and winners." },
+  "lottery.manage": { label: "Manage lottery", description: "Create and run lottery draws." },
+  "leaderboards.view": { label: "View leaderboard", description: "See the leaderboard admin." },
+  "leaderboards.manage": { label: "Manage leaderboard", description: "Configure or reset leaderboards." },
   "offerwalls.view": { label: "View offerwalls", description: "See offerwall providers, offers and completions." },
   "offerwalls.manage": { label: "Manage offerwalls", description: "Configure providers, offers and payout rules." },
-  // Analytics
-  "analytics.view": { label: "View analytics", description: "Open platform analytics and reports." },
-  "analytics.export": { label: "Export analytics", description: "Download CSV/data exports." },
-  // Users
-  "users.view": { label: "View users", description: "Browse the user directory and profiles." },
-  "users.adjust_balance": { label: "Adjust balances", description: "Manually credit or debit a user's points/cash." },
-  // Admin control
-  "admins.view": { label: "View admins", description: "See admin accounts, roles and activity." },
+  "games.view": { label: "View games", description: "See the HTML5 games catalog." },
+  "games.manage": { label: "Manage games", description: "Add, edit or remove games." },
+
+  // ── Finance & Wallet ──
+  "finance.view": { label: "Finance Hub", description: "Open the finance dashboard — income by source, payouts, wallet liabilities and reports." },
+  "withdrawals.view": { label: "View withdrawals", description: "See users' withdrawal & deposit requests, amounts, methods and history." },
+  "withdrawals.process": { label: "Process withdrawals", description: "Act on withdrawal requests and the deposits queue." },
+  "withdrawals.approve": { label: "Approve withdrawals", description: "Move a request to Processing and mark it paid." },
+  "withdrawals.reject": { label: "Reject withdrawals", description: "Reject a request and refund the held balance." },
+  "payment_methods.view": { label: "View payment methods", description: "See the deposit/withdrawal channels (bKash, Nagad, Binance, PayPal…)." },
+  "payment_methods.manage": { label: "Manage payment methods", description: "Add, edit or disable receiving accounts and gateways." },
+  "packages.view": { label: "View packages", description: "See subscription tiers, pricing and revenue." },
+  "packages.edit": { label: "Edit packages", description: "Change tier pricing, limits and feature toggles." },
+  "referrals.view": { label: "View referrals", description: "See the referral tree, commissions and affiliate earnings." },
+  "referrals.configure": { label: "Configure referrals", description: "Set commission rates, referral bonuses and rules." },
+
+  // ── Marketing & Ads ──
+  "campaigns.view": { label: "View campaigns", description: "See marketing campaigns." },
+  "campaigns.manage": { label: "Manage campaigns", description: "Create and run marketing campaigns." },
+  "notifications.view": { label: "View notifications", description: "See sent notifications." },
+  "notifications.send": { label: "Send notifications", description: "Send push / in-app notifications to users." },
+  "banners.view": { label: "View banners", description: "See banners and the splash screen." },
+  "banners.manage": { label: "Manage banners", description: "Create/edit banners and the splash screen." },
+  "ads.view": { label: "View ads / monetization", description: "See ad campaigns, spend, advertiser credit and the Monetization page." },
+  "ads.manage": { label: "Manage ads / monetization", description: "Create/edit campaigns & placements and tune Browse-&-Earn / ad-network settings." },
+  "offers.view": { label: "View offers", description: "See promotional offers." },
+  "offers.manage": { label: "Manage offers", description: "Create and edit promotional offers." },
+  "landing.view": { label: "View landing page", description: "See the CMS landing-page content." },
+  "landing.edit": { label: "Edit landing page", description: "Edit landing-page sections and content." },
+  "ticker.view": { label: "View withdrawal ticker", description: "See the live withdrawal ticker config." },
+  "ticker.edit": { label: "Edit withdrawal ticker", description: "Configure the live withdrawal ticker." },
+
+  // ── System & Security ──
+  "settings.view": { label: "View settings", description: "See system settings, social-earning, feed widgets and locations." },
+  "settings.edit": { label: "Edit settings", description: "Change global platform settings and configuration." },
+  "ai.view": { label: "View AI content", description: "See AI content generation tools." },
+  "ai.manage": { label: "Manage AI content", description: "Generate and configure AI content." },
+  "media.view": { label: "View media", description: "Browse the media library." },
+  "media.manage": { label: "Manage media", description: "Upload, replace or delete media." },
+  "logs.view": { label: "Security logs", description: "View the audit / security log of admin actions." },
+  "fraud.view": { label: "View fraud monitor", description: "See fraud events, VPN/IP flags and anti-fraud signals." },
+  "fraud.manage": { label: "Manage fraud", description: "Configure anti-fraud toggles and act on fraud events." },
+  "proxy.view": { label: "View proxy servers", description: "See proxy-server config for proxy tasks." },
+  "proxy.manage": { label: "Manage proxy servers", description: "Add or edit proxy servers." },
+  "admins.view": { label: "View admins", description: "See admin accounts, roles and the access matrix." },
   "admins.manage": { label: "Manage admins & roles", description: "Edit the role matrix, custom roles and per-user permissions (super-admin only)." },
-  "creators.review": { label: "Review creator applications", description: "Approve/reject marketplace-seller, advertiser, agency and affiliate applications." },
-  "dashboard.view": { label: "Admin dashboard", description: "Open the main admin overview." },
+  "admin.activity": { label: "Admin activity log", description: "See every action other admins take — grants, approvals, edits (super-admin only)." },
 };
 
 /** Turn a permission key like `withdrawals.approve` into "Withdrawals: Approve". */
@@ -679,6 +800,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "CORE",
   },
   {
+    name: "User Activity",
+    href: "/admin/user-activity",
+    icon: "Activity",
+    permissions: ["users.view"],
+    category: "CORE",
+  },
+  {
     name: "Leaderboard",
     href: "/admin/leaderboard",
     icon: "Trophy",
@@ -689,6 +817,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     name: "Tasks",
     href: "/admin/tasks",
     icon: "ListTodo",
+    permissions: ["tasks.view"],
+    category: "CORE",
+  },
+  {
+    name: "Task Categories",
+    href: "/admin/task-categories",
+    icon: "LayoutGrid",
     permissions: ["tasks.view"],
     category: "CORE",
   },
@@ -892,6 +1027,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/logs",
     icon: "FileText",
     permissions: ["logs.view"],
+    category: "SECURITY",
+  },
+  {
+    name: "Admin Activity",
+    href: "/admin/admin-activity",
+    icon: "ShieldAlert",
+    permissions: ["admin.activity"],
     category: "SECURITY",
   },
 

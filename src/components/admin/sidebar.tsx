@@ -48,6 +48,7 @@ import {
   Landmark,
   DollarSign,
   Eye,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -119,6 +120,7 @@ const iconMap: Record<string, LucideIcon> = {
   Landmark,
   DollarSign,
   Eye,
+  LayoutGrid,
 };
 
 // Extract SidebarContent as a separate component

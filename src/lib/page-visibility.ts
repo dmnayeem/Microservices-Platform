@@ -43,7 +43,7 @@ export const USER_PAGES: UserPage[] = [
   { path: "/board-tasks", label: "Board Tasks", group: "Earn" },
   { path: "/offerwalls", label: "Offerwalls", group: "Earn" },
   { path: "/events", label: "Events", group: "Earn" },
-  { path: "/watch-ads", label: "Watch & Earn", group: "Earn" },
+  { path: "/watch-ads", label: "Browse & Earn", group: "Earn" },
   { path: "/milestones", label: "Milestones", group: "Earn" },
   { path: "/achievements", label: "Achievements", group: "Earn" },
   { path: "/leaderboard", label: "Leaderboard", group: "Earn" },

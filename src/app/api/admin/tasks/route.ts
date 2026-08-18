@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can, canAny } from "@/lib/permissions";
 import { taskCreatePermFor, TASK_CREATE_PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import { validateCustomConfig, type CustomConfig } from "@/lib/custom-tasks";
 import {
   validateAppInstallConfig,
@@ -48,7 +49,6 @@ export async function POST(request: NextRequest) {
       requiredAccessLevel,
       hidden,
       order,
-      countries,
       contentUrl,
       thumbnailUrl,
       duration,
@@ -196,7 +196,8 @@ export async function POST(request: NextRequest) {
             : parseInt(String(requiredAccessLevel ?? 0)) || 0,
         hidden: hidden === true,
         order: order != null ? parseInt(String(order)) || 0 : 0,
-        countries: countries || [],
+        // Audience targeting (countries + state/division/district/upazila + gender + age).
+        ...sanitizeTaskAudience(body),
         contentUrl: contentUrl || null,
         thumbnailUrl: resolvedThumbnailUrl,
         duration: duration ? parseInt(duration.toString()) : null,

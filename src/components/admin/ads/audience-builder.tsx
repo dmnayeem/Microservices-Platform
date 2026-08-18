@@ -11,6 +11,7 @@ import {
   INTEREST_OPTIONS,
   type AdTargeting,
 } from "@/lib/ad-targeting";
+import { useCountries } from "@/lib/use-countries";
 
 type OptCount = { value: string; label: string; count?: number };
 
@@ -75,14 +76,19 @@ export function AudienceBuilder({
     return Number.isFinite(n) && n > 0 ? n : undefined;
   };
 
+  // Canonical country list from the Country DB (falls back to the built-in list
+  // offline). Codes are ISO2 and match User.country — one source of truth.
+  const dbCountries = useCountries(
+    COUNTRY_OPTIONS.map((c) => ({ code: c.code, name: c.name, flag: c.flag }))
+  );
   const countryOpts: OptCount[] = useMemo(
     () =>
-      COUNTRY_OPTIONS.map((c) => ({
+      dbCountries.map((c) => ({
         value: c.code,
-        label: `${c.flag} ${c.name}`,
+        label: `${c.flag ?? "🏳️"} ${c.name}`,
         count: countryCounts[c.code],
       })),
-    [countryCounts]
+    [dbCountries, countryCounts]
   );
   const langOpts: OptCount[] = LANGUAGE_OPTIONS.map((l) => ({ value: l.code, label: l.label }));
   const genderOpts: OptCount[] = GENDER_OPTIONS.map((g) => ({

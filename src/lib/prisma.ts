@@ -56,6 +56,15 @@ function createPrismaClient() {
   // connection, so every existing cacheStrategy call still runs (just uncached).
   const isAccelerate =
     url.startsWith("prisma://") || url.startsWith("prisma+postgres://");
+  // Loud warning in production if we're on a DIRECT connection — every
+  // `cacheStrategy` across the app is silently a no-op then, which matters a lot
+  // at scale (read amplification on hot paths). Confirm the Accelerate URL is set.
+  if (!isAccelerate && process.env.NODE_ENV === "production") {
+    console.warn(
+      "[prisma] DATABASE_URL is a DIRECT connection — Prisma Accelerate caching " +
+        "(cacheStrategy) is DISABLED. Use the prisma+postgres:// Accelerate URL for scale."
+    );
+  }
   const connOption = isAccelerate
     ? { accelerateUrl: url }
     : { adapter: new PrismaPg({ connectionString: url }) };

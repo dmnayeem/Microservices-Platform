@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { lt } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
 import { z } from "zod";
@@ -143,19 +144,14 @@ export async function POST(
     }
 
     // Audit log every adjustment
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: `BALANCE_${action.toUpperCase()}_${type.toUpperCase()}`,
-        entity: "User",
-        entityId: id,
-        newData: {
-          type,
-          action,
-          amount,
-          reason: reason ?? null,
-        },
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: `BALANCE_${action.toUpperCase()}_${type.toUpperCase()}`,
+      entity: "User",
+      entityId: id,
+      targetUserId: id,
+      summary: `${action === "add" ? "Gave" : "Deducted"} ${amount} ${type}${reason ? ` — ${reason}` : ""}`,
+      meta: { type, action, amount, reason: reason ?? null },
     });
 
     // Notify the user (skip noise for level/xp progression)

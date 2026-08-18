@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserDayContext } from "@/lib/user-day";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { verifyCodeFor } from "@/lib/task-verify-code";
+import { matchesTaskAudience } from "@/lib/task-targeting";
 
 // GET /api/tasks/:id - Get single task details
 export async function GET(
@@ -34,6 +35,23 @@ export async function GET(
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+
+    // Audience targeting eligibility — lets the detail view show a "not available
+    // for your profile/area" state instead of a start button.
+    const viewer = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        country: true,
+        region: true,
+        division: true,
+        district: true,
+        subDistrict: true,
+        postalCode: true,
+        gender: true,
+        dateOfBirth: true,
+      },
+    });
+    const audienceEligible = matchesTaskAudience(task, viewer ?? {});
 
     // Check if user has active submission
     const activeSubmission = await prisma.taskSubmission.findFirst({
@@ -109,6 +127,7 @@ export async function GET(
       },
       socialVerifyCodes,
       userStatus: {
+        audienceEligible,
         hasActiveSubmission: !!activeSubmission,
         activeSubmissionId: activeSubmission?.id,
         // Server-accrued watch seconds so a VIDEO task resumes instead of

@@ -8,6 +8,7 @@
  */
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { BD_UPAZILAS } from "./bd-upazilas";
 
 const prisma = new PrismaClient({
   accelerateUrl: process.env.DATABASE_URL!,
@@ -454,7 +455,16 @@ async function seed() {
       );
       districtCount++;
 
-      for (const sd of dist.subDistricts ?? []) {
+      // Merge the complete upazila list (BD_UPAZILAS) with any inline
+      // sub-districts (which may carry postal codes), deduped by name.
+      const inline = dist.subDistricts ?? [];
+      const inlineByName = new Map(inline.map((s) => [s.name, s]));
+      const allSubs: SubDistrictNode[] = [...inline];
+      for (const name of BD_UPAZILAS[dist.name] ?? []) {
+        if (!inlineByName.has(name)) allSubs.push({ name });
+      }
+
+      for (const sd of allSubs) {
         const subDistrict = await upsertLocation(
           bd.id,
           district.id,

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
+import { compressForUpload } from "@/lib/image-compress";
 import { Upload, Loader2, Trash2 } from "lucide-react";
 import { confirmDialog } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
@@ -60,8 +61,9 @@ export function PhotoModal({
     if (!file) return;
     setBusy(true);
     try {
+      const out = await compressForUpload(file, "avatars");
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", out);
       fd.append("target", target);
       const res = await fetch("/api/profile/photo", {
         method: "POST",

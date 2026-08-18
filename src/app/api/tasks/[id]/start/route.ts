@@ -12,6 +12,7 @@ import { getUiToggles } from "@/lib/ui-toggles-server";
 import { isProfileComplete } from "@/lib/profile-completion";
 import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
+import { matchesTaskAudience } from "@/lib/task-targeting";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
@@ -134,6 +135,11 @@ export async function POST(
         id: true,
         level: true,
         country: true,
+        region: true,
+        division: true,
+        district: true,
+        subDistrict: true,
+        postalCode: true,
         avatar: true,
         firstName: true,
         lastName: true,
@@ -201,14 +207,13 @@ export async function POST(
       );
     }
 
-    // Country restriction
-    if (task.countries.length > 0 && user.country) {
-      if (!task.countries.includes(user.country)) {
-        return NextResponse.json(
-          { error: "Task not available in your country" },
-          { status: 403 }
-        );
-      }
+    // Audience targeting (country + state/division/district/upazila + gender +
+    // age) — STRICT: a user missing a targeted attribute is rejected.
+    if (!matchesTaskAudience(task, user)) {
+      return NextResponse.json(
+        { error: "This task isn't available for your profile or area." },
+        { status: 403 }
+      );
     }
 
     // Sequential-unlock gate (feature #7): if this task is locked behind an

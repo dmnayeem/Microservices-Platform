@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { writeAudit } from "@/lib/audit";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { deliverToUser } from "@/lib/notify";
 
@@ -46,6 +47,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       message: `Your deposit of $${deposit.amount.toFixed(2)} was not approved.${adminNote ? ` ${adminNote}` : ""}`,
       link: "/wallet",
     });
+    await writeAudit({
+      actorId: session.user.id,
+      action: "DEPOSIT_REJECTED",
+      entity: "Deposit",
+      entityId: id,
+      targetUserId: deposit.userId,
+      summary: `Rejected a $${deposit.amount.toFixed(2)} deposit${adminNote ? ` — ${adminNote}` : ""}`,
+      meta: { amount: Number(deposit.amount), method: deposit.method, adminNote },
+    });
     return NextResponse.json({ success: true });
   }
 
@@ -85,6 +95,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     title: "Deposit approved",
     message: `$${deposit.amount.toFixed(2)} has been added to your balance.`,
     link: "/wallet",
+  });
+
+  await writeAudit({
+    actorId: session.user.id,
+    action: "DEPOSIT_APPROVED",
+    entity: "Deposit",
+    entityId: id,
+    targetUserId: deposit.userId,
+    summary: `Approved a $${deposit.amount.toFixed(2)} deposit (credited cash)`,
+    meta: { amount: Number(deposit.amount), method: deposit.method, adminNote },
   });
 
   return NextResponse.json({ success: true });

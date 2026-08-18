@@ -142,6 +142,11 @@ export function DepositMethodsForm({
                   placeholder="e.g. 1.85"
                   className={inp}
                 />
+                {m.chargeType === "personal" && (m.chargePct ?? 0) > 0 && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    ≈ ৳{((m.chargePct ?? 0) * 10).toFixed(1)} per ৳1,000 (scales with amount)
+                  </p>
+                )}
               </Field>
             </div>
             {canEdit && (

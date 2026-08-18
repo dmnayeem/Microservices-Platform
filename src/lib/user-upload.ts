@@ -5,12 +5,16 @@
  * stock videos / lossless audio don't hit the direct-upload cap. Returns the
  * public URL of the stored object.
  */
+import { compressForUpload } from "@/lib/image-compress";
+
 const DIRECT_MAX = 5 * 1024 * 1024;
 
 export async function uploadUserFile(
   file: File,
   folder = "marketplace"
 ): Promise<string> {
+  // Shrink raster images before upload (no-op for video/audio/gif/svg).
+  file = await compressForUpload(file, folder);
   if (file.size <= DIRECT_MAX) {
     const fd = new FormData();
     fd.append("file", file);

@@ -9,6 +9,8 @@ import {
   type AffiliateTarget,
 } from "@/lib/affiliate";
 import { toNumOrNull } from "@/lib/money";
+import { clientIp } from "@/lib/rate-limit";
+import { createHash } from "crypto";
 import { z } from "zod";
 
 const schema = z.object({
@@ -72,12 +74,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false });
   }
 
+  // Stable per-visitor hash (IP + UA) → total rows = views, distinct = clicks.
+  const ip = clientIp(request);
+  const ua = request.headers.get("user-agent") ?? "";
+  const visitorHash =
+    ip && ip !== "unknown"
+      ? createHash("sha256").update(`${ip}|${ua}`).digest("hex").slice(0, 32)
+      : null;
+
   await prisma.affiliateClick
     .create({
       data: {
         affiliateUserId: affiliate.id,
         targetType,
         targetId,
+        visitorHash,
       },
     })
     .catch(() => {});

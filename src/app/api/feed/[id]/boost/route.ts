@@ -9,7 +9,8 @@ import {
 import { getPointsPerUsd } from "@/lib/economy";
 import { userCanFeature } from "@/lib/packages";
 
-const BOOST_COST_POINTS = 100;
+// Duration-based pricing (points) — longer boost costs more.
+const BOOST_PRICING: Record<number, number> = { 1: 30, 7: 100, 30: 300 };
 const BOOST_DAYS: Record<number, boolean> = { 1: true, 7: true, 30: true };
 
 export async function POST(
@@ -22,6 +23,7 @@ export async function POST(
   }
   const body = (await _req.json().catch(() => ({}))) as { days?: number };
   const days = BOOST_DAYS[Number(body.days)] ? Number(body.days) : 7;
+  const cost = BOOST_PRICING[days] ?? 100;
 
   return withIdempotency(_req, session.user.id, async () => {
   const userId = session.user.id;
@@ -60,9 +62,9 @@ export async function POST(
     where: { id: userId },
     select: { pointsBalance: true },
   });
-  if (!me || me.pointsBalance < BOOST_COST_POINTS) {
+  if (!me || me.pointsBalance < cost) {
     return NextResponse.json(
-      { error: `Insufficient points. ${BOOST_COST_POINTS} pts required.` },
+      { error: `Insufficient points. ${cost} pts required.` },
       { status: 400 }
     );
   }
@@ -74,8 +76,8 @@ export async function POST(
   try {
     await prisma.$transaction(async (tx) => {
       const paid = await tx.user.updateMany({
-        where: { id: userId, pointsBalance: { gte: BOOST_COST_POINTS } },
-        data: { pointsBalance: { decrement: BOOST_COST_POINTS } },
+        where: { id: userId, pointsBalance: { gte: cost } },
+        data: { pointsBalance: { decrement: cost } },
       });
       if (paid.count === 0) throw new Error("INSUFFICIENT");
 
@@ -93,8 +95,8 @@ export async function POST(
           userId,
           type: TransactionType.PURCHASE,
           status: TransactionStatus.COMPLETED,
-          points: -BOOST_COST_POINTS,
-          amount: BOOST_COST_POINTS / pointsPerUsd,
+          points: -cost,
+          amount: cost / pointsPerUsd,
           description: `Boosted social post (${days}d)`,
           reference: `boost_${id}_${now.getTime()}`,
           metadata: { postId: id, days },
@@ -105,7 +107,7 @@ export async function POST(
     const msg = e instanceof Error ? e.message : "";
     if (msg === "INSUFFICIENT") {
       return NextResponse.json(
-        { error: `Insufficient points. ${BOOST_COST_POINTS} pts required.` },
+        { error: `Insufficient points. ${cost} pts required.` },
         { status: 400 }
       );
     }
@@ -117,7 +119,7 @@ export async function POST(
 
   return NextResponse.json({
     success: true,
-    cost: BOOST_COST_POINTS,
+    cost: cost,
     boostedUntil: boostedUntil.toISOString(),
   });
   });

@@ -9,6 +9,7 @@ import {
   NotificationType,
 } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
+import { taskAudienceWhere } from "@/lib/task-targeting";
 
 export async function POST(
   _req: Request,
@@ -86,8 +87,28 @@ export async function POST(
     );
   }
 
+  // Only the tasks this user is eligible for count toward the board's
+  // completion gate (STRICT audience targeting — mirrors the board detail view).
+  const claimant = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      country: true,
+      region: true,
+      division: true,
+      district: true,
+      subDistrict: true,
+      postalCode: true,
+      gender: true,
+      dateOfBirth: true,
+    },
+  });
+
   const tasks = await prisma.task.findMany({
-    where: { boardId: board.id, status: TaskStatus.ACTIVE },
+    where: {
+      boardId: board.id,
+      status: TaskStatus.ACTIVE,
+      AND: taskAudienceWhere(claimant ?? {}),
+    },
     select: { id: true },
   });
   if (tasks.length === 0) {

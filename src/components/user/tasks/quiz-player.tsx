@@ -74,7 +74,23 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
       })
       .then((d) => {
         if (cancelled) return;
-        const qs: Question[] = Array.isArray(d.questions) ? d.questions : [];
+        // Defensive: the API may (for a misconfigured task) hand back a
+        // string-encoded or empty questions value — show a clear error instead
+        // of a blank active screen with no Submit button.
+        let raw: unknown = d.questions;
+        if (typeof raw === "string") {
+          try {
+            raw = JSON.parse(raw);
+          } catch {
+            raw = [];
+          }
+        }
+        const qs: Question[] = Array.isArray(raw) ? (raw as Question[]) : [];
+        if (qs.length === 0) {
+          setErrorMsg("This quiz has no questions yet.");
+          setState("error");
+          return;
+        }
         setMeta({
           id: d.taskId,
           title: d.title,

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Loader2, X, Upload } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { compressForUpload } from "@/lib/image-compress";
 
 interface Props {
   value: string;
@@ -33,8 +34,9 @@ export function ProofImageUpload({ value, onChange, placeholder }: Props) {
     }
     setBusy(true);
     try {
+      const out = await compressForUpload(f, "task-proofs");
       const fd = new FormData();
-      fd.append("file", f);
+      fd.append("file", out);
       fd.append("folder", "task-proofs");
       const res = await fetch("/api/upload", { method: "PUT", body: fd });
       const d = await res.json().catch(() => ({}));

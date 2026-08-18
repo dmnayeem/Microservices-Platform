@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import {
   normalizeSocialConfig,
   validateSocialBundle,
@@ -108,7 +109,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       requiredAccessLevel,
       hidden,
       order,
-      countries,
       contentUrl,
       thumbnailUrl,
       duration,
@@ -222,7 +222,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             : parseInt(String(requiredAccessLevel ?? 0)) || 0,
         ...(hidden !== undefined ? { hidden: hidden === true } : {}),
         order: order != null ? parseInt(String(order)) || 0 : existingTask.order,
-        countries: countries || [],
+        // Audience targeting (countries + state/division/district/upazila + gender + age).
+        ...sanitizeTaskAudience(body),
         contentUrl: contentUrl || null,
         thumbnailUrl: resolvedThumbnailUrl,
         duration: duration ? parseInt(duration.toString()) : null,

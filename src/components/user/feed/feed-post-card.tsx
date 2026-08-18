@@ -649,14 +649,14 @@ export const FeedPostCard = memo(function FeedPostCard({
             </p>
             <p className="text-xs text-gray-400 mt-1">
               Boosted posts recirculate near the top of the feed for the chosen
-              period (100 pts). Pick how long:
+              period. Pick how long:
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {[
-                { d: 1, label: "1 day" },
-                { d: 7, label: "7 days" },
-                { d: 30, label: "30 days" },
-              ].map(({ d, label }) => (
+                { d: 1, label: "1 day", pts: 30 },
+                { d: 7, label: "7 days", pts: 100 },
+                { d: 30, label: "30 days", pts: 300 },
+              ].map(({ d, label, pts }) => (
                 <button
                   key={d}
                   disabled={busy}
@@ -684,9 +684,10 @@ export const FeedPostCard = memo(function FeedPostCard({
                       setBusy(false);
                     }
                   }}
-                  className="py-2.5 rounded-lg bg-gray-800 hover:bg-amber-500 hover:text-white text-sm font-semibold text-gray-200 disabled:opacity-50"
+                  className="py-2.5 rounded-lg bg-gray-800 hover:bg-amber-500 hover:text-white text-sm font-semibold text-gray-200 disabled:opacity-50 flex flex-col items-center gap-0.5"
                 >
-                  {label}
+                  <span>{label}</span>
+                  <span className="text-[11px] font-bold text-amber-400">{pts} pts</span>
                 </button>
               ))}
             </div>

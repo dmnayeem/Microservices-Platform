@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { toNum } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { deliverToUser } from "@/lib/notify";
@@ -110,14 +111,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       });
 
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "WITHDRAWAL_APPROVED",
-          entity: "Withdrawal",
-          entityId: id,
-          newData: { adminNote: adminNote ?? null, transactionId: transactionId ?? null },
-        },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "WITHDRAWAL_APPROVED",
+        entity: "Withdrawal",
+        entityId: id,
+        targetUserId: existingWithdrawal.userId,
+        summary: `Approved a $${toNum(existingWithdrawal.netAmount).toFixed(2)} withdrawal (processing)`,
+        meta: { adminNote: adminNote ?? null, transactionId: transactionId ?? null },
       });
 
       return NextResponse.json({
@@ -178,14 +179,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }),
       ]);
 
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "WITHDRAWAL_PAID",
-          entity: "Withdrawal",
-          entityId: id,
-          newData: { transactionId, adminNote: adminNote ?? null },
-        },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "WITHDRAWAL_PAID",
+        entity: "Withdrawal",
+        entityId: id,
+        targetUserId: existingWithdrawal.userId,
+        summary: `Marked a $${toNum(existingWithdrawal.netAmount).toFixed(2)} withdrawal as paid`,
+        meta: { transactionId, adminNote: adminNote ?? null },
       });
 
       void deliverToUser({
@@ -268,17 +269,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }),
       ]);
 
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "WITHDRAWAL_REJECTED",
-          entity: "Withdrawal",
-          entityId: id,
-          newData: {
-            rejectionReason: rejectionReason ?? null,
-            adminNote: adminNote ?? null,
-          },
-        },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "WITHDRAWAL_REJECTED",
+        entity: "Withdrawal",
+        entityId: id,
+        targetUserId: existingWithdrawal.userId,
+        summary: `Rejected & refunded a $${toNum(existingWithdrawal.amount).toFixed(2)} withdrawal`,
+        meta: { rejectionReason: rejectionReason ?? null, adminNote: adminNote ?? null },
       });
 
       return NextResponse.json({

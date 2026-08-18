@@ -358,18 +358,16 @@ export async function POST(
     // ── Custom task: validate answers against admin-defined fields ──
     if (task.type === "CUSTOM") {
       const cfg = task.customConfig as CustomConfig | null;
-      if (!cfg || !Array.isArray(cfg.fields) || cfg.fields.length === 0) {
-        return NextResponse.json(
-          { error: "Custom task is misconfigured" },
-          { status: 400 }
+      // Simple custom tasks with no configured fields are a plain "mark done"
+      // completion — nothing to validate. Only enforce answers when fields exist.
+      if (cfg && Array.isArray(cfg.fields) && cfg.fields.length > 0) {
+        const err = validateCustomAnswers(
+          cfg,
+          (customAnswers ?? {}) as CustomAnswers
         );
-      }
-      const err = validateCustomAnswers(
-        cfg,
-        (customAnswers ?? {}) as CustomAnswers
-      );
-      if (err) {
-        return NextResponse.json({ error: err }, { status: 400 });
+        if (err) {
+          return NextResponse.json({ error: err }, { status: 400 });
+        }
       }
     }
 

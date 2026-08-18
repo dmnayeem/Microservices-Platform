@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 
@@ -89,6 +90,16 @@ export async function POST(
       },
     });
 
+    await writeAudit({
+      actorId: session.user.id,
+      action: "USER_BANNED",
+      entity: "User",
+      entityId: id,
+      targetUserId: id,
+      summary: `Banned user${reason ? ` — ${reason}` : ""}`,
+      meta: { reason: reason ?? null },
+    });
+
     return NextResponse.json({
       message: "User banned successfully",
     });
@@ -151,6 +162,15 @@ export async function DELETE(
         title: "Account Restored",
         message: "Your account has been restored. You can now access all features.",
       },
+    });
+
+    await writeAudit({
+      actorId: session.user.id,
+      action: "USER_UNBANNED",
+      entity: "User",
+      entityId: id,
+      targetUserId: id,
+      summary: "Unbanned user (account restored)",
     });
 
     return NextResponse.json({

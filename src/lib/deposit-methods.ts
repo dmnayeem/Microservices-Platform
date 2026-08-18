@@ -35,9 +35,12 @@ const SETTING_KEY = "deposit_methods";
 
 export const DEPOSIT_METHOD_PRESETS: DepositMethod[] = [
   { key: "binance", label: "Binance Pay", accountLabel: "Binance Pay ID / UID", account: "", instructions: "Send via Binance Pay to the ID above, then paste the transaction ID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "bkash", label: "bKash", accountLabel: "bKash number", account: "", instructions: "Send Money to the number above, then enter the bKash TrxID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "nagad", label: "Nagad", accountLabel: "Nagad number", account: "", instructions: "Send Money to the number above, then enter the Nagad TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
-  { key: "rocket", label: "Rocket", accountLabel: "Rocket number", account: "", instructions: "Send to the number above, then enter the Rocket TxnID.", enabled: false, minAmount: 1, maxAmount: 100000 },
+  // Mobile-banking presets carry the personal send-money fee that scales with
+  // amount: bKash 20 BDT / 1000 (2%), Nagad & DBBL/Rocket 15 / 1000 (1.5%).
+  { key: "bkash", label: "bKash", accountLabel: "bKash number", account: "", instructions: "Send Money to the number above, then enter the bKash TrxID.", enabled: false, minAmount: 1, maxAmount: 100000, chargeType: "personal", chargePct: 2 },
+  { key: "nagad", label: "Nagad", accountLabel: "Nagad number", account: "", instructions: "Send Money to the number above, then enter the Nagad TxnID.", enabled: false, minAmount: 1, maxAmount: 100000, chargeType: "personal", chargePct: 1.5 },
+  { key: "dbbl", label: "DBBL", accountLabel: "DBBL account / Nexus number", account: "", instructions: "Send to the DBBL account above, then enter the transaction id.", enabled: false, minAmount: 1, maxAmount: 100000, chargeType: "personal", chargePct: 1.5 },
+  { key: "rocket", label: "Rocket (DBBL)", accountLabel: "Rocket number", account: "", instructions: "Send to the number above, then enter the Rocket TxnID.", enabled: false, minAmount: 1, maxAmount: 100000, chargeType: "personal", chargePct: 1.5 },
   { key: "paypal", label: "PayPal", accountLabel: "PayPal email", account: "", instructions: "Send to the PayPal email above (Friends & Family), then paste the transaction id.", enabled: false, minAmount: 1, maxAmount: 100000 },
   { key: "payoneer", label: "Payoneer", accountLabel: "Payoneer email / account", account: "", instructions: "Pay to the Payoneer account above, then paste the reference id.", enabled: false, minAmount: 1, maxAmount: 100000 },
 ];

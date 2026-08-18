@@ -7,11 +7,39 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { getEffectivePackage } from "@/lib/packages";
 import { getTaskChainState } from "@/lib/task-sequence";
+import { taskAudienceWhere } from "@/lib/task-targeting";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
   resolveTaskTypeBucket,
 } from "@/lib/daily-mission-progress";
+
+/**
+ * Coerce a stored `Task.questions` value into a usable question array. Some rows
+ * store it as a JSON STRING (double-encoded) rather than a JSON array, which
+ * previously left the quiz player with zero questions (blank screen). Returns a
+ * non-empty array of question objects, or null when there's nothing usable
+ * (caller then falls back to AI generation).
+ */
+function coerceQuestions(raw: unknown): { question: string; options: string[] }[] | null {
+  let val: unknown = raw;
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(val) || val.length === 0) return null;
+  const ok = val.every(
+    (q) =>
+      q &&
+      typeof q === "object" &&
+      typeof (q as { question?: unknown }).question === "string" &&
+      Array.isArray((q as { options?: unknown }).options)
+  );
+  return ok ? (val as { question: string; options: string[] }[]) : null;
+}
 
 // GET /api/tasks/quiz - Get quiz for a specific task or generate new one
 export async function GET(request: NextRequest) {
@@ -31,7 +59,17 @@ export async function GET(request: NextRequest) {
       const [lister, pkg] = await Promise.all([
         prisma.user.findUnique({
           where: { id: session.user.id },
-          select: { level: true },
+          select: {
+            level: true,
+            country: true,
+            region: true,
+            division: true,
+            district: true,
+            subDistrict: true,
+            postalCode: true,
+            gender: true,
+            dateOfBirth: true,
+          },
         }),
         getEffectivePackage(session.user.id),
       ]);
@@ -42,6 +80,8 @@ export async function GET(request: NextRequest) {
           status: TaskStatus.ACTIVE,
           minLevel: { lte: lister?.level ?? 0 },
           requiredAccessLevel: { lte: accessLevel },
+          // STRICT audience targeting (country/area/gender/age).
+          AND: taskAudienceWhere(lister ?? {}),
         },
         orderBy: { createdAt: "desc" },
         take: 50,
@@ -53,9 +93,7 @@ export async function GET(request: NextRequest) {
           title: t.title,
           description: t.description ?? undefined,
           difficulty: (t.difficulty as string) || "BEGINNER",
-          questionCount: Array.isArray(t.questions)
-            ? (t.questions as unknown[]).length
-            : 0,
+          questionCount: coerceQuestions(t.questions)?.length ?? 0,
           timeLimit: 0,
           pointsReward: t.pointsReward,
           minScore: 70,
@@ -89,13 +127,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if task has pre-defined questions
-    if (task.questions) {
+    // Use pre-defined questions when present and valid (parses string-encoded
+    // rows). Invalid/empty → fall through to AI generation.
+    const predefined = coerceQuestions(task.questions);
+    if (predefined) {
       return NextResponse.json({
         taskId: task.id,
         title: task.title,
         description: task.description,
-        questions: task.questions,
+        questions: predefined,
         pointsReward: task.pointsReward,
         xpReward: task.xpReward,
         isAIGenerated: false,

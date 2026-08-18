@@ -463,6 +463,18 @@ model AdView {
   @@index([createdAt])
 }
 
+// Passive "Browse & Earn" credits — one row per interval a user is rewarded for
+// keeping the ad-supported browse page open (network ads earn the platform CPM).
+// Enforces the per-interval cooldown + per-local-day cap; never farms.
+model BrowseEarnLog {
+  id        String   @id @default(cuid())
+  userId    String
+  points    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
 // Advertiser ad-credit history. `delta` is the signed USD change to
 // User.adCreditBalance; `kind` classifies it. Bare userId (no back-relation
 // needed on both sides — mirrors other ledger patterns).
@@ -1049,6 +1061,17 @@ model User {
   @@index([referredById, createdAt])
   @@index([packageId])
   @@index([xp])
+  // Demographic/location segmentation (ads, tasks, surveys, marketing, push).
+  @@index([country])
+  @@index([gender])
+  @@index([division])
+  @@index([district])
+  @@index([subDistrict])
+  @@index([city])
+  @@index([region])
+  @@index([language])
+  @@index([dateOfBirth])
+  @@index([country, gender])
 }
 
 model Account {
@@ -1198,6 +1221,17 @@ model Task {
   // Sequential-unlock ordering — lower shows/unlocks first (feature #7).
   order               Int              @default(0)
   countries           String[]         @default([])
+  // Audience targeting (empty array = no constraint on that dimension). Matched
+  // STRICTLY against the viewer's profile — a user missing a targeted attribute
+  // is excluded. See src/lib/task-targeting.ts.
+  genders             String[]         @default([])
+  regions             String[]         @default([])
+  divisions           String[]         @default([])
+  districts           String[]         @default([])
+  subDistricts        String[]         @default([])
+  postalCodes         String[]         @default([])
+  minAge              Int?
+  maxAge              Int?
   contentUrl          String?
   thumbnailUrl        String?
   duration            Int?
@@ -1486,6 +1520,8 @@ model Package {
   // Post-composer sharing capabilities — default OFF (granted per-user by admin)
   shareLinksEnabled      Boolean @default(false)
   shareYoutubeEnabled    Boolean @default(false)
+  // Self-serve task audience targeting — default OFF (granted per-user by admin)
+  targetTasksEnabled     Boolean @default(false)
 
   // Per-task-type toggles
   socialTasksEnabled    Boolean @default(true)
@@ -1600,10 +1636,14 @@ model AffiliateClick {
   affiliateUserId String
   targetType      String // "MARKETPLACE" | "COURSE"
   targetId        String
+  // Stable per-visitor hash (IP+UA) — every row is a "view"; distinct hashes
+  // are unique "clicks". Null for pre-migration rows.
+  visitorHash     String?
   createdAt       DateTime @default(now())
 
   @@index([affiliateUserId, createdAt])
   @@index([targetType, targetId])
+  @@index([visitorHash])
 }
 
 model AffiliateCommission {
@@ -3137,10 +3177,15 @@ model VideoAdConfig {
 
 model AuditLog {
   id        String   @id @default(cuid())
-  userId    String?
+  userId    String? // the ACTOR (admin/user who performed the action)
   action    String
   entity    String
   entityId  String?
+  // The user AFFECTED by the action (e.g. the user an admin gave points to /
+  // whose submission was approved). Powers the Admin & User Activity views.
+  targetUserId String?
+  // Human-readable one-liner for the activity feeds (e.g. "Gave 500 pts").
+  summary   String?
   oldData   Json?
   newData   Json?
   ipAddress String?
@@ -3151,6 +3196,8 @@ model AuditLog {
   @@index([entity])
   @@index([createdAt])
   @@index([entity, entityId])
+  @@index([targetUserId, createdAt])
+  @@index([action])
 }
 
 enum DisputeStatus {

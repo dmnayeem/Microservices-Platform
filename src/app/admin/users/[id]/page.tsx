@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
+import { getUserActivity } from "@/lib/user-activity";
+import { UserActivityTimeline } from "@/components/admin/activity/user-activity-timeline";
 import {
   ArrowLeft,
   Mail,
@@ -242,6 +244,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
   const tabs = [
     { id: "overview", label: "Overview" },
+    { id: "activity", label: "Activity" },
     { id: "posts", label: "Posts", count: displayedPosts },
     { id: "followers", label: "Followers", count: displayedFollowers },
     { id: "following", label: "Following", count: displayedFollowing },
@@ -277,6 +280,9 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     viewsCount: number;
     createdAt: Date;
   };
+
+  // Unified per-user activity timeline (only on the Activity tab).
+  const activityEvents = tab === "activity" ? await getUserActivity(id) : [];
 
   const [postsRaw, followersRaw, followingRaw] = await Promise.all([
     tab === "posts"
@@ -776,6 +782,12 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
       {/* Tab Content */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        {tab === "activity" && (
+          <div className="p-6">
+            <UserActivityTimeline events={activityEvents} />
+          </div>
+        )}
+
         {tab === "overview" && (
           <div className="p-6 space-y-6">
             {/* Earnings Summary */}

@@ -38,6 +38,10 @@ import {
   normalizeAppInstallConfig,
   type AppInstallConfig,
 } from "@/lib/app-install-tasks";
+import {
+  TaskAudienceTargeting,
+  type TaskAudienceValue,
+} from "@/components/admin/tasks/task-audience-targeting";
 
 // Task types with icons and colors
 const taskTypes = [
@@ -55,26 +59,11 @@ const taskTypes = [
 // Note: social platform / action lists now live in src/lib/social-tasks.ts
 // (SOCIAL_PLATFORMS) and are sourced via the SocialTaskBuilder component.
 
-const countries = [
-  { code: "ALL", name: "All Countries" },
-  { code: "US", name: "United States" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "CA", name: "Canada" },
-  { code: "AU", name: "Australia" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "JP", name: "Japan" },
-  { code: "KR", name: "South Korea" },
-  { code: "SG", name: "Singapore" },
-  { code: "NL", name: "Netherlands" },
-  { code: "BD", name: "Bangladesh" },
-  { code: "IN", name: "India" },
-  { code: "PK", name: "Pakistan" },
-];
-
 interface TaskFormProps {
   /** Task types the current admin may create. Omitted = all (e.g. editing). */
   allowedTypes?: string[];
+  /** Pre-select a Task Board when creating (e.g. from /admin/boards/[id]). */
+  defaultBoardId?: string;
   task?: {
     id: string;
     title: string;
@@ -92,6 +81,14 @@ interface TaskFormProps {
     hidden?: boolean;
     order: number;
     countries: string[];
+    genders?: string[];
+    regions?: string[];
+    divisions?: string[];
+    districts?: string[];
+    subDistricts?: string[];
+    postalCodes?: string[];
+    minAge?: number | null;
+    maxAge?: number | null;
     contentUrl: string | null;
     thumbnailUrl: string | null;
     duration: number | null;
@@ -123,7 +120,7 @@ interface QuizQuestion {
   explanation: string;
 }
 
-export function TaskForm({ task, allowedTypes }: TaskFormProps) {
+export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) {
   const router = useRouter();
   // When creating, restrict the type picker to types the admin may create.
   const visibleTaskTypes =
@@ -154,6 +151,14 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
     hidden: task?.hidden ?? false,
     order: task?.order ?? 0,
     countries: task?.countries || [],
+    genders: task?.genders || [],
+    regions: task?.regions || [],
+    divisions: task?.divisions || [],
+    districts: task?.districts || [],
+    subDistricts: task?.subDistricts || [],
+    postalCodes: task?.postalCodes || [],
+    minAge: task?.minAge ?? null,
+    maxAge: task?.maxAge ?? null,
     contentUrl: task?.contentUrl || "",
     thumbnailUrl: task?.thumbnailUrl || "",
     duration: task?.duration || "",
@@ -165,7 +170,7 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
     expiresAt: task?.expiresAt ? new Date(task.expiresAt).toISOString().slice(0, 16) : "",
     cooldownMinutes: task?.cooldownMinutes || 0,
     autoApprove: task?.autoApprove || false,
-    boardId: task?.boardId || "",
+    boardId: task?.boardId ?? defaultBoardId ?? "",
   });
 
   // Task Boards available to assign — loaded once on mount
@@ -578,17 +583,6 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
     setQuestions(newQuestions);
   };
 
-  const toggleCountry = (code: string) => {
-    if (code === "ALL") {
-      setFormData({ ...formData, countries: [] });
-    } else {
-      const newCountries = formData.countries.includes(code)
-        ? formData.countries.filter((c) => c !== code)
-        : [...formData.countries, code];
-      setFormData({ ...formData, countries: newCountries });
-    }
-  };
-
   // Step 1: Type Selection
   if (!formData.type) {
     return (
@@ -927,32 +921,9 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
                 placeholder="Special instructions for proxy usage..."
                 className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-red-500"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-3">
-                Target Countries
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {countries.map((country) => (
-                  <button
-                    key={country.code}
-                    type="button"
-                    onClick={() => toggleCountry(country.code)}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                      country.code === "ALL"
-                        ? formData.countries.length === 0
-                          ? "bg-indigo-500 border-indigo-500 text-white"
-                          : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
-                        : formData.countries.includes(country.code)
-                        ? "bg-indigo-500 border-indigo-500 text-white"
-                        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
-                    }`}
-                  >
-                    {country.name}
-                  </button>
-                ))}
-              </div>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Geo-target this task in <strong>Audience Targeting</strong> (Requirements) — country / state / district / upazila.
+              </p>
             </div>
           </div>
         </div>
@@ -1149,7 +1120,7 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-6">
         <h2 className="text-lg font-semibold text-white">Requirements</h2>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 gap-x-6 gap-y-5 items-start">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Minimum Level
@@ -1187,26 +1158,6 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
             </p>
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hidden === true}
-                onChange={(e) =>
-                  setFormData({ ...formData, hidden: e.target.checked })
-                }
-                className="w-4 h-4 accent-red-500"
-              />
-              <span className="text-sm font-medium text-gray-300">
-                Hide from users
-              </span>
-            </label>
-            <p className="text-[11px] text-gray-500 mt-1">
-              Hard-hide this task from every user-facing list regardless of level
-              / plan gating. Admin-only visibility control.
-            </p>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Sequence Order
@@ -1239,6 +1190,53 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-red-500"
             />
           </div>
+
+          {/* Hide from users — full width, separated from the numeric inputs */}
+          <div className="md:col-span-2 rounded-lg border border-gray-800 bg-gray-950/40 p-3.5">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hidden === true}
+                onChange={(e) =>
+                  setFormData({ ...formData, hidden: e.target.checked })
+                }
+                className="w-4 h-4 accent-red-500"
+              />
+              <span className="text-sm font-medium text-gray-300">
+                Hide from users
+              </span>
+            </label>
+            <p className="text-[11px] text-gray-500 mt-1 ml-6.5">
+              Hard-hide this task from every user-facing list regardless of level
+              / plan gating. Admin-only visibility control.
+            </p>
+          </div>
+        </div>
+
+        {/* Audience targeting — country / state / district / upazila / gender / age */}
+        <div className="border-t border-gray-800 pt-5">
+          <h3 className="text-sm font-semibold text-white mb-1">Audience Targeting</h3>
+          <p className="text-[11px] text-gray-500 mb-4">
+            Limit who this task reaches. Empty everywhere = everyone. Matching is
+            strict — a user whose profile is missing a targeted field won&apos;t
+            see the task.
+          </p>
+          <TaskAudienceTargeting
+            value={{
+              countries: formData.countries,
+              genders: formData.genders,
+              minAge: formData.minAge,
+              maxAge: formData.maxAge,
+              regions: formData.regions,
+              divisions: formData.divisions,
+              districts: formData.districts,
+              subDistricts: formData.subDistricts,
+              postalCodes: formData.postalCodes,
+            }}
+            onChange={(patch: Partial<TaskAudienceValue>) =>
+              setFormData((f) => ({ ...f, ...patch }))
+            }
+          />
         </div>
 
         {/* Visibility preview — surfaces the filter rules so admin notices unintended restrictions */}
@@ -1252,6 +1250,24 @@ export function TaskForm({ task, allowedTypes }: TaskFormProps) {
             {formData.countries.length > 0
               ? <> from <strong>{formData.countries.join(", ")}</strong></>
               : <> from <strong>any country</strong></>}
+            {(() => {
+              const places = [
+                ...formData.regions,
+                ...formData.divisions,
+                ...formData.districts,
+                ...formData.subDistricts,
+                ...formData.postalCodes,
+              ];
+              return places.length > 0 ? (
+                <> in <strong>{places.join(", ")}</strong></>
+              ) : null;
+            })()}
+            {formData.genders.length > 0 && formData.genders.length < 3
+              ? <>, <strong>{formData.genders.map((g) => g.toLowerCase()).join(" / ")}</strong></>
+              : null}
+            {formData.minAge != null || formData.maxAge != null
+              ? <>, aged <strong>{formData.minAge ?? "0"}–{formData.maxAge ?? "∞"}</strong></>
+              : null}
             {formData.expiresAt
               ? <> until <strong>{new Date(formData.expiresAt).toLocaleDateString()}</strong>.</>
               : <>.</>}

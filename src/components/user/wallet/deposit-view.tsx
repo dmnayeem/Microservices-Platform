@@ -241,6 +241,10 @@ export function DepositView({ from }: { from?: string } = {}) {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-400">
                   {selected?.label} charge ({chargePct}%)
+                  <span className="block text-[10px] text-gray-500">
+                    {currency?.symbol ?? ""}{(chargePct * 10).toFixed(1)} per{" "}
+                    {currency?.symbol ?? ""}1,000
+                  </span>
                 </span>
                 <span className="text-orange-300 tabular-nums">
                   + {formatLocal(breakdown.charge, currency)}

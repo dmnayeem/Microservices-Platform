@@ -13,5 +13,10 @@ export default async function CreateTaskPage() {
   if (!enabled.has("createTasks")) return <FeatureLock title="Create Task" />;
 
   const pointsPerUsd = await getPointsPerUsd();
-  return <CreateTaskView pointsPerUsd={pointsPerUsd} />;
+  return (
+    <CreateTaskView
+      pointsPerUsd={pointsPerUsd}
+      canTarget={enabled.has("targetTasks")}
+    />
+  );
 }

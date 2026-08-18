@@ -67,6 +67,7 @@ export default async function EditPackagePage({ params }: PageProps) {
     agencyModeEnabled: pkg.agencyModeEnabled,
     shareLinksEnabled: pkg.shareLinksEnabled,
     shareYoutubeEnabled: pkg.shareYoutubeEnabled,
+    targetTasksEnabled: pkg.targetTasksEnabled,
 
     socialTasksEnabled: pkg.socialTasksEnabled,
     proxyTasksEnabled: pkg.proxyTasksEnabled,

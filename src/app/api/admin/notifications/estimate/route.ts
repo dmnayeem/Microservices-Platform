@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { audienceWhere, type AudienceCriteria } from "@/lib/audience";
 
 /**
  * POST /api/admin/notifications/estimate
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       country,
       activeWithinDays,
       minTasksCompleted,
+      criteria,
     }: {
       target: "all" | "package" | "specific" | "segment";
       packageFilter?: string[];
@@ -43,6 +45,7 @@ export async function POST(request: NextRequest) {
       country?: string;
       activeWithinDays?: number;
       minTasksCompleted?: number;
+      criteria?: AudienceCriteria;
     } = body;
 
     if (target === "all") {
@@ -54,14 +57,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ count: userIds?.length ?? 0 });
     }
 
-    const where: Prisma.UserWhereInput = { status: "ACTIVE" };
+    let where: Prisma.UserWhereInput = { status: "ACTIVE" };
 
     if (target === "package" && packageFilter?.length) {
       // packageFilter is an array of plan slugs (e.g. ["pro-monthly", "vip"]).
       where.package = { slug: { in: packageFilter as string[] } };
     }
 
-    if (target === "segment") {
+    if (target === "segment" && criteria && Object.keys(criteria).length > 0) {
+      where = audienceWhere(criteria);
+    } else if (target === "segment") {
       if (packages && packages.length > 0) {
         where.package = { slug: { in: packages as string[] } };
       }

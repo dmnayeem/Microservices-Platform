@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { userCanFeature } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
+import { sanitizeTaskAudience, EMPTY_TASK_AUDIENCE } from "@/lib/task-targeting";
 import { TransactionType, TransactionStatus, TaskType } from "@/generated/prisma/client";
 
 // Self-serve task types a user is allowed to create (no admin-only config).
@@ -22,6 +23,16 @@ const schema = z.object({
   socialUrl: z.string().url().optional().nullable(),
   // CUSTOM
   instructions: z.string().max(4000).optional().nullable(),
+  // Audience targeting (only honored when the user has the `targetTasks` feature).
+  countries: z.array(z.string().max(8)).max(50).optional(),
+  genders: z.array(z.string().max(10)).max(5).optional(),
+  regions: z.array(z.string().max(80)).max(100).optional(),
+  divisions: z.array(z.string().max(80)).max(100).optional(),
+  districts: z.array(z.string().max(80)).max(300).optional(),
+  subDistricts: z.array(z.string().max(80)).max(600).optional(),
+  postalCodes: z.array(z.string().max(16)).max(300).optional(),
+  minAge: z.number().int().min(0).max(120).nullable().optional(),
+  maxAge: z.number().int().min(0).max(120).nullable().optional(),
 });
 
 // POST /api/tasks/create — a granted user creates a task, funding its reward pool
@@ -64,6 +75,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Audience targeting is a granted capability — strip it otherwise.
+  const audience = (await userCanFeature(userId, "targetTasks"))
+    ? sanitizeTaskAudience(d)
+    : EMPTY_TASK_AUDIENCE;
+
   const budgetPoints = d.pointsReward * d.targetCount;
   const pointsPerUsd = await getPointsPerUsd();
   const costUsd = budgetPoints / pointsPerUsd;
@@ -88,6 +104,7 @@ export async function POST(req: NextRequest) {
           xpReward: 0,
           totalLimit: d.targetCount,
           minLevel: d.minLevel,
+          ...audience,
           autoApprove: false,
           createdById: userId,
           fundedByUserId: userId,

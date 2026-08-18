@@ -10,6 +10,7 @@ import {
   Circle,
   ExternalLink,
   Megaphone,
+  Coins,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AD_PLACEMENTS } from "@/lib/ad-placements";
@@ -40,6 +41,12 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [placements, setPlacements] = useState<PlacementRow[]>([]);
   const [networkBusy, setNetworkBusy] = useState(false);
   const [cpcBusy, setCpcBusy] = useState(false);
+  // Browse & Earn (passive CPM reward) config.
+  const [beEnabled, setBeEnabled] = useState(true);
+  const [bePoints, setBePoints] = useState(1);
+  const [beSeconds, setBeSeconds] = useState(45);
+  const [beCap, setBeCap] = useState(15);
+  const [beBusy, setBeBusy] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -51,6 +58,12 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         setGamNetworkCode(d.gamNetworkCode ?? "");
         if (typeof d.cpcUsd === "number") setCpcUsd(d.cpcUsd);
         setPlacements(Array.isArray(d.placements) ? d.placements : []);
+        if (d.browseEarn) {
+          setBeEnabled(d.browseEarn.enabled !== false);
+          setBePoints(d.browseEarn.pointsPerTick ?? 1);
+          setBeSeconds(d.browseEarn.tickSeconds ?? 45);
+          setBeCap(d.browseEarn.dailyCap ?? 15);
+        }
       })
       .catch(() => {})
       .finally(() => !cancel && setLoading(false));
@@ -97,6 +110,31 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save click price");
     } finally {
       setCpcBusy(false);
+    }
+  };
+
+  const saveBrowseEarn = async () => {
+    setBeBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: {
+            "ads.browse_earn_enabled": beEnabled,
+            "ads.browse_earn_points": Math.max(1, Math.min(1000, Number(bePoints) || 1)),
+            "ads.browse_earn_seconds": Math.max(10, Math.min(600, Number(beSeconds) || 45)),
+            "ads.browse_earn_daily_cap": Math.max(0, Math.min(100000, Number(beCap) || 0)),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Browse & Earn settings saved");
+    } catch {
+      toast.error("Couldn't save Browse & Earn settings");
+    } finally {
+      setBeBusy(false);
     }
   };
 
@@ -240,6 +278,84 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
           <span className="text-xs text-slate-500">per click</span>
           {cpcBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
         </div>
+      </section>
+
+      {/* Browse & Earn — passive CPM reward */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-white inline-flex items-center gap-1.5">
+              <Coins className="w-4 h-4 text-amber-400" /> Browse &amp; Earn (passive)
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              The <b>/watch-ads</b> page rewards users for keeping ads on screen —
+              you earn CPM on the <b>Browse &amp; Earn</b> placement, they earn
+              points. Add network ads to that slot below.
+            </p>
+          </div>
+          <label className="inline-flex items-center gap-2 shrink-0 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={beEnabled}
+              disabled={!canManage}
+              onChange={(e) => setBeEnabled(e.target.checked)}
+              className="w-4 h-4 accent-amber-500"
+            />
+            <span className="text-xs font-semibold text-slate-300">Enabled</span>
+          </label>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Points per interval</label>
+            <input
+              type="number"
+              min={1}
+              value={bePoints}
+              disabled={!canManage}
+              onChange={(e) => setBePoints(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Interval seconds</label>
+            <input
+              type="number"
+              min={10}
+              max={600}
+              value={beSeconds}
+              disabled={!canManage}
+              onChange={(e) => setBeSeconds(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Daily cap (points)</label>
+            <input
+              type="number"
+              min={0}
+              value={beCap}
+              disabled={!canManage}
+              onChange={(e) => setBeCap(Number(e.target.value))}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-500">
+          A viewer earns up to{" "}
+          <b className="text-amber-400">{beCap} pts/day</b> at{" "}
+          {bePoints} pts every {beSeconds}s. Keep the payout below your real ad CPM
+          so the surface stays profitable.
+        </p>
+        {canManage && (
+          <button
+            onClick={saveBrowseEarn}
+            disabled={beBusy}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {beBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Browse &amp; Earn
+          </button>
+        )}
       </section>
 
       {/* Placement coverage checklist */}

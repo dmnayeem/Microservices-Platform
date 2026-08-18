@@ -95,7 +95,7 @@ export const COUNTRY_OPTIONS: { code: string; name: string; flag: string }[] = [
   { code: "IN", name: "India", flag: "🇮🇳" },
   { code: "PK", name: "Pakistan", flag: "🇵🇰" },
   { code: "US", name: "United States", flag: "🇺🇸" },
-  { code: "UK", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
   { code: "CA", name: "Canada", flag: "🇨🇦" },
   { code: "AU", name: "Australia", flag: "🇦🇺" },
   { code: "AE", name: "UAE", flag: "🇦🇪" },

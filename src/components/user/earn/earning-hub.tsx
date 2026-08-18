@@ -78,7 +78,7 @@ const QUICK_ACCESS = [
   { name: "Offerwalls", href: "/offerwalls", icon: Smartphone, tone: "violet" },
 ];
 
-interface UserSummary {
+export interface UserSummary {
   id: string;
   name: string | null;
   avatar: string | null;
@@ -293,7 +293,7 @@ interface ApiCourse {
   creator?: { name?: string | null } | null;
 }
 
-function LearnTab() {
+export function LearnTab() {
   const [courses, setCourses] = useState<ApiCourse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -414,7 +414,7 @@ function tierForLevel(level: number) {
   ) ?? LEVEL_TIERS[0];
 }
 
-function LevelUpTab({ user }: { user: UserSummary }) {
+export function LevelUpTab({ user }: { user: UserSummary }) {
   const level = useMemo(
     () => calculateLevel(user.xp ?? 0),
     [user.xp]
@@ -561,7 +561,7 @@ interface MissionItem {
   done: boolean;
 }
 
-function PromoteTab() {
+export function PromoteTab() {
   const [missions, setMissions] = useState<MissionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -714,7 +714,7 @@ const LB_PERIODS = [
   { value: "referrals", label: "Referrals" },
 ];
 
-function LeaderboardTab({ user }: { user: UserSummary }) {
+export function LeaderboardTab({ user }: { user: UserSummary }) {
   const [period, setPeriod] = useState<string>("points");
   const [list, setList] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -868,7 +868,7 @@ interface OfferwallSummary {
   providers: OfferwallProvider[];
 }
 
-function OfferwallTab() {
+export function OfferwallTab() {
   const [view, setView] = useState<"offerwalls" | "history">("offerwalls");
   const [data, setData] = useState<OfferwallSummary | null>(null);
   const [loading, setLoading] = useState(true);

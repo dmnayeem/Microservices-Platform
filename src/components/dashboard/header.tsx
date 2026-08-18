@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Menu, Bell, Search, Wallet, Sparkles, Settings, LogOut, User, ChevronDown, FileText, Check } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Menu, Bell, Search, Wallet, Sparkles, Settings, LogOut, User, ChevronDown, FileText, Check, ChevronLeft } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
@@ -35,6 +36,20 @@ export function Header({ user, avatar }: HeaderProps) {
   // The hamburger opens the shared mobile drawer (rendered by Sidebar, the
   // canonical feature-filtered menu). Also opened by the bottom-bar Menu tab.
   const setIsMobileMenuOpen = useMobileNav((s) => s.setOpen);
+  const router = useRouter();
+  const pathname = usePathname();
+  // Top-level destinations (bottom-tab + main entries) — no back arrow here.
+  // On any deeper page a mobile back arrow appears for one-tap navigation up.
+  const ROOT_PATHS = new Set([
+    "/",
+    "/social",
+    "/tasks",
+    "/wallet",
+    "/daily-mission",
+    "/dashboard",
+    "/earn",
+  ]);
+  const showBack = !!pathname && !ROOT_PATHS.has(pathname);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -112,11 +127,24 @@ export function Header({ user, avatar }: HeaderProps) {
     <>
       <header className="sticky top-0 z-30 glass-strong border-0 border-b border-gray-800/60 rounded-none safe-t">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Left: Mobile Menu Button & Logo (mobile only) */}
-          <div className="flex items-center gap-4 lg:hidden">
+          {/* Left: Mobile Back + Menu Button & Logo (mobile only) */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {showBack && (
+              <button
+                onClick={() => router.back()}
+                aria-label="Go back"
+                className="p-2 -ml-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:scale-95 transition-transform"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 -ml-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
+              aria-label="Open menu"
+              className={cn(
+                "p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800",
+                !showBack && "-ml-2"
+              )}
             >
               <Menu className="w-6 h-6" />
             </button>

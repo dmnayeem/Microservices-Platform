@@ -1,245 +1,277 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, PlayCircle, Clock, Sparkles, X, CheckCircle2 } from "lucide-react";
-import { notifyCenter } from "@/lib/notify-center";
-import { SmartImage } from "@/components/user/primitives/smart-image";
-import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Loader2,
+  Coins,
+  Sparkles,
+  ShieldAlert,
+  RefreshCw,
+  CheckCircle2,
+  Eye,
+} from "lucide-react";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { detectAdblock } from "@/lib/adblock";
 
-interface RewardAd {
-  id: string;
-  title: string;
-  format: string;
-  imageUrl: string | null;
-  html: string | null;
-  targetUrl: string | null;
-  rewardPoints: number;
-  watchSeconds: number;
-  cooldownRemaining: number;
+interface BrowseConfig {
+  enabled: boolean;
+  pointsPerTick: number;
+  tickSeconds: number;
+  dailyCap: number;
+  todayEarned: number;
+  remaining: number;
+  nextInSec: number;
 }
 
+// Count a second toward the reward only when the tab is visible AND the user has
+// interacted within this window — stops fully-idle/background farming while still
+// letting someone read the page without constant motion.
+const IDLE_MS = 120_000;
+
 export function WatchAdsView() {
-  const [ads, setAds] = useState<RewardAd[]>([]);
+  const [cfg, setCfg] = useState<BrowseConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState<RewardAd | null>(null);
+  const [blocked, setBlocked] = useState(false);
+  const [checking, setChecking] = useState(false);
 
-  const load = () => {
-    setLoading(true);
-    fetch("/api/earn/watch")
-      .then((r) => r.json())
-      .then((d) => setAds(d.ads ?? []))
-      .catch(() => setAds([]))
-      .finally(() => setLoading(false));
-  };
+  const [progress, setProgress] = useState(0); // seconds into current interval
+  const [todayEarned, setTodayEarned] = useState(0);
+  const [remaining, setRemaining] = useState(0);
+  const [pop, setPop] = useState<number | null>(null); // "+N" flash
 
+  const claimingRef = useRef(false);
+  const lastActivityRef = useRef(Date.now());
+  const cfgRef = useRef<BrowseConfig | null>(null);
+  const remainingRef = useRef(0);
+  cfgRef.current = cfg;
+  remainingRef.current = remaining;
+
+  // Initial config + adblock probe.
   useEffect(() => {
-    let active = true;
-    fetch("/api/earn/watch")
-      .then((r) => r.json())
-      .then((d) => {
-        if (active) {
-          setAds(d.ads ?? []);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (active) setLoading(false);
-      });
+    let alive = true;
+    (async () => {
+      try {
+        const [res, isBlocked] = await Promise.all([
+          fetch("/api/browse-earn").then((r) => r.json()),
+          detectAdblock(),
+        ]);
+        if (!alive) return;
+        setCfg(res);
+        setTodayEarned(res.todayEarned ?? 0);
+        setRemaining(res.remaining ?? 0);
+        setProgress(0);
+        setBlocked(isBlocked);
+      } catch {
+        /* leave cfg null → error card */
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
     return () => {
-      active = false;
+      alive = false;
     };
   }, []);
 
-  const fmtCooldown = (s: number) => {
-    if (s <= 0) return "";
-    const m = Math.floor(s / 60);
-    return m > 0 ? `${m}m` : `${s}s`;
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-400" />
-          Watch &amp; Earn
-        </h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Watch a sponsored ad for the full duration to earn points.
-        </p>
-      </div>
-
-      {loading && (
-        <div className="flex justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
-        </div>
-      )}
-
-      {!loading && ads.length === 0 && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-8 text-center text-sm text-gray-500">
-          No reward ads available right now. Check back later.
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {ads.map((ad) => {
-          const onCooldown = ad.cooldownRemaining > 0;
-          return (
-            <div
-              key={ad.id}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-3 flex flex-col"
-            >
-              <div className="relative aspect-video rounded-lg bg-gray-950 border border-gray-800 overflow-hidden flex items-center justify-center">
-                {ad.imageUrl ? (
-                  <SmartImage
-                    src={ad.imageUrl}
-                    alt={ad.title}
-                    fill
-                    sizes="(max-width: 768px) 50vw, 25vw"
-                    className="object-cover"
-                  />
-                ) : (
-                  <PlayCircle className="w-10 h-10 text-gray-700" />
-                )}
-              </div>
-              <p className="mt-2 text-sm font-semibold text-white truncate">{ad.title}</p>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-amber-400 font-bold text-sm">+{ad.rewardPoints} pts</span>
-                <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {ad.watchSeconds}s
-                </span>
-              </div>
-              <button
-                disabled={onCooldown}
-                onClick={() => setActive(ad)}
-                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {onCooldown ? (
-                  <>Cooldown {fmtCooldown(ad.cooldownRemaining)}</>
-                ) : (
-                  <>
-                    <PlayCircle className="w-4 h-4" />
-                    Watch &amp; earn
-                  </>
-                )}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {active && (
-        <AdWatchModal
-          ad={active}
-          onClose={() => setActive(null)}
-          onRewarded={() => {
-            setActive(null);
-            load();
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function AdWatchModal({
-  ad,
-  onClose,
-  onRewarded,
-}: {
-  ad: RewardAd;
-  onClose: () => void;
-  onRewarded: () => void;
-}) {
-  const [left, setLeft] = useState(Math.max(1, ad.watchSeconds));
-  const [claiming, setClaiming] = useState(false);
-  const done = left <= 0;
-
+  // Track user activity (idle guard).
   useEffect(() => {
-    if (left <= 0) return;
-    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [left]);
+    const mark = () => {
+      lastActivityRef.current = Date.now();
+    };
+    const events = ["mousemove", "keydown", "scroll", "touchstart", "click"];
+    events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, mark));
+  }, []);
 
-  const claim = async () => {
-    setClaiming(true);
+  const claim = useCallback(async () => {
+    if (claimingRef.current) return;
+    claimingRef.current = true;
     try {
-      const res = await fetch(`/api/earn/${ad.id}/claim`, { method: "POST" });
+      const res = await fetch("/api/browse-earn/claim", { method: "POST" });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? "Couldn't claim");
-      notifyCenter.reward({
-        amount: d.rewarded,
-        unit: "pts",
-        title: "Reward earned!",
-        description: "Thanks for watching 🎬",
+      if (res.ok && d.success) {
+        setTodayEarned(d.todayEarned ?? 0);
+        setRemaining(d.remaining ?? 0);
+        setPop(d.rewarded ?? cfgRef.current?.pointsPerTick ?? 1);
+        setTimeout(() => setPop(null), 1200);
+      } else if (res.status === 429 && typeof d.remaining === "number") {
+        // Cap hit server-side.
+        setRemaining(0);
+      }
+    } catch {
+      /* transient — the next interval retries */
+    } finally {
+      setProgress(0);
+      claimingRef.current = false;
+    }
+  }, []);
+
+  // The 1-second reward ticker.
+  useEffect(() => {
+    if (!cfg?.enabled) return;
+    const id = setInterval(() => {
+      const c = cfgRef.current;
+      if (!c) return;
+      if (blocked) return;
+      if (remainingRef.current <= 0) return;
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastActivityRef.current > IDLE_MS) return;
+      if (claimingRef.current) return;
+
+      setProgress((p) => {
+        const next = p + 1;
+        if (next >= c.tickSeconds) {
+          void claim();
+          return c.tickSeconds; // hold full until claim resets it
+        }
+        return next;
       });
-      onRewarded();
-    } catch (err) {
-      notifyCenter.error(
-        "Failed",
-        err instanceof Error ? err.message : "Try again"
-      );
-      setClaiming(false);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cfg?.enabled, blocked, claim]);
+
+  const recheck = async () => {
+    setChecking(true);
+    try {
+      const isBlocked = await detectAdblock();
+      setBlocked(isBlocked);
+    } finally {
+      setChecking(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-      <div className="w-full max-w-lg rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-          <p className="text-sm font-semibold text-white truncate">{ad.title}</p>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-white" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+      </div>
+    );
+  }
 
-        <div className="bg-gray-950">
-          {ad.html ? (
-            <div className="w-full p-4">
-              <SandboxedAdFrame html={ad.html} height={260} badge={false} />
-            </div>
-          ) : ad.imageUrl ? (
-            <a
-              href={ad.targetUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ad.imageUrl} alt={ad.title} className="w-full max-h-[320px] object-contain" />
-            </a>
-          ) : (
-            <div className="min-h-[220px] grid place-items-center text-gray-600">
-              <PlayCircle className="w-12 h-12" />
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 py-3 border-t border-gray-800">
-          {!done ? (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-300 inline-flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-indigo-400" />
-                Keep watching…
-              </span>
-              <span className="text-white font-mono tabular-nums">{left}s</span>
-            </div>
-          ) : (
-            <button
-              onClick={claim}
-              disabled={claiming}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold disabled:opacity-50"
-            >
-              {claiming ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
-              Claim +{ad.rewardPoints} pts
-            </button>
-          )}
+  if (!cfg || !cfg.enabled) {
+    return (
+      <div className="max-w-lg mx-auto py-10 text-center">
+        <div className="glass rounded-2xl p-6">
+          <Sparkles className="w-8 h-8 mx-auto text-gray-600" />
+          <h1 className="text-lg font-bold text-white mt-3">Browse &amp; Earn</h1>
+          <p className="text-sm text-gray-400 mt-1">
+            This is currently unavailable. Please check back later.
+          </p>
         </div>
       </div>
+    );
+  }
+
+  const capReached = remaining <= 0;
+  const pct = Math.min(100, Math.round((progress / cfg.tickSeconds) * 100));
+  const capPct =
+    cfg.dailyCap > 0
+      ? Math.min(100, Math.round((todayEarned / cfg.dailyCap) * 100))
+      : 0;
+
+  return (
+    <div className="space-y-5 max-w-3xl mx-auto">
+      <div>
+        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <Coins className="w-5 h-5 text-amber-400" />
+          Browse &amp; Earn
+        </h1>
+        <p className="text-sm text-gray-400 mt-1">
+          Keep this page open and earn <b className="text-amber-400">+{cfg.pointsPerTick} pts</b>{" "}
+          every {cfg.tickSeconds}s while the ads are showing — up to {cfg.dailyCap} pts a day.
+        </p>
+      </div>
+
+      {/* Top ad slot (network CPM impression) */}
+      <AdRenderer placement="EARN_BROWSE" />
+
+      {/* Reward card */}
+      <div className="glass rounded-2xl p-5">
+        {blocked ? (
+          <div className="text-center py-2">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-red-500/10 ring-1 ring-red-500/20 grid place-items-center">
+              <ShieldAlert className="w-6 h-6 text-red-400" />
+            </div>
+            <p className="text-sm font-bold text-white mt-3">Ad blocker detected</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Rewards need the ads to load. Turn off your ad blocker for this site,
+              then re-check.
+            </p>
+            <button
+              onClick={recheck}
+              disabled={checking}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-60"
+            >
+              {checking ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Re-check
+            </button>
+          </div>
+        ) : capReached ? (
+          <div className="text-center py-2">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20 grid place-items-center">
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+            </div>
+            <p className="text-sm font-bold text-white mt-3">
+              You&apos;ve earned today&apos;s maximum 🎉
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              You collected {todayEarned} / {cfg.dailyCap} pts. Come back tomorrow
+              for more.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-300 inline-flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-indigo-400" />
+                Earning while you view…
+              </span>
+              <span className="relative text-sm font-bold text-white tabular-nums">
+                +{cfg.pointsPerTick} pts in {Math.max(0, cfg.tickSeconds - progress)}s
+                {pop != null && (
+                  <span className="absolute -top-5 right-0 text-emerald-400 font-bold animate-bounce">
+                    +{pop}
+                  </span>
+                )}
+              </span>
+            </div>
+            {/* Interval progress */}
+            <div className="mt-2 h-2.5 rounded-full bg-gray-800 overflow-hidden">
+              <div
+                className="h-full bg-linear-to-r from-indigo-500 to-violet-500 transition-[width] duration-500 ease-linear"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Daily total */}
+        <div className="mt-5 pt-4 border-t border-gray-800/60">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-400">Today</span>
+            <span className="text-white font-bold tabular-nums">
+              {todayEarned} / {cfg.dailyCap} pts
+            </span>
+          </div>
+          <div className="mt-1.5 h-2 rounded-full bg-gray-800 overflow-hidden">
+            <div
+              className="h-full bg-linear-to-r from-amber-500 to-emerald-500 transition-[width] duration-500"
+              style={{ width: `${capPct}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Second ad slot — more of the page is ad-supported = more impressions */}
+      <AdRenderer placement="EARN_BROWSE" />
+
+      <p className="text-[11px] text-gray-500 text-center">
+        Points are credited automatically while this tab stays open and active.
+        Switching away or closing the page pauses earning.
+      </p>
     </div>
   );
 }

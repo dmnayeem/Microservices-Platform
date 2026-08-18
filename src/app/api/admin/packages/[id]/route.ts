@@ -48,6 +48,7 @@ const PLAN_PATCH = z
     agencyModeEnabled: z.boolean().optional(),
     shareLinksEnabled: z.boolean().optional(),
     shareYoutubeEnabled: z.boolean().optional(),
+    targetTasksEnabled: z.boolean().optional(),
 
     socialTasksEnabled: z.boolean().optional(),
     proxyTasksEnabled: z.boolean().optional(),

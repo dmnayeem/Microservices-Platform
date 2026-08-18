@@ -150,8 +150,9 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
     .sort((a, b) => a.order - b.order);
 
   const submit = async () => {
-    if (!task || !cfg || submitState.kind !== "ready") return;
-    const err = validateCustomAnswers(cfg, answers);
+    if (!task || submitState.kind !== "ready") return;
+    // Simple custom tasks may have no config/fields — nothing to validate.
+    const err = cfg && orderedFields.length > 0 ? validateCustomAnswers(cfg, answers) : null;
     if (err) {
       toast.error(err);
       return;
@@ -171,8 +172,8 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
         throw new Error(e.error ?? `HTTP ${res.status}`);
       }
       await runInterstitial();
-      toast.success(cfg.thankYouMessage || "Submitted for review", {
-        description: cfg.autoApprove
+      toast.success(cfg?.thankYouMessage || "Submitted for review", {
+        description: cfg?.autoApprove
           ? `+${task.pointsReward} pts credited`
           : `You'll get ${task.pointsReward} pts when approved.`,
       });
@@ -374,6 +375,45 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
             </button>
           </div>
         </>
+      )}
+
+      {/* No proof fields configured → simple "mark done & submit" with optional
+          note, so the task isn't a dead-end without a submit button. */}
+      {submitState.kind === "ready" && orderedFields.length === 0 && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Notes <span className="text-gray-500 font-normal">(optional)</span>
+            </label>
+            <textarea
+              rows={3}
+              value={(answers["_notes"] as string) ?? ""}
+              onChange={(e) =>
+                setAnswers((prev) => ({ ...prev, _notes: e.target.value }))
+              }
+              disabled={busy}
+              placeholder="Add any note for the reviewer…"
+              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+            />
+          </div>
+          <div className="sticky bottom-4 z-10 mt-6">
+            <button
+              type="button"
+              onClick={submit}
+              disabled={busy}
+              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
+            >
+              {busy ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  Submit for review
+                  <Sparkles className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

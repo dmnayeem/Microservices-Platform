@@ -5,6 +5,7 @@ import { TaskStatus, TaskType } from "@/generated/prisma/client";
 import { mapSocialTaskRow } from "@/lib/social-tasks";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
 import { getTaskChainState } from "@/lib/task-sequence";
+import { taskAudienceWhere } from "@/lib/task-targeting";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -16,7 +17,18 @@ export async function GET(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, level: true },
+    select: {
+      id: true,
+      level: true,
+      country: true,
+      region: true,
+      division: true,
+      district: true,
+      subDistrict: true,
+      postalCode: true,
+      gender: true,
+      dateOfBirth: true,
+    },
   });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -88,6 +100,8 @@ export async function GET(request: NextRequest) {
       minLevel: { lte: user.level },
       requiredAccessLevel: { lte: accessLevel },
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      // STRICT audience targeting (country/area/gender/age).
+      AND: taskAudienceWhere(user),
       ...(excludeTaskIds.length ? { id: { notIn: excludeTaskIds } } : {}),
     },
     orderBy: { createdAt: "desc" },

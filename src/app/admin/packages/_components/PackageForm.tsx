@@ -59,6 +59,7 @@ export interface PackageFormPkg {
   agencyModeEnabled: boolean;
   shareLinksEnabled: boolean;
   shareYoutubeEnabled: boolean;
+  targetTasksEnabled: boolean;
 
   // Per-task-type toggles
   socialTasksEnabled: boolean;
@@ -116,7 +117,7 @@ const SECTION_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip
   { key: "coursesEnabled", label: "Courses", tooltip: "Access the courses section." },
   { key: "advertiserEnabled", label: "Advertiser", tooltip: "Create/fund ad campaigns on /advertiser." },
   { key: "gamesEnabled", label: "HTML5 Games", tooltip: "Access the games catalog at /games." },
-  { key: "adFree", label: "Ad-Free", tooltip: "Hide all ads for users on this plan (Watch & Earn still works)." },
+  { key: "adFree", label: "Ad-Free", tooltip: "Hide all ads for users on this plan (Browse & Earn still works)." },
 ];
 
 // Creator / monetization capabilities (grantable per plan).
@@ -127,6 +128,7 @@ const CREATOR_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip
   { key: "agencyModeEnabled", label: "Agency / Moderator Mode", tooltip: "Unlocks the agency console / moderator capabilities." },
   { key: "shareLinksEnabled", label: "Share Links in Posts", tooltip: "Lets users post clickable links (with previews) in the social feed." },
   { key: "shareYoutubeEnabled", label: "Share YouTube / Video Links", tooltip: "Lets users post YouTube/Vimeo/video links that play inline in the feed." },
+  { key: "targetTasksEnabled", label: "Target Tasks (audience)", tooltip: "Lets users target their own tasks by country/state/district/upazila, gender & age when creating them." },
 ];
 
 // Per-task-type toggles (right grid). Each gates a TaskType in /api/tasks/*.

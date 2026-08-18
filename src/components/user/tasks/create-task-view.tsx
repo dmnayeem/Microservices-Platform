@@ -2,12 +2,35 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send, Share2, Sparkles, Wallet } from "lucide-react";
+import { Loader2, Send, Share2, Sparkles, Wallet, Target } from "lucide-react";
 import { toast } from "@/lib/toast";
+import {
+  TaskAudienceTargeting,
+  type TaskAudienceValue,
+} from "@/components/admin/tasks/task-audience-targeting";
 
 type TaskType = "SOCIAL" | "CUSTOM";
 
-export function CreateTaskView({ pointsPerUsd = 1000 }: { pointsPerUsd?: number }) {
+const EMPTY_AUDIENCE: TaskAudienceValue = {
+  countries: [],
+  genders: [],
+  minAge: null,
+  maxAge: null,
+  regions: [],
+  divisions: [],
+  districts: [],
+  subDistricts: [],
+  postalCodes: [],
+};
+
+export function CreateTaskView({
+  pointsPerUsd = 1000,
+  canTarget = false,
+}: {
+  pointsPerUsd?: number;
+  /** When true, the user may set audience targeting (admin-granted `targetTasks`). */
+  canTarget?: boolean;
+}) {
   const router = useRouter();
   const [type, setType] = useState<TaskType>("SOCIAL");
   const [title, setTitle] = useState("");
@@ -22,6 +45,7 @@ export function CreateTaskView({ pointsPerUsd = 1000 }: { pointsPerUsd?: number 
   const [pointsReward, setPointsReward] = useState(50);
   const [targetCount, setTargetCount] = useState(10);
   const [minLevel, setMinLevel] = useState(1);
+  const [audience, setAudience] = useState<TaskAudienceValue>(EMPTY_AUDIENCE);
   const [busy, setBusy] = useState(false);
 
   const budget = Math.max(0, Math.floor(pointsReward) * Math.floor(targetCount));
@@ -57,6 +81,17 @@ export function CreateTaskView({ pointsPerUsd = 1000 }: { pointsPerUsd?: number 
         body.socialUrl = socialUrl.trim();
       } else {
         body.instructions = instructions.trim() || undefined;
+      }
+      if (canTarget) {
+        body.countries = audience.countries;
+        body.genders = audience.genders;
+        body.regions = audience.regions;
+        body.divisions = audience.divisions;
+        body.districts = audience.districts;
+        body.subDistricts = audience.subDistricts;
+        body.postalCodes = audience.postalCodes;
+        body.minAge = audience.minAge;
+        body.maxAge = audience.maxAge;
       }
 
       const res = await fetch("/api/tasks/create", {
@@ -258,6 +293,22 @@ export function CreateTaskView({ pointsPerUsd = 1000 }: { pointsPerUsd?: number 
           </div>
         </div>
       </div>
+
+      {/* Audience targeting — only when admin-granted */}
+      {canTarget && (
+        <div className="glass rounded-xl p-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-bold text-white inline-flex items-center gap-1.5">
+              <Target className="w-4 h-4 text-indigo-400" /> Audience targeting
+            </h2>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Optional. Limit who can do this task by country / area, gender and
+              age. Leave empty to reach everyone.
+            </p>
+          </div>
+          <TaskAudienceTargeting value={audience} onChange={(patch) => setAudience((a) => ({ ...a, ...patch }))} />
+        </div>
+      )}
 
       {/* Live cost estimate */}
       <div className="glass rounded-xl p-4 flex items-center gap-3">

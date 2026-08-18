@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getAffiliateConfig } from "@/lib/affiliate";
+import { getAffiliateStats, type AffiliateStats } from "@/lib/affiliate-stats";
 import { AffiliateDashboardView } from "@/components/user/affiliate/affiliate-dashboard-view";
 
 export default async function AffiliatePage() {
@@ -24,19 +25,11 @@ export default async function AffiliatePage() {
 
   const joined = !!me.affiliateJoinedAt;
 
-  // Earnings + promotable catalogue (only when joined — cheap otherwise).
-  const [agg, recentRaw, listings, courses] = joined
+  // Full per-affiliate stats (views/clicks/sales/earnings/by-item/recent) +
+  // promotable catalogue — only when joined (cheap otherwise).
+  const [stats, listings, courses] = joined
     ? await Promise.all([
-        prisma.affiliateCommission.aggregate({
-          where: { affiliateUserId: userId },
-          _sum: { commissionAmount: true },
-          _count: { _all: true },
-        }),
-        prisma.affiliateCommission.findMany({
-          where: { affiliateUserId: userId },
-          orderBy: { createdAt: "desc" },
-          take: 20,
-        }),
+        getAffiliateStats(userId),
         prisma.marketplaceListing.findMany({
           where: {
             status: "ACTIVE",
@@ -72,33 +65,7 @@ export default async function AffiliatePage() {
           },
         }),
       ])
-    : [null, [], [], []];
-
-  // Resolve titles for the recent-commission feed.
-  const listingIds = recentRaw
-    .filter((r) => r.sourceType === "MARKETPLACE")
-    .map((r) => r.sourceId);
-  const courseIds = recentRaw
-    .filter((r) => r.sourceType === "COURSE")
-    .map((r) => r.sourceId);
-  const [lTitles, cTitles] = await Promise.all([
-    listingIds.length
-      ? prisma.marketplaceListing.findMany({
-          where: { id: { in: listingIds } },
-          select: { id: true, title: true },
-        })
-      : Promise.resolve([]),
-    courseIds.length
-      ? prisma.course.findMany({
-          where: { id: { in: courseIds } },
-          select: { id: true, title: true },
-        })
-      : Promise.resolve([]),
-  ]);
-  const titleMap = new Map<string, string>([
-    ...lTitles.map((l) => [l.id, l.title] as [string, string]),
-    ...cTitles.map((c) => [c.id, c.title] as [string, string]),
-  ]);
+    : [null as AffiliateStats | null, [], []];
 
   return (
     <AffiliateDashboardView
@@ -107,15 +74,25 @@ export default async function AffiliatePage() {
       requireApproval={cfg.requireApproval}
       pendingApplication={pendingAffApp > 0}
       code={me.referralCode}
-      totalEarned={toNum(agg?._sum.commissionAmount ?? 0)}
-      salesCount={agg?._count._all ?? 0}
-      recent={recentRaw.map((r) => ({
-        id: r.id,
-        sourceType: r.sourceType,
-        title: titleMap.get(r.sourceId) ?? "(removed)",
-        amount: toNum(r.commissionAmount),
-        createdAt: r.createdAt.toISOString(),
-      }))}
+      stats={
+        stats
+          ? {
+              views: stats.views,
+              clicks: stats.clicks,
+              sales: stats.sales,
+              earnings: stats.earnings,
+              conversionRate: stats.conversionRate,
+              byItem: stats.byItem,
+              recent: stats.recent.map((r) => ({
+                id: r.id,
+                type: r.type,
+                title: r.title,
+                amount: r.amount,
+                createdAt: r.createdAt.toISOString(),
+              })),
+            }
+          : null
+      }
       items={[
         ...listings.map((l) => ({
           key: `m_${l.id}`,

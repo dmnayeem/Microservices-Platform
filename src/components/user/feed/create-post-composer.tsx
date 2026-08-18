@@ -24,7 +24,7 @@ import {
   POST_BACKGROUNDS,
   getPostBackground,
 } from "@/lib/post-backgrounds";
-import { compressImageToTarget } from "@/lib/image-compress";
+import { compressForUpload } from "@/lib/image-compress";
 import { ComposerToolBtn, EmojiPopover } from "./composer-bits";
 import { LinkPreviewCard } from "./link-preview-card";
 import { Avatar } from "@/components/user/primitives/avatar";
@@ -188,7 +188,7 @@ export function CreatePostComposer({
     setUploading(true);
     try {
       // Auto-compress to ~50–70 KB (WebP) before upload — quality stays crisp.
-      const out = await compressImageToTarget(f);
+      const out = await compressForUpload(f, "posts");
       const fd = new FormData();
       fd.append("file", out);
       fd.append("folder", "posts");
