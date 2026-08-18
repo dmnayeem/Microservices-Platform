@@ -283,12 +283,17 @@ export function ProxyTasksView() {
   };
 
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-        <Globe className="w-6 h-6 text-violet-400" /> Proxy Tasks
-      </h1>
-
-      <AdRenderer placement="TASK_LIST" />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+          <Globe className="w-6 h-6 text-violet-400" />
+          Proxy Tasks
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Stay connected to a geo-targeted proxy session to earn — rewards credit
+          once you complete the target duration.
+        </p>
+      </div>
 
       <div className="rounded-xl bg-indigo-500/5 border border-indigo-500/20 p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
@@ -299,6 +304,8 @@ export function ProxyTasksView() {
           the target duration.
         </p>
       </div>
+
+      <AdRenderer placement="TASK_LIST" />
 
       {loading && <ListSkeleton rows={3} />}
 
@@ -313,10 +320,7 @@ export function ProxyTasksView() {
       {!loading && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
-            <div
-              key={t.id}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-3"
-            >
+            <div key={t.id} className="card p-3">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
                   <Globe className="w-5 h-5" />

@@ -53,10 +53,17 @@ export function QuizTasksView() {
   useAutoRefresh(() => load(true));
 
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-        <Brain className="w-6 h-6 text-purple-400" /> Quiz Tasks
-      </h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+          <Brain className="w-6 h-6 text-purple-400" />
+          Quiz Tasks
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Answer quiz questions against the clock — hit the minimum score to earn
+          your reward.
+        </p>
+      </div>
 
       <AdRenderer placement="TASK_LIST" />
 
@@ -81,10 +88,8 @@ export function QuizTasksView() {
                 if (await ensureAdsAllowed()) setActiveId(q.id);
               }}
               className={cn(
-                "text-left rounded-2xl border border-gray-800 bg-gray-900 p-4 transition-colors",
-                q.locked
-                  ? "opacity-60 cursor-not-allowed"
-                  : "hover:border-indigo-500/40"
+                "text-left card card-interactive p-4",
+                q.locked && "opacity-60 cursor-not-allowed"
               )}
             >
               <div className="flex items-start gap-3">

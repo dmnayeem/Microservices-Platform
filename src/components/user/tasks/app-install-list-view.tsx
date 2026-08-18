@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Smartphone, Coins, ChevronRight, Loader2 } from "lucide-react";
+import { Smartphone } from "lucide-react";
+import { TaskCard } from "@/components/user/primitives/task-card";
+import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
-import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 interface AppTask {
   id: string;
   title: string;
   description: string | null;
   pointsReward: number;
+  xpReward?: number;
   thumbnailUrl: string | null;
 }
 
@@ -19,70 +21,67 @@ export function AppInstallListView() {
   const [tasks, setTasks] = useState<AppTask[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await fetch("/api/tasks?type=APPINSTALL&limit=50", {
+        cache: "no-store",
+      });
+      const d = await res.json();
+      setTasks(d.tasks ?? []);
+    } catch {
+      // ignore
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch("/api/tasks?type=APPINSTALL&limit=50")
-      .then((r) => r.json())
-      .then((d) => setTasks(d.tasks ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useAutoRefresh(() => load(true));
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-green-500/15 text-green-400 grid place-items-center">
-          <Smartphone className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-white">App Install Tasks</h1>
-          <p className="text-xs text-gray-400">Install apps, submit proof, earn points.</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+          <Smartphone className="w-6 h-6 text-green-400" />
+          App Install Tasks
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Install apps, submit proof, and earn points once your install is
+          verified.
+        </p>
       </div>
 
       <AdRenderer placement="TASK_LIST" />
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-green-400" />
-        </div>
-      ) : tasks.length === 0 ? (
+      {loading && <ListSkeleton rows={4} />}
+
+      {!loading && tasks.length === 0 && (
         <EmptyState
           icon={Smartphone}
           title="No app-install tasks yet"
           description="Check back soon — new apps to install and earn from will appear here."
         />
-      ) : (
+      )}
+
+      {!loading && tasks.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tasks.map((t) => (
-            <Link
+            <TaskCard
               key={t.id}
+              title={t.title}
+              description={t.description ?? undefined}
+              type="app"
+              reward={t.pointsReward}
+              xpReward={t.xpReward}
+              thumbnail={t.thumbnailUrl ?? undefined}
+              actionLabel="Install & Earn"
               href={`/app-install-tasks/${t.id}`}
-              className="flex items-center gap-3 rounded-2xl border border-gray-800 bg-gray-900 p-3 hover:border-gray-700 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-xl bg-gray-800 overflow-hidden shrink-0 grid place-items-center">
-                {t.thumbnailUrl ? (
-                  <SmartImage
-                    src={t.thumbnailUrl}
-                    alt=""
-                    width={48}
-                    height={48}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Smartphone className="w-5 h-5 text-gray-600" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white truncate">{t.title}</p>
-                {t.description && (
-                  <p className="text-xs text-gray-500 truncate">{t.description}</p>
-                )}
-                <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-amber-300">
-                  <Coins className="w-3 h-3" />+{t.pointsReward.toLocaleString()} pts
-                </span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-600 shrink-0" />
-            </Link>
+            />
           ))}
         </div>
       )}

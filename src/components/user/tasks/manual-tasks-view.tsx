@@ -9,10 +9,9 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { TaskSubmissionRow } from "@/components/user/primitives/task-submission-row";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
-import { format } from "date-fns";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import { ensureAdsAllowed } from "@/lib/adblock";
@@ -119,12 +118,17 @@ export function ManualTasksView() {
   };
 
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-        <ClipboardList className="w-6 h-6 text-indigo-400" /> Manual Tasks
-      </h1>
-
-      <AdRenderer placement="TASK_LIST" />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+          <ClipboardList className="w-6 h-6 text-indigo-400" />
+          Manual Tasks
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Complete a task manually, upload your proof, and get rewarded after
+          admin review.
+        </p>
+      </div>
 
       <FilterChips
         value={tab}
@@ -136,6 +140,8 @@ export function ManualTasksView() {
           { value: "rejected", label: "Rejected" },
         ]}
       />
+
+      <AdRenderer placement="TASK_LIST" />
 
       {loading && <ListSkeleton rows={4} />}
 
@@ -188,43 +194,16 @@ export function ManualTasksView() {
       {!loading && tab !== "available" && submissions.length > 0 && (
         <div className="space-y-2">
           {submissions.map((s) => (
-            <div
+            <TaskSubmissionRow
               key={s.id}
-              className="p-3 rounded-xl border border-gray-800 bg-gray-900"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">
-                    {s.task.title}
-                  </p>
-                  <p className="text-[11px] text-gray-500">
-                    {format(new Date(s.createdAt), "PP p")}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                    s.status === "PENDING" && "bg-amber-500/10 text-amber-400",
-                    (s.status === "APPROVED" || s.status === "AUTO_APPROVED") &&
-                      "bg-emerald-500/10 text-emerald-400",
-                    s.status === "REJECTED" && "bg-red-500/10 text-red-400",
-                    s.status === "REVISION_REQUESTED" &&
-                      "bg-orange-500/10 text-orange-400"
-                  )}
-                >
-                  {s.status.replace("_", " ")}
-                </span>
-                <span className="text-sm font-bold text-amber-400 tabular-nums">
-                  +{s.pointsReward}
-                </span>
-              </div>
-              {(s.rejectionReason || s.adminNote) && (
-                <p className="text-xs text-gray-400 mt-1.5 px-2 py-1.5 rounded bg-gray-950">
-                  {s.rejectionReason && <strong>{s.rejectionReason}: </strong>}
-                  {s.adminNote}
-                </p>
-              )}
-            </div>
+              title={s.task.title}
+              status={s.status}
+              points={s.pointsReward}
+              date={s.createdAt}
+              rejectionReason={s.rejectionReason}
+              adminNote={s.adminNote}
+              redoHref={`/manual-tasks?tab=available`}
+            />
           ))}
         </div>
       )}

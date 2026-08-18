@@ -587,10 +587,17 @@ export function BoardTasksView() {
     : boards;
 
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-        <Pin className="w-6 h-6 text-amber-400" /> Board Tasks
-      </h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+          <Pin className="w-6 h-6 text-amber-400" />
+          Board Tasks
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Themed challenges that bundle high-reward tasks — complete the board to
+          claim the full reward.
+        </p>
+      </div>
 
       {!loading && availableCategories.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
@@ -665,12 +672,12 @@ export function BoardTasksView() {
                   setSelectedBoardId(b.id);
                 }}
                 className={cn(
-                  "block text-left rounded-2xl border bg-gray-900 transition-colors overflow-hidden relative",
+                  "block text-left card overflow-hidden relative transition-colors",
                   isLocked
-                    ? "border-gray-800 opacity-70 hover:border-amber-500/40 cursor-not-allowed"
+                    ? "opacity-70 hover:border-amber-500/40 cursor-not-allowed"
                     : isExpired
-                    ? "border-gray-800 opacity-60 hover:border-gray-700"
-                    : "border-gray-800 hover:border-orange-500/40"
+                    ? "opacity-60 hover:border-gray-700"
+                    : "hover:border-orange-500/40"
                 )}
               >
                 {b.thumbnailUrl ? (

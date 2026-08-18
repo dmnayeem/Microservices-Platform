@@ -71,12 +71,13 @@ export function SocialTasksView() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Share2 className="w-6 h-6 text-cyan-400" /> Social Tasks
+          <Share2 className="w-6 h-6 text-cyan-400" />
+          Social Tasks
         </h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <p className="text-gray-400 text-sm mt-1">
           Follow, like, comment & share to earn — proof-verified.
         </p>
       </div>
@@ -147,7 +148,7 @@ export function SocialTasksView() {
             return (
               <div
                 key={t.id}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-3 flex flex-col"
+                className="card p-3 flex flex-col"
               >
               <div className="flex items-start gap-3">
                 <div

@@ -25,6 +25,7 @@ import {
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/user/primitives/empty-state";
+import { StatCard } from "@/components/user/primitives/stat-card";
 import { isCategoryVisible } from "@/lib/task-categories";
 // Reuse the Earn-hub tabs (single source of truth — /earn stays unchanged).
 import {
@@ -180,10 +181,30 @@ export function TasksHubView({
   );
 
   const STATS = [
-    { label: "Available Tasks", value: totalAvailable, tone: "text-white" },
-    { label: "Completed Today", value: today.completedToday, tone: "text-white" },
-    { label: "Points Earned", value: today.pointsEarned, tone: "text-amber-400" },
-    { label: "XP Earned", value: today.xpEarned, tone: "text-purple-400" },
+    {
+      label: "Available Tasks",
+      value: totalAvailable,
+      tone: "blue" as const,
+      icon: <ListTodo className="w-5 h-5" />,
+    },
+    {
+      label: "Completed Today",
+      value: today.completedToday,
+      tone: "green" as const,
+      icon: <TrendingUp className="w-5 h-5" />,
+    },
+    {
+      label: "Points Earned",
+      value: today.pointsEarned,
+      tone: "amber" as const,
+      icon: <Sparkles className="w-5 h-5" />,
+    },
+    {
+      label: "XP Earned",
+      value: today.xpEarned,
+      tone: "purple" as const,
+      icon: <Award className="w-5 h-5" />,
+    },
   ];
 
   const progressFor = (cat: Category): SummaryRow | null => {
@@ -203,22 +224,20 @@ export function TasksHubView({
 
       {/* Stats row: package + today's numbers */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="glass rounded-xl p-4 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-400 grid place-items-center shrink-0">
-            <PackageIcon className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] text-gray-400">Your Package</p>
-            <p className="text-sm font-bold text-white truncate">{packageName}</p>
-          </div>
-        </div>
+        <StatCard
+          label="Your Package"
+          value={packageName}
+          tone="slate"
+          icon={<PackageIcon className="w-5 h-5" />}
+        />
         {STATS.map((s) => (
-          <div key={s.label} className="glass rounded-xl p-4">
-            <p className="text-sm text-gray-400">{s.label}</p>
-            <p className={cn("text-2xl font-bold mt-1 tabular-nums", s.tone)}>
-              {s.value}
-            </p>
-          </div>
+          <StatCard
+            key={s.label}
+            label={s.label}
+            value={s.value}
+            tone={s.tone}
+            icon={s.icon}
+          />
         ))}
       </div>
 

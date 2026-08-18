@@ -53,7 +53,7 @@ export function CustomTasksView() {
   useAutoRefresh(() => load(true));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
           <Sparkles className="w-6 h-6 text-indigo-400" /> Custom Tasks
