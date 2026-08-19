@@ -180,22 +180,38 @@ export async function grantAdCredits(opts: {
   }
 }
 
-/** Return a campaign's remaining budget to the owner's ad credit (on end/delete). */
-export async function refundCampaignBudgetToCredit(campaignId: string): Promise<void> {
+/**
+ * Return a campaign's remaining budget to the owner's ad credit (on end/delete).
+ * Returns the refunded amount.
+ *
+ * Idempotent by construction: the budget is zeroed with a conditional update
+ * that reports how many rows it changed, and credit is issued only when this
+ * call is the one that won. Two concurrent "end campaign" clicks therefore
+ * refund once, not twice.
+ */
+export async function refundCampaignBudgetToCredit(
+  campaignId: string
+): Promise<number> {
   const c = await prisma.adCampaign.findUnique({
     where: { id: campaignId },
     select: { id: true, advertiserId: true, budget: true },
   });
-  if (!c || !c.advertiserId) return;
+  if (!c || !c.advertiserId) return 0;
   const remaining = round6(toNum(c.budget));
-  if (remaining <= 0) return;
-  await prisma.$transaction(async (tx) => {
-    await tx.adCampaign.update({ where: { id: campaignId }, data: { budget: 0 } });
+  if (remaining <= 0) return 0;
+
+  return prisma.$transaction(async (tx) => {
+    const zeroed = await tx.adCampaign.updateMany({
+      where: { id: campaignId, budget: remaining },
+      data: { budget: 0 },
+    });
+    if (zeroed.count === 0) return 0; // someone else already refunded it
     await creditAdCreditTx(tx, c.advertiserId as string, remaining, {
       kind: "REFUND",
       reference: `campaign_refund_${campaignId}`,
       metadata: { campaignId },
     });
+    return remaining;
   });
 }
 

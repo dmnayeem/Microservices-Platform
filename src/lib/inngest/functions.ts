@@ -8,6 +8,7 @@ import { drawLottery } from "@/lib/lottery";
 import { pruneOldLogs } from "@/lib/log-retention";
 import { releaseDeal, releaseDueDeals } from "@/lib/marketplace-deal";
 import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
+import { runAdCampaignSweep, runAdReviewSla } from "@/lib/ad-campaign-cron";
 
 // ── Periodic sweeps (Inngest cron — replaces Vercel Cron) ────────────────────
 
@@ -34,6 +35,21 @@ export const courseLiveClasses = inngest.createFunction(
 export const logRetention = inngest.createFunction(
   { id: "log-retention", triggers: [{ cron: "30 3 * * *" }] }, // daily 03:30 UTC
   async () => pruneOldLogs()
+);
+
+/**
+ * Ends campaigns past their end date (refunding the unspent budget), pauses the
+ * ones that shouldn't be delivering, and warns advertisers before they run out.
+ * Nothing did any of this before, so budgets stayed locked in dead campaigns.
+ */
+export const adCampaignSweep = inngest.createFunction(
+  { id: "ad-campaign-sweep", triggers: [{ cron: "*/15 * * * *" }] },
+  async () => runAdCampaignSweep()
+);
+
+export const adReviewSla = inngest.createFunction(
+  { id: "ad-review-sla", triggers: [{ cron: "0 8 * * *" }] }, // daily 08:00 UTC
+  async () => runAdReviewSla()
 );
 
 // ── Event-driven exact timing (+ backstop sweeps) ────────────────────────────
@@ -122,6 +138,8 @@ export const functions = [
   courseReminders,
   courseLiveClasses,
   logRetention,
+  adCampaignSweep,
+  adReviewSla,
   auctionCloseScheduled,
   auctionSweep,
   lotteryDrawScheduled,

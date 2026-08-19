@@ -12,6 +12,7 @@ import {
   type AdTargeting,
 } from "@/lib/ad-targeting";
 import { useCountries } from "@/lib/use-countries";
+import { AudienceGeoPicker } from "@/components/shared/audience-geo-picker";
 
 type OptCount = { value: string; label: string; count?: number };
 
@@ -164,6 +165,20 @@ export function AudienceBuilder({
       </div>
 
       <CityChips cities={value.cities ?? []} onChange={(v) => set({ cities: v })} />
+
+      {/* Sub-country geo — the same DB-backed cascade tasks and push segments
+          use. Ad targeting used to stop at country + free-text city. */}
+      <AudienceGeoPicker
+        value={{
+          regions: value.regions,
+          divisions: value.divisions,
+          districts: value.districts,
+          subDistricts: value.subDistricts,
+          postalCodes: value.postalCodes,
+        }}
+        onChange={(patch) => set(patch as Partial<AdTargeting>)}
+        hint="Optional. Empty = anywhere in the selected countries."
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <NumField label="Min age" value={num(value.minAge)} onChange={(s) => set({ minAge: toNum(s) })} />

@@ -17,8 +17,16 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const userId = session.user.id;
 
-  const ad = await prisma.ad.findUnique({ where: { id } });
-  if (!ad || ad.status !== "ACTIVE" || ad.rewardPoints <= 0) {
+  const ad = await prisma.ad.findUnique({
+    where: { id },
+    include: { campaign: { select: { status: true, endAt: true } } },
+  });
+  // The campaign must still be live too — otherwise a direct POST could farm
+  // points from an ad whose campaign was paused or has already ended.
+  const campaignLive =
+    ad?.campaign.status === "ACTIVE" &&
+    (!ad.campaign.endAt || ad.campaign.endAt.getTime() >= Date.now());
+  if (!ad || ad.status !== "ACTIVE" || ad.rewardPoints <= 0 || !campaignLive) {
     return NextResponse.json({ error: "Ad not available" }, { status: 400 });
   }
 
@@ -66,7 +74,8 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         reference: `ad_${id}_${Date.now()}`,
       },
     });
-    await tx.ad.update({ where: { id }, data: { clicks: { increment: 1 } } });
+    // A watch-and-earn view is NOT a click: counting it here inflated CTR and
+    // implied spend that never happened. The AdView row above records the watch.
     return { newBalance: user.pointsBalance } as const;
   });
 

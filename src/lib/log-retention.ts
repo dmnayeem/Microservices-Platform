@@ -55,6 +55,12 @@ export async function pruneOldLogs(): Promise<Record<string, number>> {
     () => prisma.adView.findMany({ where: { createdAt: { lt: cLogs } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.adView.deleteMany({ where: { id: { in: ids } } })
   );
+  // Engagement dedup slots are only useful for their cooldown window — 30 days
+  // is already far past any of them, and this table is the highest-volume one.
+  r.adEngagement = await pruneBatched(
+    () => prisma.adEngagement.findMany({ where: { createdAt: { lt: new Date(now - 30 * DAY) } }, select: { id: true }, take: BATCH }),
+    (ids) => prisma.adEngagement.deleteMany({ where: { id: { in: ids } } })
+  );
   r.socialActionLog = await pruneBatched(
     () => prisma.socialActionLog.findMany({ where: { createdAt: { lt: cLogs } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.socialActionLog.deleteMany({ where: { id: { in: ids } } })

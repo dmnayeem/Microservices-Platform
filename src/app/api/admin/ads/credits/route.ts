@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { grantAdCredits } from "@/lib/ad-credits";
+import { writeAudit } from "@/lib/audit";
 import { z } from "zod";
 
 const schema = z.object({
@@ -43,5 +44,18 @@ export async function POST(request: NextRequest) {
     note: v.data.note,
   });
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
+
+  // This moves money and had no audit trail at all — only the ledger row's
+  // metadata recorded which admin did it.
+  await writeAudit({
+    actorId: session.user.id,
+    action: "AD_CREDIT_GRANTED",
+    entity: "User",
+    entityId: userId,
+    targetUserId: userId,
+    summary: `${v.data.amountUsd >= 0 ? "Granted" : "Deducted"} $${Math.abs(v.data.amountUsd).toFixed(2)} ad credit`,
+    meta: { amountUsd: v.data.amountUsd, note: v.data.note ?? null, balance: r.adCreditBalance },
+  });
+
   return NextResponse.json({ adCreditBalance: r.adCreditBalance });
 }

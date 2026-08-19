@@ -17,6 +17,7 @@ interface Ad {
   html?: string;
   sponsor?: string;
   impressionPixel?: string;
+  allowSameOrigin?: boolean;
 }
 
 /**
@@ -65,11 +66,15 @@ export function AdInterstitialOverlay({
           const secs = Number(d.interstitialSeconds) || skipSeconds;
           setLeft(secs);
           setTotal(secs);
-          fetch(`/api/spaces/${d.ad.id}/event`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ kind: "view" }),
-          }).catch(() => {});
+          // The serve call already counted this impression server-side; firing
+          // the beacon too would double-count every interstitial.
+          if (!d.countedServerSide) {
+            fetch(`/api/spaces/${d.ad.id}/event`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ kind: "view" }),
+            }).catch(() => {});
+          }
         } else {
           doneRef.current(); // no ad → don't block
         }
@@ -150,6 +155,7 @@ export function AdInterstitialOverlay({
             height={280}
             impressionPixel={ad.impressionPixel}
             badge={false}
+            allowSameOrigin={ad.allowSameOrigin}
           />
         </div>
       ) : (

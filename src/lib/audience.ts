@@ -26,6 +26,7 @@ export interface AudienceCriteria {
   kycStatuses?: string[];
   verifiedOnly?: boolean;
   activeWithinDays?: number;
+  minAccountAgeDays?: number; // account must be at least this old
 }
 
 const ci = (vals?: string[]) =>
@@ -60,6 +61,12 @@ export function audienceWhere(c: AudienceCriteria = {}): Prisma.UserWhereInput {
     const since = new Date();
     since.setDate(since.getDate() - c.activeWithinDays);
     where.lastLoginAt = { gte: since };
+  }
+
+  if (c.minAccountAgeDays && c.minAccountAgeDays > 0) {
+    const before = new Date();
+    before.setDate(before.getDate() - c.minAccountAgeDays);
+    where.createdAt = { lte: before };
   }
 
   // Age → date-of-birth window. A user is N years old when their DOB is in

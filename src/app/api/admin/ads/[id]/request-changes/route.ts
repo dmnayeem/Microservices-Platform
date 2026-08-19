@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { AdReviewError, rejectAd } from "@/lib/ad-review";
+import { AdReviewError, requestChanges } from "@/lib/ad-review";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,9 +14,9 @@ const bodySchema = z.object({
   internalNote: z.string().max(2000).optional().nullable(),
 });
 
-// POST /api/admin/ads/[id]/reject — reject an ad (won't serve) with a reason the
-// advertiser can actually read and act on. A reason is REQUIRED: the old route
-// silently substituted "Not approved.", which told the advertiser nothing.
+// POST /api/admin/ads/[id]/request-changes — the middle decision: the ad isn't
+// approved (so it doesn't serve), but the advertiser is told exactly what to fix
+// and can resubmit instead of starting over.
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const ad = await rejectAd({
+    const ad = await requestChanges({
       adId: id,
       actorId: session.user.id,
       reasonCodes: parsed.data.reasonCodes,

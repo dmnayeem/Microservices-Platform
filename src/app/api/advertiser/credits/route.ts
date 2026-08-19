@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { userCanFeature } from "@/lib/packages";
 import { buyAdCredits, getAdCreditSummary } from "@/lib/ad-credits";
+import { withIdempotency } from "@/lib/idempotency";
 import { z } from "zod";
 
 async function gate() {
@@ -26,18 +27,23 @@ const schema = z.object({
 });
 
 // POST /api/advertiser/credits — buy ad credit with wallet cash or points.
+// Idempotency-wrapped: this moves money, so a retried or double-fired request
+// must not charge the wallet twice.
 export async function POST(request: NextRequest) {
   const g = await gate();
   if (g.error) return g.error;
-  const v = schema.safeParse(await request.json().catch(() => ({})));
-  if (!v.success) {
-    return NextResponse.json({ error: v.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
-  }
-  const r = await buyAdCredits({
-    userId: g.userId,
-    amountUsd: v.data.amountUsd,
-    currency: v.data.currency,
+  const userId = g.userId;
+  return withIdempotency(request, userId, async () => {
+    const v = schema.safeParse(await request.json().catch(() => ({})));
+    if (!v.success) {
+      return NextResponse.json({ error: v.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
+    }
+    const r = await buyAdCredits({
+      userId,
+      amountUsd: v.data.amountUsd,
+      currency: v.data.currency,
+    });
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
+    return NextResponse.json({ adCreditBalance: r.adCreditBalance });
   });
-  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
-  return NextResponse.json({ adCreditBalance: r.adCreditBalance });
 }

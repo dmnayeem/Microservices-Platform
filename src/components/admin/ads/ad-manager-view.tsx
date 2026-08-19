@@ -3,7 +3,6 @@
 import { confirmDialog } from "@/lib/confirm";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   Newspaper,
   Megaphone,
@@ -16,7 +15,6 @@ import {
   MousePointer,
   Loader2,
   Save,
-  X,
   ListChecks,
   PlayCircle,
   Film,
@@ -28,8 +26,8 @@ import {
   ShoppingBag,
   User as UserIcon,
   ShieldCheck,
-  Check,
-  Ban,
+  Pause,
+  Play,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -41,6 +39,11 @@ import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AD_PLACEMENTS, placementSizeKey } from "@/lib/ad-placements";
 import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import { AdReviewQueue } from "@/components/admin/ads/ad-review-queue";
+import { AdReviewPanel } from "@/components/admin/ads/ad-review-panel";
+import { ModalShell } from "@/components/admin/ads/modal-shell";
+// Shared presentation so this view and the review console can't drift apart.
+import { StatusPill, targetingSummary } from "@/components/admin/ads/ad-ui";
 import { type AdTargeting } from "@/lib/ad-targeting";
 
 interface Campaign {
@@ -96,7 +99,19 @@ interface Ad {
   brandLogo: string | null;
   ctaLabel: string | null;
   targeting: AdTargeting | null;
+  // Review state — the API always returned these; the client just dropped them,
+  // which is why a rejection reason was never visible anywhere in the admin.
   rejectionReason?: string | null;
+  rejectionCodes?: string[];
+  reviewNote?: string | null;
+  submittedById?: string | null;
+  submittedAt?: string | null;
+  reviewedById?: string | null;
+  reviewedAt?: string | null;
+  approvedAt?: string | null;
+  creativeGroupId?: string | null;
+  createdAt?: string;
+  allowSameOrigin?: boolean;
   campaign: {
     id: string;
     title: string;
@@ -149,6 +164,8 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const [loading, setLoading] = useState(true);
   const [adModal, setAdModal] = useState<Ad | "new" | null>(null);
   const [adWizard, setAdWizard] = useState(false);
+  const [reviewAdId, setReviewAdId] = useState<string | null>(null);
+  const [adFilter, setAdFilter] = useState({ status: "", placement: "", q: "" });
   const [campModal, setCampModal] = useState<Campaign | "new" | null>(null);
   const [newPlacement, setNewPlacement] = useState("");
   const [demoBusy, setDemoBusy] = useState(false);
@@ -245,8 +262,12 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const loadAll = async () => {
     setLoading(true);
     try {
+      const sp = new URLSearchParams();
+      if (adFilter.status) sp.set("status", adFilter.status);
+      if (adFilter.placement) sp.set("placement", adFilter.placement);
+      if (adFilter.q.trim()) sp.set("q", adFilter.q.trim());
       const [a, c, p] = await Promise.all([
-        fetch("/api/admin/ads").then((r) => r.json()),
+        fetch(`/api/admin/ads?${sp}`).then((r) => r.json()),
         fetch("/api/admin/ads/campaigns").then((r) => r.json()),
         fetch("/api/admin/ads/placements").then((r) => r.json()),
       ]);
@@ -349,8 +370,8 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const totalImpr = ads.reduce((s, a) => s + a.impressions, 0);
   const totalClicks = ads.reduce((s, a) => s + a.clicks, 0);
   const ctr = totalImpr > 0 ? ((totalClicks / totalImpr) * 100).toFixed(2) : "0.00";
-  const pendingAds = ads.filter((a) => a.status?.toUpperCase() === "PENDING");
-  const pendingCount = pendingAds.length;
+  // Badge hint only — the queue itself counts server-side (this list is capped).
+  const pendingCount = ads.filter((a) => a.status?.toUpperCase() === "PENDING").length;
 
   const deletePlacement = async (id: string) => {
     if (!(await confirmDialog({ title: "Delete this placement?", tone: "danger", confirmLabel: "Delete" }))) return;
@@ -404,24 +425,18 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
     toast.success("Deleted");
     loadAll();
   };
-  const approveAd = async (id: string) => {
-    const res = await fetch(`/api/admin/ads/${id}/approve`, { method: "POST" });
-    const d = await res.json().catch(() => ({}));
-    if (!res.ok) return toast.error(d.error ?? "Failed to approve");
-    toast.success("Ad approved & advertiser notified");
-    loadAll();
-  };
-  const rejectAd = async (id: string) => {
-    const reason = window.prompt("Reason for rejection?");
-    if (reason == null) return;
-    const res = await fetch(`/api/admin/ads/${id}/reject`, {
-      method: "POST",
+  // Approve/reject now live in the review panel (AdReviewQueue), which shows the
+  // destination URL, creative and advertiser history a decision actually needs.
+  // Pause/resume of an ALREADY-approved ad stays here — it isn't a review action.
+  const setAdStatus = async (ad: Ad, status: string) => {
+    const res = await fetch(`/api/admin/ads/${ad.id}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify({ status }),
     });
     const d = await res.json().catch(() => ({}));
-    if (!res.ok) return toast.error(d.error ?? "Failed to reject");
-    toast.success("Ad rejected & advertiser notified");
+    if (!res.ok) return toast.error(d.error ?? "Couldn't update the ad");
+    toast.success(status === "ACTIVE" ? "Ad resumed" : "Ad paused");
     loadAll();
   };
   const deleteCampaign = async (id: string) => {
@@ -553,7 +568,42 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
           {tab === "ads" && (
             <div className="space-y-2">
               <p className="text-xs text-slate-400">Only ACTIVE ads in a funded, in-schedule campaign serve. Targeted ads show only to matching users — check the audience size. Use &quot;Remove demo&quot; to see only your own ads.</p>
-              {ads.length === 0 && <Empty text="No ads yet. Create one to start." />}
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={adFilter.q}
+                  onChange={(e) => setAdFilter((f) => ({ ...f, q: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && loadAll()}
+                  placeholder="Search headline, brand, destination, campaign"
+                  className="flex-1 min-w-52 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                />
+                <select
+                  value={adFilter.status}
+                  onChange={(e) => setAdFilter((f) => ({ ...f, status: e.target.value }))}
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                >
+                  <option value="">Any status</option>
+                  {["ACTIVE", "PAUSED", "PENDING", "CHANGES_REQUESTED", "REJECTED", "INACTIVE"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <select
+                  value={adFilter.placement}
+                  onChange={(e) => setAdFilter((f) => ({ ...f, placement: e.target.value }))}
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                >
+                  <option value="">All ad spaces</option>
+                  {AD_PLACEMENTS.map((p) => (
+                    <option key={p.name} value={p.name}>{p.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={loadAll}
+                  className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold"
+                >
+                  Apply
+                </button>
+              </div>
+              {ads.length === 0 && <Empty text="No ads match." />}
               {ads.map((ad) => {
                 const thumb = ad.contentUrl || ad.brandLogo;
                 const title = ad.brandName || ad.headline || ad.campaign.title;
@@ -585,13 +635,30 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-800 text-slate-300">🎯 {tgt}</span>
                           )}
                         </div>
+                        {/* Where the ad actually sends people — previously
+                            invisible anywhere in the admin. */}
+                        {ad.targetUrl && (
+                          <p className="text-[11px] text-sky-300/90 mt-0.5 truncate">{hostOf(ad.targetUrl)}</p>
+                        )}
                         <p className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
-                          {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} clicks · w{ad.weight}
+                          {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} billed clicks · w{ad.weight}
                         </p>
+                        {ad.rejectionReason && (
+                          <p className="text-[11px] text-red-300/80 mt-0.5 line-clamp-2">{ad.rejectionReason}</p>
+                        )}
                       </div>
                     </div>
                     {canManage && (
                       <div className="flex gap-1">
+                        {(ad.status === "ACTIVE" || ad.status === "PAUSED") && (
+                          <IconBtn
+                            onClick={() => setAdStatus(ad, ad.status === "ACTIVE" ? "PAUSED" : "ACTIVE")}
+                            title={ad.status === "ACTIVE" ? "Pause" : "Resume"}
+                          >
+                            {ad.status === "ACTIVE" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                          </IconBtn>
+                        )}
+                        <IconBtn onClick={() => setReviewAdId(ad.id)} title="Review"><ShieldCheck className="w-4 h-4" /></IconBtn>
                         <IconBtn onClick={() => setAdModal(ad)} title="Edit"><Pencil className="w-4 h-4" /></IconBtn>
                         <IconBtn onClick={() => deleteAd(ad.id)} title="Delete" danger><Trash2 className="w-4 h-4" /></IconBtn>
                       </div>
@@ -603,72 +670,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
           )}
 
           {tab === "approvals" && (
-            <div className="space-y-2">
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-100/90">
-                <b className="text-white">Approval queue.</b> Ads submitted by advertisers land here as
-                PENDING. Approve to set them ACTIVE (advertiser is notified), or reject with a reason.
-              </div>
-              {pendingAds.length === 0 ? (
-                <Empty text="No ads awaiting approval." />
-              ) : (
-                pendingAds.map((ad) => {
-                  const thumb = ad.contentUrl || ad.videoUrl || ad.brandLogo;
-                  const title = ad.brandName || ad.headline || ad.campaign.title;
-                  const advertiser =
-                    ad.campaign.advertiser?.name ?? ad.campaign.advertiser?.username ?? "—";
-                  const tgt = targetingSummary(ad.targeting);
-                  const isFeed = ad.format === "NATIVE";
-                  return (
-                    <div
-                      key={ad.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/20 bg-slate-900 p-3"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {thumb ? (
-                          <SmartImage src={thumb} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover bg-slate-950 shrink-0" />
-                        ) : (
-                          <div className="w-14 h-14 rounded-lg bg-slate-950 grid place-items-center text-slate-600 shrink-0">
-                            {isFeed ? <Rss className="w-5 h-5" /> : <Newspaper className="w-5 h-5" />}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white truncate">{title}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                            {ad.campaign.title} · by <span className="text-slate-300">{advertiser}</span>
-                          </p>
-                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                            <StatusPill status={ad.status} />
-                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", isFeed ? "bg-indigo-500/15 text-indigo-300" : "bg-slate-800 text-slate-400")}>
-                              {isFeed ? "Feed" : "Banner"}
-                            </span>
-                            <span className="text-[10px] text-slate-500">{PLACEMENT_LABEL[ad.placement.name] ?? ad.placement.name}</span>
-                            {tgt && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-800 text-slate-300">🎯 {tgt}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {canManage && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => approveAd(ad.id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
-                          >
-                            <Check className="w-4 h-4" /> Approve
-                          </button>
-                          <button
-                            onClick={() => rejectAd(ad.id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold"
-                          >
-                            <Ban className="w-4 h-4" /> Reject
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            <AdReviewQueue canManage={canManage} onChanged={loadAll} />
           )}
 
           {tab === "campaigns" && (
@@ -871,6 +873,14 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
         </>
       )}
 
+      {reviewAdId && (
+        <AdReviewPanel
+          adId={reviewAdId}
+          canManage={canManage}
+          onClose={() => setReviewAdId(null)}
+          onDecided={loadAll}
+        />
+      )}
       {adWizard && (
         <AdWizard
           campaigns={campaigns}
@@ -938,28 +948,20 @@ function StatCard({
     </div>
   );
 }
+/** Hostname of an ad's destination — the reviewer-relevant part of the URL. */
+function hostOf(url: string | null | undefined): string {
+  if (!url) return "";
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 function Empty({ text }: { text: string }) {
   return <p className="text-sm text-slate-500 py-8 text-center">{text}</p>;
 }
 
-function StatusPill({ status }: { status: string }) {
-  const s = status.toUpperCase();
-  const cls =
-    s === "ACTIVE"
-      ? "bg-emerald-500/15 text-emerald-400"
-      : s === "PAUSED"
-        ? "bg-amber-500/15 text-amber-400"
-        : s === "PENDING"
-          ? "bg-amber-500/15 text-amber-400"
-          : s === "REJECTED"
-            ? "bg-red-500/15 text-red-400"
-            : "bg-slate-800 text-slate-400";
-  return (
-    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", cls)}>
-      {s}
-    </span>
-  );
-}
 
 type ServingTone = "amber" | "red" | "slate" | "sky" | "emerald";
 
@@ -1000,25 +1002,6 @@ function ServingPill({ ad, cpc }: { ad: Ad; cpc: number }) {
       {label}
     </span>
   );
-}
-
-/** Short human summary of an ad's targeting, or null when it targets everyone. */
-function targetingSummary(t: AdTargeting | null): string | null {
-  if (!t) return null;
-  const parts: string[] = [];
-  if (t.countries?.length) parts.push(t.countries.join("/"));
-  if (t.cities?.length) parts.push(t.cities.join("/"));
-  if (t.genders?.length) parts.push(t.genders.map((g) => g[0]).join(""));
-  if (t.minAge || t.maxAge) parts.push(`${t.minAge ?? ""}-${t.maxAge ?? ""}y`);
-  if (t.minLevel || t.maxLevel) parts.push(`L${t.minLevel ?? ""}-${t.maxLevel ?? ""}`);
-  if (t.packages?.length) parts.push(t.packages.join("/"));
-  if (t.kycStatuses?.length) parts.push(`KYC:${t.kycStatuses.map((k) => k[0]).join("")}`);
-  if (t.verifiedOnly) parts.push("✓verified");
-  if (t.tags?.length) parts.push(t.tags.join("/"));
-  if (t.languages?.length) parts.push(t.languages.join("/"));
-  if (t.minAccountAgeDays) parts.push(`${t.minAccountAgeDays}d+ old`);
-  if (t.activeWithinDays) parts.push(`active ${t.activeWithinDays}d`);
-  return parts.length ? parts.join(" · ") : null;
 }
 
 function AdSpaceCard({
@@ -1423,33 +1406,6 @@ function IconBtn({ children, onClick, title, danger }: { children: React.ReactNo
   );
 }
 
-function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  // Portal + stopPropagation so clicks inside the modal never reach the admin
-  // page behind it (and the overlay is DOM-isolated from click-outside handlers).
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Cap the panel to the viewport and scroll the BODY internally so a tall
-          form never clips its header/top (the old items-center + scrim-scroll
-          pushed the header above the viewport). */}
-      <div className="w-full max-w-lg flex flex-col max-h-[90vh] rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
-          <h3 className="font-bold text-white">{title}</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="p-4 overflow-y-auto">{children}</div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
 const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500";
 
 function AdModal({
@@ -1500,7 +1456,9 @@ function AdModal({
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
   const [weight, setWeight] = useState(String(ad?.weight ?? 10));
-  const [status, setStatus] = useState(ad?.status ?? "ACTIVE");
+  // Display-only: the review state machine owns Ad.status (see ad-review.ts).
+  const status = ad?.status ?? "ACTIVE";
+  const isReviewState = ["PENDING", "REJECTED", "CHANGES_REQUESTED"].includes(status);
   const [rewardPoints, setRewardPoints] = useState(String(ad?.rewardPoints ?? 0));
   const [watchSeconds, setWatchSeconds] = useState(String(ad?.watchSeconds ?? 15));
   // Native (post-like feed ad) fields
@@ -1551,7 +1509,8 @@ function AdModal({
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
         weight: Number(weight) || 10,
-        status,
+        // No `status` — an edit must never change review state. New admin ads are
+        // auto-approved server-side (the admin IS the reviewer).
         rewardPoints: Number(rewardPoints) || 0,
         watchSeconds: Number(watchSeconds) || 15,
         headline,
@@ -1699,11 +1658,19 @@ function AdModal({
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
-              <option value="ACTIVE">Active</option>
-              <option value="PAUSED">Paused</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
+            {/* Read-only here on purpose. A pending ad rendered a blank select,
+                and one touch flipped it to ACTIVE with no reviewer stamp, no
+                notification and no audit entry — the second half of the
+                self-approval bug. Status now moves only through the review
+                actions (approve / reject / request changes / pause). */}
+            <div className="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700/60 text-sm text-slate-300">
+              {status}
+            </div>
+            {isReviewState && (
+              <p className="mt-1 text-[10px] text-amber-400">
+                Decide this ad from the Approvals tab.
+              </p>
+            )}
           </div>
         </div>
 

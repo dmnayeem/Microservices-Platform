@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { getAdClickCost } from "@/lib/ad-billing";
 import { userCanFeature } from "@/lib/packages";
 import { deductAdCreditTx } from "@/lib/ad-credits";
 import { add, sub, toNum } from "@/lib/money";
@@ -52,13 +51,13 @@ export async function GET() {
     0
   );
 
-  const cpc = await getAdClickCost();
   const enriched = campaigns.map((c) => {
     const m = metricsByCampaign.get(c.id) ?? { impressions: 0, clicks: 0 };
     const ctr = m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0;
-    // Each billed click decrements the campaign's remaining budget by exactly the
-    // CPC, so consumed spend = clicks × CPC and total funded = remaining + spent.
-    const spent = m.clicks * cpc;
+    // Lifetime billed spend is recorded on the campaign as it happens. It used
+    // to be derived as clicks × CURRENT cpc, so every CPC change silently
+    // rewrote what advertisers had "spent" in the past.
+    const spent = toNum(c.spentTotal);
     return {
       id: c.id,
       title: c.title,
@@ -70,6 +69,8 @@ export async function GET() {
       impressions: m.impressions,
       clicks: m.clicks,
       ctr,
+      startAt: c.startAt?.toISOString() ?? null,
+      endAt: c.endAt?.toISOString() ?? null,
       createdAt: c.createdAt.toISOString(),
     };
   });

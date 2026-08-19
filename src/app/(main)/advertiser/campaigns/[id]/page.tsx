@@ -13,7 +13,10 @@ export default async function AdvertiserCampaignPage({
   if (!session?.user) redirect("/login");
 
   const { enabled } = await getEffectiveFeatures(session.user.id);
-  if (!enabled.has("advertiser")) return <FeatureLock title="Advertiser" />;
+  // Same title + apply path as /advertiser — a locked user landing on a campaign
+  // deep link used to get a different heading and no way to request access.
+  if (!enabled.has("advertiser"))
+    return <FeatureLock title="Create Ad" applyHref="/profile/become-creator" />;
 
   const { id } = await params;
   return <CampaignDetailView campaignId={id} />;

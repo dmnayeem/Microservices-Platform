@@ -9,6 +9,23 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { toast } from "@/lib/toast";
 import { promptDialog } from "@/lib/confirm";
+import { newIdempotencyKey } from "@/lib/idempotency-key";
+
+/** One ad-credit movement (purchase, admin grant, campaign funding, refund). */
+interface LedgerEntry {
+  id: string;
+  delta: number;
+  kind: string;
+  balanceAfter: number | null;
+  createdAt: string;
+}
+
+const LEDGER_LABEL: Record<string, string> = {
+  PURCHASE: "Added funds",
+  GRANT: "Admin adjustment",
+  CAMPAIGN_FUND: "Campaign funded",
+  REFUND: "Refund from campaign",
+};
 
 interface Campaign {
   id: string;
@@ -46,6 +63,8 @@ export function AdvertiserDashboard() {
   const [busy, setBusy] = useState(false);
   // Ad Credit wallet
   const [credit, setCredit] = useState(0);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [showLedger, setShowLedger] = useState(false);
   const [buying, setBuying] = useState(false);
   const [buyAmount, setBuyAmount] = useState(20);
   const [buyCurrency, setBuyCurrency] = useState<"cash" | "points">("cash");
@@ -57,6 +76,7 @@ export function AdvertiserDashboard() {
       if (res.ok) {
         const d = await res.json();
         setCredit(d.adCreditBalance ?? 0);
+        setLedger(d.ledger ?? []);
       }
     } catch {
       /* ignore */
@@ -87,7 +107,7 @@ export function AdvertiserDashboard() {
     try {
       const res = await fetch("/api/advertiser/credits", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amountUsd: buyAmount, currency: buyCurrency }),
       });
       const d = await res.json().catch(() => ({}));
@@ -116,7 +136,7 @@ export function AdvertiserDashboard() {
     try {
       const res = await fetch("/api/advertiser/campaigns", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({
           title,
           description,
@@ -165,7 +185,7 @@ export function AdvertiserDashboard() {
     try {
       const res = await fetch(`/api/advertiser/campaigns/${id}/fund`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount }),
       });
       if (!res.ok) {
@@ -204,7 +224,8 @@ export function AdvertiserDashboard() {
       </div>
 
       {/* Ad Credit wallet */}
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+      <div className="flex items-center gap-3">
         <div className="w-11 h-11 rounded-xl bg-emerald-500/15 grid place-items-center text-emerald-300 shrink-0">
           <Wallet className="w-6 h-6" />
         </div>
@@ -228,6 +249,43 @@ export function AdvertiserDashboard() {
             From wallet
           </button>
         </div>
+      </div>
+
+        {/* Where the money went. The API has always returned this ledger; nothing
+            rendered it, so advertisers couldn't reconcile their own balance. */}
+        {ledger.length > 0 && (
+          <div>
+            <button
+              onClick={() => setShowLedger((v) => !v)}
+              className="text-[11px] font-bold text-emerald-300 hover:text-emerald-200"
+            >
+              {showLedger ? "Hide history" : `History (${ledger.length})`}
+            </button>
+            {showLedger && (
+              <ul className="mt-2 divide-y divide-white/5 rounded-xl bg-black/20">
+                {ledger.map((l) => (
+                  <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold text-gray-200 truncate">
+                        {LEDGER_LABEL[l.kind] ?? l.kind}
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        {new Date(l.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs font-bold tabular-nums shrink-0 ${
+                        l.delta >= 0 ? "text-emerald-400" : "text-gray-300"
+                      }`}
+                    >
+                      {l.delta >= 0 ? "+" : "−"}${Math.abs(l.delta).toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">

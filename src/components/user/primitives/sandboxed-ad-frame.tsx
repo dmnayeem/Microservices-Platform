@@ -16,13 +16,25 @@ export function SandboxedAdFrame({
   className,
   impressionPixel,
   badge = true,
+  allowSameOrigin = false,
 }: {
   html: string;
   height?: number;
   className?: string;
   impressionPixel?: string | null;
   badge?: boolean;
+  /**
+   * `allow-scripts` + `allow-same-origin` together CANCEL the sandbox: the frame
+   * shares this app's origin, so its script can read cookies and call same-origin
+   * APIs with the viewer's session. Default off. Only an `ads.manage` admin can
+   * turn it on per ad, for a network snippet that genuinely needs it — advertiser
+   * creatives can never reach this flag.
+   */
+  allowSameOrigin?: boolean;
 }) {
+  const sandbox = allowSameOrigin
+    ? "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+    : "allow-scripts allow-popups allow-popups-to-escape-sandbox";
   return (
     <div
       className={cn(
@@ -39,7 +51,7 @@ export function SandboxedAdFrame({
       <iframe
         title="Embedded content"
         srcDoc={html}
-        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+        sandbox={sandbox}
         className="block w-full border-0"
         style={{ height }}
       />

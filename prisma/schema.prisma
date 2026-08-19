@@ -333,7 +333,14 @@ model AdCampaign {
   advertiser   User?     @relation("UserAdCampaigns", fields: [advertiserId], references: [id], onDelete: SetNull)
   title        String
   description  String?   @db.Text
+  // Remaining (undrawn) budget — each billed click decrements it.
   budget       Decimal   @default(0) @db.Decimal(18, 6)
+  // Lifetime billed spend. Authoritative: reporting must NOT derive spend as
+  // clicks × current CPC, which rewrites history whenever the CPC changes.
+  spentTotal   Decimal   @default(0) @db.Decimal(18, 6)
+  // House (platform-owned) inventory — exempt from the budget gate and the only
+  // ads an ad-free package may be shown.
+  isHouse      Boolean   @default(false)
   status       String    @default("ACTIVE") // ACTIVE | PAUSED | ENDED
   // Optional flight window — ads only serve while now is within [startAt, endAt].
   startAt      DateTime?
@@ -399,13 +406,29 @@ model Ad {
   width             Int?
   height            Int?
   weight            Int           @default(10)
-  // ACTIVE | PAUSED | INACTIVE | PENDING (awaiting admin review) | REJECTED
+  // ACTIVE | PAUSED | INACTIVE | PENDING (awaiting admin review) | CHANGES_REQUESTED | REJECTED
+  // Only src/lib/ad-review.ts may write this column — it is the review gate.
   status            String        @default("ACTIVE")
   // Review workflow (advertiser-submitted ads land as PENDING until an admin acts)
   submittedById     String?
+  submittedAt       DateTime?
   reviewedById      String?
   reviewedAt        DateTime?
+  // Set the first time an admin approves and NEVER cleared — this is the
+  // "a reviewed creative exists" bit that lets an advertiser resume a paused ad
+  // without being able to activate one that was never reviewed.
+  approvedAt        DateTime?
   rejectionReason   String?       @db.Text
+  rejectionCodes    String[]      @default([])
+  reviewNote        String?       @db.Text // internal reviewer note (never shown to the advertiser)
+  // One id per submission — a multi-placement submit creates N Ad rows that a
+  // reviewer should see (and decide on) together.
+  creativeGroupId   String?
+  // ads.manage-only escape hatch: lets a trusted network creative keep
+  // `allow-same-origin` while advertiser HTML never can. See sandboxed-ad-frame.
+  allowSameOrigin   Boolean       @default(false)
+  reviews           AdReview[]
+  engagements       AdEngagement[]
   impressions       Int           @default(0)
   clicks            Int           @default(0)
   // Native (post-like) creative fields — used when format = NATIVE
@@ -432,6 +455,52 @@ model Ad {
   @@index([status])
   @@index([promotedPostId])
   @@index([placementId, status])
+  @@index([status, createdAt])
+  @@index([creativeGroupId])
+}
+
+// Append-only decision trail for the ad review gate: who submitted, who decided,
+// why, and what the creative looked like at the time. Powers the admin review
+// timeline, the advertiser's "why was I rejected" panel, and reversibility.
+model AdReview {
+  id           String   @id @default(cuid())
+  adId         String
+  ad           Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  // Raw id, no FK — actors can be deleted (AdCampaign.advertiserId uses SetNull
+  // for the same reason). Identities are hydrated with a batched findMany.
+  actorId      String?
+  // SUBMITTED | RESUBMITTED | EDIT_SUBMITTED | APPROVED | APPROVED_WITH_EDITS
+  // | REJECTED | CHANGES_REQUESTED | REOPENED | AUTO_PAUSED
+  action       String
+  reasonCodes  String[] @default([])
+  message      String?  @db.Text // advertiser-visible
+  internalNote String?  @db.Text // admin-only
+  snapshot     Json? // creative at decision time
+  createdAt    DateTime @default(now())
+
+  @@index([adId, createdAt])
+  @@index([actorId])
+}
+
+// Durable view/click dedup. Replaces the per-instance in-memory cooldown map,
+// which serverless made useless (a competitor could drain a budget by fanning
+// requests across instances). The unique index IS the cooldown.
+model AdEngagement {
+  id        String   @id @default(cuid())
+  adId      String
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  // userId, or `ip:<sha256>` when anonymous. NOT NULL on purpose: Postgres
+  // treats NULLs as distinct, so a nullable column would never dedup anon traffic.
+  subject   String
+  userId    String?
+  kind      String // VIEW | CLICK
+  bucket    BigInt // floor(epochMs / windowMs)
+  billed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([adId, kind, subject, bucket])
+  @@index([adId, createdAt])
+  @@index([createdAt])
 }
 
 // Per-day rollup of ad impressions/clicks/spend for time-series analytics.

@@ -7,6 +7,13 @@
  *  (AND). An empty/missing rule = no constraint on that dimension. */
 export interface AdTargeting {
   countries?: string[]; // User.country (case-insensitive)
+  // Sub-country geo — same shape the platform's audienceWhere() consumes, so an
+  // ad can be targeted as precisely as a push segment (e.g. Dhaka → Savar).
+  regions?: string[]; // User.region
+  divisions?: string[]; // User.division
+  districts?: string[]; // User.district
+  subDistricts?: string[]; // User.subDistrict (upazila)
+  postalCodes?: string[]; // User.postalCode
   cities?: string[]; // User.city (case-insensitive)
   genders?: string[]; // User.gender (MALE/FEMALE/OTHER)
   minAge?: number; // from User.dateOfBirth
@@ -25,6 +32,11 @@ export interface AdTargeting {
 /** The viewer attributes we target on. */
 export interface TargetableUser {
   country?: string | null;
+  region?: string | null;
+  division?: string | null;
+  district?: string | null;
+  subDistrict?: string | null;
+  postalCode?: string | null;
   city?: string | null;
   gender?: string | null;
   level?: number | null;
@@ -157,6 +169,13 @@ function strArr(v: unknown): string[] | undefined {
     ? v.filter((x): x is string => typeof x === "string")
     : undefined;
 }
+/** One geo dimension: unset rule = no constraint, else case-insensitive any-of. */
+function matchesGeo(rule: string[] | undefined, value: string | null | undefined): boolean {
+  if (!rule?.length) return true;
+  const v = (value ?? "").toLowerCase();
+  return rule.some((x) => x.toLowerCase() === v);
+}
+
 function posNum(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined;
 }
@@ -167,6 +186,11 @@ export function parseTargeting(v: unknown): AdTargeting {
   const s = v as Record<string, unknown>;
   const out: AdTargeting = {};
   if (strArr(s.countries)?.length) out.countries = strArr(s.countries);
+  if (strArr(s.regions)?.length) out.regions = strArr(s.regions);
+  if (strArr(s.divisions)?.length) out.divisions = strArr(s.divisions);
+  if (strArr(s.districts)?.length) out.districts = strArr(s.districts);
+  if (strArr(s.subDistricts)?.length) out.subDistricts = strArr(s.subDistricts);
+  if (strArr(s.postalCodes)?.length) out.postalCodes = strArr(s.postalCodes);
   if (strArr(s.cities)?.length) out.cities = strArr(s.cities);
   if (strArr(s.genders)?.length) out.genders = strArr(s.genders);
   if (posNum(s.minAge)) out.minAge = posNum(s.minAge);
@@ -201,10 +225,12 @@ export function matchesTargeting(
     const c = (user.country ?? "").toLowerCase();
     if (!t.countries.some((x) => x.toLowerCase() === c)) return false;
   }
-  if (t.cities?.length) {
-    const c = (user.city ?? "").toLowerCase();
-    if (!t.cities.some((x) => x.toLowerCase() === c)) return false;
-  }
+  if (!matchesGeo(t.regions, user.region)) return false;
+  if (!matchesGeo(t.divisions, user.division)) return false;
+  if (!matchesGeo(t.districts, user.district)) return false;
+  if (!matchesGeo(t.subDistricts, user.subDistrict)) return false;
+  if (!matchesGeo(t.postalCodes, user.postalCode)) return false;
+  if (!matchesGeo(t.cities, user.city)) return false;
   if (t.genders?.length) {
     const g = (user.gender ?? "").toUpperCase();
     if (!t.genders.some((x) => x.toUpperCase() === g)) return false;

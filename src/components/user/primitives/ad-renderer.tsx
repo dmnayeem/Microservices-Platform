@@ -29,6 +29,7 @@ export interface AdResponse {
   height?: number;
   impressionPixel?: string;
   clickTracker?: string;
+  allowSameOrigin?: boolean;
 }
 
 interface AdRendererProps {
@@ -252,6 +253,7 @@ export function AdRenderer({
           html={ad.html}
           height={dim?.h ?? 250}
           impressionPixel={ad.impressionPixel}
+          allowSameOrigin={ad.allowSameOrigin}
         />
       </div>
     );

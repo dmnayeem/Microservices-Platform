@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { firstPartyMediaUrl } from "@/lib/ad-proxy";
+import { getAdClickCost } from "@/lib/ad-billing";
+import { servableCampaignWhere } from "@/lib/ad-serve";
 
 /** List active reward ads with each ad's cooldown state for the current user. */
 export async function GET() {
@@ -10,11 +12,14 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Same campaign gate as every other serve path — this list used to check only
+  // `campaign.status`, so an out-of-budget, expired or suspended advertiser's ad
+  // still earned users points at the platform's expense.
   const ads = await prisma.ad.findMany({
     where: {
       status: "ACTIVE",
       rewardPoints: { gt: 0 },
-      campaign: { status: "ACTIVE" },
+      campaign: servableCampaignWhere(await getAdClickCost(), new Date(), false),
     },
     include: { campaign: { select: { title: true } } },
     take: 50,

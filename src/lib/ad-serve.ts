@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePackage } from "@/lib/packages";
 import { getAdClickCost } from "@/lib/ad-billing";
@@ -25,6 +26,8 @@ export interface ServedAd {
   height?: number;
   impressionPixel?: string;
   clickTracker?: string;
+  /** Admin-granted per-ad escape hatch for network creatives (see SandboxedAdFrame). */
+  allowSameOrigin?: boolean;
 }
 
 export interface ServeResult {
@@ -32,6 +35,9 @@ export interface ServeResult {
   rotateMs: number;
   interstitialSeconds: number;
   ad: ServedAd | null;
+  /** True when this serve already counted the impression, so the client must
+   *  NOT also fire a view beacon (that double-counted every interstitial). */
+  countedServerSide?: boolean;
 }
 
 const EMPTY: ServeResult = {
@@ -40,6 +46,52 @@ const EMPTY: ServeResult = {
   interstitialSeconds: 5,
   ad: null,
 };
+
+/** Viewer attributes targeting can filter on — must cover every AdTargeting geo
+ *  dimension or a rule silently matches nobody. */
+const VIEWER_SELECT = {
+  country: true,
+  region: true,
+  division: true,
+  district: true,
+  subDistrict: true,
+  postalCode: true,
+  city: true,
+  gender: true,
+  level: true,
+  dateOfBirth: true,
+  kycStatus: true,
+  isBlueVerified: true,
+  tags: true,
+  language: true,
+  createdAt: true,
+  lastLoginAt: true,
+} as const;
+
+/**
+ * The campaign an ad must belong to in order to serve. Applied on EVERY path —
+ * interstitials used to skip it entirely, which let ads run on a paused, ended,
+ * out-of-window or $0 campaign (i.e. for free). House inventory is exempt from
+ * the budget floor only, never from the rest.
+ */
+export function servableCampaignWhere(
+  cost: number,
+  now: Date,
+  houseOnly: boolean
+): Prisma.AdCampaignWhereInput {
+  return {
+    status: "ACTIVE",
+    ...(houseOnly ? { isHouse: true } : {}),
+    AND: [
+      { OR: [{ startAt: null }, { startAt: { lte: now } }] },
+      { OR: [{ endAt: null }, { endAt: { gte: now } }] },
+      { OR: [{ isHouse: true }, { budget: { gte: cost } }] },
+      // A suspended/banned advertiser's ads must stop, not keep running on a
+      // pre-funded budget.
+      { OR: [{ advertiserId: null }, { advertiser: { is: { status: "ACTIVE" } } }] },
+    ],
+  };
+}
 
 /**
  * Select an ad for a placement: ad-free gate → placement lookup → active/funded/
@@ -60,35 +112,21 @@ export async function serveAd(opts: {
   const { placement, userId, preview } = opts;
   const exclude = new Set(opts.exclude ?? []);
 
-  // Interstitial placements (REWARD/VIDEO/GAME_INTERSTITIAL) are the platform's
-  // OWN house ads shown before a reward — they always serve (even to ad-free
-  // plans) and don't require a funded advertiser campaign. Paid feed/banner
-  // placements keep the ad-free + budget/flight gating below. Preview mode is
-  // treated like a house placement so admins always see inventory.
-  const interstitial = placement.endsWith("_INTERSTITIAL") || !!preview;
+  // Interstitial placements (REWARD/VIDEO/GAME_INTERSTITIAL) are shown before a
+  // reward, so an ad-free plan still sees them — but only HOUSE inventory. They
+  // are NOT exempt from the campaign gate: that exemption was letting paid ads
+  // run on dead or unfunded campaigns.
+  const interstitial = placement.endsWith("_INTERSTITIAL");
 
   let viewer: TargetableUser | null = null;
+  let houseOnly = false;
   if (userId && !preview) {
     const [pkg, u] = await Promise.all([
       getEffectivePackage(userId),
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          country: true,
-          city: true,
-          gender: true,
-          level: true,
-          dateOfBirth: true,
-          kycStatus: true,
-          isBlueVerified: true,
-          tags: true,
-          language: true,
-          createdAt: true,
-          lastLoginAt: true,
-        },
-      }),
+      prisma.user.findUnique({ where: { id: userId }, select: VIEWER_SELECT }),
     ]);
     if (pkg?.adFree && !interstitial) return EMPTY; // Watch & Earn is unaffected
+    houseOnly = !!pkg?.adFree;
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
   }
 
@@ -104,20 +142,10 @@ export async function serveAd(opts: {
     where: {
       placementId: placementRow.id,
       status: "ACTIVE",
-      // House interstitials: any ACTIVE ad on the placement serves (no funded
-      // campaign / flight-window needed). Paid placements keep the full gate.
-      ...(interstitial
-        ? {}
-        : {
-            campaign: {
-              status: "ACTIVE",
-              budget: { gte: cost },
-              AND: [
-                { OR: [{ startAt: null }, { startAt: { lte: now } }] },
-                { OR: [{ endAt: null }, { endAt: { gte: now } }] },
-              ],
-            },
-          }),
+      // Admin preview (ads.view-gated, never counts an impression) is the only
+      // path allowed to look past the campaign gate, so an admin can still see
+      // what a space renders while a campaign is paused.
+      ...(preview ? {} : { campaign: servableCampaignWhere(cost, now, houseOnly) }),
     },
     include: { campaign: { select: { title: true } } },
   });
@@ -142,7 +170,8 @@ export async function serveAd(opts: {
     }
   }
 
-  if (opts.countImpression !== false && !preview) {
+  const counted = opts.countImpression !== false && !preview;
+  if (counted) {
     prisma.ad
       .update({
         where: { id: chosen.id },
@@ -173,6 +202,7 @@ export async function serveAd(opts: {
     poolSize: targeted.length,
     rotateMs: rotateSeconds * 1000,
     interstitialSeconds,
+    countedServerSide: counted,
     ad: {
       id: chosen.id,
       type: chosen.type,
@@ -197,6 +227,7 @@ export async function serveAd(opts: {
       height: chosen.height ?? undefined,
       impressionPixel: chosen.impressionPixel ?? undefined,
       clickTracker: chosen.clickTracker ?? undefined,
+      allowSameOrigin: chosen.allowSameOrigin || undefined,
     },
   };
 }
@@ -231,22 +262,7 @@ export async function serveFeedAds(opts: {
   if (userId) {
     const [pkg, u] = await Promise.all([
       getEffectivePackage(userId),
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          country: true,
-          city: true,
-          gender: true,
-          level: true,
-          dateOfBirth: true,
-          kycStatus: true,
-          isBlueVerified: true,
-          tags: true,
-          language: true,
-          createdAt: true,
-          lastLoginAt: true,
-        },
-      }),
+      prisma.user.findUnique({ where: { id: userId }, select: VIEWER_SELECT }),
     ]);
     if (pkg?.adFree) return [];
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
@@ -265,14 +281,7 @@ export async function serveFeedAds(opts: {
       placementId: placement.id,
       status: "ACTIVE",
       format: "NATIVE",
-      campaign: {
-        status: "ACTIVE",
-        budget: { gte: cost },
-        AND: [
-          { OR: [{ startAt: null }, { startAt: { lte: now } }] },
-          { OR: [{ endAt: null }, { endAt: { gte: now } }] },
-        ],
-      },
+      campaign: servableCampaignWhere(cost, now, false),
     },
     select: {
       id: true,

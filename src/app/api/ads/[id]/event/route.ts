@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { recordImpression, recordClick } from "@/lib/ad-events";
+import { ipSubject, recordImpression, recordClick } from "@/lib/ad-events";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
 
 /**
  * Unified ad-engagement endpoint. The web client posts here (via the neutral
@@ -8,6 +9,11 @@ import { recordImpression, recordClick } from "@/lib/ad-events";
  * paths — neither the URL nor the body contains an ad-blocker filter token.
  *
  * Body: `{ kind: "view" | "open" }`  (view = impression, open = click).
+ *
+ * Views used to be recorded with no auth, no dedup and no rate limit, so anyone
+ * could inflate their own ad's impressions or tank a rival's CTR in a loop. Now
+ * every view is attributed to a subject (user, else hashed IP), deduped per
+ * minute in the DB, and rate limited per IP.
  */
 export async function POST(
   request: NextRequest,
@@ -18,8 +24,16 @@ export async function POST(
   const kind = (body as { kind?: string }).kind;
 
   if (kind === "view") {
-    await recordImpression(id);
-    return NextResponse.json({ success: true });
+    const limited = enforceRateLimit(request, "ad-view", 60, 60_000);
+    if (limited) return limited;
+
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+    const { counted } = await recordImpression(id, {
+      subject: userId ?? ipSubject(clientIp(request)),
+      userId,
+    });
+    return NextResponse.json({ success: true, counted });
   }
 
   if (kind === "open") {
@@ -28,6 +42,9 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ success: true, billed: false });
     }
+    const limited = enforceRateLimit(request, "ad-click", 30, 60_000);
+    if (limited) return limited;
+
     const { billed } = await recordClick(id, session.user.id);
     return NextResponse.json({ success: true, billed });
   }

@@ -59,3 +59,24 @@ export const PLACEMENT_SIZE: Record<string, string> = {
 export function placementSizeKey(name: string): string {
   return PLACEMENT_SIZE[name] ?? "responsive";
 }
+
+/**
+ * Inventory a self-serve advertiser may buy. Interstitials and Browse & Earn are
+ * house/CPM surfaces the platform monetizes itself, so they stay admin-only —
+ * both in the advertiser UI and in the API, which must not trust the client.
+ */
+const HOUSE_ONLY_PLACEMENTS = new Set<string>([
+  "GAME_INTERSTITIAL",
+  "VIDEO_INTERSTITIAL",
+  "REWARD_INTERSTITIAL",
+  "EARN_BROWSE",
+]);
+
+export function isAdvertiserSelectable(name: string): boolean {
+  return !HOUSE_ONLY_PLACEMENTS.has(name);
+}
+
+/** Placements offered in the self-serve ad composer. */
+export const ADVERTISER_PLACEMENTS = AD_PLACEMENTS.filter((p) =>
+  isAdvertiserSelectable(p.name)
+);
