@@ -1,4 +1,5 @@
 "use client";
+import { STAT_LABEL_CLASS, STAT_VALUE_CLASS_SM } from "@/components/user/primitives/stat-card";
 
 import { useState } from "react";
 import {
@@ -13,7 +14,7 @@ import {
   UsersRound,
   DollarSign,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 type Tone = "indigo" | "amber" | "emerald" | "purple" | "rose" | "sky" | "violet";
 
@@ -44,8 +45,8 @@ export function StatTile({
     <div className="glass glass-hover p-3 flex items-center gap-3 min-w-0">
       <div className={cn("p-2 rounded-lg shrink-0", TONES[tone])}>{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-gray-500 truncate">{label}</p>
-        <p className="text-base font-bold text-white tabular-nums truncate">{value}</p>
+        <p className={STAT_LABEL_CLASS}>{label}</p>
+        <p className={STAT_VALUE_CLASS_SM}>{value}</p>
       </div>
       {trailing}
     </div>
@@ -107,7 +108,7 @@ export function LifetimeStatsGroup({ stats }: { stats: LifetimeStats }) {
       ? "—"
       : unit === "points"
       ? (stats.totalEarnedPoints ?? 0).toLocaleString()
-      : `$${(stats.totalEarnedUsd ?? 0).toFixed(2)}`;
+      : `${usd((stats.totalEarnedUsd ?? 0))}`;
 
   const canToggle =
     stats.totalEarnedPoints !== null && stats.totalEarnedUsd !== null;

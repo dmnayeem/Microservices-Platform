@@ -299,7 +299,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
           <option value="all">All Types</option>
           <option value="VIDEO">Video</option>
           <option value="ARTICLE">Article</option>
-          <option value="QUIZ">Quiz</option>
+          <option value="QUIZ">Quiz Task</option>
           <option value="SURVEY">Survey</option>
           <option value="SOCIAL">Social</option>
           <option value="PROXY">Proxy</option>

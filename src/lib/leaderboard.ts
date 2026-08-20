@@ -206,8 +206,18 @@ export async function computeCombinedTopUsers(options: {
   }));
 }
 
-/** Compute the combined rank of a specific user (used for "your rank" line). */
-export async function computeCombinedUserRank(userId: string): Promise<{
+/**
+ * Combined rank of one user (the "your rank" line).
+ *
+ * `pool` lets the caller pass an ALREADY-CACHED top list. Without it this
+ * recomputes the entire 500-user pipeline — a 500-row scan plus two groupBy over
+ * TaskSubmission — for every viewer who isn't already in the visible top N,
+ * which is nearly everyone, on a board that auto-refreshes every 30s.
+ */
+export async function computeCombinedUserRank(
+  userId: string,
+  pool?: CombinedRow[]
+): Promise<{
   rank: number;
   score: number;
   isEligible: boolean;
@@ -216,7 +226,7 @@ export async function computeCombinedUserRank(userId: string): Promise<{
 } | null> {
   // Re-using the same algorithm. We compute over the candidate pool — if
   // the user isn't in the top 500 they get ranked at "500+".
-  const top = await computeCombinedTopUsers({ limit: 500 });
+  const top = pool ?? (await computeCombinedTopUsers({ limit: 500 }));
   const idx = top.findIndex((r) => r.userId === userId);
   if (idx === -1) {
     // Fallback: still report their package + score as 0

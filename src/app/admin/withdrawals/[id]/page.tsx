@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -198,15 +199,15 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-sm text-gray-400 mb-1">Amount Requested</p>
-                <p className="text-2xl font-bold text-white">${withdrawal.amount.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-white">{usd(withdrawal.amount)}</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-sm text-gray-400 mb-1">Processing Fee</p>
-                <p className="text-2xl font-bold text-amber-400">${withdrawal.fee.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-amber-400">{usd(withdrawal.fee)}</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-sm text-gray-400 mb-1">Net Amount</p>
-                <p className="text-2xl font-bold text-emerald-400">${withdrawal.netAmount.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-emerald-400">{usd(withdrawal.netAmount)}</p>
               </div>
             </div>
           </div>
@@ -273,15 +274,15 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
             <div className="grid md:grid-cols-4 gap-4">
               <div className="bg-gray-800/50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Current Balance</p>
-                <p className="text-lg font-semibold text-white">${withdrawal.user.cashBalance.toFixed(2)}</p>
+                <p className="text-lg font-semibold text-white">{usd(withdrawal.user.cashBalance)}</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Total Earnings</p>
-                <p className="text-lg font-semibold text-emerald-400">${withdrawal.user.totalEarnings.toFixed(2)}</p>
+                <p className="text-lg font-semibold text-emerald-400">{usd(withdrawal.user.totalEarnings)}</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Total Withdrawn</p>
-                <p className="text-lg font-semibold text-amber-400">${withdrawal.user.totalWithdrawals.toFixed(2)}</p>
+                <p className="text-lg font-semibold text-amber-400">{usd(withdrawal.user.totalWithdrawals)}</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Account Age</p>
@@ -302,7 +303,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
                   <div key={prev.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
                     <div className="flex items-center gap-3">
                       <CheckCircle className="w-4 h-4 text-emerald-400" />
-                      <span className="text-white">${prev.amount.toFixed(2)}</span>
+                      <span className="text-white">{usd(prev.amount)}</span>
                       <span className="text-gray-500 text-sm">via {methodLabels[prev.method] || prev.method}</span>
                     </div>
                     <span className="text-sm text-gray-400">
@@ -360,7 +361,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
               <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-sm">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-slate-500" />
-                  <span className="text-slate-400">Tasks Completed</span>
+                  <span className="text-slate-400">Task Submissions</span>
                 </div>
                 <span className="text-white">{withdrawal.user._count.taskSubmissions}</span>
               </div>

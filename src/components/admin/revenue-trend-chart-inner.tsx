@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import {
   Bar,
@@ -36,7 +37,7 @@ export function RevenueTrendChartInner({
             {title}
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            ${total.toFixed(0)} total · ${avg.toFixed(2)} avg/day · ${peak.toFixed(0)} peak
+            ${total.toFixed(0)} total · {usd(avg)} avg/day · ${peak.toFixed(0)} peak
           </p>
         </div>
         <span className="hidden sm:inline-block px-2 py-1 rounded bg-emerald-500/15 text-emerald-400 text-xs font-medium">
@@ -77,7 +78,7 @@ export function RevenueTrendChartInner({
               width={36}
               tickFormatter={(v) => {
                 const n = Number(v ?? 0);
-                return n >= 1000 ? `$${(n / 1000).toFixed(0)}k` : `$${n}`;
+                return usd(n, { compact: true });
               }}
             />
             <Tooltip
@@ -90,7 +91,7 @@ export function RevenueTrendChartInner({
               }}
               labelStyle={{ color: "#cbd5e1", fontWeight: 600 }}
               itemStyle={{ color: "#34d399" }}
-              formatter={(v) => [`$${Number(v ?? 0).toFixed(2)}`, "Revenue"]}
+              formatter={(v) => [`${usd(Number(v ?? 0))}`, "Revenue"]}
             />
             <Bar
               dataKey="revenue"

@@ -198,57 +198,120 @@ export async function runMonthlyReferralBonuses(
   monthStart: Date,
   monthEnd: Date,
   monthKey: string
-): Promise<{ paid: number; points: number }> {
+): Promise<{ paid: number; points: number; scanned: number; drained: boolean }> {
   const cfg = await getReferralBonusConfig();
-  if (!cfg.enabled || cfg.monthlyPoints <= 0) return { paid: 0, points: 0 };
+  if (!cfg.enabled || cfg.monthlyPoints <= 0)
+    return { paid: 0, points: 0, scanned: 0, drained: true };
 
-  // All referred users who were active in the window (had ≥1 mission claim).
-  const claims = (await prisma.dailyMissionClaim.groupBy({
-    by: ["userId"],
-    where: { claimedAt: { gte: monthStart, lt: monthEnd } },
-    _count: { _all: true },
-  })) as unknown as { userId: string }[];
+  // Candidates: referred users active in the window, walked in PAGES.
+  //
+  // This used to be one unbounded groupBy over the whole month followed by a
+  // sequential per-user loop of 3-4 queries. At 100k monthly-active users that
+  // is ~400k serial round-trips in a single run: it times out, and because the
+  // retry restarts from zero it never finishes. It is idempotent (awardBonus is
+  // keyed on a unique reference) so nobody was ever double-paid — the bonus just
+  // silently stopped being paid at scale.
+  //
+  // Now: page through candidates, and resolve each page's referrer + active-day
+  // counts in BULK rather than per user.
+  const PAGE = 500;
+  const BUDGET_MS = 240_000; // leave headroom inside the function timeout
+  const deadline = Date.now() + BUDGET_MS;
 
   let paid = 0;
   let points = 0;
-  for (const c of claims) {
-    // Count DISTINCT days this user completed a mission (date is YYYY-MM-DD).
-    const days = await prisma.dailyMissionClaim.findMany({
-      where: { userId: c.userId, claimedAt: { gte: monthStart, lt: monthEnd } },
-      select: { date: true },
-      distinct: ["date"],
-    });
-    if (days.length < cfg.monthlyMinMissionDays) continue;
+  let scanned = 0;
+  let cursor: string | undefined;
+  let drained = false;
 
-    const referred = await prisma.user.findUnique({
-      where: { id: c.userId },
-      select: { referredById: true },
-    });
-    if (!referred?.referredById) continue;
-    if (!(await referrerQualifies(referred.referredById, cfg))) continue;
+  for (;;) {
+    const page = (await prisma.dailyMissionClaim.groupBy({
+      by: ["userId"],
+      where: { claimedAt: { gte: monthStart, lt: monthEnd } },
+      _count: { _all: true },
+      orderBy: { userId: "asc" },
+      take: PAGE,
+      ...(cursor ? { skip: 1, cursor: { userId: cursor } } : {}),
+    })) as unknown as { userId: string }[];
 
-    const ok = await awardBonus({
-      referrerId: referred.referredById,
-      referredUserId: c.userId,
-      points: cfg.monthlyPoints,
-      reference: `refbonus_month_${c.userId}_${monthKey}`,
-      sourceType: "MONTHLY_BONUS",
-      description: `Referral monthly bonus (${monthKey})`,
-      notifyTitle: "Monthly referral bonus!",
-      notifyMessage: `An invitee stayed active all month — you earned ${cfg.monthlyPoints} points.`,
-    });
-    if (ok) {
-      paid += 1;
-      points += cfg.monthlyPoints;
+    if (page.length === 0) {
+      drained = true;
+      break;
     }
+    cursor = page[page.length - 1]!.userId;
+    scanned += page.length;
+    const ids = page.map((c) => c.userId);
+
+    // Distinct active days per user for the whole page, in one query.
+    const dayRows = await prisma.dailyMissionClaim.findMany({
+      where: { userId: { in: ids }, claimedAt: { gte: monthStart, lt: monthEnd } },
+      select: { userId: true, date: true },
+      distinct: ["userId", "date"],
+    });
+    const daysByUser = new Map<string, number>();
+    for (const row of dayRows) {
+      daysByUser.set(row.userId, (daysByUser.get(row.userId) ?? 0) + 1);
+    }
+
+    // Referrer for the whole page, in one query.
+    const referredRows = await prisma.user.findMany({
+      where: { id: { in: ids }, referredById: { not: null } },
+      select: { id: true, referredById: true },
+    });
+    const referrerByUser = new Map(
+      referredRows.map((u) => [u.id, u.referredById as string])
+    );
+
+    // referrerQualifies() is per referrer, not per referred user — cache it so a
+    // referrer with 50 invitees is checked once, not 50 times.
+    const qualifies = new Map<string, boolean>();
+
+    for (const id of ids) {
+      if ((daysByUser.get(id) ?? 0) < cfg.monthlyMinMissionDays) continue;
+      const referrerId = referrerByUser.get(id);
+      if (!referrerId) continue;
+
+      let ok = qualifies.get(referrerId);
+      if (ok === undefined) {
+        ok = await referrerQualifies(referrerId, cfg);
+        qualifies.set(referrerId, ok);
+      }
+      if (!ok) continue;
+
+      const awarded = await awardBonus({
+        referrerId,
+        referredUserId: id,
+        points: cfg.monthlyPoints,
+        reference: `refbonus_month_${id}_${monthKey}`,
+        sourceType: "MONTHLY_BONUS",
+        description: `Referral monthly bonus (${monthKey})`,
+        notifyTitle: "Monthly referral bonus!",
+        notifyMessage: `An invitee stayed active all month — you earned ${cfg.monthlyPoints} points.`,
+      });
+      if (awarded) {
+        paid += 1;
+        points += cfg.monthlyPoints;
+      }
+    }
+
+    if (page.length < PAGE) {
+      drained = true;
+      break;
+    }
+    // Out of budget. The run is idempotent, so the next invocation re-scans and
+    // simply skips everyone already paid.
+    if (Date.now() >= deadline) break;
   }
-  return { paid, points };
+
+  return { paid, points, scanned, drained };
 }
 
 /** Convenience for the monthly cron: sweep the just-ended calendar month. */
 export async function runPreviousMonthReferralBonuses(): Promise<{
   paid: number;
   points: number;
+  scanned: number;
+  drained: boolean;
 }> {
   const now = new Date();
   const thisMonthStart = new Date(

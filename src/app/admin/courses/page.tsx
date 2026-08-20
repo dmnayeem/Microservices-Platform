@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -225,7 +226,7 @@ export default async function CoursesAdminPage({ searchParams }: PageProps) {
         <Stat
           icon={<Wallet className="w-5 h-5" />}
           tone="emerald"
-          value={`$${totalRevenue.toFixed(2)}`}
+          value={usd(totalRevenue)}
           label="Lifetime revenue"
         />
         <Stat

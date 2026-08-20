@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
 import { getEffectivePackage } from "@/lib/packages";
@@ -25,13 +26,18 @@ export async function getPageVisibilityRules(): Promise<PageVisibilityRules> {
  * with the user's per-user overrides. Fail-safe: on any error nothing is hidden
  * (never lock a user out of the whole app because of a settings blip).
  */
-export async function getHiddenPaths(userId: string): Promise<string[]> {
+export const getHiddenPaths = cache(async (userId: string): Promise<string[]> => {
   try {
     const [rules, user, pkg] = await Promise.all([
       getPageVisibilityRules(),
       prisma.user.findUnique({
         where: { id: userId },
         select: { role: true, pageOverrides: true },
+        // Runs on EVERY navigation across every (main) page, and was the only
+        // uncached read in the shell. Role and per-user page overrides change on
+        // an admin action, so a minute of staleness is invisible — and this
+        // already fails open (catch → []).
+        cacheStrategy: { ttl: 60, swr: 300 },
       }),
       getEffectivePackage(userId).catch(() => null),
     ]);
@@ -45,4 +51,4 @@ export async function getHiddenPaths(userId: string): Promise<string[]> {
   } catch {
     return [];
   }
-}
+});

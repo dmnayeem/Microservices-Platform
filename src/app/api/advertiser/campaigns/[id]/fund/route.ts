@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -77,7 +78,7 @@ export async function POST(
       });
       return NextResponse.json(
         {
-          error: `Ad credit is $${toNum(me?.adCreditBalance).toFixed(2)} — need $${amount.toFixed(2)}. Add funds first.`,
+          error: `Ad credit is ${usd(toNum(me?.adCreditBalance))} — need ${usd(amount)}. Add funds first.`,
           shortBy: sub(amount, me?.adCreditBalance ?? 0).toNumber(),
         },
         { status: 402 }

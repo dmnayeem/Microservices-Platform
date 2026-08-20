@@ -15,7 +15,7 @@ import {
   Network,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { format } from "date-fns";
 import { Avatar } from "@/components/user/primitives/avatar";
 
@@ -198,7 +198,7 @@ export function ReferralTreeView({ userId, user }: Props) {
           <Stat
             icon={<TrendingUp className="w-5 h-5" />}
             label="Total Earnings"
-            value={`$${stats.totalTreeEarnings.toFixed(2)}`}
+            value={`${usd(stats.totalTreeEarnings)}`}
             tone="emerald"
           />
           <Stat
@@ -379,7 +379,7 @@ function TreeBranch({
             className="text-emerald-400 font-semibold tabular-nums"
             title="Earnings credited to this user"
           >
-            ${node.totalEarned.toFixed(2)}
+            {usd(node.totalEarned)}
           </span>
           <Link
             href={`/admin/referrals/${node.id}`}

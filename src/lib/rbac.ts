@@ -986,7 +986,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
-    name: "Quizzes",
+    name: "Quiz Games",
     href: "/admin/quizzes",
     icon: "Brain",
     permissions: ["quizzes.view"],

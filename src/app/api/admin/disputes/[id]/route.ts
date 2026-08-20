@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -355,7 +356,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               disputeId: id,
               senderId: "SYSTEM",
               senderType: "SYSTEM",
-              message: `Dispute has been resolved in favor of the ${inFavorOf.toLowerCase()}.${refundAmount > 0 ? ` $${refundAmount.toFixed(2)} has been refunded to the buyer.` : ""} Resolution: ${resolution}`,
+              message: `Dispute has been resolved in favor of the ${inFavorOf.toLowerCase()}.${refundAmount > 0 ? ` ${usd(refundAmount)} has been refunded to the buyer.` : ""} Resolution: ${resolution}`,
             },
           });
 
@@ -366,7 +367,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 userId: purchase.buyerId,
                 type: NotificationType.SYSTEM,
                 title: "Dispute Resolved",
-                message: `Your dispute for "${listing.title}" has been resolved in favor of the ${inFavorOf.toLowerCase()}.${refundAmount > 0 ? ` You have received a $${refundAmount.toFixed(2)} refund.` : ""}`,
+                message: `Your dispute for "${listing.title}" has been resolved in favor of the ${inFavorOf.toLowerCase()}.${refundAmount > 0 ? ` You have received a ${usd(refundAmount)} refund.` : ""}`,
                 data: { disputeId: id, inFavorOf, refundAmount },
               },
             });

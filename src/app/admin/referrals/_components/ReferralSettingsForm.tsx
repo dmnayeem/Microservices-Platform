@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -141,7 +142,7 @@ export function ReferralSettingsForm({ levels, isNew }: ReferralSettingsFormProp
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">Total $:</span>
                 <span className="text-lg font-bold text-emerald-400">
-                  ${totalFlatRate.toFixed(2)}
+                  {usd(totalFlatRate)}
                 </span>
               </div>
             )}

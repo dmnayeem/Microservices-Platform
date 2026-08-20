@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -105,7 +106,7 @@ export async function POST(
         {
           error: "Insufficient wallet balance",
           shortBy: sub(listing.price, buyer.cashBalance).toNumber(),
-          details: `Need $${toNum(listing.price).toFixed(2)}, have $${toNum(buyer.cashBalance).toFixed(2)}.`,
+          details: `Need ${usd(toNum(listing.price))}, have ${usd(toNum(buyer.cashBalance))}.`,
         },
         { status: 402 }
       );

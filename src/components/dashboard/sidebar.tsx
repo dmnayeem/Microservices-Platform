@@ -81,7 +81,7 @@ const navigationGroups: { section: string; items: NavItem[] }[] = [
       { name: "Daily Mission", href: "/daily-mission", icon: Target, feature: "dailyMission" },
       { name: "Tasks", href: "/tasks", icon: ListTodo, feature: "tasks" },
       { name: "Board Tasks", href: "/board-tasks", icon: Pin, feature: "tasks" },
-      { name: "Quizzes", href: "/quizzes", icon: Brain },
+      { name: "Quiz Games", href: "/quizzes", icon: Brain },
       { name: "Games", href: "/games", icon: Gamepad2, feature: "games" },
       { name: "Events", href: "/events", icon: Sparkles },
     ],

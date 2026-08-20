@@ -124,6 +124,7 @@ export async function POST(
         status: true,
         isFree: true,
         price: true,
+        tutorId: true,
       },
     });
 
@@ -151,7 +152,9 @@ export async function POST(
       );
     }
 
-    // Create enrollment and increment count
+    // Create enrollment and increment count. This free-enrollment path used to
+    // bump only `Course.enrollmentCount`, so a tutor's student total (read from
+    // TutorProfile) drifted below the course totals admin sees.
     const [enrollment] = await prisma.$transaction([
       prisma.courseEnrollment.create({
         data: {
@@ -167,6 +170,14 @@ export async function POST(
           enrollmentCount: { increment: 1 },
         },
       }),
+      ...(course.tutorId
+        ? [
+            prisma.tutorProfile.updateMany({
+              where: { userId: course.tutorId },
+              data: { totalStudents: { increment: 1 } },
+            }),
+          ]
+        : []),
     ]);
 
     // Create notification

@@ -31,7 +31,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
@@ -200,7 +200,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
-      toast.success(`Ad credit updated — balance $${(d.adCreditBalance ?? 0).toFixed(2)}`);
+      toast.success(`Ad credit updated — balance ${usd((d.adCreditBalance ?? 0))}`);
       setGrantEmail("");
       setGrantAmount(10);
     } catch (err) {
@@ -692,7 +692,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm font-bold text-white tabular-nums">${c.budget.toFixed(2)}</span>
+                      <span className="text-sm font-bold text-white tabular-nums">{usd(c.budget)}</span>
                       {canManage && (
                         <div className="flex gap-1">
                           <IconBtn onClick={() => setCampModal(c)} title="Edit"><Pencil className="w-4 h-4" /></IconBtn>
@@ -1029,7 +1029,7 @@ function AdSpaceCard({
   const Icon = PLACEMENT_ICON[p.name] ?? Layers;
   const isFeed = p.name === "IN_FEED";
   const stats = p.stats ?? { impressions: 0, clicks: 0, activeAds: 0, totalAds: 0 };
-  const ctr = stats.impressions > 0 ? ((stats.clicks / stats.impressions) * 100).toFixed(1) : "0.0";
+  const ctr = stats.impressions > 0 ? ((stats.clicks / stats.impressions) * 100).toFixed(2) : "0.00";
   const isCustom = !CANONICAL_NAMES.has(p.name);
   const where = PLACEMENT_WHERE[p.name];
 
@@ -1256,7 +1256,7 @@ function AnalyticsTab() {
         <StatCard icon={<Eye className="w-5 h-5" />} value={totals.impressions.toLocaleString()} label="Impressions (all time)" tone="purple" />
         <StatCard icon={<MousePointer className="w-5 h-5" />} value={totals.clicks.toLocaleString()} label="Clicks (all time)" tone="amber" />
         <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${totals.ctr.toFixed(2)}%`} label="CTR" tone="emerald" />
-        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`$${spend.toFixed(2)}`} label={`Spend (${days}d)`} tone="indigo" />
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(spend)}`} label={`Spend (${days}d)`} tone="indigo" />
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
@@ -1268,7 +1268,7 @@ function AnalyticsTab() {
         ) : (
           <div className="flex items-end gap-1 h-28">
             {series.map((s) => (
-              <div key={s.date} className="flex-1" title={`${s.date}: ${s.impressions} impr, ${s.clicks} clicks, $${s.spendUsd.toFixed(2)}`}>
+              <div key={s.date} className="flex-1" title={`${s.date}: ${s.impressions} impr, ${s.clicks} clicks, ${usd(s.spendUsd)}`}>
                 <div className="w-full rounded-t bg-linear-to-t from-blue-600 to-indigo-500" style={{ height: `${(s.impressions / maxImp) * 100}%` }} />
               </div>
             ))}
@@ -1286,8 +1286,8 @@ function AnalyticsTab() {
               </td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : r.clicks.toLocaleString()}</td>
-              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : `${r.ctr.toFixed(1)}%`}</td>
-              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "network" : `$${r.spend.toFixed(2)}`}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : `${r.ctr.toFixed(2)}%`}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "network" : `${usd(r.spend)}`}</td>
             </tr>
           );
         })}
@@ -1300,7 +1300,7 @@ function AnalyticsTab() {
               <td className="py-1.5 pr-2 text-white truncate max-w-40">{PLACEMENT_LABEL[r.name] ?? r.name}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{r.clicks.toLocaleString()}</td>
-              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.ctr.toFixed(1)}%</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.ctr.toFixed(2)}%</td>
             </tr>
           ))}
         </ReportTable>
@@ -1310,7 +1310,7 @@ function AnalyticsTab() {
               <td className="py-1.5 pr-2 text-white truncate max-w-40">{r.title}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{r.clicks.toLocaleString()}</td>
-              <td className="py-1.5 text-right tabular-nums text-slate-300">${r.spend.toFixed(2)}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{usd(r.spend)}</td>
             </tr>
           ))}
         </ReportTable>

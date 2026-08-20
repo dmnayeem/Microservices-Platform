@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import "server-only";
 import { NotificationType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -72,7 +73,7 @@ export async function runAdCampaignSweep(): Promise<Record<string, number>> {
         userId: c.advertiserId,
         dedupKey: `campaign_ended_${c.id}`,
         title: "Campaign ended",
-        message: `"${c.title}" reached its end date.${refunded > 0 ? ` $${refunded.toFixed(2)} was returned to your Ad Credit.` : ""}`,
+        message: `"${c.title}" reached its end date.${refunded > 0 ? ` ${usd(refunded)} was returned to your Ad Credit.` : ""}`,
       });
     }
     await writeAudit({
@@ -81,7 +82,7 @@ export async function runAdCampaignSweep(): Promise<Record<string, number>> {
       entity: "AdCampaign",
       entityId: c.id,
       targetUserId: c.advertiserId,
-      summary: `Auto-ended "${c.title}" at its end date${refunded ? ` — refunded $${refunded.toFixed(2)}` : ""}`,
+      summary: `Auto-ended "${c.title}" at its end date${refunded ? ` — refunded ${usd(refunded)}` : ""}`,
       meta: { refunded },
     });
   }
@@ -154,7 +155,7 @@ export async function runAdCampaignSweep(): Promise<Record<string, number>> {
           userId: c.advertiserId,
           dedupKey: `campaign_budget_low_${c.id}`,
           title: "Campaign budget almost gone",
-          message: `"${c.title}" has $${remaining.toFixed(2)} left of $${funded.toFixed(2)}. Add budget to keep it running.`,
+          message: `"${c.title}" has ${usd(remaining)} left of ${usd(funded)}. Add budget to keep it running.`,
           withinDays: 3,
         })
       ) {

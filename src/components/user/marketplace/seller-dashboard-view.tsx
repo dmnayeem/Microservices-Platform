@@ -1,4 +1,5 @@
 "use client";
+import { STAT_VALUE_CLASS } from "@/components/user/primitives/stat-card";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -17,7 +18,7 @@ import { ListingCard } from "@/components/user/primitives/listing-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { PromoteButton } from "@/components/user/promotion/promote-button";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 export interface SellerListing {
   id: string;
@@ -99,7 +100,7 @@ export function SellerDashboardView({ listings }: Props) {
         <StatCard
           icon={Coins}
           label="Earned"
-          value={`$${stats.totalEarned.toFixed(2)}`}
+          value={`${usd(stats.totalEarned)}`}
           tone="emerald"
         />
         <StatCard
@@ -201,7 +202,7 @@ export function SellerDashboardView({ listings }: Props) {
                   {l.salesCount > 0 ? (
                     <>
                       <ShoppingBag className="w-2.5 h-2.5" />
-                      {l.salesCount} · ${l.totalEarned.toFixed(2)}
+                      {l.salesCount} · {usd(l.totalEarned)}
                     </>
                   ) : (
                     <>
@@ -258,9 +259,7 @@ function StatCard({
           {label}
         </span>
       </div>
-      <p className="text-xl font-extrabold text-white tabular-nums mt-1">
-        {value}
-      </p>
+      <p className={cn(STAT_VALUE_CLASS, "mt-1")}>{value}</p>
     </div>
   );
 }

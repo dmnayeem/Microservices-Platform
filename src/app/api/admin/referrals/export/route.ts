@@ -1,3 +1,4 @@
+import { toNum } from "@/lib/money";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -33,7 +34,7 @@ export async function GET() {
     )
   );
   const earningsMap = new Map(
-    ids.map((id, i) => [id, earningsList[i]._sum.amount ?? 0])
+    ids.map((id, i) => [id, toNum(earningsList[i]._sum.amount ?? 0)])
   );
 
   const header = [

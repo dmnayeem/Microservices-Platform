@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma";
 
@@ -67,7 +68,7 @@ export function formatAffiliateReward(
   if (!isAffiliateEligible(type, value)) return null;
   const v = Number(value);
   if (type === "PERCENT") return `${v % 1 === 0 ? v : v.toFixed(1)}%`;
-  return `$${v.toFixed(2)}`;
+  return `${usd(v)}`;
 }
 
 /**

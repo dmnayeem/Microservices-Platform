@@ -23,7 +23,7 @@ import { PackageBadge } from "@/components/user/profile/badges";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { userDisplayId } from "@/lib/display-id";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 interface UserRow {
   id: string;
@@ -363,7 +363,7 @@ export function UsersTableClient({
                       <td className="py-4 px-4">
                         <div className="text-sm">
                           <p className="text-white tabular-nums">
-                            ${u.cashBalance.toFixed(2)}
+                            {usd(u.cashBalance)}
                           </p>
                           <p className="text-xs text-slate-500 tabular-nums">
                             {u.pointsBalance.toLocaleString()} pts
@@ -533,7 +533,7 @@ export function UsersTableClient({
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <p className="text-sm text-white tabular-nums">
-                      ${u.cashBalance.toFixed(2)}
+                      {usd(u.cashBalance)}
                       <span className="text-xs text-slate-500 ml-1.5">
                         {u.pointsBalance.toLocaleString()} pts
                       </span>

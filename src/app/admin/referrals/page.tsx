@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -157,7 +158,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
             </div>
             <div>
               <p className="text-2xl font-bold text-white">
-                ${(totalEarnings._sum.amount || 0).toFixed(2)}
+                {usd(totalEarnings._sum.amount ?? 0)}
               </p>
               <p className="text-sm text-gray-500">Total Commissions</p>
             </div>
@@ -210,7 +211,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
                 <p className="text-xl font-bold text-white">
                   {level.commissionType === "PERCENTAGE"
                     ? `${level.commissionValue}%`
-                    : `$${level.commissionValue.toFixed(2)}`}
+                    : `${usd(level.commissionValue)}`}
                 </p>
               </div>
             ))}

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { getPointsPerUsd, usdToPoints } from "@/lib/economy";
@@ -121,7 +122,7 @@ export async function buyAdCredits(opts: {
           status: TransactionStatus.COMPLETED,
           amount: currency === "cash" ? -amountUsd : 0,
           points: currency === "points" ? -pointsCost : 0,
-          description: `Ad credits — $${credited.toFixed(2)}`,
+          description: `Ad credits — ${usd(credited)}`,
           reference: `adcredit_buy_${userId}_${Date.now()}`,
           metadata: { creditUsd: credited, currency, bonusPct: bonus },
         },

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Loader2, Sparkles, Crown, Zap, Shield, Lock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
@@ -44,6 +44,13 @@ interface PackagesViewProps {
   currentPackageId?: string | null;
   cashBalance: number;
   pointsBalance: number;
+  /**
+   * Points per USD, from the admin-configurable setting. REQUIRED on purpose —
+   * this used to be a hardcoded ×1000 while the purchase endpoint charged at
+   * `getPointsPerUsd()`, so changing the rate quoted the user one point price
+   * and took another.
+   */
+  pointsPerUsd: number;
 }
 
 /** A free/default plan — no monthly price and no yearly price. */
@@ -84,6 +91,7 @@ export function PackagesView({
   currentPackageId,
   cashBalance,
   pointsBalance,
+  pointsPerUsd,
 }: PackagesViewProps) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -110,7 +118,7 @@ export function PackagesView({
   };
 
   const price = calcPrice();
-  const ptCost = Math.ceil(price * 1000);
+  const ptCost = Math.ceil(price * pointsPerUsd);
   const insufficientCash = method === "CASH" && cashBalance < price;
   const insufficientPts = method === "POINTS" && pointsBalance < ptCost;
 
@@ -216,7 +224,7 @@ export function PackagesView({
                       </p>
                     )}
                     <p className="text-xl font-extrabold text-white mt-2 tabular-nums">
-                      ${p.priceMonthly.toFixed(2)}
+                      {usd(p.priceMonthly)}
                       <span className="text-xs text-gray-400 font-normal">
                         /mo
                       </span>
@@ -278,7 +286,7 @@ export function PackagesView({
                     {d.toLowerCase()}
                   </p>
                   <p className="text-lg font-extrabold text-white tabular-nums mt-1">
-                    ${total.toFixed(2)}
+                    {usd(total)}
                   </p>
                   {discount > 0 && (
                     <p className="text-[10px] font-bold text-emerald-400">
@@ -310,7 +318,7 @@ export function PackagesView({
         <div className="space-y-3">
           {(
             [
-              { value: "CASH", label: "Cash Balance", info: `Avail: $${cashBalance.toFixed(2)}` },
+              { value: "CASH", label: "Cash Balance", info: `Avail: ${usd(cashBalance)}` },
               { value: "POINTS", label: "Points", info: `Avail: ${pointsBalance.toLocaleString()} pts` },
               { value: "CARD", label: "Credit Card", info: "Stripe" },
               { value: "BKASH", label: "bKash", info: "Mobile" },
@@ -388,7 +396,7 @@ export function PackagesView({
               <span className="font-extrabold text-emerald-400 text-lg tabular-nums">
                 {method === "POINTS"
                   ? `${ptCost.toLocaleString()} pts`
-                  : `$${price.toFixed(2)}`}
+                  : `${usd(price)}`}
               </span>
             </div>
           </div>

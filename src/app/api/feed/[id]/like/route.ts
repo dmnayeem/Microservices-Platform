@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
@@ -14,6 +15,18 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Liking credits points via awardSocialEarning, so an unthrottled
+    // like/unlike loop is a points-farming exploit as well as a write storm on
+    // Post.likesCount. 60/min is far above human rates.
+    const limited = await enforceDbRateLimit(
+      request,
+      "like",
+      session.user.id,
+      60,
+      60_000
+    );
+    if (limited) return limited;
 
     const { id } = await params;
 
@@ -51,15 +64,13 @@ export async function POST(
       },
     });
 
-    // Update like count
-    await prisma.post.update({
+    // Return the counter's OWN post-increment value. Reading a separate live
+    // count here meant the number the liker saw could differ from the
+    // denormalized `likesCount` the feed list renders on the next load.
+    const { likesCount } = await prisma.post.update({
       where: { id },
       data: { likesCount: { increment: 1 } },
-    });
-
-    // Get updated count
-    const likesCount = await prisma.like.count({
-      where: { postId: id },
+      select: { likesCount: true },
     });
 
     // Social earning hook — recipient (owner) and optionally actor (liker)
@@ -124,16 +135,14 @@ export async function DELETE(
       },
     });
 
-    // Update like count
-    await prisma.post.update({
+    // Same here — one write, and its own result is what the client renders.
+    // Clamped at 0 so a stale double-unlike can't drive the counter negative.
+    const updated = await prisma.post.update({
       where: { id },
       data: { likesCount: { decrement: 1 } },
+      select: { likesCount: true },
     });
-
-    // Get updated count
-    const likesCount = await prisma.like.count({
-      where: { postId: id },
-    });
+    const likesCount = Math.max(0, updated.likesCount);
 
     return NextResponse.json({
       liked: false,

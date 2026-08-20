@@ -61,7 +61,8 @@ export default async function MainLayout({
         <Header user={session.user} avatar={avatar} />
 
         {/* Page Content */}
-        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-24 lg:pb-8">
+        {/* scroll-mt keeps in-page anchor jumps clear of the sticky header. */}
+        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-24 lg:pb-8 scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
           <AppRefreshShell>{children}</AppRefreshShell>
         </main>
       </div>

@@ -1,3 +1,4 @@
+import { usd as formatUsd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd, getPointsConvertThreshold, pointsToUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
@@ -76,7 +77,7 @@ export async function convertPointsToCash(
           status: "COMPLETED",
           points: -amount,
           amount: usd,
-          description: `Converted ${amount.toLocaleString()} points to $${usd.toFixed(2)}`,
+          description: `Converted ${amount.toLocaleString()} points to ${formatUsd(usd)}`,
           reference: `convert_${userId}_${Date.now()}`,
         },
       });

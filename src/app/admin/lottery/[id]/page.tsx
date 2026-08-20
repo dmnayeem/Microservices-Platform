@@ -59,6 +59,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
         orderBy: { createdAt: "desc" },
         take: 50,
       },
+      _count: { select: { tickets: true } },
     },
   });
 
@@ -77,7 +78,12 @@ export default async function LotteryDetailPage({ params }: PageProps) {
       user: { id: string; name: string | null; email: string };
     }>;
   };
-  const typedLottery = lottery as LotteryWithTickets;
+  const typedLottery = lottery as LotteryWithTickets & {
+    _count: { tickets: number };
+  };
+  // Live ticket count — the same source the purchase cap and the user-facing
+  // lottery page use, so the two screens can't disagree.
+  const ticketsSold = typedLottery._count.tickets;
 
   const statusConfig = STATUS_CONFIG[typedLottery.status] || STATUS_CONFIG.UPCOMING;
   const StatusIcon = statusConfig.icon;
@@ -87,21 +93,15 @@ export default async function LotteryDetailPage({ params }: PageProps) {
 
   const canManage = hasPermission(adminRole, "settings.edit");
 
-  // Group tickets by user
-  const ticketsByUser = typedLottery.tickets.reduce((acc, ticket) => {
-    if (!acc[ticket.user.id]) {
-      acc[ticket.user.id] = {
-        user: ticket.user,
-        count: 0,
-        tickets: [],
-      };
-    }
-    acc[ticket.user.id].count++;
-    acc[ticket.user.id].tickets.push(ticket);
-    return acc;
-  }, {} as Record<string, { user: typeof typedLottery.tickets[0]["user"]; count: number; tickets: typeof typedLottery.tickets }>);
-
-  const uniqueParticipants = Object.keys(ticketsByUser).length;
+  // Distinct buyers across ALL tickets — deriving this from the 50-row preview
+  // above capped it at 50 while "Tickets Sold" beside it showed the true total.
+  const uniqueParticipants = (
+    await prisma.lotteryTicket.findMany({
+      where: { lotteryId: id },
+      select: { userId: true },
+      distinct: ["userId"],
+    })
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -136,7 +136,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
               <Ticket className="w-5 h-5 text-indigo-400 mb-2" />
-              <p className="text-2xl font-bold text-white">{typedLottery.ticketsSold}</p>
+              <p className="text-2xl font-bold text-white">{ticketsSold}</p>
               <p className="text-xs text-gray-500">Tickets Sold</p>
             </div>
             <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
@@ -147,7 +147,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
             <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
               <DollarSign className="w-5 h-5 text-emerald-400 mb-2" />
               <p className="text-2xl font-bold text-white">
-                {(typedLottery.ticketsSold * typedLottery.ticketPrice).toLocaleString()}
+                {(ticketsSold * typedLottery.ticketPrice).toLocaleString()}
               </p>
               <p className="text-xs text-gray-500">Points Collected</p>
             </div>
@@ -330,7 +330,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
             <LotteryActions
               lotteryId={typedLottery.id}
               status={typedLottery.status}
-              ticketsSold={typedLottery.ticketsSold}
+              ticketsSold={ticketsSold}
             />
           )}
         </div>

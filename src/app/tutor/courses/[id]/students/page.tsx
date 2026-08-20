@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -126,7 +127,7 @@ export default async function TutorCourseStudentsPage({
             header: "Paid",
             cell: (e) => (
               <span className="text-emerald-300 tabular-nums">
-                ${e.pricePaid.toFixed(2)}
+                {usd(e.pricePaid)}
               </span>
             ),
           },

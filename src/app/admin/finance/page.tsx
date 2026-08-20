@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -48,8 +49,6 @@ const TX_META: Record<string, { label: string; kind: "in" | "out" | "neutral" }>
   POINTS_CONVERSION: { label: "Points → cash conversions", kind: "neutral" },
 };
 
-const money = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 type GroupRow = {
   type: string;
@@ -189,15 +188,15 @@ export default async function AdminFinancePage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <StatCard
             title="Subscription Revenue"
-            value={money(subscriptionRevenue)}
-            subtext={`${money(subscriptionMonth)} this month`}
+            value={usd(subscriptionRevenue)}
+            subtext={`${usd(subscriptionMonth)} this month`}
             icon={CreditCard}
             tone="green"
             href="/admin/packages"
           />
           <StatCard
             title="Deposits Funded"
-            value={money(depositsFunded)}
+            value={usd(depositsFunded)}
             subtext="approved, all time"
             icon={ArrowDownToLine}
             tone="green"
@@ -205,7 +204,7 @@ export default async function AdminFinancePage() {
           />
           <StatCard
             title="Ad Spend"
-            value={money(adSpendTotal)}
+            value={usd(adSpendTotal)}
             subtext="campaign budgets"
             icon={Megaphone}
             tone="indigo"
@@ -213,7 +212,7 @@ export default async function AdminFinancePage() {
           />
           <StatCard
             title="Ad Credit Outstanding"
-            value={money(adCreditOutstanding)}
+            value={usd(adCreditOutstanding)}
             subtext="advertiser balances"
             icon={Coins}
             tone="purple"
@@ -230,21 +229,21 @@ export default async function AdminFinancePage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
             title="Wallet Liability"
-            value={money(walletLiability)}
+            value={usd(walletLiability)}
             subtext="withdrawable cash owed"
             icon={Wallet}
             tone="blue"
           />
           <StatCard
             title="Points Liability"
-            value={money(pointsLiability)}
+            value={usd(pointsLiability)}
             subtext="points value (pre-convert)"
             icon={Coins}
             tone="amber"
           />
           <StatCard
             title="Pending Payouts"
-            value={money(pendingPayouts)}
+            value={usd(pendingPayouts)}
             subtext={`${withdrawPending._count} awaiting`}
             icon={ArrowRightLeft}
             tone="orange"
@@ -252,7 +251,7 @@ export default async function AdminFinancePage() {
           />
           <StatCard
             title="Total Paid Out"
-            value={money(totalPaid)}
+            value={usd(totalPaid)}
             subtext="withdrawals completed"
             icon={TrendingUp}
             tone="green"
@@ -260,7 +259,7 @@ export default async function AdminFinancePage() {
           />
           <StatCard
             title="Pending Deposits"
-            value={money(depositsPendingAmt)}
+            value={usd(depositsPendingAmt)}
             subtext={`${depositsPending._count} to review`}
             icon={Banknote}
             tone="amber"
@@ -306,10 +305,10 @@ export default async function AdminFinancePage() {
                     </span>
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums">
-                    {money(Math.abs(r.monthAmount))}
+                    {usd(Math.abs(r.monthAmount))}
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums">
-                    {money(Math.abs(r.allAmount))}
+                    {usd(Math.abs(r.allAmount))}
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums text-slate-400">
                     {r.allPoints.toLocaleString()}

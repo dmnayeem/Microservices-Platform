@@ -78,10 +78,11 @@ export function QuizzesView() {
       <header>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
           <Brain className="w-6 h-6 text-indigo-400" />
-          Quizzes
+          Quiz Games
         </h1>
         <p className="text-gray-400 text-sm mt-0.5">
-          Test your knowledge, earn points &amp; XP.
+          Standalone knowledge games — separate from quiz <em>tasks</em>. Earn
+          points &amp; XP.
         </p>
       </header>
 

@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -108,7 +109,7 @@ export function AffiliateDashboardView({
   };
 
   const reward = (i: PromoItem) =>
-    i.rewardType === "PERCENT" ? `${i.rewardValue}%` : `$${i.rewardValue.toFixed(2)}`;
+    i.rewardType === "PERCENT" ? `${i.rewardValue}%` : `${usd(i.rewardValue)}`;
 
   if (!joined) {
     return (
@@ -187,7 +188,7 @@ export function AffiliateDashboardView({
         <StatCard icon={<Eye className="w-5 h-5" />} tone="purple" label="Views" value={s.views.toLocaleString()} />
         <StatCard icon={<MousePointerClick className="w-5 h-5" />} tone="blue" label="Clicks" value={s.clicks.toLocaleString()} />
         <StatCard icon={<TrendingUp className="w-5 h-5" />} tone="amber" label="Sales" value={s.sales.toLocaleString()} />
-        <StatCard icon={<Coins className="w-5 h-5" />} tone="green" label="Earnings" value={`$${s.earnings.toFixed(2)}`} />
+        <StatCard icon={<Coins className="w-5 h-5" />} tone="green" label="Earnings" value={`${usd(s.earnings)}`} />
         <StatCard icon={<Percent className="w-5 h-5" />} tone="pink" label="Conversion" value={`${s.conversionRate.toFixed(1)}%`} />
       </div>
       <p className="text-[11px] text-gray-500 -mt-2">
@@ -233,7 +234,7 @@ export function AffiliateDashboardView({
                   <div className="sm:hidden flex items-center gap-3 text-[11px] tabular-nums justify-end">
                     <span className="text-purple-300">{it.views.toLocaleString()} views</span>
                     <span className="text-amber-300">{it.sales} sold</span>
-                    <span className="text-emerald-400 font-bold">${it.earned.toFixed(2)}</span>
+                    <span className="text-emerald-400 font-bold">{usd(it.earned)}</span>
                   </div>
                   {/* Desktop: columns */}
                   <span className="hidden sm:block text-right w-14 text-sm text-purple-300 tabular-nums">
@@ -243,7 +244,7 @@ export function AffiliateDashboardView({
                     {it.sales}
                   </span>
                   <span className="hidden sm:block text-right w-20 text-sm font-bold text-emerald-400 tabular-nums">
-                    ${it.earned.toFixed(2)}
+                    {usd(it.earned)}
                   </span>
                 </div>
               ))}
@@ -298,7 +299,7 @@ export function AffiliateDashboardView({
                   </p>
                 </div>
                 <span className="text-sm font-bold text-emerald-400 tabular-nums shrink-0">
-                  +${r.amount.toFixed(2)}
+                  +{usd(r.amount)}
                 </span>
               </div>
             ))}

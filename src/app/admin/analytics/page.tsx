@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -407,7 +408,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
             </span>
           </div>
           <p className="text-3xl font-bold text-white">
-            ${(totalWithdrawals._sum.amount || 0).toFixed(2)}
+            {usd(totalWithdrawals._sum.amount ?? 0)}
           </p>
           <p className="text-sm text-gray-500 mt-1">Withdrawals</p>
           <p className="text-xs text-gray-600 mt-2">
@@ -589,7 +590,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
                 </div>
               </div>
               <p className="font-semibold text-emerald-400">
-                ${user.totalEarnings.toFixed(2)}
+                {usd(user.totalEarnings)}
               </p>
             </div>
           ))}

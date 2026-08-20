@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -169,7 +170,7 @@ export default async function CourseRefundsPage({ searchParams }: PageProps) {
                           {" · "}
                           Paid{" "}
                           <span className="text-emerald-300 tabular-nums">
-                            ${r.enrollment.pricePaid.toFixed(2)}
+                            {usd(r.enrollment.pricePaid)}
                           </span>
                           {" · "}
                           Enrolled{" "}
@@ -189,7 +190,7 @@ export default async function CourseRefundsPage({ searchParams }: PageProps) {
                     )}
                     {r.refundedAmount !== null && (
                       <p className="text-xs text-emerald-300 mt-1 tabular-nums">
-                        Refunded ${r.refundedAmount.toFixed(2)}
+                        Refunded {usd(r.refundedAmount)}
                       </p>
                     )}
                   </div>

@@ -43,8 +43,11 @@ export async function GET() {
   });
 
   const ids = boards.map((b) => b.id);
+  // ACTIVE only — matches what the board actually offers users.
   const taskCounts = await Promise.all(
-    ids.map((id) => prisma.task.count({ where: { boardId: id } }))
+    ids.map((id) =>
+      prisma.task.count({ where: { boardId: id, status: "ACTIVE" } })
+    )
   );
 
   return NextResponse.json({

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -220,7 +221,7 @@ export default async function UserActivityPage({ searchParams }: PageProps) {
                       )}
                       {cash !== 0 && (
                         <span className={`block ${cash > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                          {cash > 0 ? "+" : ""}${Math.abs(cash).toFixed(2)}
+                          {cash > 0 ? "+" : ""}{usd(Math.abs(cash))}
                         </span>
                       )}
                     </div>

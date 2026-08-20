@@ -12,25 +12,14 @@
 // never disagree.
 
 import { prisma } from "@/lib/prisma";
-import { TaskStatus, TaskType, type UserRole } from "@/generated/prisma";
-import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
-import type { PackageFeatureKey } from "@/lib/packages";
+import { type UserRole } from "@/generated/prisma";
 import { getUserDayContext } from "@/lib/user-day";
+import {
+  getTaskViewerContext,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 import { getSetting } from "@/lib/system-settings";
 import { isAdmin } from "@/lib/rbac";
-
-// Keep in sync with TASK_TYPE_FEATURE in src/app/api/tasks/route.ts.
-const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
-  SOCIAL: "socialTasks",
-  PROXY: "proxyTasks",
-  ARTICLE: "articleTasks",
-  VIDEO: "videoTasks",
-  QUIZ: "quizTasks",
-  SURVEY: "surveyTasks",
-  OFFERWALL: "offerwallTasks",
-  CUSTOM: "tasks",
-  APPINSTALL: "appInstall",
-};
 
 export interface TaskChainState {
   /** Whether sequential locking is actively applied for this user right now. */
@@ -56,47 +45,35 @@ export async function getTaskChainState(userId: string): Promise<TaskChainState>
   const enabled = await getSetting<boolean>("tasks.sequential_unlock", false);
   if (!enabled) return DISABLED;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, level: true, country: true, role: true },
-  });
-  if (!user) return DISABLED;
+  const [user, ctx] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    }),
+    getTaskViewerContext(userId),
+  ]);
+  if (!user || !ctx) return DISABLED;
 
   // Admins see everything unlocked.
   if (isAdmin(user.role as UserRole | undefined)) return DISABLED;
 
-  const userPackage = await getEffectivePackage(userId);
   // No tasks section for this plan → nothing to sequence.
-  if (!packageHasFeature(userPackage, "tasks")) return DISABLED;
+  if (!ctx.hasTasksFeature) return DISABLED;
 
-  const accessLevel = userPackage?.accessLevel ?? 0;
-  const allowedTypes = (Object.keys(TASK_TYPE_FEATURE) as TaskType[]).filter(
-    (t) => packageHasFeature(userPackage, TASK_TYPE_FEATURE[t])
-  );
-
-  const now = new Date();
-  const andClauses: Array<Record<string, unknown>> = [
-    { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
-    { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-    { minLevel: { lte: user.level } },
-    { requiredAccessLevel: { lte: accessLevel } },
-    { type: { in: allowedTypes } },
-  ];
-  if (user.country) {
-    andClauses.push({
-      OR: [
-        { countries: { isEmpty: true } },
-        { countries: { has: user.country } },
-      ],
-    });
-  }
+  // The chain MUST be ordered over exactly the set the list renders. It used to
+  // apply only `countries` of the seven audience dimensions and skipped
+  // `hidden`, so lock positions could land on tasks the user never sees.
+  const chainWhere = visibleTaskWhere(ctx.viewer, {
+    accessLevel: ctx.accessLevel,
+    allowedTypes: ctx.allowedTypes,
+  });
 
   // The full ordered eligible set — id-only + the two fields needed to decide
   // whether a task is "satisfied" without another query. Cheap; short-cached
   // because it depends only on slow-moving inputs (level/accessLevel/country),
   // not on the user's submissions.
   const orderedTasks = (await prisma.task.findMany({
-    where: { status: TaskStatus.ACTIVE, AND: andClauses },
+    where: chainWhere,
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     select: { id: true, totalLimit: true, completedCount: true },
     cacheStrategy: { ttl: 30, swr: 60 },

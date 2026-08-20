@@ -61,7 +61,10 @@ export async function GET(request: NextRequest) {
             isInTop: true,
           };
         } else {
-          const computed = await computeCombinedUserRank(session.user.id);
+          // Reuse the CACHED 500-pool rather than recomputing the pipeline
+          // per viewer. Same cache entry the board itself is built from.
+          const pool = await cachedCombinedTop(500, eligiblePackages);
+          const computed = await computeCombinedUserRank(session.user.id, pool);
           if (computed) {
             currentUser = {
               rank: computed.rank > 500 ? "500+" : computed.rank,
@@ -112,6 +115,9 @@ export async function GET(request: NextRequest) {
       const usersRaw = await prisma.user.findMany({
         orderBy: { totalEarnings: "desc" },
         take: limit,
+        // SHARED board, polled every 30s by every viewer. 60s of staleness on a
+        // leaderboard is invisible; nobody transacts on it.
+        cacheStrategy: { ttl: 60, swr: 300 },
         select: {
           id: true,
           name: true,
@@ -136,6 +142,7 @@ export async function GET(request: NextRequest) {
       const usersRaw = await prisma.user.findMany({
         orderBy: { xp: "desc" },
         take: limit,
+        cacheStrategy: { ttl: 60, swr: 300 },
         select: {
           id: true,
           name: true,

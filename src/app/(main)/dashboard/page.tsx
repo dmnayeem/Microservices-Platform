@@ -33,6 +33,8 @@ import {
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { taskRunHref } from "@/lib/task-routes";
 import { toNum } from "@/lib/money";
+import { levelProgress } from "@/lib/level";
+import { getVisibleTaskPreview } from "@/lib/task-visibility";
 import { deriveSource } from "@/lib/tx-sources";
 import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { getEffectiveFeatures } from "@/lib/packages";
@@ -97,27 +99,22 @@ export default async function DashboardPage() {
         },
       }),
       prisma.taskSubmission.count({
-        where: { userId: session.user.id, status: "APPROVED" },
+        // AUTO_APPROVED counts too — quiz, video and every autoApprove task
+        // credits with that status, so counting "APPROVED" alone showed 0 to
+        // users who had genuinely completed work.
+        where: {
+          userId: session.user.id,
+          status: { in: ["APPROVED", "AUTO_APPROVED"] },
+        },
       }),
       prisma.user.count({
         where: { referredById: session.user.id },
       }),
-      prisma.task.findMany({
-        where: { status: "ACTIVE" },
-        orderBy: { createdAt: "desc" },
-        take: 6,
-        select: {
-          id: true,
-          title: true,
-          type: true,
-          pointsReward: true,
-          xpReward: true,
-          difficulty: true,
-        },
-        // Shared, slow-changing list — serve from Accelerate cache to cut
-        // dashboard render time.
-        cacheStrategy: { ttl: 60, swr: 120 },
-      }),
+      // Same visibility rules as /tasks. This used to be a bare
+      // `{ status: "ACTIVE" }`, so the preview could link a user straight to a
+      // task that /api/tasks/[id]/start refuses (hidden, expired, wrong plan,
+      // or outside their audience).
+      getVisibleTaskPreview(session.user.id, 6),
       prisma.transaction.findMany({
         where: { userId: session.user.id },
         orderBy: { createdAt: "desc" },
@@ -152,8 +149,11 @@ export default async function DashboardPage() {
   const xp = userData?.xp ?? 0;
   const level = userData?.level ?? 1;
   const streak = userData?.streak ?? 0;
-  const xpForNextLevel = level * 100; // Simple formula: level * 100 XP needed
-  const xpProgress = Math.min((xp / xpForNextLevel) * 100, 100);
+  // Use the SAME threshold table the server writes User.level from
+  // (src/lib/user-rank.ts). The old `level * 100` divided CUMULATIVE xp by a
+  // per-level figure, so every user past level 2 sat permanently at 100% and
+  // disagreed with /profile and the Earn hub for the same account.
+  const { xpProgress, xpNeeded, xpPercentage } = levelProgress(level, xp);
 
   return (
     <div className="space-y-6">
@@ -211,8 +211,10 @@ export default async function DashboardPage() {
           />
           <StatCard
             label={`Level ${level}`}
-            value={`${xp}/${xpForNextLevel} XP`}
-            hint={`${Math.round(xpProgress)}% to next level`}
+            value={xpProgress}
+            sub={`/${xpNeeded}`}
+            unit="XP"
+            hint={`${xpPercentage}% to next level`}
             icon={<Zap className="w-5 h-5" />}
             tone="purple"
           />

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
     if (e instanceof Error && e.message === "INSUFFICIENT_FUNDS") {
       return NextResponse.json(
         {
-          error: `Insufficient wallet balance. This task needs $${costUsd.toFixed(2)} to fund ${d.targetCount} completions.`,
+          error: `Insufficient wallet balance. This task needs ${usd(costUsd)} to fund ${d.targetCount} completions.`,
           shortBy: costUsd,
         },
         { status: 402 }

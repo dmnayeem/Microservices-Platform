@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Trophy, Medal, Crown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, pts } from "@/lib/utils";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
@@ -71,7 +71,9 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
   useAutoRefresh(() => load(true));
 
   const suffix = METRICS.find((m) => m.key === metric)!.suffix;
-  const fmt = (v: number) => `${v.toLocaleString()}${suffix ? ` ${suffix}` : ""}`;
+  // Compact past a million: the podium column is ~100px on a 360px phone, so a
+  // full-precision 7-digit score pushed the name and the value into each other.
+  const fmt = (v: number) => `${pts(v)}${suffix ? ` ${suffix}` : ""}`;
 
   const changeMetric = (next: MetricKey) => {
     if (next === metric) return;
@@ -181,7 +183,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                     {row ? row.name : "No one yet"}
                   </p>
                   {row && (
-                    <p className="text-amber-400 font-bold text-xs sm:text-sm tabular-nums mt-0.5">
+                    <p className="text-amber-400 font-bold text-xs sm:text-sm tabular-nums mt-0.5 whitespace-nowrap">
                       {fmt(row.value)}
                     </p>
                   )}

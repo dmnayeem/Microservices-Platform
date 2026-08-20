@@ -6,7 +6,7 @@ import { toast } from "@/lib/toast";
 import { Megaphone, Loader2, Coins, DollarSign } from "lucide-react";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 interface PromoPackage {
   id: string;
@@ -120,7 +120,7 @@ export function PromoteButton({
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}
             {sel
-              ? `Pay ${currency === "cash" ? `$${sel.priceCash.toFixed(2)}` : `${sel.pricePoints} pts`} & promote`
+              ? `Pay ${currency === "cash" ? `${usd(sel.priceCash)}` : `${sel.pricePoints} pts`} & promote`
               : "Promote"}
           </button>
         }
@@ -152,7 +152,7 @@ export function PromoteButton({
                 >
                   <p className="text-sm font-semibold text-white">{p.label}</p>
                   <p className="text-[11px] text-gray-400">
-                    ${p.priceCash.toFixed(2)} or {p.pricePoints} pts · {p.days} days
+                    {usd(p.priceCash)} or {p.pricePoints} pts · {p.days} days
                   </p>
                 </button>
               ))}

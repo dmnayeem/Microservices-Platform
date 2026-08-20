@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -136,12 +137,12 @@ export function WithdrawalActions({
         <p className="text-slate-400">
           Amount to send:{" "}
           <span className="text-white font-semibold">
-            ${netAmount.toFixed(2)}
+            {usd(netAmount)}
           </span>{" "}
           via {method}
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          (Gross ${amount.toFixed(2)} — net is after fee)
+          (Gross {usd(amount)} — net is after fee)
         </p>
       </div>
 
@@ -265,7 +266,7 @@ export function WithdrawalActions({
                 Reject withdrawal?
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                ${amount.toFixed(2)} will be refunded to user balance
+                {usd(amount)} will be refunded to user balance
               </p>
             </div>
             <div>

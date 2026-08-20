@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +15,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Reward claim. Correctness comes from the unique ledger constraints; this
+  // keeps a claim flood from being absorbed by the database.
+  const limited = await enforceDbRateLimit(request, "claim", session.user.id, 30, 60_000);
+  if (limited) return limited;
+
   return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
 

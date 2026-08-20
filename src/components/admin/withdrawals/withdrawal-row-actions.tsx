@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { confirmDialog } from "@/lib/confirm";
 
@@ -45,7 +46,7 @@ export function WithdrawalRowActions({
   const [adminNote, setAdminNote] = useState("");
 
   const approve = async () => {
-    if (!(await confirmDialog({ title: `Approve $${amount.toFixed(2)} withdrawal?`, description: "It will be marked approved & processing.", tone: "success", confirmLabel: "Approve" }))) return;
+    if (!(await confirmDialog({ title: `Approve ${usd(amount)} withdrawal?`, description: "It will be marked approved & processing.", tone: "success", confirmLabel: "Approve" }))) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/withdrawals/${withdrawalId}`, {
@@ -154,7 +155,7 @@ export function WithdrawalRowActions({
                     Reject Withdrawal
                   </h2>
                   <p className="text-xs text-slate-500">
-                    ${amount.toFixed(2)} will be refunded
+                    {usd(amount)} will be refunded
                   </p>
                 </div>
               </div>

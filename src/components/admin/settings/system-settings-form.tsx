@@ -491,6 +491,9 @@ export function SystemSettingsForm({
             </Field>
             <Field
               label="Points per $1 (USD)"
+              /* eslint-disable-next-line no-restricted-syntax -- a per-point
+                 RATE shown at 4dp, not a currency amount; usd() would round it
+                 to $0.00. */
               hint={`${Number(values.points_per_usd ?? 1000).toLocaleString()} pts = $1 · 1 pt = $${(
                 1 / Math.max(1, Number(values.points_per_usd ?? 1000))
               ).toFixed(4)} — controls all earnings & withdrawals`}

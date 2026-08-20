@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { PACKAGES_TAG } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -215,6 +217,11 @@ export async function POST(req: NextRequest) {
       },
     });
   });
+
+  // The pricing table is cached behind PACKAGES_TAG — purge it so an admin
+  // price change is visible immediately rather than after a TTL. A stale price
+  // means a user quoted one amount and charged another.
+  revalidateTag(PACKAGES_TAG, "max");
 
   await prisma.auditLog.create({
     data: {

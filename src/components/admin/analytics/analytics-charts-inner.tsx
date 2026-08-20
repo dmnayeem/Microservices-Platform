@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import {
   LineChart,
@@ -165,7 +166,7 @@ export function AnalyticsChartsInner({
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
                 cursor={{ fill: "rgb(30 41 59 / 0.4)" }}
-                formatter={(v) => [`$${Number(v).toFixed(2)}`, "Withdrawn"]}
+                formatter={(v) => [`${usd(Number(v))}`, "Withdrawn"]}
               />
               <Bar
                 dataKey="withdrawals"

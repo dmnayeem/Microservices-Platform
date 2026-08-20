@@ -173,26 +173,30 @@ export async function POST(
         (m) => m.id !== session.user!.id
       );
       if (filtered.length > 0) {
+        // One insert for every mention, not one per mention.
+        await prisma.mention.createMany({
+          data: filtered.map((m) => ({
+            commentId: comment.id,
+            postId: id,
+            mentionedUserId: m.id,
+            mentionedById: session.user!.id,
+          })),
+          skipDuplicates: true,
+        });
+        // Credit concurrently instead of sequentially: awardSocialEarning is
+        // ~13 queries, so a comment mentioning 5 people used to serialize 65+
+        // round-trips while the commenter waited. Each is independent and
+        // idempotent (unique `reference`), so failures are per-mention.
         await Promise.all(
           filtered.map((m) =>
-            prisma.mention.create({
-              data: {
-                commentId: comment.id,
-                postId: id,
-                mentionedUserId: m.id,
-                mentionedById: session.user!.id,
-              },
-            })
+            awardSocialEarning({
+              postOwnerUserId: m.id,
+              actorUserId: session.user!.id,
+              action: "MENTION_RECEIVED",
+              postId: id,
+            }).catch(() => {})
           )
         );
-        for (const m of filtered) {
-          await awardSocialEarning({
-            postOwnerUserId: m.id,
-            actorUserId: session.user!.id,
-            action: "MENTION_RECEIVED",
-            postId: id,
-          });
-        }
       }
     }
 

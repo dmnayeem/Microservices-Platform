@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -44,7 +45,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     void deliverToUser({
       userId: deposit.userId,
       title: "Deposit rejected",
-      message: `Your deposit of $${deposit.amount.toFixed(2)} was not approved.${adminNote ? ` ${adminNote}` : ""}`,
+      message: `Your deposit of ${usd(deposit.amount)} was not approved.${adminNote ? ` ${adminNote}` : ""}`,
       link: "/wallet",
     });
     await writeAudit({
@@ -53,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       entity: "Deposit",
       entityId: id,
       targetUserId: deposit.userId,
-      summary: `Rejected a $${deposit.amount.toFixed(2)} deposit${adminNote ? ` — ${adminNote}` : ""}`,
+      summary: `Rejected a ${usd(deposit.amount)} deposit${adminNote ? ` — ${adminNote}` : ""}`,
       meta: { amount: Number(deposit.amount), method: deposit.method, adminNote },
     });
     return NextResponse.json({ success: true });
@@ -85,7 +86,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         userId: deposit.userId,
         type: "WALLET",
         title: "Deposit approved",
-        message: `$${deposit.amount.toFixed(2)} has been added to your balance.`,
+        message: `${usd(deposit.amount)} has been added to your balance.`,
       },
     }),
   ]);
@@ -93,7 +94,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   void deliverToUser({
     userId: deposit.userId,
     title: "Deposit approved",
-    message: `$${deposit.amount.toFixed(2)} has been added to your balance.`,
+    message: `${usd(deposit.amount)} has been added to your balance.`,
     link: "/wallet",
   });
 
@@ -103,7 +104,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     entity: "Deposit",
     entityId: id,
     targetUserId: deposit.userId,
-    summary: `Approved a $${deposit.amount.toFixed(2)} deposit (credited cash)`,
+    summary: `Approved a ${usd(deposit.amount)} deposit (credited cash)`,
     meta: { amount: Number(deposit.amount), method: deposit.method, adminNote },
   });
 

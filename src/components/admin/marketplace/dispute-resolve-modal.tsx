@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -69,7 +70,7 @@ export function DisputeResolveModal({
     if (decision === "PARTIAL") {
       const num = parseFloat(partialBuyer);
       if (!num || num <= 0 || num > amount) {
-        toast.error(`Buyer refund must be between $0 and $${amount.toFixed(2)}`);
+        toast.error(`Buyer refund must be between $0 and ${usd(amount)}`);
         return;
       }
     }
@@ -145,7 +146,7 @@ export function DisputeResolveModal({
                 Resolve Dispute
               </h2>
               <p className="text-xs text-slate-500">
-                ${amount.toFixed(2)} held in escrow
+                {usd(amount)} held in escrow
               </p>
             </div>
           </div>
@@ -207,7 +208,7 @@ export function DisputeResolveModal({
           {decision === "PARTIAL" && (
             <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
               <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                Buyer refund amount (max ${amount.toFixed(2)})
+                Buyer refund amount (max {usd(amount)})
               </label>
               <input
                 type="number"

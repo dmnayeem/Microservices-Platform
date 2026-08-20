@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { PACKAGES_TAG } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -171,6 +173,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     return tx.package.update({ where: { id }, data });
   });
 
+  // The pricing table is cached behind PACKAGES_TAG — purge it so an admin
+  // price change is visible immediately rather than after a TTL. A stale price
+  // means a user quoted one amount and charged another.
+  revalidateTag(PACKAGES_TAG, "max");
+
   await prisma.auditLog.create({
     data: {
       userId: session.user.id,
@@ -218,6 +225,11 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   }
 
   await prisma.package.delete({ where: { id } });
+
+  // The pricing table is cached behind PACKAGES_TAG — purge it so an admin
+  // price change is visible immediately rather than after a TTL. A stale price
+  // means a user quoted one amount and charged another.
+  revalidateTag(PACKAGES_TAG, "max");
 
   await prisma.auditLog.create({
     data: {

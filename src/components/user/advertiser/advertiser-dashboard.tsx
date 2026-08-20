@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -113,7 +114,7 @@ export function AdvertiserDashboard() {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       setCredit(d.adCreditBalance ?? credit);
-      toast.success(`Ad credit added — balance $${(d.adCreditBalance ?? 0).toFixed(2)}`);
+      toast.success(`Ad credit added — balance ${usd((d.adCreditBalance ?? 0))}`);
       setBuying(false);
     } catch (err) {
       toast.error("Couldn't add funds", { description: err instanceof Error ? err.message : "Try again" });
@@ -149,7 +150,7 @@ export function AdvertiserDashboard() {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? `HTTP ${res.status}`);
       }
-      toast.success(`Campaign created — $${budget.toFixed(2)} funded from Ad Credit`);
+      toast.success(`Campaign created — ${usd(budget)} funded from Ad Credit`);
       loadCredit();
       setCreating(false);
       setTitle("");
@@ -192,7 +193,7 @@ export function AdvertiserDashboard() {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? `HTTP ${res.status}`);
       }
-      toast.success(`$${amount.toFixed(2)} added`);
+      toast.success(`${usd(amount)} added`);
       load();
       loadCredit();
     } catch (err) {
@@ -231,7 +232,7 @@ export function AdvertiserDashboard() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-400">Ad Credit balance</p>
-          <p className="text-xl font-extrabold text-white tabular-nums">${credit.toFixed(2)}</p>
+          <p className="text-xl font-extrabold text-white tabular-nums whitespace-nowrap">{usd(credit)}</p>
           <p className="text-[10px] text-gray-500">Non-withdrawable — used to fund campaigns.</p>
         </div>
         <div className="flex flex-col gap-1.5 shrink-0">
@@ -278,7 +279,7 @@ export function AdvertiserDashboard() {
                         l.delta >= 0 ? "text-emerald-400" : "text-gray-300"
                       }`}
                     >
-                      {l.delta >= 0 ? "+" : "−"}${Math.abs(l.delta).toFixed(2)}
+                      {l.delta >= 0 ? "+" : "−"}{usd(Math.abs(l.delta))}
                     </span>
                   </li>
                 ))}
@@ -354,7 +355,7 @@ export function AdvertiserDashboard() {
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="text-xs text-gray-400 tabular-nums">
-                    ${c.spent.toFixed(2)} / ${c.budget.toFixed(2)}
+                    {usd(c.spent)} / {usd(c.budget)}
                   </span>
                   {c.status !== "ENDED" && (
                     <button
@@ -502,7 +503,7 @@ export function AdvertiserDashboard() {
               onClick={buyCredits}
               className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {buyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : `Buy $${buyAmount.toFixed(2)}`}
+              {buyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : `Buy ${usd(buyAmount)}`}
             </button>
           </div>
         }

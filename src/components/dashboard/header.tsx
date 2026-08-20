@@ -56,29 +56,37 @@ export function Header({ user, avatar }: HeaderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
 
-  // Fetch notifications + wallet balance. Kept fresh site-wide: on mount, on
-  // tab refocus, and on a 30s timer (see useAutoRefresh). This is the single
-  // notification poller app-wide — the mobile bottom-bar defers to the Header
-  // on desktop and only polls on mobile viewports.
+  // Poll ONLY the two numbers the header chrome shows. This used to hit
+  // /api/notifications + /api/wallet (~11 queries, incl. two Transaction
+  // aggregates) every 30s on every page, per signed-in user, to render a points
+  // figure and an unread dot. /api/header is two indexed reads.
   const fetchData = useCallback(async () => {
     try {
-      const notifRes = await fetch("/api/notifications?limit=5&unread=true", {
-        cache: "no-store",
-      });
-      if (notifRes.ok) {
-        const notifData = await notifRes.json();
-        setNotifications(notifData.notifications || []);
-        setUnreadCount(notifData.unreadCount || 0);
-      }
-
-      // Wallet endpoint returns { balance: { points, ... }, stats, ... }
-      const walletRes = await fetch("/api/wallet", { cache: "no-store" });
-      if (walletRes.ok) {
-        const walletData = await walletRes.json();
-        setWalletBalance(walletData?.balance?.points ?? 0);
+      const res = await fetch("/api/header", { cache: "no-store" });
+      if (res.ok) {
+        const d = await res.json();
+        setWalletBalance(d.points ?? 0);
+        setUnreadCount(d.unreadCount ?? 0);
       }
     } catch (error) {
       console.error("Error fetching header data:", error);
+    }
+  }, []);
+
+  // The notification LIST is only needed when the dropdown is open, so it is
+  // fetched on demand instead of on every poll.
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications?limit=5&unread=true", {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setNotifications(d.notifications || []);
+        setUnreadCount(d.unreadCount || 0);
+      }
+    } catch {
+      /* the badge count from /api/header is still correct */
     }
   }, []);
 
@@ -89,8 +97,10 @@ export function Header({ user, avatar }: HeaderProps) {
     fetchData();
   }, [fetchData]);
 
-  // Live refresh: tab refocus + timer (paused while tab hidden).
-  useAutoRefresh(fetchData);
+  // Live refresh: tab refocus + timer (paused while tab hidden). 60s rather than
+  // 30s — this is a badge, and halving the poll rate halves the baseline load
+  // that every open tab in the system generates.
+  useAutoRefresh(fetchData, { intervalMs: 60000 });
   // Pull-to-refresh anywhere in the app instantly re-pulls balance + notifications.
   useAppRefresh(fetchData);
 
@@ -193,7 +203,9 @@ export function Header({ user, avatar }: HeaderProps) {
             <div className="relative">
               <button
                 onClick={() => {
-                  setIsNotificationOpen(!isNotificationOpen);
+                  const opening = !isNotificationOpen;
+                  setIsNotificationOpen(opening);
+                  if (opening) void loadNotifications();
                   setIsProfileOpen(false);
                 }}
                 className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
@@ -213,7 +225,9 @@ export function Header({ user, avatar }: HeaderProps) {
                     className="fixed inset-0 z-40"
                     onClick={() => setIsNotificationOpen(false)}
                   />
-                  <div className="fixed inset-x-2 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 rounded-lg bg-gray-900 border border-gray-800 shadow-lg z-50">
+                  {/* The header is h-16 PLUS its safe-area padding, so a flat
+                      top-16 opened the panel under the bar on notched devices. */}
+                  <div className="fixed inset-x-2 top-[calc(4rem+env(safe-area-inset-top))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 rounded-lg bg-gray-900 border border-gray-800 shadow-lg z-50">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
                       <h3 className="text-sm font-semibold text-white">
                         Notifications

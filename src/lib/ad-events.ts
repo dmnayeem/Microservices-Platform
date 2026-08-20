@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getAdClickCost } from "@/lib/ad-billing";
 import { bumpAdDailyStat } from "@/lib/ad-stats";
+import { bufferImpression } from "@/lib/ad-counters";
 
 /**
  * Shared ad impression/click recording. Used by the neutral `/api/spaces/:id/
@@ -73,10 +74,10 @@ export async function recordImpression(
   });
   if (!slot) return { counted: false };
 
-  await prisma.ad
-    .update({ where: { id: adId }, data: { impressions: { increment: 1 } } })
-    .catch(() => null);
-  await bumpAdDailyStat(adId, { impressions: 1 });
+  // Buffered (src/lib/ad-counters.ts) — the AdEngagement row above is already
+  // the durable, deduped record of this view; the counters are a rollup and do
+  // not need to be written synchronously on a hot row.
+  bufferImpression(adId);
   return { counted: true };
 }
 

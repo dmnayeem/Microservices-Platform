@@ -36,13 +36,10 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(60, Math.max(1, parseInt(searchParams.get("limit") || "20")));
     const skip = (page - 1) * limit;
 
-    // Self-heal expired promotions so they stop floating to the top.
-    void prisma.course
-      .updateMany({
-        where: { isFeatured: true, featuredUntil: { lt: new Date() } },
-        data: { isFeatured: false },
-      })
-      .catch(() => {});
+    // NOTE: expired promotions used to be self-healed here with an unbounded
+    // `updateMany` on EVERY catalog GET — a write on a read path, fired
+    // concurrently by every visitor, contending on the Course table. It now runs
+    // once every 15 minutes in the course cron (src/lib/course-cron.ts).
 
     const where: Record<string, unknown> = {
       status: CourseStatus.PUBLISHED,

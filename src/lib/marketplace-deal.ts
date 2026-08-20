@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import {
   MarketplaceDealStatus,
@@ -141,8 +142,8 @@ export async function proposeDeal(opts: {
       threadId,
       senderId: "system",
       senderType: "SYSTEM",
-      body: `${proposerId === thread.buyerId ? "Buyer" : "Seller"} proposed a deal for $${amount.toFixed(2)}${
-        mediated ? ` (admin-mediated, +$${adminFee.toFixed(2)} fee)` : ""
+      body: `${proposerId === thread.buyerId ? "Buyer" : "Seller"} proposed a deal for ${usd(amount)}${
+        mediated ? ` (admin-mediated, +${usd(adminFee)} fee)` : ""
       }.`,
     },
   });
@@ -152,7 +153,7 @@ export async function proposeDeal(opts: {
     userId: other,
     type: "SYSTEM",
     title: "New deal proposed",
-    message: `A deal for $${amount.toFixed(2)} was proposed on "${thread.listing.title}".`,
+    message: `A deal for ${usd(amount)} was proposed on "${thread.listing.title}".`,
     link: `/marketplace/messages/${threadId}`,
   }).catch(() => {});
 
@@ -296,7 +297,7 @@ export async function fundDeal(opts: {
       await systemMessage(
         tx,
         deal.threadId,
-        `Buyer funded escrow — $${amount.toFixed(2)} is held until delivery is confirmed.`
+        `Buyer funded escrow — ${usd(amount)} is held until delivery is confirmed.`
       );
     });
   } catch (err) {
@@ -312,7 +313,7 @@ export async function fundDeal(opts: {
     userId: deal.sellerId,
     type: "SYSTEM",
     title: "Escrow funded — deliver now",
-    message: `The buyer funded $${amount.toFixed(2)} for "${deal.listing.title}". Deliver, then they'll confirm.`,
+    message: `The buyer funded ${usd(amount)} for "${deal.listing.title}". Deliver, then they'll confirm.`,
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
 
@@ -496,7 +497,7 @@ export async function releaseDeal(opts: {
       await systemMessage(
         tx,
         deal.threadId,
-        `Funds released to the seller ($${sellerNet.toFixed(2)} after fees). Deal complete.`
+        `Funds released to the seller (${usd(sellerNet)} after fees). Deal complete.`
       );
     });
   } catch (err) {
@@ -509,7 +510,7 @@ export async function releaseDeal(opts: {
     userId: deal.sellerId,
     type: "WALLET",
     title: "Payment released 🎉",
-    message: `You received $${sellerNet.toFixed(2)} for "${deal.listing.title}".`,
+    message: `You received ${usd(sellerNet)} for "${deal.listing.title}".`,
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
   notifyUser({
@@ -588,7 +589,7 @@ export async function refundDeal(opts: {
       await systemMessage(
         tx,
         deal.threadId,
-        `Refunded $${refundTotal.toFixed(2)} to the buyer${reason ? ` — ${reason}` : ""}. Deal closed.`
+        `Refunded ${usd(refundTotal)} to the buyer${reason ? ` — ${reason}` : ""}. Deal closed.`
       );
     });
   } catch (err) {
@@ -601,7 +602,7 @@ export async function refundDeal(opts: {
     userId: deal.buyerId,
     type: "WALLET",
     title: "Refund issued",
-    message: `You were refunded $${refundTotal.toFixed(2)} for "${deal.listing.title}".`,
+    message: `You were refunded ${usd(refundTotal)} for "${deal.listing.title}".`,
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
   notifyUser({

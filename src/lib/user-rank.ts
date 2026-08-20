@@ -29,43 +29,18 @@ export async function getXpRank(userId: string, xp: number): Promise<number> {
   // Bucket xp to keep cache hit rate sane while still being responsive.
   // 50-XP buckets at low ranks, doubling up at higher xp.
   const bucket = Math.floor(xp / 50);
+  // The key must NOT include userId: rawComputeRank depends only on `xp`, so
+  // including it fragmented one shared result into one entry per user — turning
+  // a single cached full-table count into one count per viewer per minute.
   const cached = unstable_cache(
     () => rawComputeRank(xp),
-    ["user-xp-rank", userId, String(bucket)],
+    ["user-xp-rank", String(bucket)],
     { revalidate: 60 }
   );
   return cached();
 }
 
-/** Total XP needed to be AT a given level (cumulative from 0). */
-export function calculateXpForLevel(level: number): number {
-  if (level <= 1) return 0;
-  if (level === 2) return 100;
-  if (level === 3) return 250;
-  if (level === 4) return 500;
-  if (level === 5) return 1000;
-  if (level === 6) return 2000;
-  if (level === 7) return 4000;
-  if (level === 8) return 7000;
-  if (level === 9) return 11000;
-  if (level === 10) return 16000;
-  if (level === 11) return 22000;
-  return 22000 + (level - 11) * 10000;
-}
-
-/** Convenience: returns progress + needed + percentage for the user's current level. */
-export function levelProgress(level: number, xp: number): {
-  xpProgress: number;
-  xpNeeded: number;
-  xpPercentage: number;
-} {
-  const xpForCurrent = calculateXpForLevel(level);
-  const xpForNext = calculateXpForLevel(level + 1);
-  const xpProgress = xp - xpForCurrent;
-  const xpNeeded = Math.max(1, xpForNext - xpForCurrent);
-  const xpPercentage = Math.max(
-    0,
-    Math.min(100, Math.round((xpProgress / xpNeeded) * 100))
-  );
-  return { xpProgress, xpNeeded, xpPercentage };
-}
+// The XP curve itself lives in the client-safe `@/lib/level` (this module pulls
+// in prisma + next/cache, so client components can't import it). Re-exported so
+// existing server-side imports keep working.
+export { calculateXpForLevel, levelProgress } from "@/lib/level";

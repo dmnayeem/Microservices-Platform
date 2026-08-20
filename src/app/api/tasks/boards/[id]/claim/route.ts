@@ -2,14 +2,16 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
-  TaskStatus,
   SubmissionStatus,
   TransactionType,
   TransactionStatus,
   NotificationType,
 } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
-import { taskAudienceWhere } from "@/lib/task-targeting";
+import {
+  getTaskViewerContext,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 
 export async function POST(
   _req: Request,
@@ -87,30 +89,21 @@ export async function POST(
     );
   }
 
-  // Only the tasks this user is eligible for count toward the board's
-  // completion gate (STRICT audience targeting — mirrors the board detail view).
-  const claimant = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      country: true,
-      region: true,
-      division: true,
-      district: true,
-      subDistrict: true,
-      postalCode: true,
-      gender: true,
-      dateOfBirth: true,
-    },
-  });
-
-  const tasks = await prisma.task.findMany({
-    where: {
-      boardId: board.id,
-      status: TaskStatus.ACTIVE,
-      AND: taskAudienceWhere(claimant ?? {}),
-    },
-    select: { id: true },
-  });
+  // The claim requirement must be counted over EXACTLY the tasks the board page
+  // showed this user — same visibility rules, or the board is unclaimable.
+  const ctx = await getTaskViewerContext(userId);
+  const tasks = ctx
+    ? await prisma.task.findMany({
+        where: {
+          ...visibleTaskWhere(ctx.viewer, {
+            accessLevel: ctx.accessLevel,
+            allowedTypes: ctx.allowedTypes,
+          }),
+          boardId: board.id,
+        },
+        select: { id: true },
+      })
+    : [];
   if (tasks.length === 0) {
     return NextResponse.json({ error: "Board has no active tasks" }, { status: 400 });
   }

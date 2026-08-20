@@ -104,8 +104,19 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
     setMessages([]);
     setLoading(true);
     load();
-    const id = setInterval(() => load(true), 8000);
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      // Skip while the tab is hidden — a backgrounded tab polled forever,
+      // which at scale is load nobody is even looking at.
+      if (document.visibilityState !== "hidden") load(true);
+    }, 10000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 

@@ -2,7 +2,9 @@
 // hung. Applies to every (main) route while its server segment loads.
 export default function Loading() {
   return (
-    <div className="max-w-3xl mx-auto space-y-4 animate-pulse">
+    // Full-bleed to match the real pages — a max-w-3xl skeleton made the layout
+    // visibly jump width on every navigation.
+    <div className="space-y-4 animate-pulse">
       {/* Title bar */}
       <div className="space-y-2">
         <div className="h-7 w-48 rounded-lg bg-gray-800" />

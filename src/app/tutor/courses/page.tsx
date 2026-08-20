@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -225,7 +226,7 @@ function CourseCard({
           </span>
         </div>
         <p className="text-xs font-bold text-emerald-300">
-          {c.isFree ? "Free" : `$${c.price.toFixed(2)}`}
+          {c.isFree ? "Free" : `${usd(c.price)}`}
         </p>
       </div>
     </Link>

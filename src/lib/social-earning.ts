@@ -496,7 +496,13 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
         });
       }
 
-      if (allowPoints > 0 || allowXp > 0) {
+      // Views deliberately never notify. A popular post is seen thousands of
+      // times, so one notification per view buries every real notification the
+      // user has and grows the Notification table without bound — which is also
+      // what makes the unread badge slow. The POINTS are unaffected; only the
+      // per-view notification row is skipped.
+      const notify = action !== "VIEW_RECEIVED";
+      if (notify && (allowPoints > 0 || allowXp > 0)) {
         const parts: string[] = [];
         if (allowPoints > 0) parts.push(`+${allowPoints} pts`);
         if (allowXp > 0) parts.push(`+${allowXp} XP`);

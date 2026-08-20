@@ -71,7 +71,7 @@ export function CourseLandingHero({ course, tutor }: Props) {
             <span className="inline-flex items-center gap-1">
               <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
               <span className="font-bold text-amber-300 tabular-nums">
-                {course.avgRating.toFixed(2)}
+                {course.avgRating.toFixed(1)}
               </span>
               <span className="text-gray-500">({course.totalReviews})</span>
             </span>

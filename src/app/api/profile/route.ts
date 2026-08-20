@@ -6,6 +6,7 @@ import { calculateProfileCompletion } from "@/lib/profile-completion";
 import { getXpRank, calculateXpForLevel } from "@/lib/user-rank";
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
+import { getUserDayContext } from "@/lib/user-day";
 
 const PROFILE_FIELDS = {
   id: true,
@@ -179,8 +180,11 @@ export async function GET() {
     const socialEarningsPoints = socialEarnAgg._sum.socialEarnings ?? 0;
     const pointsPerUsd = await getPointsPerUsd();
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // The user's LOCAL midnight — the same boundary daily limits, the daily
+    // mission and the tasks-hub summary use. This route was the only one on
+    // server-local midnight, so "Completed Today" here and on the tasks hub
+    // could disagree while sitting side by side on the same screen.
+    const { startOfDayUtc: todayStart } = await getUserDayContext(session.user.id);
 
     const todaySubmissions = await safe(
       prisma.taskSubmission.findMany({

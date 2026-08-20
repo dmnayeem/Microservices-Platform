@@ -26,7 +26,7 @@ export const USER_PAGES: UserPage[] = [
   { path: "/dashboard", label: "Dashboard", group: "Main" },
   { path: "/tasks", label: "Tasks", group: "Main" },
   { path: "/daily-mission", label: "Daily Mission", group: "Main" },
-  { path: "/quizzes", label: "Quizzes", group: "Main" },
+  { path: "/quizzes", label: "Quiz Games", group: "Main" },
   { path: "/wallet", label: "Wallet", group: "Main" },
   { path: "/referrals", label: "My Team", group: "Main" },
   // Earn

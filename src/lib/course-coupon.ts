@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import type { CouponType, CouponScope } from "@/generated/prisma";
@@ -86,7 +87,7 @@ export async function validateCoupon(opts: {
   if (coupon.minPurchase !== null && livePrice < toNum(coupon.minPurchase)) {
     return {
       valid: false,
-      reason: `Minimum purchase of $${toNum(coupon.minPurchase).toFixed(2)} required`,
+      reason: `Minimum purchase of ${usd(toNum(coupon.minPurchase))} required`,
     };
   }
   if (coupon.scope === "CATEGORY") {

@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -134,7 +135,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? `HTTP ${res.status}`);
       }
-      toast.success(`$${amount.toFixed(2)} added`);
+      toast.success(`${usd(amount)} added`);
       load();
     } catch (err) {
       toast.error("Funding failed", {
@@ -164,7 +165,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
     if (!campaign) return;
     const ok = await confirmDialog({
       title: "End this campaign?",
-      description: `Its ads stop running and the unspent $${campaign.remaining.toFixed(2)} goes back to your Ad Credit. This can't be undone.`,
+      description: `Its ads stop running and the unspent ${usd(campaign.remaining)} goes back to your Ad Credit. This can't be undone.`,
       tone: "danger",
       confirmLabel: "End campaign",
     });
@@ -178,7 +179,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       if (!res.ok) throw new Error(d.error ?? "Couldn't end the campaign");
       toast.success(
         d.refunded > 0
-          ? `Campaign ended — $${Number(d.refunded).toFixed(2)} returned to your Ad Credit`
+          ? `Campaign ended — ${usd(Number(d.refunded))} returned to your Ad Credit`
           : "Campaign ended"
       );
       load();
@@ -314,10 +315,10 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span className="text-sm text-gray-300 tabular-nums">
-              ${campaign.spent.toFixed(2)} / ${campaign.budget.toFixed(2)}
+              {usd(campaign.spent)} / {usd(campaign.budget)}
             </span>
             <span className="text-[10px] text-gray-500 tabular-nums">
-              ${campaign.remaining.toFixed(2)} left
+              {usd(campaign.remaining)} left
             </span>
           </div>
         </div>
@@ -372,7 +373,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
         <StatCard label="Impressions" value={campaign.impressions} icon={<Eye className="w-4 h-4" />} tone="purple" />
         <StatCard label="Clicks" value={campaign.clicks} icon={<MousePointer2 className="w-4 h-4" />} tone="amber" />
         <StatCard label="CTR" value={`${campaign.ctr.toFixed(2)}%`} icon={<Target className="w-4 h-4" />} tone="green" />
-        <StatCard label="Spent" value={`$${campaign.spent.toFixed(2)}`} icon={<DollarSign className="w-4 h-4" />} tone="blue" />
+        <StatCard label="Spent" value={`${usd(campaign.spent)}`} icon={<DollarSign className="w-4 h-4" />} tone="blue" />
       </div>
 
       {/* Daily chart — the API always returned clicks and spend too; the UI used
@@ -420,7 +421,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
               <div
                 key={s.date}
                 className="flex-1 flex flex-col items-center gap-1"
-                title={`${s.date}: ${s.impressions} impressions · ${s.clicks} clicks · $${Number(s.spendUsd ?? 0).toFixed(2)}`}
+                title={`${s.date}: ${s.impressions} impressions · ${s.clicks} clicks · ${usd(Number(s.spendUsd ?? 0))}`}
               >
                 <div
                   className="w-full rounded-t bg-linear-to-t from-indigo-600 to-purple-500"
@@ -496,7 +497,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                     </div>
                     <p className="text-[11px] text-gray-500 mt-0.5 tabular-nums">
                       {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} clicks ·{" "}
-                      {ad.ctr.toFixed(1)}% CTR
+                      {ad.ctr.toFixed(2)}% CTR
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

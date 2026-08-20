@@ -12,14 +12,59 @@ export function formatCurrency(amount: number, currency: string = "USD"): string
   }).format(amount);
 }
 
-export function formatPoints(points: number): string {
-  if (points >= 1000000) {
-    return `${(points / 1000000).toFixed(1)}M`;
-  }
-  if (points >= 1000) {
-    return `${(points / 1000).toFixed(1)}K`;
-  }
-  return points.toString();
+/**
+ * THE money formatter. Every `$…` on screen should come from here so the same
+ * value can't render as `$1234.57` on one page and `$1,234.57` on another.
+ *
+ * Accepts a Prisma `Decimal` too: it is coerced via `String()` first, because
+ * `Decimal.toLocaleString(opts)` silently IGNORES its options and emits the raw
+ * 6-dp value (that is how `/admin/withdrawals` came to show `$1234.567891`).
+ */
+export function usd(
+  x: number | string | { toString(): string } | null | undefined,
+  opts: { dp?: number; compact?: boolean } = {}
+): string {
+  const n = x == null ? 0 : typeof x === "number" ? x : Number(String(x));
+  const safe = Number.isFinite(n) ? n : 0;
+  const dp = opts.dp ?? 2;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: opts.compact ? 0 : dp,
+    maximumFractionDigits: opts.compact ? 1 : dp,
+    ...(opts.compact ? { notation: "compact" as const } : {}),
+  }).format(safe);
+}
+
+/** Points/counts with thousands separators, compact past a million. */
+export function pts(n: number, opts: { compact?: boolean } = {}): string {
+  const safe = Number.isFinite(n) ? n : 0;
+  return opts.compact || safe >= 1_000_000
+    ? formatCompact(safe)
+    : safe.toLocaleString();
+}
+
+/** Compact notation for tight spaces: 1.2K / 1.2M. */
+export function formatCompact(n: number): string {
+  const safe = Number.isFinite(n) ? n : 0;
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(safe);
+}
+
+/** @deprecated use {@link formatCompact}. */
+export const formatPoints = formatCompact;
+
+/**
+ * Guarded percentage — returns 0 (not `NaN`) on a zero denominator and clamps to
+ * 0–100, so progress bars can't render `width: NaN%`.
+ */
+export function pct(part: number, whole: number, dp = 0): number {
+  if (!Number.isFinite(part) || !Number.isFinite(whole) || whole <= 0) return 0;
+  const raw = (part / whole) * 100;
+  const clamped = Math.max(0, Math.min(100, raw));
+  return dp > 0 ? Number(clamped.toFixed(dp)) : Math.round(clamped);
 }
 
 export function formatDate(date: Date | string): string {
@@ -69,47 +114,11 @@ export function generateReferralCode(): string {
   return code;
 }
 
-export function calculateLevel(xp: number): number {
-  // XP required for each level: Level^2 * 100
-  let level = 1;
-  let xpRequired = 100;
-  let totalXp = 0;
-  
-  while (totalXp + xpRequired <= xp) {
-    totalXp += xpRequired;
-    level++;
-    xpRequired = level * level * 100;
-  }
-  
-  return level;
-}
-
-export function calculateXpProgress(xp: number): { current: number; required: number; percentage: number } {
-  const level = calculateLevel(xp);
-  let totalXpForPreviousLevels = 0;
-  
-  for (let i = 1; i < level; i++) {
-    totalXpForPreviousLevels += i * i * 100;
-  }
-  
-  const currentLevelXp = xp - totalXpForPreviousLevels;
-  const requiredXp = level * level * 100;
-  
-  return {
-    current: currentLevelXp,
-    required: requiredXp,
-    percentage: Math.floor((currentLevelXp / requiredXp) * 100),
-  };
-}
-
-export function pointsToCash(points: number, rate: number = 1000): number {
-  // Default: 1000 points = $1
-  return points / rate;
-}
-
-export function cashToPoints(cash: number, rate: number = 1000): number {
-  return Math.floor(cash * rate);
-}
+// `calculateLevel` / `calculateXpProgress` (a `level² × 100` curve) and
+// `pointsToCash` / `cashToPoints` (hardcoded 1000 pts/$) used to live here.
+// They were a second, silently-diverging source of truth: the XP curve is now
+// `@/lib/level` (matching what the server writes) and the points rate comes
+// from `@/lib/economy`, which reads the admin-configurable setting.
 
 export function truncateString(str: string, length: number): string {
   if (str.length <= length) return str;

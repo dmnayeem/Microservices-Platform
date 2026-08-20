@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -284,7 +285,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
         <StatCard
           icon={<DollarSign className="w-5 h-5" />}
           tone="amber"
-          value={`$${(totalRevenue._sum.amount || 0).toFixed(2)}`}
+          value={usd(totalRevenue._sum.amount ?? 0)}
           label="Revenue"
           extra={`${totalListings.toLocaleString()} total listings`}
         />
@@ -495,7 +496,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
                     key: "price",
                     header: "Price",
                     className: "text-white font-semibold",
-                    cell: (listing) => <>${listing.price.toFixed(2)}</>,
+                    cell: (listing) => <>{usd(listing.price)}</>,
                   },
                   {
                     key: "status",
@@ -631,7 +632,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
                     key: "amount",
                     header: "Amount",
                     className: "text-white tabular-nums",
-                    cell: (o) => <>${o.amount.toFixed(2)}</>,
+                    cell: (o) => <>{usd(o.amount)}</>,
                   },
                   {
                     key: "status",
@@ -743,7 +744,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
                     key: "amount",
                     header: "Amount",
                     className: "text-white tabular-nums",
-                    cell: (d) => <>${d.amount.toFixed(2)}</>,
+                    cell: (d) => <>{usd(d.amount)}</>,
                   },
                   {
                     key: "status",

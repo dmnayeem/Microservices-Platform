@@ -24,7 +24,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { LifetimeStatsGroup } from "@/components/user/profile/profile-stat-groups";
 import { useTheme, type Accent } from "@/components/providers/theme-provider";
 import {
@@ -415,7 +415,7 @@ export function ProfileView() {
                 <span className="text-[11px] font-semibold text-gray-400">pts</span>
               </p>
               <p className="text-[11px] text-gray-500 tabular-nums leading-tight">
-                ≈ ${stats.socialEarningsUsd.toFixed(2)}
+                ≈ {usd(stats.socialEarningsUsd)}
               </p>
             </div>
           </button>

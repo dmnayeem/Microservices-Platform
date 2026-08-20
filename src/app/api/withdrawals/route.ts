@@ -1,4 +1,6 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
@@ -108,6 +110,19 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+
+  // Money route. `withIdempotency` + the unique ledger constraints are what make
+  // this CORRECT under retries; this limiter is so a flood can't make the
+  // database the thing that absorbs the attack.
+  const limited = await enforceDbRateLimit(
+    request,
+    "withdraw",
+    session.user.id,
+    10,
+    60_000
+  );
+  if (limited) return limited;
 
   return withIdempotency(request, session.user.id, async () => {
   try {
@@ -310,7 +325,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         type: NotificationType.WALLET,
         title: "Withdrawal Request Submitted",
-        message: `Your withdrawal request for $${amount.toFixed(2)} via ${method} has been submitted and is pending approval. You'll receive your funds within ${wcfg.payoutMessage} after approval.`,
+        message: `Your withdrawal request for ${usd(amount)} via ${method} has been submitted and is pending approval. You'll receive your funds within ${wcfg.payoutMessage} after approval.`,
         data: {
           withdrawalId: withdrawal.id,
           amount,

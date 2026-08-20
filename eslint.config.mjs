@@ -25,6 +25,19 @@ const eslintConfig = defineConfig([
           destructuredArrayIgnorePattern: "^_",
         },
       ],
+      // Money must go through usd() from @/lib/utils. Hand-rolled
+      // `$${x.toFixed(2)}` has no thousands separators, so the same value
+      // rendered as "$1234.57" on one screen and "$1,234.57" on another —
+      // and `Decimal.toFixed` silently uses a different rounding mode.
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "TemplateLiteral:has(TemplateElement[value.raw=/\\$$/]):has(CallExpression[callee.property.name='toFixed'])",
+          message:
+            "Format money with usd() from @/lib/utils instead of `$${x.toFixed(2)}`.",
+        },
+      ],
     },
   },
 ]);

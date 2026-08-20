@@ -104,7 +104,7 @@ export function CourseLanding({ data, viewerId }: Props) {
 
           {/* At-a-glance facts */}
           <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard icon={<Star className="w-5 h-5" />} tone="amber" label="Rating" value={course.avgRating > 0 ? course.avgRating.toFixed(2) : "—"} />
+            <StatCard icon={<Star className="w-5 h-5" />} tone="amber" label="Rating" value={course.avgRating > 0 ? course.avgRating.toFixed(1) : "—"} />
             <StatCard icon={<Users className="w-5 h-5" />} tone="green" label="Students" value={course.enrollmentCount} />
             <StatCard icon={<Clock className="w-5 h-5" />} tone="blue" label="Duration" value={`${Math.round(course.totalDuration / 60)}h ${course.totalDuration % 60}m`} />
             <StatCard icon={<Globe className="w-5 h-5" />} tone="purple" label="Language" value={course.language.toUpperCase()} />
@@ -184,7 +184,7 @@ export function CourseLanding({ data, viewerId }: Props) {
                     {course.tutor.tutorProfile?.avgRating ? (
                       <span className="inline-flex items-center gap-0.5">
                         <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
-                        {course.tutor.tutorProfile.avgRating.toFixed(2)}
+                        {course.tutor.tutorProfile.avgRating.toFixed(1)}
                       </span>
                     ) : null}
                     <span>{course.tutor.tutorProfile?.totalCourses ?? 0} courses</span>

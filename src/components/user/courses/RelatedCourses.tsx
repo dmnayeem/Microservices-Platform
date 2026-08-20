@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -60,7 +61,7 @@ export function RelatedCourses({ related }: { related: Related[] }) {
                     <Users className="w-3 h-3" /> {r.enrollmentCount}
                   </span>
                   <span className="ml-auto text-sm font-bold text-white">
-                    {r.isFree ? "Free" : `$${live.toFixed(2)}`}
+                    {r.isFree ? "Free" : `${usd(live)}`}
                   </span>
                 </div>
               </div>

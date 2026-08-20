@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TaskStatus, TaskType } from "@/generated/prisma/client";
+import { TaskType } from "@/generated/prisma/client";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
 import { getTaskChainState } from "@/lib/task-sequence";
+import {
+  TASK_VIEWER_SELECT,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 
 export async function GET() {
   const session = await auth();
@@ -13,7 +17,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { level: true, country: true },
+    select: TASK_VIEWER_SELECT,
   });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -30,14 +34,15 @@ export async function GET() {
 
   const accessLevel = userPackage?.accessLevel ?? 0;
 
+  // This route had NO audience targeting, no expiry/start window and no
+  // `hidden` filter — it showed proxy tasks the user could never start.
   const tasks = await prisma.task.findMany({
-    where: {
+    where: visibleTaskWhere(user, {
+      accessLevel,
+      allowedTypes: [TaskType.PROXY],
       type: TaskType.PROXY,
-      status: TaskStatus.ACTIVE,
-      minLevel: { lte: user.level },
-      requiredAccessLevel: { lte: accessLevel },
-    },
-    orderBy: { createdAt: "desc" },
+    }),
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     take: 50,
   });
 

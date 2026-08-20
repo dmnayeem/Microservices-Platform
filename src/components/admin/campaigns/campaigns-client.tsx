@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -107,7 +108,7 @@ export function CampaignsClient({ initial, canManage }: Props) {
                 <div>
                   <p className="text-xs text-slate-500">Budget</p>
                   <p className="text-slate-300 tabular-nums">
-                    {c.budget ? `$${c.budget.toFixed(2)}` : "—"}
+                    {c.budget ? `${usd(c.budget)}` : "—"}
                   </p>
                 </div>
               </div>
@@ -116,7 +117,7 @@ export function CampaignsClient({ initial, canManage }: Props) {
                   {c.participantCount} participants
                 </span>
                 <span className="text-emerald-400 tabular-nums">
-                  ${c.rewardsDistributed.toFixed(2)} distributed
+                  {usd(c.rewardsDistributed)} distributed
                 </span>
               </div>
             </div>

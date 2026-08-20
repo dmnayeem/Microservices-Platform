@@ -26,14 +26,24 @@ export async function GET() {
   });
 
   const now = Date.now();
+
+  // One grouped query for every ad's last view, instead of one findFirst per ad
+  // (this list is up to 50 ads, so it was up to 51 round-trips per request).
+  // Served by @@index([userId, adId, createdAt]).
+  const lastViews = (await prisma.adView.groupBy({
+    by: ["adId"],
+    where: { userId: session.user.id, adId: { in: ads.map((a) => a.id) } },
+    _max: { createdAt: true },
+  })) as unknown as { adId: string; _max: { createdAt: Date | null } }[];
+  const lastViewByAd = new Map(
+    lastViews.map((v) => [v.adId, v._max.createdAt ?? null])
+  );
+
   const result = await Promise.all(
     ads.map(async (ad) => {
-      const last = await prisma.adView.findFirst({
-        where: { userId: session.user.id, adId: ad.id },
-        orderBy: { createdAt: "desc" },
-      });
+      const last = lastViewByAd.get(ad.id) ?? null;
       const cooldownEndsAt = last
-        ? last.createdAt.getTime() + ad.rewardCooldownSec * 1000
+        ? last.getTime() + ad.rewardCooldownSec * 1000
         : 0;
       const cooldownRemaining = Math.max(0, Math.ceil((cooldownEndsAt - now) / 1000));
       return {

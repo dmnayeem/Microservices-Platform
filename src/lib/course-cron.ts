@@ -72,6 +72,20 @@ export async function runCourseReminders(): Promise<{
  * 1-hour-before reminders for enrolled students of a live class, plus status
  * transitions UPCOMING → LIVE (at start) and LIVE → ENDED (after duration).
  */
+/**
+ * Clear promotions whose `featuredUntil` has passed, so they stop floating to
+ * the top of the catalog. This used to run as a fire-and-forget `updateMany` on
+ * every GET of /api/courses — a write on a read path, from every visitor at
+ * once. Once every 15 minutes is plenty for a "featured until" flag.
+ */
+export async function runFeaturedExpiry(): Promise<{ cleared: number }> {
+  const res = await prisma.course.updateMany({
+    where: { isFeatured: true, featuredUntil: { lt: new Date() } },
+    data: { isFeatured: false },
+  });
+  return { cleared: res.count };
+}
+
 export async function runLiveClassTransitions(): Promise<{
   remindersFired: number;
   started: number;
@@ -96,9 +110,14 @@ export async function runLiveClassTransitions(): Promise<{
       select: { userId: true },
     });
     if (enrolled.length === 0) continue;
+    // A JSON-path predicate cannot use an index, so this MUST be bounded by
+    // something that can. Reminders only fire within an hour of the class, so a
+    // 1-day window is generous — and it turns a scan of the whole (fastest
+    // growing) Notification table into an index range read.
     const already = await prisma.notification.findFirst({
       where: {
         type: NotificationType.COURSE,
+        createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
         data: { path: ["liveClassId"], equals: lc.id },
       },
       select: { id: true },
@@ -126,9 +145,13 @@ export async function runLiveClassTransitions(): Promise<{
     data: { status: LiveClassStatus.LIVE },
   });
 
+  // Bounded: a stuck LIVE row from months ago would otherwise be re-read on
+  // every 15-minute run forever.
   const liveOnes = await prisma.courseLiveClass.findMany({
     where: { status: LiveClassStatus.LIVE },
     select: { id: true, scheduledAt: true, durationMinutes: true },
+    orderBy: { scheduledAt: "asc" },
+    take: 200,
   });
   let ended = 0;
   for (const lc of liveOnes) {

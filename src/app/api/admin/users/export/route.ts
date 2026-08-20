@@ -1,3 +1,4 @@
+import { toNum } from "@/lib/money";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -150,7 +151,9 @@ export async function GET(request: NextRequest) {
         csvCell(user.package?.name ?? ""),
         csvCell(user.pointsBalance),
         csvCell(user.cashBalance.toFixed(2)),
-        csvCell(user.totalEarnings.toFixed(2)),
+        // toNum first: this is a Prisma Decimal, and Decimal.toFixed uses its own
+        // rounding mode — the CSV and the UI disagreed by a cent on halves.
+        csvCell(toNum(user.totalEarnings).toFixed(2)),
         csvCell(user.totalWithdrawals.toFixed(2)),
         csvCell(user.level),
         csvCell(user.xp),

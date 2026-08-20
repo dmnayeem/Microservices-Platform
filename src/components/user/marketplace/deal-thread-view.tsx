@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   Handshake,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { Avatar } from "@/components/user/primitives/avatar";
 
 type Role = "BUYER" | "SELLER" | "ADMIN";
@@ -104,8 +104,19 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
 
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 8000);
-    return () => clearInterval(t);
+    const t = setInterval(() => {
+      // Skip while the tab is hidden — a backgrounded tab polled forever,
+      // which at scale is load nobody is even looking at.
+      if (document.visibilityState !== "hidden") load(true);
+    }, 15000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load(true);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -346,19 +357,19 @@ function DealActions({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-lg font-extrabold text-white">${deal.amount.toFixed(2)}</span>
+        <span className="text-lg font-extrabold text-white">{usd(deal.amount)}</span>
         <span className={cn("px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider", STATUS_STYLE[deal.status])}>
           {deal.status}
         </span>
       </div>
       {deal.adminMediated && (
         <p className="text-[11px] text-amber-300 inline-flex items-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5" /> Admin-mediated · fee ${deal.adminFee.toFixed(2)}
+          <ShieldCheck className="w-3.5 h-3.5" /> Admin-mediated · fee {usd(deal.adminFee)}
         </p>
       )}
       {deal.status === "FUNDED" && (
         <p className="text-[11px] text-gray-400 inline-flex items-center gap-1">
-          <Lock className="w-3.5 h-3.5" /> ${deal.heldAmount.toFixed(2)} held in escrow
+          <Lock className="w-3.5 h-3.5" /> {usd(deal.heldAmount)} held in escrow
         </p>
       )}
       {deal.status === "DELIVERED" && deal.autoReleaseAt && (
@@ -372,7 +383,7 @@ function DealActions({
         <div className="space-y-2">
           {isBuyer && (
             <button disabled={busy} onClick={() => onAction(deal.id, "fund")} className={cn(btn, "bg-indigo-600 text-white hover:bg-indigo-700")}>
-              Fund escrow ${(deal.amount + deal.adminFee).toFixed(2)}
+              Fund escrow {usd((deal.amount + deal.adminFee))}
             </button>
           )}
           {(isBuyer || isSeller) && (
@@ -516,7 +527,7 @@ function ProposeForm({
             Admin-mediated deal
             <span className="block text-[10px] text-gray-500">
               A platform admin oversees the deal. Buyer pays a {(mediation.feeBps / 100).toFixed(2)}% fee
-              {fee > 0 && ` (+$${fee.toFixed(2)})`}.
+              {fee > 0 && ` (+${usd(fee)})`}.
             </span>
           </span>
         </label>

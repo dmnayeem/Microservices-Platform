@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -88,7 +89,7 @@ export function CourseEnrollCta({
         discount: d.discount,
         finalPrice: d.finalPrice,
       });
-      toast.success(`Coupon applied — save $${d.discount.toFixed(2)}`);
+      toast.success(`Coupon applied — save ${usd(d.discount)}`);
     } catch (err) {
       toast.error("Failed", {
         description: err instanceof Error ? err.message : "Try again",
@@ -119,7 +120,7 @@ export function CourseEnrollCta({
       toast.success(
         isFree || finalPrice === 0
           ? "You're in!"
-          : `Enrolled — $${(d.amountPaid ?? finalPrice).toFixed(2)} charged to your wallet`
+          : `Enrolled — ${usd((d.amountPaid ?? finalPrice))} charged to your wallet`
       );
       router.push(`/learn/${courseId}`);
     } catch (err) {
@@ -214,16 +215,16 @@ export function CourseEnrollCta({
           ) : (
             <>
               <p className="text-2xl font-extrabold text-white tabular-nums">
-                ${finalPrice.toFixed(2)}
+                {usd(finalPrice)}
               </p>
               {(originalPrice ?? livePrice) > finalPrice && (
                 <p className="text-sm text-gray-500 line-through tabular-nums">
-                  ${(originalPrice ?? livePrice).toFixed(2)}
+                  {usd((originalPrice ?? livePrice))}
                 </p>
               )}
               {applied && (
                 <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-                  -${applied.discount.toFixed(2)}
+                  -{usd(applied.discount)}
                 </span>
               )}
             </>
@@ -240,7 +241,7 @@ export function CourseEnrollCta({
                   {applied.code}
                 </span>
                 <span className="text-gray-500 ml-auto tabular-nums">
-                  -${applied.discount.toFixed(2)}
+                  -{usd(applied.discount)}
                 </span>
                 <button
                   type="button"
@@ -312,7 +313,7 @@ export function CourseEnrollCta({
               ? "Enrol — it's free"
               : finalPrice === 0
               ? "Enrol — fully covered"
-              : `Enrol — $${finalPrice.toFixed(2)} from wallet`}
+              : `Enrol — ${usd(finalPrice)} from wallet`}
           </button>
         )}
 

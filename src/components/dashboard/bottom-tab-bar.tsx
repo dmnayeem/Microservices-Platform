@@ -49,9 +49,11 @@ export function BottomTabBar({
   }, []);
 
   // Fetch unread on mount + on focus/timer (not on every navigation).
+  // /api/header is two indexed reads; /api/notifications ran three queries
+  // (including a findMany) just to read a count off the response.
   const loadUnread = useCallback(async () => {
     try {
-      const r = await fetch("/api/notifications?limit=1&unread=true", {
+      const r = await fetch("/api/header", {
         cache: "no-store",
       });
       const d = await r.json();
@@ -67,7 +69,7 @@ export function BottomTabBar({
     loadUnread();
   }, [loadUnread, isMobile]);
 
-  useAutoRefresh(loadUnread, { enabled: isMobile });
+  useAutoRefresh(loadUnread, { enabled: isMobile, intervalMs: 60000 });
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);

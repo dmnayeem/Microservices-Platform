@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -230,7 +231,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               <span className="text-gray-300">
                 You add{" "}
                 <span className="font-bold text-white">
-                  ${breakdown.amountUsd.toFixed(2)}
+                  {usd(breakdown.amountUsd)}
                 </span>
               </span>
               <span className="text-gray-300 tabular-nums">
@@ -271,7 +272,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               </span>
             </div>
             <p className="text-[10px] text-gray-500">
-              Your wallet is credited ${breakdown.amountUsd.toFixed(2)} on
+              Your wallet is credited {usd(breakdown.amountUsd)} on
               approval. The {currency?.code} total includes the method charge
               {vat.enabled ? " + VAT" : ""}.
             </p>
@@ -433,7 +434,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             >
               <div>
                 <p className="text-sm font-semibold text-white">
-                  ${Number(d.amount ?? 0).toFixed(2)}{" "}
+                  {usd(Number(d.amount ?? 0))}{" "}
                   <span className="text-gray-500 font-normal">
                     · {methods.find((m) => m.key === d.method)?.label ?? d.method.replace("MANUAL_", "")}
                   </span>

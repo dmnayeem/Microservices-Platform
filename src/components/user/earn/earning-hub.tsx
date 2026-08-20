@@ -1,4 +1,5 @@
 "use client";
+import { STAT_VALUE_CLASS } from "@/components/user/primitives/stat-card";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -35,8 +36,8 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { GlobalSearch } from "@/components/user/primitives/global-search";
 import { SmartImage } from "@/components/user/primitives/smart-image";
-import { cn } from "@/lib/utils";
-import { calculateLevel, calculateXpProgress } from "@/lib/utils";
+import { cn, pts } from "@/lib/utils";
+import { levelProgress, calculateXpForLevel } from "@/lib/level";
 import { taskRunHref } from "@/lib/task-routes";
 
 type TabKey =
@@ -71,7 +72,7 @@ const QUICK_ACCESS = [
   { name: "Daily Mission", href: "/daily-mission", icon: Award, tone: "indigo" },
   { name: "Lottery", href: "/lottery", icon: Ticket, tone: "violet" },
   { name: "Manual Tasks", href: "/manual-tasks", icon: ClipboardList, tone: "indigo" },
-  { name: "Quizzes", href: "/quiz-tasks", icon: Brain, tone: "emerald" },
+  { name: "Quiz Tasks", href: "/quiz-tasks", icon: Brain, tone: "emerald" },
   { name: "Social Tasks", href: "/social-tasks", icon: Send, tone: "cyan" },
   { name: "Proxy", href: "/proxy-tasks", icon: Globe, tone: "rose" },
   { name: "Board Tasks", href: "/board-tasks", icon: Pin, tone: "amber" },
@@ -415,14 +416,14 @@ function tierForLevel(level: number) {
 }
 
 export function LevelUpTab({ user }: { user: UserSummary }) {
-  const level = useMemo(
-    () => calculateLevel(user.xp ?? 0),
-    [user.xp]
-  );
-  const progress = useMemo(
-    () => calculateXpProgress(user.xp ?? 0),
-    [user.xp]
-  );
+  // Use the STORED level and the shared threshold table. Recomputing it here
+  // from a `level² × 100` curve produced a different level and a different
+  // percentage than the dashboard and /profile for the same account.
+  const level = user.level ?? 1;
+  const progress = useMemo(() => {
+    const p = levelProgress(level, user.xp ?? 0);
+    return { current: p.xpProgress, required: p.xpNeeded, percentage: p.xpPercentage };
+  }, [level, user.xp]);
   const currentTier = tierForLevel(level);
   const currentLevelRef = useRef<HTMLDivElement>(null);
 
@@ -445,19 +446,21 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
               <Trophy className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-white/80 font-bold">
+            {/* min-w-0 so a 6-figure XP total can shrink instead of squeezing
+                the "Next" block beside it. */}
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wider text-white/80 font-bold truncate">
                 Lvl {level} · {currentTier.title}
               </p>
-              <p className="text-lg font-extrabold text-white">
-                {progress.current.toLocaleString()} XP
+              <p className="text-lg font-extrabold text-white whitespace-nowrap">
+                {pts(progress.current)} XP
                 <span className="text-sm font-medium text-white/70">
-                  {" "}/ {progress.required.toLocaleString()}
+                  {" "}/ {pts(progress.required)}
                 </span>
               </p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <p className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
               Next
             </p>
@@ -488,7 +491,8 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
             const isPast = lvl < level;
             const isCurrent = lvl === level;
             const isLocked = lvl > level;
-            const xpForLevel = lvl * lvl * 100;
+            // Same threshold table the server levels users with.
+            const xpForLevel = calculateXpForLevel(lvl);
             return (
               <div
                 key={lvl}
@@ -1014,9 +1018,7 @@ function SummaryCard({
       <p className="text-[10px] uppercase tracking-wider font-bold opacity-80">
         {label}
       </p>
-      <p className="text-xl font-extrabold tabular-nums mt-0.5">
-        {value.toLocaleString()}
-      </p>
+      <p className={cn(STAT_VALUE_CLASS, "mt-0.5 text-current")}>{pts(value)}</p>
       <p className="text-[10px] opacity-70">pts</p>
     </div>
   );

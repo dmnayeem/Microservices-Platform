@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { confirmDialog } from "@/lib/confirm";
 import { useEffect, useState, useCallback } from "react";
@@ -157,7 +158,7 @@ export function AdminDepositsView({ canProcess = false }: { canProcess?: boolean
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-base font-bold text-white">
-                  ${d.amount.toFixed(2)}
+                  {usd(d.amount)}
                   <span className="ml-2 text-xs font-medium text-slate-400">{d.method.replace("MANUAL_", "")}</span>
                   <span className={`ml-2 inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_TONE[d.status] ?? "bg-slate-700 text-slate-300"}`}>{d.status}</span>
                 </p>

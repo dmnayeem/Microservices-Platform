@@ -7,7 +7,10 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { getEffectivePackage } from "@/lib/packages";
 import { getTaskChainState } from "@/lib/task-sequence";
-import { taskAudienceWhere } from "@/lib/task-targeting";
+import {
+  getTaskViewerContext,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
@@ -56,34 +59,21 @@ export async function GET(request: NextRequest) {
     // No taskId → list available QUIZ tasks (with sequential-unlock lock state)
     // for the quiz tab. mirrors the video/social list gating.
     if (!taskId) {
-      const [lister, pkg] = await Promise.all([
-        prisma.user.findUnique({
-          where: { id: session.user.id },
-          select: {
-            level: true,
-            country: true,
-            region: true,
-            division: true,
-            district: true,
-            subDistrict: true,
-            postalCode: true,
-            gender: true,
-            dateOfBirth: true,
-          },
-        }),
-        getEffectivePackage(session.user.id),
-      ]);
-      const accessLevel = pkg?.accessLevel ?? 0;
+      // Same visibility rules as /api/tasks. This list previously skipped
+      // `hidden`, the start/expiry windows and the plan gates entirely, so
+      // hidden, expired and plan-disabled quiz tasks showed up here — which is
+      // how the user's quiz count ran ahead of what admin considered live.
+      const ctx = await getTaskViewerContext(session.user.id);
+      if (!ctx || !ctx.hasTasksFeature) {
+        return NextResponse.json({ quizzes: [] });
+      }
       const quizTasks = await prisma.task.findMany({
-        where: {
+        where: visibleTaskWhere(ctx.viewer, {
+          accessLevel: ctx.accessLevel,
+          allowedTypes: ctx.allowedTypes,
           type: TaskType.QUIZ,
-          status: TaskStatus.ACTIVE,
-          minLevel: { lte: lister?.level ?? 0 },
-          requiredAccessLevel: { lte: accessLevel },
-          // STRICT audience targeting (country/area/gender/age).
-          AND: taskAudienceWhere(lister ?? {}),
-        },
-        orderBy: { createdAt: "desc" },
+        }),
+        orderBy: [{ order: "asc" }, { createdAt: "desc" }],
         take: 50,
       });
       const { lockedTaskIds } = await getTaskChainState(session.user.id);

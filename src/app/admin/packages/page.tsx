@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -126,7 +127,7 @@ export default async function AdminPackagesPage() {
         <Stat
           icon={<DollarSign className="w-5 h-5" />}
           tone="emerald"
-          value={`$${estimatedRevenue.toFixed(2)}`}
+          value={`${usd(estimatedRevenue)}`}
           label="Est. Monthly Revenue"
         />
       </div>
@@ -195,7 +196,7 @@ export default async function AdminPackagesPage() {
             className: "text-right",
             cell: (pkg) => (
               <span className="text-emerald-400 font-bold tabular-nums">
-                ${pkg.priceMonthly.toFixed(2)}
+                {usd(pkg.priceMonthly)}
               </span>
             ),
           },
@@ -329,7 +330,7 @@ export default async function AdminPackagesPage() {
                 key: "amount",
                 header: "Amount",
                 className: "text-right text-amber-400 font-bold tabular-nums",
-                cell: (s) => <>${s.amount.toFixed(2)}</>,
+                cell: (s) => <>{usd(s.amount)}</>,
               },
               {
                 key: "status",

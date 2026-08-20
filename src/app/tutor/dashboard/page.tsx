@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -116,13 +117,13 @@ export default async function TutorDashboardPage() {
         <StatCard
           icon={<Wallet className="w-4 h-4" />}
           label="Lifetime earnings"
-          value={`$${totalRevenue.toFixed(2)}`}
+          value={`${usd(totalRevenue)}`}
           tone="text-amber-300"
         />
         <StatCard
           icon={<Star className="w-4 h-4" />}
           label="Avg rating"
-          value={avgRating > 0 ? avgRating.toFixed(2) : "—"}
+          value={avgRating > 0 ? avgRating.toFixed(1) : "—"}
           tone="text-fuchsia-300"
         />
       </div>

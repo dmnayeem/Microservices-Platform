@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -117,7 +118,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         entity: "Withdrawal",
         entityId: id,
         targetUserId: existingWithdrawal.userId,
-        summary: `Approved a $${toNum(existingWithdrawal.netAmount).toFixed(2)} withdrawal (processing)`,
+        summary: `Approved a ${usd(toNum(existingWithdrawal.netAmount))} withdrawal (processing)`,
         meta: { adminNote: adminNote ?? null, transactionId: transactionId ?? null },
       });
 
@@ -172,9 +173,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             userId: existingWithdrawal.userId,
             type: "WALLET",
             title: "Withdrawal completed",
-            message: `Your withdrawal of $${existingWithdrawal.netAmount.toFixed(
-              2
-            )} via ${existingWithdrawal.method} has been paid. Reference: ${transactionId}`,
+            message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} via ${existingWithdrawal.method} has been paid. Reference: ${transactionId}`,
           },
         }),
       ]);
@@ -185,14 +184,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         entity: "Withdrawal",
         entityId: id,
         targetUserId: existingWithdrawal.userId,
-        summary: `Marked a $${toNum(existingWithdrawal.netAmount).toFixed(2)} withdrawal as paid`,
+        summary: `Marked a ${usd(toNum(existingWithdrawal.netAmount))} withdrawal as paid`,
         meta: { transactionId, adminNote: adminNote ?? null },
       });
 
       void deliverToUser({
         userId: existingWithdrawal.userId,
         title: "Withdrawal completed",
-        message: `Your withdrawal of $${existingWithdrawal.netAmount.toFixed(2)} via ${existingWithdrawal.method} has been paid.`,
+        message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} via ${existingWithdrawal.method} has been paid.`,
         link: "/wallet",
       });
 
@@ -260,9 +259,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             userId: existingWithdrawal.userId,
             type: "WALLET",
             title: "Withdrawal rejected",
-            message: `Your withdrawal of $${existingWithdrawal.amount.toFixed(
-              2
-            )} was rejected and refunded. Reason: ${
+            message: `Your withdrawal of ${usd(existingWithdrawal.amount)} was rejected and refunded. Reason: ${
               rejectionReason || "Not specified"
             }${adminNote ? `\n\n${adminNote}` : ""}`,
           },
@@ -275,7 +272,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         entity: "Withdrawal",
         entityId: id,
         targetUserId: existingWithdrawal.userId,
-        summary: `Rejected & refunded a $${toNum(existingWithdrawal.amount).toFixed(2)} withdrawal`,
+        summary: `Rejected & refunded a ${usd(toNum(existingWithdrawal.amount))} withdrawal`,
         meta: { rejectionReason: rejectionReason ?? null, adminNote: adminNote ?? null },
       });
 

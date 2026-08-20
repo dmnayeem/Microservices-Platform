@@ -1,4 +1,5 @@
 "use client";
+import { STAT_VALUE_CLASS_SM } from "@/components/user/primitives/stat-card";
 
 import {
   Loader2,
@@ -234,9 +235,7 @@ function AnalyticsTile({
         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold truncate">
           {label}
         </p>
-        <p className="text-base font-extrabold text-white tabular-nums truncate">
-          {value}
-        </p>
+        <p className={STAT_VALUE_CLASS_SM}>{value}</p>
       </div>
     </div>
   );

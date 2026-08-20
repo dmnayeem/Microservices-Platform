@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { ModalShell } from "@/components/admin/ads/modal-shell";
 import {
   PLACEMENT_LABELS,
@@ -473,7 +473,7 @@ export function AdReviewPanel({
                       ["Username", data.advertiser.username ?? "—"],
                       ["Account", data.advertiser.status ?? "—"],
                       ["Member since", fmtDate(data.advertiser.createdAt)],
-                      ["Ad credit", `$${(data.advertiser.adCreditBalance ?? 0).toFixed(2)}`],
+                      ["Ad credit", `${usd((data.advertiser.adCreditBalance ?? 0))}`],
                       [
                         "Track record",
                         `${data.advertiserHistory.approved} approved · ${data.advertiserHistory.rejected} rejected`,
@@ -504,8 +504,8 @@ export function AdReviewPanel({
                 rows={[
                   ["Title", ad.campaign.title],
                   ["Status", ad.campaign.status],
-                  ["Remaining budget", `$${ad.campaign.budget.toFixed(2)}`],
-                  ["Spent", `$${ad.campaign.spentTotal.toFixed(2)}`],
+                  ["Remaining budget", `${usd(ad.campaign.budget)}`],
+                  ["Spent", `${usd(ad.campaign.spentTotal)}`],
                   ["Runs", `${fmtDate(ad.campaign.startAt)} → ${fmtDate(ad.campaign.endAt)}`],
                 ]}
               />

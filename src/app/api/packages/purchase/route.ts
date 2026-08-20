@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Insufficient cash balance",
-          details: `Need $${totalUsd.toFixed(2)}, have $${toNum(user.cashBalance).toFixed(2)}`,
+          details: `Need ${usd(totalUsd)}, have ${usd(toNum(user.cashBalance))}`,
         },
         { status: 400 }
       );

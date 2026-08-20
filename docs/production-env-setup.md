@@ -60,6 +60,67 @@ INNGEST_EVENT_KEY="your_event_key"
 INNGEST_SIGNING_KEY="signkey-prod-xxxxxxxx"
 ```
 
+## 5. Sentry — error tracking & slow-query visibility (recommended before launch)
+
+Unlocks: grouped error reports, and per-endpoint tracing that shows **which database
+query is slow**. It matters for this app specifically because the code is built to
+degrade quietly — `src/lib/prisma.ts` retries a failing read up to four times, and
+`safeRead` swallows non-critical failures so the page still renders. Both are right
+for the user and blinding for you: without Sentry, a database sliding into trouble
+produces no signal until users complain.
+
+**Skipping it breaks nothing.** The app already ships an in-house version at
+`/api/admin/db-health` (retry counts, degraded reads) and `/api/health` (is the DB
+up). Sentry is an upgrade on top, not a dependency.
+
+**Cost: free.** Sentry's free "Developer" plan covers ~5,000 errors and 10,000 trace
+units a month with no card. If you exceed it, events are dropped — nothing breaks and
+you are not billed.
+
+### Getting the DSN — about 3 minutes
+
+1. Go to **https://sentry.io/signup/** and create an account (sign in with GitHub or
+   Google is fastest). Free plan is selected by default.
+2. When it asks what you are building, choose **Next.js** as the platform, and name
+   the project (e.g. `earngpt`).
+3. Sentry then shows an install wizard. **Skip it — the code is already wired up**
+   (`sentry.server.config.ts`, `sentry.edge.config.ts`, `sentry.client.config.ts`,
+   `src/instrumentation.ts`). You only need the DSN.
+4. Copy the **DSN**. It looks like
+   `https://abc123def456@o1234567.ingest.sentry.io/7654321`.
+   To find it again later: **Settings → Projects → [your project] → Client Keys (DSN)**.
+
+### Where to put it
+
+The **same DSN value** goes in both variables — one is read on the server, one is
+shipped to the browser:
+
+```env
+SENTRY_DSN="https://abc123@o123456.ingest.sentry.io/7654321"
+NEXT_PUBLIC_SENTRY_DSN="https://abc123@o123456.ingest.sentry.io/7654321"
+# Fraction of requests traced. 0.1 = 10%. Raise while investigating, lower after.
+SENTRY_TRACES_SAMPLE_RATE="0.1"
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE="0.05"
+```
+
+**In Vercel:** Project → **Settings** → **Environment Variables** → add each name and
+value → tick **Production** (and Preview if you want it there too) → Save.
+
+⚠️ **Then redeploy.** Vercel bakes env vars in at build time, so pasting them without
+a new deployment changes nothing. Deployments → latest → ⋯ → **Redeploy**.
+
+### Checking it worked
+
+After the redeploy, open Sentry → **Issues**. Errors appear there as they happen. If
+you want to force one, visit a URL that 500s. Nothing showing up usually means the
+redeploy was skipped, or the DSN went into the wrong environment.
+
+### One deliberate choice
+
+**Session Replay is off.** It records what the user sees, and this app shows
+balances, payout details and KYC data on screen. Turn it on only if you decide that
+is acceptable.
+
 ---
 
 ## Carry to production (already set locally)

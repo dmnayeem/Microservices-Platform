@@ -9,11 +9,16 @@
  */
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { generateDemoAds } from "../src/lib/ad-demo";
 
-const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL!,
-});
+// Connect with the matching option for the DATABASE_URL scheme: Accelerate proxy
+// (prisma://) vs a direct postgres:// connection via the pg driver adapter.
+const seedUrl = process.env.DATABASE_URL!;
+const prisma =
+  seedUrl.startsWith("prisma://") || seedUrl.startsWith("prisma+postgres://")
+    ? new PrismaClient({ accelerateUrl: seedUrl })
+    : new PrismaClient({ adapter: new PrismaPg({ connectionString: seedUrl }) });
 
 generateDemoAds(prisma)
   .then((r) => {

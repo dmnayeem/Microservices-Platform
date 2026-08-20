@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TaskStatus, SubmissionStatus } from "@/generated/prisma/client";
-import { taskAudienceWhere } from "@/lib/task-targeting";
-
-// Viewer profile fields matched by task audience targeting.
-const AUDIENCE_SELECT = {
-  country: true,
-  region: true,
-  division: true,
-  district: true,
-  subDistrict: true,
-  postalCode: true,
-  gender: true,
-  dateOfBirth: true,
-} as const;
+import { SubmissionStatus } from "@/generated/prisma/client";
+import {
+  getTaskViewerContext,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 
 export async function GET(
   _req: Request,
@@ -62,21 +53,21 @@ export async function GET(
     }
   }
 
-  // STRICT audience targeting — only surface board tasks the viewer is eligible
-  // for (same rules as the standalone task list).
-  const viewer = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: AUDIENCE_SELECT,
-  });
+  // Same visibility rules as the standalone task list.
+  const ctx = await getTaskViewerContext(session.user.id);
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      boardId: id,
-      status: TaskStatus.ACTIVE,
-      AND: taskAudienceWhere(viewer ?? {}),
-    },
-    orderBy: { createdAt: "asc" },
-  });
+  const tasks = ctx
+    ? await prisma.task.findMany({
+        where: {
+          ...visibleTaskWhere(ctx.viewer, {
+            accessLevel: ctx.accessLevel,
+            allowedTypes: ctx.allowedTypes,
+          }),
+          boardId: id,
+        },
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      })
+    : [];
 
   const taskIds = tasks.map((t) => t.id);
   const submissions = taskIds.length

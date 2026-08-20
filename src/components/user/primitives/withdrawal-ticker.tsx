@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Megaphone } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 export interface WithdrawalTickerItem {
   id: string;
@@ -35,35 +35,46 @@ export function WithdrawalTicker({
   showMethod = false,
   showCountry = false,
   liveStream = true,
-  streamUrl = "/api/withdrawal-ticker/stream",
+  streamUrl = "/api/withdrawal-ticker/recent",
   maxItems = 30,
 }: WithdrawalTickerProps) {
   const [items, setItems] = useState(initialItems);
   const seenIds = useRef(new Set(initialItems.map((i) => i.id)));
 
+  // Polls a shared, cached endpoint instead of holding an SSE connection open.
+  // The old stream kept a serverless function alive for 5 minutes per viewer and
+  // re-queried every 8s inside each one, all for the same list — so the cost grew
+  // linearly with concurrent users for zero added freshness. A decorative ticker
+  // cannot tell 8s from 30s.
   useEffect(() => {
     if (!liveStream || typeof window === "undefined") return;
-    if (typeof EventSource === "undefined") return;
+    let cancelled = false;
 
-    const es = new EventSource(streamUrl);
-    es.addEventListener("withdrawal", (e) => {
+    const pull = async () => {
+      // Don't poll a tab nobody is looking at.
+      if (document.visibilityState === "hidden") return;
       try {
-        const data = JSON.parse((e as MessageEvent).data) as WithdrawalTickerItem;
-        if (!data?.id || seenIds.current.has(data.id)) return;
-        seenIds.current.add(data.id);
-        setItems((prev) => [data, ...prev].slice(0, maxItems));
+        const res = await fetch(streamUrl, { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const d = (await res.json()) as { items?: WithdrawalTickerItem[] };
+        const fresh = (d.items ?? []).filter((i) => i?.id && !seenIds.current.has(i.id));
+        if (fresh.length === 0) return;
+        for (const i of fresh) seenIds.current.add(i.id);
+        setItems((prev) => [...fresh, ...prev].slice(0, maxItems));
       } catch {
-        // ignore malformed payloads
+        // transient — the next tick retries
       }
-    });
-    es.addEventListener("expired", () => {
-      es.close();
-    });
-    es.onerror = () => {
-      // EventSource auto-retries on transient errors; nothing to do.
     };
+
+    const id = setInterval(pull, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void pull();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
-      es.close();
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [liveStream, streamUrl, maxItems]);
 
@@ -98,7 +109,7 @@ export function WithdrawalTicker({
                 <span className="text-emerald-400 font-bold">
                   {it.unit === "pts"
                     ? `${it.amount.toLocaleString()} pts`
-                    : `$${it.amount.toFixed(2)}`}
+                    : `${usd(it.amount)}`}
                 </span>
               )}
               {showMethod && it.method && (

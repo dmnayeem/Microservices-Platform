@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         {
-          error: `Ad credit is $${toNum(me?.adCreditBalance).toFixed(2)} — need $${amount.toFixed(2)} to fund this campaign. Add funds first.`,
+          error: `Ad credit is ${usd(toNum(me?.adCreditBalance))} — need ${usd(amount)} to fund this campaign. Add funds first.`,
           shortBy: sub(amount, me?.adCreditBalance ?? 0).toNumber(),
         },
         { status: 402 }

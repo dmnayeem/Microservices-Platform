@@ -23,6 +23,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    // The list is capped at 25; return the true total alongside it so the UI
+    // can't render "bid history (25)" on a listing with 60 bids while admin
+    // shows the real number.
+    const totalBids = await prisma.marketplaceBid.count({ where: { listingId: id } });
     const bidsRaw = await prisma.marketplaceBid.findMany({
       where: { listingId: id },
       orderBy: [{ amount: "desc" }, { createdAt: "desc" }],
@@ -48,6 +52,7 @@ export async function GET(
       };
     }>;
     return NextResponse.json({
+      totalBids,
       bids: bids.map((b) => ({
         id: b.id,
         amount: toNum(b.amount),

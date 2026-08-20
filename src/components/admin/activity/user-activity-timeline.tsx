@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Coins,
@@ -69,7 +70,7 @@ export function UserActivityTimeline({ events }: { events: ActivityEvent[] }) {
                   )}
                   {typeof e.amount === "number" && e.amount !== 0 && (
                     <p className={`text-xs font-semibold tabular-nums ${e.amount > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {e.amount > 0 ? "+" : "-"}${Math.abs(e.amount).toFixed(2)}
+                      {e.amount > 0 ? "+" : "-"}{usd(Math.abs(e.amount))}
                     </p>
                   )}
                 </div>

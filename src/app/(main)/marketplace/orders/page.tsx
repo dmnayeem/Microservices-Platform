@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -68,7 +69,7 @@ export default async function OrdersPage() {
                 </p>
               </div>
               <span className="text-sm font-bold text-emerald-400 tabular-nums">
-                ${o.amount.toFixed(2)}
+                {usd(o.amount)}
               </span>
             </Link>
             {o.status === "COMPLETED" && o.listing.files.length > 0 && (

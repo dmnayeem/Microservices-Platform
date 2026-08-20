@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TaskStatus, TaskType } from "@/generated/prisma/client";
+import { TaskType } from "@/generated/prisma/client";
 import { mapSocialTaskRow } from "@/lib/social-tasks";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
 import { getTaskChainState } from "@/lib/task-sequence";
-import { taskAudienceWhere } from "@/lib/task-targeting";
+import { visibleTaskWhere } from "@/lib/task-visibility";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -95,16 +95,16 @@ export async function GET(request: NextRequest) {
 
   const tasks = await prisma.task.findMany({
     where: {
-      type: TaskType.SOCIAL,
-      status: TaskStatus.ACTIVE,
-      minLevel: { lte: user.level },
-      requiredAccessLevel: { lte: accessLevel },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      // STRICT audience targeting (country/area/gender/age).
-      AND: taskAudienceWhere(user),
+      // Shared visibility rules (adds the `hidden` flag and the startsAt window
+      // this route used to skip).
+      ...visibleTaskWhere(user, {
+        accessLevel,
+        allowedTypes: [TaskType.SOCIAL],
+        type: TaskType.SOCIAL,
+      }),
       ...(excludeTaskIds.length ? { id: { notIn: excludeTaskIds } } : {}),
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
     take: 100,
   });
 

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     entity: "User",
     entityId: userId,
     targetUserId: userId,
-    summary: `${v.data.amountUsd >= 0 ? "Granted" : "Deducted"} $${Math.abs(v.data.amountUsd).toFixed(2)} ad credit`,
+    summary: `${v.data.amountUsd >= 0 ? "Granted" : "Deducted"} ${usd(Math.abs(v.data.amountUsd))} ad credit`,
     meta: { amountUsd: v.data.amountUsd, note: v.data.note ?? null, balance: r.adCreditBalance },
   });
 

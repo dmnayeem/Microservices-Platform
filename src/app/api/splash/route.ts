@@ -8,8 +8,11 @@ import {
 /** Public: splash config for the client. Returns {enabled:false} when off/empty. */
 export async function GET() {
   try {
+    // Fires on EVERY app load and is the same row for everyone. Splash config
+    // changes on an admin action, so minutes of staleness is fine.
     const row = await prisma.systemSetting.findUnique({
       where: { key: SPLASH_SETTING_KEY },
+      cacheStrategy: { ttl: 300, swr: 900 },
     });
     const cfg = normalizeSplashConfig(row?.value);
     const usableSlides = cfg.slides.filter((s) => s.title || s.content || s.imageUrl);

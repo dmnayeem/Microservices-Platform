@@ -473,12 +473,31 @@ textarea,
 /* Denser variant for sticky headers / bottom nav / overlays that sit over
    scrolling content and need more opacity for legibility. */
 @utility glass-strong {
-  background-color: color-mix(in oklab, var(--color-gray-950) 82%, transparent);
+  /* 94%, not 82%: this backs the sticky header, the bottom tab bar and the
+     sidebar, which sit directly over scrolling text. At 82% the page heading
+     was legible THROUGH the header wherever the blur didn't apply. */
+  background-color: color-mix(in oklab, var(--color-gray-950) 94%, transparent);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   border-color: color-mix(in oklab, var(--color-gray-700) 55%, transparent);
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
     0 8px 30px -12px rgba(0, 0, 0, 0.6);
+
+  /* Where backdrop-filter silently no-ops — Android WebView without GPU
+     rasterization, Firefox Android's default, screenshot pipelines — the
+     translucency has nothing to hide behind, so go fully opaque. */
+  @supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+  ) {
+    background-color: var(--color-gray-950);
+  }
+
+  /* iOS "Reduce Transparency" / Android equivalent. */
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--color-gray-950);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 /* Hover affordance for interactive glass tiles — a brand-tinted lift. */

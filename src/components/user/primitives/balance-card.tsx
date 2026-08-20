@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, pts, usd } from "@/lib/utils";
 import { Coins, DollarSign, ArrowUpRight, Megaphone, Plus } from "lucide-react";
 import Link from "next/link";
 
@@ -16,7 +16,9 @@ interface BalanceCardProps {
   className?: string;
   compact?: boolean;
   /** Admin-configurable points-per-$1 rate (default 1000). */
-  pointsPerUsd?: number;
+  /** Points per USD (admin setting). Required — a default here silently
+   *  mis-values every balance when the rate changes. */
+  pointsPerUsd: number;
 }
 
 export function BalanceCard({
@@ -29,7 +31,7 @@ export function BalanceCard({
   adTopUpHref = "/advertiser",
   className,
   compact = false,
-  pointsPerUsd = 1000,
+  pointsPerUsd,
 }: BalanceCardProps) {
   const ptInUsd = points / pointsPerUsd;
   const showAdCredit = adCredit !== undefined;
@@ -48,8 +50,8 @@ export function BalanceCard({
           <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
             Total Balance
           </p>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-0.5 truncate">
-            ${(cash + ptInUsd).toFixed(2)}
+          <p className="font-extrabold text-white tabular-nums mt-0.5 leading-tight whitespace-nowrap text-[clamp(1.25rem,6vw,1.5rem)]">
+            {usd(cash + ptInUsd)}
           </p>
           <p className="text-[10px] text-gray-500">Cash + points value</p>
         </div>
@@ -68,10 +70,10 @@ export function BalanceCard({
               Points
             </span>
           </div>
-          <p className="text-lg font-bold text-white tabular-nums truncate">
-            {points.toLocaleString()}
+          <p className="font-bold text-white tabular-nums leading-tight whitespace-nowrap text-[clamp(0.9rem,4.2vw,1.125rem)]">
+            {pts(points)}
           </p>
-          <p className="text-[10px] text-gray-500">${ptInUsd.toFixed(2)}</p>
+          <p className="text-[10px] text-gray-500">{usd(ptInUsd)}</p>
         </div>
         <div className="min-w-0 rounded-xl bg-gray-900/60 border border-gray-800 p-3">
           <div className="flex items-center gap-1.5 text-emerald-400 mb-1">
@@ -80,8 +82,8 @@ export function BalanceCard({
               Cash
             </span>
           </div>
-          <p className="text-lg font-bold text-white tabular-nums truncate">
-            ${cash.toFixed(2)}
+          <p className="font-bold text-white tabular-nums leading-tight whitespace-nowrap text-[clamp(0.9rem,4.2vw,1.125rem)]">
+            {usd(cash)}
           </p>
           <p className="text-[10px] text-gray-500">Withdrawable</p>
         </div>
@@ -95,8 +97,8 @@ export function BalanceCard({
                   Ad Credit
                 </span>
               </div>
-              <p className="text-lg font-bold text-white tabular-nums">
-                ${adCredit.toFixed(2)}
+              <p className="font-bold text-white tabular-nums leading-tight whitespace-nowrap text-[clamp(0.9rem,4.2vw,1.125rem)]">
+                {usd(adCredit)}
               </p>
               <p className="text-[10px] text-gray-500 truncate">Funds ad campaigns · non-withdrawable</p>
             </div>

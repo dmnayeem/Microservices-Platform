@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     void deliverToUser({
       userId: session.user.id,
       title: "Points converted to cash",
-      message: `${result.pointsConverted.toLocaleString()} points became $${result.cashAdded.toFixed(2)} in your wallet — ready to withdraw.`,
+      message: `${result.pointsConverted.toLocaleString()} points became ${usd(result.cashAdded)} in your wallet — ready to withdraw.`,
       link: "/wallet",
     });
 
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
       pointsConverted: result.pointsConverted,
       cashAdded: result.cashAdded,
       newCash: result.newCash,
-      message: `Converted ${result.pointsConverted.toLocaleString()} points to $${result.cashAdded.toFixed(2)}.`,
+      message: `Converted ${result.pointsConverted.toLocaleString()} points to ${usd(result.cashAdded)}.`,
     });
   });
 }

@@ -5,7 +5,7 @@ import { Trophy, CheckCircle2, Lock, Loader2 } from "lucide-react";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
-import { cn } from "@/lib/utils";
+import { cn, pct } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 
 type Category = "ALL" | "ACTIVITY" | "EARNINGS" | "SOCIAL" | "ENGAGEMENT" | "REFERRAL" | "PROFILE";
@@ -72,7 +72,9 @@ export function MilestonesView() {
 
       {!loading &&
         visible.map((m) => {
-          const pct = Math.min(100, (m.current / m.target) * 100);
+          // Guarded: Math.min(100, NaN) is NaN, so a 0-target milestone
+          // rendered `width: NaN%`.
+          const progress = pct(m.current, m.target);
           return (
             <div
               key={m.id}
@@ -120,7 +122,7 @@ export function MilestonesView() {
                             ? "bg-emerald-500"
                             : "bg-linear-to-r from-indigo-500 to-purple-500"
                         )}
-                        style={{ width: `${pct}%` }}
+                        style={{ width: `${progress}%` }}
                       />
                     </div>
                     <span className="text-[11px] text-gray-400 tabular-nums shrink-0">

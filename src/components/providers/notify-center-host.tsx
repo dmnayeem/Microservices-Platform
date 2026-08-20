@@ -11,7 +11,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import {
   subscribeNotify,
   getNotifySnapshot,
@@ -90,7 +90,7 @@ export function NotifyCenterHost() {
 function formatAmount(amount: number, unit: "pts" | "USD") {
   return unit === "pts"
     ? `+${amount.toLocaleString()} pts`
-    : `+$${amount.toFixed(2)}`;
+    : `+${usd(amount)}`;
 }
 
 function NotifyView({ item }: { item: NotifyItem }) {

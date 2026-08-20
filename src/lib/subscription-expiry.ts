@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { defaultPackage } from "@/lib/packages";
@@ -14,7 +15,8 @@ const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
  *     package (only when their overall entitlement has actually lapsed).
  * Idempotent + safe to re-run. Returns a summary.
  */
-export async function runSubscriptionExpiry(): Promise<{
+/** One batch. `runSubscriptionExpiry` below drives this until the queue drains. */
+async function runSubscriptionExpiryBatch(): Promise<{
   processed: number;
   renewed: number;
   expired: number;
@@ -91,7 +93,7 @@ export async function runSubscriptionExpiry(): Promise<{
         void deliverToUser({
           userId: sub.userId,
           title: "Subscription renewed",
-          message: `Your plan was auto-renewed for $${subAmount.toFixed(2)}.`,
+          message: `Your plan was auto-renewed for ${usd(subAmount)}.`,
           link: "/my-package",
         });
         continue;
@@ -128,4 +130,47 @@ export async function runSubscriptionExpiry(): Promise<{
   }
 
   return { processed: due.length, renewed, expired };
+}
+
+/** How many rows one batch takes — must match the `take` above. */
+const BATCH = 100;
+/** Safety stop, plus a wall-clock budget so one run can't hang forever. */
+const MAX_BATCHES = 100;
+const BUDGET_MS = 45_000;
+
+/**
+ * Expire or renew every due subscription.
+ *
+ * This used to be a single `take: 100` pass per day. If more than 100 expired in
+ * a day the backlog grew permanently and those users kept a plan they had
+ * stopped paying for — a revenue leak that gets worse as the userbase grows, and
+ * one that looks like a working cron the whole time. Now it loops until drained.
+ */
+export async function runSubscriptionExpiry(): Promise<{
+  processed: number;
+  renewed: number;
+  expired: number;
+  batches: number;
+  drained: boolean;
+}> {
+  let processed = 0;
+  let renewed = 0;
+  let expired = 0;
+  let batches = 0;
+  let drained = false;
+  const deadline = Date.now() + BUDGET_MS;
+
+  for (let i = 0; i < MAX_BATCHES; i++) {
+    const r = await runSubscriptionExpiryBatch();
+    batches++;
+    processed += r.processed;
+    renewed += r.renewed;
+    expired += r.expired;
+    if (r.processed < BATCH) {
+      drained = true;
+      break;
+    }
+    if (Date.now() >= deadline) break;
+  }
+  return { processed, renewed, expired, batches, drained };
 }

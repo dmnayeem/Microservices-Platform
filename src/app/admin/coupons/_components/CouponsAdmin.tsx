@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { confirmDialog } from "@/lib/confirm";
 
@@ -148,7 +149,7 @@ export function CouponsAdmin({ initial, categories, courses, canManage }: Props)
             header: "Discount",
             cell: (c) => (
               <span className="text-white font-bold tabular-nums">
-                {c.type === "PERCENT" ? `${c.value}%` : `$${c.value.toFixed(2)}`}
+                {c.type === "PERCENT" ? `${c.value}%` : `${usd(c.value)}`}
               </span>
             ),
           },

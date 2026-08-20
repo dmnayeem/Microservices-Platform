@@ -5,7 +5,7 @@ import { Loader2, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { TransactionRow } from "@/components/user/primitives/transaction-row";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { History } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { SOURCE_META, SOURCE_ORDER, type SourceKey } from "@/lib/tx-sources";
 
 interface HistoryTx {
@@ -173,7 +173,7 @@ export function TransactionHistory() {
                     <span className="tabular-nums text-gray-400 shrink-0">
                       {v.points > 0 && `${v.points.toLocaleString()} pts`}
                       {v.points > 0 && v.amount > 0.005 && " · "}
-                      {v.amount > 0.005 && `$${v.amount.toFixed(2)}`}
+                      {v.amount > 0.005 && `${usd(v.amount)}`}
                     </span>
                   </div>
                 );

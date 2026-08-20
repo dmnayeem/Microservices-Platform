@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { publishedQuizWhere } from "@/lib/task-visibility";
 
 // GET /api/quizzes — published quizzes the current user qualifies for, with
 // their per-quiz attempt state (for the /quizzes list cards).
@@ -19,11 +20,8 @@ export async function GET() {
   const accessLevel = me.package?.accessLevel ?? 0;
 
   const quizzesRaw = await prisma.quiz.findMany({
-    where: {
-      status: "PUBLISHED",
-      requiredLevel: { lte: me.level },
-      OR: [{ requiredAccessLevel: null }, { requiredAccessLevel: { lte: accessLevel } }],
-    },
+    // Shared with the /tasks hub tile count so the two can't disagree.
+    where: publishedQuizWhere({ level: me.level, accessLevel }),
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -553,11 +554,11 @@ function CourseCard({ c, highlight }: { c: BrowseCard; highlight?: boolean }) {
           ) : (
             <>
               <span className="text-base font-extrabold text-white">
-                ${livePrice.toFixed(2)}
+                {usd(livePrice)}
               </span>
               {c.originalPrice && c.originalPrice > livePrice && (
                 <span className="text-xs text-gray-500 line-through">
-                  ${c.originalPrice.toFixed(2)}
+                  {usd(c.originalPrice)}
                 </span>
               )}
             </>

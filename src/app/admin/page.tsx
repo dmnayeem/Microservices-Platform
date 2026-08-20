@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -271,8 +272,6 @@ export default async function AdminDashboardPage() {
   // activeSubscriptions captured above for future surfacing — no use today.
   void activeSubscriptions;
 
-  const money = (n: number) =>
-    `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // Platform Stats — % rates (capped 0–100)
   const totalSubmissionsAttempted =
@@ -321,7 +320,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Subscription Revenue"
-          value={money(monthRevenue)}
+          value={usd(monthRevenue)}
           subtext="this month"
           icon={DollarSign}
           tone="green"
@@ -329,7 +328,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Referral Earnings"
-          value={money(totalReferralEarnings)}
+          value={usd(totalReferralEarnings)}
           subtext="total paid out"
           icon={GitBranch}
           tone="indigo"
@@ -337,7 +336,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Pending Payouts"
-          value={money(pendingPayoutsAmount)}
+          value={usd(pendingPayoutsAmount)}
           subtext={`${pendingWithdrawalsCount} awaiting`}
           icon={Clock}
           tone="orange"
@@ -349,7 +348,7 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           title="Total Revenue"
-          value={money(totalRevenue)}
+          value={usd(totalRevenue)}
           subtext="all time"
           icon={TrendingUp}
           tone="green"
@@ -357,7 +356,7 @@ export default async function AdminDashboardPage() {
         />
         <StatCard
           title="Today Revenue"
-          value={money(todayRevenue)}
+          value={usd(todayRevenue)}
           subtext={format(now, "MMM d, yyyy")}
           icon={CalendarDays}
           tone="blue"
@@ -365,14 +364,14 @@ export default async function AdminDashboardPage() {
         <StatCard
           title="Pending Withdrawals"
           value={pendingWithdrawalsCount}
-          subtext={`${money(pendingPayoutsAmount)} total`}
+          subtext={`${usd(pendingPayoutsAmount)} total`}
           icon={Wallet}
           tone="amber"
           href="/admin/withdrawals"
         />
         <StatCard
           title="Total Paid"
-          value={money(totalPaid)}
+          value={usd(totalPaid)}
           subtext="since launch"
           icon={CheckCircle}
           tone="purple"
@@ -391,7 +390,7 @@ export default async function AdminDashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
             title="Pending Deposits"
-            value={money(pendingDepositsAmount)}
+            value={usd(pendingDepositsAmount)}
             subtext={`${pendingDepositsCount} awaiting review`}
             icon={Banknote}
             tone="orange"
@@ -399,7 +398,7 @@ export default async function AdminDashboardPage() {
           />
           <StatCard
             title="Deposits Funded"
-            value={money(approvedDepositsAmount)}
+            value={usd(approvedDepositsAmount)}
             subtext="approved, all time"
             icon={ArrowDownToLine}
             tone="green"
@@ -407,7 +406,7 @@ export default async function AdminDashboardPage() {
           />
           <StatCard
             title="Wallet Liability"
-            value={money(walletLiability)}
+            value={usd(walletLiability)}
             subtext="withdrawable cash owed"
             icon={Wallet}
             tone="blue"
@@ -415,7 +414,7 @@ export default async function AdminDashboardPage() {
           />
           <StatCard
             title="Ad Credit Outstanding"
-            value={money(adCreditOutstanding)}
+            value={usd(adCreditOutstanding)}
             subtext="non-withdrawable"
             icon={Megaphone}
             tone="indigo"
@@ -423,7 +422,7 @@ export default async function AdminDashboardPage() {
           />
           <StatCard
             title="Ad Spend"
-            value={money(adSpend)}
+            value={usd(adSpend)}
             subtext="campaign budgets"
             icon={TrendingUp}
             tone="purple"

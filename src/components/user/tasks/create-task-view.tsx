@@ -24,7 +24,7 @@ const EMPTY_AUDIENCE: TaskAudienceValue = {
 };
 
 export function CreateTaskView({
-  pointsPerUsd = 1000,
+  pointsPerUsd,
   canTarget = false,
 }: {
   pointsPerUsd?: number;

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -51,7 +52,7 @@ export async function POST(
       entity: "AdCampaign",
       entityId: id,
       targetUserId: session.user.id,
-      summary: `Advertiser ended campaign "${campaign.title}"${refunded ? ` — $${refunded.toFixed(2)} returned to ad credit` : ""}`,
+      summary: `Advertiser ended campaign "${campaign.title}"${refunded ? ` — ${usd(refunded)} returned to ad credit` : ""}`,
       meta: { refunded },
     });
 

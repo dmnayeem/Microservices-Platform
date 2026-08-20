@@ -6,7 +6,7 @@ import { ArrowUpRight, AlertTriangle, Loader2, Lock, Plus, ShieldCheck, Banknote
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 
@@ -36,7 +36,8 @@ interface WithdrawalViewProps {
   kycStatus: string;
   requireKyc: boolean;
   /** Admin-configurable points-per-$1 rate (default 1000). */
-  pointsPerUsd?: number;
+  /** Points per USD (admin setting) — required, see BalanceCard. */
+  pointsPerUsd: number;
 }
 
 export function WithdrawalView({
@@ -51,7 +52,7 @@ export function WithdrawalView({
   methods,
   kycStatus,
   requireKyc,
-  pointsPerUsd = 1000,
+  pointsPerUsd,
 }: WithdrawalViewProps) {
   const router = useRouter();
 
@@ -240,18 +241,18 @@ export function WithdrawalView({
             <div className="rounded-lg bg-gray-950 border border-gray-800 p-3 text-xs space-y-1">
               <div className="flex justify-between text-gray-400">
                 <span>Withdraw amount</span>
-                <span className="tabular-nums">${amount.toFixed(2)}</span>
+                <span className="tabular-nums">{usd(amount)}</span>
               </div>
               <div className="flex justify-between text-gray-400">
                 <span>Fee ({feePct.toFixed(1)}%)</span>
                 <span className="tabular-nums text-red-400">
-                  −${fee.toFixed(2)}
+                  −{usd(fee)}
                 </span>
               </div>
               <div className="flex justify-between font-bold text-white pt-1 border-t border-gray-800">
                 <span>You receive</span>
                 <span className="tabular-nums text-emerald-400">
-                  ${youReceive.toFixed(2)}
+                  {usd(youReceive)}
                 </span>
               </div>
             </div>

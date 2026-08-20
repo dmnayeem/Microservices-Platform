@@ -1,4 +1,6 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { taskRunHref } from "@/lib/task-routes";
@@ -17,6 +19,17 @@ export async function GET(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Four parallel `contains` scans per call. Even with the new trigram indexes
+  // this is the most expensive read a single account can issue on demand.
+  const limited = await enforceDbRateLimit(
+    request,
+    "search",
+    session.user.id,
+    60,
+    60_000
+  );
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") ?? "").trim();
   const scope = (searchParams.get("scope") ?? "all").toLowerCase();
@@ -124,7 +137,7 @@ export async function GET(request: NextRequest) {
         id: l.id,
         type: "LISTING",
         title: l.title,
-        subtitle: `${l.category} · $${l.price.toFixed(2)}`,
+        subtitle: `${l.category} · ${usd(l.price)}`,
         imageUrl: l.images[0] ?? undefined,
         href: `/marketplace/${l.id}`,
       });

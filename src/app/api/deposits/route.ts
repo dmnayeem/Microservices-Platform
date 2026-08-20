@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,19 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Money route. `withIdempotency` + the unique ledger constraints are what make
+  // this CORRECT under retries; this limiter is so a flood can't make the
+  // database the thing that absorbs the attack.
+  const limited = await enforceDbRateLimit(
+    request,
+    "deposit",
+    session.user.id,
+    10,
+    60_000
+  );
+  if (limited) return limited;
+
   return withIdempotency(request, session.user.id, async () => {
   const body = await request.json().catch(() => ({}));
   const amount = Number(body.amount);

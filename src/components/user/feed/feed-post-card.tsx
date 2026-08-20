@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { reportPostView } from "@/lib/view-beacon";
 import {
   Loader2,
   Heart,
@@ -195,15 +196,13 @@ export const FeedPostCard = memo(function FeedPostCard({
             timer = setTimeout(() => {
               if (viewFiredRef.current) return;
               viewFiredRef.current = true;
-              fetch(`/api/feed/${post.id}/view`, { method: "POST" })
-                .then((r) => (r.ok ? r.json() : null))
-                .then((d) => {
-                  if (d?.counted && typeof d.viewsCount === "number") {
-                    onUpdated({ viewsCount: d.viewsCount });
-                  }
-                })
-                .catch(() => {})
-                .finally(() => observer.disconnect());
+              // Queued, not sent: the whole scroll is reported in one request.
+              // Optimistically bump the local count — the server no longer
+              // returns one per view, and being off by one on a view counter
+              // until the next load is not worth a round-trip per post.
+              reportPostView(post.id);
+              onUpdated({ viewsCount: (post.viewsCount ?? 0) + 1 });
+              observer.disconnect();
             }, 2000);
           } else {
             if (timer) {

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       void deliverToUser({
         userId: deposit.userId,
         title: "Deposit approved",
-        message: `$${deposit.amount.toFixed(2)} has been added to your balance.`,
+        message: `${usd(deposit.amount)} has been added to your balance.`,
         link: "/wallet",
       });
     } catch (err) {

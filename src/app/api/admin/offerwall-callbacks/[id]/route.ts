@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getPointsPerUsd } from "@/lib/economy";
 
 const schema = z.object({
   action: z.enum(["APPROVE", "REJECT"]),
@@ -49,6 +50,7 @@ export async function PATCH(
   }
 
   if (action === "APPROVE") {
+    const pointsPerUsd = await getPointsPerUsd();
     // Credit user, mark approved
     await prisma.$transaction([
       prisma.offerwallCallback.update({
@@ -65,7 +67,11 @@ export async function PATCH(
         where: { id: callback.userId },
         data: {
           pointsBalance: { increment: callback.userPayout },
-          totalEarnings: { increment: callback.payoutAmount },
+          // The USD value of what the USER earned. This used to increment by
+          // `payoutAmount` — the network's payout to the platform — mixing a
+          // different quantity (and a different unit basis) into the same
+          // column every other earn path writes as points ÷ pointsPerUsd.
+          totalEarnings: { increment: callback.userPayout / pointsPerUsd },
         },
       }),
       prisma.transaction.create({

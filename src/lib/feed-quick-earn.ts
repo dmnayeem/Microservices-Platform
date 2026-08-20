@@ -117,7 +117,7 @@ export const DEFAULT_QUICK_EARN: QuickEarnTile[] = [
   { id: "qe-mission", label: "Mission", href: "/daily-mission", icon: "target", color: "violet", enabled: true },
   { id: "qe-tasks", label: "Task", href: "/tasks", icon: "zap", color: "sky", enabled: true },
   { id: "qe-leaderboard", label: "Leaderboard", href: "/leaderboard", icon: "trophy", color: "amber", enabled: true },
-  { id: "qe-quizzes", label: "Quizzes", href: "/quizzes", icon: "brain", color: "purple", enabled: true },
+  { id: "qe-quizzes", label: "Quiz Games", href: "/quizzes", icon: "brain", color: "purple", enabled: true },
   { id: "qe-lottery", label: "Lottery", href: "/lottery", icon: "ticket", color: "rose", enabled: true },
   { id: "qe-referral", label: "My Team", href: "/referrals", icon: "users", color: "emerald", enabled: true },
   { id: "qe-course", label: "Course", href: "/courses", icon: "graduation", color: "cyan", enabled: true },

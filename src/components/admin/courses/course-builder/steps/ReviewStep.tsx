@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import {
   CheckCircle2,
@@ -98,8 +99,8 @@ export function ReviewStep({ state, blockers, role }: Props) {
             state.isFree
               ? "Free"
               : state.discountPrice && state.discountPrice < state.price
-              ? `$${state.discountPrice.toFixed(2)} (was $${state.price.toFixed(2)})`
-              : `$${state.price.toFixed(2)}`
+              ? `${usd(state.discountPrice)} (was ${usd(state.price)})`
+              : `${usd(state.price)}`
           }
         />
         <StatCard

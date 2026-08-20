@@ -71,6 +71,13 @@ export default async function QuizzesAdminPage({ searchParams }: PageProps) {
       prisma.quiz.count({ where: { aiGenerated: true } }),
     ]);
 
+  // The OTHER quiz system: Task rows of type QUIZ. Both used to be called
+  // "Quizzes", so admin counting 9 Quiz rows while a user saw 12 quiz TASKS
+  // looked like a bug. Surfacing both counts here makes the split obvious.
+  const quizTaskCount = await prisma.task
+    .count({ where: { type: "QUIZ" } })
+    .catch(() => 0);
+
   type QuizRow = (typeof quizzesRaw)[0] & {
     _count: { questions: number; attempts: number };
   };
@@ -96,10 +103,15 @@ export default async function QuizzesAdminPage({ searchParams }: PageProps) {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Brain className="w-6 h-6 text-pink-400" />
-            Quiz Management
+            Quiz Games
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Create AI-powered quizzes with Gemini and review analytics
+            Standalone AI-powered quiz games. Quiz <b>tasks</b> are a separate
+            system —{" "}
+            <Link href="/admin/tasks?type=QUIZ" className="text-blue-400 hover:text-blue-300 underline">
+              manage those under Tasks ({quizTaskCount})
+            </Link>
+            .
           </p>
         </div>
         {canManage && (
@@ -125,7 +137,7 @@ export default async function QuizzesAdminPage({ searchParams }: PageProps) {
             </div>
             <div>
               <p className="text-2xl font-bold text-white">{totalAll}</p>
-              <p className="text-sm text-slate-500">All Quizzes</p>
+              <p className="text-sm text-slate-500">All (incl. drafts)</p>
             </div>
           </div>
         </Link>

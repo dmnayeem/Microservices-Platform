@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -416,7 +417,7 @@ function WishlistList({
                   {c.title}
                 </p>
                 <p className="text-sm font-extrabold text-white">
-                  {c.isFree ? "Free" : `$${live.toFixed(2)}`}
+                  {c.isFree ? "Free" : `${usd(live)}`}
                 </p>
               </div>
             </Link>

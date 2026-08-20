@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Gift, Lock, CheckCircle2, Clock, Loader2, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { notifyCenter } from "@/lib/notify-center";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 
@@ -161,7 +161,7 @@ export function SoloRewardWidget({
                   )}
                   {reward.cash !== undefined && (
                     <div className="px-2 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 font-semibold">
-                      +${reward.cash.toFixed(2)}
+                      +{usd(reward.cash)}
                     </div>
                   )}
                   {reward.boostMultiplier !== undefined && (

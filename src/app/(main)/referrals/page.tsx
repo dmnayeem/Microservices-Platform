@@ -23,54 +23,77 @@ export default async function ReferralsPage() {
     user.referralCode ?? `EARN${user.id.slice(0, 6).toUpperCase()}`;
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app"}/register?ref=${code}`;
 
-  // Build the 3-level team
-  const l1 = await prisma.user.findMany({
-    where: { referredById: userId },
-    select: {
-      id: true,
-      name: true,
-      avatar: true,
-      createdAt: true,
-      lastLoginAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  const l1Ids = l1.map((u) => u.id);
+  // Build the 3-level team.
+  //
+  // Two different jobs, so two different queries per level: the TREE WALK only
+  // needs ids (a user with 5,000 invitees used to load 5,000 full rows, and then
+  // their invitees, and theirs), while the DISPLAY list is capped — nobody
+  // scrolls a 25,000-row table. Counts stay exact via count().
+  const ID_CAP = 5_000; // walk ceiling per level; beyond this the count is a floor
+  const SHOW = 100; // rows rendered per level
 
-  const l2 = l1Ids.length
-    ? await prisma.user.findMany({
-        where: { referredById: { in: l1Ids } },
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          createdAt: true,
-          lastLoginAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
-  const l2Ids = l2.map((u) => u.id);
+  const l1Ids = (
+    await prisma.user.findMany({
+      where: { referredById: userId },
+      select: { id: true },
+      take: ID_CAP,
+    })
+  ).map((u) => u.id);
 
-  const l3 = l2Ids.length
-    ? await prisma.user.findMany({
-        where: { referredById: { in: l2Ids } },
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          createdAt: true,
-          lastLoginAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-      })
+  const l2Ids = l1Ids.length
+    ? (
+        await prisma.user.findMany({
+          where: { referredById: { in: l1Ids } },
+          select: { id: true },
+          take: ID_CAP,
+        })
+      ).map((u) => u.id)
     : [];
 
-  // Earnings via ReferralEarning + this-month total
+  const TEAM_SELECT = {
+    id: true,
+    name: true,
+    avatar: true,
+    createdAt: true,
+    lastLoginAt: true,
+  } as const;
+
+  const [l1, l2, l3, l1Total, l2Total, l3Total] = await Promise.all([
+    prisma.user.findMany({
+      where: { referredById: userId },
+      select: TEAM_SELECT,
+      orderBy: { createdAt: "desc" },
+      take: SHOW,
+    }),
+    l1Ids.length
+      ? prisma.user.findMany({
+          where: { referredById: { in: l1Ids } },
+          select: TEAM_SELECT,
+          orderBy: { createdAt: "desc" },
+          take: SHOW,
+        })
+      : Promise.resolve([]),
+    l2Ids.length
+      ? prisma.user.findMany({
+          where: { referredById: { in: l2Ids } },
+          select: TEAM_SELECT,
+          orderBy: { createdAt: "desc" },
+          take: SHOW,
+        })
+      : Promise.resolve([]),
+    prisma.user.count({ where: { referredById: userId } }),
+    l1Ids.length
+      ? prisma.user.count({ where: { referredById: { in: l1Ids } } })
+      : Promise.resolve(0),
+    l2Ids.length
+      ? prisma.user.count({ where: { referredById: { in: l2Ids } } })
+      : Promise.resolve(0),
+  ]);
+
+  // Earnings via ReferralEarning + this-month total.
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-
   const [allEarnings, thisMonthEarnings] = await Promise.all([
     prisma.referralEarning.findMany({
       where: { userId },
@@ -82,7 +105,6 @@ export default async function ReferralsPage() {
     }),
   ]);
 
-  // Aggregate per-user earnings (for the team list)
   const earningsByUser = new Map<string, number>();
   let l1Earned = 0;
   let l2Earned = 0;
@@ -128,9 +150,9 @@ export default async function ReferralsPage() {
     <ReferralsView
       referralCode={code}
       shareUrl={shareUrl}
-      l1Count={l1.length}
-      l2Count={l2.length}
-      l3Count={l3.length}
+      l1Count={l1Total}
+      l2Count={l2Total}
+      l3Count={l3Total}
       l1Earned={l1Earned}
       l2Earned={l2Earned}
       l3Earned={l3Earned}

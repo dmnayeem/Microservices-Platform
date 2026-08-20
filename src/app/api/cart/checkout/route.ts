@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
         {
           error: "Insufficient wallet balance",
           shortBy: sub(total, buyer.cashBalance).toNumber(),
-          details: `Need $${total.toFixed(2)}, have $${toNum(buyer.cashBalance).toFixed(2)}.`,
+          details: `Need ${usd(total)}, have ${usd(toNum(buyer.cashBalance))}.`,
         },
         { status: 402 }
       );
@@ -129,6 +130,17 @@ export async function POST(request: NextRequest) {
         const { fee, sellerAmount } = splitPrice(toNum(item.listing.price), bps);
         return { item, bps, fee, sellerAmount };
       })
+    );
+
+    // Lock ORDER matters. The loop below locks each listing and then its
+    // seller's user row; taking them in cart order meant two buyers whose carts
+    // contain the same two sellers in opposite order could deadlock (Postgres
+    // resolves that by killing one — a failed checkout, seemingly at random).
+    // Sorting gives every transaction the same global acquisition order.
+    itemPlans.sort(
+      (a, b) =>
+        a.item.listing.sellerId.localeCompare(b.item.listing.sellerId) ||
+        a.item.listing.id.localeCompare(b.item.listing.id)
     );
 
     const result = await prisma.$transaction(async (tx) => {

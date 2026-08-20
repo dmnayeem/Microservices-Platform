@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
@@ -11,11 +12,16 @@ import { getUserDayContext } from "@/lib/user-day";
  * cap are re-checked INSIDE a user-row lock, so concurrent requests can't farm
  * multiple rewards from a single interval and the daily cap is authoritative.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Reward claim. Correctness comes from the unique ledger constraints; this
+  // keeps a claim flood from being absorbed by the database.
+  const limited = await enforceDbRateLimit(request, "claim", session.user.id, 30, 60_000);
+  if (limited) return limited;
+
   const userId = session.user.id;
 
   const cfg = await getBrowseEarnConfig();

@@ -35,7 +35,7 @@ interface Props {
   currentUserId: string | null;
 }
 
-const POLL_MS = 8000;
+const POLL_MS = 15000; // bids move in minutes, not seconds
 
 export function BidPanel({
   listingId,
@@ -48,6 +48,8 @@ export function BidPanel({
   currentUserId,
 }: Props) {
   const [bids, setBids] = useState<BidRow[]>([]);
+  // Server-side total — `bids` is only the most recent 25.
+  const [totalBids, setTotalBids] = useState(0);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
@@ -58,7 +60,10 @@ export function BidPanel({
     try {
       const r = await fetch(`/api/marketplace/listings/${listingId}/bids`);
       const d = await r.json().catch(() => ({}));
-      if (r.ok) setBids((d.bids ?? []) as BidRow[]);
+      if (r.ok) {
+        setBids((d.bids ?? []) as BidRow[]);
+        setTotalBids(Number(d.totalBids ?? (d.bids ?? []).length));
+      }
     } catch {
       // ignore
     } finally {
@@ -68,8 +73,19 @@ export function BidPanel({
 
   useEffect(() => {
     refresh();
-    const handle = setInterval(refresh, POLL_MS);
-    return () => clearInterval(handle);
+    const handle = setInterval(() => {
+      // Skip while the tab is hidden — a backgrounded tab polled forever,
+      // which at scale is load nobody is even looking at.
+      if (document.visibilityState !== "hidden") refresh();
+    }, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(handle);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId]);
 
@@ -272,7 +288,7 @@ export function BidPanel({
             onClick={() => setShowHistory((v) => !v)}
             className="text-[11px] text-gray-400 hover:text-white underline"
           >
-            {showHistory ? "Hide" : "Show"} bid history ({bids.length})
+            {showHistory ? "Hide" : "Show"} bid history ({totalBids})
           </button>
           {showHistory && (
             <ul className="mt-2 space-y-1 max-h-48 overflow-y-auto">

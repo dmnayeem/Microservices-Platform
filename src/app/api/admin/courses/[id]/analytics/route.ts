@@ -1,3 +1,4 @@
+import { toNum } from "@/lib/money";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -95,7 +96,9 @@ export async function GET(
     }
 
     const enrollments = enrollAgg._count._all;
-    const revenue = (enrollAgg._sum.pricePaid ?? 0);
+    // toNum: a Prisma Decimal serializes to JSON as a STRING, so returning it
+  // raw made every client that typed this as `number` quietly wrong.
+  const revenue = toNum(enrollAgg._sum.pricePaid ?? 0);
     const completions = completionAgg;
 
     return NextResponse.json({

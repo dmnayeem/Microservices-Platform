@@ -21,7 +21,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 export interface PackageData {
   tier: string;
@@ -335,7 +335,7 @@ function OverviewTab({
             <PowerCell
               icon={CreditCard}
               label="Min withdrawal"
-              value={`$${currentPackage.minWithdrawal.toFixed(2)}`}
+              value={`${usd(currentPackage.minWithdrawal)}`}
               tone="emerald"
             />
             <PowerCell
@@ -344,7 +344,7 @@ function OverviewTab({
               value={
                 currentPackage.priceMonthly === 0
                   ? "Free"
-                  : `$${currentPackage.priceMonthly.toFixed(2)}/mo`
+                  : `${usd(currentPackage.priceMonthly)}/mo`
               }
               tone="indigo"
             />
@@ -503,7 +503,7 @@ function HistoryTab({
               </p>
             </div>
             <span className="text-sm font-bold text-emerald-400 tabular-nums">
-              ${s.amount.toFixed(2)}
+              {usd(s.amount)}
             </span>
           </div>
         );

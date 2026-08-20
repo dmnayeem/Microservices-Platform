@@ -27,12 +27,13 @@ import {
   Calendar,
 } from "lucide-react";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
+import { StatCard } from "@/components/user/primitives/stat-card";
 import { TransactionRow } from "@/components/user/primitives/transaction-row";
 import { TransactionHistory } from "@/components/user/wallet/transaction-history";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { deriveSource } from "@/lib/tx-sources";
 import { History } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 
 export interface WalletTransaction {
   id: string;
@@ -81,7 +82,8 @@ export interface WalletViewProps {
   referralStats: ReferralStats;
   pendingWithdrawals: number;
   /** Admin-configurable points-per-$1 rate (default 1000). */
-  pointsPerUsd?: number;
+  /** Points per USD (admin setting) — required, see BalanceCard. */
+  pointsPerUsd: number;
   /** Min points before the convert-to-cash option unlocks. */
   convertThreshold?: number;
   /** Effective withdrawal fee % (admin setting minus package discount). */
@@ -102,7 +104,7 @@ export function WalletView(props: WalletViewProps) {
   }, []);
 
   const isFreeTier = props.packageTier === "FREE";
-  const pointsPerUsd = props.pointsPerUsd ?? 1000;
+  const pointsPerUsd = props.pointsPerUsd;
 
   return (
     <div className="space-y-5">
@@ -316,7 +318,7 @@ function ConvertCard({
             <span className="text-gray-500">
               Balance {points.toLocaleString()} pts · min {minConvert.toLocaleString()}
             </span>
-            <span className="text-sky-300 font-semibold tabular-nums">≈ ${previewUsd.toFixed(2)}</span>
+            <span className="text-sky-300 font-semibold tabular-nums">≈ {usd(previewUsd)}</span>
           </div>
         </>
       ) : (
@@ -400,52 +402,35 @@ function BalanceTab({
 
   return (
     <div className="space-y-4">
-      {/* Earnings dashboard — lifetime + this-month + today at a glance */}
+      {/* Earnings dashboard — lifetime + this-month + today at a glance.
+          These were four hand-rolled tiles with `text-2xl … truncate` in a
+          ~134px box, so a 5-figure balance clipped ($12,345.67 needs ~144px).
+          StatCard is the one tile that handles that. */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="min-w-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
-          <div className="flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 truncate">
-              Total Earn
-            </span>
-          </div>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
-            ${totalEarnings.toFixed(2)}
-          </p>
-        </div>
-        <div className="min-w-0 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
-          <div className="flex items-center gap-1.5">
-            <ArrowUpRight className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-            <span className="text-[10px] uppercase tracking-wider font-bold text-purple-400 truncate">
-              Total Income
-            </span>
-          </div>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
-            ${totalWithdrawn.toFixed(2)}
-          </p>
-        </div>
-        <div className="min-w-0 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span className="text-[10px] uppercase tracking-wider font-bold text-blue-400 truncate">
-              Monthly Income
-            </span>
-          </div>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
-            ${monthlyIncome.toFixed(2)}
-          </p>
-        </div>
-        <div className="min-w-0 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-          <div className="flex items-center gap-1.5">
-            <Gift className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 truncate">
-              Today&apos;s Referral
-            </span>
-          </div>
-          <p className="text-2xl font-extrabold text-white tabular-nums mt-1 truncate">
-            ${todayReferralBonus.toFixed(2)}
-          </p>
-        </div>
+        <StatCard
+          label="Total Earn"
+          value={usd(totalEarnings)}
+          icon={<TrendingUp className="w-5 h-5" />}
+          tone="green"
+        />
+        <StatCard
+          label="Total Income"
+          value={usd(totalWithdrawn)}
+          icon={<ArrowUpRight className="w-5 h-5" />}
+          tone="purple"
+        />
+        <StatCard
+          label="Monthly Income"
+          value={usd(monthlyIncome)}
+          icon={<Calendar className="w-5 h-5" />}
+          tone="blue"
+        />
+        <StatCard
+          label="Today's Referral"
+          value={usd(todayReferralBonus)}
+          icon={<Gift className="w-5 h-5" />}
+          tone="amber"
+        />
       </div>
 
       {/* Clarifier — answers "where do converted points show in Total Earn?" */}
@@ -610,7 +595,7 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">
-                    ${d.amount.toFixed(2)}
+                    {usd(d.amount)}
                     <span className="ml-2 text-xs font-medium text-gray-500">
                       {d.method.replace("MANUAL_", "")}
                     </span>
@@ -650,7 +635,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
           </p>
         </div>
         <p className="text-4xl font-extrabold text-white tabular-nums mt-2">
-          ${stats.totalEarned.toFixed(2)}
+          {usd(stats.totalEarned)}
         </p>
         <p className="text-xs text-purple-200/80 mt-1">
           From {totalCount} {totalCount === 1 ? "referral" : "referrals"} across
@@ -733,7 +718,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
               </div>
               <div className="text-right">
                 <p className="text-base font-extrabold text-white tabular-nums">
-                  ${row.earned.toFixed(2)}
+                  {usd(row.earned)}
                 </p>
                 <p className="text-[10px] text-gray-500">earned</p>
               </div>
@@ -803,7 +788,7 @@ function WithdrawTab({
           Withdrawable cash
         </p>
         <p className="text-4xl font-extrabold text-white tabular-nums mt-1">
-          ${cashBalance.toFixed(2)}
+          {usd(cashBalance)}
         </p>
         <p className="text-sm text-gray-500 mt-0.5">
           From course/marketplace/affiliate sales, deposits &amp; converted points
@@ -838,8 +823,8 @@ function WithdrawTab({
         </div>
         {feePct > 0 && cashBalance > 0 && (
           <p className="mt-2 text-[11px] text-gray-500">
-            On ${cashBalance.toFixed(2)} you&apos;d receive ~$
-            {(cashBalance * (1 - feePct / 100)).toFixed(2)} after the {feePct.toFixed(1)}% fee.
+            On {usd(cashBalance)} you&apos;d receive ~
+            {usd(cashBalance * (1 - feePct / 100))} after the {feePct.toFixed(1)}% fee.
           </p>
         )}
 

@@ -43,19 +43,22 @@ export async function GET() {
   // All daily boundaries use the user's LOCAL midnight (country-based).
   const { startOfDayUtc, dayKey: todayKey, tz } = await getUserDayContext(userId);
 
-  const todayAgg = await prisma.transaction.aggregate({
-    // Today's earnings (points) — completed EARNING/BONUS transactions today.
-    where: {
-      userId,
-      status: "COMPLETED",
-      type: { in: ["EARNING", "BONUS"] },
-      createdAt: { gte: startOfDayUtc },
-    },
-    _sum: { points: true },
-  });
-  const referralCount = await prisma.user.count({
-    where: { referredById: userId },
-  });
+  // These two are independent of each other and of the mission lookup below, so
+  // they run together. Awaiting them in sequence added a full Accelerate
+  // round-trip each — on an endpoint the feed calls on every mount.
+  const [todayAgg, referralCount] = await Promise.all([
+    prisma.transaction.aggregate({
+      // Today's earnings (points) — completed EARNING/BONUS transactions today.
+      where: {
+        userId,
+        status: "COMPLETED",
+        type: { in: ["EARNING", "BONUS"] },
+        createdAt: { gte: startOfDayUtc },
+      },
+      _sum: { points: true },
+    }),
+    prisma.user.count({ where: { referredById: userId } }),
+  ]);
   // Highest-accessLevel active mission template the user qualifies for.
   const missionRaw = await prisma.dailyMissionTemplate.findFirst({
     where: {

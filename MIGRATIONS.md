@@ -6,9 +6,50 @@ CLI runs `migrate` directly against it — no separate `directUrl`, and the shad
 `migrate dev` is auto-provisioned.
 
 The history was **baselined** on 2026-07-25: the schema built incrementally with `db push` during early
-development was captured as `prisma/migrations/0_init` and marked already-applied (`migrate resolve --applied`),
-so the migration history, `schema.prisma`, and the live database all agree (verified with
-`migrate diff … --exit-code` → "No difference detected").
+development was captured as `prisma/migrations/0_init` and marked already-applied (`migrate resolve --applied`).
+
+### State as of 2026-08-20
+
+`migrate status` → **"Database schema is up to date"** (32 migrations). Getting there
+required marking `20260816185008_submission_feedback_penalty` as applied — its two
+columns were already live, only the history row was missing.
+
+`migrate diff --from-config-datasource --to-schema` (live DB vs `schema.prisma`) is
+clean apart from cosmetics: four FK constraints Prisma would re-declare with a
+different `onUpdate`, and four `DROP DEFAULT`s. **Deliberately not applied** — they
+change nothing at runtime and would mean dropping and re-adding foreign keys on a
+live database.
+
+Known, still open: several objects reached the live database via `db push` rather
+than a migration file, so `prisma/migrations/` alone would **not** rebuild the live
+schema from scratch. That only matters for a brand-new environment, not for the
+running one. Enumerating them needs either a shadow database or a direct
+(non-Accelerate) connection, because `db execute` cannot return query results.
+
+## Adding an index to a live database
+
+`CREATE INDEX` takes a lock that blocks writes for the duration of the build, so on a
+database with real traffic use `CONCURRENTLY`. It **cannot run inside a transaction**,
+which means it will fail under `migrate deploy` and cannot be batched — Prisma sends a
+whole `db execute` file as one command. The working procedure (used for
+`20260820120000_hot_path_indexes`):
+
+1. Write the migration with `CREATE INDEX CONCURRENTLY IF NOT EXISTS …`.
+2. Split it and apply **one statement per `prisma db execute --file` invocation**.
+3. Check nothing was left half-built — a failed concurrent build leaves an invalid
+   index behind:
+   ```sql
+   DO $$ DECLARE bad int; BEGIN
+     SELECT count(*) INTO bad FROM pg_index WHERE NOT indisvalid;
+     IF bad > 0 THEN RAISE EXCEPTION 'INVALID_INDEXES_PRESENT: %', bad; END IF;
+   END $$;
+   ```
+   (`db execute` reports success/failure only, so assert inside a `DO` block rather
+   than trying to SELECT a result.)
+4. `npx prisma migrate resolve --applied <migration_name>`.
+
+Note `db execute` in Prisma 7 takes no `--schema` flag; it reads the datasource from
+`prisma.config.ts`.
 
 ## Everyday workflow — changing the schema
 

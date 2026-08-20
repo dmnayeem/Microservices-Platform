@@ -1,17 +1,27 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
+import { PACKAGES_TAG } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
 
 // GET /api/packages - Get available packages
+const cachedActivePackages = unstable_cache(
+  async () =>
+    prisma.package.findMany({ where: { isActive: true }, orderBy: { order: "asc" } }),
+  ["packages-active"],
+  { revalidate: 300, tags: [PACKAGES_TAG] }
+);
+
 export async function GET() {
   try {
     const session = await auth();
 
-    const packages = await prisma.package.findMany({
-      where: { isActive: true },
-      orderBy: { order: "asc" },
-    });
+    // SHARED and admin-mutated: cached behind a tag so an admin price change
+    // propagates immediately instead of being pinned for a TTL. A stale price
+    // here would be a user quoted one amount and charged another.
+    const packages = await cachedActivePackages();
 
     let userPackageId: string | null = null;
     let userAccessLevel = 0;
@@ -194,7 +204,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         type: "SYSTEM",
         title: "Package Subscription Submitted",
-        message: `Your subscription request for ${pkg.name} ($${price.toFixed(2)}) with transaction ID "${transactionId}" has been submitted and is pending admin verification.`,
+        message: `Your subscription request for ${pkg.name} (${usd(price)}) with transaction ID "${transactionId}" has been submitted and is pending admin verification.`,
         data: {
           subscriptionId: subscription.id,
           packageId: pkg.id,

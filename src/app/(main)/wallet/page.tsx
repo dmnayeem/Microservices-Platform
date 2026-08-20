@@ -24,8 +24,8 @@ export default async function WalletPage() {
     user,
     transactions,
     pendingWithdrawalsCount,
-    completedWithdrawals,
-    refEarnings,
+    withdrawnAgg,
+    refEarningsByLevel,
     l1Users,
     deposits,
     kycPrompt,
@@ -52,14 +52,20 @@ export default async function WalletPage() {
       prisma.withdrawal.count({
         where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
       }),
-      prisma.withdrawal.findMany({
+      // Sums, not rows. These used to pull EVERY completed withdrawal and EVERY
+      // referral-earning row for the user just to add them up in JS — unbounded,
+      // and growing for exactly the users who use the platform most.
+      prisma.withdrawal.aggregate({
         where: { userId, status: "COMPLETED" },
-        select: { amount: true, createdAt: true },
+        _sum: { amount: true },
       }),
-      prisma.referralEarning.findMany({
+      prisma.referralEarning.groupBy({
+        by: ["level"],
         where: { userId },
-        select: { level: true, amount: true, createdAt: true },
-      }),
+        _sum: { amount: true },
+      }) as unknown as Promise<
+        { level: number; _sum: { amount: unknown } }[]
+      >,
       prisma.user.findMany({
         where: { referredById: userId },
         select: { id: true },
@@ -82,10 +88,7 @@ export default async function WalletPage() {
 
   if (!user) redirect("/login");
 
-  const totalWithdrawn = completedWithdrawals.reduce(
-    (sum, w) => sum + Number(w.amount),
-    0
-  );
+  const totalWithdrawn = toNum(withdrawnAgg._sum.amount ?? 0);
 
   // Time boundaries in the user's local day (matches the daily-reset boundary).
   const tz = resolveUserTimezone({
@@ -96,16 +99,23 @@ export default async function WalletPage() {
   const dayStart = localStartOfDayUtc(tz, now);
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
+  // The two windowed sums need the user's timezone, which is only known after
+  // the batch above — so they run as their own parallel pair rather than by
+  // filtering a full row set in memory.
+  const [monthlyAgg, todayRefAgg] = await Promise.all([
+    prisma.withdrawal.aggregate({
+      where: { userId, status: "COMPLETED", createdAt: { gte: monthStart } },
+      _sum: { amount: true },
+    }),
+    prisma.referralEarning.aggregate({
+      where: { userId, createdAt: { gte: dayStart } },
+      _sum: { amount: true },
+    }),
+  ]);
   // Income = money withdrawn. Monthly income = withdrawn this month.
-  const monthlyIncome = completedWithdrawals.reduce(
-    (sum, w) => (w.createdAt >= monthStart ? sum + Number(w.amount) : sum),
-    0
-  );
+  const monthlyIncome = toNum(monthlyAgg._sum.amount ?? 0);
   // Today's referral bonus (USD) — referral earnings credited since local midnight.
-  const todayReferralBonus = refEarnings.reduce(
-    (sum, r) => (r.createdAt >= dayStart ? sum + Number(r.amount ?? 0) : sum),
-    0
-  );
+  const todayReferralBonus = toNum(todayRefAgg._sum.amount ?? 0);
 
   // Compute L2 (children of L1 users) and L3 (grandchildren) counts
   const l1Ids = l1Users.map((u) => u.id);
@@ -132,8 +142,8 @@ export default async function WalletPage() {
     l3Earned: 0,
     totalEarned: 0,
   };
-  for (const r of refEarnings) {
-    const amt = Number(r.amount ?? 0);
+  for (const r of refEarningsByLevel) {
+    const amt = toNum((r._sum.amount ?? 0) as never);
     if (r.level === 1) stats.l1Earned += amt;
     else if (r.level === 2) stats.l2Earned += amt;
     else if (r.level === 3) stats.l3Earned += amt;

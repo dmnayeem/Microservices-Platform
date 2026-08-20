@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TaskStatus } from "@/generated/prisma";
-import { getEffectivePackage } from "@/lib/packages";
 import { getUserDayContext } from "@/lib/user-day";
 import { getSetting } from "@/lib/system-settings";
-import { taskAudienceWhere } from "@/lib/task-targeting";
+import {
+  getTaskViewerContext,
+  publishedQuizWhere,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 
 // GET /api/tasks/summary — per-task-type daily aggregates for the category grid
 // on /tasks: how many tasks of each type the viewer is eligible for, how many
@@ -18,36 +20,19 @@ export async function GET() {
   const userId = session.user.id;
 
   try {
-    const [me, pkg, day] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          level: true,
-          country: true,
-          region: true,
-          division: true,
-          district: true,
-          subDistrict: true,
-          postalCode: true,
-          gender: true,
-          dateOfBirth: true,
-        },
-      }),
-      getEffectivePackage(userId).catch(() => null),
+    const [ctx, day] = await Promise.all([
+      getTaskViewerContext(userId),
       getUserDayContext(userId),
     ]);
-    const level = me?.level ?? 0;
-    const accessLevel = pkg?.accessLevel ?? 0;
+    if (!ctx) return NextResponse.json({ summary: {} });
 
-    // STRICT audience targeting — same rules as the served list, so category
-    // counts never overstate what the viewer can actually open.
-    const eligible = {
-      status: TaskStatus.ACTIVE,
-      hidden: false,
-      minLevel: { lte: level },
-      requiredAccessLevel: { lte: accessLevel },
-      AND: taskAudienceWhere(me ?? {}),
-    };
+    // EXACTLY the where the served list uses — these tile counts used to omit
+    // the start/expiry windows and the per-plan type gate, so they promised
+    // more tasks than /tasks would actually show.
+    const eligible = visibleTaskWhere(ctx.viewer, {
+      accessLevel: ctx.accessLevel,
+      allowedTypes: ctx.allowedTypes,
+    });
 
     // Eligible active tasks per type + total earnable XP; the board aggregate
     // (board-only tasks, any type); standalone published quizzes; active
@@ -76,7 +61,17 @@ export async function GET() {
         _count: { _all: number };
         _sum: { xpReward: number | null };
       }>,
-      prisma.quiz.count({ where: { status: "PUBLISHED" } }).catch(() => 0),
+      // Quiz GAMES (the standalone Quiz model). Same gate /quizzes applies —
+      // counting bare PUBLISHED ignored the level/plan requirements and
+      // overstated the tile.
+      prisma.quiz
+        .count({
+          where: publishedQuizWhere({
+            level: ctx.viewer.level,
+            accessLevel: ctx.accessLevel,
+          }),
+        })
+        .catch(() => 0),
       prisma.offerwallConfig.count({ where: { isActive: true } }).catch(() => 0),
       prisma.taskSubmission.findMany({
         where: {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { getEffectivePackage } from "@/lib/packages";
 import { claimEvent } from "@/lib/events";
@@ -12,6 +13,11 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Reward claim. Correctness comes from the unique ledger constraints; this
+  // keeps a claim flood from being absorbed by the database.
+  const limited = await enforceDbRateLimit(req, "claim", session.user.id, 30, 60_000);
+  if (limited) return limited;
+
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as {
     proofUrl?: string;

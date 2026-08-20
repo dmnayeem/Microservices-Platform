@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
+import { pruneRateLimitHits } from "@/lib/rate-limit-db";
 
 /**
  * Retention pruning for append-only, high-volume tables (view/impression logs,
@@ -11,7 +12,16 @@ import { getSetting } from "@/lib/system-settings";
 
 const DAY = 86_400_000;
 const BATCH = 5_000;
-const MAX_BATCHES = 20; // ≤100k rows per model per run
+/**
+ * Safety stop, not the normal exit. The loop below runs until a table is
+ * actually drained or the time budget is spent — a fixed batch cap silently
+ * capped deletion at 100k rows/model/day, which is BELOW the daily insert rate
+ * of AdEngagement and PageVisitDaily. Retention then falls permanently behind
+ * while still reporting success, and the tables grow without bound.
+ */
+const MAX_BATCHES = 400; // ≤2M rows per model per run
+/** Wall-clock budget per model, so one huge table can't starve the rest. */
+const BUDGET_MS = 20_000;
 
 interface RetentionConfig {
   views: number;
@@ -31,12 +41,16 @@ async function pruneBatched(
   del: (ids: string[]) => Promise<unknown>
 ): Promise<number> {
   let total = 0;
+  const deadline = Date.now() + BUDGET_MS;
   for (let i = 0; i < MAX_BATCHES; i++) {
     const rows = await find();
     if (rows.length === 0) break;
     await del(rows.map((r) => r.id));
     total += rows.length;
+    // Drained this table.
     if (rows.length < BATCH) break;
+    // Out of budget — the next run picks up where this one stopped.
+    if (Date.now() >= deadline) break;
   }
   return total;
 }
@@ -92,6 +106,22 @@ export async function pruneOldLogs(): Promise<Record<string, number>> {
     () => prisma.notification.findMany({ where: { isRead: true, createdAt: { lt: cNotif } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.notification.deleteMany({ where: { id: { in: ids } } })
   );
+
+  // Idempotency keys are only meaningful for the life of a retry (minutes), but
+  // one row is written per money POST and each stores the full JSON response.
+  // The table has an index built for pruning and nothing ever pruned it.
+  r.idempotencyKey = await pruneBatched(
+    () =>
+      prisma.idempotencyKey.findMany({
+        where: { createdAt: { lt: new Date(now - 2 * DAY) } },
+        select: { id: true },
+        take: BATCH,
+      }),
+    (ids) => prisma.idempotencyKey.deleteMany({ where: { id: { in: ids } } })
+  );
+
+  // Expired shared rate-limit counters.
+  r.rateLimitHit = await pruneRateLimitHits();
 
   return r;
 }

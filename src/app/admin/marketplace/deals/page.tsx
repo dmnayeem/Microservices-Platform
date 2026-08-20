@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -75,9 +76,9 @@ export default async function AdminDealsPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-extrabold text-white">${toNum(d.amount).toFixed(2)}</p>
+                  <p className="text-sm font-extrabold text-white">{usd(toNum(d.amount))}</p>
                   {toNum(d.adminFee) > 0 && (
-                    <p className="text-[10px] text-amber-300">fee ${toNum(d.adminFee).toFixed(2)}</p>
+                    <p className="text-[10px] text-amber-300">fee {usd(toNum(d.adminFee))}</p>
                   )}
                 </div>
                 <Link

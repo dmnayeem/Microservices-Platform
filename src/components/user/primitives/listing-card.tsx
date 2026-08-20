@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { Star, Coins } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -90,7 +90,7 @@ export function ListingCard({
                 {price.toLocaleString()}
               </>
             ) : (
-              <>${price.toFixed(2)}</>
+              <>{usd(price)}</>
             )}
           </span>
           {rating !== undefined && (

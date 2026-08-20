@@ -1,6 +1,12 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
 import { PrismaPg } from "@prisma/adapter-pg";
+import {
+  noteDegradedRead,
+  noteFailedRead,
+  noteRetriedRead,
+  noteRetryAttempt,
+} from "@/lib/db-health";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
@@ -48,7 +54,14 @@ function isTransientAccelerateError(e: unknown): boolean {
 const RETRY_BACKOFF_MS = [250, 500, 1000, 2000];
 
 function createPrismaClient() {
-  const url = process.env.DATABASE_URL!;
+  // Local dev prefers a DIRECT connection when one is configured, so a Prisma
+  // Accelerate incident can't block development. (Accelerate is a hosted proxy;
+  // when its workers fail to bootstrap, every query here dies with P6008 even
+  // though the database itself is perfectly healthy.) Production always uses
+  // DATABASE_URL so `cacheStrategy` keeps working at scale.
+  const url =
+    (process.env.NODE_ENV !== "production" && process.env.DIRECT_DATABASE_URL) ||
+    process.env.DATABASE_URL!;
   // Accelerate proxy URLs use the prisma:// (prisma+postgres://) scheme; a plain
   // postgres:// is a DIRECT connection, made via the pg driver adapter. Pick the
   // matching constructor option so the same client works with either.
@@ -82,15 +95,20 @@ function createPrismaClient() {
           let attempt = 0;
           for (;;) {
             try {
-              return await query(args);
+              const res = await query(args);
+              // Succeeded, but only because we retried — that is the signal.
+              if (attempt > 0) noteRetriedRead();
+              return res;
             } catch (e) {
               if (
                 !retryable ||
                 attempt >= RETRY_BACKOFF_MS.length ||
                 !isTransientAccelerateError(e)
               ) {
+                if (retryable && attempt > 0) noteFailedRead();
                 throw e;
               }
+              noteRetryAttempt(e);
               await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS[attempt]));
               attempt++;
             }
@@ -104,6 +122,34 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
+}
+
+/**
+ * A read that DEGRADES instead of throwing.
+ *
+ * The retry extension above rides out a brief blip, but a sustained upstream
+ * failure (an Accelerate incident, a waking database) still surfaces as a thrown
+ * error — and a single non-critical query throwing inside a server component
+ * takes the whole page down with it. Wrap the reads a page can render without.
+ *
+ * Use it ONLY for non-critical data. Anything the user could act on — a balance,
+ * a limit, an eligibility check — must still throw: showing a confidently wrong
+ * number is worse than showing an error.
+ *
+ * @param label  identifies the read in the log when it degrades
+ */
+export async function safeRead<T>(
+  p: Promise<T>,
+  fallback: T,
+  label = "query"
+): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    noteDegradedRead(label);
+    console.error(`[safeRead] ${label} failed — degraded to fallback:`, e);
+    return fallback;
+  }
 }
 
 export default prisma;

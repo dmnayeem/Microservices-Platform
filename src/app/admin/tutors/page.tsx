@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -165,7 +166,7 @@ export default async function AdminTutorsPage() {
             header: "Earnings",
             cell: (t) => (
               <span className="text-emerald-300 tabular-nums">
-                ${(t.totalEarningsCents / 100).toFixed(2)}
+                {usd((t.totalEarningsCents / 100))}
               </span>
             ),
           },

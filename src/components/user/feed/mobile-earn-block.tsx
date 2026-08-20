@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Coins, Flame, Gift, Check, Loader2, Zap } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, pts } from "@/lib/utils";
 import { notifyCenter } from "@/lib/notify-center";
 import {
   QUICK_EARN_ICONS,
@@ -91,9 +91,9 @@ export function MobileEarnBlock({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-eyebrow">Your balance</p>
-              <p className="text-2xl font-extrabold text-white tabular-nums mt-0.5 inline-flex items-center gap-1.5">
-                <Coins className="w-5 h-5 text-amber-400" />
-                {data.balance.points.toLocaleString()}
+              <p className="text-2xl font-extrabold text-white tabular-nums mt-0.5 inline-flex items-center gap-1.5 min-w-0 whitespace-nowrap">
+                <Coins className="w-5 h-5 text-amber-400 shrink-0" />
+                {pts(data.balance.points)}
               </p>
             </div>
             <div className="text-right">

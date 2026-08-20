@@ -1,4 +1,5 @@
 "use client";
+import { usd } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -99,7 +100,7 @@ export function CartView() {
         }
         throw new Error(data.error ?? data.details ?? `HTTP ${res.status}`);
       }
-      toast.success(`Checkout complete · $${data.total.toFixed(2)} charged`);
+      toast.success(`Checkout complete · ${usd(data.total)} charged`);
       setItems([]);
       router.push("/marketplace/orders");
       router.refresh();
@@ -175,7 +176,7 @@ export function CartView() {
                     {i.title}
                   </Link>
                   <p className="text-xs text-gray-500 tabular-nums">
-                    ${i.price.toFixed(2)}
+                    {usd(i.price)}
                   </p>
                   {!i.available && (
                     <p className="text-[11px] text-red-400 mt-0.5">
@@ -204,11 +205,11 @@ export function CartView() {
               <span>
                 {items.length} listing{items.length === 1 ? "" : "s"}
               </span>
-              <span className="tabular-nums">${total.toFixed(2)}</span>
+              <span className="tabular-nums">{usd(total)}</span>
             </div>
             <div className="border-t border-gray-800 pt-2 flex justify-between text-base font-bold text-white">
               <span>You pay</span>
-              <span className="tabular-nums">${total.toFixed(2)}</span>
+              <span className="tabular-nums">{usd(total)}</span>
             </div>
             <p className="text-[11px] text-gray-500">
               Charged from your wallet. The platform commission is deducted
@@ -226,7 +227,7 @@ export function CartView() {
             ) : (
               <CreditCard className="w-4 h-4" />
             )}
-            {hasUnavailable ? "Remove unavailable items first" : `Checkout · $${total.toFixed(2)}`}
+            {hasUnavailable ? "Remove unavailable items first" : `Checkout · ${usd(total)}`}
           </button>
         </>
       )}

@@ -31,15 +31,17 @@ export async function GET(request: NextRequest) {
       orderBy: { drawDate: "asc" },
     });
 
-    // Get ticket counts for each lottery
-    const ticketCounts = await Promise.all(
-      lotteries.map((l) =>
-        prisma.lotteryTicket.count({ where: { lotteryId: l.id } })
-      )
+    // Ticket counts for every lottery in ONE grouped query (was one count per
+    // lottery). Served by @@index([lotteryId, userId]).
+    const ticketGroups = (await prisma.lotteryTicket.groupBy({
+      by: ["lotteryId"],
+      where: { lotteryId: { in: lotteries.map((l) => l.id) } },
+      _count: { _all: true },
+    })) as unknown as { lotteryId: string; _count: { _all: number } }[];
+    const ticketCountMap = new Map<string, number>(
+      lotteries.map((l) => [l.id, 0])
     );
-    const ticketCountMap = new Map(
-      lotteries.map((l, idx) => [l.id, ticketCounts[idx]])
-    );
+    for (const g of ticketGroups) ticketCountMap.set(g.lotteryId, g._count._all);
 
     // Get user's tickets if authenticated
     const userTickets: Record<string, { count: number; tickets: string[] }> = {};

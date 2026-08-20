@@ -82,12 +82,14 @@ export default async function AdminLotteryPage({ searchParams }: PageProps) {
   // Get ticket value (estimate from active lotteries)
   const activeLotteryPrices = await prisma.lottery.findMany({
     where: { status: { in: ["ACTIVE", "UPCOMING"] } },
-    select: { ticketPrice: true, ticketsSold: true },
+    select: { ticketPrice: true, _count: { select: { tickets: true } } },
   });
-  const estimatedPoolValue = activeLotteryPrices.reduce(
-    (sum, l) => sum + l.ticketPrice * l.ticketsSold,
-    0
-  );
+  const estimatedPoolValue = (
+    activeLotteryPrices as unknown as {
+      ticketPrice: number;
+      _count: { tickets: number };
+    }[]
+  ).reduce((sum, l) => sum + l.ticketPrice * l._count.tickets, 0);
 
   const totalPages = Math.ceil(totalCount / pageSize);
   const canCreate = hasPermission(adminRole, "settings.edit");
@@ -234,7 +236,11 @@ export default async function AdminLotteryPage({ searchParams }: PageProps) {
                         </div>
                         <div className="flex items-center gap-1.5 text-gray-400">
                           <Ticket className="w-4 h-4" />
-                          {lottery.ticketsSold} / {lottery.maxTickets || "∞"} tickets
+                          {/* Live count — the purchase cap is enforced against
+                              a live count too, so the denormalized
+                              `ticketsSold` could show a different number here
+                              than the user's page. */}
+                          {lottery._count.tickets} / {lottery.maxTickets || "∞"} tickets
                         </div>
                         <div className="flex items-center gap-1.5 text-gray-400">
                           <DollarSign className="w-4 h-4" />

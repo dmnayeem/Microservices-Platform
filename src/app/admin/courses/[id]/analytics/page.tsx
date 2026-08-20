@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -157,7 +158,7 @@ export default async function CourseAnalyticsPage({
 
       {/* Conversion + revenue */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Stat icon={<Wallet />} tone="text-emerald-300" label="Revenue" value={`$${revenue.toFixed(2)}`} />
+        <Stat icon={<Wallet />} tone="text-emerald-300" label="Revenue" value={`${usd(revenue)}`} />
         <Stat icon={<BarChart3 />} tone="text-indigo-300" label="View → enrol" value={`${conversionRate.toFixed(1)}%`} />
         <Stat icon={<BarChart3 />} tone="text-cyan-300" label="Enrol → complete" value={`${completionRate.toFixed(1)}%`} />
       </div>
@@ -231,7 +232,7 @@ export default async function CourseAnalyticsPage({
                   </p>
                 </div>
                 <span className="text-xs text-emerald-300 tabular-nums whitespace-nowrap">
-                  ${e.pricePaid.toFixed(2)}
+                  {usd(e.pricePaid)}
                 </span>
               </li>
             ))}

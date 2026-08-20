@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -213,7 +214,7 @@ export async function PATCH(
         userId: request.userId,
         type: NotificationType.COURSE,
         title: "Refund approved 💸",
-        message: `$${refundAmount.toFixed(2)} for "${c.title}" was returned to your wallet.`,
+        message: `${usd(refundAmount)} for "${c.title}" was returned to your wallet.`,
         data: { courseId: c.id, refundRequestId: request.id, refundedAmount: refundAmount },
       },
     });
@@ -223,7 +224,7 @@ export async function PATCH(
           userId: c.tutorId,
           type: NotificationType.COURSE,
           title: "Refund processed",
-          message: `An admin approved a $${refundAmount.toFixed(2)} refund on "${c.title}". The commission has been clawed back.`,
+          message: `An admin approved a ${usd(refundAmount)} refund on "${c.title}". The commission has been clawed back.`,
           data: { courseId: c.id, refundRequestId: request.id, clawback: tutorAmount },
         },
       });

@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -252,7 +253,7 @@ export async function POST(request: NextRequest) {
         userId: listing.sellerId,
         type: NotificationType.WALLET,
         title: "Item Sold!",
-        message: `Your listing "${listing.title}" has been purchased for $${listing.price.toFixed(2)}.`,
+        message: `Your listing "${listing.title}" has been purchased for ${usd(listing.price)}.`,
         data: { purchaseId: purchase.id, listingId },
       },
     });

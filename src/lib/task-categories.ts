@@ -20,7 +20,7 @@ export const TASK_CATEGORY_META: TaskCategoryMeta[] = [
   { key: "quiz", label: "Quiz" },
   { key: "proxy", label: "Proxy" },
   { key: "board", label: "Board Tasks" },
-  { key: "quizzes", label: "Quizzes" },
+  { key: "quizzes", label: "Quiz Games" },
   { key: "offerwalls", label: "Offerwalls" },
 ];
 

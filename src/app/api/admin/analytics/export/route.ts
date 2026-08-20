@@ -1,3 +1,4 @@
+import { toNum } from "@/lib/money";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -333,8 +334,10 @@ export async function GET(request: NextRequest) {
             newUsers,
             completedTasks,
             withdrawalCount: withdrawals._count.id,
-            withdrawalAmount: withdrawals._sum.amount || 0,
-            referralEarnings: referralEarnings._sum.amount || 0,
+            // Decimals → numbers before they cross the JSON/CSV boundary
+            // (a raw Decimal serializes as a string).
+            withdrawalAmount: toNum(withdrawals._sum.amount ?? 0),
+            referralEarnings: toNum(referralEarnings._sum.amount ?? 0),
           };
         })
       );

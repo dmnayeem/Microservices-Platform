@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
+import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
@@ -16,9 +18,58 @@ import {
 import { getUserDayContext } from "@/lib/user-day";
 import { getAdDensity } from "@/lib/ad-density";
 import { getSetting } from "@/lib/system-settings";
-import type { Prisma, Post } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 
 // GET /api/feed - Get feed posts
+// Exactly the columns `formatPost` below reads. Without a select, Prisma
+// returns EVERY column for all 500 pool rows — content, images[], and the
+// pollOptions/linkPreview JSON — which is 1-2 MB per feed request through the
+// Accelerate proxy, and heads straight for its response-size cap (P6009, which
+// this codebase deliberately never retries).
+const FEED_POST_SELECT = {
+  id: true,
+  userId: true,
+  content: true,
+  images: true,
+  backgroundStyle: true,
+  isPublic: true,
+  isPinned: true,
+  isAnnouncement: true,
+  isPromoted: true,
+  promotedUntil: true,
+  promotedNote: true,
+  boostedUntil: true,
+  likesCount: true,
+  commentsCount: true,
+  sharesCount: true,
+  viewsCount: true,
+  linkClicksCount: true,
+  uniqueLinkClicksCount: true,
+  pollOptions: true,
+  pollEndsAt: true,
+  donationGoal: true,
+  donationCollected: true,
+  linkPreview: true,
+  groupId: true,
+  createdAt: true,
+  lastActivityAt: true,
+} as const;
+
+/** A pool row: exactly the columns FEED_POST_SELECT asks for. */
+type FeedPostRow = Prisma.PostGetPayload<{ select: typeof FEED_POST_SELECT }>;
+
+/**
+ * Total post count for the UNFILTERED main feed. It is the same number for every
+ * viewer, it only feeds a `totalPages` that an infinite-scroll feed never renders,
+ * and it is a full count over the largest table in the database — previously run
+ * on every feed request and every 30s poll. Cached for a minute.
+ */
+const cachedMainFeedCount = unstable_cache(
+  async () => prisma.post.count({ where: { isPublic: true, isHidden: false } }),
+  ["feed-main-total"],
+  { revalidate: 60 }
+);
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -65,7 +116,8 @@ export async function GET(request: NextRequest) {
     const isMainFeed = !userId && !groupId && !tag && !search;
     const organicWhere = { ...where, isAnnouncement: false, isPromoted: false };
 
-    let posts: Post[];
+    // Narrowed to FEED_POST_SELECT — not the full Post row.
+    let posts: FeedPostRow[];
     let total: number;
     // Max activity across the organic feed — the client's baseline for the live
     // "new activity" pill (see /api/feed/pulse). Only set on the main-feed pool
@@ -81,8 +133,15 @@ export async function GET(request: NextRequest) {
           where: organicWhere,
           orderBy: [{ isPinned: "desc" }, { lastActivityAt: "desc" }],
           take: POOL_SIZE,
+          select: FEED_POST_SELECT,
+          // The pool is IDENTICAL for every viewer — ranking, the per-viewer
+          // like/vote/follow state and the jitter are all applied after this, so
+          // caching it leaks nothing. A brand-new post can appear up to 15s late,
+          // and /api/feed/pulse (ttl 10) already drives the "new posts" pill, so
+          // the user gets a signal sooner than that anyway.
+          ...(isMainFeed ? { cacheStrategy: { ttl: 15, swr: 60 } } : {}),
         }),
-        prisma.post.count({ where }),
+        isMainFeed ? cachedMainFeedCount() : prisma.post.count({ where }),
       ]);
 
       // Viewer's follow set among pool authors → light ranking boost.
@@ -170,8 +229,14 @@ export async function GET(request: NextRequest) {
         ? [{ lastActivityAt: "desc" as const }]
         : [{ isPinned: "desc" as const }, { createdAt: "desc" as const }];
       [posts, total] = await Promise.all([
-        prisma.post.findMany({ where: organicWhere, orderBy, skip, take: limit }),
-        prisma.post.count({ where }),
+        prisma.post.findMany({
+          where: organicWhere,
+          orderBy,
+          skip,
+          take: limit,
+          select: FEED_POST_SELECT,
+        }),
+        isMainFeed ? cachedMainFeedCount() : prisma.post.count({ where }),
       ]);
     }
 
@@ -187,8 +252,11 @@ export async function GET(request: NextRequest) {
           where: { ...where, isAnnouncement: true },
           orderBy: [{ createdAt: "desc" }],
           take: 5,
+          select: FEED_POST_SELECT,
+          cacheStrategy: { ttl: 30, swr: 120 },
         }),
         prisma.post.findMany({
+          select: FEED_POST_SELECT,
           where: {
             ...where,
             isPromoted: true,
@@ -346,6 +414,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Creating a post is ~20 DB ops plus a server-side outbound fetch for the
+    // link preview, so it is a DoS amplifier as well as a spam vector. The
+    // per-plan daily limit below is a product rule; this is the abuse ceiling.
+    const limited = await enforceDbRateLimit(
+      request,
+      "post-create",
+      session.user.id,
+      20,
+      60_000
+    );
+    if (limited) return limited;
+
     const body = await request.json();
     const {
       content,
@@ -499,25 +579,26 @@ export async function POST(request: NextRequest) {
       const mentionedUsers = await resolveMentionedUsers(usernames);
       const filtered = mentionedUsers.filter((m) => m.id !== session.user!.id);
       if (filtered.length > 0) {
+        // One insert for all mentions.
+        await prisma.mention.createMany({
+          data: filtered.map((m) => ({
+            postId: post.id,
+            mentionedUserId: m.id,
+            mentionedById: session.user!.id,
+          })),
+          skipDuplicates: true,
+        });
+        // Concurrent, not sequential — see the same fix in the comments route.
         await Promise.all(
           filtered.map((m) =>
-            prisma.mention.create({
-              data: {
-                postId: post.id,
-                mentionedUserId: m.id,
-                mentionedById: session.user!.id,
-              },
-            })
+            awardSocialEarning({
+              postOwnerUserId: m.id,
+              actorUserId: session.user!.id,
+              action: "MENTION_RECEIVED",
+              postId: post.id,
+            }).catch(() => {})
           )
         );
-        for (const m of filtered) {
-          await awardSocialEarning({
-            postOwnerUserId: m.id,
-            actorUserId: session.user!.id,
-            action: "MENTION_RECEIVED",
-            postId: post.id,
-          });
-        }
       }
     }
 

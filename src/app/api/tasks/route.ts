@@ -1,27 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { TaskStatus, TaskType } from "@/generated/prisma";
+import { TaskType } from "@/generated/prisma";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
 import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
-import { taskAudienceWhere } from "@/lib/task-targeting";
-
-import type { PackageFeatureKey } from "@/lib/packages";
-
-// Map TaskType → per-type feature flag on Package. CUSTOM falls under the
-// generic `tasks` flag since it has no dedicated toggle.
-const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
-  SOCIAL: "socialTasks",
-  PROXY: "proxyTasks",
-  ARTICLE: "articleTasks",
-  VIDEO: "videoTasks",
-  QUIZ: "quizTasks",
-  SURVEY: "surveyTasks",
-  OFFERWALL: "offerwallTasks",
-  CUSTOM: "tasks",
-  APPINSTALL: "appInstall",
-};
+import {
+  TASK_TYPE_FEATURE,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 
 // GET /api/tasks - Fetch available tasks for user
 export async function GET(request: NextRequest) {
@@ -165,36 +152,14 @@ export async function GET(request: NextRequest) {
       (t) => packageHasFeature(userPackage, TASK_TYPE_FEATURE[t])
     );
 
-    const andClauses: Array<Record<string, unknown>> = [
-      { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
-      { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
-      { minLevel: { lte: user.level } },
-      { requiredAccessLevel: { lte: accessLevel } },
-      { type: { in: allowedTypes } },
-    ];
-
-    // Audience targeting (country + state/division/district/upazila + gender +
-    // age) — STRICT: a user missing a targeted attribute is excluded.
-    andClauses.push(
-      ...(taskAudienceWhere(user) as Array<Record<string, unknown>>)
-    );
-
-    const where: Record<string, unknown> = {
-      status: TaskStatus.ACTIVE,
-      // Super-admin hard hide (feature #3) — excluded from all user lists.
-      hidden: false,
-      AND: andClauses,
-    };
-
-    if (type) {
-      where.type = type;
-    }
-
-    if (category) {
-      where.categories = {
-        some: { name: category },
-      };
-    }
+    // ONE definition of task visibility — src/lib/task-visibility.ts. Every
+    // other task route builds its where from the same function now.
+    const where = visibleTaskWhere(user, {
+      accessLevel,
+      allowedTypes,
+      type,
+      category,
+    });
 
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
@@ -286,7 +251,13 @@ export async function GET(request: NextRequest) {
         socialAction: task.socialAction,
         autoApprove: task.autoApprove,
         expiresAt: task.expiresAt,
-        completedCount: submissionCountMap.get(task.id) || 0,
+        // `completedCount` is the CREDITED count the slot limit is enforced
+        // against (Task.completedCount). The number of attempts is a different
+        // thing and now ships under its own name — shipping attempts as
+        // "completedCount" made cards read "47 completed / 50" on a task that
+        // actually closes at 31.
+        completedCount: task.completedCount,
+        submissionCount: submissionCountMap.get(task.id) || 0,
         remainingSlots,
         dailyLimit,
         remainingToday,
@@ -322,7 +293,11 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
+        // `total` is the full page-able set; `shown` is what survived the
+        // per-user visibility filter below. Rendering `total` as "N tasks" was
+        // wrong whenever the two differed.
         total,
+        shown: visibleTasks.length,
         totalPages: Math.ceil(total / limit),
       },
       user: {

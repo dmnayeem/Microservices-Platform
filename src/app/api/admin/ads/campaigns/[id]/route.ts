@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -46,7 +47,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     targetUserId: campaign.advertiserId,
     summary:
       data.status === "ENDED"
-        ? `Ended campaign "${campaign.title}"${refunded ? ` — refunded $${refunded.toFixed(2)}` : ""}`
+        ? `Ended campaign "${campaign.title}"${refunded ? ` — refunded ${usd(refunded)}` : ""}`
         : `Updated campaign "${campaign.title}"`,
     meta: { fields: Object.keys(data), refunded },
   });
@@ -75,7 +76,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     entity: "AdCampaign",
     entityId: id,
     targetUserId: existing?.advertiserId ?? null,
-    summary: `Deleted campaign "${existing?.title ?? id}"${refunded ? ` — refunded $${refunded.toFixed(2)}` : ""}`,
+    summary: `Deleted campaign "${existing?.title ?? id}"${refunded ? ` — refunded ${usd(refunded)}` : ""}`,
     meta: { refunded },
   });
 

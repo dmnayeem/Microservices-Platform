@@ -1,4 +1,5 @@
 "use client";
+import { STAT_VALUE_CLASS } from "@/components/user/primitives/stat-card";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,7 +25,7 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { Avatar } from "@/components/user/primitives/avatar";
-import { cn } from "@/lib/utils";
+import { cn, usd } from "@/lib/utils";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 
 export interface ReferralUser {
@@ -159,7 +160,7 @@ export function ReferralsView({
           Total Referral Earnings
         </p>
         <p className="text-4xl font-extrabold text-white tabular-nums mt-1">
-          ${totalEarned.toFixed(2)}
+          {usd(totalEarned)}
         </p>
         <div className="flex items-center gap-3 text-xs text-purple-200/80 mt-2">
           <span className="inline-flex items-center gap-1">
@@ -168,7 +169,7 @@ export function ReferralsView({
           </span>
           <span className="inline-flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" />
-            +${thisMonthEarned.toFixed(2)} this month
+            +{usd(thisMonthEarned)} this month
           </span>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -382,7 +383,7 @@ export function ReferralsView({
                     L{m.level}
                   </span>
                   <span className="text-sm font-bold text-emerald-400 tabular-nums w-16 text-right">
-                    ${m.earnings.toFixed(2)}
+                    {usd(m.earnings)}
                   </span>
                 </div>
               );
@@ -434,12 +435,12 @@ function CommissionCard({
       <p className="text-[10px] uppercase tracking-widest font-bold opacity-90">
         Level {level}
       </p>
-      <p className="text-2xl font-extrabold text-white tabular-nums mt-1">
-        {pct}%
-      </p>
-      <div className="mt-1.5 flex items-center justify-between text-[10px]">
-        <span className="text-gray-400">{count} users</span>
-        <span className="font-bold tabular-nums">${earned.toFixed(2)}</span>
+      <p className={cn(STAT_VALUE_CLASS, "mt-1")}>{pct}%</p>
+      {/* min-w-0 + shrink-0: a 4-figure earnings figure used to collide with
+          the user count in this justify-between row. */}
+      <div className="mt-1.5 flex items-center justify-between gap-1.5 text-[10px]">
+        <span className="text-gray-400 truncate min-w-0">{count} users</span>
+        <span className="font-bold tabular-nums shrink-0">{usd(earned)}</span>
       </div>
     </div>
   );

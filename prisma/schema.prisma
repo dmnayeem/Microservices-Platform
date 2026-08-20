@@ -1141,6 +1141,13 @@ model User {
   @@index([language])
   @@index([dateOfBirth])
   @@index([country, gender])
+  // Mention autocomplete + "who to follow" both sort on followersCount, which
+  // had no index at all — a full sort of the users table.
+  @@index([followersCount])
+  @@index([status, followersCount])
+  // FK index — present in the live database; declared here so schema and DB
+  // agree and a future `db push` can't drop it.
+  @@index([customRoleId])
 }
 
 model Account {
@@ -1339,6 +1346,12 @@ model Task {
   @@index([status, order])
   @@index([createdById])
   @@index([fundedByUserId])
+  // The user-facing task list: status + hidden equality, then the [order,
+  // createdAt] sort. [status, order] missed `hidden` and the tiebreak.
+  @@index([status, hidden, order, createdAt])
+  // Unindexed FK: deleting a TaskBoard SET NULLs every task, which without this
+  // is a sequential scan of the Task table.
+  @@index([boardId])
 }
 
 model TaskCategory {
@@ -1401,6 +1414,13 @@ model TaskSubmission {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([userId, status, createdAt])
+  // Admin "all submissions" tab + analytics groupBy over a date range.
+  @@index([createdAt])
+  // Admin dashboard home counts today's approvals; reviewedAt was unindexed.
+  @@index([status, reviewedAt])
+  // Per-task rollups (board progress, admin task detail).
+  @@index([taskId, status])
+  @@index([taskId, createdAt])
 }
 
 // Anti-fraud fingerprint of a SOCIAL task's submitted proof values (feature #10).
@@ -1494,6 +1514,10 @@ model Transaction {
   // Kept for reference-only lookups (findFirst by reference) that can't use the
   // composite (userId, reference) index.
   @@index([reference])
+  // Monthly finance rollup (status + createdAt range).
+  @@index([status, createdAt])
+  // Wallet history filtered by source type.
+  @@index([userId, type, createdAt])
 }
 
 // Client-driven request idempotency. A money POST may send an `Idempotency-Key`
@@ -1501,6 +1525,26 @@ model Transaction {
 // once, stores the response, and replays the SAME response for any retry that
 // reuses the key. Complements the P5 ledger `@@unique([userId, reference])`
 // (which dedupes the money ROW) by deduping the whole HTTP request/response.
+/// Shared rate-limit counters.
+///
+/// The in-memory limiter in `src/lib/rate-limit.ts` is per serverless instance,
+/// so it cannot actually bound anything on Vercel. This table is the shared
+/// version, used for the endpoints where money moves. One row per
+/// (bucket, window); the unique index is what makes the increment atomic.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  /// scope + subject, e.g. "withdraw:user_123" or "signup:ip:1.2.3.4"
+  bucket    String
+  /// floor(epochMs / windowMs) — the time slice this count belongs to
+  window    BigInt
+  count     Int      @default(1)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([bucket, window])
+  @@index([expiresAt])
+}
+
 model IdempotencyKey {
   id             String   @id @default(cuid())
   userId         String
@@ -1969,6 +2013,8 @@ model MarketplaceListingView {
   @@unique([listingId, sessionHash])
   @@index([listingId])
   @@index([viewedAt])
+  // Unindexed FK: deleting a user does SET NULL across this whole log table.
+  @@index([userId])
 }
 
 // A bid in an auction-mode listing. Only one ACTIVE bid exists per listing at
@@ -2453,6 +2499,7 @@ model CourseListingView {
   @@index([courseId])
   @@index([viewedAt])
   @@index([courseId, sessionHash])
+  @@index([userId])
 }
 
 model TutorApplication {
@@ -2577,6 +2624,10 @@ model LotteryTicket {
   @@index([lotteryId])
   @@index([userId])
   @@index([lotteryId, userId])
+  @@index([userId, createdAt])
+  // Public "recent winners" list — isWinner was unindexed.
+  @@index([isWinner, createdAt])
+  @@index([userId, isWinner])
 }
 
 model Post {
@@ -2647,6 +2698,13 @@ model Post {
   @@index([isPublic, createdAt])
   @@index([isPublic, isHidden, isPinned, createdAt])
   @@index([isPublic, isHidden, lastActivityAt])
+  // Main feed: filters on four booleans, sorts by [isPinned, lastActivityAt].
+  // The existing [isPublic, isHidden, lastActivityAt] omits isPinned, so Postgres
+  // had to sort every matching row instead of walking an index.
+  @@index([isPublic, isHidden, isAnnouncement, isPromoted, isPinned, lastActivityAt])
+  // Profile timelines + the per-day post-limit count on every new post.
+  @@index([userId, createdAt])
+  @@index([userId, isPublic, isHidden, createdAt])
 }
 
 model Follow {
@@ -2799,6 +2857,8 @@ model SocialActionLog {
   // Lifetime distinct-post count per actor+action (social-earning batch reward).
   @@index([userId, action, postId])
   @@index([createdAt])
+  // Event progress counts a user's actions over a date range.
+  @@index([userId, createdAt])
 }
 
 // Per-user daily AI-generation counter (rate limit for /api/ai/generate).
@@ -3001,6 +3061,13 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, createdAt])
   @@index([userId, isRead, createdAt])
+  // The live-class dedup check filters on `type` with a JSON predicate and no
+  // other bound — a full scan of the fastest-growing table, every 15 minutes.
+  @@index([type, createdAt])
+  // Typed notification tabs.
+  @@index([userId, type, createdAt])
+  // The nightly retention prune (isRead + createdAt).
+  @@index([isRead, createdAt])
 }
 
 model Conversation {
@@ -3267,6 +3334,11 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([targetUserId, createdAt])
   @@index([action])
+  // Every audit read filters then sorts by createdAt; the filter and the sort
+  // lived in separate indexes, so Postgres bitmap-and'd and re-sorted.
+  @@index([userId, createdAt])
+  @@index([entity, createdAt])
+  @@index([userId, action, entity])
 }
 
 enum DisputeStatus {

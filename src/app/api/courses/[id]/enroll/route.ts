@@ -1,3 +1,4 @@
+import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -200,7 +201,7 @@ export async function POST(
     if (lt(buyer.cashBalance, finalPrice)) {
       return NextResponse.json(
         {
-          error: `Wallet balance is $${toNum(buyer.cashBalance).toFixed(2)} — need $${finalPrice.toFixed(2)} to enrol.`,
+          error: `Wallet balance is ${usd(toNum(buyer.cashBalance))} — need ${usd(finalPrice)} to enrol.`,
           shortBy: sub(finalPrice, buyer.cashBalance).toNumber(),
         },
         { status: 402 }
@@ -438,7 +439,7 @@ async function fireEnrolNotifications(opts: {
         type: NotificationType.COURSE,
         title:
           opts.amount > 0
-            ? `New paid enrolment — +$${(opts.tutorAmount ?? 0).toFixed(2)}`
+            ? `New paid enrolment — +${usd((opts.tutorAmount ?? 0))}`
             : "A new student enrolled",
         message: `Someone just enrolled in "${opts.courseTitle}".`,
         data: {

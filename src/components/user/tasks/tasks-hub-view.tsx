@@ -102,10 +102,10 @@ const CATEGORIES: Category[] = [
   { key: "appinstall", label: "App Install", description: "Install an app + proof", icon: Smartphone, color: "emerald", href: "/app-install-tasks", kind: "type", taskType: "APPINSTALL" },
   { key: "custom", label: "Custom", description: "Custom tasks to earn", icon: Sparkles, color: "indigo", href: "/custom-tasks", kind: "type", taskType: "CUSTOM" },
   { key: "survey", label: "Survey", description: "Complete surveys", icon: ClipboardList, color: "purple", href: "/survey-tasks", kind: "type", taskType: "SURVEY" },
-  { key: "quiz", label: "Quiz", description: "Answer quiz questions", icon: HelpCircle, color: "amber", href: "/quiz-tasks", kind: "type", taskType: "QUIZ" },
+  { key: "quiz", label: "Quiz Tasks", description: "Answer quiz questions", icon: HelpCircle, color: "amber", href: "/quiz-tasks", kind: "type", taskType: "QUIZ" },
   { key: "proxy", label: "Proxy", description: "Geo-targeted browsing", icon: Globe, color: "cyan", href: "/proxy-tasks", kind: "type", taskType: "PROXY" },
   { key: "board", label: "Board Tasks", description: "Complete a task board", icon: Pin, color: "amber", href: "/board-tasks", kind: "board" },
-  { key: "quizzes", label: "Quizzes", description: "Standalone quiz games", icon: Brain, color: "amber", href: "/quizzes", kind: "feature", feature: "quizzes" },
+  { key: "quizzes", label: "Quiz Games", description: "Standalone games — not tasks", icon: Brain, color: "amber", href: "/quizzes", kind: "feature", feature: "quizzes" },
   { key: "offerwalls", label: "Offerwalls", description: "Complete partner offers", icon: Gift, color: "emerald", href: "/offerwalls", kind: "feature", feature: "offerwalls" },
 ];
 
