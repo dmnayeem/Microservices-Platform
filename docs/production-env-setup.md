@@ -69,6 +69,26 @@ degrade quietly — `src/lib/prisma.ts` retries a failing read up to four times,
 for the user and blinding for you: without Sentry, a database sliding into trouble
 produces no signal until users complain.
 
+### What the DSN actually is
+
+**D**ata **S**ource **N**ame — an address and a key in one string. It tells the SDK
+*where* to send reports and *which project* they belong to:
+
+```
+https://abc123def@o1234567.ingest.sentry.io/7654321
+        └─ key ─┘  └─ your org ─┘            └─ project ─┘
+```
+
+In this repo it doubles as the on/off switch: the configs are written as
+`enabled: !!process.env.SENTRY_DSN`, so with no DSN the SDK never initialises —
+zero cost, nothing in the build output. Add the DSN and it turns on with no code
+change.
+
+**The DSN is not a password.** That is why `NEXT_PUBLIC_SENTRY_DSN` is shipped to
+the browser — it has to be, for browser errors to reach Sentry at all. Someone who
+reads it can *send* fake events to your project (annoying, not dangerous); they
+cannot *read* your errors, which requires signing in to the account.
+
 **Skipping it breaks nothing.** The app already ships an in-house version at
 `/api/admin/db-health` (retry counts, degraded reads) and `/api/health` (is the DB
 up). Sentry is an upgrade on top, not a dependency.
