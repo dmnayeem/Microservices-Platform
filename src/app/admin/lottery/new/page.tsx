@@ -1,25 +1,29 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { prisma } from "@/lib/prisma";
+import { roleCanManageLottery } from "@/lib/lottery-access";
+import type { UserRole } from "@/lib/rbac";
 import { LotteryForm } from "../_components/LotteryForm";
 import { ArrowLeft, Ticket } from "lucide-react";
 import Link from "next/link";
 
 export default async function CreateLotteryPage() {
   const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
+  if (!session?.user) redirect("/login");
 
   const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "settings.edit")) {
-    redirect("/admin/lottery");
-  }
+  if (!roleCanManageLottery(adminRole)) redirect("/admin/lottery");
+
+  // Only a lottery that will still be open later can receive a rolled-over pot.
+  const rolloverCandidates = await prisma.lottery.findMany({
+    where: { status: { in: ["UPCOMING", "ACTIVE"] }, drawDate: { gt: new Date() } },
+    orderBy: { drawDate: "asc" },
+    select: { id: true, title: true, drawDate: true },
+    take: 50,
+  });
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link
           href="/admin/lottery"
@@ -38,8 +42,12 @@ export default async function CreateLotteryPage() {
         </div>
       </div>
 
-      {/* Form */}
-      <LotteryForm />
+      <LotteryForm
+        rolloverCandidates={rolloverCandidates.map((c) => ({
+          ...c,
+          drawDate: c.drawDate.toISOString(),
+        }))}
+      />
     </div>
   );
 }

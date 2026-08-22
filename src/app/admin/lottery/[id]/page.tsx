@@ -15,7 +15,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
+import { roleCanViewLottery, roleCanManageLottery } from "@/lib/lottery-access";
+import {
+  computePool,
+  parseFixedPrizes,
+  parsePrizeTiers,
+} from "@/lib/lottery-prizes";
 import { LotteryActions } from "./_components/LotteryActions";
 
 interface PageProps {
@@ -37,7 +43,9 @@ export default async function LotteryDetailPage({ params }: PageProps) {
   }
 
   const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "settings.view")) {
+  // Accepts lottery.view OR settings.view — the sidebar gates on lottery.view,
+  // which nothing enforced, so that link used to bounce straight back.
+  if (!roleCanViewLottery(adminRole)) {
     redirect("/admin");
   }
 
@@ -60,6 +68,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
         take: 50,
       },
       _count: { select: { tickets: true } },
+      settlement: true,
     },
   });
 
@@ -80,6 +89,20 @@ export default async function LotteryDetailPage({ params }: PageProps) {
   };
   const typedLottery = lottery as LotteryWithTickets & {
     _count: { tickets: number };
+    settlement: {
+      outcome: string;
+      ticketsSold: number;
+      grossSalesPoints: number;
+      houseCutPoints: number;
+      seedPoints: number;
+      rolloverInPoints: number;
+      prizePoolPoints: number;
+      paidOutPoints: number;
+      refundedPoints: number;
+      rolledOverPoints: number;
+      rolloverToId: string | null;
+      drawOrderHash: string | null;
+    } | null;
   };
   // Live ticket count — the same source the purchase cap and the user-facing
   // lottery page use, so the two screens can't disagree.
@@ -87,11 +110,27 @@ export default async function LotteryDetailPage({ params }: PageProps) {
 
   const statusConfig = STATUS_CONFIG[typedLottery.status] || STATUS_CONFIG.UPCOMING;
   const StatusIcon = statusConfig.icon;
-  const prizes = typedLottery.prizes as { position: number; amount: number; description: string }[];
-  const totalPrizePool = Array.isArray(prizes) ? prizes.reduce((sum, p) => sum + p.amount, 0) : 0;
+  const isPool = typedLottery.prizeMode === "POOL";
+  const prizes = parseFixedPrizes(typedLottery.prizes);
+  const tiers = parsePrizeTiers(typedLottery.prizeTiers);
+  // POOL: the pot is derived from sales and grows with them. FIXED: it is the
+  // prize list. Reading tier percentages as amounts would render "50" (a
+  // percent) as 50 points, which is the whole reason these are separate columns.
+  const livePool = computePool({
+    ticketsSold,
+    ticketPrice: typedLottery.ticketPrice,
+    houseCutPercent: typedLottery.houseCutPercent,
+    seedPoints: typedLottery.poolSeedPoints,
+    rolloverInPoints: typedLottery.rolloverInPoints,
+    poolCapPoints: typedLottery.poolCapPoints,
+  });
+  const totalPrizePool = isPool
+    ? livePool.pool
+    : prizes.reduce((sum, p) => sum + p.amount, 0);
+  const settlement = typedLottery.settlement;
   const winners = (typedLottery.winners as { position: number; ticketId: string; userId: string }[]) || [];
 
-  const canManage = hasPermission(adminRole, "settings.edit");
+  const canManage = roleCanManageLottery(adminRole);
 
   // Distinct buyers across ALL tickets — deriving this from the 50-row preview
   // above capped it at 50 while "Tickets Sold" beside it showed the true total.
@@ -164,8 +203,36 @@ export default async function LotteryDetailPage({ params }: PageProps) {
               <Trophy className="w-5 h-5 text-amber-400" />
               Prize Structure
             </h2>
+            {isPool && (
+              <p className="text-xs text-gray-400 mb-3">
+                Pool mode — the pot is {livePool.gross.toLocaleString()} gross
+                {typedLottery.houseCutPercent > 0 && (
+                  <> − {livePool.houseCut.toLocaleString()} platform cut</>
+                )}
+                {typedLottery.poolSeedPoints > 0 && (
+                  <> + {typedLottery.poolSeedPoints.toLocaleString()} guaranteed</>
+                )}
+                {typedLottery.rolloverInPoints > 0 && (
+                  <> + {typedLottery.rolloverInPoints.toLocaleString()} rolled in</>
+                )}{" "}
+                = <span className="text-white font-semibold">
+                  {livePool.pool.toLocaleString()} pts
+                </span>{" "}
+                and still growing.
+              </p>
+            )}
             <div className="space-y-3">
-              {Array.isArray(prizes) && prizes.map((prize, index) => (
+              {(isPool
+                ? tiers.map((t) => ({
+                    position: t.position,
+                    description: t.description,
+                    // Shown as the CURRENT value of the share, not the percent —
+                    // an admin reading "50" as 50 points was the failure mode.
+                    amount: Math.floor((livePool.pool * t.percent) / 100),
+                    percent: t.percent,
+                  }))
+                : prizes.map((p) => ({ ...p, percent: null as number | null }))
+              ).map((prize, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg"
@@ -176,7 +243,11 @@ export default async function LotteryDetailPage({ params }: PageProps) {
                     </div>
                     <div>
                       <p className="font-medium text-white">{prize.description}</p>
-                      <p className="text-xs text-gray-500">Position {prize.position}</p>
+                      <p className="text-xs text-gray-500">
+                        {prize.percent != null
+                          ? `${prize.percent}% of the pot`
+                          : `Position ${prize.position}`}
+                      </p>
                     </div>
                   </div>
                   <p className="text-lg font-bold text-amber-400">
@@ -185,7 +256,66 @@ export default async function LotteryDetailPage({ params }: PageProps) {
                 </div>
               ))}
             </div>
+
+            {typedLottery.minTickets > 0 && (
+              <p className="mt-4 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-lg p-3">
+                Needs at least {typedLottery.minTickets.toLocaleString()} tickets.
+                Below that:{" "}
+                {typedLottery.shortfallAction === "REFUND"
+                  ? "everyone is refunded and the draw is cancelled."
+                  : typedLottery.shortfallAction === "ROLLOVER"
+                    ? "the pot rolls into the next draw and tickets are NOT refunded."
+                    : "it draws anyway with whatever sold."}
+              </p>
+            )}
           </div>
+
+          {/* Settlement — the immutable record of what actually happened. */}
+          {settlement && (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+              <h2 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                Settlement
+              </h2>
+              <p className="text-xs text-gray-500 mb-4">
+                Written once when the lottery closed. This is the record finance
+                should read — the platform&apos;s margin is points it never
+                credited, so there is no ledger row for it.
+              </p>
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                {[
+                  ["Outcome", settlement.outcome.replace(/_/g, " ")],
+                  ["Tickets sold", settlement.ticketsSold.toLocaleString()],
+                  ["Gross sales", `${settlement.grossSalesPoints.toLocaleString()} pts`],
+                  ["Platform cut", `${settlement.houseCutPoints.toLocaleString()} pts`],
+                  ["Guaranteed pot", `${settlement.seedPoints.toLocaleString()} pts`],
+                  ["Rolled in", `${settlement.rolloverInPoints.toLocaleString()} pts`],
+                  ["Prize pot", `${settlement.prizePoolPoints.toLocaleString()} pts`],
+                  ["Paid to winners", `${settlement.paidOutPoints.toLocaleString()} pts`],
+                  ["Refunded", `${settlement.refundedPoints.toLocaleString()} pts`],
+                  ["Rolled out", `${settlement.rolledOverPoints.toLocaleString()} pts`],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <dt className="text-xs text-gray-500">{k}</dt>
+                    <dd className="text-white font-semibold tabular-nums">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              {settlement.rolloverToId && (
+                <Link
+                  href={`/admin/lottery/${settlement.rolloverToId}`}
+                  className="inline-block mt-4 text-sm text-indigo-400 hover:text-indigo-300"
+                >
+                  → See the draw the pot rolled into
+                </Link>
+              )}
+              {settlement.drawOrderHash && (
+                <p className="mt-4 text-[11px] text-gray-600 font-mono break-all">
+                  Draw order hash: {settlement.drawOrderHash}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Winners (if completed) */}
           {typedLottery.status === "COMPLETED" && winners.length > 0 && (
@@ -331,6 +461,8 @@ export default async function LotteryDetailPage({ params }: PageProps) {
               lotteryId={typedLottery.id}
               status={typedLottery.status}
               ticketsSold={ticketsSold}
+              minTickets={typedLottery.minTickets}
+              shortfallAction={typedLottery.shortfallAction}
             />
           )}
         </div>

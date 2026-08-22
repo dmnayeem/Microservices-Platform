@@ -1,53 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { canManageLottery, canViewLottery } from "@/lib/lottery-access";
 import { prisma } from "@/lib/prisma";
-
-interface Prize {
-  position: number;
-  amount: number;
-  description: string;
-}
-
-interface CreateLotteryBody {
-  title: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  drawDate: string;
-  ticketPrice: number;
-  maxTickets?: number | null;
-  maxTicketsPerUser: number;
-  prizes: Prize[];
-}
+import {
+  lotteryCreateSchema,
+  lotteryConfigError,
+  lotteryData,
+} from "@/lib/lottery-admin";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    if (!(await can(session.user.id, "settings.view"))) {
+    if (!(await canViewLottery(session.user.id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get("status");
-
-    const where: Record<string, unknown> = {};
-    if (status) {
-      where.status = status;
-    }
-
+    const status = request.nextUrl.searchParams.get("status");
     const lotteries = await prisma.lottery.findMany({
-      where,
+      where: status ? { status: status as never } : {},
       orderBy: { drawDate: "desc" },
       include: {
-        _count: {
-          select: { tickets: true },
-        },
+        _count: { select: { tickets: true } },
+        settlement: true,
       },
     });
 
@@ -64,63 +41,63 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    if (!(await can(session.user.id, "settings.edit"))) {
+    if (!(await canManageLottery(session.user.id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body: CreateLotteryBody = await request.json();
-    const {
-      title,
-      description,
-      startDate,
-      endDate,
-      drawDate,
-      ticketPrice,
-      maxTickets,
-      maxTicketsPerUser,
-      prizes,
-    } = body;
-
-    // Validation
-    if (!title || !startDate || !endDate || !drawDate || !ticketPrice) {
+    const body = await request.json();
+    const v = lotteryCreateSchema.safeParse(body);
+    if (!v.success) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Invalid input", details: v.error.issues },
         { status: 400 }
       );
     }
+    const configErr = lotteryConfigError(v.data);
+    if (configErr) return NextResponse.json({ error: configErr }, { status: 400 });
 
-    if (!prizes || prizes.length === 0) {
-      return NextResponse.json(
-        { error: "At least one prize is required" },
-        { status: 400 }
-      );
+    if (v.data.rolloverTargetId) {
+      const target = await prisma.lottery.findUnique({
+        where: { id: v.data.rolloverTargetId },
+        select: { id: true, status: true, drawDate: true },
+      });
+      if (!target) {
+        return NextResponse.json(
+          { error: "The rollover target lottery no longer exists." },
+          { status: 400 }
+        );
+      }
+      if (target.drawDate <= new Date(v.data.drawDate)) {
+        return NextResponse.json(
+          { error: "The rollover target must draw AFTER this lottery." },
+          { status: 400 }
+        );
+      }
     }
 
-    // Determine initial status based on dates
-    const now = new Date();
-    const start = new Date(startDate);
-    let status: "UPCOMING" | "ACTIVE" = "UPCOMING";
-    if (start <= now) {
-      status = "ACTIVE";
-    }
+    // A lottery whose sales window has already opened starts ACTIVE. One that
+    // hasn't stays UPCOMING until an admin activates it — nothing auto-promotes
+    // it, so a future-dated lottery needs the Activate button.
+    const status = new Date(v.data.startDate) <= new Date() ? "ACTIVE" : "UPCOMING";
 
     const lottery = await prisma.lottery.create({
+      data: { ...lotteryData(v.data), status } as never,
+    });
+
+    await prisma.auditLog.create({
       data: {
-        title,
-        description: description || null,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        drawDate: new Date(drawDate),
-        ticketPrice,
-        maxTickets: maxTickets || null,
-        maxTicketsPerUser,
-        prizes: prizes as unknown as object,
-        status,
+        userId: session.user.id,
+        action: "LOTTERY_CREATED",
+        entity: "Lottery",
+        entityId: lottery.id,
+        newData: {
+          title: lottery.title,
+          prizeMode: lottery.prizeMode,
+          ticketPrice: lottery.ticketPrice,
+        },
       },
     });
 

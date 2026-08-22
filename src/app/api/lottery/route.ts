@@ -4,8 +4,12 @@ import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { LotteryStatus, TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
-import { safeJsonParse } from "@/lib/safe-json";
 import { recordUserAction } from "@/lib/goal-progress";
+import {
+  computePool,
+  parsePrizeTiers,
+  parseFixedPrizes,
+} from "@/lib/lottery-prizes";
 
 // GET /api/lottery - Get available lotteries and user's tickets
 export async function GET(request: NextRequest) {
@@ -71,18 +75,41 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Rollover targets, so a POOL lottery can name where its pot would go.
+    const rolloverIds = [
+      ...new Set(lotteries.map((l) => l.rolloverTargetId).filter(Boolean) as string[]),
+    ];
+    const rolloverTargets = rolloverIds.length
+      ? await prisma.lottery.findMany({
+          where: { id: { in: rolloverIds } },
+          select: { id: true, title: true },
+        })
+      : [];
+    const rolloverTitle = new Map(rolloverTargets.map((r) => [r.id, r.title]));
+
     // Format lotteries for frontend
     const formattedLotteries = lotteries.map((lottery) => {
-      const prizes = lottery.prizes as Array<{
-        position: number;
-        amount: number;
-        count: number;
-      }>;
+      const sold = ticketCountMap.get(lottery.id) || 0;
+      const isPool = lottery.prizeMode === "POOL";
 
-      const totalPrizePool = prizes.reduce(
-        (sum, p) => sum + p.amount * (p.count || 1),
-        0
-      );
+      // FIXED: the prize list IS the pot. POOL: the pot is derived from sales,
+      // so it grows as tickets sell and `prizes` is irrelevant. Branching on
+      // mode matters — reading `prizeTiers` percentages through the old
+      // `reduce(sum, p.amount)` would render "50" as 50 points.
+      const prizes = parseFixedPrizes(lottery.prizes);
+      const tiers = isPool ? parsePrizeTiers(lottery.prizeTiers) : [];
+      const pool = computePool({
+        ticketsSold: sold,
+        ticketPrice: lottery.ticketPrice,
+        houseCutPercent: lottery.houseCutPercent,
+        seedPoints: lottery.poolSeedPoints,
+        rolloverInPoints: lottery.rolloverInPoints,
+        poolCapPoints: lottery.poolCapPoints,
+      });
+
+      const totalPrizePool = isPool
+        ? pool.pool
+        : prizes.reduce((sum, p) => sum + p.amount, 0);
 
       return {
         id: lottery.id,
@@ -93,20 +120,34 @@ export async function GET(request: NextRequest) {
         drawDate: lottery.drawDate,
         ticketPrice: lottery.ticketPrice,
         maxTickets: lottery.maxTickets,
-        ticketsSold: ticketCountMap.get(lottery.id) || 0,
+        ticketsSold: sold,
         maxTicketsPerUser: lottery.maxTicketsPerUser,
         status: lottery.status,
+        prizeMode: lottery.prizeMode,
         prizes,
+        prizeTiers: tiers,
         totalPrizePool,
+        // What the pot can never drop below, so "grows with every ticket"
+        // doesn't read as "might be nothing".
+        guaranteedFloor: isPool
+          ? lottery.poolSeedPoints + lottery.rolloverInPoints
+          : totalPrizePool,
+        // Disclosed BEFORE purchase — under ROLLOVER the ticket money is not
+        // returned, and a user who only finds that out afterwards is right to
+        // call it a scam.
+        minTickets: lottery.minTickets,
+        shortfallAction: lottery.shortfallAction,
+        rolloverTargetTitle: lottery.rolloverTargetId
+          ? rolloverTitle.get(lottery.rolloverTargetId) ?? null
+          : null,
         userTickets: userTickets[lottery.id] || { count: 0, tickets: [] },
         canBuyTicket:
           lottery.status === LotteryStatus.ACTIVE &&
-          (!lottery.maxTickets || (ticketCountMap.get(lottery.id) || 0) < lottery.maxTickets),
+          (!lottery.maxTickets || sold < lottery.maxTickets),
         timeUntilDraw: Math.max(
           0,
           new Date(lottery.drawDate).getTime() - Date.now()
         ),
-        winningNumbers: lottery.winningNumbers,
         winners:
           lottery.status === LotteryStatus.COMPLETED ? lottery.winners : null,
       };
@@ -164,10 +205,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return withIdempotency(request, session.user.id, async () => {
+  const userId = session.user.id;
+
+  return withIdempotency(request, userId, async () => {
   try {
     const body = await request.json();
-    const { lotteryId, quantity, selectedNumbers } = body;
+    // `selectedNumbers` is no longer read — LotteryTicket.numbers was generated
+    // and stored but the draw is a shuffle over tickets and never looked at it.
+    const { lotteryId, quantity } = body;
 
     // Validate quantity
     const ticketCount = quantity || 1;
@@ -178,126 +223,125 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get lottery
-    const lottery = await prisma.lottery.findUnique({
-      where: { id: lotteryId },
-    });
-
-    // Get current ticket count
-    const currentTicketCount = lottery
-      ? await prisma.lotteryTicket.count({ where: { lotteryId } })
-      : 0;
-
-    if (!lottery) {
-      return NextResponse.json(
-        { error: "Lottery not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check lottery is active
-    if (lottery.status !== LotteryStatus.ACTIVE) {
-      return NextResponse.json(
-        { error: "This lottery is not currently active" },
-        { status: 400 }
-      );
-    }
-
-    // Check if lottery has ended
-    if (new Date() > lottery.endDate) {
-      return NextResponse.json(
-        { error: "This lottery has ended" },
-        { status: 400 }
-      );
-    }
-
-    // Check ticket availability
-    if (lottery.maxTickets && currentTicketCount + ticketCount > lottery.maxTickets) {
-      return NextResponse.json(
-        { error: "Not enough tickets available" },
-        { status: 400 }
-      );
-    }
-
-    // Check user's ticket limit for this lottery
-    const userTicketCount = await prisma.lotteryTicket.count({
-      where: {
-        lotteryId,
-        userId: session.user.id,
-      },
-    });
-
-    if (userTicketCount + ticketCount > lottery.maxTicketsPerUser) {
-      return NextResponse.json(
-        {
-          error: `You can only buy ${lottery.maxTicketsPerUser} tickets for this lottery. You already have ${userTicketCount}.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Calculate total cost
-    const totalCost = lottery.ticketPrice * ticketCount;
-
-    // Get user balance
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { pointsBalance: true },
-    });
-
-    if (!user || user.pointsBalance < totalCost) {
-      return NextResponse.json(
-        { error: "Insufficient points balance" },
-        { status: 400 }
-      );
-    }
-
     const pointsPerUsd = await getPointsPerUsd();
 
-    // Generate tickets
-    const tickets = [];
-    for (let i = 0; i < ticketCount; i++) {
-      const ticketNumber = generateTicketNumber(lottery.id, currentTicketCount + i + 1);
-      const numbers = selectedNumbers?.[i] || generateRandomNumbers();
+    /**
+     * Everything below runs INSIDE one interactive transaction that opens by
+     * locking the lottery row.
+     *
+     * Every guard — status, end date, `maxTickets`, the per-user cap and the
+     * balance check — used to sit outside an array-form `$transaction`, so two
+     * concurrent buys could both pass and both commit: balances could go
+     * negative and both caps could be exceeded. With POOL prizes it also let a
+     * ticket land *after* a draw had already snapshotted the pot, which is
+     * money out of the platform for a ticket that was never counted.
+     *
+     * The lock is the same one `drawLottery` takes, so a purchase and a draw
+     * can never interleave.
+     */
+    const result = await prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Lottery" WHERE id = ${lotteryId} FOR UPDATE`;
 
-      tickets.push({
-        lotteryId,
-        userId: session.user.id,
-        ticketNumber,
-        numbers: JSON.stringify(numbers),
-      });
-    }
+        const lottery = await tx.lottery.findUnique({ where: { id: lotteryId } });
+        if (!lottery) return { ok: false as const, error: "Lottery not found", status: 404 };
 
-    // Create tickets and deduct points in transaction
-    const [_createdTickets] = await prisma.$transaction([
-      prisma.lotteryTicket.createMany({
-        data: tickets,
-      }),
-      prisma.user.update({
-        where: { id: session.user.id },
-        data: { pointsBalance: { decrement: totalCost } },
-      }),
-      prisma.lottery.update({
-        where: { id: lotteryId },
-        data: { ticketsSold: { increment: ticketCount } },
-      }),
-      prisma.transaction.create({
-        data: {
-          userId: session.user.id,
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.COMPLETED,
-          points: -totalCost,
-          amount: -totalCost / pointsPerUsd,
-          description: `Purchased ${ticketCount} lottery ticket(s) for "${lottery.title}"`,
-          reference: `lottery_${lotteryId}_${Date.now()}`,
-          metadata: {
-            lotteryId,
-            ticketCount,
-            ticketNumbers: tickets.map((t) => t.ticketNumber),
+        if (lottery.status !== LotteryStatus.ACTIVE) {
+          return { ok: false as const, error: "This lottery is not currently active", status: 400 };
+        }
+        if (new Date() > lottery.endDate) {
+          return { ok: false as const, error: "This lottery has ended", status: 400 };
+        }
+
+        // Counted inside the lock, so the numbers can't move underneath us.
+        const [soldTotal, userTicketCount, user] = await Promise.all([
+          tx.lotteryTicket.count({ where: { lotteryId } }),
+          tx.lotteryTicket.count({ where: { lotteryId, userId } }),
+          tx.user.findUnique({ where: { id: userId }, select: { pointsBalance: true } }),
+        ]);
+
+        if (lottery.maxTickets && soldTotal + ticketCount > lottery.maxTickets) {
+          const left = Math.max(0, lottery.maxTickets - soldTotal);
+          return {
+            ok: false as const,
+            error:
+              left === 0
+                ? "This lottery has sold out."
+                : `Only ${left} ticket${left === 1 ? "" : "s"} left.`,
+            status: 400,
+          };
+        }
+        if (userTicketCount + ticketCount > lottery.maxTicketsPerUser) {
+          return {
+            ok: false as const,
+            error: `You can only buy ${lottery.maxTicketsPerUser} tickets for this lottery. You already have ${userTicketCount}.`,
+            status: 400,
+          };
+        }
+
+        const totalCost = lottery.ticketPrice * ticketCount;
+        if (!user || user.pointsBalance < totalCost) {
+          return { ok: false as const, error: "Insufficient points balance", status: 400 };
+        }
+
+        // Ticket numbers are sequential from the in-lock count, so the
+        // `@@unique([lotteryId, ticketNumber])` index can no longer collide
+        // between concurrent buyers (which previously surfaced as a bare 500).
+        const tickets = Array.from({ length: ticketCount }, (_, i) => ({
+          lotteryId,
+          userId,
+          ticketNumber: generateTicketNumber(lottery.id, soldTotal + i + 1),
+        }));
+
+        await tx.lotteryTicket.createMany({ data: tickets });
+        const updatedUser = await tx.user.update({
+          where: { id: userId },
+          data: { pointsBalance: { decrement: totalCost } },
+          select: { pointsBalance: true },
+        });
+        await tx.lottery.update({
+          where: { id: lotteryId },
+          data: { ticketsSold: { increment: ticketCount } },
+        });
+        await tx.transaction.create({
+          data: {
+            userId,
+            type: TransactionType.PURCHASE,
+            status: TransactionStatus.COMPLETED,
+            points: -totalCost,
+            amount: -totalCost / pointsPerUsd,
+            description: `Purchased ${ticketCount} lottery ticket(s) for "${lottery.title}"`,
+            // Keyed to the FIRST ticket number, which is unique per lottery.
+            // The old `_${Date.now()}` suffix made every reference unique and
+            // therefore gave the ledger's @@unique([userId, reference]) nothing
+            // to catch a replay on.
+            reference: `lottery_${lotteryId}_${tickets[0].ticketNumber}`,
+            metadata: {
+              lotteryId,
+              ticketCount,
+              ticketNumbers: tickets.map((t) => t.ticketNumber),
+            },
           },
-        },
-      }),
-    ]);
+        });
+
+        return {
+          ok: true as const,
+          error: null,
+          status: 200,
+          tickets,
+          totalCost,
+          title: lottery.title,
+          newBalance: updatedUser.pointsBalance,
+        };
+      },
+      { timeout: 20_000, maxWait: 10_000 }
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    const { tickets, totalCost, newBalance } = result;
+    const lottery = { title: result.title };
 
     // Event progress — AFTER the purchase commits, so a failed or rolled-back
     // purchase never counts. Deliberately outside the transaction above: a
@@ -327,12 +371,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: `Successfully purchased ${ticketCount} ticket(s)`,
-      tickets: tickets.map((t) => ({
-        ticketNumber: t.ticketNumber,
-        numbers: safeJsonParse<number[]>(t.numbers, []),
-      })),
+      tickets: tickets.map((t) => ({ ticketNumber: t.ticketNumber })),
       totalCost,
-      newBalance: user.pointsBalance - totalCost,
+      // Read back from the update inside the transaction, so it reflects any
+      // concurrent change rather than a stale pre-purchase read minus the cost.
+      newBalance,
     });
   } catch (error) {
     console.error("Error buying lottery tickets:", error);
@@ -351,14 +394,3 @@ function generateTicketNumber(lotteryId: string, sequence: number): string {
   return `${prefix}-${paddedSequence}`;
 }
 
-// Helper function to generate random lottery numbers (6 numbers from 1-49)
-function generateRandomNumbers(): number[] {
-  const numbers: number[] = [];
-  while (numbers.length < 6) {
-    const num = Math.floor(Math.random() * 49) + 1;
-    if (!numbers.includes(num)) {
-      numbers.push(num);
-    }
-  }
-  return numbers.sort((a, b) => a - b);
-}

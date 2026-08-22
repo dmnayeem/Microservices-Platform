@@ -145,7 +145,7 @@ export const lotterySweep = inngest.createFunction(
     });
     let drawn = 0;
     for (const { id } of due) {
-      const r = await step.run(`draw-${id}`, () => drawLottery(id));
+      const r = await step.run(`draw-${id}`, () => drawLottery(id, { requireDue: true }));
       if (r.ok) drawn++;
     }
     return { candidates: due.length, drawn };

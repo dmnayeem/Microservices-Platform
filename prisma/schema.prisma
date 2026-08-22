@@ -1069,6 +1069,35 @@ enum LotteryStatus {
   CANCELLED
 }
 
+/// FIXED = `Lottery.prizes` holds absolute point amounts (how every lottery
+/// worked before pool mode). POOL = the prize is derived from ticket sales at
+/// draw time via `prizeTiers` percentages. See src/lib/lottery-prizes.ts.
+enum LotteryPrizeMode {
+  FIXED
+  POOL
+}
+
+/// What happens when `minTickets` isn't reached by the draw date.
+enum LotteryShortfallAction {
+  /// Draw anyway with whatever accumulated.
+  DRAW
+  /// Cancel and return every ticket price.
+  REFUND
+  /// Move the pot to `rolloverTargetId`. Tickets are NOT refunded, so the
+  /// user-facing page must say so before purchase.
+  ROLLOVER
+}
+
+/// How a lottery ended. Recorded once on LotterySettlement.
+enum LotteryOutcome {
+  DRAWN
+  REFUNDED
+  ROLLED_OVER
+  /// Nobody bought a ticket. Terminal — previously this left the lottery
+  /// ACTIVE forever and the hourly sweep retried it on every run.
+  VOID_NO_TICKETS
+}
+
 enum NotificationType {
   SYSTEM
   TASK
@@ -2756,16 +2785,92 @@ model Lottery {
   maxTickets        Int?
   ticketsSold       Int             @default(0)
   maxTicketsPerUser Int             @default(10)
+  /// FIXED mode only: [{position, amount, description}] absolute point amounts.
   prizes            Json
   status            LotteryStatus   @default(UPCOMING)
+  /// legacy, unused — generated and stored but the draw never read it.
   winningNumbers    String?
   winners           Json?
+
+  // ── Prize mode ───────────────────────────────────────────────────────────
+  prizeMode       LotteryPrizeMode @default(FIXED)
+  /// POOL mode only: [{position, percent, description}] shares of the pool.
+  /// Deliberately a SEPARATE column from `prizes` — overloading `amount` as a
+  /// percent would make every existing `reduce(sum, p.amount)` reader render a
+  /// percentage as a points total.
+  prizeTiers      Json?
+  /// 0-90. Taken off GROSS TICKET SALES only — never the seed, never rolled-in
+  /// points (those were already cut at their source).
+  houseCutPercent Int              @default(0)
+  /// Platform-funded floor so an under-sold pool draw isn't insulting.
+  poolSeedPoints  Int              @default(0)
+  /// Liability ceiling. Anything above it is recorded as overflow to house.
+  poolCapPoints   Int?
+
+  // ── Minimum tickets / rollover ───────────────────────────────────────────
+  /// 0 = no floor.
+  minTickets       Int                    @default(0)
+  shortfallAction  LotteryShortfallAction @default(DRAW)
+  /// Where the pot goes on ROLLOVER. Validated at draw time; if it is no longer
+  /// usable the draw degrades to REFUND rather than stranding user money.
+  rolloverTargetId String?
+  /// Carried IN from a lottery that rolled over into this one.
+  rolloverInPoints Int                    @default(0)
+  rolloverFromId   String?
+
+  settlement LotterySettlement?
+
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   tickets           LotteryTicket[]
 
   @@index([status])
   @@index([drawDate])
+  @@index([status, drawDate])
+}
+
+/// Immutable accounting record for a finished lottery — created once, never
+/// updated (there is no update path, and `@@unique(lotteryId)` is a second
+/// idempotency guard behind the draw's status CAS).
+///
+/// Before this, a COMPLETED lottery recorded nothing about what the pot was
+/// worth or what the platform kept, which makes POOL mode unauditable. Finance
+/// reporting reads THIS table, not `Lottery` — points the house never credits
+/// are the house's margin, so there is no ledger row to count.
+model LotterySettlement {
+  id        String  @id @default(cuid())
+  lotteryId String  @unique
+  lottery   Lottery @relation(fields: [lotteryId], references: [id], onDelete: Cascade)
+
+  outcome   LotteryOutcome
+  prizeMode LotteryPrizeMode
+
+  ticketsSold      Int
+  ticketPrice      Int
+  grossSalesPoints Int @default(0)
+  houseCutPercent  Int @default(0)
+  houseCutPoints   Int @default(0)
+  seedPoints       Int @default(0)
+  rolloverInPoints Int @default(0)
+  /// The pool as computed at draw time — the number the winners were paid from.
+  prizePoolPoints  Int @default(0)
+  paidOutPoints    Int @default(0)
+  refundedPoints   Int @default(0)
+  rolledOverPoints Int @default(0)
+  /// Amount above `poolCapPoints` the house kept.
+  overflowToHouse  Int @default(0)
+
+  rolloverToId String?
+  /// The EFFECTIVE tiers used (after re-normalising for ticket count).
+  tiers        Json?
+  winners      Json?
+  /// sha256 of the shuffled ticket-id order — a post-hoc fairness record.
+  drawOrderHash String?
+
+  settledAt DateTime @default(now())
+
+  @@index([outcome, settledAt])
+  @@index([rolloverToId])
 }
 
 model LotteryTicket {

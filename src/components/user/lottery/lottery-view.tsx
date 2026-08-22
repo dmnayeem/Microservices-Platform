@@ -38,6 +38,41 @@ interface LotteryItem {
   userTickets: { count: number; tickets: string[] };
   canBuyTicket: boolean;
   timeUntilDraw: number;
+  // ── Pool mode + shortfall policy ─────────────────────────────────────────
+  prizeMode?: "FIXED" | "POOL";
+  prizeTiers?: { position: number; percent: number; description: string }[];
+  /** What the pot can never fall below (guaranteed pot + anything rolled in). */
+  guaranteedFloor?: number;
+  minTickets?: number;
+  shortfallAction?: "DRAW" | "REFUND" | "ROLLOVER";
+  rolloverTargetTitle?: string | null;
+}
+
+/**
+ * The one sentence a player must see BEFORE paying.
+ *
+ * Under ROLLOVER their money is not returned if the draw falls short. Finding
+ * that out afterwards is the difference between a rule and a scam.
+ */
+function shortfallNotice(l: LotteryItem): string | null {
+  const min = l.minTickets ?? 0;
+  if (min <= 0) return null;
+
+  const prefix =
+    l.ticketsSold < min
+      ? `Only ${l.ticketsSold.toLocaleString()} of ${min.toLocaleString()} tickets sold so far.`
+      : `Needs at least ${min.toLocaleString()} tickets.`;
+
+  if (l.shortfallAction === "REFUND") {
+    return `${prefix} If it doesn't get there by the draw, everyone is refunded in full.`;
+  }
+  if (l.shortfallAction === "ROLLOVER") {
+    const where = l.rolloverTargetTitle
+      ? `"${l.rolloverTargetTitle}"`
+      : "the next draw";
+    return `${prefix} If it doesn't get there, the pot moves to ${where} — tickets are NOT refunded.`;
+  }
+  return `${prefix} It will be drawn either way; the prize just gets smaller.`;
 }
 
 interface RecentWinner {
@@ -255,8 +290,28 @@ function FeaturedLotteryCard({
         <span className="text-base font-bold ml-1 text-purple-200/80">pts</span>
       </p>
       <p className="text-sm text-purple-200/80 mt-1">
-        Top prize · Total pool {lottery.totalPrizePool.toLocaleString()} pts
+        {lottery.prizeMode === "POOL" ? (
+          <>
+            Top prize right now · the pot grows with every ticket
+            {(lottery.guaranteedFloor ?? 0) > 0 && (
+              <>
+                {" "}
+                · at least {(lottery.guaranteedFloor ?? 0).toLocaleString()} pts
+                guaranteed
+              </>
+            )}
+          </>
+        ) : (
+          <>Top prize · Total pool {lottery.totalPrizePool.toLocaleString()} pts</>
+        )}
       </p>
+
+      {/* Stated before purchase, not after. */}
+      {shortfallNotice(lottery) && (
+        <p className="mt-2 text-xs text-amber-200 bg-amber-500/10 border border-amber-400/30 rounded-lg px-3 py-2">
+          {shortfallNotice(lottery)}
+        </p>
+      )}
 
       {/* Countdown */}
       <div className="mt-4 grid grid-cols-4 gap-2">
@@ -383,9 +438,17 @@ function LotteryRow({
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-white truncate">{lottery.title}</p>
         <p className="text-[11px] text-gray-500">
-          {lottery.totalPrizePool.toLocaleString()} pts pool ·{" "}
+          {lottery.totalPrizePool.toLocaleString()} pts pool
+          {lottery.prizeMode === "POOL" && " (growing)"} ·{" "}
           {format(new Date(lottery.drawDate), "MMM d")}
         </p>
+        {/* Same disclosure as the hero card — a player who only ever sees the
+            compact row must still know the rollover rule before buying. */}
+        {shortfallNotice(lottery) && (
+          <p className="text-[11px] text-amber-300/90 truncate">
+            {shortfallNotice(lottery)}
+          </p>
+        )}
       </div>
       <button
         onClick={() => onBuy(lottery.id, 1)}

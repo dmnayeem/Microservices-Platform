@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { Ticket, Plus, Calendar, DollarSign, Users, Trophy, ChevronLeft, ChevronRight, Clock, CheckCircle, XCircle, Play } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { hasPermission, hasAnyPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
+import { roleCanViewLottery, roleCanManageLottery } from "@/lib/lottery-access";
 
 interface PageProps {
   searchParams: Promise<{
@@ -30,7 +31,7 @@ export default async function AdminLotteryPage({ searchParams }: PageProps) {
 
   const adminRole = session.user.role as UserRole | undefined;
   // Check for any relevant permission
-  if (!hasAnyPermission(adminRole, ["settings.view", "settings.edit"])) {
+  if (!roleCanViewLottery(adminRole)) {
     redirect("/admin");
   }
 
@@ -92,7 +93,7 @@ export default async function AdminLotteryPage({ searchParams }: PageProps) {
   ).reduce((sum, l) => sum + l.ticketPrice * l._count.tickets, 0);
 
   const totalPages = Math.ceil(totalCount / pageSize);
-  const canCreate = hasPermission(adminRole, "settings.edit");
+  const canCreate = roleCanManageLottery(adminRole);
 
   const buildQueryString = (newPage: number, newStatus?: string) => {
     const queryParams = new URLSearchParams();

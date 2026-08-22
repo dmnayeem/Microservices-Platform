@@ -120,9 +120,24 @@ export async function withIdempotency(
   }
 }
 
-/** True if `err` is the P2002 unique violation on `Transaction.(userId, reference)`. */
+/**
+ * True if `err` is the P2002 unique violation on `Transaction.(userId, reference)`.
+ *
+ * This is what every "already claimed / already paid" path keys off, so getting
+ * it wrong turns a benign duplicate into a user-visible failure.
+ *
+ * **Prisma 7 with a driver adapter often omits `meta.target` entirely** — the
+ * error arrives as `{ code: "P2002", meta: { modelName, driverAdapterError } }`
+ * and the offending columns appear only in the message. Matching `target`
+ * alone therefore returned false for real ledger duplicates, so a repeat claim
+ * surfaced as "Couldn't claim the reward. Try again." instead of "You already
+ * claimed this."
+ */
 export function isDuplicateLedgerError(err: unknown): boolean {
-  const e = err as { code?: unknown; meta?: { target?: unknown } } | null | undefined;
+  const e = err as
+    | { code?: unknown; message?: unknown; meta?: { target?: unknown } }
+    | null
+    | undefined;
   if (!e || e.code !== "P2002") return false;
 
   const target = e.meta?.target;
@@ -135,7 +150,18 @@ export function isDuplicateLedgerError(err: unknown): boolean {
   if (Array.isArray(target)) {
     return target.some((t) => String(t).includes("reference"));
   }
-  // Unknown/absent target → do NOT assume it's the ledger; let it surface so a
-  // different constraint violation isn't silently treated as "already processed".
+
+  // No usable `target` (driver-adapter shape): fall back to the message, which
+  // reads `Unique constraint failed on the fields: ("userId", reference)`.
+  // Still requires `reference` to appear, so an unrelated P2002 is not
+  // mistaken for "already processed".
+  if (typeof e.message === "string") {
+    return (
+      e.message.includes("reference") ||
+      e.message.includes(LEDGER_UNIQUE_CONSTRAINT)
+    );
+  }
+
+  // Nothing to go on → do NOT assume it's the ledger; let it surface.
   return false;
 }
