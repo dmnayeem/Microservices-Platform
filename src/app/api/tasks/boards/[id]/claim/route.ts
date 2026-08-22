@@ -11,6 +11,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import {
   getTaskViewerContext,
   visibleTaskWhere,
+  visibleBoardWhere,
 } from "@/lib/task-visibility";
 
 export async function POST(
@@ -24,8 +25,18 @@ export async function POST(
   const userId = session.user.id;
   const { id } = await params;
 
-  const board = await prisma.taskBoard.findUnique({ where: { id } });
-  if (!board || !board.isActive) {
+  // This route pays out, so eligibility is re-checked here rather than trusted
+  // from the list — a list filter is not a security boundary.
+  const ctx = await getTaskViewerContext(userId);
+  const board = ctx
+    ? await prisma.taskBoard.findFirst({
+        where: {
+          id,
+          ...visibleBoardWhere(ctx.viewer, { accessLevel: ctx.accessLevel }),
+        },
+      })
+    : null;
+  if (!board) {
     return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }
 
@@ -91,7 +102,6 @@ export async function POST(
 
   // The claim requirement must be counted over EXACTLY the tasks the board page
   // showed this user — same visibility rules, or the board is unclaimable.
-  const ctx = await getTaskViewerContext(userId);
   const tasks = ctx
     ? await prisma.task.findMany({
         where: {

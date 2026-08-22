@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Sparkles, Plus, Loader2, Trash2, Power, Pencil } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
+import { DateField } from "@/components/ui/date-field";
 import {
   EVENT_ACTION_META,
   parseEventTiers,
@@ -22,11 +23,22 @@ interface AdminEvent {
   startAt: string;
   endAt: string;
   isActive: boolean;
+  /** Max actions credited per user per local day. 0 = unlimited. */
+  dailyCap?: number;
   tiers?: unknown;
   _count?: { progress: number };
 }
 
 const ACTION_KEYS = Object.keys(EVENT_ACTION_META) as EventActionType[];
+/**
+ * The deprecated aliases (TEAM_ADD, SOCIAL_ACTION) stay selectable only when an
+ * existing event already uses one — they still work, but SOCIAL_ACTION in
+ * particular is satisfied by any feed action at all, which is what made "share
+ * your referral link" completable by an unrelated like.
+ */
+const NEW_ACTION_KEYS = ACTION_KEYS.filter(
+  (k) => !EVENT_ACTION_META[k].deprecated
+);
 
 interface Tier {
   threshold: number;
@@ -62,6 +74,9 @@ const emptyForm = () => ({
   // immediately in-window and shows in the feed widget + /events.
   startAt: toLocalInput(new Date()),
   endAt: toLocalInput(new Date(Date.now() + 7 * 864e5)),
+  // 0 = unlimited. Worth setting for "create posts" style events, where the
+  // user controls how many times they can perform the action.
+  dailyCap: 0,
   tiers: [] as Tier[],
 });
 
@@ -115,6 +130,7 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
       rewardPoints: ev.rewardPoints,
       rewardXp: ev.rewardXp,
       requiredAccessLevel: ev.requiredAccessLevel,
+      dailyCap: ev.dailyCap ?? 0,
       startAt: toLocalInput(ev.startAt),
       endAt: toLocalInput(ev.endAt),
       tiers,
@@ -235,13 +251,24 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
                 setForm({ ...form, actionType: e.target.value as EventActionType })
               }
             >
-              {ACTION_KEYS.map((k) => (
+              {(EVENT_ACTION_META[form.actionType].deprecated
+                ? [form.actionType, ...NEW_ACTION_KEYS]
+                : NEW_ACTION_KEYS
+              ).map((k) => (
                 <option key={k} value={k}>
                   {EVENT_ACTION_META[k].label}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* The single most important thing an admin needs to know here: an
+              event published today does NOT count what people did yesterday. */}
+          <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
+            <strong>Progress starts when you publish.</strong> Nothing anyone did
+            before that counts, whatever start date you set.{" "}
+            {EVENT_ACTION_META[form.actionType].hint}
+          </p>
           <textarea
             className={field}
             placeholder="Description (optional)"
@@ -261,6 +288,21 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
                   setForm({ ...form, threshold: Number(e.target.value) })
                 }
               />
+            </label>
+            <label className="text-xs text-slate-400">
+              Daily cap
+              <input
+                type="number"
+                min={0}
+                className={field}
+                value={form.dailyCap}
+                onChange={(e) =>
+                  setForm({ ...form, dailyCap: Number(e.target.value) })
+                }
+              />
+              <span className="block text-[10px] text-slate-500 mt-0.5">
+                0 = unlimited
+              </span>
             </label>
             <label className="text-xs text-slate-400">
               Reward points
@@ -394,20 +436,20 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-slate-400">
               Starts
-              <input
+              <DateField
                 type="datetime-local"
                 className={field}
                 value={form.startAt}
-                onChange={(e) => setForm({ ...form, startAt: e.target.value })}
+                onChange={(v) => setForm({ ...form, startAt: v })}
               />
             </label>
             <label className="text-xs text-slate-400">
               Ends
-              <input
+              <DateField
                 type="datetime-local"
                 className={field}
                 value={form.endAt}
-                onChange={(e) => setForm({ ...form, endAt: e.target.value })}
+                onChange={(v) => setForm({ ...form, endAt: v })}
               />
             </label>
           </div>

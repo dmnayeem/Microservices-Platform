@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X, Loader2, Save, Megaphone } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { format } from "date-fns";
+import { DateField } from "@/components/ui/date-field";
 
 interface Campaign {
   id: string;
@@ -240,20 +241,20 @@ function CreateCampaignModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Start Date">
-              <input
+              <DateField
                 type="datetime-local"
                 value={form.startDate}
-                onChange={(e) =>
-                  setForm({ ...form, startDate: e.target.value })
+                onChange={(v) =>
+                  setForm({ ...form, startDate: v })
                 }
                 className={inp}
               />
             </Field>
             <Field label="End Date">
-              <input
+              <DateField
                 type="datetime-local"
                 value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                onChange={(v) => setForm({ ...form, endDate: v })}
                 className={inp}
               />
             </Field>

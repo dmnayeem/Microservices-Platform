@@ -34,6 +34,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { DateField } from "@/components/ui/date-field";
 
 const NOTIFICATION_TYPES = [
   { value: "SYSTEM", label: "System", icon: AlertCircle, color: "text-gray-400" },
@@ -957,12 +958,12 @@ export function SendNotificationForm() {
                     />
                     <span className="text-sm text-white">Schedule for later</span>
                   </label>
-                  <input
+                  <DateField
                     type="datetime-local"
                     disabled={!formData.scheduledFor}
                     value={formData.scheduledFor}
-                    onChange={(e) =>
-                      setFormData({ ...formData, scheduledFor: e.target.value })
+                    onChange={(v) =>
+                      setFormData({ ...formData, scheduledFor: v })
                     }
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
                   />

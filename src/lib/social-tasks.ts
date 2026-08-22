@@ -17,7 +17,30 @@ export type FieldType =
   | "number"
   | "screenshot"
   | "image-url"
+  | "image-prompt"
   | "select";
+
+/**
+ * What a field *means*, independent of which platform named it.
+ *
+ * Pinterest calls its body `pinDescription`, Reddit calls it `postBody`, X calls
+ * it `tweetContent` — but all three are "the text of the post". Roles let every
+ * downstream consumer (the recipe renderer, the AI prompt builder, the DIY
+ * prompt) work off meaning instead of ~250 hand-written key names.
+ *
+ *  - `target`  the thing to open (never a copy step — it's the "Open" link)
+ *  - `meta`    an admin knob, not something the user pastes into the platform
+ */
+export type FieldRole =
+  | "title"
+  | "body"
+  | "hashtags"
+  | "link"
+  | "board"
+  | "image"
+  | "imagePrompt"
+  | "target"
+  | "meta";
 
 export interface SocialField {
   key: string;
@@ -27,6 +50,8 @@ export interface SocialField {
   placeholder?: string;
   helperText?: string;
   options?: string[];
+  /** Computed by `augmentCatalog()` at module load — never hand-written. */
+  role?: FieldRole;
 }
 
 export interface SocialAction {
@@ -42,10 +67,28 @@ export interface SocialAction {
    * Set to true for actions that involve creating new content.
    */
   supportsAiPrompt: boolean;
-  /** Which adminField keys are AI-generatable (replaced by `aiPrompt` when toggle is on) */
+  /**
+   * Which adminField keys are AI-generatable (replaced by `aiPrompt` when the
+   * toggle is on). The hand-written values below are documentation only —
+   * `augmentCatalog()` recomputes this from field roles at module load, so an
+   * action never has to be edited by hand to gain hashtags or an image prompt.
+   */
   aiGeneratableFields?: string[];
   /** Suggested points reward range */
   suggestedReward?: { min: number; max: number };
+  /** Computed by `augmentCatalog()` — the ordered things a user copies/downloads. */
+  recipe?: RecipeStepSpec[];
+}
+
+/** How one recipe step is rendered to the user. */
+export type RecipeKind = "text" | "link" | "image" | "image-prompt";
+
+export interface RecipeStepSpec {
+  key: string;
+  label: string;
+  kind: RecipeKind;
+  role: FieldRole;
+  aiGeneratable: boolean;
 }
 
 export interface SocialPlatform {
@@ -101,13 +144,15 @@ const fieldProofUsername: SocialField = {
   placeholder: "@yourhandle",
 };
 
-const fieldComment = (label = "Comment template"): SocialField => ({
+// Labels here are shown to the USER as the name of a step they copy, so they
+// read as the thing itself ("Comment") rather than as admin jargon ("template").
+const fieldComment = (label = "Comment"): SocialField => ({
   key: "commentTemplate",
   label,
   type: "textarea",
   required: true,
   placeholder: "Suggested comment text (users will copy and post this)",
-  helperText: "Or toggle 'Use AI prompt' to let users generate the comment with AI.",
+  helperText: "Or switch the content mode to AI to let users generate their own.",
 });
 
 const fieldWatchSeconds: SocialField = {
@@ -120,10 +165,129 @@ const fieldWatchSeconds: SocialField = {
 
 const fieldImageUrl: SocialField = {
   key: "imageUrl",
-  label: "Image URL (optional)",
+  label: "Image (upload or URL)",
   type: "image-url",
   required: false,
+  role: "image",
   placeholder: "Image users should attach to their post",
+  helperText: "Users get a preview and a Download button for this image.",
+};
+
+/**
+ * The alternative to supplying an image: describe it, and the user generates it
+ * themselves in ChatGPT/Gemini. Costs us nothing and scales to any volume.
+ */
+const fieldImagePrompt: SocialField = {
+  key: "imagePrompt",
+  label: "Image prompt (for ChatGPT / Gemini)",
+  type: "image-prompt",
+  required: false,
+  role: "imagePrompt",
+  placeholder: "Describe the image users should generate, e.g. 'a flat-lay of…'",
+  helperText:
+    "Leave the image blank and fill this instead — users paste it into ChatGPT/Gemini, get the image, and upload it themselves.",
+};
+
+const fieldHashtags: SocialField = {
+  key: "hashtags",
+  label: "Hashtags",
+  type: "text",
+  required: false,
+  role: "hashtags",
+  placeholder: "#tag1 #tag2 #tag3",
+  helperText: "Optional. AI fills this in when generating.",
+};
+
+// -----------------------------------------------------------------------------
+// Field roles — what a field MEANS, regardless of what the platform calls it.
+// -----------------------------------------------------------------------------
+
+/**
+ * Key → role. Small on purpose: across all 55 AI-capable actions there are only
+ * ~19 distinct content field keys, so this table is complete rather than
+ * best-effort. An unmapped key falls back to `meta`, which still renders as a
+ * copyable step but is never handed to the AI — the safe direction to fail.
+ */
+const FIELD_ROLE: Record<string, FieldRole> = {
+  // The thing to open, not something to paste.
+  targetUrl: "target",
+  targetHandle: "target",
+
+  // Headline.
+  pinTitle: "title",
+  postTitle: "title",
+  title: "title",
+
+  // Body copy.
+  pinDescription: "body",
+  postBody: "body",
+  postContent: "body",
+  postText: "body",
+  body: "body",
+  description: "body",
+  caption: "body",
+  storyText: "body",
+  tweetContent: "body",
+  threadText: "body",
+  threadContent: "body",
+  messageContent: "body",
+  shareCaption: "body",
+  quoteText: "body",
+  commentTemplate: "body",
+  instructions: "body",
+
+  hashtags: "hashtags",
+
+  // Where the post should point.
+  destinationUrl: "link",
+  shareUrl: "link",
+  websiteUrl: "link",
+
+  boardName: "board",
+  imageUrl: "image",
+  imagePrompt: "imagePrompt",
+
+  // Admin knobs and free-form lists — copyable, but never AI-generated.
+  minWatchSeconds: "meta",
+  durationDays: "meta",
+  boardDescription: "meta",
+  boardNames: "meta",
+  pageList: "meta",
+  subredditList: "meta",
+  awardType: "meta",
+  tagHandle: "meta",
+  verifyTarget: "meta",
+};
+
+export function fieldRole(f: SocialField): FieldRole {
+  return f.role ?? FIELD_ROLE[f.key] ?? (f.type === "url" ? "link" : "meta");
+}
+
+/** Roles the AI is allowed to write. Everything else is echoed from the admin. */
+const AI_ROLES = new Set<FieldRole>(["title", "body", "hashtags", "imagePrompt"]);
+
+/** The order a user works through a post: headline → text → tags → link → art → board. */
+const ROLE_ORDER: FieldRole[] = [
+  "title",
+  "body",
+  "hashtags",
+  "link",
+  "image",
+  "imagePrompt",
+  "board",
+  "meta",
+];
+
+const ROLE_KIND: Record<FieldRole, RecipeKind> = {
+  title: "text",
+  body: "text",
+  hashtags: "text",
+  link: "link",
+  board: "text",
+  image: "image",
+  imagePrompt: "image-prompt",
+  target: "text",
+  meta: "text",
 };
 
 // -----------------------------------------------------------------------------
@@ -198,7 +362,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "postContent",
-            label: "Post content (template)",
+            label: "Post content",
             type: "textarea",
             required: true,
             placeholder: "Suggested post text with hashtags",
@@ -241,7 +405,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
           fieldUrl("targetUrl", "Group URL"),
           {
             key: "postContent",
-            label: "Post content (template)",
+            label: "Post content",
             type: "textarea",
             required: true,
             placeholder: "Post text users should publish",
@@ -310,7 +474,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         label: "Reply to Tweet",
         emoji: "💬",
         description: "Reply to a specific tweet",
-        adminFields: [fieldUrl("targetUrl", "Tweet URL"), fieldComment("Reply text (template)")],
+        adminFields: [fieldUrl("targetUrl", "Tweet URL"), fieldComment("Reply text")],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldUrl("proofUrl", "Your reply URL"), fieldScreenshot],
         supportsAiPrompt: true,
@@ -325,7 +489,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
           fieldUrl("targetUrl", "Tweet URL to quote"),
           {
             key: "quoteText",
-            label: "Quote text (template)",
+            label: "Quote text",
             type: "textarea",
             required: true,
             placeholder: "Your quote tweet content",
@@ -344,7 +508,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "tweetContent",
-            label: "Tweet content (template)",
+            label: "Tweet content",
             type: "textarea",
             required: true,
             placeholder: "Tweet text with hashtags (max 280 chars)",
@@ -486,7 +650,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "caption",
-            label: "Caption (template)",
+            label: "Caption",
             type: "textarea",
             required: true,
             placeholder: "Caption text with hashtags",
@@ -506,7 +670,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "caption",
-            label: "Caption (template)",
+            label: "Caption",
             type: "textarea",
             required: true,
           },
@@ -595,7 +759,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "caption",
-            label: "Caption (template)",
+            label: "Caption",
             type: "textarea",
             required: true,
           },
@@ -614,7 +778,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
           fieldUrl("targetUrl", "Original video URL"),
           {
             key: "instructions",
-            label: "Instructions (template)",
+            label: "Instructions",
             type: "textarea",
             required: false,
           },
@@ -711,14 +875,14 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "pinTitle",
-            label: "Pin title (template)",
+            label: "Pin title",
             type: "text",
             required: true,
             placeholder: "Eye-catching pin title",
           },
           {
             key: "pinDescription",
-            label: "Pin description (template)",
+            label: "Pin description",
             type: "textarea",
             required: true,
             placeholder: "Detailed description with keywords",
@@ -836,13 +1000,13 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "title",
-            label: "Title (template)",
+            label: "Title",
             type: "text",
             required: false,
           },
           {
             key: "body",
-            label: "Body (template)",
+            label: "Body",
             type: "textarea",
             required: true,
           },
@@ -888,7 +1052,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         label: "Reply to Thread",
         emoji: "💬",
         description: "Reply to a thread",
-        adminFields: [fieldUrl("targetUrl", "Thread URL"), fieldComment("Reply (template)")],
+        adminFields: [fieldUrl("targetUrl", "Thread URL"), fieldComment("Reply")],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldUrl("proofUrl", "Your reply URL"), fieldScreenshot],
         supportsAiPrompt: true,
@@ -912,7 +1076,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         adminFields: [
           {
             key: "threadContent",
-            label: "Thread content (template)",
+            label: "Thread content",
             type: "textarea",
             required: true,
           },
@@ -959,7 +1123,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
           },
           {
             key: "messageContent",
-            label: "Message content (template)",
+            label: "Message content",
             type: "textarea",
             required: true,
           },
@@ -1056,7 +1220,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
           fieldUrl("targetUrl", "Group URL"),
           {
             key: "messageContent",
-            label: "Message content (template)",
+            label: "Message content",
             type: "textarea",
             required: true,
           },
@@ -1123,13 +1287,13 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
           },
           {
             key: "postTitle",
-            label: "Post title (template)",
+            label: "Post title",
             type: "text",
             required: true,
           },
           {
             key: "postBody",
-            label: "Post body (template)",
+            label: "Post body",
             type: "textarea",
             required: true,
           },
@@ -1425,7 +1589,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a text review for a Google business listing",
         adminFields: [
           fieldUrl("targetUrl", "Business / Maps URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldProofUrl("Link to your review"), fieldScreenshot],
@@ -1479,7 +1643,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a text review for a company on Trustpilot",
         adminFields: [
           fieldUrl("targetUrl", "Company URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldProofUrl("Link to your review"), fieldScreenshot],
@@ -1523,7 +1687,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a text review on the App Store",
         adminFields: [
           fieldUrl("targetUrl", "App Store URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -1567,7 +1731,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a text review on Google Play",
         adminFields: [
           fieldUrl("targetUrl", "Play Store URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -1752,7 +1916,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Leave a public comment on a track",
         adminFields: [
           fieldUrl("targetUrl", "Track URL"),
-          fieldComment("Comment (template)"),
+          fieldComment("Comment"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -1796,7 +1960,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a text review for a business",
         adminFields: [
           fieldUrl("targetUrl", "Business URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldProofUrl("Link to your review"), fieldScreenshot],
@@ -1878,7 +2042,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a travel review",
         adminFields: [
           fieldUrl("targetUrl", "Listing URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldProofUrl("Link to your review"), fieldScreenshot],
@@ -1951,7 +2115,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a detailed review",
         adminFields: [
           fieldUrl("targetUrl", "Business URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -1996,7 +2160,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write the pros of the product",
         adminFields: [
           fieldUrl("targetUrl", "Product URL"),
-          fieldComment("Pros (template)"),
+          fieldComment("Pros"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2010,7 +2174,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write the cons of the product",
         adminFields: [
           fieldUrl("targetUrl", "Product URL"),
-          fieldComment("Cons (template)"),
+          fieldComment("Cons"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2055,7 +2219,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a detailed review",
         adminFields: [
           fieldUrl("targetUrl", "Product URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2100,7 +2264,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a text review",
         adminFields: [
           fieldUrl("targetUrl", "Business URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2153,7 +2317,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write the pros of working there",
         adminFields: [
           fieldUrl("targetUrl", "Company URL"),
-          fieldComment("Pros (template)"),
+          fieldComment("Pros"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2167,7 +2331,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write the cons of working there",
         adminFields: [
           fieldUrl("targetUrl", "Company URL"),
-          fieldComment("Cons (template)"),
+          fieldComment("Cons"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2222,7 +2386,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a recommendation review",
         adminFields: [
           fieldUrl("targetUrl", "Page URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2285,7 +2449,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Comment on an answer",
         adminFields: [
           fieldUrl("targetUrl", "Answer URL"),
-          fieldComment("Comment (template)"),
+          fieldComment("Comment"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2309,7 +2473,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write an answer to a question",
         adminFields: [
           fieldUrl("targetUrl", "Question URL"),
-          fieldComment("Answer (template)"),
+          fieldComment("Answer"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldProofUrl("Link to your answer"), fieldScreenshot],
@@ -2353,7 +2517,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Write a review for a place",
         adminFields: [
           fieldUrl("targetUrl", "Location URL"),
-          fieldComment("Review text (template)"),
+          fieldComment("Review text"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldProofUrl("Link to your review"), fieldScreenshot],
@@ -2395,7 +2559,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Answer a question about the place",
         adminFields: [
           fieldUrl("targetUrl", "Location URL"),
-          fieldComment("Suggested answer (template)"),
+          fieldComment("Suggested answer"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -2440,7 +2604,7 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
         description: "Leave a comment on the page",
         adminFields: [
           fieldUrl("targetUrl", "Page URL"),
-          fieldComment("Comment (template)"),
+          fieldComment("Comment"),
         ],
         aiGeneratableFields: ["commentTemplate"],
         proofFields: [fieldScreenshot],
@@ -3079,6 +3243,9 @@ const EXTRA_ACTIONS: Record<string, SocialAction[]> = {
 };
 
 // Merge the extra actions into the platform definitions (runs once at load).
+// `augmentCatalog()` then stamps roles / adds the shared content fields / derives
+// each action's recipe — it is invoked at the BOTTOM of this file because it
+// depends on ACTION_TIER, which is declared further down.
 for (const _platform of SOCIAL_PLATFORMS) {
   const extra = EXTRA_ACTIONS[_platform.key];
   if (extra) _platform.actions.push(...extra);
@@ -3232,7 +3399,20 @@ export interface BundleItem {
   /** Per-item points (display / breakdown). Task total = Σ of these. */
   points: number;
   proofRequirements: ProofRequirements;
+  /**
+   * Legacy boolean, kept in sync with `aiMode` so every existing reader keeps
+   * working. `aiPromptEnabled === (aiMode !== "off")`.
+   */
   aiPromptEnabled: boolean;
+  /**
+   * How the user gets their content:
+   *  - `off`      the admin's text verbatim
+   *  - `generate` we call Gemini once per user (costs us money, best UX)
+   *  - `diy`      the user copies a ready-made prompt into ChatGPT/Gemini
+   *               themselves — costs us nothing and works with no API key
+   *  - `both`     Generate button plus a DIY escape hatch
+   */
+  aiMode?: AiMode;
   aiPrompt: string | null;
   /** Minimum watch seconds for a watch/stream action. Drives BOTH the client
    *  watch-lock player AND the server watch target (see socialWatchTargetSeconds
@@ -3246,6 +3426,10 @@ export interface BundleItem {
    *  undefined = no auto-verify (manual proof review, the default). */
   verify?: "CODE" | "TELEGRAM_MEMBER" | "DISCORD_MEMBER";
 }
+
+/** How a bundle item sources its content. See `BundleItem.aiMode`. */
+export type AiMode = "off" | "generate" | "diy" | "both";
+const AI_MODES: AiMode[] = ["off", "generate", "diy", "both"];
 
 /** Auto-verification methods a bundle item can use. */
 export type VerifyMethod = "CODE" | "TELEGRAM_MEMBER" | "DISCORD_MEMBER";
@@ -3283,7 +3467,15 @@ function coerceBundleItem(raw: unknown): BundleItem | null {
   const r = (raw ?? {}) as Partial<BundleItem>;
   if (!r.action || typeof r.action !== "string") return null;
   const pts = Number(r.points);
+  // Configs saved before aiMode existed carry only the boolean — treat those as
+  // "generate", which is what that toggle used to do.
+  const aiMode: AiMode = AI_MODES.includes(r.aiMode as AiMode)
+    ? (r.aiMode as AiMode)
+    : r.aiPromptEnabled
+      ? "generate"
+      : "off";
   return {
+    aiMode,
     action: r.action,
     fields:
       r.fields && typeof r.fields === "object"
@@ -3293,7 +3485,7 @@ function coerceBundleItem(raw: unknown): BundleItem | null {
     proofRequirements: r.proofRequirements
       ? coerceProofRequirements(r.proofRequirements)
       : { ...DEFAULT_PROOF },
-    aiPromptEnabled: !!r.aiPromptEnabled,
+    aiPromptEnabled: aiMode !== "off",
     aiPrompt: typeof r.aiPrompt === "string" ? r.aiPrompt : null,
     watchSeconds:
       typeof r.watchSeconds === "number" && Number.isFinite(r.watchSeconds)
@@ -3376,6 +3568,7 @@ export interface SocialTaskItemView {
   points: number;
   proofRequirements: ProofRequirements;
   aiPromptEnabled: boolean;
+  aiMode: AiMode;
   aiPrompt: string | null;
   watchSeconds: number | null;
   targetUrl: string;
@@ -3430,6 +3623,7 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
       username: false,
     },
     aiPromptEnabled: it.aiPromptEnabled ?? false,
+    aiMode: it.aiMode ?? (it.aiPromptEnabled ? "generate" : "off"),
     aiPrompt: it.aiPrompt ?? null,
     watchSeconds: it.watchSeconds ?? null,
     targetUrl: it.fields?.targetUrl ?? it.fields?.targetHandle ?? "",
@@ -3448,6 +3642,7 @@ export function mapSocialTaskRow(t: SocialTaskRow): SocialTaskView {
         points: t.pointsReward ?? 0,
         proofRequirements: { url: true, screenshot: true, username: false },
         aiPromptEnabled: false,
+        aiMode: "off",
         aiPrompt: null,
         watchSeconds: null,
         targetUrl,
@@ -3721,4 +3916,128 @@ export function validateSocialBundle(cfg: {
     return { ok: false, error: first, itemErrors };
   }
   return { ok: true };
+}
+
+// -----------------------------------------------------------------------------
+// Recipe: the ordered list of things a user copies / downloads to make the post
+// -----------------------------------------------------------------------------
+
+/**
+ * Actions where the user CREATES something (a pin, a post, a tweet, a review)
+ * rather than reacting to something that already exists. Derived from the
+ * existing tier table — tier 80 is already exactly "heavy creation" — so a new
+ * action gets classified correctly the moment it is given a tier.
+ *
+ * Two tier-80 actions are transactions, not posts, so they're excluded.
+ */
+const NON_CREATION_TIER_80 = new Set(["BUY_TRACK", "GIVE_AWARD"]);
+
+export function isPostCreationAction(actionKey: string): boolean {
+  return actionPriority(actionKey) === 80 && !NON_CREATION_TIER_80.has(actionKey);
+}
+
+function buildRecipeSpec(a: SocialAction): RecipeStepSpec[] {
+  return a.adminFields
+    .filter((f) => fieldRole(f) !== "target")
+    .map((f) => {
+      const role = fieldRole(f);
+      return {
+        key: f.key,
+        label: f.label,
+        kind: ROLE_KIND[role],
+        role,
+        aiGeneratable: a.supportsAiPrompt && AI_ROLES.has(role),
+      };
+    })
+    .sort((x, y) => ROLE_ORDER.indexOf(x.role) - ROLE_ORDER.indexOf(y.role));
+}
+
+/**
+ * Stamp roles, top up the shared content fields, and derive each action's
+ * recipe — once, at module load, for all ~250 actions.
+ *
+ * This is what lets a platform's post recipe be complete without editing 250
+ * hand-written blocks: an action that has body text gets a hashtags field and an
+ * image-prompt slot automatically, and `aiGeneratableFields` is recomputed from
+ * roles rather than from whatever list someone remembered to write.
+ *
+ * Must stay pure and browser-safe — this module is imported by client bundles.
+ */
+function augmentCatalog(): void {
+  for (const platform of SOCIAL_PLATFORMS) {
+    for (const action of platform.actions) {
+      // Spread-copy the shared field singletons before stamping, or the `role`
+      // written for one action would leak into every other action using it.
+      action.adminFields = action.adminFields.map((f) => ({
+        ...f,
+        role: fieldRole(f),
+      }));
+
+      if (action.supportsAiPrompt) {
+        const roles = new Set(action.adminFields.map((f) => f.role!));
+        // Hashtags belong with every piece of body copy; only 3 actions declared
+        // one by hand.
+        if (roles.has("body") && !roles.has("hashtags")) {
+          action.adminFields.push({ ...fieldHashtags });
+        }
+        // Every content action can describe its image instead of supplying one.
+        if (!roles.has("imagePrompt")) {
+          action.adminFields.push({ ...fieldImagePrompt });
+        }
+        // Post-creation actions can also carry an actual image; only 9 declared one.
+        if (!roles.has("image") && isPostCreationAction(action.key)) {
+          action.adminFields.push({ ...fieldImageUrl });
+        }
+        action.aiGeneratableFields = action.adminFields
+          .filter((f) => AI_ROLES.has(f.role!))
+          .map((f) => f.key);
+      }
+
+      action.recipe = buildRecipeSpec(action);
+    }
+  }
+}
+
+augmentCatalog();
+
+/** One resolved step, ready to render: label, value, and where the value came from. */
+export interface ResolvedStep extends RecipeStepSpec {
+  value: string;
+  source: "admin" | "ai";
+  /** 1-based position shown to the user. */
+  serial: number;
+}
+
+/**
+ * Turn an action definition + the admin's values (+ any AI-generated values)
+ * into the numbered list the user works through.
+ *
+ * The important rule: the admin's link / board / image steps are **always**
+ * emitted, whatever the AI mode is. Previously the whole static block was hidden
+ * as soon as AI was switched on, so users never saw the destination URL or board
+ * name they were supposed to paste — the post was unmakeable.
+ */
+export function resolveRecipe(
+  def: SocialAction | null | undefined,
+  item: { fields?: Record<string, string> | null },
+  generated?: Record<string, string> | null
+): ResolvedStep[] {
+  if (!def) return [];
+  const fields = item.fields ?? {};
+  const steps: ResolvedStep[] = [];
+
+  for (const spec of def.recipe ?? []) {
+    const aiValue = (generated?.[spec.key] ?? "").trim();
+    const adminValue = (fields[spec.key] ?? "").trim();
+    const value = aiValue || adminValue;
+    if (!value) continue;
+    steps.push({
+      ...spec,
+      value,
+      source: aiValue ? "ai" : "admin",
+      serial: 0,
+    });
+  }
+
+  return steps.map((s, i) => ({ ...s, serial: i + 1 }));
 }

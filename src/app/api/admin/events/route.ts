@@ -2,18 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { parseEventTiers } from "@/lib/events-shared";
+import { parseEventTiers, EVENT_ACTION_TYPES } from "@/lib/events-shared";
 import { maxPackageAccessLevel } from "@/lib/events";
 import type { Prisma } from "@/generated/prisma/client";
+import { revalidateTag } from "next/cache";
+import { EVENTS_ACTIVE_TAG } from "@/lib/cache-tags";
 
-const ACTION_TYPES = [
-  "TEAM_ADD",
-  "TASK_COMPLETE",
-  "QUIZ_COMPLETE",
-  "LOTTERY_BUY",
-  "UPLOAD_PROOF",
-  "SOCIAL_ACTION",
-] as const;
+// The single shared list — see EVENT_ACTION_TYPES in events-shared.ts.
+const ACTION_TYPES = EVENT_ACTION_TYPES;
 
 function parseBody(b: Record<string, unknown>) {
   const actionType = String(b.actionType ?? "");
@@ -44,6 +40,8 @@ function parseBody(b: Record<string, unknown>) {
         ? (tiers as unknown as Prisma.InputJsonValue)
         : undefined,
       requiredAccessLevel: int(b.requiredAccessLevel, 0),
+      // 0 = unlimited. Bounded per user per LOCAL day by recordUserAction.
+      dailyCap: int(b.dailyCap, 0),
       startAt,
       endAt,
       isActive: b.isActive !== false,
@@ -100,5 +98,10 @@ export async function POST(request: NextRequest) {
     maxLevel
   );
   const event = await prisma.event.create({ data: parsed.data });
+  // The recorder reads a cached index of active events to decide whether an
+  // action needs tracking at all. Without this the new event records nothing
+  // for up to 60s — long enough for the admin to test it and conclude it's
+  // broken.
+  revalidateTag(EVENTS_ACTIVE_TAG, "max");
   return NextResponse.json({ event });
 }

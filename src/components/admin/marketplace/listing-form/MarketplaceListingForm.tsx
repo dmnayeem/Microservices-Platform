@@ -30,6 +30,7 @@ import {
 } from "@/lib/marketplace-categories";
 import { CategoryFieldInput } from "./CategoryFieldInput";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { DateField } from "@/components/ui/date-field";
 
 const STEPS = [
   { id: 1, label: "Asset type" },
@@ -744,10 +745,10 @@ function StepPricing({
               />
             </Field>
             <Field label="Auction ends at">
-              <input
+              <DateField
                 type="datetime-local"
                 value={form.auctionEndsAt}
-                onChange={(e) => set("auctionEndsAt", e.target.value)}
+                onChange={(v) => set("auctionEndsAt", v)}
                 className={inp}
               />
             </Field>

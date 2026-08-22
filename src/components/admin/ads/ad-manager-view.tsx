@@ -45,6 +45,7 @@ import { ModalShell } from "@/components/admin/ads/modal-shell";
 // Shared presentation so this view and the review console can't drift apart.
 import { StatusPill, targetingSummary } from "@/components/admin/ads/ad-ui";
 import { type AdTargeting } from "@/lib/ad-targeting";
+import { DateField } from "@/components/ui/date-field";
 
 interface Campaign {
   id: string;
@@ -1814,11 +1815,11 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-slate-400 mb-1">Start date (optional)</label>
-            <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
+            <DateField type="date" value={startAt} onChange={(v) => setStartAt(v)} className={inputCls} />
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">End date (optional)</label>
-            <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
+            <DateField type="date" value={endAt} onChange={(v) => setEndAt(v)} className={inputCls} />
           </div>
         </div>
         <button onClick={save} disabled={busy} className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50">

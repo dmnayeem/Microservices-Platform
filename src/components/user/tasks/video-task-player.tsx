@@ -73,7 +73,6 @@ export function VideoTaskPlayer({
   const cfg = task.videoConfig;
   const watchTarget = cfg?.watchSeconds ?? 30;
   const warmupTarget = cfg?.warmupSeconds ?? 0;
-  const autoSubmit = cfg?.autoSubmit ?? true;
   const videoUrl = cfg?.videoUrl || task.contentUrl || "";
   // react-player v3's URL matchers are strict; normalize YouTube/Vimeo to their
   // canonical embed form so the player actually loads instead of black-screening.
@@ -96,7 +95,6 @@ export function VideoTaskPlayer({
   // autoplay-with-sound and doesn't fire play() on cross-origin YouTube iframes).
   const [userStarted, setUserStarted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [autoFailed, setAutoFailed] = useState(false);
   // Player couldn't load the media (bad/unsupported URL) — show a clear error
   // + external link instead of a silent black box.
   const [loadError, setLoadError] = useState(false);
@@ -282,21 +280,19 @@ export function VideoTaskPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, task.id, submissionId]);
 
-  // Auto-submit on complete (if configured & nothing to confirm)
-  const needsProofForm =
-    proofReq.screenshot || proofReq.uniqueKey;
-  // Engagement/step proof also require manual confirm, so they block auto-submit.
+  const needsProofForm = proofReq.screenshot || proofReq.uniqueKey;
+  /**
+   * Whether the task collects anything after the video. When it doesn't,
+   * `autoSubmit` means "don't show a proof form", NOT "submit by itself" — the
+   * user still presses the button below.
+   *
+   * There used to be an effect here that submitted with no user action at all,
+   * so the task went from playing to done with nothing to press and no signal
+   * that the work had been sent. It's gone: submitting is always something the
+   * user chooses to do.
+   */
   const needsInteraction =
     needsProofForm || engSteps.length > 0 || steps.length > 0;
-  useEffect(() => {
-    if (phase !== "complete") return;
-    if (!outroAdDone) return; // let the outro interstitial finish first
-    if (!autoSubmit) return;
-    if (needsInteraction) return;
-    if (submittedRef.current) return;
-    void doSubmit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, autoSubmit, needsInteraction, outroAdDone]);
 
   // Step flow: after the user presses Complete and the outro ad is closed,
   // create the submission.
@@ -381,7 +377,6 @@ export function VideoTaskPlayer({
       status: stepStatus[s.id] ?? "done",
     }));
     submittedRef.current = true;
-    setAutoFailed(false);
     setBusy(true);
     try {
       // Flush the final watch gap to the server so its authoritative
@@ -439,9 +434,8 @@ export function VideoTaskPlayer({
       }
       // Stay on the success screen — the user leaves via the "Done" button.
     } catch (err) {
+      // Let the user press Submit again.
       submittedRef.current = false;
-      // Surface a retry button instead of the perpetual "Submitting…" spinner.
-      setAutoFailed(true);
       toast.error("Couldn't submit", {
         description: err instanceof Error ? err.message : "Try again",
       });
@@ -1043,15 +1037,11 @@ export function VideoTaskPlayer({
                 {proofReq.screenshot && (
                   <div>
                     <label className="block text-xs font-medium text-gray-400 mb-1">
-                      Screenshot URL{" "}
-                      <span className="text-red-400">*</span>
+                      Screenshot <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="url"
+                    <ProofImageUpload
                       value={screenshotUrl}
-                      onChange={(e) => setScreenshotUrl(e.target.value)}
-                      placeholder="https://... (upload to imgur, etc.)"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                      onChange={setScreenshotUrl}
                     />
                   </div>
                 )}
@@ -1077,27 +1067,24 @@ export function VideoTaskPlayer({
               </div>
             )}
 
-            {(autoSubmit && !needsInteraction && busy && !autoFailed) ? (
-              <div className="flex items-center justify-center gap-2 py-2.5 text-emerald-400 text-sm font-semibold">
+            {/* Always an explicit press — the user needs to see that their work
+                was sent, not have it happen silently behind them. */}
+            <button
+              onClick={doSubmit}
+              disabled={busy || !allEngDone}
+              className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting…
-              </div>
-            ) : (
-              <button
-                onClick={doSubmit}
-                disabled={busy || !allEngDone}
-                className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {busy ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                {allEngDone
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              {busy
+                ? "Submitting…"
+                : allEngDone
                   ? `Submit & Claim +${task.pointsReward} pts`
                   : "Complete the steps above"}
-              </button>
-            )}
+            </button>
               </>
             )}
           </div>

@@ -22,6 +22,11 @@ import {
 import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { DateField } from "@/components/ui/date-field";
+import {
+  TaskAudienceTargeting,
+  type TaskAudienceValue,
+} from "@/components/admin/tasks/task-audience-targeting";
 
 interface Board {
   id: string;
@@ -38,6 +43,17 @@ interface Board {
   unlockBoardId?: string | null;
   taskCount?: number;
   claimCount?: number;
+  minLevel?: number;
+  requiredAccessLevel?: number;
+  countries?: string[];
+  genders?: string[];
+  regions?: string[];
+  divisions?: string[];
+  districts?: string[];
+  subDistricts?: string[];
+  postalCodes?: string[];
+  minAge?: number | null;
+  maxAge?: number | null;
 }
 
 interface AnalyticsData {
@@ -99,7 +115,23 @@ interface FormState {
   isActive: boolean;
   order: number;
   unlockBoardId: string; // "" means no prerequisite
+  minLevel: number;
+  requiredAccessLevel: number;
+  audience: TaskAudienceValue;
 }
+
+/** Same nine dimensions as a Task. Empty array / null bound = no constraint. */
+const EMPTY_BOARD_AUDIENCE: TaskAudienceValue = {
+  countries: [],
+  genders: [],
+  regions: [],
+  divisions: [],
+  districts: [],
+  subDistricts: [],
+  postalCodes: [],
+  minAge: null,
+  maxAge: null,
+};
 
 const EMPTY: FormState = {
   title: "",
@@ -113,6 +145,9 @@ const EMPTY: FormState = {
   isActive: true,
   order: 0,
   unlockBoardId: "",
+  minLevel: 1,
+  requiredAccessLevel: 0,
+  audience: { ...EMPTY_BOARD_AUDIENCE },
 };
 
 export function BoardsClient({ initialBoards, canManage }: Props) {
@@ -141,6 +176,19 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
       isActive: b.isActive,
       order: b.order,
       unlockBoardId: b.unlockBoardId ?? "",
+      minLevel: b.minLevel ?? 1,
+      requiredAccessLevel: b.requiredAccessLevel ?? 0,
+      audience: {
+        countries: b.countries ?? [],
+        genders: b.genders ?? [],
+        regions: b.regions ?? [],
+        divisions: b.divisions ?? [],
+        districts: b.districts ?? [],
+        subDistricts: b.subDistricts ?? [],
+        postalCodes: b.postalCodes ?? [],
+        minAge: b.minAge ?? null,
+        maxAge: b.maxAge ?? null,
+      },
     });
   const close = () => setModal(null);
 
@@ -195,6 +243,9 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
           isActive: modal.isActive,
           order: modal.order,
           unlockBoardId: modal.unlockBoardId || null,
+          minLevel: modal.minLevel,
+          requiredAccessLevel: modal.requiredAccessLevel,
+          ...modal.audience,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -575,11 +626,11 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
                   </select>
                 </Field>
                 <Field label="Deadline (optional)">
-                  <input
+                  <DateField
                     type="datetime-local"
                     value={modal.expiresAt}
-                    onChange={(e) =>
-                      setModal({ ...modal, expiresAt: e.target.value })
+                    onChange={(v) =>
+                      setModal({ ...modal, expiresAt: v })
                     }
                     className={inp}
                   />
@@ -665,6 +716,66 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
                 />
                 <span className="text-sm text-white">Active (visible to users)</span>
               </label>
+
+              {/* ── Who can see this board ────────────────────────────────
+                  A board had no per-user gate at all: every active board was
+                  listed to everyone, and a board whose tasks were targeted
+                  elsewhere just showed "0 tasks" and refused to be claimed. */}
+              <div className="pt-3 border-t border-slate-800 space-y-3">
+                <p className="text-sm font-bold text-white">Who can see this board</p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Minimum level">
+                    <input
+                      type="number"
+                      min={1}
+                      value={modal.minLevel}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          minLevel: Math.max(1, parseInt(e.target.value) || 1),
+                        })
+                      }
+                      className={inp}
+                    />
+                  </Field>
+                  <Field label="Minimum plan tier (0 = free)">
+                    <input
+                      type="number"
+                      min={0}
+                      value={modal.requiredAccessLevel}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          requiredAccessLevel: Math.max(
+                            0,
+                            parseInt(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className={inp}
+                    />
+                  </Field>
+                </div>
+
+                <TaskAudienceTargeting
+                  value={modal.audience}
+                  onChange={(patch) =>
+                    setModal({
+                      ...modal,
+                      audience: { ...modal.audience, ...patch },
+                    })
+                  }
+                  disabled={!canManage}
+                />
+
+                <p className="text-[11px] text-slate-500">
+                  Leave everything blank to show this board to all users.
+                  Targeting is strict — a user whose profile is missing a
+                  targeted field (no country set, no date of birth) will not see
+                  the board.
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-800">

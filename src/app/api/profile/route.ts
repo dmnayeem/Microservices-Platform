@@ -6,6 +6,7 @@ import { calculateProfileCompletion } from "@/lib/profile-completion";
 import { getXpRank, calculateXpForLevel } from "@/lib/user-rank";
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
+import { checkUsername, USERNAME_RULE_MESSAGE } from "@/lib/username";
 import { getUserDayContext } from "@/lib/user-day";
 
 const PROFILE_FIELDS = {
@@ -452,15 +453,36 @@ export async function PATCH(request: NextRequest) {
 
     // Username — a URL-safe, unique handle used in profile links (/u/<username>).
     if (body.username !== undefined) {
-      const raw = body.username === null ? null : String(body.username).trim();
+      const raw =
+        body.username === null
+          ? null
+          : String(body.username).trim().replace(/^@+/, "");
       if (!raw) {
-        updateData.username = null;
-      } else if (!/^[a-zA-Z0-9._-]{3,30}$/.test(raw)) {
+        // Removing a handle silently breaks the user's own /u/<name> link and
+        // makes them un-mentionable. Refuse — but only if they actually have
+        // one, so accounts still awaiting the backfill can save their profile.
+        const cur = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { username: true },
+        });
+        if (cur?.username) {
+          return NextResponse.json(
+            {
+              error:
+                "Your username can't be removed — pick a different one instead.",
+            },
+            { status: 400 }
+          );
+        }
+        // No handle now and none supplied: nothing to do.
+      } else if (checkUsername(raw) === "INVALID") {
         return NextResponse.json(
-          {
-            error:
-              "Username must be 3-30 characters: letters, numbers, dot, underscore or hyphen.",
-          },
+          { error: USERNAME_RULE_MESSAGE },
+          { status: 400 }
+        );
+      } else if (checkUsername(raw) === "RESERVED") {
+        return NextResponse.json(
+          { error: "That username is reserved. Please pick another." },
           { status: 400 }
         );
       } else {

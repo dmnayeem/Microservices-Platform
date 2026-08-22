@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { History } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import { SOURCE_META, SOURCE_ORDER, type SourceKey } from "@/lib/tx-sources";
+import { DateField } from "@/components/ui/date-field";
 
 interface HistoryTx {
   id: string;
@@ -113,10 +114,10 @@ export function TransactionHistory() {
           ))}
         </select>
         {range === "date" && (
-          <input
+          <DateField
             type="date"
             value={day}
-            onChange={(e) => setDay(e.target.value)}
+            onChange={(v) => setDay(v)}
             className="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-sm text-white focus:outline-none focus:border-indigo-500"
           />
         )}

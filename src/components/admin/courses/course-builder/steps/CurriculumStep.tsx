@@ -25,6 +25,7 @@ import type {
 } from "../types";
 import { makeEmptyLesson, makeEmptyModule } from "../types";
 import { Field, SectionHeader, inputCls } from "../shared";
+import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 
 interface Props {
   state: BuilderState;
@@ -361,24 +362,24 @@ function LessonEditor({
             />
           </Field>
           {(lesson.lessonType === "VIDEO" || lesson.lessonType === "LIVE") && (
-            <Field label="Video URL" hint="MP4, HLS, YouTube, or Vimeo">
-              <input
-                type="url"
+            <Field label="Video" hint="Upload, or paste an MP4 / HLS / YouTube / Vimeo URL">
+              <ImageUploadField
                 value={lesson.videoUrl}
-                onChange={(e) => onPatch({ videoUrl: e.target.value })}
-                className={inputCls}
-                placeholder="https://…"
+                onChange={(url) => onPatch({ videoUrl: url })}
+                fileType="VIDEO"
+                previewSize="md"
+                urlPlaceholder="…or paste a video URL"
               />
             </Field>
           )}
           {lesson.lessonType === "VIDEO" && (
-            <Field label="Subtitles VTT URL" hint="Optional. .vtt format.">
-              <input
-                type="url"
+            <Field label="Subtitles" hint="Optional. .vtt format.">
+              <ImageUploadField
                 value={lesson.subtitlesUrl}
-                onChange={(e) => onPatch({ subtitlesUrl: e.target.value })}
-                className={inputCls}
-                placeholder="https://…/captions.vtt"
+                onChange={(url) => onPatch({ subtitlesUrl: url })}
+                fileType="DOCUMENT"
+                previewSize="sm"
+                urlPlaceholder="…or paste a .vtt URL"
               />
             </Field>
           )}
@@ -454,13 +455,15 @@ function ResourceList({
               className={inputCls + " flex-1"}
               placeholder="Label (e.g. Cheatsheet PDF)"
             />
-            <input
-              type="url"
-              value={r.url}
-              onChange={(e) => patch(i, { url: e.target.value })}
-              className={inputCls + " flex-1"}
-              placeholder="https://…"
-            />
+            <div className="flex-1">
+              <ImageUploadField
+                value={r.url}
+                onChange={(url) => patch(i, { url })}
+                fileType="DOCUMENT"
+                previewSize="sm"
+                urlPlaceholder="…or paste a file URL"
+              />
+            </div>
             <button
               type="button"
               onClick={() => remove(i)}

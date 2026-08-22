@@ -17,29 +17,26 @@ import {
   Power,
   ShieldAlert,
   Target,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-type ActivityKey =
-  | "post_create"
-  | "view_received"
-  | "like_received"
-  | "vote_received"
-  | "comment_received"
-  | "share_received"
-  | "donation_received"
-  | "mention_received";
+import {
+  ratioPreview,
+  type RatioWindow,
+  type SocialActivityKey,
+} from "@/lib/social-actions";
+
+type ActivityKey = SocialActivityKey;
 
 interface SideRow {
   enabled: boolean;
   points: number;
   xp: number;
-  /** Actor side (like/comment): award `points` once per this many distinct-post
-   *  actions (lifetime). 1 = per action. */
-  perCount?: number;
+  /** Award points+xp once per this many counted actions. 1 = per action. */
+  perCount: number;
+  /** When the counter resets: the paid user's local day, or never. */
+  window: RatioWindow;
 }
 
 interface ActivityRow {
@@ -121,15 +118,12 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initial);
   const [busy, setBusy] = useState(false);
-  const [openActor, setOpenActor] = useState<Record<ActivityKey, boolean>>(
-    () =>
-      Object.fromEntries(
-        (Object.keys(ACTIVITY_META) as ActivityKey[]).map((k) => [
-          k,
-          initial.activities[k]?.actor.enabled ?? false,
-        ])
-      ) as Record<ActivityKey, boolean>
-  );
+  // Live caps, so a reward that will be silently clipped is flagged as you type.
+  const caps = {
+    points: form.daily_cap_per_user,
+    xp: form.daily_xp_cap_per_user,
+    perPost: form.cap_per_post,
+  };
 
   const setRecipient = (k: ActivityKey, patch: Partial<SideRow>) =>
     setForm((p) => ({
@@ -184,11 +178,12 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
           Social Earning
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Configure points and XP awarded for social engagement. Each action has
-          two payout sides: the <strong>recipient</strong> (post author) and the{" "}
-          <strong>actor</strong> (the user who performed the action). Actor side
-          ships disabled — turn it on per-action when you want to reward
-          engagement on top of receiving it.
+          Points and XP for social engagement. Every activity pays two sides
+          independently: the <strong>author</strong> whose post received it, and
+          the <strong>engager</strong> who performed it. Set{" "}
+          <strong>Per</strong> above 1 to pay once per that many actions instead
+          of every time — e.g. Per 100 with 10 points means &quot;100 likes → 10
+          points&quot;. The engager side ships off.
         </p>
       </div>
 
@@ -240,15 +235,15 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
           Per-activity rates
         </h2>
         <p className="text-xs text-slate-400 mb-4">
-          Each activity has separate rates for the recipient and the actor.
-          Click &quot;Actor reward&quot; to expand the actor controls per row.
+          Each activity pays the author and the engager separately. Repeats on
+          the same post count once, so nobody can farm a ratio by liking and
+          unliking.
         </p>
         <div className="space-y-2">
           {(Object.keys(ACTIVITY_META) as ActivityKey[]).map((k) => {
             const meta = ACTIVITY_META[k];
             const row = form.activities[k];
             const Icon = meta.icon;
-            const actorOpen = openActor[k];
             const isPostCreate = k === "post_create";
             return (
               <div
@@ -270,68 +265,44 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
                   </div>
                 </div>
 
-                {/* Recipient controls */}
-                <SideControls
+                {/* Both sides are always visible. The actor side used to be
+                    behind a collapsed "Actor reward" toggle, which is why the
+                    ratio field looked like it didn't exist. */}
+                <SideBlock
+                  title="Author earns — when their post RECEIVES this"
                   side="recipient"
+                  activity={k}
                   row={row.recipient}
                   canEdit={canEdit}
+                  caps={caps}
                   onChange={(patch) => setRecipient(k, patch)}
                 />
 
-                {/* Actor controls — collapsible (hidden entirely for POST_CREATE since actor === recipient) */}
-                {!isPostCreate && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenActor((p) => ({ ...p, [k]: !p[k] }))
-                      }
-                      className="mt-2 inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-white"
-                    >
-                      {actorOpen ? (
-                        <ChevronUp className="w-3 h-3" />
-                      ) : (
-                        <ChevronDown className="w-3 h-3" />
-                      )}
-                      Actor reward
-                      {row.actor.enabled && (
-                        <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px] font-bold">
-                          ON
-                        </span>
-                      )}
-                    </button>
-                    {actorOpen && (
-                      <div className="mt-2 ml-7 pl-3 border-l-2 border-slate-800">
-                        <p className="text-[11px] text-slate-500 mb-1">
-                          {meta.actorLabel}
-                        </p>
-                        <SideControls
-                          side="actor"
-                          row={row.actor}
-                          canEdit={canEdit}
-                          onChange={(patch) => setActor(k, patch)}
-                          showPerCount={
-                            k === "like_received" || k === "comment_received"
-                          }
-                        />
-                        {(k === "like_received" || k === "comment_received") &&
-                          row.actor.enabled &&
-                          (row.actor.perCount ?? 1) > 1 && (
-                            <p className="mt-1 ml-11 text-[11px] text-emerald-300/80">
-                              Every {row.actor.perCount} distinct posts{" "}
-                              {k === "like_received" ? "liked" : "commented on"} →
-                              +{row.actor.points} pts (lifetime).
-                            </p>
-                          )}
-                      </div>
-                    )}
-                  </>
-                )}
-                {isPostCreate && (
-                  <p className="mt-2 ml-11 text-[11px] text-slate-500 italic">
+                {isPostCreate ? (
+                  <p className="mt-2 text-[11px] text-slate-500 italic">
                     {meta.actorLabel}
                   </p>
+                ) : (
+                  <SideBlock
+                    title="Engager earns — when they PERFORM this"
+                    side="actor"
+                    activity={k}
+                    row={row.actor}
+                    canEdit={canEdit}
+                    caps={caps}
+                    onChange={(patch) => setActor(k, patch)}
+                  />
                 )}
+
+                {k === "view_received" &&
+                  (row.recipient.perCount > 1 || row.actor.perCount > 1) && (
+                    <p className="mt-2 text-[11px] text-red-300 bg-red-500/10 border border-red-500/25 rounded p-2">
+                      A ratio on views makes the platform log <em>every post
+                      view</em> — the highest-volume event there is. Check your
+                      log retention before leaving this on.
+                    </p>
+                  )}
+
               </div>
             );
           })}
@@ -493,28 +464,104 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
   );
 }
 
+/**
+ * One side of one activity: the controls, a plain-English summary of what they
+ * will actually do, and the warnings that stop an admin configuring something
+ * that silently pays nothing.
+ */
+function SideBlock({
+  title,
+  side,
+  activity,
+  row,
+  canEdit,
+  caps,
+  onChange,
+}: {
+  title: string;
+  side: "recipient" | "actor";
+  activity: ActivityKey;
+  row: SideRow;
+  canEdit: boolean;
+  caps: { points: number; xp: number; perPost: number };
+  onChange: (patch: Partial<SideRow>) => void;
+}) {
+  const isRatio = row.enabled && row.perCount > 1;
+  // POST_CREATE's ledger reference is already keyed to one per local day, so a
+  // daily window there would be meaningless.
+  const forceLifetime = activity === "post_create";
+
+  const overPoints = isRatio && row.points > caps.points;
+  const overXp = isRatio && row.xp > caps.xp;
+  const nearPoints = isRatio && !overPoints && row.points > caps.points / 2;
+
+  return (
+    <div className="mt-3 rounded-lg bg-slate-900/60 border border-slate-800 p-2.5">
+      <p className="text-[11px] font-bold text-slate-300 mb-1.5">{title}</p>
+
+      <SideControls
+        side={side}
+        row={row}
+        canEdit={canEdit}
+        forceLifetime={forceLifetime}
+        onChange={onChange}
+      />
+
+      <p className="mt-1.5 text-[11px] text-emerald-300/80">
+        {ratioPreview(activity, side, row)}
+      </p>
+
+      {overPoints && (
+        <p className="mt-1 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded px-2 py-1">
+          +{row.points} pts is above the {caps.points} pts/day cap — the payout
+          will be clipped to the cap <strong>and the milestone is still used
+          up</strong>. Raise the daily cap or lower the reward.
+        </p>
+      )}
+      {nearPoints && (
+        <p className="mt-1 text-[11px] text-slate-400">
+          +{row.points} pts is more than half the {caps.points} pts/day cap — a
+          user can only hit this about twice a day.
+        </p>
+      )}
+      {overXp && (
+        <p className="mt-1 text-[11px] text-amber-300">
+          +{row.xp} XP is above the {caps.xp} XP/day cap and will be clipped.
+        </p>
+      )}
+      {side === "recipient" && isRatio && (
+        <p className="mt-1 text-[11px] text-slate-500">
+          Earned across all the author&apos;s posts, so &quot;Max points per
+          post&quot; ({caps.perPost}) does not limit it — only the daily cap does.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SideControls({
   side,
   row,
   canEdit,
+  forceLifetime = false,
   onChange,
-  showPerCount = false,
 }: {
   side: "recipient" | "actor";
   row: SideRow;
   canEdit: boolean;
+  /** post_create pays once per day already — a daily window means nothing. */
+  forceLifetime?: boolean;
   onChange: (patch: Partial<SideRow>) => void;
-  /** Actor like/comment: show the "Per (count)" milestone divisor. */
-  showPerCount?: boolean;
 }) {
+  const off = !canEdit || !row.enabled;
+  const inputCls =
+    "flex-1 px-2 py-0.5 bg-slate-950 border border-slate-700 rounded text-sm text-white tabular-nums focus:outline-none focus:border-blue-500 disabled:opacity-60";
+  const cellCls =
+    "flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800";
+
   return (
-    <div
-      className={cn(
-        "mt-2 ml-11 grid grid-cols-1 gap-2",
-        showPerCount ? "sm:grid-cols-4" : "sm:grid-cols-3"
-      )}
-    >
-      <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+      <label className={cn(cellCls, "cursor-pointer")}>
         <input
           type="checkbox"
           checked={row.enabled}
@@ -523,29 +570,56 @@ function SideControls({
           className="rounded bg-slate-800 border-slate-600 text-blue-500"
         />
         <span className="text-[11px] text-slate-300 capitalize">
-          {side} enabled
+          {side === "recipient" ? "On" : "On"}
         </span>
       </label>
-      {showPerCount && (
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
-          <span className="text-[11px] text-slate-400 w-16 shrink-0" title="Award points once per this many distinct posts">
-            Per
-          </span>
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={row.perCount ?? 1}
-            onChange={(e) =>
-              onChange({ perCount: Math.max(1, parseInt(e.target.value) || 1) })
-            }
-            disabled={!canEdit || !row.enabled}
-            className="flex-1 px-2 py-0.5 bg-slate-950 border border-slate-700 rounded text-sm text-white tabular-nums focus:outline-none focus:border-blue-500 disabled:opacity-60"
-          />
-        </div>
-      )}
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
-        <span className="text-[11px] text-slate-400 w-16 shrink-0">Points</span>
+
+      <div className={cellCls}>
+        <span
+          className="text-[11px] text-slate-400 w-10 shrink-0"
+          title="1 = pay on every action. Higher = pay once per this many actions."
+        >
+          Per
+        </span>
+        <input
+          type="number"
+          min={1}
+          step={1}
+          value={row.perCount}
+          onChange={(e) =>
+            onChange({ perCount: Math.max(1, parseInt(e.target.value) || 1) })
+          }
+          disabled={off}
+          className={inputCls}
+        />
+      </div>
+
+      <div className={cellCls}>
+        <span className="text-[11px] text-slate-400 w-10 shrink-0">Resets</span>
+        <select
+          value={forceLifetime ? "lifetime" : row.window}
+          onChange={(e) => onChange({ window: e.target.value as RatioWindow })}
+          disabled={off || row.perCount <= 1 || forceLifetime}
+          title={
+            forceLifetime
+              ? "Posting already pays at most once per day."
+              : row.perCount <= 1
+                ? "Only applies when Per is above 1."
+                : undefined
+          }
+          className={inputCls}
+        >
+          <option value="daily" className="bg-slate-900">
+            Daily
+          </option>
+          <option value="lifetime" className="bg-slate-900">
+            All time
+          </option>
+        </select>
+      </div>
+
+      <div className={cellCls}>
+        <span className="text-[11px] text-slate-400 w-10 shrink-0">Points</span>
         <input
           type="number"
           min={0}
@@ -554,12 +628,13 @@ function SideControls({
           onChange={(e) =>
             onChange({ points: Math.max(0, parseFloat(e.target.value) || 0) })
           }
-          disabled={!canEdit || !row.enabled}
-          className="flex-1 px-2 py-0.5 bg-slate-950 border border-slate-700 rounded text-sm text-white tabular-nums focus:outline-none focus:border-blue-500 disabled:opacity-60"
+          disabled={off}
+          className={inputCls}
         />
       </div>
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
-        <span className="text-[11px] text-slate-400 w-16 shrink-0">XP</span>
+
+      <div className={cellCls}>
+        <span className="text-[11px] text-slate-400 w-10 shrink-0">XP</span>
         <input
           type="number"
           min={0}
@@ -568,13 +643,14 @@ function SideControls({
           onChange={(e) =>
             onChange({ xp: Math.max(0, parseFloat(e.target.value) || 0) })
           }
-          disabled={!canEdit || !row.enabled}
-          className="flex-1 px-2 py-0.5 bg-slate-950 border border-slate-700 rounded text-sm text-white tabular-nums focus:outline-none focus:border-blue-500 disabled:opacity-60"
+          disabled={off}
+          className={inputCls}
         />
       </div>
     </div>
   );
 }
+
 
 const inp =
   "w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-60";

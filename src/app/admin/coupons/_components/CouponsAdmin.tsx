@@ -17,6 +17,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { DateField } from "@/components/ui/date-field";
 
 interface Coupon {
   id: string;
@@ -449,18 +450,18 @@ function CouponForm({
           />
         </Field>
         <Field label="Valid from">
-          <input
+          <DateField
             type="date"
             value={validFrom}
-            onChange={(e) => setValidFrom(e.target.value)}
+            onChange={(v) => setValidFrom(v)}
             className={inputCls}
           />
         </Field>
         <Field label="Valid until">
-          <input
+          <DateField
             type="date"
             value={validUntil}
-            onChange={(e) => setValidUntil(e.target.value)}
+            onChange={(v) => setValidUntil(v)}
             className={inputCls}
           />
         </Field>

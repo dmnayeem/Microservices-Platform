@@ -14,6 +14,9 @@ import {
   Scale,
   GraduationCap,
   Flag,
+  Megaphone,
+  MessageSquare,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,6 +39,9 @@ const ICONS: Record<string, LucideIcon> = {
   Scale,
   GraduationCap,
   Flag,
+  Megaphone,
+  MessageSquare,
+  ShieldAlert,
 };
 
 // tone → {icon box, count chip} classes (matches the StatCard tone vocabulary).

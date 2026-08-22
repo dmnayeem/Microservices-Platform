@@ -145,6 +145,33 @@ export async function getVisibleTaskPreview(userId: string, take = 6) {
 }
 
 /**
+ * THE definition of "may this viewer see this task board".
+ *
+ * Boards had no per-user gate at all beyond the unlock chain, so every active
+ * board was listed to everyone. Targeting leaked through only as a board whose
+ * task count came back 0 and whose claim then failed with "Board has no active
+ * tasks" — which looks like a broken board, not a board meant for someone else.
+ *
+ * Use it on the list, the detail fetch AND the claim route. A list filter is
+ * not a security boundary: the claim route hands out points.
+ */
+export function visibleBoardWhere(
+  viewer: TaskViewer,
+  opts: { accessLevel: number; now?: Date }
+): Prisma.TaskBoardWhereInput {
+  const now = opts.now ?? new Date();
+  return {
+    isActive: true,
+    AND: [
+      { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+      { minLevel: { lte: viewer.level ?? 1 } },
+      { requiredAccessLevel: { lte: opts.accessLevel } },
+      ...taskAudienceWhere<Prisma.TaskBoardWhereInput>(viewer),
+    ],
+  };
+}
+
+/**
  * The quiz-GAME gate (the standalone `Quiz` model — not `Task{type:QUIZ}`).
  * Kept beside the task one so the two quiz systems' rules stay visibly distinct.
  */

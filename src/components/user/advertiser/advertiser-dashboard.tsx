@@ -11,6 +11,7 @@ import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
 import { toast } from "@/lib/toast";
 import { promptDialog } from "@/lib/confirm";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { DateField } from "@/components/ui/date-field";
 
 /** One ad-credit movement (purchase, admin grant, campaign funding, refund). */
 interface LedgerEntry {
@@ -463,10 +464,10 @@ export function AdvertiserDashboard() {
               <label className="block text-xs text-gray-400 mb-1.5">
                 Start date (optional)
               </label>
-              <input
+              <DateField
                 type="date"
                 value={startAt}
-                onChange={(e) => setStartAt(e.target.value)}
+                onChange={(v) => setStartAt(v)}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
@@ -474,10 +475,10 @@ export function AdvertiserDashboard() {
               <label className="block text-xs text-gray-400 mb-1.5">
                 End date (optional)
               </label>
-              <input
+              <DateField
                 type="date"
                 value={endAt}
-                onChange={(e) => setEndAt(e.target.value)}
+                onChange={(v) => setEndAt(v)}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>

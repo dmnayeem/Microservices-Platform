@@ -17,6 +17,8 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** This address is a Google-only account — show the button, not an error. */
+  const [oauthOnly, setOauthOnly] = useState(false);
   const [needsOtp, setNeedsOtp] = useState(false);
   const [otp, setOtp] = useState("");
   // Email-verification recovery: when a valid-password account isn't verified,
@@ -155,6 +157,7 @@ function LoginForm() {
   };
 
   const handleGoogleLogin = () => {
+    setOauthOnly(false);
     signIn("google", { callbackUrl });
   };
 
@@ -190,6 +193,27 @@ function LoginForm() {
         {error && (
           <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             {error}
+          </div>
+        )}
+
+        {/* A Google-only account has no password to get wrong — say so instead
+            of "invalid email or password", which reads as a broken login. */}
+        {oauthOnly && (
+          <div className="p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm space-y-2">
+            <p className="text-indigo-300 font-semibold">
+              This account signs in with Google.
+            </p>
+            <p className="text-gray-400 text-xs">
+              You never set a password here. Use the Google button below — or
+              choose &quot;Forgot password&quot; to add one.
+            </p>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="text-indigo-400 hover:text-indigo-300 text-xs font-bold underline"
+            >
+              Continue with Google
+            </button>
           </div>
         )}
 

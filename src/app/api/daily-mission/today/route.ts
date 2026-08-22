@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildDailyProgress,
   resolveTaskTypeBucket,
+  getActiveMissionForUser,
 } from "@/lib/daily-mission-progress";
 import { getUserDayContext, localDayKeyDaysAgo } from "@/lib/user-day";
 
@@ -14,35 +15,9 @@ export async function GET() {
   }
   const userId = session.user.id;
 
-  const me = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      level: true,
-      package: { select: { accessLevel: true } },
-    },
-  });
-  if (!me) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  const accessLevel = me.package?.accessLevel ?? 0;
-
-  // Pick the highest-accessLevel mission template the user qualifies for.
-  const missionRaw = await prisma.dailyMissionTemplate.findFirst({
-    where: {
-      requiredAccessLevel: { lte: accessLevel },
-      isActive: true,
-      requiredLevel: { lte: me.level },
-    },
-    orderBy: [
-      { requiredAccessLevel: "desc" },
-      { order: "asc" },
-      { createdAt: "desc" },
-    ],
-    include: { items: { orderBy: { order: "asc" } } },
-  });
-
+  // One resolver, shared with the claim route and the task-start gate — it
+  // applies tier, level, schedule AND audience targeting.
+  const missionRaw = await getActiveMissionForUser(userId);
   if (!missionRaw) {
     return NextResponse.json({ mission: null });
   }

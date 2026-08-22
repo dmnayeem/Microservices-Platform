@@ -10,6 +10,7 @@ import { recordTransaction } from "@/lib/ledger";
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { z } from "zod";
+import { USERNAME_REGEX, USERNAME_RULE_MESSAGE } from "@/lib/username";
 
 // GET /api/admin/users/[id] - Get user details
 export async function GET(
@@ -87,7 +88,7 @@ const updateUserSchema = z.object({
   firstName: z.string().max(50).optional().nullable(),
   lastName: z.string().max(50).optional().nullable(),
   email: z.string().email().optional(),
-  username: z.string().min(3).max(30).optional().nullable(),
+  username: z.string().trim().regex(USERNAME_REGEX, USERNAME_RULE_MESSAGE).optional().nullable(),
   password: z.string().min(6).max(100).optional(),
   phone: z.string().optional().nullable(),
   role: z.enum([

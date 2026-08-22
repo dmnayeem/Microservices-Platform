@@ -5,7 +5,10 @@ import { writeAudit } from "@/lib/audit";
 import { notifyUser } from "@/lib/notify";
 import { buildAdvertiserReason } from "@/lib/ad-review-reasons";
 import { ADMIN_ROLES, type UserRole } from "@/lib/rbac";
-import { getConfiguredRolePermissions } from "@/lib/permissions";
+import {
+  getConfiguredRolePermissions,
+  getEffectivePermissions,
+} from "@/lib/permissions";
 
 /**
  * The ad review gate. This module is the ONLY place allowed to write
@@ -241,13 +244,33 @@ async function reviewerIds(): Promise<string[]> {
   try {
     const cfg = await getConfiguredRolePermissions();
     const roles = ADMIN_ROLES.filter((r) => cfg[r]?.has("ads.manage"));
-    if (roles.length === 0) return [];
-    const admins = await prisma.user.findMany({
-      where: { role: { in: roles as UserRole[] }, status: "ACTIVE" },
-      select: { id: true },
-      take: 25,
+    // Everyone in an admin role is a candidate — not just the roles whose
+    // DEFAULTS include ads.manage. An admin granted the permission through a
+    // custom role or a per-user override is a real reviewer and was being
+    // silently skipped here.
+    const candidates = await prisma.user.findMany({
+      where: { role: { in: ADMIN_ROLES as unknown as UserRole[] }, status: "ACTIVE" },
+      select: { id: true, role: true },
+      take: 200,
     });
-    return admins.map((a) => a.id);
+    if (candidates.length === 0) return [];
+
+    const roleSet = new Set(roles as string[]);
+    const out: string[] = [];
+    for (const c of candidates) {
+      if (roleSet.has(c.role)) {
+        out.push(c.id);
+        continue;
+      }
+      // Only pay for the per-user resolution when the role default says no.
+      try {
+        const perms = await getEffectivePermissions(c.id);
+        if (perms.has("ads.manage")) out.push(c.id);
+      } catch {
+        /* skip this admin rather than fail the whole fan-out */
+      }
+    }
+    return out.slice(0, 50);
   } catch {
     return [];
   }
@@ -286,10 +309,25 @@ export async function recordSubmission(opts: {
       record({ adId, actorId: opts.userId, action: "SUBMITTED", snapshot: snap })
     )
   );
+  const n = opts.adIds.length;
+  const plural = n > 1;
+  // An audit row so the submission shows up in the dashboard's Recent Activity.
+  // Previously only admin DECISIONS were audited, so an advertiser submitting
+  // work left no trace anywhere an admin would look.
+  await writeAudit({
+    actorId: opts.userId,
+    action: "AD_SUBMITTED",
+    entity: "Ad",
+    entityId: opts.adIds[0] ?? null,
+    targetUserId: opts.userId,
+    summary: `Submitted ${n} ad${plural ? "s" : ""} in "${opts.campaignTitle}" for review`,
+    meta: { adIds: opts.adIds, campaignTitle: opts.campaignTitle },
+  }).catch(() => {});
+
   await tellReviewers(
     "Ad awaiting review",
-    `${opts.adIds.length} ad${opts.adIds.length > 1 ? "s" : ""} in "${opts.campaignTitle}" ${
-      opts.adIds.length > 1 ? "are" : "is"
+    `${n} ad${plural ? "s" : ""} in "${opts.campaignTitle}" ${
+      plural ? "are" : "is"
     } waiting for approval.`
   );
 }

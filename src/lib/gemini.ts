@@ -189,6 +189,45 @@ export async function extractIdData(
   }
 }
 
+/**
+ * Text-in, JSON-out. Same call shape as the OCR path above, but with a
+ * caller-chosen temperature.
+ *
+ * The default is deliberately high: this powers per-user social post
+ * generation, where two users receiving the same caption is the failure mode —
+ * the opposite of OCR, which pins temperature to 0.
+ */
+export async function generateJson(
+  prompt: string,
+  opts?: { temperature?: number }
+): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+  if (!GEMINI_API_KEY) return { success: false, error: "GEMINI_API_KEY not set" };
+  try {
+    const res = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: opts?.temperature ?? 0.9,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err?.error?.message ?? `HTTP ${res.status}` };
+    }
+    const data = await res.json();
+    const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    const json = safeJson(text);
+    if (!json) return { success: false, error: "Model did not return valid JSON" };
+    return { success: true, data: json };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Request failed" };
+  }
+}
+
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }

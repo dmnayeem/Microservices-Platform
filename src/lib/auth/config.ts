@@ -4,6 +4,17 @@ import Google from "next-auth/providers/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+/**
+ * Cookie that carries a `?ref=` referral code across an OAuth round trip.
+ * Written by the middleware (see `allow()` below), read once when a Google
+ * account is created in `src/lib/auth/index.ts`.
+ */
+export const REFERRAL_COOKIE = "eg_ref";
+
+/** The first-login handle picker, and the cookie that says it's been done. */
+export const ONBOARDING_PATH = "/welcome";
+export const ONBOARDED_COOKIE = "eg_onb";
+
 // Admin roles that can access /admin routes
 // Must match ADMIN_ROLE_STRINGS in @/lib/rbac
 const ADMIN_ROLES = [
@@ -68,10 +79,28 @@ export const authConfig: NextAuthConfig = {
 
       // Pass-through response that forwards the current pathname to server
       // components (the admin layout reads `x-pathname` for its central guard).
+      //
+      // It also persists a `?ref=` referral code into a short-lived cookie.
+      // Referral links land on `/register?ref=CODE`, but signing up with Google
+      // sends the visitor off to Google and back on a different URL, so the
+      // query string is gone by the time the account is created — which is why
+      // every Google referral used to lose its attribution. The cookie is the
+      // only thing that survives that round trip.
       const allow = () => {
         const headers = new Headers(request.headers);
         headers.set("x-pathname", pathname);
-        return NextResponse.next({ request: { headers } });
+        const res = NextResponse.next({ request: { headers } });
+        const ref = nextUrl.searchParams.get("ref");
+        if (ref && /^[A-Za-z0-9_-]{4,32}$/.test(ref)) {
+          res.cookies.set(REFERRAL_COOKIE, ref, {
+            maxAge: 60 * 60 * 24 * 30, // 30 days — people don't sign up at once
+            httpOnly: true,
+            sameSite: "lax", // must survive the redirect back from Google
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+          });
+        }
+        return res;
       };
 
       // Public routes that don't require authentication
@@ -132,6 +161,36 @@ export const authConfig: NextAuthConfig = {
         if (!isAdminUser) {
           return Response.redirect(new URL("/social", nextUrl));
         }
+      }
+
+      // ── First-login handle picker ──────────────────────────────────────────
+      // Google users never see the register form, so they've never chosen a
+      // @handle — they get a generated one like `johndoe418923` and are never
+      // told. Send them through /welcome once.
+      //
+      // The check reads a JWT claim, not the database: this runs on Edge (no
+      // Prisma) and on every navigation. Doing it in the (main) layout instead
+      // looked cheaper — it already queries the user — but that read is
+      // Accelerate-cached for 10s, so right after the user picks a handle
+      // /welcome would read fresh and bounce to /social while /social read
+      // stale and bounced back. A ten-second redirect loop.
+      const needsOnboarding = auth?.user?.needsOnboarding === true;
+      const onboardingBypass =
+        // Set by the onboarding action — the belt to unstable_update's braces,
+        // in case that beta API silently no-ops and the claim stays stale.
+        request.cookies.get(ONBOARDED_COOKIE)?.value === "1" ||
+        pathname === ONBOARDING_PATH ||
+        pathname.startsWith("/api/") ||
+        isAdminRoute ||
+        // Never hijack a Server Action POST — including the one that finishes
+        // onboarding.
+        !!request.headers.get("next-action");
+
+      if (needsOnboarding && !onboardingBypass) {
+        return Response.redirect(new URL(ONBOARDING_PATH, nextUrl));
+      }
+      if (pathname === ONBOARDING_PATH && !needsOnboarding) {
+        return Response.redirect(new URL("/social", nextUrl));
       }
 
       return allow();

@@ -20,6 +20,7 @@ import {
   AlertCircle,
   CheckCircle,
   Check,
+  Inbox,
   Sun,
   Moon,
 } from "lucide-react";
@@ -37,6 +38,10 @@ interface AdminHeaderProps {
     image?: string | null;
     role?: string;
   };
+  /** Total items waiting on this admin across every review queue. */
+  pendingTotal?: number;
+  /** Whether this admin may open the broadcast log at /admin/notifications. */
+  canViewNotifications?: boolean;
 }
 
 interface Notification {
@@ -46,6 +51,22 @@ interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  /** `notifyUser` stores the deep link here, e.g. { link: "/admin/ads" }. */
+  data?: { link?: string } | null;
+}
+
+/**
+ * Where a notification should take the admin.
+ *
+ * This used to be hardcoded to `/admin/notifications`, which throws away the
+ * link every notification already carries — and that page is the marketing
+ * broadcast log gated on `notifications.view`, a permission most admin roles
+ * (AD_MANAGER included) don't have. So clicking "Ad awaiting review" landed on
+ * the no-access screen instead of the ad queue.
+ */
+function notificationHref(n: Notification): string {
+  const link = n.data?.link;
+  return typeof link === "string" && link.startsWith("/") ? link : "/admin";
 }
 
 const NOTIFICATION_TYPE_CONFIG: Record<
@@ -86,7 +107,11 @@ function usePageTitle(pathname: string): string {
   }, [pathname]);
 }
 
-export function AdminHeader({ user }: AdminHeaderProps) {
+export function AdminHeader({
+  user,
+  pendingTotal = 0,
+  canViewNotifications = false,
+}: AdminHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -217,6 +242,20 @@ export function AdminHeader({ user }: AdminHeaderProps) {
 
           {/* Notifications */}
           <div className="relative">
+            {/* Work waiting on an admin decision. A notification disappears
+                once it's read; this number doesn't go away until the queue is
+                actually cleared, which is what makes it trustworthy. */}
+            {pendingTotal > 0 && (
+              <Link
+                href="/admin"
+                className="relative mr-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-bold"
+                title="Requests waiting for review"
+              >
+                <Inbox className="w-4 h-4" />
+                {pendingTotal > 999 ? "999+" : pendingTotal}
+              </Link>
+            )}
+
             <button
               onClick={() => {
                 setIsNotificationOpen(!isNotificationOpen);
@@ -271,7 +310,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
                         return (
                           <Link
                             key={notif.id}
-                            href="/admin/notifications"
+                            href={notificationHref(notif)}
                             onClick={() => setIsNotificationOpen(false)}
                             className={cn(
                               "block px-4 py-3 border-b border-slate-800 hover:bg-slate-800/50 transition-colors",
@@ -309,12 +348,17 @@ export function AdminHeader({ user }: AdminHeaderProps) {
                       })
                     )}
                   </div>
+                  {/* /admin/notifications is the broadcast log, gated on
+                      `notifications.view` — sending an admin without it there
+                      just bounces them to the no-access page. */}
                   <Link
-                    href="/admin/notifications"
+                    href={canViewNotifications ? "/admin/notifications" : "/admin"}
                     onClick={() => setIsNotificationOpen(false)}
                     className="block px-4 py-3 text-center text-sm text-blue-400 hover:text-blue-300 border-t border-slate-700"
                   >
-                    View all notifications
+                    {canViewNotifications
+                      ? "View all notifications"
+                      : "Go to dashboard"}
                   </Link>
                 </div>
               </>

@@ -3,6 +3,7 @@
 import type { BuilderState } from "../types";
 import { Field, SectionHeader, inputCls } from "../shared";
 import { ShieldCheck, AlertCircle } from "lucide-react";
+import { DateField } from "@/components/ui/date-field";
 
 interface Props {
   state: BuilderState;
@@ -115,10 +116,10 @@ export function PricingStep({ state, update, canSetCommission }: Props) {
             label="Discount ends at"
             hint="Optional — after this date the price reverts to the standard price."
           >
-            <input
+            <DateField
               type="date"
               value={state.discountEndsAt}
-              onChange={(e) => update("discountEndsAt", e.target.value)}
+              onChange={(v) => update("discountEndsAt", v)}
               className={inputCls}
             />
           </Field>

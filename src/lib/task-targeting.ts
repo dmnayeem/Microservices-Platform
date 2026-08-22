@@ -76,13 +76,22 @@ const ARRAY_DIMENSIONS: {
 ];
 
 /**
- * STRICT Prisma AND-clauses for "which tasks may this viewer see". Spread the
- * result into an existing `AND` array on a `Task` where filter.
+ * STRICT Prisma AND-clauses for "which rows may this viewer see". Spread the
+ * result into an existing `AND` array on the where filter.
+ *
+ * Generic in the where-input type because `TaskBoard`, `Mission` and
+ * `DailyMissionTemplate` carry the same nine targeting columns as `Task`, and
+ * the clause shapes are structurally identical — the alternative was three
+ * copies of this function that could drift apart. Defaults to
+ * `Prisma.TaskWhereInput` so every existing call site is unchanged.
  */
-export function taskAudienceWhere(
+export function taskAudienceWhere<T = Prisma.TaskWhereInput>(
   user: TaskAudienceUser
-): Prisma.TaskWhereInput[] {
-  const clauses: Prisma.TaskWhereInput[] = [];
+): T[] {
+  // Built as plain objects, then cast once on return. The column names are
+  // identical across every model that has targeting, so the shapes are valid
+  // for all of them; TypeScript just can't prove that for an open `T`.
+  const clauses: Record<string, unknown>[] = [];
 
   for (const { field, userKey } of ARRAY_DIMENSIONS) {
     const value = (user[userKey] as string | null | undefined) ?? "";
@@ -90,10 +99,10 @@ export function taskAudienceWhere(
       // Untargeted (empty) OR the viewer's value is in the target set.
       clauses.push({
         OR: [{ [field]: { isEmpty: true } }, { [field]: { has: value } }],
-      } as Prisma.TaskWhereInput);
+      });
     } else {
-      // Viewer has no value for this dimension → only untargeted tasks.
-      clauses.push({ [field]: { isEmpty: true } } as Prisma.TaskWhereInput);
+      // Viewer has no value for this dimension → only untargeted rows.
+      clauses.push({ [field]: { isEmpty: true } });
     }
   }
 
@@ -102,12 +111,12 @@ export function taskAudienceWhere(
     clauses.push({ OR: [{ minAge: null }, { minAge: { lte: age } }] });
     clauses.push({ OR: [{ maxAge: null }, { maxAge: { gte: age } }] });
   } else {
-    // Age unknown → exclude any task that sets an age bound.
+    // Age unknown → exclude any row that sets an age bound.
     clauses.push({ minAge: null });
     clauses.push({ maxAge: null });
   }
 
-  return clauses;
+  return clauses as T[];
 }
 
 /** Imperative STRICT check — true when the viewer may see/start the task. */
@@ -185,6 +194,30 @@ export function sanitizeTaskAudience(
     minAge,
     maxAge,
   };
+}
+
+/** The nine persisted targeting keys, in one place. */
+export const TASK_AUDIENCE_KEYS = [
+  "countries",
+  "genders",
+  "regions",
+  "divisions",
+  "districts",
+  "subDistricts",
+  "postalCodes",
+  "minAge",
+  "maxAge",
+] as const;
+
+/**
+ * Did this PATCH body carry targeting at all?
+ *
+ * PATCH routes must replace the whole audience or none of it: `sanitizeTaskAudience`
+ * returns all nine keys with empty defaults, so applying it to a body that never
+ * mentioned targeting would silently CLEAR an existing audience.
+ */
+export function hasAudienceKeys(body: Record<string, unknown>): boolean {
+  return TASK_AUDIENCE_KEYS.some((k) => body[k] !== undefined);
 }
 
 /** An audience with nothing set (used when a gate strips targeting). */

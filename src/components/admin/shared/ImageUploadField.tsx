@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon, Video as VideoIcon, X } from "lucide-react";
+import { Image as ImageIcon, Video as VideoIcon, FileText as FileIcon, X } from "lucide-react";
 import { MediaSelector } from "@/components/media/MediaSelector";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import type { MediaItem } from "@/types/media";
@@ -17,8 +17,8 @@ interface Props {
   hideUrlFallback?: boolean;
   /** Placeholder for the URL input. */
   urlPlaceholder?: string;
-  /** Media kind — IMAGE (incl. GIF) or VIDEO. Defaults to IMAGE. */
-  fileType?: "IMAGE" | "VIDEO";
+  /** Media kind — IMAGE (incl. GIF), VIDEO, or DOCUMENT. Defaults to IMAGE. */
+  fileType?: "IMAGE" | "VIDEO" | "DOCUMENT";
 }
 
 const SIZE_CLASSES: Record<NonNullable<Props["previewSize"]>, string> = {
@@ -39,9 +39,11 @@ export function ImageUploadField({
 }: Props) {
   const [open, setOpen] = useState(false);
   const isVideo = fileType === "VIDEO";
-  const Icon = isVideo ? VideoIcon : ImageIcon;
-  const kindLabel = isVideo ? "Video" : "Image / GIF";
-  const modalTitle = title ?? (isVideo ? "Select Video" : "Select Image");
+  const isDoc = fileType === "DOCUMENT";
+  const Icon = isVideo ? VideoIcon : isDoc ? FileIcon : ImageIcon;
+  const kindLabel = isVideo ? "Video" : isDoc ? "File" : "Image / GIF";
+  const modalTitle =
+    title ?? (isVideo ? "Select Video" : isDoc ? "Select File" : "Select Image");
 
   const handleSelect = (media: MediaItem | MediaItem[]) => {
     const m = Array.isArray(media) ? media[0] : media;
@@ -54,7 +56,7 @@ export function ImageUploadField({
   return (
     <>
       <div className="flex items-start gap-3">
-        {value ? (
+        {value && !isDoc ? (
           <div className="relative shrink-0">
             {isVideo ? (
               <video
@@ -83,7 +85,7 @@ export function ImageUploadField({
               type="button"
               onClick={() => onChange("")}
               className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-              title={`Remove ${isVideo ? "video" : "image"}`}
+              title={`Remove ${kindLabel.toLowerCase()}`}
             >
               <X className="w-3 h-3" />
             </button>

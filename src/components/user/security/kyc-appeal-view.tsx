@@ -17,6 +17,7 @@ import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 
 export interface RejectedDoc {
   id: string;
@@ -243,8 +244,24 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
               Additional evidence (optional)
             </label>
             <p className="text-[11px] text-gray-500 mb-2">
-              Paste image/file URLs that support your appeal. Up to 10 items.
+              Upload screenshots that support your appeal, or paste a URL. Up to
+              10 items.
             </p>
+            {evidence.length < 10 && (
+              <div className="mb-2">
+                <ProofImageUpload
+                  value=""
+                  onChange={(url) => {
+                    const v = url.trim();
+                    if (!v) return;
+                    setEvidence((prev) =>
+                      prev.includes(v) || prev.length >= 10 ? prev : [...prev, v]
+                    );
+                  }}
+                  placeholder="https://…"
+                />
+              </div>
+            )}
             {evidence.length > 0 && (
               <div className="grid grid-cols-3 gap-1.5 mb-2">
                 {evidence.map((url, i) => (

@@ -21,16 +21,17 @@ import {
   TransactionType,
   NotificationType,
 } from "@/generated/prisma/client";
+import {
+  parseSocialEarningConfig,
+  RATIO_UNIT,
+  SOCIAL_EARNING_CATEGORY,
+  type PerSideRule,
+  type SocialAction,
+  type SocialEarningConfig,
+} from "@/lib/social-actions";
 
-export type SocialAction =
-  | "POST_CREATE"
-  | "VIEW_RECEIVED"
-  | "LIKE_RECEIVED"
-  | "VOTE_RECEIVED"
-  | "COMMENT_RECEIVED"
-  | "SHARE_RECEIVED"
-  | "DONATION_RECEIVED"
-  | "MENTION_RECEIVED";
+// Re-exported so existing importers keep working.
+export type { SocialAction, SocialEarningConfig } from "@/lib/social-actions";
 
 export type SkipReason =
   | "disabled"
@@ -48,7 +49,19 @@ export interface AwardArgs {
   actorUserId: string | null;
   action: SocialAction;
   postId?: string | null;
+  /**
+   * Force the ledger reference for the RECIPIENT only. Legacy — prefer
+   * `eventKey`, which applies to both sides.
+   */
   referenceOverride?: string;
+  /**
+   * Uniquely identifies this occurrence when the default reference isn't unique
+   * enough. Without it, repeatable actions between the same two users on the
+   * same post (donations, above all) collapse to one reference and only ever pay
+   * once. Applied to BOTH sides — `referenceOverride` only ever reached the
+   * recipient, which is why the donor side of a repeat donation never paid.
+   */
+  eventKey?: string;
 }
 
 export interface SideResult {
@@ -62,97 +75,39 @@ export interface AwardResult {
   actor: SideResult;
 }
 
-interface PerSideRule {
-  enabled: boolean;
-  points: number;
-  xp: number;
-  /** Actor side only: award `points` once per this many DISTINCT-post actions
-   *  (lifetime). 1 = flat per action (legacy). e.g. 100 → +points per 100 likes. */
-  perCount?: number;
-}
+const CATEGORY = SOCIAL_EARNING_CATEGORY;
 
-interface SocialEarningConfig {
-  enabled: boolean;
-  perActivity: Record<
-    SocialAction,
-    { recipient: PerSideRule; actor: PerSideRule }
-  >;
-  dailyCapPerUser: number;
-  dailyXpCapPerUser: number;
-  capPerPost: number;
-  minAccountAgeHours: number;
-  countTowardDailyMissions: boolean;
-  missionDistinctPost: boolean;
-}
-
-const DEFAULTS: SocialEarningConfig = {
-  enabled: true,
-  perActivity: {
-    POST_CREATE: {
-      recipient: { enabled: true, points: 5, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    VIEW_RECEIVED: {
-      recipient: { enabled: true, points: 0, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    LIKE_RECEIVED: {
-      recipient: { enabled: true, points: 1, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    VOTE_RECEIVED: {
-      recipient: { enabled: true, points: 1, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    COMMENT_RECEIVED: {
-      recipient: { enabled: true, points: 2, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    SHARE_RECEIVED: {
-      recipient: { enabled: true, points: 3, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    DONATION_RECEIVED: {
-      recipient: { enabled: false, points: 0, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-    MENTION_RECEIVED: {
-      recipient: { enabled: true, points: 1, xp: 0 },
-      actor: { enabled: false, points: 0, xp: 0 },
-    },
-  },
-  dailyCapPerUser: 500,
-  dailyXpCapPerUser: 1000,
-  capPerPost: 100,
-  minAccountAgeHours: 24,
-  countTowardDailyMissions: true,
-  missionDistinctPost: true,
-};
-
-const CATEGORY = "social_earning";
-
-const ACTOR_LOG_ACTION: Partial<Record<SocialAction, string>> = {
+/**
+ * The `SocialActionLog.action` written for the ACTOR of each award.
+ *
+ * All eight are mapped so any activity can drive a ratio. The log write is
+ * separately gated — see `MISSION_LOG_ACTIONS`.
+ */
+const ACTOR_LOG_ACTION: Record<SocialAction, string> = {
   POST_CREATE: "POST_CREATED",
   LIKE_RECEIVED: "LIKE_GIVEN",
   COMMENT_RECEIVED: "COMMENT_GIVEN",
   VOTE_RECEIVED: "VOTE_GIVEN",
   SHARE_RECEIVED: "SHARE_GIVEN",
+  VIEW_RECEIVED: "VIEW_GIVEN",
+  MENTION_RECEIVED: "MENTION_GIVEN",
+  DONATION_RECEIVED: "DONATION_GIVEN",
 };
 
-function asNumber(v: unknown, fallback: number): number {
-  if (typeof v === "number") return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v);
-    if (Number.isFinite(n)) return n;
-  }
-  return fallback;
-}
-
-function asBoolean(v: unknown, fallback: boolean): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v === "true" || v === "1";
-  return fallback;
-}
+/**
+ * Only these feed a daily-mission bucket (see `socialBucketToLogAction` in
+ * lib/daily-mission-progress.ts). Logging anything else "for missions" is pure
+ * write amplification — and `countTowardDailyMissions` defaults to ON, so
+ * without this gate simply mapping VIEW_RECEIVED above would start writing one
+ * row per post view for the entire platform.
+ */
+const MISSION_LOG_ACTIONS = new Set([
+  "POST_CREATED",
+  "LIKE_GIVEN",
+  "COMMENT_GIVEN",
+  "SHARE_GIVEN",
+  "VOTE_GIVEN",
+]);
 
 let _cached: { value: SocialEarningConfig; ts: number } | null = null;
 const CACHE_MS = 30_000;
@@ -163,79 +118,16 @@ export async function getSocialEarningConfig(): Promise<SocialEarningConfig> {
   const rows = await prisma.systemSetting.findMany({
     where: { category: CATEGORY },
   });
-  const map = new Map(rows.map((r) => [r.key, r.value]));
-
-  const cfg: SocialEarningConfig = {
-    enabled: asBoolean(map.get("social_earning.enabled"), DEFAULTS.enabled),
-    perActivity: { ...DEFAULTS.perActivity },
-    dailyCapPerUser: asNumber(
-      map.get("social_earning.daily_cap_per_user"),
-      DEFAULTS.dailyCapPerUser
-    ),
-    dailyXpCapPerUser: asNumber(
-      map.get("social_earning.daily_xp_cap_per_user"),
-      DEFAULTS.dailyXpCapPerUser
-    ),
-    capPerPost: asNumber(
-      map.get("social_earning.cap_per_post"),
-      DEFAULTS.capPerPost
-    ),
-    minAccountAgeHours: asNumber(
-      map.get("social_earning.min_account_age_hours"),
-      DEFAULTS.minAccountAgeHours
-    ),
-    countTowardDailyMissions: asBoolean(
-      map.get("social_earning.count_toward_daily_missions"),
-      DEFAULTS.countTowardDailyMissions
-    ),
-    missionDistinctPost: asBoolean(
-      map.get("social_earning.mission_distinct_post"),
-      DEFAULTS.missionDistinctPost
-    ),
-  };
-  for (const action of Object.keys(DEFAULTS.perActivity) as SocialAction[]) {
-    const k = action.toLowerCase();
-    const def = DEFAULTS.perActivity[action];
-    cfg.perActivity[action] = {
-      recipient: {
-        enabled: asBoolean(
-          map.get(`social_earning.${k}_enabled`),
-          def.recipient.enabled
-        ),
-        points: asNumber(
-          map.get(`social_earning.${k}_points`),
-          def.recipient.points
-        ),
-        xp: asNumber(
-          map.get(`social_earning.${k}_recipient_xp`),
-          def.recipient.xp
-        ),
-      },
-      actor: {
-        enabled: asBoolean(
-          map.get(`social_earning.${k}_actor_enabled`),
-          def.actor.enabled
-        ),
-        points: asNumber(
-          map.get(`social_earning.${k}_actor_points`),
-          def.actor.points
-        ),
-        xp: asNumber(
-          map.get(`social_earning.${k}_actor_xp`),
-          def.actor.xp
-        ),
-        // Every N distinct-post actions → `points`. 1 = flat per action.
-        perCount: Math.max(
-          1,
-          Math.floor(asNumber(map.get(`social_earning.${k}_actor_per_count`), 1))
-        ),
-      },
-    };
-  }
+  // Parsing lives in the prisma-free shared module so the admin form, the API
+  // route and a test script all resolve config identically.
+  const cfg = parseSocialEarningConfig(
+    new Map(rows.map((r) => [r.key, r.value]))
+  );
 
   _cached = { value: cfg, ts: Date.now() };
   return cfg;
 }
+
 
 export function invalidateSocialEarningCache() {
   _cached = null;
@@ -263,6 +155,104 @@ const ACTION_DESCRIPTION_ACTOR: Record<SocialAction, string> = {
   DONATION_RECEIVED: "Made a donation",
   MENTION_RECEIVED: "Mentioned someone",
 };
+
+/** `ready` = credit now. `reference` set = this is a ratio milestone payout. */
+type RatioGate = { ready: boolean; reference?: string };
+
+/**
+ * Decide whether this event pays now, advancing the ratio counter if there is
+ * one.
+ *
+ * `perCount === 1` (the default, and every activity out of the box) returns
+ * immediately with **zero queries**, so turning the feature off costs nothing on
+ * the like/comment hot path.
+ *
+ * The day key comes from the user being PAID — the author's local midnight for
+ * the recipient side, the engager's for the actor. That is the whole reason this
+ * can't be read off `SocialActionLog`, whose `dateKey` is always the actor's.
+ */
+async function resolveRatio(opts: {
+  userId: string;
+  role: "recipient" | "actor";
+  action: SocialAction;
+  rule: PerSideRule;
+  countsThisEvent: boolean;
+}): Promise<RatioGate> {
+  const { userId, role, action, rule, countsThisEvent } = opts;
+  const perCount = Math.max(1, Math.floor(rule.perCount ?? 1));
+
+  // Flat payout, or the side is off — let creditOne decide and report why.
+  if (perCount === 1 || !rule.enabled) return { ready: true };
+
+  // A repeat on a post this actor already engaged: no progress, no payout.
+  if (!countsThisEvent) return { ready: false };
+
+  const dateKey =
+    rule.window === "daily" ? (await getUserDayContext(userId)).dayKey : "*";
+
+  // The upsert returns the post-increment count, so there is no COUNT query.
+  let row;
+  try {
+    row = await prisma.socialRatioTally.upsert({
+      where: {
+        userId_role_action_window_dateKey: {
+          userId,
+          role,
+          action,
+          window: rule.window,
+          dateKey,
+        },
+      },
+      create: { userId, role, action, window: rule.window, dateKey, count: 1 },
+      update: { count: { increment: 1 } },
+      select: { id: true, count: true },
+    });
+  } catch {
+    // Two concurrent creates raced on the unique key — retry once as an update.
+    try {
+      row = await prisma.socialRatioTally.update({
+        where: {
+          userId_role_action_window_dateKey: {
+            userId,
+            role,
+            action,
+            window: rule.window,
+            dateKey,
+          },
+        },
+        data: { count: { increment: 1 } },
+        select: { id: true, count: true },
+      });
+    } catch (err) {
+      console.error("[social-earning] ratio tally failed:", err);
+      return { ready: false };
+    }
+  }
+
+  if (row.count < perCount) return { ready: false };
+
+  // Claim the milestone atomically. `count >= perCount` in the WHERE means only
+  // one of N concurrent requests can win; the loser gets zero rows back.
+  // Subtracting rather than zeroing keeps any overshoot, so nothing is lost.
+  const claimed = await prisma.$queryRaw<{ paidCount: number }[]>`
+    UPDATE "SocialRatioTally"
+       SET "count" = "count" - ${perCount},
+           "paidCount" = "paidCount" + 1,
+           "updatedAt" = now()
+     WHERE "id" = ${row.id} AND "count" >= ${perCount}
+    RETURNING "paidCount"
+  `;
+  const paidCount = claimed[0]?.paidCount;
+  if (paidCount == null) return { ready: false };
+
+  // `paidCount` is monotonic and persisted, so this reference is never reused —
+  // unlike the old `distinct / perCount` batch index, which shifted whenever an
+  // admin edited perCount or log retention pruned rows underneath it.
+  return {
+    ready: true,
+    reference: `social_ratio_${role}_${action.toLowerCase()}_${userId}_${rule.window}_${dateKey}_${paidCount}`,
+  };
+}
 
 interface CreditCtx {
   userId: string;
@@ -434,8 +424,9 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
       ? `social_post_${role}_${userId}_${day.dayKey}`
       : `social_${action.toLowerCase()}_${role}_${postId ?? "_"}_${sourceUserId ?? "_"}`);
 
-  // Pre-flight duplicate check (the reference field is not unique on Transaction
-  // but we treat it as logically unique for idempotency).
+  // Cheap pre-flight duplicate check. The real guarantee is the DB constraint
+  // Transaction @@unique([userId, reference]) — this just avoids doing the work
+  // when we already know the answer.
   const dup = await prisma.transaction.findFirst({
     where: { reference },
     select: { id: true },
@@ -547,7 +538,14 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
 export async function awardSocialEarning(
   args: AwardArgs
 ): Promise<AwardResult> {
-  const { postOwnerUserId, actorUserId, action, postId, referenceOverride } = args;
+  const {
+    postOwnerUserId,
+    actorUserId,
+    action,
+    postId,
+    referenceOverride,
+    eventKey,
+  } = args;
 
   const result: AwardResult = {
     recipient: { points: 0, xp: 0, skipped: "no_recipient" },
@@ -555,38 +553,59 @@ export async function awardSocialEarning(
   };
 
   const cfg = await getSocialEarningConfig();
-
-  // Daily-mission counting is DECOUPLED from earning: log the actor's action
-  // whenever mission-counting is on, regardless of whether social earning is
-  // enabled/disabled, its per-action rule, or the daily caps. This is what
-  // makes SOCIAL_LIKE/COMMENT/POST/SHARE/VOTE missions actually progress
-  // (for POST_CREATE the actor === the poster). One row per action call; the
-  // mission progress builder de-dupes by distinct post when configured.
-  //
-  // Also log when this action's actor batch reward is on (perCount > 1) — the
-  // batch milestone counter reads SocialActionLog, so it must stay populated
-  // even if daily-mission counting is off.
+  const recipRule = cfg.perActivity[action].recipient;
   const actorRule = cfg.perActivity[action].actor;
-  const actorPerCount = Math.max(1, Math.floor(actorRule.perCount ?? 1));
-  const batchRewardOn = actorRule.enabled && actorPerCount > 1;
-  if ((cfg.countTowardDailyMissions || batchRewardOn) && actorUserId) {
-    const logAction = ACTOR_LOG_ACTION[action];
-    if (logAction) {
-      // Key the log by the actor's LOCAL day so daily-mission progress reads it
-      // with the same boundary (buildDailyProgress uses the same context).
-      const { dayKey: dateKey } = await getUserDayContext(actorUserId);
-      try {
-        await prisma.socialActionLog.create({
-          data: {
-            userId: actorUserId,
-            action: logAction,
-            postId: postId ?? null,
-            dateKey,
-          },
-        });
-      } catch (err) {
-        console.error("[social-earning] mission log failed:", err);
-      }
+  const ratioOn = (r: PerSideRule) => r.enabled && r.perCount > 1;
+  const anyRatio = ratioOn(recipRule) || ratioOn(actorRule);
+  const logAction = ACTOR_LOG_ACTION[action];
+
+  // Does THIS event add to a ratio counter?
+  //
+  // For `distinct_post` activities, repeating an action on a post the actor has
+  // already engaged counts once — otherwise like → unlike → like would drive
+  // both sides' counters. The probe runs only when a ratio is actually switched
+  // on, so the normal path costs nothing, and it must happen BEFORE the log
+  // write below or the row we're about to insert would match itself.
+  let countsThisEvent = true;
+  if (
+    anyRatio &&
+    RATIO_UNIT[action] === "distinct_post" &&
+    postId &&
+    actorUserId &&
+    logAction
+  ) {
+    const prior = await prisma.socialActionLog.findFirst({
+      where: { userId: actorUserId, action: logAction, postId },
+      select: { id: true },
+    }); // served by @@index([userId, action, postId])
+    countsThisEvent = !prior;
+  }
+
+  // Log the actor's action. Two independent reasons to write a row:
+  //  - daily missions read this table (only for the five actions that feed a
+  //    mission bucket — logging the rest would be pure write amplification, and
+  //    VIEW_GIVEN in particular would mean a row per post view platform-wide);
+  //  - a ratio is configured for this action, and the counter needs the history
+  //    to dedup repeats.
+  // Deliberately ahead of the master-switch check: mission progress is decoupled
+  // from earning.
+  const logForMissions =
+    cfg.countTowardDailyMissions && !!logAction && MISSION_LOG_ACTIONS.has(logAction);
+  if ((logForMissions || anyRatio) && actorUserId && logAction) {
+    // Key by the actor's LOCAL day so daily-mission progress reads it with the
+    // same boundary (buildDailyProgress uses the same context).
+    const { dayKey: dateKey } = await getUserDayContext(actorUserId);
+    try {
+      await prisma.socialActionLog.create({
+        data: {
+          userId: actorUserId,
+          action: logAction,
+          postId: postId ?? null,
+          dateKey,
+        },
+      });
+    } catch (err) {
+      console.error("[social-earning] mission log failed:", err);
     }
   }
 
@@ -599,19 +618,38 @@ export async function awardSocialEarning(
 
   // Recipient credit
   if (postOwnerUserId) {
+    // The self-guard must stay ahead of the ratio counter, or liking your own
+    // post would pump your own milestone without ever paying.
     if (actorUserId && actorUserId === postOwnerUserId && action !== "POST_CREATE") {
       result.recipient = { points: 0, xp: 0, skipped: "self" };
     } else {
-      result.recipient = await creditOne({
+      const gate = await resolveRatio({
         userId: postOwnerUserId,
         role: "recipient",
-        rule: cfg.perActivity[action].recipient,
-        cfg,
         action,
-        postId,
-        sourceUserId: actorUserId,
-        referenceOverride,
+        rule: recipRule,
+        countsThisEvent,
       });
+      if (!gate.ready) {
+        result.recipient = { points: 0, xp: 0, skipped: "duplicate" };
+      } else {
+        result.recipient = await creditOne({
+          userId: postOwnerUserId,
+          role: "recipient",
+          rule: recipRule,
+          cfg,
+          action,
+          // A milestone is earned across ALL the author's posts, so it isn't
+          // tied to one — which also means `capPerPost` doesn't limit it. Only
+          // the daily cap does. The admin UI says so.
+          postId: gate.reference ? null : postId,
+          sourceUserId: actorUserId,
+          referenceOverride:
+            gate.reference ??
+            referenceOverride ??
+            (eventKey ? `social_${action.toLowerCase()}_recipient_${eventKey}` : undefined),
+        });
+      }
     }
   }
 
@@ -619,55 +657,35 @@ export async function awardSocialEarning(
   if (actorUserId) {
     if (postOwnerUserId && actorUserId === postOwnerUserId) {
       result.actor = { points: 0, xp: 0, skipped: "self" };
-    } else if (
-      batchRewardOn &&
-      postId &&
-      (action === "LIKE_RECEIVED" || action === "COMMENT_RECEIVED")
-    ) {
-      // Milestone reward: pay `points` once per `perCount` DISTINCT posts the
-      // actor has engaged (lifetime), so like/unlike-spam on one post can't farm
-      // it. The current action was just logged above, so it's included.
-      const logAction = ACTOR_LOG_ACTION[action]!;
-      const rows = await prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(DISTINCT "postId") AS count
-        FROM "SocialActionLog"
-        WHERE "userId" = ${actorUserId}
-          AND "action" = ${logAction}
-          AND "postId" IS NOT NULL
-      `;
-      const distinct = Number(rows[0]?.count ?? 0);
-      if (distinct > 0 && distinct % actorPerCount === 0) {
-        const batchIndex = distinct / actorPerCount;
+    } else {
+      const gate = await resolveRatio({
+        userId: actorUserId,
+        role: "actor",
+        action,
+        rule: actorRule,
+        countsThisEvent,
+      });
+      if (!gate.ready) {
+        result.actor = { points: 0, xp: 0, skipped: "duplicate" };
+      } else {
         result.actor = await creditOne({
           userId: actorUserId,
           role: "actor",
-          rule: {
-            enabled: true,
-            points: actorRule.points,
-            xp: actorRule.xp,
-          },
+          rule: actorRule,
           cfg,
           action,
-          postId: null, // milestone reward isn't tied to a single post
+          postId: gate.reference ? null : postId,
           sourceUserId: postOwnerUserId,
-          referenceOverride: `social_${action.toLowerCase()}_actorbatch_${actorUserId}_${batchIndex}`,
+          // `referenceOverride` deliberately isn't forwarded here — it is
+          // recipient-only by contract. `eventKey` is the both-sides version.
+          referenceOverride:
+            gate.reference ??
+            (eventKey ? `social_${action.toLowerCase()}_actor_${eventKey}` : undefined),
         });
-      } else {
-        // Not a milestone crossing on this action — no actor payout yet.
-        result.actor = { points: 0, xp: 0, skipped: "duplicate" };
       }
-    } else {
-      result.actor = await creditOne({
-        userId: actorUserId,
-        role: "actor",
-        rule: cfg.perActivity[action].actor,
-        cfg,
-        action,
-        postId,
-        sourceUserId: postOwnerUserId,
-      });
     }
   }
+
 
   return result;
 }

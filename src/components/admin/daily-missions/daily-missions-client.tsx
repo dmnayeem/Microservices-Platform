@@ -21,27 +21,20 @@ import {
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import {
+  MISSION_TASK_TYPES,
+  TYPE_LABEL,
+  TYPE_HINT,
+} from "@/lib/mission-labels";
+import { DateField } from "@/components/ui/date-field";
+import {
+  TaskAudienceTargeting,
+  type TaskAudienceValue,
+} from "@/components/admin/tasks/task-audience-targeting";
 
-const TASK_TYPES = [
-  "ARTICLE",
-  "VIDEO",
-  "QUIZ",
-  "SURVEY",
-  "SOCIAL",
-  "PROXY",
-  "OFFERWALL",
-  "BOARD",
-  "MANUAL",
-  "CUSTOM",
-  // Social-feed engagement goals — count feed likes/comments/etc. the user
-  // performs today (e.g. "like 100 posts"). Progress is tracked from
-  // SocialActionLog by daily-mission-progress.ts.
-  "SOCIAL_LIKE",
-  "SOCIAL_COMMENT",
-  "SOCIAL_POST",
-  "SOCIAL_SHARE",
-  "SOCIAL_VOTE",
-] as const;
+// The type list lives in src/lib/mission-labels.ts — this file used to keep a
+// fourth copy of it.
+const TASK_TYPES = MISSION_TASK_TYPES;
 
 const PACKAGE_TIERS = ["FREE", "STARTER", "PRO", "ELITE", "VIP"] as const;
 type PackageTier = (typeof PACKAGE_TIERS)[number];
@@ -81,6 +74,20 @@ interface Mission {
   order: number;
   claimsCount: number;
   items: MissionItem[];
+  completionCashReward: number;
+  streakBonusEvery: number;
+  streakBonusPoints: number;
+  startAt: string | null;
+  endAt: string | null;
+  countries: string[];
+  genders: string[];
+  regions: string[];
+  divisions: string[];
+  districts: string[];
+  subDistricts: string[];
+  postalCodes: string[];
+  minAge: number | null;
+  maxAge: number | null;
 }
 
 interface FormState {
@@ -96,6 +103,20 @@ interface FormState {
   linkReferralBonus: boolean;
   order: number;
   items: MissionItem[];
+  completionCashReward: number;
+  streakBonusEvery: number;
+  streakBonusPoints: number;
+  startAt: string;
+  endAt: string;
+  audience: TaskAudienceValue;
+}
+
+function toDatetimeLocal(v: string | null): string {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 const EMPTY_ITEM: MissionItem = {
@@ -121,6 +142,22 @@ const EMPTY_FORM: FormState = {
   linkReferralBonus: false,
   order: 0,
   items: [{ ...EMPTY_ITEM }],
+  completionCashReward: 0,
+  streakBonusEvery: 0,
+  streakBonusPoints: 0,
+  startAt: "",
+  endAt: "",
+  audience: {
+    countries: [],
+    genders: [],
+    regions: [],
+    divisions: [],
+    districts: [],
+    subDistricts: [],
+    postalCodes: [],
+    minAge: null,
+    maxAge: null,
+  },
 };
 
 interface Props {
@@ -158,6 +195,22 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
       linkReferralBonus: m.linkReferralBonus,
       order: m.order,
       items: m.items.map((it) => ({ ...it })),
+      completionCashReward: m.completionCashReward,
+      streakBonusEvery: m.streakBonusEvery,
+      streakBonusPoints: m.streakBonusPoints,
+      startAt: toDatetimeLocal(m.startAt),
+      endAt: toDatetimeLocal(m.endAt),
+      audience: {
+        countries: m.countries,
+        genders: m.genders,
+        regions: m.regions,
+        divisions: m.divisions,
+        districts: m.districts,
+        subDistricts: m.subDistricts,
+        postalCodes: m.postalCodes,
+        minAge: m.minAge,
+        maxAge: m.maxAge,
+      },
     });
   const close = () => setModal(null);
 
@@ -187,6 +240,12 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
         autoRefresh: modal.autoRefresh,
         linkReferralBonus: modal.linkReferralBonus,
         order: modal.order,
+        completionCashReward: modal.completionCashReward,
+        streakBonusEvery: modal.streakBonusEvery,
+        streakBonusPoints: modal.streakBonusPoints,
+        startAt: modal.startAt ? new Date(modal.startAt).toISOString() : null,
+        endAt: modal.endAt ? new Date(modal.endAt).toISOString() : null,
+        ...modal.audience,
         items: modal.items.map((it, idx) => ({
           taskType: it.taskType,
           description: it.description?.trim() || null,
@@ -578,6 +637,117 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
                 />
               </div>
 
+              {/* ── Extra rewards ─────────────────────────────────────────── */}
+              <div className="pt-3 border-t border-slate-800 space-y-3">
+                <p className="text-sm font-bold text-white">Extra rewards</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Field label="Cash reward ($)">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={modal.completionCashReward}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          completionCashReward: Math.max(
+                            0,
+                            parseFloat(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className={inp}
+                    />
+                  </Field>
+                  <Field label="Streak bonus every N days">
+                    <input
+                      type="number"
+                      min={0}
+                      value={modal.streakBonusEvery}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          streakBonusEvery: Math.max(
+                            0,
+                            parseInt(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className={inp}
+                    />
+                  </Field>
+                  <Field label="Streak bonus points">
+                    <input
+                      type="number"
+                      min={0}
+                      value={modal.streakBonusPoints}
+                      onChange={(e) =>
+                        setModal({
+                          ...modal,
+                          streakBonusPoints: Math.max(
+                            0,
+                            parseInt(e.target.value) || 0
+                          ),
+                        })
+                      }
+                      className={inp}
+                    />
+                  </Field>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  {modal.streakBonusEvery > 0 && modal.streakBonusPoints > 0
+                    ? `On every ${modal.streakBonusEvery}th consecutive day, the user gets an extra ${modal.streakBonusPoints} points on top of the completion reward.`
+                    : "Set both streak fields to reward users for keeping a run going. The streak was already being counted — it just never paid anything."}
+                </p>
+              </div>
+
+              {/* ── Schedule ──────────────────────────────────────────────── */}
+              <div className="pt-3 border-t border-slate-800 space-y-3">
+                <p className="text-sm font-bold text-white">Schedule (optional)</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Field label="Starts">
+                    <DateField
+                      type="datetime-local"
+                      value={modal.startAt}
+                      onChange={(v) => setModal({ ...modal, startAt: v })}
+                      className={inp}
+                    />
+                  </Field>
+                  <Field label="Ends">
+                    <DateField
+                      type="datetime-local"
+                      value={modal.endAt}
+                      onChange={(v) => setModal({ ...modal, endAt: v })}
+                      className={inp}
+                    />
+                  </Field>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Leave both blank to run this mission indefinitely.
+                </p>
+              </div>
+
+              {/* ── Audience ──────────────────────────────────────────────── */}
+              <div className="pt-3 border-t border-slate-800 space-y-3">
+                <p className="text-sm font-bold text-white">Who gets this mission</p>
+                <TaskAudienceTargeting
+                  value={modal.audience}
+                  onChange={(patch) =>
+                    setModal({
+                      ...modal,
+                      audience: { ...modal.audience, ...patch },
+                    })
+                  }
+                  disabled={!canManage}
+                />
+                <p className="text-[11px] text-slate-500">
+                  On top of the plan tier and level above. Blank = everyone.
+                  Targeting is strict: a user missing a targeted profile field
+                  (no country, no date of birth) will not get this mission — and
+                  will fall through to the next one they do qualify for.
+                </p>
+              </div>
+
               {/* Items list */}
               <div className="pt-2 border-t border-slate-800">
                 <div className="flex items-center justify-between mb-3">
@@ -626,11 +796,19 @@ export function DailyMissionsClient({ initial, canManage }: Props) {
                             className={inp}
                           >
                             {TASK_TYPES.map((t) => (
-                              <option key={t} value={t}>
-                                {t}
+                              <option key={t} value={t} className="bg-slate-900">
+                                {TYPE_LABEL[t] ?? t}
                               </option>
                             ))}
                           </select>
+                          {/* The counting rule, stated where the choice is made.
+                              "Why doesn't my mission complete?" is almost always
+                              a misread rule, not a bug. */}
+                          {TYPE_HINT[it.taskType] && (
+                            <span className="block text-[11px] text-slate-500 mt-1">
+                              {TYPE_HINT[it.taskType]}
+                            </span>
+                          )}
                         </Field>
                         <Field label="Target Count">
                           <input

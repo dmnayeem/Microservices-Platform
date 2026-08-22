@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   ExternalLink,
   Upload,
   Loader2,
-  Sparkles,
-  Copy,
   Check,
   PlayCircle,
   CheckCircle2,
@@ -27,9 +25,13 @@ import {
   isWatchAction,
   mapSocialTaskRow,
   primarySocialVideo,
+  resolveRecipe,
   type SocialTaskView,
   type SocialTaskItemView,
 } from "@/lib/social-tasks";
+import { diyPromptFor } from "@/lib/social-ai-recipe";
+import { SocialRecipePanel } from "@/components/user/tasks/social-recipe-panel";
+import { CopyButton } from "@/components/user/primitives/copy-field";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import { SocialWatchModal } from "@/components/user/tasks/social-watch-modal";
 import { InlineVideoEmbed } from "@/components/user/primitives/inline-video-embed";
@@ -51,76 +53,16 @@ const PLATFORM_LOOKUP = Object.fromEntries(
   SOCIAL_PLATFORMS.map((p) => [p.key, p])
 );
 
+/**
+ * Optimistic regeneration allowance shown before the server has told us the
+ * real one (it comes from the `social.ai_regenerate_limit` setting). The server
+ * is authoritative — an over-count here just means one 429 the user can read.
+ */
+const AI_REGEN_FALLBACK = 2;
+
 /** True when this item uses the timed watch-lock (watch action + duration set). */
 function isWatchLocked(item: SocialTaskItemView): boolean {
   return isWatchAction(item.action) && !!item.watchSeconds && item.watchSeconds > 0;
-}
-
-/**
- * Build the AI prompt for an action from the task's own title/description, the
- * admin's reference content (the AI-generatable field the admin filled), and any
- * extra guidance the admin added. Comment actions produce a short 1–2 line unique
- * comment; content/post actions produce an original variant of the reference.
- */
-function buildAiPrompt(
-  def: { aiGeneratableFields?: string[]; key?: string; label?: string } | null,
-  item: SocialTaskItemView,
-  task: { title?: string | null; description?: string | null }
-): string {
-  const genFields = def?.aiGeneratableFields ?? [];
-  const keyLabel = `${def?.key ?? ""} ${def?.label ?? ""}`;
-  const isReview = /review/i.test(keyLabel);
-  const isComment =
-    !isReview &&
-    (genFields.some((k) => /comment/i.test(k)) || /comment|reply/i.test(keyLabel));
-  // Use EVERY AI-generatable field the admin filled as the reference (multi-field
-  // actions like postTitle+postBody / pinTitle+pinDescription would otherwise lose
-  // the body).
-  const adminContent = genFields
-    .map((k) => (item.fields?.[k] ?? "").trim())
-    .filter(Boolean)
-    .join("\n");
-  const extra = (item.aiPrompt ?? "").trim();
-  const topic = [task.title ?? "", task.description ?? ""]
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .join(". ");
-
-  if (isComment) {
-    return [
-      "Write ONE short, original, natural-sounding comment (1 to 2 lines maximum, no quotation marks, no hashtags unless they fit naturally).",
-      topic && `It is about: ${topic}.`,
-      adminContent &&
-        `Keep a similar tone/style to this example but reword it and make it unique: "${adminContent}".`,
-      extra && `Extra guidance: ${extra}.`,
-      "Make it unique, human and specific. Return ONLY the comment text.",
-    ]
-      .filter(Boolean)
-      .join(" ");
-  }
-
-  if (isReview) {
-    return [
-      "Write an original, honest-sounding review (2 to 4 sentences) in first person.",
-      topic && `It is about: ${topic}.`,
-      adminContent &&
-        `Similar in spirit to this example, but reworded and unique: "${adminContent}".`,
-      extra && `Extra guidance: ${extra}.`,
-      "Make it natural, specific and unique. Return ONLY the review text.",
-    ]
-      .filter(Boolean)
-      .join(" ");
-  }
-
-  return [
-    "Write an original social media post — same topic and tone as the reference, but reworded and unique (do not copy it).",
-    adminContent && `Reference: "${adminContent}".`,
-    topic && `Topic: ${topic}.`,
-    extra && `Extra guidance: ${extra}.`,
-    "Keep it engaging and natural. Return ONLY the post text.",
-  ]
-    .filter(Boolean)
-    .join(" ");
 }
 
 export function SocialTaskRunView({ taskId }: { taskId: string }) {
@@ -133,7 +75,20 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [adBlocked, setAdBlocked] = useState(false);
 
   const [proofByIndex, setProofByIndex] = useState<Record<number, ItemProof>>({});
-  const [aiOutputByIndex, setAiOutputByIndex] = useState<Record<number, string>>({});
+  // AI-generated content, per action, keyed by the action's own field keys
+  // (pinTitle, pinDescription, hashtags, imagePrompt…) so each one renders as a
+  // separate copyable step rather than one undifferentiated blob.
+  const [aiFieldsByIndex, setAiFieldsByIndex] = useState<
+    Record<number, Record<string, string>>
+  >({});
+  // What the user says they actually posted. Optional, and only offered in
+  // copy-prompt mode where we never see the content — it's what gives the
+  // reviewer something to compare the published post against.
+  const [postedTextByIndex, setPostedTextByIndex] = useState<
+    Record<number, string>
+  >({});
+  const [regenLeftByIndex, setRegenLeftByIndex] = useState<Record<number, number>>({});
+  const [aiErrorByIndex, setAiErrorByIndex] = useState<Record<number, string>>({});
   const [watchedByIndex, setWatchedByIndex] = useState<Record<number, boolean>>({});
   // Explicit "I did this" marks for actions that have no watch/proof to gauge
   // completion — only used to unlock the next action in a sequential bundle.
@@ -143,7 +98,6 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   >(null);
   const [busy, setBusy] = useState(false);
   const [generatingAi, setGeneratingAi] = useState<number | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
   // A PENDING submission is created on load (or resumed) so the submit route
   // has something to attach to, and its clock runs while the user completes
   // the actions.
@@ -206,14 +160,34 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     loadedTask: ReturnType<typeof mapSocialTaskRow>,
     metadata: unknown
   ) => {
-    const rawItems =
-      metadata &&
-      typeof metadata === "object" &&
-      Array.isArray((metadata as Record<string, unknown>).items)
-        ? ((metadata as { items: unknown[] }).items as Array<
-            Record<string, unknown>
-          >)
+    const meta =
+      metadata && typeof metadata === "object"
+        ? (metadata as Record<string, unknown>)
         : null;
+
+    // AI output lives OUTSIDE metadata.items — the progress autosave replaces
+    // `items` wholesale, so anything stored in there would be lost on the next
+    // keystroke. See /api/tasks/[id]/ai-recipe.
+    if (meta?.aiRecipes && typeof meta.aiRecipes === "object") {
+      const recipes = meta.aiRecipes as Record<
+        string,
+        { fields?: Record<string, string>; regenCount?: number }
+      >;
+      const fields: Record<number, Record<string, string>> = {};
+      const regen: Record<number, number> = {};
+      for (const [k, v] of Object.entries(recipes)) {
+        const idx = Number(k);
+        if (!Number.isInteger(idx) || !v?.fields) continue;
+        fields[idx] = v.fields;
+        regen[idx] = Math.max(0, AI_REGEN_FALLBACK - (v.regenCount ?? 0));
+      }
+      if (Object.keys(fields).length) setAiFieldsByIndex(fields);
+      if (Object.keys(regen).length) setRegenLeftByIndex(regen);
+    }
+
+    const rawItems = Array.isArray(meta?.items)
+      ? ((meta.items as unknown[]) as Array<Record<string, unknown>>)
+      : null;
     if (!rawItems) return;
     const proof: Record<number, ItemProof> = {};
     const watched: Record<number, boolean> = {};
@@ -242,7 +216,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     if (Object.keys(proof).length) setProofByIndex(proof);
     if (Object.keys(watched).length) setWatchedByIndex(watched);
     if (Object.keys(done).length) setDoneByIndex(done);
-    if (Object.keys(ai).length) setAiOutputByIndex(ai);
+    // Pre-recipe submissions stored one text blob here; keep showing it so work
+    // already in flight isn't lost when this build ships.
+    if (Object.keys(ai).length) setPostedTextByIndex(ai);
   };
 
   useEffect(() => {
@@ -262,7 +238,23 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         if (d.socialVerifyCodes && typeof d.socialVerifyCodes === "object") {
           setVerifyCodes(d.socialVerifyCodes as Record<number, string>);
         }
+
+        const us = (d.userStatus ?? {}) as { awaitingReview?: boolean };
+
+        // Already submitted and waiting on a reviewer. Show that, and — the part
+        // that matters — do NOT fall through to ensureSubmission(). /start would
+        // count this still-PENDING row against the daily limit, fail with
+        // "Daily limit reached", get swallowed, and leave a blank submit form
+        // whose Submit button 409s. Every other task type returns here too.
+        if (us.awaitingReview) {
+          setSubmitted(true);
+          return;
+        }
+
         // Start (or resume) the submission so we have an id to submit with.
+        // (We deliberately don't seed the id from userStatus.activeSubmissionId:
+        // /start is also what returns the saved metadata that hydrateProgress
+        // needs, so skipping it would lose in-progress work on reload.)
         // Failures here are non-fatal — submit() will retry and surface them.
         // ensureSubmission() de-dupes concurrent /start calls (see M2).
         try {
@@ -292,6 +284,26 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
+  /**
+   * What the reviewer sees as "the content this user posted".
+   *
+   * Prefers what the user typed in themselves (copy-prompt mode, where we never
+   * see the generated text) and otherwise flattens the AI fields into a
+   * readable block, so the admin proof panel keeps working unchanged.
+   */
+  const reviewerContent = useCallback(
+    (idx: number): string => {
+      const typed = (postedTextByIndex[idx] ?? "").trim();
+      if (typed) return typed;
+      const fields = aiFieldsByIndex[idx];
+      if (!fields) return "";
+      return Object.entries(fields)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n");
+    },
+    [postedTextByIndex, aiFieldsByIndex]
+  );
+
   // Auto-save partial progress (debounced) whenever watched/proof/AI changes,
   // so leaving or reloading mid-task resumes instead of restarting.
   useEffect(() => {
@@ -302,12 +314,12 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     saveTimer.current = setTimeout(() => {
       const items = t.items.map((item, idx) => {
         const p = proofByIndex[idx] ?? EMPTY_PROOF;
-        const ai = aiOutputByIndex[idx];
+        const content = reviewerContent(idx);
         const out: Record<string, string | boolean> = { action: item.action };
         if (p.url) out.proofUrl = p.url;
         if (p.screenshot) out.screenshotUrl = p.screenshot;
         if (p.username) out.username = p.username;
-        if (ai && ai.trim()) out.generatedContent = ai;
+        if (content) out.generatedContent = content;
         if (watchedByIndex[idx]) out.watched = true;
         if (doneByIndex[idx]) out.done = true;
         return out;
@@ -328,9 +340,11 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     submissionId,
     submitted,
     proofByIndex,
-    aiOutputByIndex,
+    aiFieldsByIndex,
+    postedTextByIndex,
     watchedByIndex,
     doneByIndex,
+    reviewerContent,
   ]);
 
   const platform = task ? PLATFORM_LOOKUP[task.platform] : null;
@@ -382,36 +396,68 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     return !!prev && isItemDone(prev, idx - 1);
   };
 
-  const generateAi = async (idx: number, prompt: string) => {
+  /**
+   * Ask the server for this action's content. The prompt is built server-side
+   * from the task's own config — the browser no longer composes it — and the
+   * result comes back as one value per field, ready to render as numbered steps.
+   *
+   * Every failure is soft: the copy-prompt block is always available, so the
+   * user can run the same prompt in ChatGPT/Gemini themselves and still finish.
+   */
+  const generateRecipe = async (idx: number, regenerate: boolean) => {
+    if (!task) return;
+    // A submission must exist for the result to be saved against.
+    const sid = submissionId ?? (await ensureSubmission().catch(() => null))?.id;
+    if (!sid) {
+      setAiErrorByIndex((p) => ({
+        ...p,
+        [idx]: "Couldn't start the task. Reload and try again.",
+      }));
+      return;
+    }
     setGeneratingAi(idx);
+    setAiErrorByIndex((p) => ({ ...p, [idx]: "" }));
     try {
-      const res = await fetch("/api/ai/generate", {
+      const res = await fetch(`/api/tasks/${task.id}/ai-recipe`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `${sid}:${idx}:${regenerate ? Date.now() : "first"}`,
+        },
+        body: JSON.stringify({ itemIndex: idx, regenerate }),
       });
+      const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        toast.info(d.error || "AI not available — please write it yourself");
+        setAiErrorByIndex((p) => ({
+          ...p,
+          [idx]:
+            d.error ?? "AI isn't available right now — use the prompt below.",
+        }));
+        if (typeof d.regenLeft === "number") {
+          setRegenLeftByIndex((p) => ({ ...p, [idx]: d.regenLeft }));
+        }
         return;
       }
-      const d = await res.json();
-      setAiOutputByIndex((prev) => ({ ...prev, [idx]: d.text ?? d.content ?? "" }));
-      toast.success("Generated — review and post it");
+      const fields: Record<string, string> = {};
+      for (const s of (d.steps ?? []) as Array<{
+        key: string;
+        value: string;
+        source: string;
+      }>) {
+        if (s.source === "ai") fields[s.key] = s.value;
+      }
+      setAiFieldsByIndex((p) => ({ ...p, [idx]: fields }));
+      if (typeof d.regenLeft === "number") {
+        setRegenLeftByIndex((p) => ({ ...p, [idx]: d.regenLeft }));
+      }
+      if (!d.cached) toast.success("Generated — copy each field and post it");
     } catch {
-      toast.info("Please write it yourself this time");
+      setAiErrorByIndex((p) => ({
+        ...p,
+        [idx]: "Couldn't reach the AI — use the prompt below instead.",
+      }));
     } finally {
       setGeneratingAi(null);
-    }
-  };
-
-  const copyToClipboard = async (text: string, key: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(key);
-      setTimeout(() => setCopied(null), 1500);
-    } catch {
-      // ignore
     }
   };
 
@@ -457,12 +503,12 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
       const payloadItems = items.map((item, idx) => {
         const req = item.proofRequirements;
         const p = proofByIndex[idx] ?? EMPTY_PROOF;
-        const ai = aiOutputByIndex[idx];
+        const content = reviewerContent(idx);
         const out: Record<string, string | boolean> = { action: item.action };
         if (req.url) out.proofUrl = p.url;
         if (req.screenshot) out.screenshotUrl = p.screenshot;
         if (req.username) out.username = p.username;
-        if (ai && ai.trim()) out.generatedContent = ai;
+        if (content) out.generatedContent = content;
         if (isWatchLocked(item) && watchedByIndex[idx]) out.watched = true;
         if (doneByIndex[idx]) out.done = true;
         return out;
@@ -541,6 +587,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             pending.
           </p>
         </div>
+        <AdRenderer placement="TASK_COMPLETE" />
         <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
           <Link
             href="/social-tasks"
@@ -748,7 +795,19 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         if (idx === heroWatchIdx) return null;
         const def = getAction(task.platform, item.action);
         const proof = proofByIndex[idx] ?? EMPTY_PROOF;
-        const aiOutput = aiOutputByIndex[idx] ?? "";
+        // AI values win over the admin's, but the admin's link/board/image are
+        // always emitted — see resolveRecipe.
+        const recipeSteps = resolveRecipe(def, item, aiFieldsByIndex[idx] ?? null);
+        const diyPrompt =
+          def && item.aiMode !== "off"
+            ? diyPromptFor(
+                def,
+                platform?.label ?? task.platform,
+                item.fields,
+                task,
+                item.aiPrompt
+              )
+            : "";
         const req = item.proofRequirements;
         const ready = isItemReady(item, idx);
         const unlocked = isItemUnlocked(idx);
@@ -885,20 +944,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   <code className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-emerald-500/40 text-emerald-300 font-mono text-sm tracking-widest text-center select-all">
                     {verifyCodes[idx]}
                   </code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void navigator.clipboard
-                        ?.writeText(verifyCodes[idx])
-                        .then(() => {
-                          setCopied(`code-${idx}`);
-                          setTimeout(() => setCopied(null), 1500);
-                        });
-                    }}
-                    className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-semibold shrink-0"
-                  >
-                    {copied === `code-${idx}` ? "Copied!" : "Copy"}
-                  </button>
+                  <span className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 shrink-0">
+                    <CopyButton value={verifyCodes[idx]} tone="emerald" />
+                  </span>
                 </div>
                 <p className="text-[11px] text-emerald-400/70">
                   We fetch your public link and auto-approve when the code is
@@ -924,98 +972,43 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               </div>
             )}
 
-            {/* AI generate — builds a unique variant from the task + your content */}
-            {item.aiPromptEnabled && (
-              <div className="rounded-lg bg-purple-500/5 border border-purple-500/30 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <p className="text-sm font-bold text-purple-300">
-                    Generate your own with AI
-                  </p>
-                </div>
-                <p className="text-xs text-purple-200/80">
-                  Creates a unique {def?.label ?? "content"} from this task — each
-                  user gets a different one. Review, then post it and submit proof.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => generateAi(idx, buildAiPrompt(def ?? null, item, task))}
-                  disabled={generatingAi === idx}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold disabled:opacity-50"
-                >
-                  {generatingAi === idx ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  Generate with AI
-                </button>
-                {aiOutput && (
-                  <div className="rounded bg-gray-950 border border-emerald-500/30 p-2 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">
-                        Generated content
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(aiOutput, `ai-${idx}`)}
-                        className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300"
-                      >
-                        {copied === `ai-${idx}` ? (
-                          <Check className="w-3 h-3" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                        Copy
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-200 whitespace-pre-wrap">
-                      {aiOutput}
-                    </p>
-                  </div>
-                )}
+            {/* The recipe: everything the user copies or downloads to make the
+                post. Manual, AI and copy-prompt modes all render through this
+                one component, so the admin's fixed fields (destination URL,
+                board name, image) can never be hidden by turning AI on again. */}
+            <SocialRecipePanel
+              steps={recipeSteps}
+              platformLabel={platform?.label ?? task.platform}
+              mode={item.aiMode}
+              diyPrompt={diyPrompt}
+              regenLeft={regenLeftByIndex[idx] ?? AI_REGEN_FALLBACK}
+              generating={generatingAi === idx}
+              hasGenerated={!!aiFieldsByIndex[idx]}
+              onGenerate={(regen) => generateRecipe(idx, regen)}
+              error={aiErrorByIndex[idx] || null}
+            />
+
+            {/* Copy-prompt mode never shows us the content, so give the
+                reviewer something to compare the live post against. */}
+            {(item.aiMode === "diy" || item.aiMode === "both") && (
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                  What you posted (optional)
+                </label>
+                <textarea
+                  value={postedTextByIndex[idx] ?? ""}
+                  onChange={(e) =>
+                    setPostedTextByIndex((prev) => ({
+                      ...prev,
+                      [idx]: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  placeholder="Paste the text you published — it helps us approve you faster."
+                  className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white placeholder-gray-600 resize-y"
+                />
               </div>
             )}
-
-            {/* Static admin-provided template fields */}
-            {!item.aiPromptEnabled &&
-              def?.adminFields
-                .filter((f) => {
-                  if (f.key === "targetUrl" || f.key === "targetHandle")
-                    return false;
-                  const v = item.fields[f.key];
-                  return v && v.trim();
-                })
-                .map((f) => {
-                  const v = item.fields[f.key];
-                  return (
-                    <div
-                      key={f.key}
-                      className="rounded-lg bg-gray-950 border border-gray-800 p-3 space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-                          {f.label}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(v, `${idx}-${f.key}`)}
-                          className="inline-flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300"
-                        >
-                          {copied === `${idx}-${f.key}` ? (
-                            <Check className="w-3 h-3" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                          Copy
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-200 whitespace-pre-wrap wrap-break-word">
-                        {v}
-                      </p>
-                    </div>
-                  );
-                })}
 
             {/* Explicit "I did this" — only when sequential and there's no
                 watch/proof to auto-detect completion (else the next action

@@ -1,9 +1,8 @@
 "use client";
 
 import type { BuilderState } from "../types";
-import { Field, SectionHeader, inputCls } from "../shared";
+import { Field, SectionHeader } from "../shared";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
-import { Video } from "lucide-react";
 
 interface Props {
   state: BuilderState;
@@ -40,16 +39,13 @@ export function MediaStep({ state, update }: Props) {
         label="Promo video URL"
         hint="MP4, HLS, or a YouTube/Vimeo URL works. Shown on the landing page as a trailer."
       >
-        <div className="relative">
-          <Video className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="url"
-            value={state.promoVideoUrl}
-            onChange={(e) => update("promoVideoUrl", e.target.value)}
-            className={inputCls + " pl-9"}
-            placeholder="https://…"
-          />
-        </div>
+        <ImageUploadField
+          value={state.promoVideoUrl}
+          onChange={(url) => update("promoVideoUrl", url)}
+          fileType="VIDEO"
+          previewSize="lg"
+          urlPlaceholder="…or paste an MP4 / HLS / YouTube / Vimeo URL"
+        />
       </Field>
     </div>
   );

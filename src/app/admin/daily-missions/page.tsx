@@ -2,7 +2,9 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
-import { accessLevelToTier } from "@/lib/missions";
+import { accessLevelToTier } from "@/lib/package-tiers";
+import { toNum } from "@/lib/money";
+import type { MissionTaskType } from "@/lib/mission-labels";
 import { DailyMissionsClient } from "@/components/admin/daily-missions/daily-missions-client";
 
 export default async function DailyMissionsAdminPage() {
@@ -53,19 +55,25 @@ export default async function DailyMissionsAdminPage() {
         linkReferralBonus: m.linkReferralBonus,
         order: m.order,
         claimsCount: m._count.claims,
+        completionCashReward: toNum(m.completionCashReward),
+        streakBonusEvery: m.streakBonusEvery,
+        streakBonusPoints: m.streakBonusPoints,
+        startAt: m.startAt ? m.startAt.toISOString() : null,
+        endAt: m.endAt ? m.endAt.toISOString() : null,
+        countries: m.countries,
+        genders: m.genders,
+        regions: m.regions,
+        divisions: m.divisions,
+        districts: m.districts,
+        subDistricts: m.subDistricts,
+        postalCodes: m.postalCodes,
+        minAge: m.minAge,
+        maxAge: m.maxAge,
         items: m.items.map((it) => ({
           id: it.id,
-          taskType: it.taskType as
-            | "ARTICLE"
-            | "VIDEO"
-            | "QUIZ"
-            | "SURVEY"
-            | "SOCIAL"
-            | "PROXY"
-            | "OFFERWALL"
-            | "BOARD"
-            | "MANUAL"
-            | "CUSTOM",
+          // Was a hand-written union that had already lost all five SOCIAL_*
+          // values. MissionTaskType is the one definition.
+          taskType: it.taskType as MissionTaskType,
           description: it.description,
           targetCount: it.targetCount,
           xpPerComplete: it.xpPerComplete,

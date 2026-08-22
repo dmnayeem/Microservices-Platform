@@ -47,52 +47,30 @@ export interface EventRow {
   isActive: boolean;
 }
 
-/** Live progress for one event + user, clamped to the event window. */
-export async function computeEventProgress(
-  userId: string,
-  event: EventRow,
-  proofProgress = 0
-): Promise<number> {
-  const now = new Date();
-  const gte = event.startAt;
-  const lte = now < event.endAt ? now : event.endAt;
-  const range = { gte, lte };
-
-  switch (event.actionType) {
-    case "TEAM_ADD":
-      return prisma.user.count({
-        where: { referredById: userId, createdAt: range },
-      });
-    case "TASK_COMPLETE":
-      return prisma.taskSubmission.count({
-        where: {
-          userId,
-          status: { in: ["APPROVED", "AUTO_APPROVED"] },
-          createdAt: range,
-        },
-      });
-    case "QUIZ_COMPLETE":
-      return prisma.taskSubmission.count({
-        where: {
-          userId,
-          status: { in: ["APPROVED", "AUTO_APPROVED"] },
-          task: { is: { type: "QUIZ" } },
-          createdAt: range,
-        },
-      });
-    case "LOTTERY_BUY":
-      return prisma.lotteryTicket.count({
-        where: { userId, createdAt: range },
-      });
-    case "SOCIAL_ACTION":
-      return prisma.socialActionLog.count({
-        where: { userId, createdAt: range },
-      });
-    case "UPLOAD_PROOF":
-      return proofProgress;
-    default:
-      return 0;
+/**
+ * The ONE place progress is derived, shared by the list view and by `claimEvent`
+ * so display and payout can never disagree.
+ *
+ * It is a plain field read. Progress is written forward-only by
+ * `recordUserAction` (src/lib/goal-progress.ts) at the moment each action
+ * happens.
+ *
+ * This replaced a `computeEventProgress()` that counted rows in shared activity
+ * tables over `[event.startAt … now]`. With no per-user baseline, everything a
+ * user had already done counted the instant an event was published — a user
+ * could open a brand-new event and find the Claim button already green. It also
+ * had no action filter, so "share your referral link" was satisfied by any feed
+ * like. **Do not reintroduce a read-time count here.**
+ */
+export function progressFromRow(
+  event: Pick<EventRow, "actionType" | "threshold">,
+  row: { progress: number; proofUrl: string | null } | null | undefined
+): number {
+  // Proof events have no counter — uploading the proof IS the completion.
+  if (event.actionType === "UPLOAD_PROOF") {
+    return row?.proofUrl ? event.threshold : 0;
   }
+  return row?.progress ?? 0;
 }
 
 export interface EventTierView extends EventTier {
@@ -143,7 +121,8 @@ export async function listEventsForUser(
   const out: EventView[] = [];
   for (const e of events) {
     const row = byEvent.get(e.id);
-    const progress = await computeEventProgress(userId, e, row?.progress ?? 0);
+    // No await in this loop any more — progress is a field, not a query.
+    const progress = progressFromRow(e, row ?? null);
     const tiers = parseEventTiers(e.tiers);
     const claimedSet = new Set(row?.claimedTiers ?? []);
     const tierViews: EventTierView[] = tiers.map((t) => ({
@@ -205,15 +184,19 @@ export async function claimEvent(
     },
   });
 
-  let proofProgress = existing?.progress ?? 0;
   let storedProof = existing?.proofUrl ?? null;
   if (event.actionType === "UPLOAD_PROOF") {
     const url = (proofUrl ?? storedProof ?? "").trim();
     if (!url) return { ok: false, error: "Upload your proof first." };
     storedProof = url;
-    proofProgress = Math.max(proofProgress, event.threshold);
   }
-  const progress = await computeEventProgress(userId, event, proofProgress);
+  // Same derivation the list view uses, so what the user sees and what gets
+  // paid can't drift apart. Note the proof URL is passed through `storedProof`,
+  // which may be the one supplied in THIS request.
+  const progress = progressFromRow(event, {
+    progress: existing?.progress ?? 0,
+    proofUrl: storedProof,
+  });
 
   // ── Multi-tier claim: claim one specific tier ──
   if (tiers.length > 0) {
@@ -230,17 +213,18 @@ export async function claimEvent(
     }
     try {
       await prisma.$transaction(async (tx) => {
+        // Claiming records WHAT WAS CLAIMED — never `progress`. That column is
+        // the authoritative counter owned by recordUserAction; writing a
+        // claim-time snapshot back into it would overwrite the real count.
         await tx.userEventProgress.upsert({
           where: { userId_eventId: { userId, eventId } },
           create: {
             userId,
             eventId,
-            progress: proofProgress || progress,
             proofUrl: storedProof,
             claimedTiers: [tier.threshold],
           },
           update: {
-            progress: proofProgress || progress,
             proofUrl: storedProof,
             claimedTiers: { push: tier.threshold },
           },
@@ -281,17 +265,16 @@ export async function claimEvent(
   }
   try {
     await prisma.$transaction(async (tx) => {
+      // As above: `progress` is never written here.
       await tx.userEventProgress.upsert({
         where: { userId_eventId: { userId, eventId } },
         create: {
           userId,
           eventId,
-          progress: proofProgress || progress,
           proofUrl: storedProof,
           claimedAt: new Date(),
         },
         update: {
-          progress: proofProgress || progress,
           proofUrl: storedProof,
           claimedAt: new Date(),
         },

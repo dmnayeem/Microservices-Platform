@@ -32,6 +32,7 @@ import type { ProfileResponse, SocialAccount } from "./profile-view.types";
 import { LANGUAGES, PLATFORM_META, inp } from "./profile-view.constants";
 import { Card, Field, UsernameField, StatTile, Toggle } from "./profile-ui";
 import { VerifiedAccountsCard } from "./verified-accounts-card";
+import { DateField } from "@/components/ui/date-field";
 
 export function PersonalTab({
   data,
@@ -65,7 +66,14 @@ export function PersonalTab({
     await patch({
       firstName: form.firstName || null,
       lastName: form.lastName || null,
-      username: form.username || null,
+      // Only send the handle when it actually changed and isn't blank. It used
+      // to go on every save as `form.username || null`, so clearing the box —
+      // or saving any other personal field with it empty — silently deleted the
+      // user's handle and their /u/<name> link.
+      ...(() => {
+        const u = form.username.trim().replace(/^@+/, "");
+        return u && u !== (profile.username ?? "") ? { username: u } : {};
+      })(),
       bio: form.bio || null,
       gender: form.gender || null,
       dateOfBirth: form.dateOfBirth || null,
@@ -100,7 +108,7 @@ export function PersonalTab({
           currentUsername={profile.username ?? null}
         />
         <Field label="Date of Birth">
-          <input type="date" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} className={inp} />
+          <DateField type="date" value={form.dateOfBirth} onChange={(v) => set("dateOfBirth", v)} className={inp} />
         </Field>
         <Field label="Gender">
           <select value={form.gender} onChange={(e) => set("gender", e.target.value)} className={inp}>

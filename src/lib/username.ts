@@ -26,3 +26,36 @@ export function slugifyUsername(input: string): string {
     .replace(/^[._-]+|[._-]+$/g, "");
   return s.slice(0, 24);
 }
+
+/**
+ * Handles nobody may claim. Two reasons: the app routes `/u/<username>`, so a
+ * handle that collides with a real path is confusing at best; and impersonating
+ * the platform ("admin", "support") is the oldest trick there is.
+ *
+ * Compared lowercase — see `isReservedUsername`.
+ */
+export const RESERVED_USERNAMES = new Set([
+  "admin", "administrator", "root", "superadmin", "sysadmin", "moderator", "mod",
+  "support", "help", "helpdesk", "contact", "info", "team", "staff", "official",
+  "earngpt", "system", "security", "billing", "payments", "payment", "finance",
+  "api", "app", "www", "mail", "email", "login", "signin", "signup", "register",
+  "logout", "auth", "oauth", "verify", "password", "reset", "settings", "profile",
+  "dashboard", "wallet", "withdraw", "withdrawal", "deposit", "referral", "refer",
+  "tasks", "task", "feed", "social", "search", "notifications", "me", "user",
+  "users", "null", "undefined", "anonymous", "guest", "test", "demo",
+]);
+
+export function isReservedUsername(s: string): boolean {
+  return RESERVED_USERNAMES.has((s || "").trim().toLowerCase());
+}
+
+/**
+ * The one validator every caller should use: format + reserved words.
+ * Returns null when the handle is fine, otherwise the reason code.
+ */
+export function checkUsername(s: string): "INVALID" | "RESERVED" | null {
+  const v = (s || "").trim();
+  if (!isValidUsername(v)) return "INVALID";
+  if (isReservedUsername(v)) return "RESERVED";
+  return null;
+}

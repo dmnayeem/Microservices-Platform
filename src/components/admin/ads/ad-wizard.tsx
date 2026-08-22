@@ -20,6 +20,7 @@ import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { AD_PLACEMENTS } from "@/lib/ad-placements";
 import { AD_SIZES } from "@/lib/ad-sizes";
 import { type AdTargeting } from "@/lib/ad-targeting";
+import { DateField } from "@/components/ui/date-field";
 
 interface WizardCampaign {
   id: string;
@@ -307,11 +308,11 @@ export function AdWizard({
                   </div>
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">Start date (optional)</label>
-                    <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
+                    <DateField type="date" value={startAt} onChange={(v) => setStartAt(v)} className={inputCls} />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">End date (optional)</label>
-                    <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
+                    <DateField type="date" value={endAt} onChange={(v) => setEndAt(v)} className={inputCls} />
                   </div>
                 </div>
               )}

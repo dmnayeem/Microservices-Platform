@@ -32,6 +32,7 @@ import {
   CreditCard,
   Handshake,
   Coins,
+  Rocket,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
@@ -79,6 +80,9 @@ const navigationGroups: { section: string; items: NavItem[] }[] = [
     section: "Earn",
     items: [
       { name: "Daily Mission", href: "/daily-mission", icon: Target, feature: "dailyMission" },
+      // Distinct from Daily Mission on purpose: daily = today's checklist,
+      // Missions = long-run big-prize goals. Both feed off one progress engine.
+      { name: "Missions", href: "/missions", icon: Rocket },
       { name: "Tasks", href: "/tasks", icon: ListTodo, feature: "tasks" },
       { name: "Board Tasks", href: "/board-tasks", icon: Pin, feature: "tasks" },
       { name: "Quiz Games", href: "/quizzes", icon: Brain },
@@ -240,7 +244,9 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           </p>
           <ul className="space-y-1">
             {tutorNavigation.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(`${item.href}/`);
               return (
                 <li key={item.name}>
                   <Link
@@ -271,7 +277,9 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           </p>
           <ul className="space-y-1">
             {adminNavigation.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive =
+                pathname === item.href ||
+                pathname.startsWith(`${item.href}/`);
               return (
                 <li key={item.name}>
                   <Link

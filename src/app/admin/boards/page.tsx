@@ -46,6 +46,19 @@ export default async function TaskBoardsPage() {
     unlockBoardId: b.unlockBoardId,
     taskCount: taskByBoard.get(b.id) ?? 0,
     claimCount: claimByBoard.get(b.id) ?? 0,
+    // Eligibility + audience, so Edit round-trips them instead of silently
+    // resetting targeting to "everyone" on the next save.
+    minLevel: b.minLevel,
+    requiredAccessLevel: b.requiredAccessLevel,
+    countries: b.countries,
+    genders: b.genders,
+    regions: b.regions,
+    divisions: b.divisions,
+    districts: b.districts,
+    subDistricts: b.subDistricts,
+    postalCodes: b.postalCodes,
+    minAge: b.minAge,
+    maxAge: b.maxAge,
   }));
 
   return <BoardsClient initialBoards={enriched} canManage={canManage} />;

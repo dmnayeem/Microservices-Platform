@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { MediaSelector } from "@/components/media/MediaSelector";
 import type { MediaItem } from "@/types/media";
+import { DateField } from "@/components/ui/date-field";
 
 interface Banner {
   id: string;
@@ -426,18 +427,18 @@ function EditBannerModal({
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Starts At">
-              <input
+              <DateField
                 type="datetime-local"
                 value={form.startsAt}
-                onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
+                onChange={(v) => setForm({ ...form, startsAt: v })}
                 className={inp}
               />
             </Field>
             <Field label="Ends At">
-              <input
+              <DateField
                 type="datetime-local"
                 value={form.endsAt}
-                onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
+                onChange={(v) => setForm({ ...form, endsAt: v })}
                 className={inp}
               />
             </Field>

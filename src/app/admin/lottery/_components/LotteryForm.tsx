@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { DateField } from "@/components/ui/date-field";
 import {
   Save,
   X,
@@ -190,10 +191,10 @@ export function LotteryForm({ lottery }: LotteryFormProps) {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Start Date <span className="text-red-400">*</span>
             </label>
-            <input
+            <DateField
               type="datetime-local"
               value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, startDate: v })}
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -201,10 +202,10 @@ export function LotteryForm({ lottery }: LotteryFormProps) {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               End Date <span className="text-red-400">*</span>
             </label>
-            <input
+            <DateField
               type="datetime-local"
               value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, endDate: v })}
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -212,10 +213,10 @@ export function LotteryForm({ lottery }: LotteryFormProps) {
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Draw Date <span className="text-red-400">*</span>
             </label>
-            <input
+            <DateField
               type="datetime-local"
               value={formData.drawDate}
-              onChange={(e) => setFormData({ ...formData, drawDate: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, drawDate: v })}
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
             />
           </div>

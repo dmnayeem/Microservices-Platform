@@ -13,6 +13,7 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { LocationSelector } from "@/components/shared/location-selector";
+import { DateField } from "@/components/ui/date-field";
 
 const PROFESSIONS = [
   "Student",
@@ -406,10 +407,10 @@ export function CreateUserForm({ isSuperAdmin }: Props) {
                 </select>
               </Field>
               <Field label="Date of Birth">
-                <input
+                <DateField
                   type="date"
                   value={form.dateOfBirth}
-                  onChange={(e) => set("dateOfBirth", e.target.value)}
+                  onChange={(v) => set("dateOfBirth", v)}
                   className={fieldCls}
                 />
               </Field>

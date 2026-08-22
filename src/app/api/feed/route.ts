@@ -19,6 +19,7 @@ import { getUserDayContext } from "@/lib/user-day";
 import { getAdDensity } from "@/lib/ad-density";
 import { getSetting } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
+import { recordUserAction } from "@/lib/goal-progress";
 
 // GET /api/feed - Get feed posts
 // Exactly the columns `formatPost` below reads. Without a select, Prisma
@@ -565,13 +566,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Social earning — author gets daily post-create bonus (capped 1×/day via reference)
-    await awardSocialEarning({
-      postOwnerUserId: session.user.id,
-      actorUserId: session.user.id,
-      action: "POST_CREATE",
-      postId: post.id,
-    });
+    await Promise.all([
+      // Social earning — author gets daily post-create bonus (capped 1×/day via reference)
+      awardSocialEarning({
+        postOwnerUserId: session.user.id,
+        actorUserId: session.user.id,
+        action: "POST_CREATE",
+        postId: post.id,
+      }),
+      // Event progress. This is the weakest action type to build an event on —
+      // a user can always make more posts — so admins should set a daily cap on
+      // FEED_POST events; the admin form says so.
+      post.isPublic
+        ? recordUserAction({
+            userId: session.user.id,
+            action: "feed_post",
+            targetId: post.id,
+          })
+        : Promise.resolve(),
+    ]);
 
     // Mentions in the post body
     const usernames = extractMentionUsernames(post.content);

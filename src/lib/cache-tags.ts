@@ -24,3 +24,20 @@
 
 /** Active package/pricing rows. Invalidate after any admin package write. */
 export const PACKAGES_TAG = "packages";
+
+/**
+ * The set of currently-active events, keyed by action type — read on every
+ * like/comment/share/purchase to decide whether any progress needs recording.
+ *
+ * Class 1 rather than class 2 on purpose: a stale *empty* index would silently
+ * drop progress, which is the exact failure this whole feature exists to fix.
+ * Invalidate after any admin event create/update/delete.
+ */
+export const EVENTS_ACTIVE_TAG = "events:active";
+
+/**
+ * Same contract as `EVENTS_ACTIVE_TAG`, for Missions. Both tag the one shared
+ * index in src/lib/goal-progress.ts, so either admin surface can invalidate it.
+ * Invalidate after any admin mission create/update/delete.
+ */
+export const MISSIONS_ACTIVE_TAG = "missions:active";

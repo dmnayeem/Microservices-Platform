@@ -33,6 +33,8 @@ import {
   type CustomConfig,
 } from "@/lib/custom-tasks";
 import { AppInstallTaskBuilder } from "./AppInstallTaskBuilder";
+import { DateField } from "@/components/ui/date-field";
+import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import {
   validateAppInstallConfig,
   normalizeAppInstallConfig,
@@ -823,7 +825,12 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               will appear. Each action has its own required fields.
             </p>
           </div>
-          <SocialTaskBuilder value={socialConfig} onChange={setSocialConfig} />
+          <SocialTaskBuilder
+            value={socialConfig}
+            onChange={setSocialConfig}
+            taskTitle={formData.title}
+            taskDescription={formData.description}
+          />
         </div>
       )}
 
@@ -1337,15 +1344,15 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <Video className="w-4 h-4 inline mr-1" />
             Video Instructions (Optional)
           </label>
-          <input
-            type="url"
+          <ImageUploadField
             value={formData.instructionVideoUrl}
-            onChange={(e) => setFormData({ ...formData, instructionVideoUrl: e.target.value })}
-            placeholder="https://www.youtube.com/watch?v=..."
-            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-red-500"
+            onChange={(url) => setFormData({ ...formData, instructionVideoUrl: url })}
+            fileType="VIDEO"
+            previewSize="lg"
+            urlPlaceholder="…or paste a YouTube URL"
           />
           <p className="text-xs text-gray-500 mt-2">
-            Enter a YouTube video URL to provide video instructions
+            Upload a video, or paste a YouTube/Vimeo URL.
           </p>
         </div>
 
@@ -1402,10 +1409,10 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Start Date & Time
             </label>
-            <input
+            <DateField
               type="datetime-local"
               value={formData.startsAt}
-              onChange={(e) => setFormData({ ...formData, startsAt: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, startsAt: v })}
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-red-500"
             />
           </div>
@@ -1414,10 +1421,10 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             <label className="block text-sm font-medium text-gray-400 mb-2">
               End Date & Time
             </label>
-            <input
+            <DateField
               type="datetime-local"
               value={formData.expiresAt}
-              onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, expiresAt: v })}
               className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-red-500"
             />
           </div>

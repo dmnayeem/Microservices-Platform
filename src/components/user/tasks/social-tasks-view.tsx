@@ -28,7 +28,18 @@ const PLATFORM_LOOKUP = Object.fromEntries(
   SOCIAL_PLATFORMS.map((p) => [p.key, p])
 );
 
-export function SocialTasksView() {
+export function SocialTasksView({
+  kind,
+  heading = "Social Tasks",
+  subheading = "Follow, like, comment & share to earn — proof-verified.",
+  icon,
+}: {
+  /** Narrow the list to post-creation or engagement tasks. Omit for both. */
+  kind?: "create" | "engage";
+  heading?: string;
+  subheading?: string;
+  icon?: React.ReactNode;
+} = {}) {
   const [status, setStatus] = useState<Status>("available");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const [tasks, setTasks] = useState<(SocialTaskView & { locked?: boolean })[]>(
@@ -40,9 +51,10 @@ export function SocialTasksView() {
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const r = await fetch(`/api/tasks/social?status=${status}`, {
-          cache: "no-store",
-        });
+        const r = await fetch(
+          `/api/tasks/social?status=${status}${kind ? `&kind=${kind}` : ""}`,
+          { cache: "no-store" }
+        );
         const d = await r.json();
         setTasks(d.tasks ?? []);
       } catch {
@@ -51,7 +63,7 @@ export function SocialTasksView() {
         if (!silent) setLoading(false);
       }
     },
-    [status]
+    [status, kind]
   );
 
   useEffect(() => {
@@ -74,12 +86,10 @@ export function SocialTasksView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Share2 className="w-6 h-6 text-cyan-400" />
-          Social Tasks
+          {icon ?? <Share2 className="w-6 h-6 text-cyan-400" />}
+          {heading}
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Follow, like, comment & share to earn — proof-verified.
-        </p>
+        <p className="text-gray-400 text-sm mt-1">{subheading}</p>
       </div>
 
       <FilterChips

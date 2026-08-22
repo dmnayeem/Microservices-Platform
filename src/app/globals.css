@@ -5,6 +5,74 @@
   --font-inter: "Inter", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-plus-jakarta: "Plus Jakarta Sans", "Noto Sans Bengali", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-jetbrains: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+
+  /* The app is dark-first. Without this the browser paints its OWN widgets —
+     the date/time picker indicator, its popup calendar, scrollbars, spinners —
+     in light-scheme colours. That made the calendar icon a dark glyph on a dark
+     field: effectively invisible, and it is the only region of a date input
+     that opens the picker, so clicking "the calendar" appeared to do nothing.
+     The light theme overrides this back to `light` further down. */
+  color-scheme: dark;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Native date/time picker button.
+   Even with `color-scheme: dark` the indicator is small and low-contrast, so
+   make it plainly visible and obviously clickable. `DateField` renders its own
+   button on top of this for the browsers that show no indicator at all
+   (Firefox desktop), but every bare <input type="date"> benefits from this.
+   ───────────────────────────────────────────────────────────────────────── */
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+  padding: 2px;
+  border-radius: 4px;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: rgb(255 255 255 / 0.12);
+}
+html[data-theme="light"] ::-webkit-calendar-picker-indicator:hover {
+  background-color: rgb(0 0 0 / 0.08);
+}
+
+/* react-day-picker ships a light-themed stylesheet; DateField renders it inside
+   a dark popover, so recolour the parts that don't inherit. */
+.rdp-dark {
+  --rdp-outside-opacity: 0.35;
+  color: #e5e7eb;
+  font-size: 0.8rem;
+}
+.rdp-dark .rdp-weekday {
+  color: #6b7280;
+  font-weight: 700;
+}
+.rdp-dark .rdp-day_button:hover:not([disabled]) {
+  background-color: rgb(255 255 255 / 0.08);
+  border-radius: 0.375rem;
+}
+.rdp-dark .rdp-chevron {
+  fill: #9ca3af;
+}
+.rdp-dark .rdp-button_next:hover .rdp-chevron,
+.rdp-dark .rdp-button_previous:hover .rdp-chevron {
+  fill: #fff;
+}
+.rdp-dark .rdp-dropdown,
+.rdp-dark .rdp-months_dropdown,
+.rdp-dark .rdp-years_dropdown {
+  background-color: #030712;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 0.375rem;
+}
+.rdp-dark .rdp-caption_label {
+  color: #f3f4f6;
+  font-weight: 700;
+}
+.rdp-dark .rdp-today:not(.rdp-selected) .rdp-day_button {
+  font-weight: 700;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

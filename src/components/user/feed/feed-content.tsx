@@ -9,10 +9,16 @@ import { trackLinkClick } from "@/lib/track-link-click";
 // ─────────────────────────────────────────────────────────────────────────────
 // Matches a URL, an @mention, or a #hashtag (Unicode letters/digits/_). One
 // combined pass so the three don't clobber each other; gaps go to renderFormatted.
+// The mention charset mirrors USERNAME_REGEX (lib/username.ts) and the server
+// parser in lib/mentions.ts — dots and hyphens are legal in a handle, and
+// `john.doe` is exactly what a Google email address produces. The lookbehind
+// stops an email in post text ("bob@x.com") becoming a bogus @x.com mention.
 const ENTITY_RE =
-  /(https?:\/\/[^\s]+)|@([a-zA-Z0-9_]{2,30})|#([\p{L}\p{N}_]{2,50})/gu;
+  /(https?:\/\/[^\s]+)|(?<![a-zA-Z0-9._-])@([a-zA-Z0-9_][a-zA-Z0-9._-]{1,29})|#([\p{L}\p{N}_]{2,50})/gu;
 // Trailing punctuation that should NOT be part of a matched URL.
 const URL_TRAILING_RE = /[.,;:!?)\]}'"]+$/;
+// …or of a matched @handle. Kept out of the link and pushed back as text.
+const HANDLE_TRAILING_RE = /[._-]+$/;
 
 /** Compact display label for a URL (drop protocol + trailing slash, cap length). */
 function urlLabel(url: string): string {
@@ -64,9 +70,11 @@ export function RenderedContent({
   const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const usernames = Array.from(content.matchAll(/@([a-zA-Z0-9_]{2,30})/g)).map(
-      (m) => m[1].toLowerCase()
-    );
+    const usernames = Array.from(
+      content.matchAll(/(?<![a-zA-Z0-9._-])@([a-zA-Z0-9_][a-zA-Z0-9._-]{1,29})/g)
+    )
+      .map((m) => m[1].replace(HANDLE_TRAILING_RE, "").toLowerCase())
+      .filter((u) => u.length >= 3);
     const unique = Array.from(new Set(usernames));
     if (unique.length === 0) return;
     let cancel = false;
@@ -140,20 +148,25 @@ export function RenderedContent({
     }
 
     if (username) {
-      const userId = mentionMap[username.toLowerCase()];
+      // Same trim as the server parser: advance past the handle only, so
+      // sentence punctuation lands in the following text run.
+      const handle = username.replace(HANDLE_TRAILING_RE, "");
+      const userId = handle.length >= 3 ? mentionMap[handle.toLowerCase()] : undefined;
       parts.push(
         userId ? (
           <Link
             key={key++}
-            href={`/u/${encodeURIComponent(username)}`}
+            href={`/u/${encodeURIComponent(handle)}`}
             className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold"
           >
-            @{username}
+            @{handle}
           </Link>
         ) : (
-          <span key={key++}>@{username}</span>
+          <span key={key++}>@{handle}</span>
         )
       );
+      lastIdx = start + 1 + handle.length;
+      continue;
     } else if (tag) {
       parts.push(
         <Link

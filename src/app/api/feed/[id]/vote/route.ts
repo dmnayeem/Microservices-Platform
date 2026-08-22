@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { z } from "zod";
+import { recordUserAction } from "@/lib/goal-progress";
 
 const schema = z.object({
   optionId: z.string().min(1),
@@ -91,14 +92,24 @@ export async function POST(
     select: { pollOptions: true, userId: true },
   });
 
-  // Social earning — only on FIRST vote per user (not when changing vote)
+  // Social earning + event progress — only on FIRST vote per user (not when
+  // changing vote), and never on your own poll.
   if (!existing && refreshed) {
-    await awardSocialEarning({
-      postOwnerUserId: refreshed.userId,
-      actorUserId: session.user.id,
-      action: "VOTE_RECEIVED",
-      postId: id,
-    });
+    await Promise.all([
+      awardSocialEarning({
+        postOwnerUserId: refreshed.userId,
+        actorUserId: session.user.id,
+        action: "VOTE_RECEIVED",
+        postId: id,
+      }),
+      refreshed.userId === session.user.id
+        ? Promise.resolve()
+        : recordUserAction({
+            userId: session.user.id,
+            action: "feed_vote",
+            targetId: id,
+          }),
+    ]);
   }
 
   return NextResponse.json({

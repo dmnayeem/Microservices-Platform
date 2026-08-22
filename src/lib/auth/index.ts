@@ -4,8 +4,13 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { generateReferralCode } from "@/lib/utils";
 import { evaluateLogin } from "@/lib/auth/services";
+import {
+  createGoogleAccount,
+  linkGoogleAccount,
+  GOOGLE_USER_SELECT,
+  type GoogleDbUser,
+} from "@/lib/auth/google-provisioning";
 import { authConfig } from "./config";
 
 const loginSchema = z.object({
@@ -61,6 +66,11 @@ export const {
   auth,
   signIn,
   signOut,
+  // Lets a Server Action re-sign the JWT after onboarding so the `onb` claim
+  // stops being stale without forcing a re-login. There is no SessionProvider
+  // in this app, so the client-side `useSession().update()` route isn't
+  // available.
+  unstable_update: updateSession,
 } = NextAuth({
   // JWT-only auth (no database sessions). We deliberately don't use an adapter:
   // the User model uses `avatar` (not `image`) and requires a unique
@@ -92,34 +102,24 @@ export const {
       // which links the Google login to it.
       if (account?.provider === "google" && user?.email) {
         const email = user.email.toLowerCase();
-        let dbUser = await prisma.user.findUnique({ where: { email } });
-        if (!dbUser) {
-          let referral = generateReferralCode();
-          for (let i = 0; i < 5; i++) {
-            const clash = await prisma.user.findUnique({
-              where: { referralCode: referral },
-            });
-            if (!clash) break;
-            referral = generateReferralCode();
-          }
-          dbUser = await prisma.user.create({
-            data: {
-              email,
-              name: user.name ?? null,
-              avatar: typeof user.image === "string" ? user.image : null,
-              emailVerified: new Date(), // Google verifies the email
-              referralCode: referral,
-            },
-          });
-        }
-        token.id = dbUser.id;
-        token.role = dbUser.role;
-        token.name = dbUser.name;
-        token.picture = dbUser.avatar;
+        const dbUser = await prisma.user.findUnique({
+          where: { email },
+          select: GOOGLE_USER_SELECT,
+        });
+        // Either branch returns a fully provisioned, repaired account.
+        const resolved = dbUser
+          ? await linkGoogleAccount(dbUser as GoogleDbUser, user)
+          : await createGoogleAccount(email, user);
+        token.id = resolved.id;
+        token.role = resolved.role;
+        token.name = resolved.name;
+        token.picture = resolved.avatar;
+        token.onb = resolved.onboardedAt !== null;
       } else if (user) {
         // Credentials sign-in: `user` is already the DB user from authorize().
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.onb = (user as { onboarded?: boolean }).onboarded === true;
       }
 
       if (trigger === "update" && session) {

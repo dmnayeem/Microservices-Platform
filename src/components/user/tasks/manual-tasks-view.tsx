@@ -15,6 +15,7 @@ import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import { ensureAdsAllowed } from "@/lib/adblock";
+import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 
 type Tab = "available" | "pending" | "approved" | "rejected";
 
@@ -56,6 +57,7 @@ export function ManualTasksView() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<ManualTask | null>(null);
   const [proofUrl, setProofUrl] = useState("");
+  const [screenshotUrl, setScreenshotUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -90,7 +92,7 @@ export function ManualTasksView() {
 
   const submit = async () => {
     if (!submitting) return;
-    if (!proofUrl.trim()) {
+    if (!proofUrl.trim() && !screenshotUrl.trim()) {
       toast.error("Proof URL or screenshot required");
       return;
     }
@@ -99,13 +101,18 @@ export function ManualTasksView() {
       const res = await fetch(`/api/tasks/${submitting.id}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
-        body: JSON.stringify({ proofUrl, notes }),
+        body: JSON.stringify({
+          proofUrl,
+          notes,
+          proofImages: screenshotUrl.trim() ? [screenshotUrl.trim()] : [],
+        }),
       });
       if (!res.ok) throw new Error(await res.text());
       await runInterstitial();
       toast.success("Submitted! Awaiting review.");
       setSubmitting(null);
       setProofUrl("");
+      setScreenshotUrl("");
       setNotes("");
       load();
     } catch (err) {
@@ -283,7 +290,7 @@ export function ManualTasksView() {
 
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Proof URL or screenshot link *
+              Proof URL
             </label>
             <input
               value={proofUrl}
@@ -291,6 +298,15 @@ export function ManualTasksView() {
               placeholder="https://..."
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              Screenshot
+            </label>
+            <ProofImageUpload value={screenshotUrl} onChange={setScreenshotUrl} />
+            <p className="text-[11px] text-gray-500 mt-1">
+              Give a proof URL, a screenshot, or both — at least one is required.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5">

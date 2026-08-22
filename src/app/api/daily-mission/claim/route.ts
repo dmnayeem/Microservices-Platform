@@ -11,8 +11,11 @@ import {
 import {
   buildDailyProgress,
   resolveTaskTypeBucket,
+  getActiveMissionForUser,
 } from "@/lib/daily-mission-progress";
 import { getPointsPerUsd } from "@/lib/economy";
+import { toNum } from "@/lib/money";
+import { usd } from "@/lib/utils";
 import { getUserDayContext, localDayKeyDaysAgo } from "@/lib/user-day";
 
 export async function POST(request: NextRequest) {
@@ -28,41 +31,16 @@ export async function POST(request: NextRequest) {
   return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
 
-  const me = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      level: true,
-      package: { select: { accessLevel: true } },
-    },
-  });
-  if (!me) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  const accessLevel = me.package?.accessLevel ?? 0;
-
-  const missionRaw = await prisma.dailyMissionTemplate.findFirst({
-    where: {
-      requiredAccessLevel: { lte: accessLevel },
-      isActive: true,
-      requiredLevel: { lte: me.level },
-    },
-    orderBy: [
-      { requiredAccessLevel: "desc" },
-      { order: "asc" },
-      { createdAt: "desc" },
-    ],
-    include: { items: { orderBy: { order: "asc" } } },
-  });
-  if (!missionRaw) {
+  // The SAME resolver /api/daily-mission/today uses. This route pays out, so
+  // resolving the mission a second way is how the displayed mission and the
+  // paid one drift apart.
+  const mission = await getActiveMissionForUser(userId);
+  if (!mission) {
     return NextResponse.json(
       { error: "No active mission for your tier" },
       { status: 404 }
     );
   }
-  type ItemRow = { id: string; taskType: string; targetCount: number };
-  const mission = missionRaw as typeof missionRaw & { items: ItemRow[] };
 
   const { dayKey: today, tz } = await getUserDayContext(userId);
 
@@ -116,8 +94,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const points = mission.completionPointsReward;
+  const basePoints = mission.completionPointsReward;
   const xp = mission.completionXpReward;
+  const cash = toNum(mission.completionCashReward);
+
+  // Streak bonus. `DailyMissionClaim.streak` was already being computed and
+  // stored on every claim but rewarded nothing — it was a number in a column.
+  // Paid every Nth consecutive day, so day 7/14/21 of a 7-day cycle all pay.
+  const streakBonus =
+    mission.streakBonusEvery > 0 &&
+    mission.streakBonusPoints > 0 &&
+    streak % mission.streakBonusEvery === 0
+      ? mission.streakBonusPoints
+      : 0;
+  const points = basePoints + streakBonus;
   const pointsPerUsd = await getPointsPerUsd();
 
   await prisma.$transaction([
@@ -129,7 +119,9 @@ export async function POST(request: NextRequest) {
       data: {
         pointsBalance: { increment: points },
         xp: { increment: xp },
-        totalEarnings: { increment: points / pointsPerUsd },
+        // Cash goes to the cash wallet; points convert at the configured rate.
+        ...(cash > 0 ? { cashBalance: { increment: cash } } : {}),
+        totalEarnings: { increment: points / pointsPerUsd + cash },
       },
     }),
     prisma.transaction.create({
@@ -138,10 +130,20 @@ export async function POST(request: NextRequest) {
         type: TransactionType.EARNING,
         status: TransactionStatus.COMPLETED,
         points,
-        amount: points / pointsPerUsd,
+        amount: points / pointsPerUsd + cash,
         description: `Daily mission completed: ${mission.name}`,
+        // Unchanged, and it must stay this way: one claim per mission per local
+        // day is enforced by `Transaction @@unique([userId, reference])` as much
+        // as by the DailyMissionClaim row above.
         reference: `daily_mission_${mission.id}_${today}`,
-        metadata: { missionId: mission.id, xp, streak, date: today },
+        metadata: {
+          missionId: mission.id,
+          xp,
+          cash,
+          streak,
+          streakBonus,
+          date: today,
+        },
       },
     }),
     prisma.notification.create({
@@ -149,10 +151,10 @@ export async function POST(request: NextRequest) {
         userId,
         type: NotificationType.ACHIEVEMENT,
         title: "🎯 Daily Mission Complete!",
-        message: `You earned ${points} pts + ${xp} XP from "${mission.name}". Streak: ${streak} day${
-          streak === 1 ? "" : "s"
-        }.`,
-        data: { missionId: mission.id, points, xp, streak },
+        message: `You earned ${points} pts${cash > 0 ? ` + ${usd(cash)}` : ""} + ${xp} XP from "${mission.name}".${
+          streakBonus > 0 ? ` Streak bonus: +${streakBonus} pts!` : ""
+        } Streak: ${streak} day${streak === 1 ? "" : "s"}.`,
+        data: { missionId: mission.id, points, xp, cash, streak, streakBonus },
       },
     }),
   ]);
@@ -161,7 +163,9 @@ export async function POST(request: NextRequest) {
     success: true,
     points,
     xp,
+    cash,
     streak,
+    streakBonus,
     date: today,
   });
   });

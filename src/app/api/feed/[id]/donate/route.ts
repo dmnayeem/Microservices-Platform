@@ -9,6 +9,7 @@ import {
 } from "@/generated/prisma/client";
 import { z } from "zod";
 import { getPointsPerUsd } from "@/lib/economy";
+import { awardSocialEarning } from "@/lib/social-earning";
 
 const schema = z.object({
   points: z.number().int().min(1).max(100000),
@@ -148,6 +149,23 @@ export async function POST(
       data: { postId: id, points: v.data.points, donationId: donation.id },
     },
   });
+
+  // DONATION_RECEIVED was configurable on the admin page but nothing ever fired
+  // it — a dead setting. It ships disabled, so this changes nothing until an
+  // admin turns it on. Note the bonus is on TOP of the donation itself, which
+  // has already moved points 1:1 above.
+  //
+  // `eventKey` is required: without it both sides reuse one reference per
+  // (donor, post), so a repeat donation to the same post would pay nothing.
+  // The money is already committed at this point, so a failure here must never
+  // surface as an error.
+  await awardSocialEarning({
+    postOwnerUserId: post.userId,
+    actorUserId: donorId, // the donor is the actor
+    action: "DONATION_RECEIVED",
+    postId: id,
+    eventKey: donation.id,
+  }).catch((e) => console.error("[donate] social earning failed:", e));
 
   return NextResponse.json({
     success: true,

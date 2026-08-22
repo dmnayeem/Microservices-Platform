@@ -3,6 +3,7 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
+import { recordUserAction } from "@/lib/goal-progress";
 
 // POST /api/feed/:id/like - Like a post
 export async function POST(
@@ -73,13 +74,26 @@ export async function POST(
       select: { likesCount: true },
     });
 
-    // Social earning hook — recipient (owner) and optionally actor (liker)
-    await awardSocialEarning({
-      postOwnerUserId: post.userId,
-      actorUserId: session.user.id,
-      action: "LIKE_RECEIVED",
-      postId: id,
-    });
+    await Promise.all([
+      // Social earning hook — recipient (owner) and optionally actor (liker)
+      awardSocialEarning({
+        postOwnerUserId: post.userId,
+        actorUserId: session.user.id,
+        action: "LIKE_RECEIVED",
+        postId: id,
+      }),
+      // Event progress. Costs nothing when no active event wants likes.
+      // Liking your own post never counts, and the dedup key is the POST — so
+      // unlike-then-relike can't credit twice (which is also why the DELETE
+      // handler below deliberately doesn't decrement).
+      post.userId === session.user.id
+        ? Promise.resolve()
+        : recordUserAction({
+            userId: session.user.id,
+            action: "feed_like",
+            targetId: id,
+          }),
+    ]);
 
     return NextResponse.json({
       liked: true,

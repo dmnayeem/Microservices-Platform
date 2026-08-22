@@ -13,7 +13,9 @@ export type PendingGroup =
   | "tasks"
   | "creators"
   | "marketplace"
-  | "content";
+  | "content"
+  | "advertising"
+  | "support";
 
 export const PENDING_GROUP_LABELS: Record<PendingGroup, string> = {
   identity: "Identity",
@@ -22,6 +24,8 @@ export const PENDING_GROUP_LABELS: Record<PendingGroup, string> = {
   creators: "Creators",
   marketplace: "Marketplace",
   content: "Content",
+  advertising: "Advertising",
+  support: "Support",
 };
 
 export interface PendingSourceMeta {
@@ -54,6 +58,9 @@ export const PENDING_SOURCES: PendingSourceMeta[] = [
   { key: "offerwallCallbacks", group: "finance", label: "Offerwall Callbacks", icon: "Gift", tone: "orange", permission: "offerwalls.view", href: "/admin/offerwall-callbacks", moduleHref: "/admin/offerwalls" },
   // Tasks
   { key: "submissions", group: "tasks", label: "Task Submissions", icon: "ClipboardCheck", tone: "blue", permission: "submissions.view", href: "/admin/submissions", moduleHref: "/admin/submissions" },
+  // Tasks a USER paid to create — their money is already debited, so a task
+  // sitting here unnoticed is a user waiting on a refund or a launch.
+  { key: "tasksPendingReview", group: "tasks", label: "User-Paid Tasks", icon: "ClipboardCheck", tone: "amber", permission: "tasks.view", href: "/admin/tasks?status=PENDING_REVIEW", moduleHref: "/admin/tasks" },
   // Creators
   { key: "creatorApps", group: "creators", label: "Creator Applications", icon: "BadgeCheck", tone: "purple", permission: "creators.review", href: "/admin/creators", moduleHref: "/admin/creators" },
   { key: "tutorApps", group: "creators", label: "Tutor Applications", icon: "UserCog", tone: "purple", permission: "tutor.applications.review", href: "/admin/tutors", moduleHref: "/admin/tutors" },
@@ -66,6 +73,13 @@ export const PENDING_SOURCES: PendingSourceMeta[] = [
   { key: "courses", group: "content", label: "Course Approvals", icon: "GraduationCap", tone: "blue", permission: "courses.view", href: "/admin/courses", moduleHref: "/admin/courses" },
   { key: "courseRefunds", group: "content", label: "Course Refunds", icon: "GraduationCap", tone: "amber", permission: "courses.manage", href: "/admin/courses/refunds", moduleHref: "/admin/courses" },
   { key: "socialReports", group: "content", label: "Social Reports", icon: "Flag", tone: "red", permission: "social.moderate", href: "/admin/social-moderation", moduleHref: "/admin/social-moderation" },
+  // Advertising — an advertiser cannot run an ad until an admin approves it,
+  // and a notification that has been read leaves no trace. The count does.
+  { key: "adsPending", group: "advertising", label: "Ads Awaiting Review", icon: "Megaphone", tone: "orange", permission: "ads.view", href: "/admin/ads?tab=pending", moduleHref: "/admin/ads" },
+  { key: "adsChangesRequested", group: "advertising", label: "Ads Needing Changes", icon: "Megaphone", tone: "amber", permission: "ads.view", href: "/admin/ads?tab=changes", moduleHref: "/admin/ads" },
+  // Support
+  { key: "supportMessages", group: "support", label: "Support Messages", icon: "MessageSquare", tone: "indigo", permission: "support.view", href: "/admin/support", moduleHref: "/admin/support" },
+  { key: "fraudOpen", group: "support", label: "Open Fraud Alerts", icon: "ShieldAlert", tone: "red", permission: "fraud.view", href: "/admin/fraud", moduleHref: "/admin/fraud" },
 ];
 
 /** Registry filtered to what this admin may see. */

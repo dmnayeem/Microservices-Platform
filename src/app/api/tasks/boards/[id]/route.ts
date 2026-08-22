@@ -5,6 +5,7 @@ import { SubmissionStatus } from "@/generated/prisma/client";
 import {
   getTaskViewerContext,
   visibleTaskWhere,
+  visibleBoardWhere,
 } from "@/lib/task-visibility";
 
 export async function GET(
@@ -17,8 +18,18 @@ export async function GET(
   }
   const { id } = await params;
 
-  const board = await prisma.taskBoard.findUnique({ where: { id } });
-  if (!board || !board.isActive) {
+  // Viewer context first — the board fetch itself is now eligibility-gated, so
+  // a board targeted at someone else is a 404 rather than an empty board.
+  const ctx = await getTaskViewerContext(session.user.id);
+  const board = ctx
+    ? await prisma.taskBoard.findFirst({
+        where: {
+          id,
+          ...visibleBoardWhere(ctx.viewer, { accessLevel: ctx.accessLevel }),
+        },
+      })
+    : null;
+  if (!board) {
     return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }
 
@@ -54,8 +65,6 @@ export async function GET(
   }
 
   // Same visibility rules as the standalone task list.
-  const ctx = await getTaskViewerContext(session.user.id);
-
   const tasks = ctx
     ? await prisma.task.findMany({
         where: {

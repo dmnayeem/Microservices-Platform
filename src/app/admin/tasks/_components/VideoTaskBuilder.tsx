@@ -174,7 +174,7 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
         </div>
       </div>
 
-      {/* Auto-submit toggle */}
+      {/* One-tap finish */}
       <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-800 bg-gray-950 cursor-pointer hover:border-gray-700">
         <input
           type="checkbox"
@@ -185,11 +185,12 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
         <div className="flex-1">
           <p className="text-sm font-bold text-white inline-flex items-center gap-2">
             <Send className="w-4 h-4 text-emerald-400" />
-            Auto-submit
+            One-tap finish
           </p>
           <p className="text-[11px] text-gray-500 mt-0.5">
-            When watch time ends, submit fires automatically — no extra tap
-            needed. Recommended for simple watch tasks.
+            Skip the extra proof form after the video — the user just presses
+            Submit. They always press it themselves; nothing is ever submitted
+            for them.
           </p>
         </div>
       </label>

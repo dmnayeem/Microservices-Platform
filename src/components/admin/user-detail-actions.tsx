@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
+import { cn, usd } from "@/lib/utils";
 
 interface UserDetailActionsProps {
   userId: string;
@@ -423,6 +424,8 @@ interface AdjustBalanceButtonProps {
   type: "points" | "cash" | "level" | "xp";
   action: "add" | "deduct";
   canAdjust: boolean;
+  /** Shown in the modal so the admin can see what they're changing. */
+  currentValue?: number;
 }
 
 export function AdjustBalanceButton({
@@ -430,6 +433,7 @@ export function AdjustBalanceButton({
   type,
   action,
   canAdjust,
+  currentValue,
 }: AdjustBalanceButtonProps) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
@@ -480,7 +484,15 @@ export function AdjustBalanceButton({
     <>
       <button
         onClick={() => setShowModal(true)}
-        className={`p-1 text-gray-400 hover:${action === "add" ? "text-emerald-400" : "text-red-400"} transition-colors`}
+        // Whole class strings, not `hover:${...}` — Tailwind scans source text
+        // and cannot build a class from a split variant, so the interpolated
+        // version produced no hover colour at all and the icons read as dead.
+        className={cn(
+          "p-1 rounded text-gray-400 transition-colors",
+          action === "add"
+            ? "hover:text-emerald-400 hover:bg-emerald-500/10"
+            : "hover:text-red-400 hover:bg-red-500/10"
+        )}
         title={`${action === "add" ? "Add" : "Deduct"} ${type}`}
       >
         {action === "add" ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
@@ -508,6 +520,18 @@ export function AdjustBalanceButton({
               </button>
             </div>
             <div className="p-6 space-y-4">
+              {currentValue !== undefined && (
+                <div className="flex items-baseline justify-between rounded-lg bg-gray-950 border border-gray-800 px-4 py-3">
+                  <span className="text-xs uppercase tracking-wide text-gray-500">
+                    Current
+                  </span>
+                  <span className="text-lg font-bold text-white tabular-nums">
+                    {type === "cash"
+                      ? usd(currentValue)
+                      : currentValue.toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Amount *
@@ -516,6 +540,7 @@ export function AdjustBalanceButton({
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  autoFocus
                   min="0"
                   step={type === "cash" ? "0.01" : "1"}
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"

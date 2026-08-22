@@ -13,14 +13,14 @@ import {
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 interface Question {
-  // Stored shape from the admin quiz editor (Task.questions JSON). No `id`;
-  // the text field is `question`. `correctAnswer` is echoed back to the API,
-  // which grades by comparing it (matches the existing submit contract).
+  // What /api/tasks/quiz sends the player. The answer key is deliberately NOT
+  // in here: the API grades against `Task.questions` in the database. It used
+  // to send `correctAnswer` down and grade against whatever came back up, so
+  // the answers were visible in the network tab and trivially forgeable.
+  id: number;
   question: string;
   options: string[];
   imageUrl?: string;
-  correctAnswer: number;
-  explanation?: string;
 }
 
 interface QuizMeta {
@@ -129,12 +129,13 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
   const submit = async () => {
     setSubmitting(true);
     try {
-      // API grades by index: answers[] positional, questions[] echoed back.
+      // Positional answers only — the server holds the key and grades by index.
+      // -1 means "skipped".
       const answerArr = questions.map((_, i) => answers[i] ?? -1);
       const res = await fetch(`/api/tasks/quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId: quizId, answers: answerArr, questions }),
+        body: JSON.stringify({ taskId: quizId, answers: answerArr }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));

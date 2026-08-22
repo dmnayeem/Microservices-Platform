@@ -13,6 +13,7 @@ import {
   parseFeatureOverrides,
 } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
+import { getReferralBonusMission } from "@/lib/daily-mission-progress";
 import { getUserDayContext } from "@/lib/user-day";
 
 const DEFAULT_DAILY_PER_REFERRAL = 5; // points per L1 referral, used if Package.referralBonus is 0
@@ -33,7 +34,6 @@ export async function GET() {
   }
 
   const userPackage = await getEffectivePackage(userId);
-  const accessLevel = userPackage?.accessLevel ?? 0;
   // Daily claim is L1 commission, so plan must unlock at least L1.
   const commissionLevels = userPackage?.referralCommissionLevels ?? 0;
   const canEarnReferralCommission = commissionLevels >= 1;
@@ -61,15 +61,8 @@ export async function GET() {
   const points = Math.round(perReferral * referralCount);
 
   // Mission gating — use the highest-level mission template the user qualifies for.
-  const mission = await prisma.dailyMissionTemplate.findFirst({
-    where: {
-      requiredAccessLevel: { lte: accessLevel },
-      isActive: true,
-      linkReferralBonus: true,
-    },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    select: { id: true },
-  });
+  // Shared resolver — same tier/schedule/targeting rules as everywhere else.
+  const mission = await getReferralBonusMission(userId);
   let missionRequired = false;
   let missionComplete = false;
   if (mission) {
@@ -116,7 +109,6 @@ export async function POST(request: NextRequest) {
   }
 
   const userPackage = await getEffectivePackage(userId);
-  const accessLevel = userPackage?.accessLevel ?? 0;
 
   if (
     !resolveUserFeature(
@@ -162,15 +154,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Mission gate
-  const mission = await prisma.dailyMissionTemplate.findFirst({
-    where: {
-      requiredAccessLevel: { lte: accessLevel },
-      isActive: true,
-      linkReferralBonus: true,
-    },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    select: { id: true, name: true },
-  });
+  const mission = await getReferralBonusMission(userId);
   if (mission) {
     const missionClaim = await prisma.dailyMissionClaim.findUnique({
       where: {

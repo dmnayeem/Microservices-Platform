@@ -237,10 +237,7 @@ export async function POST(
     // Daily-mission cap: the user's daily mission defines their per-type task
     // allowance. A type not in the mission, or one whose target is already met,
     // is upgrade-gated. Only applies when an active qualifying mission exists.
-    const mission = await getActiveMissionForUser(
-      userPackage?.accessLevel ?? 0,
-      user.level
-    );
+    const mission = await getActiveMissionForUser(session.user.id);
     if (mission && mission.items.length > 0) {
       const bucket = task.boardId ? "BOARD" : resolveTaskTypeBucket(task.type);
       const item = mission.items.find(

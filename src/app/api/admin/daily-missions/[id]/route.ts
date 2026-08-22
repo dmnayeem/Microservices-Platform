@@ -2,28 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { tierToAccessLevel } from "@/lib/missions";
+import { tierToAccessLevel } from "@/lib/package-tiers";
 import { z } from "zod";
+import { MISSION_TASK_TYPES } from "@/lib/mission-labels";
+import { sanitizeTaskAudience, hasAudienceKeys } from "@/lib/task-targeting";
 
 const itemSchema = z.object({
   id: z.string().optional(),
-  taskType: z.enum([
-    "ARTICLE",
-    "VIDEO",
-    "QUIZ",
-    "SURVEY",
-    "SOCIAL",
-    "PROXY",
-    "OFFERWALL",
-    "BOARD",
-    "MANUAL",
-    "CUSTOM",
-    "SOCIAL_LIKE",
-    "SOCIAL_COMMENT",
-    "SOCIAL_POST",
-    "SOCIAL_SHARE",
-    "SOCIAL_VOTE",
-  ]),
+  // One definition, in src/lib/mission-labels.ts. Both admin routes used to
+  // carry their own copy of this list.
+  taskType: z.enum(MISSION_TASK_TYPES),
   description: z.string().max(300).nullable().optional(),
   targetCount: z.number().int().min(1).max(1000),
   xpPerComplete: z.number().int().min(0),
@@ -43,6 +31,11 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   autoRefresh: z.boolean().optional(),
   linkReferralBonus: z.boolean().optional(),
+  completionCashReward: z.number().min(0).default(0),
+  streakBonusEvery: z.number().int().min(0).max(365).default(0),
+  streakBonusPoints: z.number().int().min(0).default(0),
+  startAt: z.string().datetime().nullable().optional(),
+  endAt: z.string().datetime().nullable().optional(),
   order: z.number().int().optional(),
   items: z.array(itemSchema).optional(),
 });
@@ -96,11 +89,17 @@ export async function PATCH(
   }
 
   // `packageTier` is the admin-facing enum; the model stores `requiredAccessLevel`.
-  const { items, packageTier, ...rest } = v.data;
-  const data =
-    packageTier !== undefined
-      ? { ...rest, requiredAccessLevel: tierToAccessLevel(packageTier) }
-      : rest;
+  const { items, packageTier, startAt, endAt, ...rest } = v.data;
+  const data = {
+    ...rest,
+    ...(startAt !== undefined ? { startAt: startAt ? new Date(startAt) : null } : {}),
+    ...(endAt !== undefined ? { endAt: endAt ? new Date(endAt) : null } : {}),
+    // Replace targeting wholesale or not at all — see hasAudienceKeys.
+    ...(hasAudienceKeys(body) ? sanitizeTaskAudience(body) : {}),
+    ...(packageTier !== undefined
+      ? { requiredAccessLevel: tierToAccessLevel(packageTier) }
+      : {}),
+  };
 
   const mission = await prisma.$transaction(async (tx) => {
     const updated = await tx.dailyMissionTemplate.update({

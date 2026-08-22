@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { z } from "zod";
+import { recordUserAction } from "@/lib/goal-progress";
 
 const schema = z.object({
   channel: z.string().max(40).optional(),
@@ -85,13 +86,24 @@ export async function POST(
     throw err;
   }
 
-  // Award recipient (post owner) and optionally actor (sharer)
-  await awardSocialEarning({
-    postOwnerUserId: post.userId,
-    actorUserId: sharerId,
-    action: "SHARE_RECEIVED",
-    postId: id,
-  });
+  await Promise.all([
+    // Award recipient (post owner) and optionally actor (sharer)
+    awardSocialEarning({
+      postOwnerUserId: post.userId,
+      actorUserId: sharerId,
+      action: "SHARE_RECEIVED",
+      postId: id,
+    }),
+    // Event progress. Only reached on a FIRST share (a repeat share returns
+    // early above), and sharing your own post never counts.
+    post.userId === sharerId
+      ? Promise.resolve()
+      : recordUserAction({
+          userId: sharerId,
+          action: "feed_share",
+          targetId: id,
+        }),
+  ]);
 
   const updated = await prisma.post.findUnique({
     where: { id },

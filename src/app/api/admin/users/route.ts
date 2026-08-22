@@ -6,6 +6,7 @@ import { type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
+import { USERNAME_REGEX, USERNAME_RULE_MESSAGE } from "@/lib/username";
 
 // Helper for optional, possibly-empty string fields
 const optStr = z.string().max(200).optional().nullable();
@@ -20,7 +21,9 @@ const createUserSchema = z.object({
   name: z.string().min(2).max(80).optional(),
   firstName: optStr,
   lastName: optStr,
-  username: z.string().min(2).max(40).optional().nullable(),
+  // Was min(2).max(40) with NO charset check, so an admin could set a handle
+  // containing spaces or slashes and break that user's /u/<handle> page.
+  username: z.string().trim().regex(USERNAME_REGEX, USERNAME_RULE_MESSAGE).optional().nullable(),
   phone: optStr,
   role: z
     .enum([
@@ -126,8 +129,10 @@ export async function POST(request: NextRequest) {
 
     // Check username uniqueness if provided
     if (data.username) {
+      // Case-INSENSITIVE, matching every other username check in the app. The
+      // case-sensitive version let an admin create "Alice" next to "alice".
       const existingUsername = await prisma.user.findFirst({
-        where: { username: data.username },
+        where: { username: { equals: data.username, mode: "insensitive" } },
         select: { id: true },
       });
       if (existingUsername) {

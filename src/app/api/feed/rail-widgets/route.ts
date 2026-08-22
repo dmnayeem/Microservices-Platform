@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildDailyProgress,
   resolveTaskTypeBucket,
+  getActiveMissionForUser,
 } from "@/lib/daily-mission-progress";
 import {
   getUserDayContext,
@@ -59,22 +60,14 @@ export async function GET() {
     }),
     prisma.user.count({ where: { referredById: userId } }),
   ]);
-  // Highest-accessLevel active mission template the user qualifies for.
-  const missionRaw = await prisma.dailyMissionTemplate.findFirst({
-    where: {
-      requiredAccessLevel: { lte: user.package?.accessLevel ?? 0 },
-      isActive: true,
-      requiredLevel: { lte: user.level },
-    },
-    orderBy: [
-      { requiredAccessLevel: "desc" },
-      { order: "asc" },
-      { createdAt: "desc" },
-    ],
-    include: { items: { orderBy: { order: "asc" } } },
-    // Mission templates change rarely and are shared across users — cache.
-    cacheStrategy: { ttl: 120, swr: 300 },
-  });
+  // The shared resolver (tier + level + schedule + audience targeting). This
+  // was a fourth hand-written copy of the same query; the widget would have
+  // shown a mission the user is no longer eligible for.
+  //
+  // The old copy carried `cacheStrategy: { ttl: 120 }`, which is dropped on
+  // purpose: the result is now per-user (targeting), so a shared cache entry
+  // would leak one user's mission to another.
+  const missionRaw = await getActiveMissionForUser(userId);
 
   // Login-streak status (mirror of /api/daily-reward GET, on the user's local day).
   let currentStreak = user.streak || 0;

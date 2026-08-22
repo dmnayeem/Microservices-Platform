@@ -79,6 +79,23 @@ export async function pruneOldLogs(): Promise<Record<string, number>> {
     () => prisma.socialActionLog.findMany({ where: { createdAt: { lt: cLogs } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.socialActionLog.deleteMany({ where: { id: { in: ids } } })
   );
+  // Social-earning ratio progress. **Only DAILY rows may be pruned** — a daily
+  // row is dead once its day has passed, but a `lifetime` row (dateKey "*") IS
+  // the durable milestone counter.
+  //
+  // Deleting lifetime rows would recreate exactly the bug SocialRatioTally was
+  // built to fix: the old ratio derived its count from SocialActionLog above, so
+  // pruning made the count go backwards and long-lived users silently stopped
+  // earning milestones forever. Do not remove this filter.
+  const PRUNABLE_TALLY_WINDOW = "daily";
+  r.socialRatioTally = await pruneBatched(
+    () => prisma.socialRatioTally.findMany({
+      where: { window: PRUNABLE_TALLY_WINDOW, updatedAt: { lt: cLogs } },
+      select: { id: true },
+      take: BATCH,
+    }),
+    (ids) => prisma.socialRatioTally.deleteMany({ where: { id: { in: ids } } })
+  );
   r.postView = await pruneBatched(
     () => prisma.postView.findMany({ where: { viewedAt: { lt: cViews } }, select: { id: true }, take: BATCH }),
     (ids) => prisma.postView.deleteMany({ where: { id: { in: ids } } })

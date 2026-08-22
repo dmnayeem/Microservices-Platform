@@ -33,6 +33,8 @@ interface Props {
   emailNotifications: boolean;
   pushNotifications: boolean;
   twoFactorEnabled: boolean;
+  /** False for OAuth-only accounts — they have no password to change. */
+  hasPassword: boolean;
   language: string;
 }
 
@@ -84,6 +86,7 @@ export function SettingsView({
   emailNotifications: emailNotifInit,
   pushNotifications: pushNotifInit,
   twoFactorEnabled: twoFAInit,
+  hasPassword,
   language: languageInit,
 }: Props) {
   const router = useRouter();
@@ -147,6 +150,32 @@ export function SettingsView({
   const applyAccent = (id: (typeof ACCENTS)[number]) => {
     setAccent(id);
     patchProfile({ themeAccent: id });
+  };
+
+  /**
+   * OAuth-only accounts gain a password through the normal reset flow — that
+   * already works for them, it was just undiscoverable. This is the discovery.
+   */
+  const sendPasswordSetup = async () => {
+    if (!email) return;
+    setPwBusy(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error);
+      toast.success("Check your email", {
+        description: "We sent a link to set your password.",
+      });
+    } catch (err) {
+      toast.error("Couldn't send the link", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setPwBusy(false);
+    }
   };
 
   const changePassword = async () => {
@@ -321,18 +350,34 @@ export function SettingsView({
                       <Key className="w-5 h-5 text-gray-400" />
                     </div>
                     <div>
-                      <p className="font-medium text-white">Change Password</p>
-                      <p className="text-sm text-gray-500">Update your password regularly</p>
+                      <p className="font-medium text-white">
+                        {hasPassword ? "Change Password" : "Set a Password"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {hasPassword
+                          ? "Update your password regularly"
+                          : "You sign in with Google. Add a password to sign in with your email too."}
+                      </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowPwForm((v) => !v)}
-                    className="text-sm text-indigo-400 hover:text-indigo-300 shrink-0"
-                  >
-                    {showPwForm ? "Cancel" : "Change"}
-                  </button>
+                  {hasPassword ? (
+                    <button
+                      onClick={() => setShowPwForm((v) => !v)}
+                      className="text-sm text-indigo-400 hover:text-indigo-300 shrink-0"
+                    >
+                      {showPwForm ? "Cancel" : "Change"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={sendPasswordSetup}
+                      disabled={pwBusy}
+                      className="text-sm text-indigo-400 hover:text-indigo-300 shrink-0 disabled:opacity-50"
+                    >
+                      {pwBusy ? "Sending…" : "Set password"}
+                    </button>
+                  )}
                 </div>
-                {showPwForm && (
+                {hasPassword && showPwForm && (
                   <div className="mt-4 space-y-2 max-w-sm">
                     <input
                       type="password"

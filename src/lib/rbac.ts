@@ -149,6 +149,9 @@ export type Permission =
   // Fraud
   | "fraud.view"
   | "fraud.manage"
+  // Support inbox (messages users send through the contact form)
+  | "support.view"
+  | "support.manage"
   // Proxy
   | "proxy.view"
   | "proxy.manage"
@@ -359,6 +362,8 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
       "logs.view",
       "fraud.view",
       "fraud.manage",
+      "support.view",
+      "support.manage",
       "proxy.view",
       "proxy.manage",
       "admins.view",
@@ -412,6 +417,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "quizzes.view", "quizzes.manage",
     "offerwalls.view", "offerwalls.manage",
     "fraud.view", "fraud.manage",
+    "support.view", "support.manage",
     "proxy.view", "proxy.manage",
     "moderation.view", "moderation.manage", "social.moderate", "social.post", "social.promote",
     "logs.view",
@@ -476,6 +482,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "tasks.view",
     "marketplace.view", "marketplace.disputes", "marketplace.mediate",
     "moderation.view", "moderation.manage",
+    "support.view", "support.manage",
   ],
 
   MARKETING_ADMIN: [
@@ -711,6 +718,8 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
   "media.manage": { label: "Manage media", description: "Upload, replace or delete media." },
   "logs.view": { label: "Security logs", description: "View the audit / security log of admin actions." },
   "fraud.view": { label: "View fraud monitor", description: "See fraud events, VPN/IP flags and anti-fraud signals." },
+  "support.view": { label: "View support inbox", description: "Read messages users send through the contact form." },
+  "support.manage": { label: "Manage support inbox", description: "Mark support messages read or resolved." },
   "fraud.manage": { label: "Manage fraud", description: "Configure anti-fraud toggles and act on fraud events." },
   "proxy.view": { label: "View proxy servers", description: "See proxy-server config for proxy tasks." },
   "proxy.manage": { label: "Manage proxy servers", description: "Add or edit proxy servers." },
@@ -964,15 +973,17 @@ export const ADMIN_MODULES: AdminModule[] = [
     permissions: ["users.edit"],
     category: "PLATFORM",
   },
+  // Two DIFFERENT products. These were labelled "Daily Missions" and "Daily
+  // Task Missions", which is why nobody could tell them apart.
   {
-    name: "Daily Missions",
+    name: "Missions",
     href: "/admin/missions",
-    icon: "Target",
+    icon: "Rocket",
     permissions: ["missions.view"],
     category: "PLATFORM",
   },
   {
-    name: "Daily Task Missions",
+    name: "Daily Missions",
     href: "/admin/daily-missions",
     icon: "ListChecks",
     permissions: ["missions.view"],
@@ -998,6 +1009,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     icon: "Gift",
     permissions: ["offerwalls.view"],
     category: "PLATFORM",
+  },
+
+  {
+    name: "Support Inbox",
+    href: "/admin/support",
+    icon: "MessageSquare",
+    permissions: ["support.view"],
+    category: "CORE",
   },
 
   // ── SECURITY ──

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { LotteryStatus, TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { safeJsonParse } from "@/lib/safe-json";
+import { recordUserAction } from "@/lib/goal-progress";
 
 // GET /api/lottery - Get available lotteries and user's tickets
 export async function GET(request: NextRequest) {
@@ -297,6 +298,17 @@ export async function POST(request: NextRequest) {
         },
       }),
     ]);
+
+    // Event progress — AFTER the purchase commits, so a failed or rolled-back
+    // purchase never counts. Deliberately outside the transaction above: a
+    // duplicate-key error from the event log must not abort someone's payment.
+    // Ticket numbers are unique per lottery, so the first one is a stable key.
+    await recordUserAction({
+      userId: session.user.id,
+      action: "lottery_ticket",
+      targetId: `${lotteryId}:${tickets[0].ticketNumber}`,
+      units: ticketCount,
+    });
 
     // Create notification
     await prisma.notification.create({

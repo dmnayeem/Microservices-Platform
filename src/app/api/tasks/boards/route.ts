@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getTaskViewerContext,
   visibleTaskWhere,
+  visibleBoardWhere,
 } from "@/lib/task-visibility";
 
 export async function GET() {
@@ -23,10 +24,14 @@ export async function GET() {
       })
     : { id: "__none__" };
 
-  const boards = await prisma.taskBoard.findMany({
-    where: { isActive: true },
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-  });
+  // Boards the viewer is actually eligible for. This used to be `isActive` alone
+  // — every user saw every board regardless of level, plan or targeting.
+  const boards = ctx
+    ? await prisma.taskBoard.findMany({
+        where: visibleBoardWhere(ctx.viewer, { accessLevel: ctx.accessLevel }),
+        orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      })
+    : [];
 
   const boardIds = boards.map((b) => b.id);
   const unlockIds = Array.from(

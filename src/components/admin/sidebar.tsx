@@ -59,7 +59,7 @@ import {
   ROLE_CONFIG,
   type UserRole,
 } from "@/lib/rbac";
-import { useAdminUI } from "@/lib/stores/admin-ui-store";
+import { useAdminUI, useSidebarCollapsed } from "@/lib/stores/admin-ui-store";
 
 interface AdminSidebarProps {
   user: {
@@ -74,6 +74,9 @@ interface AdminSidebarProps {
   modules?: ReturnType<typeof getGroupedModules>;
   // Live pending-request counts keyed by module href (badge on the nav item).
   badges?: Record<string, number>;
+  /** Read from the cookie by the server layout so SSR and the first client
+   *  render agree on the width — see admin-ui-store.ts. */
+  initialCollapsed: boolean;
 }
 
 // Icon mapping for dynamic rendering
@@ -142,6 +145,34 @@ function badgeText(n: number): string {
   return n > 999 ? "999+" : String(n);
 }
 
+/**
+ * Which nav item to highlight for a path — the **longest** matching href wins.
+ *
+ * Without the longest-match step, `/admin/settings/social-earning` lights up both
+ * "Social Earning" (exact) and "System Settings" (prefix). Five parent/child
+ * pairs in the nav have that problem.
+ *
+ * A plain `pathname === href` would be wrong the other way: routes with no nav
+ * item of their own (`/admin/users/[id]`, `/admin/courses/new`, …) rely on the
+ * prefix branch to highlight their parent. This is the same rule
+ * `moduleForPath()` in lib/rbac.ts uses for the permission guard — matched here
+ * deliberately, computed over the modules actually rendered.
+ */
+function activeHrefFor(
+  pathname: string,
+  groups: ReturnType<typeof getGroupedModules>
+): string | null {
+  let best: string | null = null;
+  for (const g of groups) {
+    for (const m of g.modules) {
+      if (pathname === m.href || pathname.startsWith(`${m.href}/`)) {
+        if (!best || m.href.length > best.length) best = m.href;
+      }
+    }
+  }
+  return best;
+}
+
 function AdminSidebarContent({
   user,
   groupedModules,
@@ -153,6 +184,7 @@ function AdminSidebarContent({
   onSignOut,
   onToggleCollapse,
 }: AdminSidebarContentProps) {
+  const activeHref = activeHrefFor(pathname, groupedModules);
   return (
     <>
       {/* Logo */}
@@ -229,10 +261,7 @@ function AdminSidebarContent({
             <ul className="space-y-0.5">
               {group.modules.map((module) => {
                 const Icon = iconMap[module.icon] || LayoutDashboard;
-                const isActive =
-                  pathname === module.href ||
-                  (module.href !== "/admin" &&
-                    pathname.startsWith(`${module.href}/`));
+                const isActive = activeHref === module.href;
                 const pending = badges?.[module.href] ?? 0;
 
                 return (
@@ -318,11 +347,16 @@ function AdminSidebarContent({
   );
 }
 
-export function AdminSidebar({ user, modules, badges }: AdminSidebarProps) {
+export function AdminSidebar({
+  user,
+  modules,
+  badges,
+  initialCollapsed,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const collapsed = useAdminUI((s) => s.sidebarCollapsed);
-  const toggleCollapse = useAdminUI((s) => s.toggleSidebar);
+  const collapsed = useSidebarCollapsed(initialCollapsed);
+  const toggle = useAdminUI((s) => s.toggleSidebar);
 
   // Listen for header hamburger event to open mobile sidebar
   useEffect(() => {
@@ -401,7 +435,7 @@ export function AdminSidebar({ user, modules, badges }: AdminSidebarProps) {
             badges={badges}
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}
-            onToggleCollapse={toggleCollapse}
+            onToggleCollapse={() => toggle(collapsed)}
           />
         </div>
       </div>

@@ -87,11 +87,6 @@ export default async function AdminDashboardPage() {
     completionsMonth,
     pendingApprovalsCount,
 
-    // Pending-review counts now come from the Pending Requests hub
-    // (getPendingSources); these batch slots are kept for positional alignment.
-    _pendingKYC,
-    _pendingAppeals,
-    _pendingAccountApprovals,
 
     pendingWithdrawAgg,
     pendingWithdrawalsCount,
@@ -106,7 +101,6 @@ export default async function AdminDashboardPage() {
     totalListings,
     totalOrders,
     pendingOrders,
-    _openDisputes,
 
     totalCourses,
     totalEnrollments,
@@ -122,10 +116,8 @@ export default async function AdminDashboardPage() {
     walletLiabilityAgg,
     adCreditOutstandingAgg,
     adSpendAgg,
-    _pendingOfferwallCount,
     completedWithdrawalsCount,
     referralUsersCount,
-    _pendingCreatorAppsCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -145,10 +137,6 @@ export default async function AdminDashboardPage() {
     }),
     prisma.taskSubmission.count({ where: { status: "PENDING" } }),
 
-    prisma.kYCDocument.count({ where: { status: "PENDING" } }),
-    // Verification appeals don't have their own model yet — leave at 0 until added
-    Promise.resolve(0),
-    prisma.user.count({ where: { status: "PENDING_VERIFICATION" } }),
 
     prisma.withdrawal.aggregate({
       where: { status: "PENDING" },
@@ -178,9 +166,6 @@ export default async function AdminDashboardPage() {
     prisma.marketplaceListing.count(),
     prisma.marketplacePurchase.count(),
     prisma.marketplacePurchase.count({ where: { status: "PENDING" } }),
-    prisma.marketplaceDispute.count({
-      where: { status: { in: ["OPEN", "IN_REVIEW", "ESCALATED"] } },
-    }),
 
     prisma.course.count({ where: { status: "PUBLISHED" } }),
     prisma.courseEnrollment.count(),
@@ -207,13 +192,9 @@ export default async function AdminDashboardPage() {
     prisma.user.aggregate({ _sum: { adCreditBalance: true } }),
     // Ad spend — total campaign budgets committed.
     prisma.adCampaign.aggregate({ _sum: { budget: true } }),
-    // Offerwall completions awaiting manual review.
-    prisma.offerwallCompletion.count({ where: { status: "PENDING" } }),
     // Moved out of the post-batch waterfall.
     prisma.withdrawal.count({ where: { status: "COMPLETED" } }),
     prisma.user.count({ where: { referredById: { not: null } } }),
-    // Creator/seller applications awaiting review.
-    prisma.creatorApplication.count({ where: { status: "PENDING" } }),
   ]);
 
   // Resolve admin/user names for the audit log entries

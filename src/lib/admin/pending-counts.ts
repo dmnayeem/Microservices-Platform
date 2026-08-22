@@ -26,13 +26,26 @@ const CACHE = { ttl: 20, swr: 60 } as const;
 const COUNTERS: Record<string, () => Promise<number>> = {
   kyc: () => prisma.kYCDocument.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
   kycAppeals: () => prisma.kYCAppeal.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
-  withdrawals: () => prisma.withdrawal.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
+  withdrawals: () =>
+    prisma.withdrawal.count({
+      where: { status: { in: ["PENDING", "PROCESSING"] } },
+      cacheStrategy: CACHE,
+    }),
   deposits: () => prisma.deposit.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
   offerwallCompletions: () =>
     prisma.offerwallCompletion.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
   offerwallCallbacks: () =>
     prisma.offerwallCallback.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
-  submissions: () => prisma.taskSubmission.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
+  // `submittedAt` is the pivot: PENDING + null = still in progress, PENDING +
+  // set = actually waiting on a reviewer. Without it the badge counted every
+  // task anyone had merely opened.
+  submissions: () =>
+    prisma.taskSubmission.count({
+      where: { status: "PENDING", submittedAt: { not: null } },
+      cacheStrategy: CACHE,
+    }),
+  tasksPendingReview: () =>
+    prisma.task.count({ where: { status: "PENDING_REVIEW" }, cacheStrategy: CACHE }),
   creatorApps: () => prisma.creatorApplication.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
   tutorApps: () => prisma.tutorApplication.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
   mktListings: () =>
@@ -52,6 +65,12 @@ const COUNTERS: Record<string, () => Promise<number>> = {
   courseRefunds: () =>
     prisma.courseRefundRequest.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
   socialReports: () => prisma.socialReport.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
+  adsPending: () => prisma.ad.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
+  adsChangesRequested: () =>
+    prisma.ad.count({ where: { status: "CHANGES_REQUESTED" }, cacheStrategy: CACHE }),
+  supportMessages: () =>
+    prisma.contactMessage.count({ where: { status: "NEW" }, cacheStrategy: CACHE }),
+  fraudOpen: () => prisma.fraudEvent.count({ where: { status: "OPEN" }, cacheStrategy: CACHE }),
 };
 
 /**

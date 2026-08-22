@@ -3,7 +3,11 @@ import speakeasy from "speakeasy";
 import { prisma } from "@/lib/prisma";
 import { generateReferralCode } from "@/lib/utils";
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email";
-import { isValidUsername, slugifyUsername } from "@/lib/username";
+import {
+  isValidUsername,
+  isReservedUsername,
+  slugifyUsername,
+} from "@/lib/username";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { defaultPackage } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -15,6 +19,14 @@ import { v4 as uuidv4 } from "uuid";
  */
 export type LoginReason =
   | "INVALID"
+  /**
+   * The address exists but has no password — a Google-only account. This is a
+   * mild user-enumeration oracle, accepted deliberately: Google's own consent
+   * screen already reveals the same fact, `/api/auth/login-check` is throttled
+   * to 10/min per IP, and the alternative is telling every Google user their
+   * password is "invalid" when they never had one. Don't "fix" this back.
+   */
+  | "OAUTH_ONLY"
   | "EMAIL_NOT_VERIFIED"
   | "ACCOUNT_DISABLED"
   | "TWO_FACTOR_REQUIRED"
@@ -26,6 +38,8 @@ export interface LoginUser {
   name: string | null;
   image: string | null;
   role: string;
+  /** False → the middleware sends them to the first-login handle picker. */
+  onboarded: boolean;
 }
 
 export type LoginResult =
@@ -49,7 +63,10 @@ export async function evaluateLogin(
   });
 
   // Wrong password or unknown email → same generic answer (no user enumeration).
-  if (!user || !user.password) return { ok: false, reason: "INVALID" };
+  if (!user) return { ok: false, reason: "INVALID" };
+  // No password at all means an OAuth-only account. Saying so is far better than
+  // "invalid password" for a credential the user never set — see OAUTH_ONLY.
+  if (!user.password) return { ok: false, reason: "OAUTH_ONLY" };
   const passwordsMatch = await bcrypt.compare(password, user.password);
   if (!passwordsMatch) return { ok: false, reason: "INVALID" };
 
@@ -82,6 +99,7 @@ export async function evaluateLogin(
       name: user.name,
       image: user.avatar,
       role: user.role,
+      onboarded: user.onboardedAt !== null,
     },
   };
 }
@@ -91,7 +109,7 @@ export async function evaluateLogin(
  * seed with a few random numeric suffixes, checking them all in one query.
  * Every account gets a handle so profile links are always `/u/<username>`.
  */
-async function generateUniqueUsername(seed: string): Promise<string> {
+export async function generateUniqueUsername(seed: string): Promise<string> {
   const base = slugifyUsername(seed) || "user";
   const candidates = new Set<string>();
   if (base.length >= 3) candidates.add(base);
@@ -114,123 +132,243 @@ async function generateUniqueUsername(seed: string): Promise<string> {
   return (base.slice(0, 20) + Date.now().toString().slice(-9)).slice(0, 30);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared provisioning — the ONE way an account is created and rewarded.
+//
+// Email sign-up and Google sign-in used to create users in two entirely
+// separate places, and they drifted: the Google path shipped without a default
+// package, without referral attribution, and — because it never reaches
+// `verifyEmail()` — without the welcome bonus. Anything that only lives in one
+// of these two functions is a bug waiting to be rediscovered.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProvisionUserInput {
+  email: string;
+  name?: string | null;
+  /** A handle the user explicitly chose. Omit/null → generate one. */
+  username?: string | null;
+  /** Already bcrypt-hashed. Null for OAuth-only accounts. */
+  passwordHash?: string | null;
+  avatar?: string | null;
+  emailVerified?: Date | null;
+  status: "ACTIVE" | "PENDING_VERIFICATION";
+  /** The referrer's code, from `?ref=` or the `eg_ref` cookie. */
+  referralCode?: string | null;
+  signupIp?: string | null;
+  /** false → the user is sent to the first-login handle picker. */
+  onboarded: boolean;
+  source: "credentials" | "google" | "admin";
+}
+
+/**
+ * Create a user. Guarantees, for every caller: lowercased email, a **non-null**
+ * unique handle, a unique referral code, the default package, resolved referral
+ * attribution, and the onboarding marker.
+ *
+ * Throws `EMAIL_TAKEN` | `INVALID_USERNAME` | `USERNAME_TAKEN` |
+ * `USERNAME_RESERVED` | `PROVISION_FAILED`.
+ */
+export async function provisionUser(input: ProvisionUserInput) {
+  const email = input.email.toLowerCase();
+
+  const clash = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (clash) throw new Error("EMAIL_TAKEN");
+
+  // Resolve the handle. Never null — a handle-less account has no /u/ link,
+  // can't be @-mentioned and doesn't appear in search.
+  let finalUsername: string;
+  const chosen = input.username?.trim();
+  if (chosen) {
+    if (isReservedUsername(chosen)) throw new Error("USERNAME_RESERVED");
+    if (!isValidUsername(chosen)) throw new Error("INVALID_USERNAME");
+    const taken = await prisma.user.findFirst({
+      where: { username: { equals: chosen, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (taken) throw new Error("USERNAME_TAKEN");
+    finalUsername = chosen;
+  } else {
+    finalUsername = await generateUniqueUsername(
+      input.name || email.split("@")[0]
+    );
+  }
+
+  // Referral attribution, with the self-referral guard (opening your own link
+  // and signing up with it). `registerUser` never had this guard.
+  let referredById: string | null = null;
+  const code = input.referralCode?.trim();
+  if (code) {
+    const referrer = await prisma.user.findUnique({
+      where: { referralCode: code },
+      select: { id: true, email: true },
+    });
+    if (referrer && referrer.email?.toLowerCase() !== email) {
+      referredById = referrer.id;
+    }
+  }
+
+  const defaultPkgId = (await defaultPackage())?.id ?? null;
+
+  // Let the unique indexes be the arbiter instead of pre-checking the referral
+  // code in a loop: fewer round-trips, and it can't "give up and use a value it
+  // already knows is taken" the way the old loops could.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await prisma.user.create({
+        data: {
+          email,
+          password: input.passwordHash ?? null,
+          name: input.name ?? null,
+          username: finalUsername,
+          avatar: input.avatar ?? null,
+          emailVerified: input.emailVerified ?? null,
+          status: input.status,
+          referralCode: generateReferralCode(),
+          referredById,
+          packageId: defaultPkgId,
+          packageExpiresAt: null,
+          signupIp: input.signupIp ?? null,
+          onboardedAt: input.onboarded ? new Date() : null,
+          googleLinkedAt: input.source === "google" ? new Date() : null,
+        },
+      });
+    } catch (err) {
+      if ((err as { code?: string })?.code !== "P2002") throw err;
+      const target = String(
+        (err as { meta?: { target?: unknown } })?.meta?.target ?? ""
+      );
+      if (target.includes("email")) throw new Error("EMAIL_TAKEN");
+      if (target.includes("username")) {
+        // A handle the USER picked must not be silently swapped for another.
+        if (chosen) throw new Error("USERNAME_TAKEN");
+        finalUsername = await generateUniqueUsername(finalUsername);
+        continue;
+      }
+      // referralCode collided — the next iteration generates a fresh one.
+    }
+  }
+  throw new Error("PROVISION_FAILED");
+}
+
+/**
+ * Everything a real account is owed exactly once: the welcome bonus, the
+ * referral signup bonus, and the referrer's event progress.
+ *
+ * Idempotent (the ledger `reference` is unique per user) and best-effort — it
+ * must never throw, because it runs inside both email verification and the
+ * Google sign-in callback, and neither may fail because of a bonus.
+ */
+export async function completeSignupRewards(
+  userId: string,
+  opts?: { referredById?: string | null }
+): Promise<void> {
+  await awardWelcomeBonus(userId);
+
+  try {
+    const { awardReferralSignupBonus } = await import("@/lib/referral-bonus");
+    await awardReferralSignupBonus(userId);
+  } catch {
+    /* never block on the bonus */
+  }
+
+  // Referral event progress goes to the REFERRER, not the new user.
+  let referrerId = opts?.referredById ?? null;
+  if (referrerId === undefined) referrerId = null;
+  if (!referrerId) {
+    referrerId =
+      (
+        await prisma.user
+          .findUnique({ where: { id: userId }, select: { referredById: true } })
+          .catch(() => null)
+      )?.referredById ?? null;
+  }
+  if (referrerId && referrerId !== userId) {
+    try {
+      const { recordUserAction } = await import("@/lib/goal-progress");
+      await recordUserAction({
+        userId: referrerId,
+        action: "referral_signup",
+        targetId: userId,
+      });
+    } catch {
+      /* never block on event tracking */
+    }
+  }
+}
+
+/**
+ * The signup welcome bonus. `WELCOME_BONUS_POINTS` is read here and nowhere
+ * else — it used to live inline in `verifyEmail()`, which is exactly why no
+ * Google user ever received it.
+ *
+ * Routed through `creditPoints` so the balance, `totalEarnings` and the ledger
+ * row move together in one transaction. The old inline version did two separate
+ * writes, so a failure between them left the balance and the ledger disagreeing.
+ */
+async function awardWelcomeBonus(userId: string): Promise<void> {
+  const points = parseInt(process.env.WELCOME_BONUS_POINTS || "0", 10);
+  if (!Number.isFinite(points) || points <= 0) return;
+  try {
+    const pointsPerUsd = await getPointsPerUsd();
+    const { creditPoints } = await import("@/lib/ledger");
+    const { TransactionType } = await import("@/generated/prisma/client");
+    await prisma.$transaction(async (tx) => {
+      await creditPoints(tx, {
+        userId,
+        points,
+        type: TransactionType.BONUS,
+        description: "Welcome bonus",
+        // Unique per user → awarding twice is impossible, which is what makes
+        // the backfill safe to re-run.
+        reference: `welcome_${userId}`,
+        metadata: { source: "signup" },
+        pointsPerUsd,
+      });
+    });
+  } catch (err) {
+    const { isDuplicateLedgerError } = await import("@/lib/idempotency");
+    if (!isDuplicateLedgerError(err)) {
+      console.error("[welcome-bonus] failed for", userId, err);
+    }
+  }
+}
+
 export async function registerUser({
   email,
   password,
   name,
   username,
   referralCode,
+  signupIp,
 }: {
   email: string;
   password: string;
   name: string;
   username?: string;
   referralCode?: string;
+  /** Caller-supplied client IP, for the per-IP signup cap (see lib/fraud.ts). */
+  signupIp?: string | null;
 }) {
-  // Check if email already exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
-  });
-
-  if (existingUser) {
-    throw new Error("Email already registered");
-  }
-
-  // Username: use the one the user chose (validated + unique), else auto-generate
-  // a unique handle from their name/email. Either way every account gets one.
-  let finalUsername: string;
-  const chosen = username?.trim();
-  if (chosen) {
-    if (!isValidUsername(chosen)) {
-      throw new Error("INVALID_USERNAME");
-    }
-    const taken = await prisma.user.findFirst({
-      where: { username: { equals: chosen, mode: "insensitive" } },
-      select: { id: true },
-    });
-    if (taken) {
-      throw new Error("USERNAME_TAKEN");
-    }
-    finalUsername = chosen;
-  } else {
-    finalUsername = await generateUniqueUsername(name || email.split("@")[0]);
-  }
-
-  // Hash password
+  // Everything about creating the row — handle, referral code, referral
+  // attribution, default package — lives in provisionUser so the Google path
+  // gets the identical treatment. `signupIp` is stamped by the API wrapper.
   const hashedPassword = await bcrypt.hash(password, 12);
-
-  // Find referrer if referral code provided
-  let referredById: string | null = null;
-  if (referralCode) {
-    const referrer = await prisma.user.findUnique({
-      where: { referralCode },
-    });
-    if (referrer) {
-      referredById = referrer.id;
-    }
-  }
-
-  // Generate unique referral code
-  let newReferralCode = generateReferralCode();
-  let codeExists = await prisma.user.findUnique({
-    where: { referralCode: newReferralCode },
+  const user = await provisionUser({
+    email,
+    name,
+    username,
+    passwordHash: hashedPassword,
+    status: "PENDING_VERIFICATION",
+    referralCode,
+    signupIp,
+    // Email users pick their handle on the register form, so they never need
+    // the first-login picker.
+    onboarded: true,
+    source: "credentials",
   });
-  while (codeExists) {
-    newReferralCode = generateReferralCode();
-    codeExists = await prisma.user.findUnique({
-      where: { referralCode: newReferralCode },
-    });
-  }
-
-  // Explicitly put every new user on the free/default plan so they're visibly
-  // "on Free" (not "no plan"). Best-effort: if no default resolves, packageId
-  // stays null and the runtime fallback (getEffectivePackage) still covers it.
-  const defaultPkgId = (await defaultPackage())?.id ?? null;
-
-  // Create user. Guard the username unique constraint against the rare race
-  // where the chosen handle is claimed between our check and this insert.
-  let user;
-  try {
-    user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        password: hashedPassword,
-        name,
-        username: finalUsername,
-        referralCode: newReferralCode,
-        referredById,
-        status: "PENDING_VERIFICATION",
-        packageId: defaultPkgId,
-        packageExpiresAt: null,
-      },
-    });
-  } catch (err) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      (err as { code?: string }).code === "P2002"
-    ) {
-      // Username (or referral code) collided under concurrency.
-      if (chosen) throw new Error("USERNAME_TAKEN");
-      finalUsername = await generateUniqueUsername(`${finalUsername}`);
-      user = await prisma.user.create({
-        data: {
-          email: email.toLowerCase(),
-          password: hashedPassword,
-          name,
-          username: finalUsername,
-          referralCode: newReferralCode,
-          referredById,
-          status: "PENDING_VERIFICATION",
-          packageId: defaultPkgId,
-          packageExpiresAt: null,
-        },
-      });
-    } else {
-      throw err;
-    }
-  }
 
   // Create verification token
   const verificationToken = uuidv4();
@@ -295,42 +433,10 @@ export async function verifyEmail(token: string) {
     where: { token },
   });
 
-  // Award welcome bonus if configured
-  const welcomeBonus = parseInt(process.env.WELCOME_BONUS_POINTS || "0", 10);
-  if (welcomeBonus > 0) {
-    const pointsPerUsd = await getPointsPerUsd();
-    const bonusUsd = pointsPerUsd > 0 ? welcomeBonus / pointsPerUsd : 0;
-    await prisma.transaction.create({
-      data: {
-        userId: user.id,
-        type: "BONUS",
-        status: "COMPLETED",
-        points: welcomeBonus,
-        amount: bonusUsd,
-        description: "Welcome bonus",
-        // Once per user — (userId, reference) unique prevents a double award if
-        // verification is ever replayed (token deletion above already guards it).
-        reference: `welcome_${user.id}`,
-      },
-    });
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        pointsBalance: { increment: welcomeBonus },
-        totalEarnings: { increment: bonusUsd },
-      },
-    });
-  }
-
-  // Referral signup bonus (feature #9) — pay the referrer now that this account
-  // is verified (real). Best-effort; gated by admin config + referrer activity.
-  try {
-    const { awardReferralSignupBonus } = await import("@/lib/referral-bonus");
-    await awardReferralSignupBonus(user.id);
-  } catch {
-    /* never block verification on the bonus */
-  }
+  // Welcome bonus + referral bonus + referrer event progress. Shared with the
+  // Google sign-in path, which never reaches this function — which is exactly
+  // why no Google user had ever received the welcome bonus.
+  await completeSignupRewards(user.id, { referredById: user.referredById });
 
   return user;
 }

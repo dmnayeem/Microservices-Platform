@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { runInterstitial } from "@/lib/reward-interstitial";
 import { ensureAdsAllowed } from "@/lib/adblock";
+import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 import {
   isUpgradeRequired,
   isTaskLocked,
@@ -535,14 +536,11 @@ export function ProxyTasksView() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                  Screenshot URL <span className="text-gray-500">(optional)</span>
+                  Screenshot <span className="text-gray-500">(optional)</span>
                 </label>
-                <input
-                  type="url"
+                <ProofImageUpload
                   value={screenshotUrl}
-                  onChange={(e) => setScreenshotUrl(e.target.value)}
-                  placeholder="https://... (upload to imgur, etc.)"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                  onChange={setScreenshotUrl}
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { getPointsPerUsd } from "@/lib/economy";
 import { bumpTrust, TRUST_APPROVE, TRUST_REJECT } from "@/lib/trust";
 import { notifyUser } from "@/lib/notify";
+import { recordUserAction } from "@/lib/goal-progress";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -296,6 +297,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // (finalStatus flipped to REJECTED) counts as a fraud strike instead.
       if (finalStatus === "APPROVED") {
         await bumpTrust(existingSubmission.userId, TRUST_APPROVE);
+        // Event progress is credited at APPROVAL, not at submission time. The
+        // old read-time computation filtered on `createdAt`, so a task
+        // submitted before an event but approved during it never counted, and
+        // one submitted during the window counted even if it was approved after
+        // the event ended.
+        await recordUserAction({
+          userId: existingSubmission.userId,
+          action:
+            existingSubmission.task?.type === "QUIZ"
+              ? "quiz_approved"
+              : "task_approved",
+          targetId: existingSubmission.id,
+        });
       } else {
         await bumpTrust(existingSubmission.userId, TRUST_REJECT, {
           strike: true,

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { sanitizeTaskAudience } from "@/lib/task-targeting";
 
 const BOARD_CATEGORIES = [
   "Marketing",
@@ -27,6 +28,11 @@ const createSchema = z.object({
   order: z.number().int().default(0),
   // Optional prerequisite board id; null = no prerequisite
   unlockBoardId: z.string().cuid().nullable().optional(),
+  minLevel: z.number().int().min(1).max(999).default(1),
+  requiredAccessLevel: z.number().int().min(0).max(99).default(0),
+  // Audience targeting is NOT declared here — it comes off the raw body through
+  // sanitizeTaskAudience(), the same normalizer the task routes use, so the
+  // gender/age clamping lives in exactly one place.
 });
 
 export async function GET() {
@@ -90,6 +96,7 @@ export async function POST(req: NextRequest) {
   const board = await prisma.taskBoard.create({
     data: {
       ...v.data,
+      ...sanitizeTaskAudience(body),
       expiresAt: v.data.expiresAt ? new Date(v.data.expiresAt) : null,
       createdById: session.user.id,
     },

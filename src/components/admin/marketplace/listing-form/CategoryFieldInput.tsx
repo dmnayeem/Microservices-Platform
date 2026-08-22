@@ -12,6 +12,7 @@ import {
 import { toast } from "@/lib/toast";
 import type { CategoryField } from "@/lib/marketplace-categories";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { DateField } from "@/components/ui/date-field";
 
 interface Props {
   field: CategoryField;
@@ -137,10 +138,10 @@ export function CategoryFieldInput({
       return (
         <div className="space-y-1.5">
           {labelEl}
-          <input
+          <DateField
             type="date"
             value={(value as string) ?? ""}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(v) => onChange(v)}
             disabled={disabled}
             className={inp}
           />

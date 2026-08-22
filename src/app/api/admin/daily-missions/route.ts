@@ -2,27 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { tierToAccessLevel } from "@/lib/missions";
+import { tierToAccessLevel } from "@/lib/package-tiers";
 import { z } from "zod";
+import { MISSION_TASK_TYPES } from "@/lib/mission-labels";
+import { sanitizeTaskAudience } from "@/lib/task-targeting";
 
 const itemSchema = z.object({
-  taskType: z.enum([
-    "ARTICLE",
-    "VIDEO",
-    "QUIZ",
-    "SURVEY",
-    "SOCIAL",
-    "PROXY",
-    "OFFERWALL",
-    "BOARD",
-    "MANUAL",
-    "CUSTOM",
-    "SOCIAL_LIKE",
-    "SOCIAL_COMMENT",
-    "SOCIAL_POST",
-    "SOCIAL_SHARE",
-    "SOCIAL_VOTE",
-  ]),
+  // One definition, in src/lib/mission-labels.ts. Both admin routes used to
+  // carry their own copy of this list.
+  taskType: z.enum(MISSION_TASK_TYPES),
   description: z.string().max(300).nullable().optional(),
   targetCount: z.number().int().min(1).max(1000).default(1),
   xpPerComplete: z.number().int().min(0).default(0),
@@ -42,6 +30,11 @@ const createSchema = z.object({
   isActive: z.boolean().default(true),
   autoRefresh: z.boolean().default(true),
   linkReferralBonus: z.boolean().default(false),
+  completionCashReward: z.number().min(0).default(0),
+  streakBonusEvery: z.number().int().min(0).max(365).default(0),
+  streakBonusPoints: z.number().int().min(0).default(0),
+  startAt: z.string().datetime().nullable().optional(),
+  endAt: z.string().datetime().nullable().optional(),
   order: z.number().int().default(0),
   items: z.array(itemSchema).min(1, "Add at least one task item"),
 });
@@ -85,10 +78,13 @@ export async function POST(req: NextRequest) {
   }
 
   // `packageTier` is the admin-facing enum; the model stores `requiredAccessLevel`.
-  const { items, packageTier, ...mission } = v.data;
+  const { items, packageTier, startAt, endAt, ...mission } = v.data;
   const created = await prisma.dailyMissionTemplate.create({
     data: {
       ...mission,
+      startAt: startAt ? new Date(startAt) : null,
+      endAt: endAt ? new Date(endAt) : null,
+      ...sanitizeTaskAudience(body),
       requiredAccessLevel: tierToAccessLevel(packageTier),
       createdById: session.user.id,
       items: {

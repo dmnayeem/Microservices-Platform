@@ -37,7 +37,11 @@ import {
   hasRichProof,
   type AppInstallConfig,
 } from "@/lib/app-install-tasks";
-import { socialWatchTargetSeconds, normalizeSocialConfig } from "@/lib/social-tasks";
+import {
+  socialWatchTargetSeconds,
+  normalizeSocialConfig,
+  getAction,
+} from "@/lib/social-tasks";
 import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
 import {
   verifyTelegramMember,
@@ -52,6 +56,12 @@ import {
   PHASH_HAMMING_THRESHOLD,
 } from "@/lib/phash";
 import { createHash } from "crypto";
+import { recordUserAction } from "@/lib/goal-progress";
+import {
+  coerceQuizQuestions,
+  coerceQuizAnswers,
+  scoreQuiz,
+} from "@/lib/quiz-shape";
 
 // POST /api/tasks/:id/submit - Submit task proof
 export async function POST(
@@ -244,20 +254,15 @@ export async function POST(
     // Validate quiz answers if it's a quiz task
     let score: number | null = null;
     if (task.type === "QUIZ" && answers && task.questions) {
-      const questions = task.questions as Array<{
-        question: string;
-        options: string[];
-        correctAnswer: number;
-      }>;
-
-      let correctCount = 0;
-      questions.forEach((q, index) => {
-        if (answers[index] === q.correctAnswer) {
-          correctCount++;
-        }
-      });
-
-      score = Math.round((correctCount / questions.length) * 100);
+      // `task.questions` is `Json?` and is a double-encoded STRING on some rows;
+      // the old cast-and-forEach threw "not a function" on those, and only ever
+      // looked for `correctAnswer` while the seed writes `correct`. See
+      // src/lib/quiz-shape.ts.
+      const questions = coerceQuizQuestions(task.questions);
+      if (questions) {
+        const picks = coerceQuizAnswers(answers);
+        score = Math.round((scoreQuiz(questions, picks) / questions.length) * 100);
+      }
     }
 
     // ── Article task: check unique key + force PENDING (admin reviews) ──
@@ -416,6 +421,70 @@ export async function POST(
         });
       }
       appInstallMeta = { appKind: cfg?.appKind ?? "app", items: metaItems };
+    }
+
+    // ── Social task: enforce each action's configured proof requirements ──
+    // These were previously checked only in the browser, so a crafted POST with
+    // an empty `items` array was accepted and went to a reviewer with no proof
+    // at all. APPINSTALL (above) and VIDEO (below) both enforce server-side;
+    // this brings SOCIAL in line.
+    if (task.type === "SOCIAL") {
+      const socialCfg = normalizeSocialConfig(task.socialConfig);
+      if (socialCfg.items.length > 0) {
+        const submittedItems = Array.isArray(socialItems) ? socialItems : null;
+        for (let i = 0; i < socialCfg.items.length; i++) {
+          const cfgItem = socialCfg.items[i];
+          const def = getAction(socialCfg.platform, cfgItem.action);
+          const label = def?.label ?? cfgItem.action;
+          // A single-action task submitted by the legacy (non-bundle) client
+          // sends its proof at the top level instead of in `items`.
+          const p =
+            submittedItems?.[i] ??
+            (!submittedItems && socialCfg.items.length === 1
+              ? { proofUrl, screenshotUrl, username }
+              : null);
+          if (!p) {
+            return NextResponse.json(
+              { error: `Proof is missing for: ${label}` },
+              { status: 400 }
+            );
+          }
+          // The admin edited the task after this user started it, so the proof
+          // they collected no longer lines up with the configured actions.
+          if (
+            submittedItems &&
+            typeof p.action === "string" &&
+            p.action.toUpperCase() !== cfgItem.action.toUpperCase()
+          ) {
+            return NextResponse.json(
+              {
+                error:
+                  "This task was updated while you were working on it. Reload the page and try again.",
+              },
+              { status: 400 }
+            );
+          }
+          const req = cfgItem.proofRequirements;
+          if (req.url && !String(p.proofUrl ?? "").trim()) {
+            return NextResponse.json(
+              { error: `Please provide the proof URL for: ${label}` },
+              { status: 400 }
+            );
+          }
+          if (req.screenshot && !String(p.screenshotUrl ?? "").trim()) {
+            return NextResponse.json(
+              { error: `Upload a screenshot for: ${label}` },
+              { status: 400 }
+            );
+          }
+          if (req.username && !String(p.username ?? "").trim()) {
+            return NextResponse.json(
+              { error: `Please provide your username for: ${label}` },
+              { status: 400 }
+            );
+          }
+        }
+      }
     }
 
     // ── Video task: hard-fail on bad unique key (auto-reject) ──
@@ -1056,6 +1125,15 @@ export async function POST(
 
       // Process referral commissions on the effective (multiplied) reward.
       await processReferralCommissions(session.user.id, effectivePoints, task.id);
+
+      // Event progress — the auto-approved twin of the admin approval path in
+      // /api/admin/submissions/[id]. Same dedup key, so a task that somehow
+      // travels both routes still counts once.
+      await recordUserAction({
+        userId: session.user.id,
+        action: task.type === "QUIZ" ? "quiz_approved" : "task_approved",
+        targetId: submission.id,
+      });
 
       return NextResponse.json({
         submission: updatedSubmission,

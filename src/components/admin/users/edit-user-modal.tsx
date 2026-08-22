@@ -25,6 +25,7 @@ import { isAdmin, PERMISSION_CATALOG, permissionLabel, permissionDescription, ty
 import { USER_PAGES } from "@/lib/page-visibility";
 import { FEATURES } from "@/lib/features";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { DateField } from "@/components/ui/date-field";
 
 // Generate a 12-char password with at least 1 lower / upper / digit / symbol
 function generateRandomPassword(length = 12): string {
@@ -236,6 +237,36 @@ export function UserEditForm({
     street: user.street ?? "",
     postalCode: user.postalCode ?? "",
   });
+
+  // ── Resync the four externally-mutable fields ──────────────────────────────
+  // The POINTS/CASH/LEVEL/XP +/- buttons write straight to the database and
+  // call router.refresh(), which re-renders this component with fresh props.
+  // The form kept its own copy from first mount, so two things went wrong: the
+  // adjustment never appeared on screen, AND the save diff below compared the
+  // STALE form value against the FRESH prop, decided they differed, and wrote
+  // the pre-adjustment balance back — silently undoing the credit.
+  //
+  // Only these four resync. Every other field is changed solely by this form,
+  // and resyncing those would throw away whatever the admin is typing.
+  // Adjusting state during render (rather than in an effect) is React's own
+  // pattern for props-derived state and avoids a second render pass.
+  const serverSide = {
+    level: user.level,
+    xp: user.xp,
+    pointsBalance: user.pointsBalance,
+    cashBalance: user.cashBalance,
+  };
+  const [lastServerSide, setLastServerSide] = useState(serverSide);
+  const drifted = (
+    Object.keys(serverSide) as (keyof typeof serverSide)[]
+  ).filter((k) => serverSide[k] !== lastServerSide[k]);
+  if (drifted.length > 0) {
+    setLastServerSide(serverSide);
+    setForm((f) => ({
+      ...f,
+      ...Object.fromEntries(drifted.map((k) => [k, serverSide[k]])),
+    }));
+  }
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -995,10 +1026,10 @@ export function UserEditForm({
                   </select>
                 </Field>
                 <Field label="Plan Expiry">
-                  <input
+                  <DateField
                     type="date"
                     value={form.packageExpiresAt}
-                    onChange={(e) => set("packageExpiresAt", e.target.value)}
+                    onChange={(v) => set("packageExpiresAt", v)}
                     className={fieldCls}
                   />
                   <p className="mt-1 text-[11px] text-slate-500">
@@ -1061,10 +1092,10 @@ export function UserEditForm({
                   </select>
                 </Field>
                 <Field label="Date of Birth">
-                  <input
+                  <DateField
                     type="date"
                     value={form.dateOfBirth}
-                    onChange={(e) => set("dateOfBirth", e.target.value)}
+                    onChange={(v) => set("dateOfBirth", v)}
                     className={fieldCls}
                   />
                 </Field>

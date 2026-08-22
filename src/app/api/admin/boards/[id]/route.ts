@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { sanitizeTaskAudience, hasAudienceKeys } from "@/lib/task-targeting";
 
 const BOARD_CATEGORIES = [
   "Marketing",
@@ -25,6 +26,8 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   order: z.number().int().optional(),
   unlockBoardId: z.string().cuid().nullable().optional(),
+  minLevel: z.number().int().min(1).max(999).optional(),
+  requiredAccessLevel: z.number().int().min(0).max(99).optional(),
 });
 
 export async function GET(
@@ -196,6 +199,9 @@ export async function PATCH(
     where: { id },
     data: {
       ...v.data,
+      // Targeting is replaced wholesale whenever the form sends any of the nine
+      // keys — a partial merge would leave a stale dimension in place.
+      ...(hasAudienceKeys(body) ? sanitizeTaskAudience(body) : {}),
       ...(v.data.expiresAt !== undefined
         ? { expiresAt: v.data.expiresAt ? new Date(v.data.expiresAt) : null }
         : {}),

@@ -2,17 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { parseEventTiers } from "@/lib/events-shared";
+import { parseEventTiers, EVENT_ACTION_TYPES } from "@/lib/events-shared";
 import { maxPackageAccessLevel } from "@/lib/events";
+import { revalidateTag } from "next/cache";
+import { EVENTS_ACTIVE_TAG } from "@/lib/cache-tags";
 
-const ACTION_TYPES = [
-  "TEAM_ADD",
-  "TASK_COMPLETE",
-  "QUIZ_COMPLETE",
-  "LOTTERY_BUY",
-  "UPLOAD_PROOF",
-  "SOCIAL_ACTION",
-] as const;
+// The single shared list — see EVENT_ACTION_TYPES in events-shared.ts.
+const ACTION_TYPES = EVENT_ACTION_TYPES;
 
 // PATCH /api/admin/events/:id — update fields (partial) or toggle isActive.
 export async function PATCH(
@@ -52,6 +48,10 @@ export async function PATCH(
     const n = int(b.rewardXp);
     if (n !== undefined) data.rewardXp = n;
   }
+  if (b.dailyCap !== undefined) {
+    const n = int(b.dailyCap);
+    if (n !== undefined) data.dailyCap = n;
+  }
   if (b.requiredAccessLevel !== undefined) {
     const n = int(b.requiredAccessLevel);
     // Clamp to the top real tier so the event can't be hidden from everyone.
@@ -72,6 +72,7 @@ export async function PATCH(
   }
 
   const event = await prisma.event.update({ where: { id }, data });
+  revalidateTag(EVENTS_ACTIVE_TAG, "max");
   return NextResponse.json({ event });
 }
 
@@ -86,5 +87,6 @@ export async function DELETE(
   }
   const { id } = await params;
   await prisma.event.delete({ where: { id } });
+  revalidateTag(EVENTS_ACTIVE_TAG, "max");
   return NextResponse.json({ ok: true });
 }

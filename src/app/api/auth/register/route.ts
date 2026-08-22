@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { registerUser } from "@/lib/auth/services";
 import { enforceRateLimit } from "@/lib/rate-limit";
-import { prisma } from "@/lib/prisma";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -59,14 +58,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await registerUser(validatedData);
-
-    // Stamp the signup IP for the per-IP cap (best-effort).
-    if (ip && ip !== "unknown" && result?.user?.id) {
-      void prisma.user
-        .update({ where: { id: result.user.id }, data: { signupIp: ip } })
-        .catch(() => {});
-    }
+    // The IP goes in with the insert now rather than as a follow-up update, so
+    // there's no window where a fresh account is invisible to the per-IP cap.
+    const result = await registerUser({
+      ...validatedData,
+      signupIp: ip && ip !== "unknown" ? ip : null,
+    });
 
     // Dev fallback: when SMTP isn't configured we surface the verification link
     // so the developer/tester can finish the flow without a real inbox.

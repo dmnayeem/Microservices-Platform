@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
+import { recordUserAction } from "@/lib/goal-progress";
 
 // GET /api/feed/:id/comments - Get post comments
 export async function GET(
@@ -156,13 +157,24 @@ export async function POST(
       data: { commentsCount: { increment: 1 }, lastActivityAt: new Date() },
     });
 
-    // Social earning — recipient (owner) and optionally actor (commenter)
-    await awardSocialEarning({
-      postOwnerUserId: post.userId,
-      actorUserId: session.user.id,
-      action: "COMMENT_RECEIVED",
-      postId: id,
-    });
+    await Promise.all([
+      // Social earning — recipient (owner) and optionally actor (commenter)
+      awardSocialEarning({
+        postOwnerUserId: post.userId,
+        actorUserId: session.user.id,
+        action: "COMMENT_RECEIVED",
+        postId: id,
+      }),
+      // Event progress — deduped per POST, not per comment, so 100 comments on
+      // one post count once. Commenting on your own post never counts.
+      post.userId === session.user.id
+        ? Promise.resolve()
+        : recordUserAction({
+            userId: session.user.id,
+            action: "feed_comment",
+            targetId: id,
+          }),
+    ]);
 
     // Mentions in this comment
     const usernames = extractMentionUsernames(content);

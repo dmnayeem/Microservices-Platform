@@ -237,24 +237,123 @@ model Campaign {
   @@index([startDate, endDate])
 }
 
+/// Long-running "big prize" missions — the middle of the three goal systems.
+///
+///  - **DailyMissionTemplate** = do today's tasks properly; resets at the
+///    user's local midnight and feeds the referral day-claim.
+///  - **Mission** (this) = a large reward that takes real effort, with tiers and
+///    an unlock chain, so finishing one pulls the user toward the next.
+///  - **Event** = time-boxed marketing pushes.
+///
+/// All three now share ONE progress engine (src/lib/goal-progress.ts) and the
+/// same `EventActionType` vocabulary. Mission used to have its own five-value
+/// `type` string that nothing on the user side ever read — the whole model was
+/// admin CRUD with no reader, no progress table and no claim route.
 model Mission {
-  id            String   @id @default(cuid())
-  title         String
-  description   String?  @db.Text
-  type          String // TASK_COMPLETION | LOGIN_STREAK | REFERRAL | SPEND | EARN
-  targetValue   Int
-  pointsReward  Int      @default(0)
-  cashReward    Decimal  @default(0) @db.Decimal(18, 6)
-  xpReward      Int      @default(0)
-  duration      String   @default("DAILY") // DAILY | WEEKLY
-  autoRefresh   Boolean  @default(true)
-  requiredLevel Int      @default(1)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String  @id @default(cuid())
+  title       String
+  description String? @db.Text
+  iconEmoji   String?
+
+  /// Legacy free-text kind (TASK_COMPLETION | LOGIN_STREAK | REFERRAL | SPEND |
+  /// EARN). Superseded by `actionType`; kept only so the pre-existing rows are
+  /// still readable. Nothing reads it.
+  type String @default("TASK_COMPLETION")
+
+  /// What counts. Shared with Event so one ACCEPTS map drives both.
+  actionType EventActionType @default(TASK_COMPLETE)
+  /// The goal. (Was `targetValue`, which the admin form already edits.)
+  targetValue Int
+  /// Optional ascending tiers [{threshold, rewardPoints, rewardXp}], claimed
+  /// independently — this is what makes a mission worth rushing.
+  tiers Json?
+
+  pointsReward Int     @default(0)
+  cashReward   Decimal @default(0) @db.Decimal(18, 6)
+  xpReward     Int     @default(0)
+
+  /// Max actions credited per user per LOCAL day. 0 = unlimited.
+  dailyCap Int @default(0)
+
+  duration    String   @default("DAILY") /// legacy, unused
+  autoRefresh Boolean  @default(true) /// legacy, unused
+  startAt     DateTime?
+  endAt       DateTime?
+  order       Int      @default(0)
+  /// Prerequisite mission — must be claimed before this one unlocks.
+  unlockMissionId String?
+  unlockMission   Mission?  @relation("MissionUnlockChain", fields: [unlockMissionId], references: [id], onDelete: SetNull)
+  unlocks         Mission[] @relation("MissionUnlockChain")
+
+  requiredLevel       Int @default(1)
+  requiredAccessLevel Int @default(0)
+  // Audience targeting — same nine columns and STRICT semantics as Task.
+  countries    String[] @default([])
+  genders      String[] @default([])
+  regions      String[] @default([])
+  divisions    String[] @default([])
+  districts    String[] @default([])
+  subDistricts String[] @default([])
+  postalCodes  String[] @default([])
+  minAge       Int?
+  maxAge       Int?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  progress   UserMissionProgress[]
+  actionLogs MissionActionLog[]
 
   @@index([isActive])
   @@index([duration])
+  @@index([isActive, order])
+  @@index([unlockMissionId])
+}
+
+/// Per-user mission counter. Mirrors UserEventProgress exactly — same rules,
+/// same guarantees. Only goal-progress.ts increments `progress`; claiming must
+/// never write it, or a claim-time snapshot clobbers the real count.
+model UserMissionProgress {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId String
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  progress     Int       @default(0)
+  claimedAt    DateTime?
+  claimedTiers Int[]     @default([])
+  joinedAt     DateTime?
+  lastActionAt DateTime?
+  dayKey       String?
+  dayCount     Int       @default(0)
+  notifiedComplete Boolean @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, missionId])
+  @@index([missionId])
+}
+
+/// One row per action that actually counted toward a mission.
+///
+/// The `@@unique` is the whole anti-farm guarantee — NOT application logic.
+/// Without it, like → unlike → like would count three times against a mission
+/// whose prize is deliberately large.
+model MissionActionLog {
+  id        String   @id @default(cuid())
+  missionId String
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  userId    String
+  actionKey String
+  /// Stable per-action identity, e.g. "like:<postId>".
+  dedupKey  String
+  units     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([missionId, userId, dedupKey])
+  @@index([userId, createdAt])
 }
 
 // Daily Task Mission — admin-defined per-package mission template that bundles
@@ -268,10 +367,34 @@ model DailyMissionTemplate {
   requiredLevel          Int      @default(1)
   completionXpReward     Int      @default(0)
   completionPointsReward Int      @default(0)
+  /// Paid alongside points on completion. 0 = points/XP only.
+  completionCashReward   Decimal  @default(0) @db.Decimal(18, 6)
+  /// Streak bonus: every `streakBonusEvery` consecutive days, add
+  /// `streakBonusPoints`. 0 on either disables it. `DailyMissionClaim.streak`
+  /// was already being computed and stored but never rewarded anything.
+  streakBonusEvery       Int      @default(0)
+  streakBonusPoints      Int      @default(0)
   isActive               Boolean  @default(true)
   autoRefresh            Boolean  @default(true)
   linkReferralBonus      Boolean  @default(false)
   order                  Int      @default(0)
+  /// Optional schedule. null = always running.
+  startAt                DateTime?
+  endAt                  DateTime?
+
+  // Audience targeting — same nine columns and STRICT semantics as Task.
+  // Without these, a "Bangladesh only" daily mission was impossible: the
+  // template was picked purely by tier and level.
+  countries    String[] @default([])
+  genders      String[] @default([])
+  regions      String[] @default([])
+  divisions    String[] @default([])
+  districts    String[] @default([])
+  subDistricts String[] @default([])
+  postalCodes  String[] @default([])
+  minAge       Int?
+  maxAge       Int?
+
   createdById            String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -287,7 +410,10 @@ model DailyMissionItem {
   id                String               @id @default(cuid())
   missionId         String
   mission           DailyMissionTemplate @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  taskType          String // ARTICLE | VIDEO | QUIZ | SURVEY | SOCIAL | PROXY | OFFERWALL | BOARD | MANUAL | CUSTOM
+  /// One of MISSION_TASK_TYPES in src/lib/mission-labels.ts — that list is the
+  /// single definition. This comment used to enumerate the values here too and
+  /// had already fallen behind by five (the SOCIAL_* ones).
+  taskType          String
   description       String?              @db.Text
   targetCount       Int                  @default(1)
   xpPerComplete     Int                  @default(0)
@@ -692,6 +818,25 @@ model TaskBoard {
   unlockBoardId String?
   unlockBoard   TaskBoard?  @relation("BoardUnlockChain", fields: [unlockBoardId], references: [id], onDelete: SetNull)
   unlocks       TaskBoard[] @relation("BoardUnlockChain")
+
+  // Eligibility. A board had NO per-user gate of any kind except the unlock
+  // chain, so every active board was listed to everyone — a board whose tasks
+  // were all country-targeted simply rendered with a task count of 0 and then
+  // failed its claim with "Board has no active tasks".
+  minLevel            Int      @default(1)
+  requiredAccessLevel Int      @default(0)
+  // Audience targeting — same nine columns and the same STRICT semantics as
+  // Task (empty array = no constraint). See src/lib/task-targeting.ts.
+  countries    String[] @default([])
+  genders      String[] @default([])
+  regions      String[] @default([])
+  divisions    String[] @default([])
+  districts    String[] @default([])
+  subDistricts String[] @default([])
+  postalCodes  String[] @default([])
+  minAge       Int?
+  maxAge       Int?
+
   createdById   String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -703,6 +848,7 @@ model TaskBoard {
   @@index([order])
   @@index([category])
   @@index([unlockBoardId])
+  @@index([isActive, requiredAccessLevel, minLevel])
 }
 
 // Per-user record of a Task Board reward claim. One row per (user, board);
@@ -981,6 +1127,17 @@ model User {
   kycSubmittedAt                    DateTime?
   kycApprovedAt                     DateTime?
   kycPromptedAt                     DateTime? // set once when we nudge a completed-profile user to do KYC
+  // First-login onboarding (the @handle picker). Null = never completed, and the
+  // Edge middleware sends the user to /welcome. Stamped by provisionUser for
+  // paths that don't need it, by the onboarding action, and backfilled for every
+  // account that existed before the screen shipped.
+  onboardedAt                       DateTime?
+  // When a Google identity was first linked to this row. Null = never linked, so
+  // the next Google sign-in runs the one-time repair + stale-password revocation;
+  // non-null = steady state, skip all of it. Without this the link branch can't
+  // tell a first link from the 400th login of someone who later set a password
+  // via Forgot Password — both look identical (`password != null`).
+  googleLinkedAt                    DateTime?
   featureOverrides                  Json? // per-user feature grants/denials { [featureKey]: boolean } overriding the package
   permissionOverrides               Json? // per-user RBAC permission grants/denials { [permission]: boolean } on top of the role
   pageOverrides                     Json? // per-user page-visibility grants/denials { [path]: boolean } — super-admin page hiding
@@ -1004,6 +1161,9 @@ model User {
   affiliateCommissions              AffiliateCommission[]        @relation("AffiliateCommissions")
   // Events/quests progress (feature #10).
   eventProgress                     UserEventProgress[]
+  missionProgress                   UserMissionProgress[]
+  eventActionLogs                   EventActionLog[]
+  socialRatioTallies                SocialRatioTally[]
   // Per-viewer boosted-post impression caps (feed boost frequency cap).
   postBoostViews                    PostBoostView[]
   // Extended profile fields (admin_oo.md §5.02)
@@ -2873,6 +3033,36 @@ model AiUsageDaily {
   @@unique([userId, dateKey])
 }
 
+// Progress toward a social-earning ratio reward ("every 100 likes → 10 pts").
+//
+// Replaces a live `COUNT(DISTINCT postId)` over SocialActionLog, which was wrong
+// in two ways: that table is keyed by the ACTOR (so it can't answer "likes MY
+// posts received"), and log retention prunes it at 120 days — so the count went
+// BACKWARDS and long-lived users silently stopped earning forever.
+//
+// `count` is the REMAINDER toward the next milestone, not a running total. That
+// is what makes changing `perCount` safe: there is no batch index to misalign,
+// so lowering 100→50 for someone sitting at 60 pays them once (they earned it)
+// instead of replaying an already-paid index.
+model SocialRatioTally {
+  id     String @id @default(cuid())
+  userId String // the user who gets PAID — author for recipient, engager for actor
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   String // "recipient" | "actor"
+  action String // SocialAction, e.g. "LIKE_RECEIVED"
+  window String // "daily" | "lifetime"
+  // The PAID user's local day for `daily`; the literal "*" for `lifetime`.
+  dateKey   String
+  count     Int      @default(0) // progress toward the next milestone
+  paidCount Int      @default(0) // milestones paid — monotonic, never reset
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, role, action, window, dateKey])
+  // Retention prunes stale DAILY rows only — see lib/log-retention.ts.
+  @@index([window, updatedAt])
+}
+
 model Group {
   id           String             @id @default(cuid())
   name         String
@@ -3473,16 +3663,29 @@ model PageVisitDaily {
 
 // ── Events / Quests (feature #10) ────────────────────────────────────────────
 // Admin-authored, time-boxed challenges: hit a target action count within the
-// window → claim a reward. Progress is computed live from existing activity
-// tables (team adds, task/quiz completions, lottery buys, social actions);
-// UPLOAD_PROOF events store the user's uploaded proof URL instead.
+// window → claim a reward.
+//
+// Progress is a FORWARD-ONLY counter written at the moment the action happens
+// (src/lib/event-progress.ts), deduped by EventActionLog. It used to be
+// recomputed on read by counting rows in shared activity tables over
+// [startAt … now], so whatever a user had already done counted the instant an
+// event was published — the Claim button could be green before they had even
+// seen the event. Never reintroduce a read-time computation here.
+//
+// UPLOAD_PROOF is the one exception: it stores the user's proof URL instead.
 enum EventActionType {
-  TEAM_ADD
+  TEAM_ADD // legacy alias for REFERRAL_SIGNUP
   TASK_COMPLETE
   QUIZ_COMPLETE
   LOTTERY_BUY
   UPLOAD_PROOF
-  SOCIAL_ACTION
+  SOCIAL_ACTION // legacy catch-all: satisfied by any FEED_* action
+  FEED_LIKE
+  FEED_COMMENT
+  FEED_SHARE
+  FEED_POST
+  FEED_VOTE
+  REFERRAL_SIGNUP
 }
 
 model Event {
@@ -3500,9 +3703,15 @@ model Event {
   startAt             DateTime
   endAt               DateTime
   isActive            Boolean             @default(true)
+  // AudienceCriteria (src/lib/audience.ts) — country/gender/age/package/etc.
+  audience            Json?
+  // Max actions credited per user per local day. 0 = unlimited.
+  dailyCap            Int                 @default(0)
+  notifyOnStart       Boolean             @default(false)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   progress            UserEventProgress[]
+  actionLogs          EventActionLog[]
 
   @@index([isActive, startAt, endAt])
 }
@@ -3513,16 +3722,51 @@ model UserEventProgress {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   eventId      String
   event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // Authoritative counter. Only event-progress.ts increments it; claiming must
+  // never write it — a claim-time snapshot would clobber the real count.
   progress     Int       @default(0)
   proofUrl     String?
   claimedAt    DateTime?
   // Which tier thresholds this user has already claimed (multi-tier events).
   claimedTiers Int[]     @default([])
+  // First credited action — this user's personal start line for the event.
+  joinedAt     DateTime?
+  lastActionAt DateTime?
+  // User-local day key + count, for Event.dailyCap.
+  dayKey       String?
+  dayCount     Int       @default(0)
+  // Dedups the one-time "reward ready" notification.
+  notifiedComplete Boolean @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   @@unique([userId, eventId])
   @@index([eventId])
+}
+
+// One row per action that actually counted toward an event.
+//
+// The unique constraint is the single enforcement point for every anti-abuse
+// rule: liking the same post twice, unlike-then-relike, a replayed referral
+// verification, a retried lottery purchase — all collapse to one row, so the
+// counter above can only move once per real action.
+model EventActionLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // The emitted key, e.g. "feed_like" — narrower than the event's actionType,
+  // which may be a legacy alias that accepts several keys.
+  actionKey String
+  // What makes this action unique, e.g. "like:<postId>", "referral:<userId>".
+  dedupKey  String
+  units     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId, dedupKey])
+  @@index([eventId, userId])
+  @@index([createdAt])
 }
 
 // Per-viewer impression counter for boosted posts (feed boost frequency cap).

@@ -1,5 +1,11 @@
 import { CheckCircle2, XCircle, Circle, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  coerceQuizAnswers,
+  coerceQuizQuestions,
+  scoreQuiz,
+  NO_CORRECT_ANSWER,
+} from "@/lib/quiz-shape";
 import type { PanelSubmission, PanelTask } from "./types";
 
 interface Props {
@@ -7,20 +13,15 @@ interface Props {
   task: PanelTask;
 }
 
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation?: string;
-  imageUrl?: string;
-}
-
 export function QuizProofPanel({ submission, task }: Props) {
-  const questions = (task.questions as QuizQuestion[] | null) ?? [];
-  const userAnswers = (submission.answers as number[] | null) ?? [];
+  // Both columns are `Json?` and hold more than one shape — see quiz-shape.ts.
+  // This used to cast straight to an array, and a double-encoded (string) row
+  // sailed past the `.length === 0` guard below into `.reduce`.
+  const questions = coerceQuizQuestions(task.questions);
+  const userAnswers = coerceQuizAnswers(submission.answers);
   const score = submission.score;
 
-  if (questions.length === 0) {
+  if (!questions) {
     return (
       <div className="rounded-lg bg-gray-950 border border-gray-800 p-3 text-xs text-gray-500">
         No questions configured on this quiz.
@@ -28,9 +29,7 @@ export function QuizProofPanel({ submission, task }: Props) {
     );
   }
 
-  const correctCount = questions.reduce((acc, q, i) => {
-    return acc + (userAnswers[i] === q.correctAnswer ? 1 : 0);
-  }, 0);
+  const correctCount = scoreQuiz(questions, userAnswers);
 
   const scoreTone =
     score === null
@@ -60,16 +59,19 @@ export function QuizProofPanel({ submission, task }: Props) {
 
       <ol className="space-y-2">
         {questions.map((q, qIdx) => {
-          const userPick = userAnswers[qIdx];
+          const userPick = userAnswers[qIdx] ?? null;
           const isCorrect =
-            typeof userPick === "number" && userPick === q.correctAnswer;
-          const noAnswer = typeof userPick !== "number";
+            userPick !== null && userPick === q.correctAnswer;
+          const noAnswer = userPick === null;
+          // A question stored without any correct-answer key would otherwise
+          // paint every option red and read as "the user got it wrong".
+          const unscored = q.correctAnswer === NO_CORRECT_ANSWER;
           return (
             <li
               key={qIdx}
               className={cn(
                 "rounded-lg border p-3 space-y-2",
-                noAnswer
+                noAnswer || unscored
                   ? "bg-gray-950 border-gray-800"
                   : isCorrect
                   ? "bg-emerald-500/5 border-emerald-500/30"
@@ -85,7 +87,7 @@ export function QuizProofPanel({ submission, task }: Props) {
               <div className="space-y-1 ml-7">
                 {q.options.map((opt, oIdx) => {
                   const isUserPick = userPick === oIdx;
-                  const isCorrectOpt = q.correctAnswer === oIdx;
+                  const isCorrectOpt = !unscored && q.correctAnswer === oIdx;
                   return (
                     <div
                       key={oIdx}
@@ -122,6 +124,12 @@ export function QuizProofPanel({ submission, task }: Props) {
                 {noAnswer && (
                   <p className="text-[11px] text-gray-500 italic">
                     User didn&apos;t answer this question
+                  </p>
+                )}
+                {unscored && (
+                  <p className="text-[11px] text-amber-400/80 italic">
+                    No correct answer is configured on this question — it
+                    can&apos;t be scored.
                   </p>
                 )}
               </div>

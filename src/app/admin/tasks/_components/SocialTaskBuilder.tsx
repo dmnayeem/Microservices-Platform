@@ -10,14 +10,16 @@ import {
   bundleTotalPoints,
   actionPriority,
   isWatchAction,
+  type AiMode,
   type SocialBundleConfig,
   type BundleItem,
   type ProofRequirements as ProofReqs,
   type SocialField,
+  type SocialAction,
 } from "@/lib/social-tasks";
+import { diyPromptFor } from "@/lib/social-ai-recipe";
 import {
   Sparkles,
-  ImageIcon,
   AlertCircle,
   Plus,
   Minus,
@@ -26,11 +28,27 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
-import { SmartImage } from "@/components/user/primitives/smart-image";
+import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+
+/**
+ * How the user gets their post content.
+ *
+ * "Users prompt ChatGPT themselves" costs nothing and works even without a
+ * Gemini key — worth choosing when a task will go out to a lot of people.
+ */
+const AI_MODE_OPTIONS: Array<{ value: AiMode; label: string }> = [
+  { value: "off", label: "Fixed content" },
+  { value: "generate", label: "AI generates in-app" },
+  { value: "diy", label: "Users prompt ChatGPT" },
+  { value: "both", label: "Both" },
+];
 
 interface Props {
   value: SocialBundleConfig;
   onChange: (next: SocialBundleConfig) => void;
+  /** The task being edited — used to preview the exact prompt users will see. */
+  taskTitle?: string;
+  taskDescription?: string;
 }
 
 /**
@@ -41,7 +59,12 @@ interface Props {
  *          fields, optional AI prompt, and proof requirements.
  * The task's total points = Σ of each item's points (recomputed server-side).
  */
-export function SocialTaskBuilder({ value, onChange }: Props) {
+export function SocialTaskBuilder({
+  value,
+  onChange,
+  taskTitle = "",
+  taskDescription = "",
+}: Props) {
   const platform = useMemo(() => getPlatform(value.platform), [value.platform]);
 
   // Selected items in the admin's chosen order — the exact order users will
@@ -218,6 +241,8 @@ export function SocialTaskBuilder({ value, onChange }: Props) {
               idx={idx}
               platformKey={value.platform}
               platformLabel={platform?.label}
+              taskTitle={taskTitle}
+              taskDescription={taskDescription}
               onUpdate={(patch) => updateItem(item.action, patch)}
               onRemove={() => toggleAction(item.action)}
             />
@@ -284,6 +309,8 @@ function SocialActionCard({
   idx,
   platformKey,
   platformLabel,
+  taskTitle = "",
+  taskDescription = "",
   onUpdate,
   onRemove,
 }: {
@@ -291,6 +318,8 @@ function SocialActionCard({
   idx: number;
   platformKey: string | null;
   platformLabel?: string;
+  taskTitle?: string;
+  taskDescription?: string;
   onUpdate: (patch: Partial<BundleItem>) => void;
   onRemove: () => void;
 }) {
@@ -338,24 +367,29 @@ function SocialActionCard({
         <div className="flex items-center gap-2">
           {def.supportsAiPrompt && (
             <label
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 cursor-pointer"
-              title="On: each user clicks AI to generate their own unique variant from this task + your content. Off: users share your content exactly as written."
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30"
+              title="How each user gets their content."
             >
-              <input
-                type="checkbox"
-                checked={item.aiPromptEnabled}
-                onChange={() =>
+              <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <select
+                value={item.aiMode ?? (item.aiPromptEnabled ? "generate" : "off")}
+                onChange={(e) => {
+                  const mode = e.target.value as AiMode;
                   onUpdate({
-                    aiPromptEnabled: !item.aiPromptEnabled,
-                    aiPrompt: !item.aiPromptEnabled ? item.aiPrompt ?? "" : null,
-                  })
-                }
-                className="rounded bg-gray-800 border-gray-600 text-purple-500"
-              />
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-              <span className="text-xs font-semibold text-purple-300">
-                Users AI-generate their own
-              </span>
+                    aiMode: mode,
+                    // Keep the legacy flag in sync — older readers still use it.
+                    aiPromptEnabled: mode !== "off",
+                    aiPrompt: mode === "off" ? null : (item.aiPrompt ?? ""),
+                  });
+                }}
+                className="bg-transparent text-xs font-semibold text-purple-300 focus:outline-none cursor-pointer"
+              >
+                {AI_MODE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value} className="bg-gray-900">
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </label>
           )}
           <button
@@ -404,8 +438,11 @@ function SocialActionCard({
         <AiPromptSection
           prompt={item.aiPrompt ?? ""}
           onChange={(p) => onUpdate({ aiPrompt: p })}
-          generatableFields={def.aiGeneratableFields}
-          actionLabel={def.label}
+          def={def}
+          platformLabel={platformLabel}
+          fields={item.fields}
+          taskTitle={taskTitle}
+          taskDescription={taskDescription}
         />
       ) : null}
 
@@ -588,14 +625,35 @@ function PointsStepper({
 function AiPromptSection({
   prompt,
   onChange,
-  generatableFields,
-  actionLabel,
+  def,
+  platformLabel,
+  fields,
+  taskTitle,
+  taskDescription,
 }: {
   prompt: string;
   onChange: (next: string) => void;
-  generatableFields: string[];
-  actionLabel: string;
+  def: SocialAction;
+  platformLabel?: string;
+  fields: Record<string, string>;
+  taskTitle: string;
+  taskDescription: string;
 }) {
+  const label = platformLabel ?? "social media";
+  // Names, not raw field keys — `pinDescription, imagePrompt` reads as noise.
+  const generatableLabels = (def.recipe ?? [])
+    .filter((s) => s.aiGeneratable)
+    .map((s) => s.label);
+  // The exact text a user in copy-prompt mode will be handed. Showing it here is
+  // the admin's only way to check the recipe is actually complete before saving.
+  const preview = diyPromptFor(
+    def,
+    label,
+    fields,
+    { title: taskTitle, description: taskDescription },
+    prompt
+  );
+
   return (
     <div className="rounded-lg bg-purple-500/5 border border-purple-500/30 p-4 space-y-2">
       <div className="flex items-center gap-2">
@@ -605,10 +663,10 @@ function AiPromptSection({
         </p>
       </div>
       <p className="text-xs text-gray-400">
-        Each user clicks &quot;Generate&quot; to get a unique{" "}
-        {actionLabel.toLowerCase()} built from this task&apos;s title/description
-        and your reference content above. Add any extra guidance (tone, length,
-        hashtags) here — leave blank to use sensible defaults.
+        Users get a unique {def.label.toLowerCase()} built from this task&apos;s
+        title/description and your reference content above. Add any extra
+        guidance (tone, length, hashtags) here — leave blank for sensible
+        defaults.
       </p>
       <textarea
         rows={3}
@@ -618,10 +676,19 @@ function AiPromptSection({
         className="w-full px-3 py-2 bg-gray-950 border border-purple-500/30 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
       />
       <p className="text-[11px] text-gray-500">
-        Generatable fields:{" "}
-        <span className="text-purple-300">{generatableFields.join(", ")}</span>.
-        Each user gets a different result.
+        AI writes:{" "}
+        <span className="text-purple-300">{generatableLabels.join(", ")}</span>.
+        Everything else you filled in above is passed through unchanged. Each
+        user gets a different result.
       </p>
+      <details className="group">
+        <summary className="text-[11px] text-purple-300 cursor-pointer select-none hover:text-purple-200">
+          Preview the prompt users will copy
+        </summary>
+        <pre className="mt-2 p-2 rounded bg-gray-950 border border-gray-800 text-[10px] text-gray-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+          {preview}
+        </pre>
+      </details>
     </div>
   );
 }
@@ -692,28 +759,40 @@ function FieldEditor({
   }
 
   if (field.type === "image-url") {
+    // Uploading (rather than pasting an external URL) matters here: an image in
+    // our own bucket is served same-origin through /api/media, which is what
+    // makes the user's Download button actually download instead of just
+    // opening a tab. A pasted third-party URL can't be forced to download.
     return (
       <div>
         {labelEl}
-        <div className="flex items-center gap-3">
-          {value && (
-            <SmartImage
-              src={value}
-              alt="Preview"
-              width={80}
-              height={56}
-              className="w-20 h-14 rounded-lg object-cover bg-gray-900 border border-gray-700"
-            />
-          )}
-          <input
-            type="url"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={field.placeholder ?? "https://..."}
-            className={baseClass + " flex-1"}
-          />
-          {!value && <ImageIcon className="w-5 h-5 text-gray-600" />}
-        </div>
+        <ImageUploadField
+          value={value}
+          onChange={onChange}
+          previewSize="md"
+          urlPlaceholder={field.placeholder ?? "…or paste a URL"}
+        />
+        {helperEl}
+      </div>
+    );
+  }
+
+  if (field.type === "image-prompt") {
+    return (
+      <div>
+        {labelEl}
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          rows={3}
+          className={baseClass + " resize-y"}
+        />
+        <p className="text-[10px] text-purple-300/80 mt-1 flex items-start gap-1">
+          <Sparkles className="w-3 h-3 mt-0.5 shrink-0" />
+          Fill either the image above OR this prompt. Users paste the prompt into
+          ChatGPT/Gemini, generate the image themselves, and upload it.
+        </p>
         {helperEl}
       </div>
     );

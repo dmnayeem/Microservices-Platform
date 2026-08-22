@@ -34,6 +34,7 @@ import {
   AdblockNotice,
 } from "@/components/user/primitives/task-upgrade-notice";
 import { ensureAdsAllowed } from "@/lib/adblock";
+import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
 
 interface ArticleTask {
   id: string;
@@ -651,14 +652,11 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           {req?.screenshot && (
             <div>
               <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                Screenshot URL <span className="text-red-400">*</span>
+                Screenshot <span className="text-red-400">*</span>
               </label>
-              <input
-                type="url"
+              <ProofImageUpload
                 value={screenshotUrl}
-                onChange={(e) => setScreenshotUrl(e.target.value)}
-                placeholder="https://... (upload to imgur, etc.)"
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                onChange={setScreenshotUrl}
               />
             </div>
           )}

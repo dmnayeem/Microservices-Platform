@@ -1,51 +1,109 @@
 "use client";
 
-import { confirmDialog } from "@/lib/confirm";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X, Loader2, Save, Target, Pencil, Trash2 } from "lucide-react";
+import { Plus, X, Loader2, Save, Rocket, Pencil, Trash2 } from "lucide-react";
+import { confirmDialog } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import {
   AdminTable,
   type AdminColumn,
 } from "@/components/admin/ui/admin-table";
+import { DateField } from "@/components/ui/date-field";
+import {
+  TaskAudienceTargeting,
+  type TaskAudienceValue,
+} from "@/components/admin/tasks/task-audience-targeting";
+import {
+  EVENT_ACTION_TYPES,
+  EVENT_ACTION_META,
+  type EventActionType,
+  type EventTier,
+} from "@/lib/events-shared";
 
-interface Mission {
+/**
+ * Missions admin.
+ *
+ * The create and edit forms used to be two separate ~170-line components with
+ * the same body — the exact arrangement where a new field gets added to one and
+ * forgotten in the other. There is now one `MissionModal` for both.
+ */
+
+export interface AdminMission {
   id: string;
   title: string;
   description: string | null;
-  type: string;
+  iconEmoji: string | null;
+  actionType: EventActionType;
   targetValue: number;
+  tiers: EventTier[];
   pointsReward: number;
   cashReward: number;
   xpReward: number;
-  duration: string;
-  autoRefresh: boolean;
+  dailyCap: number;
+  startAt: string | null;
+  endAt: string | null;
+  order: number;
+  unlockMissionId: string | null;
   requiredLevel: number;
+  requiredAccessLevel: number;
   isActive: boolean;
+  countries: string[];
+  genders: string[];
+  regions: string[];
+  divisions: string[];
+  districts: string[];
+  subDistricts: string[];
+  postalCodes: string[];
+  minAge: number | null;
+  maxAge: number | null;
+  /** How many users have progress — shown so deletes aren't a surprise. */
+  participants?: number;
 }
 
 interface Props {
-  initial: Mission[];
+  initial: AdminMission[];
   canManage: boolean;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  TASK_COMPLETION: "Complete tasks",
-  LOGIN_STREAK: "Login streak",
-  REFERRAL: "Refer users",
-  SPEND: "Spend points",
-  EARN: "Earn points",
-};
+const inp =
+  "w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-60";
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-slate-300 mb-1">
+        {label}
+      </span>
+      {children}
+      {hint && <span className="block text-[11px] text-slate-500 mt-1">{hint}</span>}
+    </label>
+  );
+}
+
+function toDatetimeLocal(v: string | null): string {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export function MissionsClient({ initial, canManage }: Props) {
   const router = useRouter();
-  const [showCreate, setShowCreate] = useState(false);
-  const [editing, setEditing] = useState<Mission | null>(null);
+  const [modal, setModal] = useState<AdminMission | "new" | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const toggleActive = async (m: Mission) => {
+  const toggleActive = async (m: AdminMission) => {
     setBusyId(m.id);
     try {
       const res = await fetch(`/api/admin/missions/${m.id}`, {
@@ -53,7 +111,7 @@ export function MissionsClient({ initial, canManage }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !m.isActive }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
       toast.success(m.isActive ? "Deactivated" : "Activated");
       router.refresh();
     } catch (err) {
@@ -65,15 +123,23 @@ export function MissionsClient({ initial, canManage }: Props) {
     }
   };
 
-  const remove = async (m: Mission) => {
-    if (!(await confirmDialog({ title: `Delete "${m.title}"?`, description: "This cannot be undone.", tone: "danger", confirmLabel: "Delete" }))) return;
+  const remove = async (m: AdminMission) => {
+    const hasProgress = (m.participants ?? 0) > 0;
+    const okToGo = await confirmDialog({
+      title: hasProgress ? `Deactivate "${m.title}"?` : `Delete "${m.title}"?`,
+      description: hasProgress
+        ? `${m.participants} user${m.participants === 1 ? " has" : "s have"} progress on this mission, so it will be deactivated instead of deleted — their progress is kept.`
+        : "Nobody has started this mission yet, so it will be deleted. This cannot be undone.",
+      tone: "danger",
+      confirmLabel: hasProgress ? "Deactivate" : "Delete",
+    });
+    if (!okToGo) return;
     setBusyId(m.id);
     try {
-      const res = await fetch(`/api/admin/missions/${m.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed");
-      toast.success("Mission deleted");
+      const res = await fetch(`/api/admin/missions/${m.id}`, { method: "DELETE" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "Failed");
+      toast.success(d.message ?? "Mission deleted");
       router.refresh();
     } catch (err) {
       toast.error("Failed to delete", {
@@ -84,33 +150,37 @@ export function MissionsClient({ initial, canManage }: Props) {
     }
   };
 
-  const columns: AdminColumn<Mission>[] = [
+  const columns: AdminColumn<AdminMission>[] = [
     {
       key: "mission",
       header: "Mission",
       primary: true,
       cell: (m) => (
         <>
-          <p className="text-white font-medium">{m.title}</p>
+          <p className="text-white font-medium">
+            {m.iconEmoji ? `${m.iconEmoji} ` : ""}
+            {m.title}
+          </p>
           {m.description && (
-            <p className="text-xs text-slate-500 line-clamp-1">
-              {m.description}
-            </p>
+            <p className="text-xs text-slate-500 line-clamp-1">{m.description}</p>
           )}
         </>
       ),
     },
     {
-      key: "type",
-      header: "Type",
+      key: "goal",
+      header: "Goal",
       className: "text-slate-300",
-      cell: (m) => TYPE_LABELS[m.type] ?? m.type,
-    },
-    {
-      key: "target",
-      header: "Target",
-      className: "tabular-nums",
-      cell: (m) => m.targetValue,
+      cell: (m) => (
+        <>
+          {EVENT_ACTION_META[m.actionType]?.label ?? m.actionType}
+          <span className="block text-xs text-slate-500 tabular-nums">
+            {m.tiers.length > 0
+              ? `${m.tiers.length} tiers · up to ${m.tiers[m.tiers.length - 1].threshold}`
+              : `${m.targetValue} ${EVENT_ACTION_META[m.actionType]?.unit ?? ""}`}
+          </span>
+        </>
+      ),
     },
     {
       key: "reward",
@@ -125,13 +195,33 @@ export function MissionsClient({ initial, canManage }: Props) {
       ),
     },
     {
-      key: "duration",
-      header: "Duration",
-      cell: (m) => (
-        <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300">
-          {m.duration}
-        </span>
-      ),
+      key: "who",
+      header: "Who",
+      cell: (m) => {
+        const targeted =
+          m.countries.length ||
+          m.genders.length ||
+          m.regions.length ||
+          m.divisions.length ||
+          m.districts.length ||
+          m.subDistricts.length ||
+          m.postalCodes.length ||
+          m.minAge != null ||
+          m.maxAge != null;
+        return (
+          <span className="text-xs text-slate-400">
+            {targeted ? "Targeted" : "Everyone"}
+            {m.requiredLevel > 1 && ` · Lv${m.requiredLevel}+`}
+            {m.requiredAccessLevel > 0 && ` · Tier${m.requiredAccessLevel}+`}
+          </span>
+        );
+      },
+    },
+    {
+      key: "participants",
+      header: "Players",
+      className: "tabular-nums text-slate-300",
+      cell: (m) => m.participants ?? 0,
     },
     {
       key: "active",
@@ -140,11 +230,13 @@ export function MissionsClient({ initial, canManage }: Props) {
         <button
           disabled={!canManage || busyId === m.id}
           onClick={() => toggleActive(m)}
-          className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
+          className={cn(
+            "px-2 py-0.5 rounded-full text-xs transition-colors disabled:opacity-50",
             m.isActive
               ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
-              : "bg-slate-700 text-slate-400 hover:bg-slate-600"
-          } ${canManage ? "cursor-pointer" : "cursor-default"} disabled:opacity-50`}
+              : "bg-slate-700 text-slate-400 hover:bg-slate-600",
+            canManage ? "cursor-pointer" : "cursor-default"
+          )}
         >
           {m.isActive ? "Active" : "Inactive"}
         </button>
@@ -156,10 +248,10 @@ export function MissionsClient({ initial, canManage }: Props) {
             key: "actions",
             header: "Actions",
             className: "text-right",
-            cell: (m: Mission) => (
+            cell: (m: AdminMission) => (
               <div className="inline-flex gap-1">
                 <button
-                  onClick={() => setEditing(m)}
+                  onClick={() => setModal(m)}
                   className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-blue-400"
                   title="Edit"
                 >
@@ -179,7 +271,7 @@ export function MissionsClient({ initial, canManage }: Props) {
                 </button>
               </div>
             ),
-          } as AdminColumn<Mission>,
+          } as AdminColumn<AdminMission>,
         ]
       : []),
   ];
@@ -189,7 +281,7 @@ export function MissionsClient({ initial, canManage }: Props) {
       {canManage && (
         <div className="flex justify-end">
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => setModal("new")}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="w-4 h-4" />
@@ -198,75 +290,159 @@ export function MissionsClient({ initial, canManage }: Props) {
         </div>
       )}
 
-      <AdminTable<Mission>
+      <AdminTable<AdminMission>
         columns={columns}
         rows={initial}
         getRowKey={(m) => m.id}
         empty={
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
-            <Target className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+            <Rocket className="w-12 h-12 mx-auto mb-4 text-slate-600" />
             <h3 className="text-lg font-medium text-white mb-1">
               No missions yet
             </h3>
+            <p className="text-sm text-slate-500">
+              Missions are the platform&apos;s biggest rewards — set a goal worth
+              chasing.
+            </p>
           </div>
         }
       />
 
-      {showCreate && <CreateModal onClose={() => setShowCreate(false)} />}
-      {editing && (
-        <EditModal
-          mission={editing}
-          onClose={() => setEditing(null)}
+      {modal && (
+        <MissionModal
+          mission={modal === "new" ? null : modal}
+          allMissions={initial}
+          onClose={() => setModal(null)}
         />
       )}
     </>
   );
 }
 
-function EditModal({
+// ── One modal for create AND edit ────────────────────────────────────────────
+
+interface FormState {
+  title: string;
+  description: string;
+  iconEmoji: string;
+  actionType: EventActionType;
+  targetValue: number;
+  tiers: EventTier[];
+  pointsReward: number;
+  xpReward: number;
+  cashReward: number;
+  dailyCap: number;
+  startAt: string;
+  endAt: string;
+  order: number;
+  unlockMissionId: string;
+  requiredLevel: number;
+  requiredAccessLevel: number;
+  isActive: boolean;
+  audience: TaskAudienceValue;
+}
+
+function formFrom(m: AdminMission | null): FormState {
+  return {
+    title: m?.title ?? "",
+    description: m?.description ?? "",
+    iconEmoji: m?.iconEmoji ?? "🏆",
+    actionType: m?.actionType ?? "TASK_COMPLETE",
+    targetValue: m?.targetValue ?? 10,
+    tiers: m?.tiers ?? [],
+    pointsReward: m?.pointsReward ?? 1000,
+    xpReward: m?.xpReward ?? 100,
+    cashReward: m?.cashReward ?? 0,
+    dailyCap: m?.dailyCap ?? 0,
+    startAt: toDatetimeLocal(m?.startAt ?? null),
+    endAt: toDatetimeLocal(m?.endAt ?? null),
+    order: m?.order ?? 0,
+    unlockMissionId: m?.unlockMissionId ?? "",
+    requiredLevel: m?.requiredLevel ?? 1,
+    requiredAccessLevel: m?.requiredAccessLevel ?? 0,
+    isActive: m?.isActive ?? true,
+    audience: {
+      countries: m?.countries ?? [],
+      genders: m?.genders ?? [],
+      regions: m?.regions ?? [],
+      divisions: m?.divisions ?? [],
+      districts: m?.districts ?? [],
+      subDistricts: m?.subDistricts ?? [],
+      postalCodes: m?.postalCodes ?? [],
+      minAge: m?.minAge ?? null,
+      maxAge: m?.maxAge ?? null,
+    },
+  };
+}
+
+function MissionModal({
   mission,
+  allMissions,
   onClose,
 }: {
-  mission: Mission;
+  mission: AdminMission | null;
+  allMissions: AdminMission[];
   onClose: () => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({
-    title: mission.title,
-    description: mission.description ?? "",
-    type: mission.type,
-    targetValue: mission.targetValue,
-    pointsReward: mission.pointsReward,
-    xpReward: mission.xpReward,
-    cashReward: mission.cashReward,
-    duration: mission.duration,
-    autoRefresh: mission.autoRefresh,
-    requiredLevel: mission.requiredLevel,
-    isActive: mission.isActive,
-  });
+  const [form, setForm] = useState<FormState>(() => formFrom(mission));
+  const isEdit = !!mission;
+  const meta = EVENT_ACTION_META[form.actionType];
+  const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+
+  // The final tier is what completes the mission and unlocks the next one, so
+  // the plain target must line up with it or the chain never advances.
+  const effectiveTarget =
+    form.tiers.length > 0
+      ? Math.max(...form.tiers.map((t) => t.threshold))
+      : form.targetValue;
 
   const submit = async () => {
-    if (!form.title.trim()) {
-      toast.error("Title required");
+    if (form.title.trim().length < 2) {
+      toast.error("Title must be at least 2 characters");
+      return;
+    }
+    if (form.tiers.some((t) => t.threshold < 1)) {
+      toast.error("Every tier needs a target of at least 1");
       return;
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/missions/${mission.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `HTTP ${res.status}`);
-      }
-      toast.success("Mission updated");
+      const res = await fetch(
+        isEdit ? `/api/admin/missions/${mission!.id}` : "/api/admin/missions",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: form.title.trim(),
+            description: form.description.trim() || null,
+            iconEmoji: form.iconEmoji.trim() || null,
+            actionType: form.actionType,
+            targetValue: effectiveTarget,
+            tiers: form.tiers.length > 0 ? form.tiers : null,
+            pointsReward: form.pointsReward,
+            xpReward: form.xpReward,
+            cashReward: form.cashReward,
+            dailyCap: form.dailyCap,
+            startAt: form.startAt ? new Date(form.startAt).toISOString() : null,
+            endAt: form.endAt ? new Date(form.endAt).toISOString() : null,
+            order: form.order,
+            unlockMissionId: form.unlockMissionId || null,
+            requiredLevel: form.requiredLevel,
+            requiredAccessLevel: form.requiredAccessLevel,
+            isActive: form.isActive,
+            ...form.audience,
+          }),
+        }
+      );
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success(isEdit ? "Mission updated" : "Mission created");
       onClose();
       router.refresh();
     } catch (err) {
-      toast.error("Failed", {
+      toast.error("Couldn't save", {
         description: err instanceof Error ? err.message : String(err),
       });
     } finally {
@@ -275,415 +451,354 @@ function EditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-slate-800 rounded-2xl border border-slate-700 w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-white">Edit Mission</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-lg">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-slate-900 rounded-xl border border-slate-800 w-full max-w-2xl my-8">
+        <div className="flex items-center justify-between p-5 border-b border-slate-800">
+          <h2 className="text-lg font-semibold text-white">
+            {isEdit ? "Edit mission" : "New mission"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded-lg"
+            aria-label="Close"
+          >
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
-        <div className="p-6 space-y-3 overflow-y-auto">
-          <Field label="Title *">
-            <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className={inp}
-            />
-          </Field>
+
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-[80px_1fr] gap-3">
+            <Field label="Icon">
+              <input
+                value={form.iconEmoji}
+                onChange={(e) => set({ iconEmoji: e.target.value })}
+                className={cn(inp, "text-center text-lg")}
+                maxLength={8}
+              />
+            </Field>
+            <Field label="Title">
+              <input
+                value={form.title}
+                onChange={(e) => set({ title: e.target.value })}
+                className={inp}
+                placeholder="e.g. Invite 50 friends"
+              />
+            </Field>
+          </div>
+
           <Field label="Description">
-            <input
+            <textarea
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) => set({ description: e.target.value })}
+              rows={2}
               className={inp}
+              placeholder="What the user has to do, and why it's worth it."
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Type">
+
+          {/* ── The goal ── */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <p className="text-sm font-bold text-white">What counts</p>
+            <Field label="Action" hint={meta?.hint}>
               <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                value={form.actionType}
+                onChange={(e) =>
+                  set({ actionType: e.target.value as EventActionType })
+                }
                 className={inp}
               >
-                <option value="TASK_COMPLETION">Task Completion</option>
-                <option value="LOGIN_STREAK">Login Streak</option>
-                <option value="REFERRAL">Referral</option>
-                <option value="SPEND">Spend</option>
-                <option value="EARN">Earn</option>
+                {EVENT_ACTION_TYPES.filter(
+                  (t) => !EVENT_ACTION_META[t]?.deprecated && t !== "UPLOAD_PROOF"
+                ).map((t) => (
+                  <option key={t} value={t} className="bg-slate-900">
+                    {EVENT_ACTION_META[t]?.label ?? t}
+                  </option>
+                ))}
               </select>
             </Field>
-            <Field label="Target Value">
-              <input
-                type="number"
-                min={1}
-                value={form.targetValue}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    targetValue: parseInt(e.target.value) || 1,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Field label="Points">
+
+            {form.tiers.length === 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                <Field label={`Target (${meta?.unit ?? "actions"})`}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.targetValue}
+                    onChange={(e) =>
+                      set({ targetValue: Math.max(1, parseInt(e.target.value) || 1) })
+                    }
+                    className={inp}
+                  />
+                </Field>
+                <Field label="Points reward">
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.pointsReward}
+                    onChange={(e) =>
+                      set({ pointsReward: Math.max(0, parseInt(e.target.value) || 0) })
+                    }
+                    className={inp}
+                  />
+                </Field>
+                <Field label="XP reward">
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.xpReward}
+                    onChange={(e) =>
+                      set({ xpReward: Math.max(0, parseInt(e.target.value) || 0) })
+                    }
+                    className={inp}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {/* Tiers */}
+            <div className="rounded-lg bg-slate-950 border border-slate-800 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-300">
+                  Reward tiers{" "}
+                  <span className="font-normal text-slate-500">
+                    (optional — each claims separately)
+                  </span>
+                </p>
+                <button
+                  onClick={() =>
+                    set({
+                      tiers: [
+                        ...form.tiers,
+                        {
+                          threshold:
+                            (form.tiers.at(-1)?.threshold ?? 0) +
+                            Math.max(1, form.targetValue),
+                          rewardPoints: form.pointsReward,
+                          rewardXp: form.xpReward,
+                        },
+                      ],
+                    })
+                  }
+                  className="text-xs px-2 py-1 rounded bg-slate-800 text-slate-200 hover:bg-slate-700"
+                >
+                  + Add tier
+                </button>
+              </div>
+              {form.tiers.length === 0 ? (
+                <p className="text-[11px] text-slate-500">
+                  No tiers — one target, one reward. Add tiers to keep users
+                  coming back for the next milestone.
+                </p>
+              ) : (
+                form.tiers.map((t, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={t.threshold}
+                      onChange={(e) => {
+                        const next = [...form.tiers];
+                        next[i] = {
+                          ...t,
+                          threshold: Math.max(1, parseInt(e.target.value) || 1),
+                        };
+                        set({ tiers: next });
+                      }}
+                      className={inp}
+                      placeholder="target"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={t.rewardPoints}
+                      onChange={(e) => {
+                        const next = [...form.tiers];
+                        next[i] = {
+                          ...t,
+                          rewardPoints: Math.max(0, parseInt(e.target.value) || 0),
+                        };
+                        set({ tiers: next });
+                      }}
+                      className={inp}
+                      placeholder="pts"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={t.rewardXp}
+                      onChange={(e) => {
+                        const next = [...form.tiers];
+                        next[i] = {
+                          ...t,
+                          rewardXp: Math.max(0, parseInt(e.target.value) || 0),
+                        };
+                        set({ tiers: next });
+                      }}
+                      className={inp}
+                      placeholder="xp"
+                    />
+                    <button
+                      onClick={() =>
+                        set({ tiers: form.tiers.filter((_, j) => j !== i) })
+                      }
+                      className="p-2 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                      aria-label="Remove tier"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+              {form.tiers.length > 0 && (
+                <p className="text-[11px] text-slate-500">
+                  Target/points/XP per tier. The highest tier ({effectiveTarget}{" "}
+                  {meta?.unit}) completes the mission and unlocks anything chained
+                  to it.
+                </p>
+              )}
+            </div>
+
+            <Field
+              label="Daily cap (0 = unlimited)"
+              hint="Most actions a user can bank toward this mission in one day. Set it for anything a user controls freely, like posting."
+            >
               <input
                 type="number"
                 min={0}
-                value={form.pointsReward}
+                value={form.dailyCap}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    pointsReward: parseInt(e.target.value) || 0,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
-            <Field label="XP">
-              <input
-                type="number"
-                min={0}
-                value={form.xpReward}
-                onChange={(e) =>
-                  setForm({ ...form, xpReward: parseInt(e.target.value) || 0 })
-                }
-                className={inp}
-              />
-            </Field>
-            <Field label="Cash ($)">
-              <input
-                type="number"
-                step={0.01}
-                min={0}
-                value={form.cashReward}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    cashReward: parseFloat(e.target.value) || 0,
-                  })
+                  set({ dailyCap: Math.max(0, parseInt(e.target.value) || 0) })
                 }
                 className={inp}
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Duration">
-              <select
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                className={inp}
-              >
-                <option value="DAILY">Daily</option>
-                <option value="WEEKLY">Weekly</option>
-              </select>
-            </Field>
-            <Field label="Required Level">
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={form.requiredLevel}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    requiredLevel: parseInt(e.target.value) || 1,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
+
+          {/* ── Scheduling + chain ── */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <p className="text-sm font-bold text-white">When &amp; order</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Starts (optional)">
+                <DateField
+                  type="datetime-local"
+                  value={form.startAt}
+                  onChange={(v) => set({ startAt: v })}
+                  className={inp}
+                />
+              </Field>
+              <Field label="Ends (optional)">
+                <DateField
+                  type="datetime-local"
+                  value={form.endAt}
+                  onChange={(v) => set({ endAt: v })}
+                  className={inp}
+                />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Display order (lower = earlier)">
+                <input
+                  type="number"
+                  value={form.order}
+                  onChange={(e) => set({ order: parseInt(e.target.value) || 0 })}
+                  className={inp}
+                />
+              </Field>
+              <Field label="Unlocked by (optional)">
+                <select
+                  value={form.unlockMissionId}
+                  onChange={(e) => set({ unlockMissionId: e.target.value })}
+                  className={inp}
+                >
+                  <option value="">— None (always available)</option>
+                  {allMissions
+                    .filter((x) => x.id !== mission?.id)
+                    .map((x) => (
+                      <option key={x.id} value={x.id} className="bg-slate-900">
+                        {x.iconEmoji ? `${x.iconEmoji} ` : ""}
+                        {x.title}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+            </div>
           </div>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.autoRefresh}
-                onChange={(e) =>
-                  setForm({ ...form, autoRefresh: e.target.checked })
-                }
-                className="rounded bg-slate-800 border-slate-600 text-blue-500"
-              />
-              Auto-refresh
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) =>
-                  setForm({ ...form, isActive: e.target.checked })
-                }
-                className="rounded bg-slate-800 border-slate-600 text-blue-500"
-              />
-              Active
-            </label>
+
+          {/* ── Who can see it ── */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <p className="text-sm font-bold text-white">Who can see this mission</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Minimum level">
+                <input
+                  type="number"
+                  min={1}
+                  value={form.requiredLevel}
+                  onChange={(e) =>
+                    set({ requiredLevel: Math.max(1, parseInt(e.target.value) || 1) })
+                  }
+                  className={inp}
+                />
+              </Field>
+              <Field label="Minimum plan tier (0 = free)">
+                <input
+                  type="number"
+                  min={0}
+                  value={form.requiredAccessLevel}
+                  onChange={(e) =>
+                    set({
+                      requiredAccessLevel: Math.max(0, parseInt(e.target.value) || 0),
+                    })
+                  }
+                  className={inp}
+                />
+              </Field>
+            </div>
+
+            <TaskAudienceTargeting
+              value={form.audience}
+              onChange={(patch) =>
+                set({ audience: { ...form.audience, ...patch } })
+              }
+            />
+            <p className="text-[11px] text-slate-500">
+              Leave blank to show this mission to everyone. Targeting is strict —
+              a user whose profile is missing a targeted field (no country, no
+              date of birth) will not see it.
+            </p>
           </div>
+
+          <label className="flex items-center gap-3 cursor-pointer pt-2">
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => set({ isActive: e.target.checked })}
+              className="rounded bg-slate-800 border-slate-600 text-emerald-500"
+            />
+            <span className="text-sm text-white">Active (visible to users)</span>
+          </label>
         </div>
-        <div className="flex gap-3 px-6 py-4 border-t border-slate-700">
+
+        <div className="flex gap-3 p-5 border-t border-slate-800">
           <button
             onClick={onClose}
-            disabled={busy}
-            className="flex-1 px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
+            className="flex-1 px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800"
           >
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={busy}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Save className="w-4 h-4" />
             )}
-            Save Changes
+            {isEdit ? "Save changes" : "Create mission"}
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CreateModal({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    type: "TASK_COMPLETION",
-    targetValue: 5,
-    pointsReward: 100,
-    xpReward: 50,
-    cashReward: 0,
-    duration: "DAILY",
-    autoRefresh: true,
-    requiredLevel: 1,
-    isActive: true,
-  });
-
-  const submit = async () => {
-    if (!form.title.trim()) {
-      toast.error("Title required");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch("/api/admin/missions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `HTTP ${res.status}`);
-      }
-      toast.success("Mission created");
-      onClose();
-      router.refresh();
-    } catch (err) {
-      toast.error("Failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-slate-800 rounded-2xl border border-slate-700 w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-white">New Mission</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-lg">
-            <X className="w-5 h-5 text-slate-400" />
-          </button>
-        </div>
-        <div className="p-6 space-y-3 overflow-y-auto">
-          <Field label="Title *">
-            <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className={inp}
-              placeholder="e.g. Complete 5 tasks"
-            />
-          </Field>
-          <Field label="Description">
-            <input
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className={inp}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Type">
-              <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className={inp}
-              >
-                <option value="TASK_COMPLETION">Task Completion</option>
-                <option value="LOGIN_STREAK">Login Streak</option>
-                <option value="REFERRAL">Referral</option>
-                <option value="SPEND">Spend</option>
-                <option value="EARN">Earn</option>
-              </select>
-            </Field>
-            <Field label="Target Value">
-              <input
-                type="number"
-                min={1}
-                value={form.targetValue}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    targetValue: parseInt(e.target.value) || 1,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Field label="Points">
-              <input
-                type="number"
-                min={0}
-                value={form.pointsReward}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    pointsReward: parseInt(e.target.value) || 0,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
-            <Field label="XP">
-              <input
-                type="number"
-                min={0}
-                value={form.xpReward}
-                onChange={(e) =>
-                  setForm({ ...form, xpReward: parseInt(e.target.value) || 0 })
-                }
-                className={inp}
-              />
-            </Field>
-            <Field label="Cash ($)">
-              <input
-                type="number"
-                step={0.01}
-                min={0}
-                value={form.cashReward}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    cashReward: parseFloat(e.target.value) || 0,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Duration">
-              <select
-                value={form.duration}
-                onChange={(e) =>
-                  setForm({ ...form, duration: e.target.value })
-                }
-                className={inp}
-              >
-                <option value="DAILY">Daily</option>
-                <option value="WEEKLY">Weekly</option>
-              </select>
-            </Field>
-            <Field label="Required Level">
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={form.requiredLevel}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    requiredLevel: parseInt(e.target.value) || 1,
-                  })
-                }
-                className={inp}
-              />
-            </Field>
-          </div>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.autoRefresh}
-                onChange={(e) =>
-                  setForm({ ...form, autoRefresh: e.target.checked })
-                }
-                className="rounded bg-slate-800 border-slate-600 text-blue-500"
-              />
-              Auto-refresh
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) =>
-                  setForm({ ...form, isActive: e.target.checked })
-                }
-                className="rounded bg-slate-800 border-slate-600 text-blue-500"
-              />
-              Active
-            </label>
-          </div>
-        </div>
-        <div className="flex gap-3 px-6 py-4 border-t border-slate-700">
-          <button
-            onClick={onClose}
-            disabled={busy}
-            className="flex-1 px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-600"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={busy}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {busy ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            Create
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const inp =
-  "w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500";
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-slate-400 mb-1.5">
-        {label}
-      </label>
-      {children}
     </div>
   );
 }

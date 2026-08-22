@@ -17,6 +17,9 @@ export default async function SettingsPage() {
       pushNotifications: true,
       twoFactorEnabled: true,
       language: true,
+      // Only used as a boolean — a Google-only account has no password, and
+      // showing it a "current password" field is a dead end.
+      password: true,
     },
   });
 
@@ -28,6 +31,7 @@ export default async function SettingsPage() {
       emailNotifications={user.emailNotifications}
       pushNotifications={user.pushNotifications}
       twoFactorEnabled={user.twoFactorEnabled}
+      hasPassword={user.password !== null}
       language={user.language ?? "en"}
     />
   );
