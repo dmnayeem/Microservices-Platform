@@ -1,92 +1,207 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
-import { MessageSquare, Flag, Trash2, Ban } from "lucide-react";
-import { ReportActions } from "@/components/admin/social/report-actions";
-import { format } from "date-fns";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { canAny } from "@/lib/permissions";
+import { parsePage } from "@/lib/paginate";
+import { StatCard } from "@/components/admin/stat-card";
+import { ActiveFilterChips, type FilterChip } from "@/components/admin/active-filter-chips";
+import { Flag, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import {
+  REPORT_CONTENT_TYPES,
+  REPORT_REASONS,
+  REPORT_PRIORITIES,
+  CONTENT_TYPE_LABEL,
+  REASON_LABEL,
+  PRIORITY_LABEL,
+  ACTIONED_RESOLUTIONS,
+  priorityRank,
+} from "@/lib/moderation";
+import { resolveReportPreviews } from "@/lib/report-previews";
+import { ReportQueue } from "@/components/admin/social/report-queue";
+
+const PAGE_SIZE = 25;
 
 interface PageProps {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    type?: string;
+    reason?: string;
+    priority?: string;
+    page?: string;
+  }>;
 }
 
 export default async function SocialModerationPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "social.moderate")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+
+  // `canAny` + both permissions: the sidebar link accepts `social.moderate` OR
+  // `moderation.view`, so a role granted only the latter used to see the link
+  // and get bounced. This also uses the async, custom-role-aware check the API
+  // uses — the synchronous `hasPermission` can't see a CustomRole grant.
+  if (!(await canAny(session.user.id, ["social.moderate", "moderation.view"]))) {
+    redirect("/admin");
+  }
+  const canAct = await canAny(session.user.id, [
+    "social.moderate",
+    "moderation.manage",
+  ]);
 
   const params = await searchParams;
   const status = params.status === "RESOLVED" ? "RESOLVED" : "PENDING";
+  const page = parsePage(params.page);
 
-  const [reports, todayPosts, pending, autoRemoved] = await Promise.all([
+  const type = REPORT_CONTENT_TYPES.includes(params.type as never)
+    ? params.type
+    : undefined;
+  const reason = REPORT_REASONS.includes(params.reason as never)
+    ? params.reason
+    : undefined;
+  const priority = REPORT_PRIORITIES.includes(params.priority as never)
+    ? params.priority
+    : undefined;
+
+  const where = {
+    status,
+    ...(type ? { contentType: type } : {}),
+    ...(reason ? { reason } : {}),
+    ...(priority ? { priority } : {}),
+  };
+
+  const [rows, total, pending, urgent, actioned] = await Promise.all([
     prisma.socialReport.findMany({
-      where: { status },
-      orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
-      take: 50,
+      where,
+      // NOT ordered by priority: it is a String column, so SQL sorts it
+      // alphabetically (HIGH < NORMAL < URGENT) and buries the urgent ones.
+      // The page is bounded, so the real ranking is applied below.
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
-    prisma.post.count({
-      where: {
-        createdAt: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-        },
-      },
-    }),
+    prisma.socialReport.count({ where }),
     prisma.socialReport.count({ where: { status: "PENDING" } }),
+    prisma.socialReport.count({ where: { status: "PENDING", priority: "URGENT" } }),
     prisma.socialReport.count({
-      where: { status: "RESOLVED", resolution: "DELETED" },
+      where: { status: "RESOLVED", resolution: { in: ACTIONED_RESOLUTIONS } },
     }),
   ]);
 
-  // Resolve reporter info
-  const reporterIds = Array.from(new Set(reports.map((r) => r.reporterId)));
-  const reporters = reporterIds.length
-    ? await prisma.user.findMany({
-        where: { id: { in: reporterIds } },
-        select: { id: true, name: true, email: true },
-      })
+  // Urgent first, then newest. Done here rather than in SQL for the reason above.
+  const reports = [...rows].sort(
+    (a, b) =>
+      priorityRank(a.priority) - priorityRank(b.priority) ||
+      b.createdAt.getTime() - a.createdAt.getTime()
+  );
+
+  // Resolve the reported content AND the reporter in two batched passes — the
+  // page used to render a bare cuid and ask a moderator to act on it.
+  const [previews, reporters] = await Promise.all([
+    resolveReportPreviews(reports),
+    reports.length
+      ? prisma.user.findMany({
+          where: { id: { in: [...new Set(reports.map((r) => r.reporterId))] } },
+          select: { id: true, name: true, username: true, email: true },
+        })
+      : [],
+  ]);
+  const reporterById = new Map(reporters.map((u) => [u.id, u]));
+
+  // How many OTHER pending reports point at the same content, so ten reports
+  // about one post read as one problem instead of ten.
+  const dupeGroups = reports.length
+    ? ((await prisma.socialReport.groupBy({
+        by: ["contentId"],
+        where: {
+          status: "PENDING",
+          contentId: { in: [...new Set(reports.map((r) => r.contentId))] },
+        },
+        _count: { _all: true },
+      })) as unknown as { contentId: string; _count: { _all: number } }[])
     : [];
-  const reporterMap = new Map(reporters.map((u) => [u.id, u]));
+  const dupeCount = new Map(dupeGroups.map((g) => [g.contentId, g._count._all]));
+
+  const items = reports.map((r) => {
+    const rep = reporterById.get(r.reporterId);
+    return {
+      id: r.id,
+      contentType: r.contentType,
+      contentId: r.contentId,
+      reason: r.reason,
+      details: r.details,
+      priority: r.priority,
+      status: r.status,
+      resolution: r.resolution,
+      resolverNote: r.resolverNote,
+      createdAt: r.createdAt.toISOString(),
+      resolvedAt: r.resolvedAt ? r.resolvedAt.toISOString() : null,
+      reporter: rep
+        ? { name: rep.name ?? rep.username ?? rep.email, id: rep.id }
+        : null,
+      preview: previews.get(r.contentId) ?? null,
+      alsoReported: Math.max(0, (dupeCount.get(r.contentId) ?? 1) - 1),
+    };
+  });
+
+  const chips: FilterChip[] = [
+    type && { key: "type", label: "Type", value: CONTENT_TYPE_LABEL[type] ?? type },
+    reason && { key: "reason", label: "Reason", value: REASON_LABEL[reason] ?? reason },
+    priority && {
+      key: "priority",
+      label: "Priority",
+      value: PRIORITY_LABEL[priority] ?? priority,
+    },
+  ].filter(Boolean) as FilterChip[];
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const qs = (patch: Record<string, string | undefined>) => {
+    const sp = new URLSearchParams();
+    const merged = { status: params.status, type, reason, priority, ...patch };
+    for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
+    const s = sp.toString();
+    return s ? `/admin/social-moderation?${s}` : "/admin/social-moderation";
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-pink-400" />
-          Social Feed Moderation
+          <Flag className="w-6 h-6 text-amber-400" />
+          Reported content
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Review reported posts, comments, listings, and users.
+          Everything users have flagged, with the content shown so you can see
+          what you&apos;re deciding on. Urgent reports sort first.
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <Stat
-          icon={<MessageSquare className="w-5 h-5" />}
-          tone="blue"
-          value={todayPosts}
-          label="Posts Today"
-        />
-        <Stat
-          icon={<Flag className="w-5 h-5" />}
-          tone="amber"
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          title="Waiting"
           value={pending}
-          label="Pending Reports"
+          subtext="unresolved reports"
+          icon={Clock}
+          tone="amber"
         />
-        <Stat
-          icon={<Trash2 className="w-5 h-5" />}
-          tone="red"
-          value={autoRemoved}
-          label="Removed (all-time)"
+        <StatCard
+          title="Urgent"
+          value={urgent}
+          subtext={urgent > 0 ? "needs attention now" : "nothing urgent"}
+          icon={AlertTriangle}
+          tone={urgent > 0 ? "red" : "slate"}
+        />
+        <StatCard
+          title="Actioned"
+          value={actioned}
+          subtext="all time"
+          icon={ShieldCheck}
+          tone="green"
         />
       </div>
 
-      {/* Tabs */}
       <div className="border-b border-slate-800 flex gap-1">
         <Link
-          href="/admin/social-moderation"
+          href={qs({ status: undefined, page: undefined })}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${
             status === "PENDING"
               ? "border-blue-500 text-white"
@@ -96,7 +211,7 @@ export default async function SocialModerationPage({ searchParams }: PageProps) 
           Pending ({pending})
         </Link>
         <Link
-          href="/admin/social-moderation?status=RESOLVED"
+          href={qs({ status: "RESOLVED", page: undefined })}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${
             status === "RESOLVED"
               ? "border-blue-500 text-white"
@@ -107,124 +222,108 @@ export default async function SocialModerationPage({ searchParams }: PageProps) 
         </Link>
       </div>
 
-      {/* Reports list */}
-      {reports.length === 0 ? (
-        <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
-          <Flag className="w-12 h-12 mx-auto mb-4 text-slate-600" />
-          <h3 className="text-lg font-medium text-white mb-1">
-            {status === "PENDING"
-              ? "No pending reports"
-              : "No resolved reports"}
-          </h3>
-          <p className="text-sm text-slate-400">
-            Reports will appear here when users flag content.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {reports.map((r) => {
-            const reporter = reporterMap.get(r.reporterId);
-            const priorityCls =
-              r.priority === "URGENT"
-                ? "border-red-500/50 bg-red-500/5"
-                : r.priority === "HIGH"
-                ? "border-orange-500/50 bg-orange-500/5"
-                : "border-blue-500/30 bg-blue-500/5";
-            return (
-              <div
-                key={r.id}
-                className={`rounded-xl border-l-4 ${priorityCls} bg-slate-900 border-y border-r border-slate-800 p-5`}
-              >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-xs font-medium">
-                      {r.contentType}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                        r.priority === "URGENT"
-                          ? "bg-red-500/15 text-red-400"
-                          : r.priority === "HIGH"
-                          ? "bg-orange-500/15 text-orange-400"
-                          : "bg-blue-500/15 text-blue-400"
-                      }`}
-                    >
-                      {r.priority}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      Reason: {r.reason}
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500">
-                    {format(r.createdAt, "MMM d, HH:mm")}
-                  </span>
-                </div>
-                <p className="text-sm text-white mb-2">
-                  Content ID:{" "}
-                  <code className="font-mono text-xs text-slate-400">
-                    {r.contentId}
-                  </code>
-                </p>
-                {r.details && (
-                  <p className="text-sm text-slate-400 mb-3">{r.details}</p>
-                )}
-                <p className="text-xs text-slate-500 mb-3">
-                  Reported by{" "}
-                  <span className="text-slate-300">
-                    {reporter?.name ?? reporter?.email ?? "unknown"}
-                  </span>
-                </p>
+      {/* Filters — every one of these columns is already indexed. */}
+      <div className="flex flex-wrap gap-2">
+        <FilterSelect
+          label="All types"
+          value={type}
+          options={REPORT_CONTENT_TYPES.map((t) => ({
+            value: t,
+            label: CONTENT_TYPE_LABEL[t] ?? t,
+          }))}
+          hrefFor={(v) => qs({ type: v, page: undefined })}
+        />
+        <FilterSelect
+          label="All reasons"
+          value={reason}
+          options={REPORT_REASONS.map((r) => ({
+            value: r,
+            label: REASON_LABEL[r] ?? r,
+          }))}
+          hrefFor={(v) => qs({ reason: v, page: undefined })}
+        />
+        <FilterSelect
+          label="Any priority"
+          value={priority}
+          options={REPORT_PRIORITIES.map((p) => ({
+            value: p,
+            label: PRIORITY_LABEL[p] ?? p,
+          }))}
+          hrefFor={(v) => qs({ priority: v, page: undefined })}
+        />
+      </div>
 
-                {r.status === "PENDING" ? (
-                  <ReportActions reportId={r.id} contentType={r.contentType} />
-                ) : (
-                  <div className="text-xs text-slate-400">
-                    Resolved with{" "}
-                    <span className="text-white font-medium">
-                      {r.resolution}
-                    </span>
-                    {r.resolverNote && (
-                      <span> — &ldquo;{r.resolverNote}&rdquo;</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {chips.length > 0 && <ActiveFilterChips chips={chips} />}
+
+      <ReportQueue items={items} canAct={canAct} status={status} />
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-slate-500">
+            Page {page} of {totalPages} · {total.toLocaleString()} report
+            {total === 1 ? "" : "s"}
+          </p>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link
+                href={qs({ page: String(page - 1) })}
+                className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:text-white"
+              >
+                Previous
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={qs({ page: String(page + 1) })}
+                className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:text-white"
+              >
+                Next
+              </Link>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Decorative Ban icon */}
-      <Ban className="hidden" />
     </div>
   );
 }
 
-function Stat({
-  icon,
-  tone,
-  value,
+/** A filter rendered as links, so the whole page stays a server component. */
+function FilterSelect({
   label,
+  value,
+  options,
+  hrefFor,
 }: {
-  icon: React.ReactNode;
-  tone: "blue" | "amber" | "red";
-  value: number;
   label: string;
+  value: string | undefined;
+  options: { value: string; label: string }[];
+  hrefFor: (v: string | undefined) => string;
 }) {
-  const cls = {
-    blue: "bg-blue-500/10 text-blue-400",
-    amber: "bg-amber-500/10 text-amber-400",
-    red: "bg-red-500/10 text-red-400",
-  }[tone];
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${cls}`}>{icon}</div>
-        <div>
-          <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
-          <p className="text-sm text-slate-500">{label}</p>
-        </div>
-      </div>
+    <div className="flex flex-wrap gap-1">
+      <Link
+        href={hrefFor(undefined)}
+        className={`px-2.5 py-1 rounded-full text-xs ${
+          !value
+            ? "bg-blue-500/15 text-blue-300"
+            : "bg-slate-800 text-slate-400 hover:text-white"
+        }`}
+      >
+        {label}
+      </Link>
+      {options.map((o) => (
+        <Link
+          key={o.value}
+          href={hrefFor(o.value)}
+          className={`px-2.5 py-1 rounded-full text-xs ${
+            value === o.value
+              ? "bg-blue-500/15 text-blue-300"
+              : "bg-slate-800 text-slate-400 hover:text-white"
+          }`}
+        >
+          {o.label}
+        </Link>
+      ))}
     </div>
   );
 }

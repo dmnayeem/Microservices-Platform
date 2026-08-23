@@ -918,9 +918,11 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
-    name: "Social Feed",
+    // Named for what the page is: a queue of user-reported content. "Social
+    // Feed" suggested a feed browser, which it has never been.
+    name: "Reported Content",
     href: "/admin/social-moderation",
-    icon: "MessageSquare",
+    icon: "Flag",
     permissions: ["social.moderate", "moderation.view"],
     category: "PLATFORM",
   },

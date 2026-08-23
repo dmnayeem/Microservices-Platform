@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { recordUserAction } from "@/lib/goal-progress";
+import { deleteCommentCascade } from "@/lib/content-delete";
 
 // GET /api/feed/:id/comments - Get post comments
 export async function GET(
@@ -275,19 +276,22 @@ export async function DELETE(
       );
     }
 
-    // Delete comment
-    await prisma.comment.delete({
-      where: { id: commentId },
-    });
-
-    // Update comment count
-    await prisma.post.update({
-      where: { id },
-      data: { commentsCount: { decrement: 1 } },
-    });
+    // Delete the comment AND its replies, and correct the count by how many
+    // actually went. `Comment.parentId` has no `onDelete`, so a plain delete
+    // nulled the children instead of removing them — replies were silently
+    // promoted to top-level comments on the same post, while `commentsCount`
+    // dropped by 1 no matter how many comments vanished from the thread.
+    const outcome = await deleteCommentCascade(commentId);
+    if (!outcome.ok) {
+      return NextResponse.json(
+        { error: "Failed to delete comment" },
+        { status: outcome.reason === "not_found" ? 404 : 500 }
+      );
+    }
 
     return NextResponse.json({
       message: "Comment deleted successfully",
+      repliesRemoved: outcome.extra,
     });
   } catch (error) {
     console.error("Error deleting comment:", error);

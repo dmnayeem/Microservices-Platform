@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { deletePostCascade } from "@/lib/content-delete";
 
 /**
  * DELETE /api/admin/feed/[id]
@@ -34,19 +35,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
-  // Prisma cascades aren't set on every relation — clear children first
-  // to avoid FK errors. Mirrors the cleanup the social-reports DELETE
-  // resolution performs.
-  await prisma.$transaction([
-    prisma.like.deleteMany({ where: { postId: id } }),
-    prisma.comment.deleteMany({ where: { postId: id } }),
-    prisma.vote.deleteMany({ where: { postId: id } }),
-    prisma.postView.deleteMany({ where: { postId: id } }),
-    prisma.postShare.deleteMany({ where: { postId: id } }),
-    prisma.mention.deleteMany({ where: { postId: id } }),
-    prisma.donation.deleteMany({ where: { postId: id } }),
-    prisma.post.delete({ where: { id } }),
-  ]);
+  // Every relation pointing at Post declares `onDelete: Cascade`, so one delete
+  // is enough. This used to be a seven-statement cleanup transaction whose own
+  // comment claimed "cascades aren't set on every relation" — they are, and the
+  // list was both redundant and incomplete (it omitted PostBoostView and
+  // PostLinkClick, which cascade too). See src/lib/content-delete.ts for what
+  // the database genuinely does not handle.
+  const outcome = await deletePostCascade(id);
+  if (!outcome.ok) {
+    return NextResponse.json(
+      { error: "Failed to delete the post" },
+      { status: outcome.reason === "not_found" ? 404 : 500 }
+    );
+  }
 
   await prisma.auditLog.create({
     data: {
