@@ -54,7 +54,14 @@ export async function convertPointsToCash(
     return { ok: false, reason: "TOO_SMALL", threshold, points: balance, min: minConvert };
   }
 
-  const usd = Math.round(pointsToUsd(amount, rate) * 100) / 100;
+  // Rounded DOWN to the cent, never half-up.
+  //
+  // With `Math.round`, converting at rate 1000 in 1005-point chunks produced
+  // $1.005 → $1.01: half a cent of free cash per chunk, and `minConvert` is
+  // exactly 1000, so 1005 is a legal chunk. Repeating it across a balance
+  // minted roughly 0.5% out of nothing. The platform must never round a
+  // user's favour on a conversion boundary.
+  const usd = Math.floor(pointsToUsd(amount, rate) * 100) / 100;
   if (usd <= 0) {
     return { ok: false, reason: "TOO_SMALL", threshold, points: balance, min: minConvert };
   }

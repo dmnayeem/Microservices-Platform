@@ -263,11 +263,17 @@ export async function POST(
         },
       });
 
-      // Debit buyer
-      await tx.user.update({
-        where: { id: session.user.id },
+      // Debit buyer — compare-and-set, because the affordability check earlier
+      // in this handler runs outside the transaction. Without it, an enrolment
+      // and any other purchase fired at the same time both passed their own
+      // check against one balance and both went through.
+      const paid = await tx.user.updateMany({
+        where: { id: session.user.id, cashBalance: { gte: finalPrice } },
         data: { cashBalance: { decrement: finalPrice } },
       });
+      if (paid.count === 0) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
       await tx.transaction.create({
         data: {
           userId: session.user.id,
@@ -413,6 +419,17 @@ export async function POST(
     // P2002; the enrolment already settled, so report success not a 500.
     if (isDuplicateLedgerError(error)) {
       return NextResponse.json({ alreadyEnrolled: true, duplicate: true });
+    }
+    // The debit compare-and-set matched nothing — the balance was spent between
+    // the check above and the transaction. Nothing was enrolled or charged.
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+      return NextResponse.json(
+        {
+          error:
+            "Your balance changed while this was going through, so nothing was charged. Check your wallet and try again.",
+        },
+        { status: 402 }
+      );
     }
     console.error("Enroll failed:", error);
     return NextResponse.json(

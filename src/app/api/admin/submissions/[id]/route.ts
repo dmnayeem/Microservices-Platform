@@ -322,7 +322,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         await processReferralCommissions(
           existingSubmission.userId,
           referralPoints,
-          existingSubmission.taskId
+          existingSubmission.taskId,
+          existingSubmission.id
         );
       }
 
@@ -383,6 +384,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
+      // Claim the review before doing anything else. Without this, the reject
+      // path was guarded only by the status read at the top of the handler, so
+      // two concurrent rejects both applied the penalty — and rejecting an
+      // already-APPROVED submission ran the penalty against a reference the
+      // approval had already used (see below), which P2002'd: no penalty
+      // applied, the awarded points never clawed back, and a 500 to the admin.
+      const claimed = await prisma.taskSubmission.updateMany({
+        where: { id, status: "PENDING" },
+        data: { status: "REJECTED" },
+      });
+      if (claimed.count === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "This submission was already reviewed by someone else. Reload to see its current status.",
+          },
+          { status: 409 }
+        );
+      }
+
       // Optional penalty: deduct points from the user's balance (clamped so it
       // can't go negative) + record a PENALTY transaction.
       let appliedPenalty = 0;
@@ -406,7 +427,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
                 points: -applied,
                 amount: 0,
                 description: `Penalty: rejected task "${existingSubmission.task.title}"`,
-                reference: existingSubmission.id,
+                // Prefixed. This used to be the bare submission id — the SAME
+                // reference the approval's EARNING row writes — so an earning
+                // and a penalty for one submission collided on
+                // @@unique([userId, reference]).
+                reference: `task_penalty_${existingSubmission.id}`,
               },
             });
           }

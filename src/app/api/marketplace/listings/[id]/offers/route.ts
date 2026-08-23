@@ -88,8 +88,16 @@ export async function GET(
   }
 }
 
+/**
+ * Ceiling on a single offer. Money columns are `Decimal(18, 6)`, so anything at
+ * or above 10^12 overflows the column; this sits far below that and far above
+ * any real digital-goods listing. Without it `z.number().positive()` accepted
+ * `1e308`.
+ */
+const MAX_OFFER = 1_000_000;
+
 const makeOfferSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().positive().max(MAX_OFFER),
   message: z.string().max(500).optional(),
 });
 
@@ -135,6 +143,25 @@ export async function POST(
     if (listing.status !== MarketplaceListingStatus.ACTIVE) {
       return NextResponse.json(
         { error: "This listing is no longer active" },
+        { status: 400 }
+      );
+    }
+
+    // Can the buyer actually cover this? Offers are not escrowed — funds only
+    // move when the seller accepts — so without this check a $0 account could
+    // offer any amount and, before the accept path gained its debit CAS, have
+    // it settled into real cash for the seller. The CAS is still the authority
+    // (the balance can be spent in between); this stops a seller wasting an
+    // accept on an offer that was never payable.
+    const buyer = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { cashBalance: true },
+    });
+    if (!buyer || toNum(buyer.cashBalance) < amount) {
+      return NextResponse.json(
+        {
+          error: `You need $${amount.toLocaleString()} in your balance to offer this much. Available: $${toNum(buyer?.cashBalance ?? 0).toLocaleString()}.`,
+        },
         { status: 400 }
       );
     }

@@ -1124,7 +1124,14 @@ export async function POST(
       });
 
       // Process referral commissions on the effective (multiplied) reward.
-      await processReferralCommissions(session.user.id, effectivePoints, task.id);
+      // The submission id makes the payout idempotent per completion — keyed on
+      // the task alone, a repeatable task paid the upline again on every run.
+      await processReferralCommissions(
+        session.user.id,
+        effectivePoints,
+        task.id,
+        submission.id
+      );
 
       // Event progress — the auto-approved twin of the admin approval path in
       // /api/admin/submissions/[id]. Same dedup key, so a task that somehow

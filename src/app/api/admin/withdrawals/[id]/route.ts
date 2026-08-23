@@ -6,10 +6,20 @@ import { writeAudit } from "@/lib/audit";
 import { toNum } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { deliverToUser } from "@/lib/notify";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
+
+/**
+ * Shown when a status compare-and-set matched nothing — another admin (or a
+ * retried request) already moved this withdrawal on. Deliberately specific:
+ * "Failed to process withdrawal" would invite the operator to try again, and on
+ * this route a second attempt used to be how money escaped.
+ */
+const ALREADY_HANDLED =
+  "This withdrawal was already actioned by someone else. Reload to see its current status.";
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -102,15 +112,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      // Move to PROCESSING — admin will send payment then mark_paid
-      const withdrawal = await prisma.withdrawal.update({
-        where: { id },
+      // Move to PROCESSING — admin will send payment then mark_paid.
+      // The status check above reads a row fetched earlier, so it is
+      // check-then-act; the predicate here is what actually decides. See the
+      // note on `mark_paid` for why that matters on this route.
+      const claimed = await prisma.withdrawal.updateMany({
+        where: { id, status: "PENDING" },
         data: {
           status: "PROCESSING",
           processedBy: session.user.id,
           transactionId: transactionId || null,
         },
       });
+      if (claimed.count === 0) {
+        return NextResponse.json({ error: ALREADY_HANDLED }, { status: 409 });
+      }
+      const withdrawal = await prisma.withdrawal.findUnique({ where: { id } });
 
       await writeAudit({
         actorId: session.user.id,
@@ -141,23 +158,35 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      const [withdrawal] = await prisma.$transaction([
-        prisma.withdrawal.update({
-          where: { id },
+      // Interactive, opening with a status compare-and-set.
+      //
+      // What this replaced: an array `$transaction` whose withdrawal update had
+      // no status predicate, gated only by the check-then-act above against a
+      // row read at the top of the handler. Because `mark_paid` and `reject`
+      // write DIFFERENT ledger references (`<id>` vs `withdrawal_refund_<id>`),
+      // the `@@unique([userId, reference])` guard did not catch the cross-action
+      // race — so an admin rejecting while another marked paid produced BOTH: the
+      // money was sent off-platform AND the user was refunded in full. Real cash,
+      // gone, with no error anywhere.
+      const withdrawal = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.withdrawal.updateMany({
+          where: { id, status: "PROCESSING" },
           data: {
             status: "COMPLETED",
             processedBy: session.user.id,
             processedAt: new Date(),
             transactionId,
           },
-        }),
-        prisma.user.update({
+        });
+        if (claimed.count === 0) return null;
+
+        await tx.user.update({
           where: { id: existingWithdrawal.userId },
           data: {
             totalWithdrawals: { increment: existingWithdrawal.amount },
           },
-        }),
-        prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
             userId: existingWithdrawal.userId,
             type: "WITHDRAWAL",
@@ -167,16 +196,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             description: `Withdrawal via ${existingWithdrawal.method}`,
             reference: id,
           },
-        }),
-        prisma.notification.create({
+        });
+        await tx.notification.create({
           data: {
             userId: existingWithdrawal.userId,
             type: "WALLET",
             title: "Withdrawal completed",
             message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} via ${existingWithdrawal.method} has been paid. Reference: ${transactionId}`,
           },
-        }),
-      ]);
+        });
+        return tx.withdrawal.findUnique({ where: { id } });
+      });
+
+      if (!withdrawal) {
+        return NextResponse.json({ error: ALREADY_HANDLED }, { status: 409 });
+      }
 
       await writeAudit({
         actorId: session.user.id,
@@ -224,24 +258,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // Cash hold when no points were held (new-style). Refund the gross amount.
       const refundCash = heldPoints > 0 ? 0 : toNum(existingWithdrawal.amount);
 
-      const [withdrawal] = await prisma.$transaction([
-        prisma.withdrawal.update({
-          where: { id },
+      // Same compare-and-set as `mark_paid`, and for the same reason: these two
+      // actions race each other and their differing ledger references meant the
+      // unique constraint never noticed.
+      const withdrawal = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.withdrawal.updateMany({
+          where: { id, status: { in: ["PENDING", "PROCESSING"] } },
           data: {
             status: "REJECTED",
             processedBy: session.user.id,
             processedAt: new Date(),
             rejectionReason: rejectionReason || "Rejected by admin",
           },
-        }),
-        prisma.user.update({
+        });
+        if (claimed.count === 0) return null;
+
+        await tx.user.update({
           where: { id: existingWithdrawal.userId },
           data: {
             pointsBalance: { increment: refundPoints },
             cashBalance: { increment: refundCash },
           },
-        }),
-        prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
             userId: existingWithdrawal.userId,
             type: "REFUND",
@@ -253,8 +292,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             }`,
             reference: `withdrawal_refund_${id}`,
           },
-        }),
-        prisma.notification.create({
+        });
+        await tx.notification.create({
           data: {
             userId: existingWithdrawal.userId,
             type: "WALLET",
@@ -263,8 +302,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
               rejectionReason || "Not specified"
             }${adminNote ? `\n\n${adminNote}` : ""}`,
           },
-        }),
-      ]);
+        });
+        return tx.withdrawal.findUnique({ where: { id } });
+      });
+
+      if (!withdrawal) {
+        return NextResponse.json({ error: ALREADY_HANDLED }, { status: 409 });
+      }
 
       await writeAudit({
         actorId: session.user.id,
@@ -285,6 +329,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
   } catch (error) {
+    // A replayed request reuses the same ledger reference → P2002 on
+    // (userId, reference). The first attempt already settled; say so rather
+    // than returning a 500 the operator will retry.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json({ error: ALREADY_HANDLED }, { status: 409 });
+    }
     console.error("Error processing withdrawal:", error);
     return NextResponse.json(
       { error: "Failed to process withdrawal" },

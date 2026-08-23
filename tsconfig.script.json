@@ -1,0 +1,16 @@
+{
+  // Config for the throwaway verification scripts under scripts/, run with
+  //   npx tsx --tsconfig tsconfig.script.json scripts/<name>.ts
+  //
+  // The only difference from the app config is the `server-only` stub: that
+  // package throws at import time outside a React Server Component, which stops
+  // a plain script importing any of our server-marked lib modules — exactly the
+  // ones whose behaviour needs verifying. The app build never reads this file.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "server-only": ["./scripts/_stubs/server-only.ts"]
+    }
+  }
+}

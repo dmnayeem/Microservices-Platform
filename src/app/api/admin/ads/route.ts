@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
+import { clampRewardCooldown } from "@/lib/ad-billing";
 
 const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
         | Prisma.InputJsonValue
         | null) ?? Prisma.JsonNull,
     rewardPoints: Math.max(0, Number(body.rewardPoints) || 0),
-    rewardCooldownSec: Math.max(0, Number(body.rewardCooldownSec) || 3600),
+    rewardCooldownSec: clampRewardCooldown(body.rewardCooldownSec),
     watchSeconds: Math.max(1, Number(body.watchSeconds) || 15),
   };
 

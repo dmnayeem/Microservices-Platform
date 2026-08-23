@@ -182,10 +182,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create purchase in transaction
-    const [purchase] = await prisma.$transaction([
-      // Create purchase record
-      prisma.marketplacePurchase.create({
+    // Interactive, not the array form: the array form runs every statement
+    // unconditionally, so neither the buyer's balance nor the listing's
+    // availability could be re-checked once the transaction had opened. Both
+    // checks above are outside it — two concurrent buys passed both and the
+    // same listing was sold twice, from a balance that only covered one.
+    const purchase = await prisma.$transaction(async (tx) => {
+      const paid = await tx.user.updateMany({
+        where: { id: session.user.id, pointsBalance: { gte: totalCost } },
+        data: { pointsBalance: { decrement: totalCost } },
+      });
+      if (paid.count === 0) throw new Error("INSUFFICIENT_BALANCE");
+
+      const claimed = await tx.marketplaceListing.updateMany({
+        where: { id: listingId, status: MarketplaceListingStatus.ACTIVE },
+        data: { status: MarketplaceListingStatus.SOLD },
+      });
+      if (claimed.count === 0) throw new Error("LISTING_TAKEN");
+
+      const p = await tx.marketplacePurchase.create({
         data: {
           listingId,
           buyerId: session.user.id,
@@ -194,24 +209,15 @@ export async function POST(request: NextRequest) {
           sellerAmount,
           status: "COMPLETED",
         },
-      }),
-      // Deduct from buyer
-      prisma.user.update({
-        where: { id: session.user.id },
-        data: {
-          pointsBalance: { decrement: totalCost },
-        },
-      }),
-      // Credit seller
-      prisma.user.update({
+      });
+      await tx.user.update({
         where: { id: listing.sellerId },
         data: {
           pointsBalance: { increment: Math.ceil(sellerAmount * pointsPerUsd) },
           totalEarnings: { increment: sellerAmount },
         },
-      }),
-      // Create buyer transaction
-      prisma.transaction.create({
+      });
+      await tx.transaction.create({
         data: {
           userId: session.user.id,
           type: TransactionType.PURCHASE,
@@ -222,9 +228,8 @@ export async function POST(request: NextRequest) {
           reference: `purchase_${listingId}`,
           metadata: { listingId },
         },
-      }),
-      // Create seller transaction
-      prisma.transaction.create({
+      });
+      await tx.transaction.create({
         data: {
           userId: listing.sellerId,
           type: TransactionType.EARNING,
@@ -239,13 +244,9 @@ export async function POST(request: NextRequest) {
             platformFee: fee,
           },
         },
-      }),
-      // Mark listing as sold
-      prisma.marketplaceListing.update({
-        where: { id: listingId },
-        data: { status: MarketplaceListingStatus.SOLD },
-      }),
-    ]);
+      });
+      return p;
+    });
 
     // Notify seller
     await prisma.notification.create({
@@ -272,6 +273,23 @@ export async function POST(request: NextRequest) {
     // → P2002; the order already settled, so report success not a 500.
     if (isDuplicateLedgerError(error)) {
       return NextResponse.json({ duplicate: true, message: "Purchase already completed" });
+    }
+    // Raised by the compare-and-sets above. Nothing was charged either way —
+    // the whole transaction rolled back.
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+      return NextResponse.json(
+        {
+          error:
+            "Your balance changed while this was going through, so nothing was charged. Check your wallet and try again.",
+        },
+        { status: 402 }
+      );
+    }
+    if (error instanceof Error && error.message === "LISTING_TAKEN") {
+      return NextResponse.json(
+        { error: "This listing was just purchased by someone else." },
+        { status: 409 }
+      );
     }
     console.error("Error creating purchase:", error);
     return NextResponse.json(

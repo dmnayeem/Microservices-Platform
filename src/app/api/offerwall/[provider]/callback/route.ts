@@ -138,15 +138,34 @@ async function handle(request: NextRequest, provider: string) {
       ];
       // Only claw back if the completion was actually credited.
       if (completion && completion.status === "APPROVED" && back > 0) {
+        // Clamp to what the user actually has. An unclamped decrement drove
+        // `pointsBalance` negative whenever the points had already been spent
+        // or converted, and a negative balance breaks every `gte` guard
+        // downstream. The shortfall is recorded rather than silently absorbed.
+        const holder = await prisma.user.findUnique({
+          where: { id: completion.userId },
+          select: { pointsBalance: true },
+        });
+        const clawback = Math.max(0, Math.min(holder?.pointsBalance ?? 0, back));
         ops.push(
           prisma.offerwallCompletion.update({ where: { id: completion.id }, data: { status: "REVERSED", reversedAt: now } }),
-          prisma.user.update({ where: { id: completion.userId }, data: { pointsBalance: { decrement: back } } }),
+          prisma.user.update({
+            where: { id: completion.userId },
+            data: {
+              pointsBalance: { decrement: clawback },
+              // The credit incremented `totalEarnings`; the reversal never did.
+              // Lifetime earnings stayed inflated after every chargeback — and
+              // `totalEarnings` is what the leaderboard ranks and pays on.
+              totalEarnings: { decrement: Math.abs(payoutAmount) },
+            },
+          }),
           prisma.transaction.create({
             data: {
               userId: completion.userId, type: "EARNING", status: "COMPLETED",
-              points: -back, amount: -Math.abs(payoutAmount),
+              points: -clawback, amount: -Math.abs(payoutAmount),
               description: `Offerwall reversal: ${offerName ?? "offer"}`,
               reference: `offerwall_rev_${transactionId}`,
+              metadata: { owed: back, clawedBack: clawback, shortfall: back - clawback },
             },
           })
         );
@@ -156,6 +175,36 @@ async function handle(request: NextRequest, provider: string) {
     }
 
     // ── Catalog offer completion (resolved via subid) ──
+    //
+    // A completion that is already APPROVED (or REVERSED) must never be paid
+    // again. The lookup above finds a completion by (userId, offerId, clickId)
+    // with NO status filter, and both dedup keys — `OfferwallCallback.transactionId`
+    // and the ledger reference — are keyed on `transactionId`. So a second
+    // postback for the same click carrying a NEW transaction id sailed past
+    // every guard and credited the user twice. Networks that send a "pending"
+    // postback followed by a "confirmed" one do exactly this as a matter of
+    // course. (`OfferwallCompletion @@unique([providerId, txid])` never fired
+    // either: the update below sets `txid` but leaves `providerId` NULL, and
+    // Postgres treats NULLs as distinct.)
+    // `STARTED` is the only creditable state: PENDING is already held awaiting
+    // the release cron, APPROVED is already paid, REJECTED/REVERSED are terminal.
+    if (completion && completion.status !== "STARTED") {
+      await prisma.offerwallCallback.create({
+        data: {
+          userId: completion.userId, offerwallId: config.id, offerId, offerName,
+          transactionId, payoutAmount, userPayout: completion.points,
+          status: "DUPLICATE", internalOfferId, ipAddress: ip,
+          processedAt: now, rawPayload,
+        },
+      });
+      return NextResponse.json({
+        ok: true,
+        credited: 0,
+        duplicate: true,
+        reason: `Completion already ${completion.status.toLowerCase()}`,
+      });
+    }
+
     if (completion) {
       const points = completion.points || Math.round(userPayout * multiplier);
       const held = holdHours > 0;

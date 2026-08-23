@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
+import { clampRewardCooldown } from "@/lib/ad-billing";
 import { AdReviewError, adminSetStatus, materialChanges } from "@/lib/ad-review";
 
 interface RouteParams {
@@ -52,7 +53,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.weight !== undefined) data.weight = Math.max(1, Number(body.weight) || 10);
   if (body.rewardPoints !== undefined) data.rewardPoints = Math.max(0, Number(body.rewardPoints) || 0);
   if (body.rewardCooldownSec !== undefined)
-    data.rewardCooldownSec = Math.max(0, Number(body.rewardCooldownSec) || 3600);
+    data.rewardCooldownSec = clampRewardCooldown(body.rewardCooldownSec);
   if (body.watchSeconds !== undefined) data.watchSeconds = Math.max(1, Number(body.watchSeconds) || 15);
   if (body.headline !== undefined) data.headline = body.headline ? String(body.headline) : null;
   if (body.brandName !== undefined) data.brandName = body.brandName ? String(body.brandName) : null;

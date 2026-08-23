@@ -162,8 +162,37 @@ export async function PATCH(
     });
     const { fee, sellerAmount } = splitPrice(acceptedAmount, bps);
 
-    const [purchase, updatedOffer] = await prisma.$transaction([
-      prisma.marketplacePurchase.create({
+    // Interactive, not the array form, because the buyer debit has to be a
+    // compare-and-set and the rest of the sale must not happen when it fails.
+    //
+    // What this replaced: a plain `cashBalance: { decrement }` with no balance
+    // check anywhere in the file — the only two mentions of `cashBalance` were
+    // this debit and the seller's credit. Combined with an unbounded
+    // `z.number().positive()` on the offer amount, two accounts could mint
+    // arbitrary cash: B offers $1,000,000 on a $0 balance, A accepts, A is
+    // credited real withdrawable money and B simply goes negative.
+    const settled = await prisma.$transaction(async (tx) => {
+      const paid = await tx.user.updateMany({
+        where: { id: offer.buyerId, cashBalance: { gte: acceptedAmount } },
+        data: { cashBalance: { decrement: acceptedAmount } },
+      });
+      if (paid.count === 0) return null; // buyer can't cover — no sale
+
+      // Re-check the listing inside the transaction. The status read above is
+      // check-then-act; two accepts on competing offers could otherwise both
+      // sell the same listing.
+      const claimed = await tx.marketplaceListing.updateMany({
+        where: { id, status: MarketplaceListingStatus.ACTIVE },
+        data: {
+          status: MarketplaceListingStatus.SOLD,
+          directPurchasesCount: { increment: 1 },
+        },
+      });
+      if (claimed.count === 0) {
+        throw new Error("LISTING_TAKEN"); // rolls the debit back
+      }
+
+      const p = await tx.marketplacePurchase.create({
         data: {
           listingId: id,
           buyerId: offer.buyerId,
@@ -172,13 +201,13 @@ export async function PATCH(
           sellerAmount,
           status: "COMPLETED",
         },
-      }),
-      prisma.marketplaceOffer.update({
+      });
+      const o = await tx.marketplaceOffer.update({
         where: { id: offerId },
         data: { status: MarketplaceOfferStatus.ACCEPTED },
-      }),
+      });
       // Withdraw any other competing offers
-      prisma.marketplaceOffer.updateMany({
+      await tx.marketplaceOffer.updateMany({
         where: {
           listingId: id,
           id: { not: offerId },
@@ -190,29 +219,15 @@ export async function PATCH(
           },
         },
         data: { status: MarketplaceOfferStatus.WITHDRAWN },
-      }),
-      prisma.marketplaceListing.update({
-        where: { id },
-        data: {
-          status: MarketplaceListingStatus.SOLD,
-          directPurchasesCount: { increment: 1 },
-        },
-      }),
-      // Settle balances — seller credit + buyer debit + ledger rows
-      prisma.user.update({
-        where: { id: offer.buyerId },
-        data: {
-          cashBalance: { decrement: acceptedAmount },
-        },
-      }),
-      prisma.user.update({
+      });
+      await tx.user.update({
         where: { id: offer.listing.sellerId },
         data: {
           cashBalance: { increment: sellerAmount },
           totalEarnings: { increment: sellerAmount },
         },
-      }),
-      prisma.transaction.create({
+      });
+      await tx.transaction.create({
         data: {
           userId: offer.buyerId,
           type: TransactionType.PURCHASE,
@@ -222,8 +237,8 @@ export async function PATCH(
           description: `Marketplace offer accepted — "${offer.listing.title}"`,
           reference: `marketplace_offer_${offerId}`,
         },
-      }),
-      prisma.transaction.create({
+      });
+      await tx.transaction.create({
         data: {
           userId: offer.listing.sellerId,
           type: TransactionType.EARNING,
@@ -233,26 +248,52 @@ export async function PATCH(
           description: `Marketplace sale (offer) — "${offer.listing.title}"`,
           reference: `marketplace_offer_${offerId}`,
         },
-      }),
-    ]);
-
-    await prisma.notification.create({
-      data: {
-        userId: offer.buyerId,
-        type: NotificationType.SYSTEM,
-        title: "Offer accepted! 🎉",
-        message: `Your offer on "${offer.listing.title}" was accepted at $${acceptedAmount.toLocaleString()}.`,
-        data: { listingId: id, offerId, purchaseId: purchase.id },
-      },
+      });
+      return { purchase: p, offer: o };
     });
 
-    return NextResponse.json({ offer: updatedOffer, purchase });
+    if (!settled) {
+      return NextResponse.json(
+        {
+          error:
+            "The buyer no longer has enough balance to cover this offer, so it wasn't accepted.",
+        },
+        { status: 409 }
+      );
+    }
+
+    await prisma.notification
+      .create({
+        data: {
+          userId: offer.buyerId,
+          type: NotificationType.SYSTEM,
+          title: "Offer accepted! 🎉",
+          message: `Your offer on "${offer.listing.title}" was accepted at $${acceptedAmount.toLocaleString()}.`,
+          data: { listingId: id, offerId, purchaseId: settled.purchase.id },
+        },
+      })
+      .catch(() => {
+        // Delivery is best-effort; the sale itself already stands.
+      });
+
+    return NextResponse.json({
+      offer: settled.offer,
+      purchase: settled.purchase,
+    });
   } catch (error) {
     // Concurrent double-accept / retry reuses reference `marketplace_offer_<id>`
     // → P2002 on (userId, reference). The offer was already settled once; report
     // success instead of double-settling.
     if (isDuplicateLedgerError(error)) {
       return NextResponse.json({ duplicate: true });
+    }
+    // Raised inside the settlement transaction when a competing accept sold the
+    // listing first. The buyer's debit rolled back with it.
+    if (error instanceof Error && error.message === "LISTING_TAKEN") {
+      return NextResponse.json(
+        { error: "This listing was just sold through another offer." },
+        { status: 409 }
+      );
     }
     console.error("Patch offer failed:", error);
     return NextResponse.json(

@@ -3,6 +3,7 @@
 // unlock. Server-only (imports prisma). Mirrors task-sequence.ts for unlocks.
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 
 export type OfferSource = "MANUAL" | "PROVIDER";
 export type CompletionMode = "PROOF" | "POSTBACK" | "MANUAL";
@@ -27,6 +28,9 @@ const num = (v: unknown, def: number) => {
   return Number.isFinite(n) ? n : def;
 };
 
+/** Hard ceiling on the per-provider reward multiplier. See `parseOfferwallConfig`. */
+export const MAX_REWARD_MULTIPLIER = 10;
+
 /** Read the stored provider `config` JSON into a typed, defaulted shape. */
 export function parseOfferwallConfig(v: unknown): OfferwallProviderConfig {
   const c = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
@@ -39,7 +43,14 @@ export function parseOfferwallConfig(v: unknown): OfferwallProviderConfig {
       c.apiParams && typeof c.apiParams === "object"
         ? (c.apiParams as Record<string, string>)
         : undefined,
-    rewardMultiplier: Math.max(0, num(c.rewardMultiplier, 1)),
+    // Clamped at both ends. This multiplies the provider's payout into points
+    // with no per-completion ceiling and no daily cap downstream, so an admin
+    // typing `100` meaning "100%" would pay every single completion 100× out of
+    // the treasury, silently. 10× is already a generous promotional band.
+    rewardMultiplier: Math.min(
+      MAX_REWARD_MULTIPLIER,
+      Math.max(0, num(c.rewardMultiplier, 1))
+    ),
     holdHours: Math.max(0, Math.round(num(c.holdHours, 0))),
     autoCredit: c.autoCredit === true,
     testMode: c.testMode === true,
@@ -128,54 +139,91 @@ export async function getOfferChainState(
 }
 
 /**
- * Release held (post-hold-window) postback completions: credit points + write a
- * ledger Transaction and flip PENDING→APPROVED. Held completions are the only
- * PENDING ones with a non-null `heldUntil`; proof completions (heldUntil null)
- * are left for admin review. Idempotent per completion (status guard).
+ * Credit ONE held completion and flip it PENDING→APPROVED.
+ *
+ * **This is the only place a held completion is paid.** The release cron and the
+ * admin callback queue both used to credit the same hold — the cron under
+ * `offerwall_hold_<completionId>`, the admin under the callback's own id — and
+ * because the two references differ, the ledger's unique constraint never
+ * noticed. Approving a held offer in the admin queue paid it a second time.
+ * Both callers now come through here, so they share the status CAS *and* the
+ * reference, and are idempotent against each other in either order.
+ *
+ * Returns false when there was nothing to release (already credited, or the
+ * completion moved on).
  */
-export async function releaseHeldOfferwallCompletions(now = new Date()): Promise<number> {
-  const due = (await prisma.offerwallCompletion.findMany({
-    where: { status: "PENDING", heldUntil: { not: null, lte: now } },
-    select: { id: true, userId: true, points: true, payoutUsd: true, offerId: true },
-    take: 500,
-  })) as unknown as Array<{
+export async function releaseHeldCompletion(
+  completionId: string,
+  now = new Date()
+): Promise<boolean> {
+  const c = (await prisma.offerwallCompletion.findUnique({
+    where: { id: completionId },
+    select: { id: true, userId: true, points: true, payoutUsd: true, status: true },
+  })) as {
     id: string;
     userId: string;
     points: number;
     payoutUsd: unknown;
-    offerId: string;
-  }>;
+    status: string;
+  } | null;
+  if (!c || c.status !== "PENDING") return false;
+
+  const amount = Number(c.payoutUsd ?? 0) || 0;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // Guarded: only fires while still PENDING, so two releasers race safely.
+      const claimed = await tx.offerwallCompletion.updateMany({
+        where: { id: c.id, status: "PENDING" },
+        data: { status: "APPROVED", creditedAt: now },
+      });
+      if (claimed.count === 0) return false;
+
+      await tx.user.update({
+        where: { id: c.userId },
+        data: {
+          pointsBalance: { increment: c.points },
+          totalEarnings: { increment: amount },
+        },
+      });
+      await tx.transaction.create({
+        data: {
+          userId: c.userId,
+          type: "EARNING",
+          status: "COMPLETED",
+          points: c.points,
+          amount,
+          description: "Offerwall hold released",
+          reference: `offerwall_hold_${c.id}`,
+        },
+      });
+      return true;
+    });
+  } catch (err) {
+    // A concurrent release won the ledger row. Nothing moved here.
+    if (isDuplicateLedgerError(err)) return false;
+    // Anything else is a real failure and must not be mistaken for "nothing
+    // due" — the old bare `catch {}` swallowed connection and constraint
+    // errors identically, with no log.
+    console.error(`[offerwall] release failed for completion ${c.id}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Release every held completion whose hold window has passed. Held completions
+ * are the only PENDING ones with a non-null `heldUntil`; proof completions
+ * (heldUntil null) are left for admin review.
+ */
+export async function releaseHeldOfferwallCompletions(now = new Date()): Promise<number> {
+  const due = await prisma.offerwallCompletion.findMany({
+    where: { status: "PENDING", heldUntil: { not: null, lte: now } },
+    select: { id: true },
+    take: 500,
+  });
 
   let released = 0;
   for (const c of due) {
-    const amount = Number(c.payoutUsd ?? 0) || 0;
-    try {
-      await prisma.$transaction([
-        // Guarded update: only fires while still PENDING (idempotent under races).
-        prisma.offerwallCompletion.updateMany({
-          where: { id: c.id, status: "PENDING" },
-          data: { status: "APPROVED", creditedAt: now },
-        }),
-        prisma.user.update({
-          where: { id: c.userId },
-          data: { pointsBalance: { increment: c.points }, totalEarnings: { increment: amount } },
-        }),
-        prisma.transaction.create({
-          data: {
-            userId: c.userId,
-            type: "EARNING",
-            status: "COMPLETED",
-            points: c.points,
-            amount,
-            description: "Offerwall hold released",
-            reference: `offerwall_hold_${c.id}`,
-          },
-        }),
-      ]);
-      released++;
-    } catch {
-      /* skip on conflict; picked up next run */
-    }
+    if (await releaseHeldCompletion(c.id, now)) released++;
   }
   return released;
 }

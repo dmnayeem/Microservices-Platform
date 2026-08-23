@@ -19,7 +19,7 @@ export interface CloseDueAuctionsSummary {
   hasMore: boolean;
 }
 
-interface AuctionListingRow {
+export interface AuctionListingRow {
   id: string;
   sellerId: string;
   title: string;
@@ -38,12 +38,20 @@ const AUCTION_SELECT = {
 } as const;
 
 /**
- * Settle one already-loaded, still-ACTIVE, past-end auction listing: no bids or
+ * Settle one already-loaded, still-ACTIVE auction listing: no bids or
  * reserve-not-met → EXPIRED; otherwise the highest bidder wins and funds move
  * (buyer debited, seller credited minus commission) in one transaction, both
  * parties notified.
+ *
+ * **This is the only settlement path.** The manual close endpoint used to carry
+ * its own copy, and the copy had drifted into an unbounded money-creation bug:
+ * it debited the winner with a plain `decrement` — no balance read anywhere in
+ * the file — so a $0 account could win a $1,000,000 auction and the seller was
+ * credited real withdrawable cash out of nothing. It also compared two
+ * `Decimal`s with `<`, which compares their string forms. Callers do their own
+ * authorisation and due-date checks and then hand the row here.
  */
-async function settleAuction(
+export async function settleAuction(
   listing: AuctionListingRow
 ): Promise<AuctionCloseResult> {
   const highBid = await prisma.marketplaceBid.findFirst({

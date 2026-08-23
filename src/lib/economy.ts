@@ -3,6 +3,7 @@ import {
   DEFAULT_POINTS_TO_USD_RATE,
   DEFAULT_POINTS_CONVERT_THRESHOLD,
 } from "@/config/constants";
+import { POINTS_PER_USD_MIN, POINTS_PER_USD_MAX } from "@/lib/setting-guards";
 
 /**
  * Points ⇆ USD conversion rate, admin-configurable.
@@ -22,9 +23,15 @@ let _cache: { value: number; at: number } | null = null;
 export async function getPointsPerUsd(): Promise<number> {
   if (_cache && Date.now() - _cache.at < TTL_MS) return _cache.value;
   const raw = await getSetting<number>("points_per_usd", DEFAULT_POINTS_TO_USD_RATE);
+  // Clamped, not just `> 0`. This is the rate the entire treasury is priced in:
+  // a stray `1` here makes a 10,000-point balance worth $10,000 instead of $10,
+  // across withdrawals, earn-time USD mirrors and ad credits, the moment the
+  // 30-second cache expires. The admin settings route rejects out-of-band
+  // values at entry (see setting-guards.ts); this is the net for a row that
+  // reached the database some other way — a seed, a manual SQL edit, an import.
   const value =
     typeof raw === "number" && isFinite(raw) && raw > 0
-      ? raw
+      ? Math.min(Math.max(raw, POINTS_PER_USD_MIN), POINTS_PER_USD_MAX)
       : DEFAULT_POINTS_TO_USD_RATE;
   _cache = { value, at: Date.now() };
   return value;

@@ -161,10 +161,22 @@ export async function reverseAffiliateCommission(
           type: TransactionType.REFUND,
           status: TransactionStatus.COMPLETED,
           points: 0,
-          amount: -amount,
+          // The amount actually clawed back, not the full commission. The
+          // debit above is clamped to the balance so it can't go negative;
+          // writing `-amount` here regardless meant the ledger and the balance
+          // disagreed permanently by whatever couldn't be recovered, and a
+          // reconciliation would never find where it went. `shortfall` records
+          // the gap explicitly instead of hiding it.
+          amount: -debit,
           description: "Affiliate commission reversed (sale refunded)",
           reference: ref,
-          metadata: { sourceType, orderRef, clawedBack: debit },
+          metadata: {
+            sourceType,
+            orderRef,
+            commissionAmount: amount,
+            clawedBack: debit,
+            shortfall: amount - debit,
+          },
         },
       });
     });

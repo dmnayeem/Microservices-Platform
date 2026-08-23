@@ -210,11 +210,18 @@ export async function POST(
         data: { status: MarketplaceBidStatus.LOST },
       });
 
-      // Wallet movements
-      await tx.user.update({
-        where: { id: userId },
+      // Wallet movements — the buyer debit is a compare-and-set, because the
+      // affordability check earlier in this handler runs outside the
+      // transaction. The listing-status flip guards the same listing being sold
+      // twice; it does nothing to guard the wallet against a second purchase on
+      // a different listing at the same moment.
+      const paid = await tx.user.updateMany({
+        where: { id: userId, cashBalance: { gte: listing.price } },
         data: { cashBalance: { decrement: listing.price } },
       });
+      if (paid.count === 0) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
       await tx.user.update({
         where: { id: listing.sellerId },
         data: {
@@ -373,6 +380,17 @@ export async function POST(
       /just purchased by someone else/i.test(error.message)
     ) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    // The debit compare-and-set matched nothing — the balance was spent between
+    // the check above and the transaction. Nothing was purchased or charged.
+    if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
+      return NextResponse.json(
+        {
+          error:
+            "Your balance changed while this was going through, so nothing was charged. Check your wallet and try again.",
+        },
+        { status: 402 }
+      );
     }
     console.error("Marketplace checkout failed:", error);
     return NextResponse.json(

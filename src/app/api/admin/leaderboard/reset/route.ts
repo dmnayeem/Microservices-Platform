@@ -15,10 +15,38 @@ import {
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { invalidateSettingsCache } from "@/lib/system-settings";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 
 const schema = z.object({
   period: z.enum(["daily", "weekly", "monthly"]),
 });
+
+/**
+ * Stable identifier for the period a payout belongs to, in UTC.
+ *
+ * The point is that running the monthly reset twice in August produces the same
+ * key both times, so the ledger's unique reference rejects the second payout.
+ * Weekly uses the ISO week number rather than the calendar week so a cycle
+ * never straddles a year boundary ambiguously.
+ */
+function cycleKey(period: "daily" | "weekly" | "monthly", at: Date): string {
+  const y = at.getUTCFullYear();
+  const m = String(at.getUTCMonth() + 1).padStart(2, "0");
+  if (period === "monthly") return `${y}-${m}`;
+  if (period === "daily") {
+    return `${y}-${m}-${String(at.getUTCDate()).padStart(2, "0")}`;
+  }
+  // ISO-8601 week: Thursday of the current week decides the year.
+  const d = new Date(
+    Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate())
+  );
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7
+  );
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
 
 type Metric =
   | "POINTS_EARNED"
@@ -250,8 +278,31 @@ export async function POST(request: NextRequest) {
 
   const prizes = distributePrizes(totalPrize, winners.length, customDistribution);
   const pointsPerUsd = await getPointsPerUsd();
-  const cycleId = `${Date.now()}_${period}`;
   const cycledAt = new Date();
+  // Identifies the cycle by the WINDOW it pays out, not by the moment the
+  // button was pressed.
+  //
+  // It used to be `${Date.now()}_${period}`, which is a different string on
+  // every invocation — so the ledger's @@unique([userId, reference]) could
+  // never fire, and there was no "already published" check either. A
+  // double-click, a proxy retry or a second admin paid the entire prize pool
+  // again (100,000 points on the monthly default), every time.
+  const cycleId = `${cycleKey(period, cycledAt)}_${period}`;
+  const historyKey = `lb_history_${cycleId}`;
+
+  const alreadyPublished = await prisma.systemSetting.findUnique({
+    where: { key: historyKey },
+    select: { key: true },
+  });
+  if (alreadyPublished) {
+    return NextResponse.json(
+      {
+        error: `The ${period} leaderboard for this period has already been published and paid out. It can only run once per period.`,
+        cycleId,
+      },
+      { status: 409 }
+    );
+  }
 
   // Award prizes
   const operations = winners.flatMap((w, i) => {
@@ -294,10 +345,27 @@ export async function POST(request: NextRequest) {
     ];
   });
 
-  if (operations.length > 0) await prisma.$transaction(operations);
+  if (operations.length > 0) {
+    try {
+      await prisma.$transaction(operations);
+    } catch (error) {
+      // Two admins pressing publish at the same moment: the reference is now
+      // deterministic, so the second one collides here and the whole array
+      // transaction rolls back. Nobody was paid twice.
+      if (isDuplicateLedgerError(error)) {
+        return NextResponse.json(
+          {
+            error: `The ${period} leaderboard for this period was just published by someone else. Nothing was paid twice.`,
+            cycleId,
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+  }
 
   // Persist cycle
-  const historyKey = `lb_history_${cycleId}`;
   await prisma.systemSetting.upsert({
     where: { key: historyKey },
     create: {
