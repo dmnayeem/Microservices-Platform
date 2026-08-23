@@ -20,9 +20,40 @@ export async function GET(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
+    const isOwner = post.userId === session?.user?.id;
+
     // Check if post is private and user doesn't own it
-    if (!post.isPublic && post.userId !== session?.user?.id) {
+    if (!post.isPublic && !isOwner) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Moderator-hidden content must not be readable at its permalink either.
+    // Every other surface filters `isHidden: false` — the feed list, the pulse
+    // endpoint, the cached count — but this route checked only `isPublic`, so a
+    // post hidden for harassment or a scam stayed fully accessible, comments
+    // included, to anyone holding the link. The author still sees their own.
+    if (post.isHidden && !isOwner) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // A post inside a PRIVATE group is readable only by its members. Group
+    // membership is checked when POSTING but was never checked when reading.
+    if (post.groupId && !isOwner) {
+      const group = await prisma.group.findUnique({
+        where: { id: post.groupId },
+        select: { type: true },
+      });
+      if (group?.type === "PRIVATE") {
+        const member = session?.user?.id
+          ? await prisma.groupMember.findFirst({
+              where: { groupId: post.groupId, userId: session.user.id },
+              select: { id: true },
+            })
+          : null;
+        if (!member) {
+          return NextResponse.json({ error: "Post not found" }, { status: 404 });
+        }
+      }
     }
 
     // Get user info

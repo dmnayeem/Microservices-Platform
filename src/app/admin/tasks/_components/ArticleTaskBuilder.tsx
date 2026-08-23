@@ -1806,7 +1806,13 @@ function EmbedSnippets({
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [origin, setOrigin] = useState("");
 
+  // Reading `window` after mount is the SSR-safe way to get the origin: a lazy
+  // `useState` initialiser would produce "" on the server and the real origin on
+  // the client, which is a hydration mismatch. The rule cannot express "this is
+  // the accepted pattern for a browser-only value", so it is silenced here
+  // rather than the code being made wrong to satisfy it.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
     if (typeof window !== "undefined") setOrigin(window.location.origin);
   }, []);
 

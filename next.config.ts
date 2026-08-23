@@ -26,7 +26,20 @@ const nextConfig: NextConfig = {
     staleTimes: { dynamic: 60, static: 300 },
     // Tree-shake big barrel packages so each page ships only the icons/helpers
     // it actually uses — meaningful JS reduction across the whole app.
-    optimizePackageImports: ["lucide-react", "date-fns"],
+    //
+    // `react-icons/*` matters most here: components/ui/brand-icon.tsx pulls 39
+    // named icons from `react-icons/si` plus 3 from `react-icons/fa6`, and it is
+    // imported by the marketing footer — so every one of those barrels was
+    // shipping on the PUBLIC home page, the first thing a visitor downloads.
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "react-icons/si",
+      "react-icons/fa6",
+      "recharts",
+      "framer-motion",
+      "@tiptap/react",
+    ],
   },
   // Ad-blocker resistance: the browser only ever requests these neutral,
   // first-party-looking paths (no `ads`/`click`/`impression` token for filter

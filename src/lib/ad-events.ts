@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAdClickCost } from "@/lib/ad-billing";
 import { bumpAdDailyStat } from "@/lib/ad-stats";
 import { bufferImpression } from "@/lib/ad-counters";
+// `ad-serve` does not import this module, so there is no cycle.
+import { servableCampaignWhere } from "@/lib/ad-serve";
 
 /**
  * Shared ad impression/click recording. Used by the neutral `/api/spaces/:id/
@@ -100,21 +102,34 @@ export async function recordClick(
   });
   if (!slot) return { billed: false };
 
+  // The ad's OWN status matters, not just its campaign's. A PAUSED, PENDING,
+  // REJECTED or CHANGES_REQUESTED ad must never bill: the advertiser was told it
+  // had stopped.
   const ad = await prisma.ad
-    .findUnique({ where: { id: adId }, select: { campaignId: true } })
+    .findUnique({ where: { id: adId }, select: { campaignId: true, status: true } })
     .catch(() => null);
 
-  if (!ad?.campaignId) {
+  if (!ad?.campaignId || ad.status !== "ACTIVE") {
     await bumpAdDailyStat(adId, { clicks: 1 });
     return { billed: false };
   }
 
   const cost = await getAdClickCost();
+  const now = new Date();
   // Atomic, no-overspend: only decrements when the budget still covers a click.
   // `spentTotal` moves in the same statement so reporting never has to derive
   // spend from clicks × current CPC (which rewrote history on a CPC change).
+  //
+  // The predicate is `servableCampaignWhere` — the SAME clause that decides
+  // whether the ad may be shown at all. It used to be `status: "ACTIVE"` plus a
+  // budget floor and nothing else, so a campaign whose `endAt` had passed kept
+  // billing until `runAdCampaignSweep` next ran, and a suspended advertiser's
+  // campaign billed against its pre-funded budget. Billing for delivery the
+  // advertiser was promised had stopped is the one thing an ad system must not
+  // do. (`isHouse` campaigns are exempt from the budget floor there, so they
+  // pass the clause and simply decrement toward zero, as before.)
   const billed = await prisma.adCampaign.updateMany({
-    where: { id: ad.campaignId, status: "ACTIVE", budget: { gte: cost } },
+    where: { id: ad.campaignId, ...servableCampaignWhere(cost, now, false) },
     data: { budget: { decrement: cost }, spentTotal: { increment: cost } },
   });
 

@@ -63,7 +63,9 @@ export async function GET(request: NextRequest) {
     // full user records for the visible page are fetched with DB pagination
     // below instead of loading the entire downline into memory.
     const level1IdRows = await prisma.user.findMany({
-      where: { referredById: session.user.id },
+      // ACTIVE only, matching what the daily referral claim actually pays for.
+      // Showing a count the payout doesn't honour reads as being short-changed.
+      where: { referredById: session.user.id, status: "ACTIVE" },
       select: { id: true },
     });
     const level1Ids = level1IdRows.map((r) => r.id);
@@ -125,9 +127,11 @@ export async function GET(request: NextRequest) {
     // fetching the whole downline and .slice()-ing.
     const level1Where: Prisma.UserWhereInput = {
       referredById: session.user.id,
+      status: "ACTIVE",
     };
     const level2Where: Prisma.UserWhereInput = {
       referredById: { in: level1Ids },
+      status: "ACTIVE",
     };
     const level3Where: Prisma.UserWhereInput = {
       referredById: { in: level2Ids },

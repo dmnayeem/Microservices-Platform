@@ -251,10 +251,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         cooldownMinutes: parseInt(cooldownMinutes?.toString() || "0"),
         autoApprove: autoApprove || false,
         boardId: boardId || null,
-        // Surveys: always manual review, once-per-user. These overrides win.
-        ...(type === "SURVEY"
-          ? { autoApprove: false, dailyLimit: 1, totalLimit: 1 }
-          : {}),
+        // Surveys: always manual review, and once per user — enforced per user
+        // in /api/tasks/[id]/start, NOT via `totalLimit`.
+        //
+        // `totalLimit` is a GLOBAL counter (`task.completedCount >= totalLimit`),
+        // incremented once per approval across all users. Setting it to 1 to
+        // mean "once each" meant the first user to have a survey approved closed
+        // it for the entire platform, and everyone after saw "Task limit has
+        // been reached".
+        ...(type === "SURVEY" ? { autoApprove: false, dailyLimit: 1 } : {}),
       },
     });
 

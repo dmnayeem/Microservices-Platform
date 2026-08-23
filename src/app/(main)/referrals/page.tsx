@@ -34,7 +34,8 @@ export default async function ReferralsPage() {
 
   const l1Ids = (
     await prisma.user.findMany({
-      where: { referredById: userId },
+      // ACTIVE only — the same population the daily claim pays for.
+      where: { referredById: userId, status: "ACTIVE" },
       select: { id: true },
       take: ID_CAP,
     })
@@ -60,7 +61,7 @@ export default async function ReferralsPage() {
 
   const [l1, l2, l3, l1Total, l2Total, l3Total] = await Promise.all([
     prisma.user.findMany({
-      where: { referredById: userId },
+      where: { referredById: userId, status: "ACTIVE" },
       select: TEAM_SELECT,
       orderBy: { createdAt: "desc" },
       take: SHOW,
@@ -81,9 +82,11 @@ export default async function ReferralsPage() {
           take: SHOW,
         })
       : Promise.resolve([]),
-    prisma.user.count({ where: { referredById: userId } }),
+    prisma.user.count({ where: { referredById: userId, status: "ACTIVE" } }),
     l1Ids.length
-      ? prisma.user.count({ where: { referredById: { in: l1Ids } } })
+      ? prisma.user.count({
+          where: { referredById: { in: l1Ids }, status: "ACTIVE" },
+        })
       : Promise.resolve(0),
     l2Ids.length
       ? prisma.user.count({ where: { referredById: { in: l2Ids } } })

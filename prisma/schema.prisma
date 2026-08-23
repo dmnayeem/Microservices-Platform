@@ -1311,6 +1311,12 @@ model User {
   // cap + VPN/proxy heuristic). @@index on signupIp for the per-IP count.
   signupIp                          String?
   lastIp                            String?
+  // When the user last changed a field that decides which targeted tasks they
+  // are served (country/region/division/district/subDistrict/postalCode/gender/
+  // dateOfBirth). All nine were freely editable with no limit and no trail, so
+  // the play was: set your country to match a high-paying geo-targeted task,
+  // complete it, set it back. See src/lib/profile-targeting.ts.
+  targetingChangedAt                DateTime?
   isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render

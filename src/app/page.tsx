@@ -19,6 +19,13 @@ import { getLandingContent } from "@/lib/landing-content-server";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 
+// The landing content comes from a raw Prisma read, not a tracked `fetch`, so
+// Next cannot infer whether this page is static or dynamic — it would either
+// freeze at build time (admin edits never appearing) or re-render per request.
+// One minute is short enough that a CMS edit shows up promptly and long enough
+// that the public home page is not a database query per visitor.
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "EarnGPT — Earn Money Online with Tasks, Videos, Surveys & Courses",
   description:

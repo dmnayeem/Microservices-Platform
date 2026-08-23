@@ -140,3 +140,25 @@ export function scoreQuiz(
   }
   return correct;
 }
+
+/**
+ * The pass mark for a quiz task, as a percentage.
+ *
+ * There were two quiz submission paths with two different payout rules:
+ * `/api/tasks/quiz` required 70% and paid pro-rata to the score, while
+ * `/api/tasks/[id]/submit` computed a score, ignored it entirely, and paid the
+ * FULL reward — so the same quiz answered 0% paid nothing through one route and
+ * everything through the other. Both now call the function below.
+ */
+export const QUIZ_PASS_PERCENT = 70;
+
+/**
+ * What a quiz submission earns: nothing below the pass mark, otherwise the
+ * reward scaled by the score. Rounded down so a partial score never pays more
+ * than the fraction earned.
+ */
+export function quizPayout(scorePercent: number, fullReward: number): number {
+  if (!Number.isFinite(scorePercent) || scorePercent < QUIZ_PASS_PERCENT) return 0;
+  const pct = Math.max(0, Math.min(100, scorePercent));
+  return Math.floor((fullReward * pct) / 100);
+}

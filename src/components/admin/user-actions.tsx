@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Edit, Ban, CheckCircle, Unlock, X, Loader2, Download, Plus, User, Mail, Lock, Phone, MapPin } from "lucide-react";
+import { Eye, Edit, Ban, CheckCircle, Unlock, X, Loader2, Download, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
 import Link from "next/link";

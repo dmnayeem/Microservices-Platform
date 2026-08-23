@@ -21,6 +21,8 @@ import {
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
+  quizPayout,
+  QUIZ_PASS_PERCENT,
   type QuizQuestionShape,
 } from "@/lib/quiz-shape";
 import { requireActiveUser } from "@/lib/require-active";
@@ -368,11 +370,12 @@ export async function POST(request: NextRequest) {
     }
 
     const score = Math.round((correctAnswers / totalQuestions) * 100);
-    const passed = score >= 70; // 70% passing threshold
-
-    // Calculate rewards based on score
-    const pointsEarned = passed ? Math.round(task.pointsReward * (score / 100)) : 0;
-    const xpEarned = passed ? Math.round(task.xpReward * (score / 100)) : 0;
+    // The pass mark and the pro-rata rule live in quiz-shape.ts so this route
+    // and /api/tasks/[id]/submit cannot drift apart again — they used to pay
+    // completely differently for the same answers.
+    const passed = score >= QUIZ_PASS_PERCENT;
+    const pointsEarned = quizPayout(score, task.pointsReward);
+    const xpEarned = quizPayout(score, task.xpReward);
 
     const answersJson = {
       questions: key.map((q) => q.question),

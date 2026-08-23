@@ -118,7 +118,18 @@ export async function serveAd(opts: {
   // run on dead or unfunded campaigns.
   const interstitial = placement.endsWith("_INTERSTITIAL");
 
-  let viewer: TargetableUser | null = null;
+  // Starts as an EMPTY viewer, not null.
+  //
+  // Targeting was applied only when `viewer` was non-null, and `viewer` stayed
+  // null for every anonymous request — so a logged-out visitor was served EVERY
+  // ad on the placement regardless of country, age, gender, level or KYC rules,
+  // and `bufferImpression` counted it. An advertiser paying for Bangladesh was
+  // billed for impressions from anywhere, ad-free plans were ignored, and every
+  // live creative plus its `targetUrl` was enumerable without an account.
+  // `serveFeedAds` below already does it this way and always filters; this is
+  // that behaviour, applied to the banner path too. `matchesTargeting({}, {})`
+  // correctly passes an untargeted ad and rejects a targeted one.
+  let viewer: TargetableUser = {};
   let houseOnly = false;
   if (userId && !preview) {
     const [pkg, u] = await Promise.all([
@@ -162,9 +173,8 @@ export async function serveAd(opts: {
     ...(preview ? {} : { cacheStrategy: { ttl: 30, swr: 120 } }),
   });
 
-  const targeted = viewer
-    ? allAds.filter((a) => matchesTargeting(a.targeting, viewer))
-    : allAds;
+  // Always filter. See the note on `viewer` above.
+  const targeted = allAds.filter((a) => matchesTargeting(a.targeting, viewer));
   if (targeted.length === 0) return EMPTY;
 
   const fresh = targeted.filter((a) => !exclude.has(a.id));

@@ -21,7 +21,11 @@ export const DEFAULT_PROMO_PACKAGES: PromoPackage[] = [
 
 const SETTING_KEY = "promotion_pricing";
 
-function sanitize(list: unknown): PromoPackage[] {
+/**
+ * Exported so the pricing rules — including "a package that costs nothing in
+ * either currency is dropped" — can be verified without a database.
+ */
+export function sanitize(list: unknown): PromoPackage[] {
   if (!Array.isArray(list)) return DEFAULT_PROMO_PACKAGES;
   const cleaned = list
     .map((raw): PromoPackage | null => {
@@ -33,9 +37,15 @@ function sanitize(list: unknown): PromoPackage[] {
         days: Math.max(1, Math.min(365, Math.round(Number(p.days) || 0))),
         priceCash: Math.max(0, Math.round((Number(p.priceCash) || 0) * 100) / 100),
         pricePoints: Math.max(0, Math.round(Number(p.pricePoints) || 0)),
+        // Both floor at 0, so a package with both left blank would make
+        // "Featured" promotion FREE for everyone — see the filter below.
       };
     })
-    .filter((p): p is PromoPackage => p !== null);
+    .filter((p): p is PromoPackage => p !== null)
+    // A package that costs nothing in either currency is a mistyped or blank
+    // admin form, not a giveaway. Dropping it means promotion stays paid rather
+    // than becoming free platform-wide the moment a field is cleared.
+    .filter((p) => p.priceCash > 0 || p.pricePoints > 0);
   return cleaned.length ? cleaned : DEFAULT_PROMO_PACKAGES;
 }
 

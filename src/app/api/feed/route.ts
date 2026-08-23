@@ -96,7 +96,33 @@ export async function GET(request: NextRequest) {
       where.userId = userId;
     }
     if (groupId) {
+      // A PRIVATE group's posts are for its members. Posting into a group checks
+      // membership; reading never did, so `?groupId=<any private group>` handed
+      // its whole feed to anyone who knew the id.
+      const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        select: { type: true },
+      });
+      if (group?.type === "PRIVATE") {
+        const member = session?.user?.id
+          ? await prisma.groupMember.findFirst({
+              where: { groupId, userId: session.user.id },
+              select: { id: true },
+            })
+          : null;
+        if (!member) {
+          return NextResponse.json(
+            { error: "This group is private." },
+            { status: 403 }
+          );
+        }
+      }
       where.groupId = groupId;
+    } else if (!userId) {
+      // The MAIN feed carries no group posts at all. `Post.isPublic` defaults to
+      // true, so a post made inside a private group also surfaced in the global
+      // feed — the group filter only ever added posts, it never excluded them.
+      where.groupId = null;
     }
     // Hashtag / free-text filters. There's no hashtag index, so this is a
     // case-insensitive substring match against post content ("#tag" for tags).

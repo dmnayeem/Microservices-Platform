@@ -4,7 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { ADMIN_ROLES, parsePermissionOverrides, type UserRole } from "@/lib/rbac";
-import { Prisma, TransactionType } from "@/generated/prisma/client";
+import { TransactionType } from "@/generated/prisma/client";
 import { parseFeatureOverrides } from "@/lib/packages";
 import { recordTransaction } from "@/lib/ledger";
 import { getPointsPerUsd } from "@/lib/economy";

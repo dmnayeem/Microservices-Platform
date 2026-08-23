@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { dbRateLimit } from "@/lib/rate-limit-db";
 
 // POST /api/feed/[id]/link-click — record a click on a link inside a post.
 // Tracks BOTH total clicks (Post.linkClicksCount, spam-guarded by a short
@@ -8,11 +9,18 @@ import { prisma } from "@/lib/prisma";
 // mirroring PostView). Self-clicks by the post owner are excluded. Best-effort:
 // the client fires this fire-and-forget when a link is opened.
 
-// In-memory per-(user,post) cooldown for TOTAL clicks so one user can't inflate
-// the count by rapid re-clicks. Per-instance only (same limitation as ad clicks
-// in src/lib/ad-events.ts); unique counting is DB-enforced and exact.
+// Per-(user, post) cooldown on TOTAL clicks, so one person can't inflate the
+// count by re-clicking.
+//
+// This used to be a module-level `Map`. On serverless that is per-instance, so
+// two requests landing on two instances both passed the cooldown and the count
+// was inflatable in a loop — and the Map itself grew without bound on a warm
+// instance. `dbRateLimit` is the shared, DB-backed limiter (the same one the
+// money routes use); its unique index on (bucket, window) makes the check
+// atomic across instances. The comment here used to point at ad-events.ts as
+// having the same limitation — ad-events was fixed to a DB-backed bucket and
+// this one was left behind.
 const CLICK_COOLDOWN_MS = 30_000;
-const lastTotalClick = new Map<string, number>();
 
 export async function POST(
   _req: NextRequest,
@@ -55,15 +63,10 @@ export async function POST(
     }
   }
 
-  // Total: increment past the cooldown window only.
-  const key = `${userId}:${id}`;
-  const now = Date.now();
-  const last = lastTotalClick.get(key) ?? 0;
-  let totalDelta = 0;
-  if (now - last > CLICK_COOLDOWN_MS) {
-    lastTotalClick.set(key, now);
-    totalDelta = 1;
-  }
+  // Total: count once per cooldown window. The limiter fails OPEN, so a
+  // database blip over-counts rather than dropping a genuine click.
+  const window = await dbRateLimit(`postlink:${userId}:${id}`, 1, CLICK_COOLDOWN_MS);
+  const totalDelta = window.count === 1 ? 1 : 0;
 
   if (uniqueDelta > 0 || totalDelta > 0) {
     await prisma.post.update({

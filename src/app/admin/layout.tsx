@@ -31,29 +31,38 @@ export default async function AdminLayout({
     redirect("/dashboard");
   }
 
-  // Effective permissions (code defaults ← runtime config ← per-user overrides).
-  const perms = await getEffectivePermissions(session.user.id);
+  // Four independent reads, run together rather than as a four-deep waterfall
+  // on every admin page. Same shape as the change in (main)/layout.tsx.
+  //
+  //  - perms: code defaults ← runtime config ← per-user overrides
+  //  - modules: the nav the user actually gets
+  //  - pathname: for the central route guard below
+  //  - sidebarCollapsed: read as a cookie rather than from localStorage, so SSR
+  //    and the first client render agree — no flash of an expanded sidebar.
+  //
+  // `getEffectiveModules` resolves permissions internally, but
+  // `getEffectivePermissions` is request-cached, so this costs one query, not two.
+  const [perms, modules, hdrs, cookieStore] = await Promise.all([
+    getEffectivePermissions(session.user.id),
+    getEffectiveModules(session.user.id),
+    headers(),
+    cookies(),
+  ]);
 
   // Central route guard: a direct hit on a module the user can't access is
   // blocked here — even for pages that forgot their own guard. Nav-hidden AND
   // link-blocked. The /admin/no-access page itself is always reachable.
-  const pathname = (await headers()).get("x-pathname") ?? "";
+  const pathname = hdrs.get("x-pathname") ?? "";
   if (pathname && !pathname.startsWith("/admin/no-access")) {
     if (!pathAllowed(pathname, perms)) {
       redirect("/admin/no-access");
     }
   }
 
-  const modules = await getEffectiveModules(session.user.id);
-
-  // Sidebar collapse preference. Read here rather than from localStorage in the
-  // client store: the server can read a cookie, so SSR and the first client
-  // render produce the same width — no hydration mismatch, and no flash of an
-  // expanded sidebar before it snaps closed.
-  const sidebarCollapsed =
-    (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
+  const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
 
   // Live "pending work" counts → per-nav badges (permission-scoped, fail-safe).
+  // Genuinely depends on `perms`, so it stays after the batch.
   const pendingCounts = await getPendingCounts(perms);
   const badges = badgesByModule(pendingCounts, perms);
 

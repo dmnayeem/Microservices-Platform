@@ -33,19 +33,24 @@ const prisma = new PrismaClient({
   accelerateUrl: process.env.DATABASE_URL!,
 }).$extends(withAccelerate());
 
-/** The two divergent copies that live in the API routes, reproduced. */
+/**
+ * The copy that actually lives in the two API routes that WRITE `User.level`,
+ * reproduced verbatim. Its thresholds match the canonical table up to level 11,
+ * then it drops a level: at exactly 22,000 XP the canonical curve says 11 and
+ * this says 10, and the gap persists upward.
+ */
 function localCalculateLevel(xp: number): number {
   if (xp < 100) return 1;
-  if (xp < 300) return 2;
-  if (xp < 600) return 3;
+  if (xp < 250) return 2;
+  if (xp < 500) return 3;
   if (xp < 1000) return 4;
-  if (xp < 1500) return 5;
-  if (xp < 2500) return 6;
-  if (xp < 4000) return 7;
-  if (xp < 7000) return 8;
-  if (xp < 12000) return 9;
+  if (xp < 2000) return 5;
+  if (xp < 4000) return 6;
+  if (xp < 7000) return 7;
+  if (xp < 11000) return 8;
+  if (xp < 16000) return 9;
   if (xp < 22000) return 10;
-  return Math.min(50, 10 + Math.floor((xp - 22000) / 10000));
+  return Math.floor(10 + (xp - 22000) / 10000);
 }
 
 async function main() {
@@ -136,16 +141,17 @@ async function main() {
 
   /* 5 — referral counts including inactive accounts */
   console.log("\n5. Referral counts including banned / never-verified accounts");
-  const referrers = await prisma.user.groupBy({
+  type Grouped = { referredById: string | null; _count: { _all: number } };
+  const referrers = (await prisma.user.groupBy({
     by: ["referredById"],
     where: { referredById: { not: null } },
     _count: { _all: true },
-  });
-  const activeCounts = await prisma.user.groupBy({
+  })) as unknown as Grouped[];
+  const activeCounts = (await prisma.user.groupBy({
     by: ["referredById"],
     where: { referredById: { not: null }, status: "ACTIVE" },
     _count: { _all: true },
-  });
+  })) as unknown as Grouped[];
   const activeMap = new Map(
     activeCounts.map((r) => [r.referredById, r._count._all])
   );

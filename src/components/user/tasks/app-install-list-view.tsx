@@ -38,7 +38,7 @@ export function AppInstallListView() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useAutoRefresh(() => load(true));

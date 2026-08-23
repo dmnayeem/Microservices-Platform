@@ -577,6 +577,14 @@ function CountryCombobox({
     );
   }, [countries, query]);
 
+  // Keep activeIndex in range when the filter changes — done wherever `query`
+  // is set, not in an effect. As an effect it ran a render late, so the list
+  // briefly highlighted a row that the new filter no longer contained.
+  const changeQuery = (v: string) => {
+    setQuery(v);
+    setActiveIndex(0);
+  };
+
   // Close on outside click
   useEffect(() => {
     if (!open) return;
@@ -586,17 +594,12 @@ function CountryCombobox({
         !wrapperRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
-        setQuery("");
+        changeQuery("");
       }
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
-
-  // Keep activeIndex in range when filter changes
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
 
   // Scroll active option into view
   useEffect(() => {
@@ -610,7 +613,7 @@ function CountryCombobox({
   const pick = (iso2: string) => {
     onChange(iso2);
     setOpen(false);
-    setQuery("");
+    changeQuery("");
   };
 
   return (
@@ -655,7 +658,7 @@ function CountryCombobox({
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => changeQuery(e.target.value)}
             placeholder="Type to search 196 countries…"
             className={cn(fieldCls, "pl-9 pr-9")}
             onKeyDown={(e) => {
@@ -672,7 +675,7 @@ function CountryCombobox({
               } else if (e.key === "Escape") {
                 e.preventDefault();
                 setOpen(false);
-                setQuery("");
+                changeQuery("");
               }
             }}
           />
@@ -680,7 +683,7 @@ function CountryCombobox({
             type="button"
             onClick={() => {
               setOpen(false);
-              setQuery("");
+              changeQuery("");
             }}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white"
             tabIndex={-1}

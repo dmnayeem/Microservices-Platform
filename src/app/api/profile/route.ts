@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  changedTargetingFields,
+  normalizeGender,
+  parseDateOfBirth,
+  TARGETING_CHANGE_COOLDOWN_DAYS,
+  TARGETING_CHANGE_COOLDOWN_MS,
+} from "@/lib/profile-targeting";
 import { KYCStatus } from "@/generated/prisma";
 import { calculateProfileCompletion } from "@/lib/profile-completion";
 import { getXpRank, calculateXpForLevel } from "@/lib/user-rank";
@@ -428,11 +435,12 @@ export async function PATCH(request: NextRequest) {
       }
       updateData.name = name;
     }
+    // `gender` is NOT in this list: it is a targeting dimension and must be one
+    // of the three canonical values, not free text. See below.
     for (const f of [
       "firstName",
       "lastName",
       "bio",
-      "gender",
       "profession",
       "maritalStatus",
       "studyLevel",
@@ -502,8 +510,25 @@ export async function PATCH(request: NextRequest) {
         updateData.username = raw;
       }
     }
+    // Gender — normalised to MALE / FEMALE / OTHER, the same three values
+    // `sanitizeTaskAudience` writes on the task side. It used to be stored as
+    // whatever the user typed (up to 200 characters), and `taskAudienceWhere`
+    // matches with `{ has: value }` — case-SENSITIVE — so a profile saying
+    // "male" could never match a task targeting ["MALE"]. `audienceWhere()`
+    // (notifications) matched case-insensitively, so one audience definition
+    // selected two different populations.
+    if (body.gender !== undefined) {
+      updateData.gender = normalizeGender(body.gender);
+    }
+
     if (body.dateOfBirth !== undefined) {
-      updateData.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
+      // Age drives targeting, so `new Date("banana")` — an Invalid Date written
+      // straight to the column — was a targeting problem, not just bad data.
+      const dob = parseDateOfBirth(body.dateOfBirth);
+      if (!dob.ok) {
+        return NextResponse.json({ error: dob.error }, { status: 400 });
+      }
+      updateData.dateOfBirth = dob.value;
     }
 
     // Photos
@@ -597,10 +622,82 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
+    // Targeting attributes get a cooldown.
+    //
+    // Country, region, division, district, sub-district, postal code, gender and
+    // date of birth are the nine dimensions `taskAudienceWhere()` matches on, and
+    // every one was freely editable with no limit and no trail. The play was:
+    // set your country to match a high-paying geo-targeted task, complete it,
+    // set it back — which made the whole strict-targeting system advisory.
+    const current = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        country: true,
+        region: true,
+        division: true,
+        district: true,
+        subDistrict: true,
+        postalCode: true,
+        gender: true,
+        dateOfBirth: true,
+        targetingChangedAt: true,
+      },
+    });
+    if (!current) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const targetingChanges = changedTargetingFields(current, updateData);
+    if (targetingChanges.length > 0) {
+      const last = current.targetingChangedAt?.getTime() ?? 0;
+      const readyAt = last + TARGETING_CHANGE_COOLDOWN_MS;
+      if (last > 0 && Date.now() < readyAt) {
+        const daysLeft = Math.ceil((readyAt - Date.now()) / 86_400_000);
+        return NextResponse.json(
+          {
+            error: `Your location, gender and date of birth can only be changed once every ${TARGETING_CHANGE_COOLDOWN_DAYS} days — these decide which tasks you're offered. Try again in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
+            fields: targetingChanges,
+            readyAt: new Date(readyAt).toISOString(),
+          },
+          { status: 429 }
+        );
+      }
+      updateData.targetingChangedAt = new Date();
+    }
+
     await prisma.user.update({
       where: { id: session.user.id },
       data: updateData,
     });
+
+    // A trail, so a pattern of retargeting can be found after the fact. There
+    // was none before, which is why past abuse cannot be counted.
+    if (targetingChanges.length > 0) {
+      await prisma.auditLog
+        .create({
+          data: {
+            userId: session.user.id,
+            action: "PROFILE_TARGETING_CHANGED",
+            entity: "User",
+            entityId: session.user.id,
+            targetUserId: session.user.id,
+            newData: JSON.parse(
+              JSON.stringify({
+                fields: targetingChanges,
+                from: Object.fromEntries(
+                  targetingChanges.map((f) => [f, current[f] ?? null])
+                ),
+                to: Object.fromEntries(
+                  targetingChanges.map((f) => [f, updateData[f] ?? null])
+                ),
+              })
+            ),
+          },
+        })
+        .catch(() => {
+          // Best-effort — the profile update itself already stands.
+        });
+    }
 
     return NextResponse.json({
       message: "Profile updated successfully",

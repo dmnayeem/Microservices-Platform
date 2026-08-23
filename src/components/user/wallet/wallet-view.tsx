@@ -1,9 +1,9 @@
 "use client";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import {
@@ -93,15 +93,22 @@ export interface WalletViewProps {
 type Tab = "balance" | "history" | "deposits" | "referral" | "withdraw";
 
 export function WalletView(props: WalletViewProps) {
-  const [tab, setTab] = useState<Tab>("balance");
-
   // Honor ?tab= deep-links (the withdrawal page links to ?tab=transactions).
-  // Done in an effect (not the initializer) to avoid an SSR hydration mismatch.
-  useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "transactions" || t === "history") setTab("history");
-    else if (t === "deposits" || t === "referral" || t === "withdraw") setTab(t);
-  }, []);
+  //
+  // Read with `useSearchParams`, which is SSR-safe, so the tab is correct on the
+  // FIRST render. This used to read `window.location.search` inside an effect —
+  // the page painted the Balance tab, then swapped to the requested one a frame
+  // later, which is a visible flash and an extra render of the whole view. The
+  // effect existed to dodge a hydration mismatch; the hook removes the need for
+  // both.
+  const searchParams = useSearchParams();
+  const requestedTab = ((): Tab => {
+    const t = searchParams.get("tab");
+    if (t === "transactions" || t === "history") return "history";
+    if (t === "deposits" || t === "referral" || t === "withdraw") return t;
+    return "balance";
+  })();
+  const [tab, setTab] = useState<Tab>(requestedTab);
 
   const isFreeTier = props.packageTier === "FREE";
   const pointsPerUsd = props.pointsPerUsd;

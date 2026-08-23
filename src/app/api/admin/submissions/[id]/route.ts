@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { calculateLevel } from "@/lib/level";
 import { writeAudit } from "@/lib/audit";
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { Prisma } from "@/generated/prisma/client";
@@ -276,14 +277,28 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             }
           }
           if (credit) {
-            await tx.user.update({
+            const credited = await tx.user.update({
               where: { id: existingSubmission.userId },
               data: {
                 pointsBalance: { increment: earnedPoints },
                 xp: { increment: earnedXp },
                 totalEarnings: { increment: earnedPoints / pointsPerUsd },
               },
+              select: { xp: true, level: true },
             });
+            // Recompute the level. This path never did, so a user whose XP came
+            // only from manually-reviewed tasks accumulated XP and never levelled
+            // up — until some other earning path happened to fire and jumped them
+            // several levels at once. `minLevel` gates task visibility, so it
+            // quietly locked them out of content they had already earned.
+            // `credited.xp` is the post-increment value; do NOT add earnedXp again.
+            const newLevel = calculateLevel(credited.xp);
+            if (newLevel > credited.level) {
+              await tx.user.update({
+                where: { id: existingSubmission.userId },
+                data: { level: newLevel },
+              });
+            }
             await tx.transaction.create({
               data: {
                 userId: existingSubmission.userId,

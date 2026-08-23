@@ -2,7 +2,6 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FeedAdCard, type FeedAd } from "@/components/user/feed/feed-ad-card";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import {
   MessageCircle,
   Flame,
@@ -156,7 +155,8 @@ function FeedTab({
   canShareYouTube,
   feedAdInterval,
   underPostBanner,
-  underPostInterval,
+  // Passed by the outer component and consumed by the rail, not here.
+  underPostInterval: _underPostInterval,
 }: {
   user: SessionUser;
   initialFeedAd?: FeedAd | null;

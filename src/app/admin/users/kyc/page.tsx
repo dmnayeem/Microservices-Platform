@@ -462,6 +462,34 @@ export default async function KYCQueuePage({ searchParams }: PageProps) {
   );
 }
 
+/**
+ * One extracted KYC field.
+ *
+ * Defined at module scope, not inside `AutoKycPanel`. A component declared in
+ * another component's body gets a new function identity on every render, so
+ * React tears down and rebuilds its whole subtree each time — seven of them on
+ * this panel — losing DOM state and re-running effects for no reason. It closes
+ * over nothing, so hoisting it is free.
+ */
+function Field({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
+      <p className={"text-white truncate " + (mono ? "font-mono text-xs" : "text-sm")}>
+        {value && value.trim() ? value : "—"}
+      </p>
+    </div>
+  );
+}
+
 function AutoKycPanel({ extracted }: { extracted: unknown }) {
   const e = (extracted ?? {}) as {
     fullName?: string;
@@ -505,15 +533,6 @@ function AutoKycPanel({ extracted }: { extracted: unknown }) {
     >
       <span className="text-slate-500 font-normal">{label}</span> {value}
     </span>
-  );
-
-  const Field = ({ label, value, mono }: { label: string; value?: string; mono?: boolean }) => (
-    <div className="min-w-0">
-      <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
-      <p className={"text-white truncate " + (mono ? "font-mono text-xs" : "text-sm")}>
-        {value && value.trim() ? value : "—"}
-      </p>
-    </div>
   );
 
   return (

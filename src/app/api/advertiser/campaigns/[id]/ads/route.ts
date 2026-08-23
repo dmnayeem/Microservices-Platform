@@ -31,7 +31,15 @@ const createAdSchema = z.object({
   // Full audience schema — the old narrow one silently dropped 10 of the 14
   // dimensions the audience builder collects.
   targeting: adTargetingSchema,
-  weight: z.number().int().min(1).max(100).default(10),
+  // Advertiser-settable rotation share, clamped to a narrow band.
+  //
+  // `weight` drives the weighted pick in `serveAd`, and `ad-review.ts` classes
+  // it as NON-material — so a change to it skips review entirely. At max 100
+  // against a default of 10, any self-serve advertiser could quietly take ~10x
+  // the impressions of a competitor paying the same flat CPC, and starve house
+  // inventory, for free. Selling priority is a product decision; handing it out
+  // is not.
+  weight: z.number().int().min(1).max(20).default(10),
 });
 
 // POST /api/advertiser/campaigns/[id]/ads — create an ad inside a campaign.

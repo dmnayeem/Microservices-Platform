@@ -132,13 +132,22 @@ export async function POST(
     return NextResponse.json({ error: "Board has no active tasks" }, { status: 400 });
   }
 
-  const completedCount = await prisma.taskSubmission.count({
+  // DISTINCT tasks, not submission rows.
+  //
+  // `count` counted rows, and board tasks are ordinary tasks with a per-day
+  // `dailyLimit` — so completing task A on Monday, Tuesday and Wednesday
+  // produced three approved rows and satisfied a three-task board without the
+  // user ever opening B or C. With `dailyLimit > 1` it worked within one day.
+  const completedTasks = await prisma.taskSubmission.findMany({
     where: {
       userId,
       taskId: { in: tasks.map((t) => t.id) },
       status: { in: [SubmissionStatus.APPROVED, SubmissionStatus.AUTO_APPROVED] },
     },
+    select: { taskId: true },
+    distinct: ["taskId"],
   });
+  const completedCount = completedTasks.length;
 
   if (completedCount < tasks.length) {
     return NextResponse.json(

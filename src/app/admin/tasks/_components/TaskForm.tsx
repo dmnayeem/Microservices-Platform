@@ -282,7 +282,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
       default:
         return formData.contentUrl?.trim() ?? "";
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [
     formData.type,
     formData.contentUrl,

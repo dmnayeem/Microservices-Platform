@@ -43,7 +43,8 @@ async function gate(adId: string) {
 const patchSchema = z
   .object({
     status: z.enum(["ACTIVE", "PAUSED"]).optional(),
-    weight: z.number().int().min(1).max(100).optional(),
+    // Clamped — see the note in campaigns/[id]/ads/route.ts.
+    weight: z.number().int().min(1).max(20).optional(),
     format: z.enum(["NATIVE", "BANNER"]).optional(),
     size: z.string().max(40).optional().nullable(),
     width: z.number().int().min(1).max(4000).optional().nullable(),

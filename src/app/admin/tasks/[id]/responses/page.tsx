@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { SurveyResponsesView } from "@/components/admin/tasks/survey-responses-view";
+import { SurveyResponsesLazy } from "@/components/admin/tasks/survey-responses-lazy";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -28,7 +28,7 @@ export default async function SurveyResponsesPage({ params }: PageProps) {
   const canExport = await can(session.user.id, "analytics.export");
 
   return (
-    <SurveyResponsesView
+    <SurveyResponsesLazy
       taskId={task.id}
       taskTitle={task.title}
       canExport={canExport}

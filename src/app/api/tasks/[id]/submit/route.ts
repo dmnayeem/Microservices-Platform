@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
+import { calculateLevel } from "@/lib/level";
 import { requireActiveUser } from "@/lib/require-active";
 import {
   SubmissionStatus,
@@ -62,6 +63,7 @@ import {
   coerceQuizQuestions,
   coerceQuizAnswers,
   scoreQuiz,
+  quizPayout,
 } from "@/lib/quiz-shape";
 
 // POST /api/tasks/:id/submit - Submit task proof
@@ -909,7 +911,12 @@ export async function POST(
         (task.type !== "ARTICLE" &&
           task.type !== "CUSTOM" &&
           task.type !== "APPINSTALL" &&
-          (task.autoApprove || task.type === "VIDEO" || task.type === "QUIZ")));
+          // `task.autoApprove` alone. This used to be or-ed with a hardcoded
+          // `|| task.type === "VIDEO" || task.type === "QUIZ"`, which overrode
+          // the admin's own switch: a VIDEO or QUIZ task with auto-approve
+          // explicitly turned OFF still paid out instantly. The toggle is the
+          // decision; the type is not.
+          task.autoApprove));
 
     // VIDEO YouTube-style engagement that requires a screenshot is manually
     // reviewed (a screenshot only has value if a human checks it). Honor-based
@@ -1034,8 +1041,20 @@ export async function POST(
       const multiplier =
         (userPlan as unknown as { package: { taskRewardMultiplier: number } | null })?.package
           ?.taskRewardMultiplier ?? 1;
-      const effectivePoints = Math.round(task.pointsReward * multiplier);
-      const effectiveXp = Math.round(task.xpReward * multiplier);
+      // A QUIZ pays on the score, exactly as /api/tasks/quiz does. This path
+      // computed `score` above and then ignored it, paying the full reward for
+      // a 0% answer sheet — so which route the client happened to use decided
+      // what a wrong answer was worth. `quizPayout` is now the only rule.
+      const rewardBase =
+        task.type === "QUIZ" && score !== null
+          ? quizPayout(score, task.pointsReward)
+          : task.pointsReward;
+      const xpBase =
+        task.type === "QUIZ" && score !== null
+          ? quizPayout(score, task.xpReward)
+          : task.xpReward;
+      const effectivePoints = Math.round(rewardBase * multiplier);
+      const effectiveXp = Math.round(xpBase * multiplier);
       const pointsPerUsd = await getPointsPerUsd();
 
       // Funded (user-created) task: draw from the pool FIRST (CAS). If the pool
@@ -1108,7 +1127,12 @@ export async function POST(
       ]);
 
       // Check for level up
-      const newLevel = calculateLevel(user.xp + effectiveXp);
+      // `user` is the RESULT of the `user.update` above, so `user.xp` already
+      // includes `effectiveXp`. Adding it again counted every reward twice and
+      // levelled people up at roughly half the intended XP, compounding on
+      // every task. (`daily-reward` reads the user BEFORE its transaction,
+      // which is why the same expression is correct there and was wrong here.)
+      const newLevel = calculateLevel(user.xp);
       if (newLevel > user.level) {
         await prisma.user.update({
           where: { id: session.user.id },
@@ -1162,7 +1186,9 @@ export async function POST(
           points: effectivePoints,
           xp: effectiveXp,
         },
-        newBalance: user.pointsBalance + effectivePoints,
+        // Same reason as the level above: `user` is the post-increment row, so
+        // this reported a balance one full reward higher than the wallet held.
+        newBalance: user.pointsBalance,
         score,
       });
     }
@@ -1221,22 +1247,4 @@ export async function POST(
   });
 }
 
-// Calculate user level based on XP
-function calculateLevel(xp: number): number {
-  // Level formula: Each level requires more XP than the previous
-  // Level 1: 0 XP, Level 2: 100 XP, Level 3: 250 XP, etc.
-  if (xp < 100) return 1;
-  if (xp < 250) return 2;
-  if (xp < 500) return 3;
-  if (xp < 1000) return 4;
-  if (xp < 2000) return 5;
-  if (xp < 4000) return 6;
-  if (xp < 7000) return 7;
-  if (xp < 11000) return 8;
-  if (xp < 16000) return 9;
-  if (xp < 22000) return 10;
-
-  // After level 10, each level requires 10000 more XP
-  return Math.floor(10 + (xp - 22000) / 10000);
-}
 

@@ -44,9 +44,17 @@ export async function GET() {
     where: { userId_date: { userId, date: today } },
   });
 
-  // L1 referral count
+  // L1 referral count — ACTIVE accounts only.
+  //
+  // This is a RECURRING daily payout of `perReferral × count`, and it used to
+  // count every row with `referredById = you`: accounts that never verified
+  // their email, accounts banned for fraud, and self-deleted accounts (which
+  // are soft-deleted to BANNED but keep their `referredById`). Registering
+  // throwaway addresses that are never opened therefore bought a permanent
+  // daily income. `audienceWhere()` already treats `status: "ACTIVE"` as the
+  // house rule for who counts as a real user.
   const referralCount = await prisma.user.count({
-    where: { referredById: userId },
+    where: { referredById: userId, status: "ACTIVE" },
   });
 
   // Per-referral bonus from the user's plan; default 5 if 0/null. Plan that

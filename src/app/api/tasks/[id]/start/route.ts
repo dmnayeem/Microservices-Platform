@@ -316,6 +316,35 @@ export async function POST(
       );
     }
 
+    // A survey is answered once per PERSON, for the lifetime of the task —
+    // asking the same respondent twice would corrupt the results.
+    //
+    // The admin routes used to express this as `totalLimit: 1`, but that is a
+    // global counter, so the first approval closed the survey for everyone.
+    // The rule belongs here, per user.
+    if (task.type === TaskType.SURVEY) {
+      const alreadyAnswered = await prisma.taskSubmission.findFirst({
+        where: {
+          taskId: id,
+          userId: session.user.id,
+          status: {
+            in: [
+              SubmissionStatus.PENDING,
+              SubmissionStatus.APPROVED,
+              SubmissionStatus.AUTO_APPROVED,
+            ],
+          },
+        },
+        select: { id: true },
+      });
+      if (alreadyAnswered) {
+        return NextResponse.json(
+          { error: "You've already answered this survey." },
+          { status: 400 }
+        );
+      }
+    }
+
     // Per-task daily limit (admin-set on the task itself)
     const todaySubmissions = await prisma.taskSubmission.count({
       where: {

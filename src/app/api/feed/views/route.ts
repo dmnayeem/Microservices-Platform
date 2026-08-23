@@ -72,15 +72,45 @@ export async function POST(request: NextRequest) {
   });
 
   // Earnings stay per (post owner, view) because that is what the payout rules
-  // are defined on — but they are now credited for a whole scroll at once
-  // instead of blocking each individual beacon.
+  // are defined on. They used to run in a plain sequential `for` loop, and
+  // `awardSocialEarning` is ~8 queries each including an interactive transaction
+  // that takes `SELECT … FOR UPDATE` on the owner's User row. At the 50-post cap
+  // that was ~400 sequential round-trips through Accelerate on every feed
+  // scroll — comfortably the most expensive request in the app.
+  //
+  // Grouped by OWNER, then run across owners concurrently:
+  //   - within one owner, strictly sequential, because those calls contend on
+  //     that owner's row lock and on their per-day cap. Running them in parallel
+  //     would just make them queue on the lock, and the cap re-check inside the
+  //     lock is what keeps the payout correct.
+  //   - across owners, in parallel, because they touch different rows entirely.
+  //
+  // A typical feed page has many distinct authors, so this collapses the chain
+  // to roughly the length of the busiest single author's slice. Each call is
+  // already idempotent on its ledger reference, so a failure is per-post and
+  // never double-credits.
+  const byOwner = new Map<string, string[]>();
   for (const p of freshPosts) {
-    await awardSocialEarning({
-      postOwnerUserId: p.userId,
-      actorUserId: viewerId,
-      action: "VIEW_RECEIVED",
-      postId: p.id,
-    }).catch(() => {});
+    const list = byOwner.get(p.userId);
+    if (list) list.push(p.id);
+    else byOwner.set(p.userId, [p.id]);
+  }
+
+  const CONCURRENT_OWNERS = 6;
+  const owners = [...byOwner.entries()];
+  for (let i = 0; i < owners.length; i += CONCURRENT_OWNERS) {
+    await Promise.all(
+      owners.slice(i, i + CONCURRENT_OWNERS).map(async ([ownerId, postIds]) => {
+        for (const postId of postIds) {
+          await awardSocialEarning({
+            postOwnerUserId: ownerId,
+            actorUserId: viewerId,
+            action: "VIEW_RECEIVED",
+            postId,
+          }).catch(() => {});
+        }
+      })
+    );
   }
 
   return NextResponse.json({ counted: freshPosts.length });

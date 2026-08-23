@@ -22,24 +22,29 @@ export default async function MainLayout({
     redirect("/login");
   }
 
-  // Effective feature set (package + per-user overrides) → hide disabled nav.
-  const { enabled } = await getEffectiveFeatures(session.user.id);
+  // These three are independent of one another, so they run together.
+  //
+  // They used to be three sequential `await`s after the session — a four-deep
+  // waterfall on EVERY page in the authenticated app, adding two full database
+  // round-trips before any page could begin rendering. That is the tax that
+  // made everything feel slow, and it was paid on every navigation.
+  //
+  //  - getEffectiveFeatures: package + per-user overrides → hides disabled nav
+  //  - getHiddenPaths: super-admin page visibility → nav hiding + route guard
+  //  - the avatar: the session doesn't carry it, and the header/sidebar need it.
+  //    Short cache so a new upload appears after PhotoModal's router.refresh.
+  const [{ enabled }, hiddenPaths, dbUser] = await Promise.all([
+    getEffectiveFeatures(session.user.id),
+    getHiddenPaths(session.user.id),
+    prisma.user
+      .findUnique({
+        where: { id: session.user.id },
+        select: { avatar: true },
+        cacheStrategy: { ttl: 10, swr: 30 },
+      })
+      .catch(() => null),
+  ]);
   const features = Array.from(enabled);
-
-  // Super-admin page-visibility (feature #3): paths hidden for this user's
-  // package / role / per-user override. Drives both nav hiding + a route guard.
-  const hiddenPaths = await getHiddenPaths(session.user.id);
-
-  // The session doesn't carry the avatar, so fetch it here (cheap indexed read)
-  // and pass it to the shells so the header/sidebar show the real picture. Kept
-  // fresh (short cache) so a new upload appears after PhotoModal's router.refresh.
-  const dbUser = await prisma.user
-    .findUnique({
-      where: { id: session.user.id },
-      select: { avatar: true },
-      cacheStrategy: { ttl: 10, swr: 30 },
-    })
-    .catch(() => null);
   const avatar = dbUser?.avatar ?? null;
 
   return (
