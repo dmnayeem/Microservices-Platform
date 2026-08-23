@@ -21,6 +21,7 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { Section, Toggle } from "@/components/admin/shared/controls";
 
 export type SettingsBag = Record<string, unknown>;
 
@@ -1244,87 +1245,5 @@ function Field({
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-4 space-y-3">
-      <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  description,
-  checked,
-  onChange,
-  disabled,
-  tone = "blue",
-}: {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-  tone?: "blue" | "amber" | "red" | "purple";
-}) {
-  const toneCls = {
-    blue: "peer-checked:bg-blue-500",
-    amber: "peer-checked:bg-amber-500",
-    red: "peer-checked:bg-red-500",
-    purple: "peer-checked:bg-purple-500",
-  }[tone];
-  return (
-    <label
-      className={cn(
-        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-slate-950/50 border cursor-pointer",
-        tone === "purple"
-          ? "border-purple-500/30"
-          : tone === "amber"
-          ? "border-amber-500/20"
-          : tone === "red"
-          ? "border-red-500/20"
-          : "border-slate-700",
-        disabled && "opacity-60 cursor-not-allowed"
-      )}
-    >
-      <div>
-        <p className="text-sm text-white font-medium">{label}</p>
-        {description && (
-          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
-        )}
-      </div>
-      <div className="relative">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          disabled={disabled}
-          className="sr-only peer"
-        />
-        <div
-          className={cn(
-            "w-11 h-6 bg-slate-700 rounded-full transition-colors",
-            toneCls
-          )}
-        >
-          <span
-            className={cn(
-              "block w-5 h-5 bg-white rounded-full transition-transform",
-              checked ? "translate-x-5" : "translate-x-0.5",
-              "translate-y-0.5"
-            )}
-          />
-        </div>
-      </div>
-    </label>
-  );
-}
+// `Section` and `Toggle` now live in components/admin/shared/controls.tsx so the
+// social-earning screen uses the same switch rather than a look-alike.

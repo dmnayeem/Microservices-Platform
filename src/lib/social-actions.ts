@@ -273,6 +273,13 @@ export function ratioPreview(
   if (!reward) return "Enabled, but both points and XP are 0 — nothing is awarded.";
 
   const c = COPY[key];
+  // `SOCIAL_ACTIONS` and `SOCIAL_ACTIVITY_KEYS` are parallel by convention only
+  // — TypeScript enforces neither the same length nor the same order — and this
+  // is the one place that relies on the alignment. Reordering or inserting into
+  // either tuple without the other silently mislabels the ratio unit here (and
+  // nothing else, because every other mapping goes through `toLowerCase()`),
+  // which is the hardest kind of failure to notice. Change display order in the
+  // admin form's own array instead.
   const action = SOCIAL_ACTIONS[SOCIAL_ACTIVITY_KEYS.indexOf(key)];
   const distinct = RATIO_UNIT[action] === "distinct_post";
 
