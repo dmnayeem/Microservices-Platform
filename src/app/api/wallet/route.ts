@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { WithdrawalStatus } from "@/generated/prisma";
 import { getSubscriptionStatus } from "@/lib/packages";
 import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
-import { toNum } from "@/lib/money";
+import { toNum, type MoneyInput } from "@/lib/money";
 
 // GET /api/wallet - Get user wallet details
 export async function GET() {
@@ -43,7 +43,10 @@ export async function GET() {
         status: { in: [WithdrawalStatus.PENDING, WithdrawalStatus.PROCESSING] },
       },
       _sum: { amount: true },
-    })) as unknown as { _sum: { amount: number | null } };
+      // `Withdrawal.amount` is Decimal, so the sum is a Decimal — typing it
+      // `number` here was a lie the next reader would act on. `toNum` below does
+      // the real conversion.
+    })) as unknown as { _sum: { amount: MoneyInput | null } };
     const pendingWithdrawalsAmount = toNum(pendingWithdrawalsAgg._sum.amount);
 
     const todayStart = new Date();

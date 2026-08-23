@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { toNum } from "@/lib/money";
+import { toNum, type MoneyInput } from "@/lib/money";
 
 // GET /api/packages/subscription - Get user's subscription status
 export async function GET() {
@@ -52,7 +52,23 @@ export async function GET() {
     });
 
     type SubWithPkg<T> = T & { package: { id: string; slug: string; name: string } | null };
-    const pkg = (user as unknown as { package: { id: string; slug: string; name: string; features: string[]; dailyTaskLimit: number; withdrawalFeeDiscount: number; minWithdrawal: number } | null }).package;
+    // `minWithdrawal` is typed `MoneyInput`, not `number`: the column is
+    // Decimal(18,6), and a cast that claims `number` invites the next reader to
+    // do arithmetic on it — where `+` would concatenate strings rather than add.
+    // Everything that leaves this route goes through `toNum` first.
+    const pkg = (
+      user as unknown as {
+        package: {
+          id: string;
+          slug: string;
+          name: string;
+          features: string[];
+          dailyTaskLimit: number;
+          withdrawalFeeDiscount: number;
+          minWithdrawal: MoneyInput;
+        } | null;
+      }
+    ).package;
     const activeSub = activeSubscription as unknown as SubWithPkg<typeof activeSubscription> | null;
     const pendingSub = pendingSubscription as unknown as SubWithPkg<typeof pendingSubscription> | null;
     const history = subscriptionHistory as unknown as Array<SubWithPkg<(typeof subscriptionHistory)[number]>>;

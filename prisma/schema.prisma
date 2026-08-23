@@ -1738,6 +1738,11 @@ model TaskSubmission {
   articleKey      ArticleTaskKey?
   pageProgress    ArticleTaskPageProgress[]
 
+  // NOT a duplicate-submission guard, despite reading like one: `createdAt` is a
+  // millisecond timestamp, so every row is trivially unique and this constrains
+  // nothing. The real guards are the `submittedAt` CAS in /submit and the
+  // status CAS in the admin review route. Left in place — dropping a unique
+  // index on a live table buys nothing at runtime.
   @@unique([taskId, userId, createdAt])
   @@index([userId])
   @@index([taskId])
@@ -2048,7 +2053,10 @@ model ReferralLevel {
   level           Int            @unique
   commissionType  CommissionType @default(PERCENTAGE)
   commissionValue Float          @default(0)
-  commissionRate  Float? // Legacy field, will be migrated
+  // Legacy. `commissionValue` + `commissionType` superseded it; nothing reads
+  // this. Left in place deliberately: a destructive migration on a live table
+  // for a column that costs nothing is not worth the risk.
+  commissionRate  Float?
   description     String?
   isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
@@ -2311,6 +2319,10 @@ model CartItem {
 
   @@unique([userId, listingId])
   @@index([userId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([listingId])
 }
 
 // Users can "watch" listings — soft favorites that surface in seller analytics
@@ -2469,6 +2481,10 @@ model Course {
   @@index([tutorId])
   @@index([isFeatured])
   @@index([slug])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([subcategoryId])
 }
 
 model CourseCategory {
@@ -2549,6 +2565,12 @@ model CourseLesson {
 
   @@index([courseId])
   @@index([moduleId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([quizId])
+  @@index([assignmentId])
+  @@index([liveClassId])
 }
 
 model CourseEnrollment {
@@ -2607,6 +2629,10 @@ model CourseReview {
 
   @@unique([courseId, userId])
   @@index([courseId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([userId])
 }
 
 model CourseQuestion {
@@ -2627,6 +2653,10 @@ model CourseQuestion {
 
   @@index([courseId])
   @@index([askerId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([answeredById])
 }
 
 model CourseBookmark {
@@ -2639,6 +2669,10 @@ model CourseBookmark {
 
   @@unique([userId, courseId])
   @@index([userId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([courseId])
 }
 
 model CourseAnnouncement {
@@ -2652,6 +2686,10 @@ model CourseAnnouncement {
   createdAt DateTime @default(now())
 
   @@index([courseId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([authorId])
 }
 
 model CourseQuiz {
@@ -2739,6 +2777,10 @@ model CourseAssignmentSubmission {
 
   @@index([assignmentId])
   @@index([userId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([gradedById])
 }
 
 model CourseLiveClass {
@@ -2795,6 +2837,10 @@ model CourseCoupon {
   updatedAt        DateTime    @updatedAt
 
   @@index([isActive])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([createdById])
 }
 
 model CourseRefundRequest {
@@ -2816,6 +2862,12 @@ model CourseRefundRequest {
 
   @@index([status])
   @@index([userId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([enrollmentId])
+  @@index([courseId])
+  @@index([processedById])
 }
 
 model CourseListingView {
@@ -2852,6 +2904,10 @@ model TutorApplication {
 
   @@index([userId])
   @@index([status])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([reviewedById])
 }
 
 enum CreatorApplicationType {
@@ -2889,6 +2945,10 @@ model CreatorApplication {
   @@index([userId])
   @@index([status])
   @@index([type])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([reviewedById])
 }
 
 model TutorProfile {
@@ -3081,6 +3141,11 @@ model Post {
   donationGoal          Int?
   donationCollected     Int             @default(0)
   groupId               String?
+  // Optional relation → Prisma's implicit `onDelete: SetNull`. Deleting a group
+  // would therefore null `groupId` on its posts, and a post whose `isPublic`
+  // defaults to true would surface in the PUBLIC feed. There is no group-delete
+  // route today, so this is latent, not live — but anything that adds one must
+  // decide the posts' fate explicitly rather than inherit this.
   group                 Group?          @relation(fields: [groupId], references: [id])
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
@@ -3434,6 +3499,10 @@ model UserBadge {
 
   @@unique([userId, badgeId])
   @@index([userId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([badgeId])
 }
 
 model Achievement {
@@ -3464,6 +3533,10 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@index([userId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([achievementId])
 }
 
 model PointGift {
@@ -3694,6 +3767,10 @@ model OfferwallOffer {
 
   @@index([isActive, categoryId, order])
   @@index([providerId, externalOfferId])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([categoryId])
 }
 
 // One "Start Work" click — the subid glue matched by the provider postback.
@@ -4015,6 +4092,10 @@ model EventActionLog {
   @@unique([eventId, userId, dedupKey])
   @@index([eventId, userId])
   @@index([createdAt])
+
+  // Foreign key with no covering index — Postgres does not create one,
+  // so both the join and the parent-delete referential check were scans.
+  @@index([userId])
 }
 
 // Per-viewer impression counter for boosted posts (feed boost frequency cap).

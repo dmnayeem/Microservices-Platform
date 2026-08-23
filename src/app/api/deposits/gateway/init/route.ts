@@ -73,12 +73,21 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ redirectUrl, depositId: deposit.id });
   } catch (err) {
+    // This is a ROLLBACK, not a notification: it marks the deposit dead after
+    // the gateway couldn't be reached. Swallowing a failure here silently leaves
+    // a PENDING deposit with no gateway reference — a row an admin will later
+    // find and have no way to explain. Log it so it is at least findable.
     await prisma.deposit
       .update({
         where: { id: deposit.id },
         data: { status: "REJECTED", adminNote: "Gateway init failed" },
       })
-      .catch(() => {});
+      .catch((rollbackErr) => {
+        console.error(
+          `[deposit] gateway init failed AND the rollback failed for deposit ${deposit.id} — it is stuck PENDING:`,
+          rollbackErr
+        );
+      });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Gateway unreachable" },
       { status: 502 }
