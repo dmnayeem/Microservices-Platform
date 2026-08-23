@@ -1,5 +1,6 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
@@ -20,7 +21,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { WithdrawalActions } from "./_components/WithdrawalActions";
 import { assessWithdrawalRisk } from "@/lib/withdrawal-risk";
 
@@ -51,8 +51,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "withdrawals.view")) {
+  if (!(await can(session.user.id, "withdrawals.view"))) {
     redirect("/admin/withdrawals");
   }
 
@@ -140,7 +139,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
   const config = statusConfig[withdrawal.status] || statusConfig.PENDING;
   const StatusIcon = config.icon;
 
-  const canProcess = hasPermission(adminRole, "withdrawals.process");
+  const canProcess = await can(session.user.id, "withdrawals.process");
 
   // Parse account details from JSON
   const accountDetails = withdrawal.accountDetails as Record<string, string> | null;

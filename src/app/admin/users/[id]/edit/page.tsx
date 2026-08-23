@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
 import { can } from "@/lib/permissions";
 import { toNum } from "@/lib/money";
 import { usd } from "@/lib/utils";
@@ -19,9 +19,9 @@ export default async function EditUserPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
   const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "users.edit")) {
+  if (!(await can(session.user.id, "users.edit"))) {
     redirect(`/admin/users`);
   }
 
@@ -150,10 +150,10 @@ export default async function EditUserPage({
           userEmail={user.email}
           userStatus={user.status}
           canEdit={false}
-          canBan={hasPermission(adminRole, "users.ban") && user.role !== "SUPER_ADMIN"}
-          canDelete={hasPermission(adminRole, "users.delete") && user.role !== "SUPER_ADMIN"}
+          canBan={await can(session.user.id, "users.ban") && user.role !== "SUPER_ADMIN"}
+          canDelete={await can(session.user.id, "users.delete") && user.role !== "SUPER_ADMIN"}
           canApprove={
-            hasPermission(adminRole, "users.edit") &&
+            await can(session.user.id, "users.edit") &&
             (user.role !== "SUPER_ADMIN" || isSuperAdmin)
           }
           canImpersonate={
@@ -196,7 +196,7 @@ export default async function EditUserPage({
             ))}
           </div>
         )}
-        {hasPermission(adminRole, "users.edit") && (
+        {await can(session.user.id, "users.edit") && (
           <Link
             href={`/admin/users/${id}/boost-followers`}
             className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:text-white"

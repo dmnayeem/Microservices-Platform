@@ -5,6 +5,7 @@ import { getUserDayContext } from "@/lib/user-day";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { verifyCodeFor } from "@/lib/task-verify-code";
 import { matchesTaskAudience } from "@/lib/task-targeting";
+import { toPlayerTask } from "@/lib/task-player-view";
 
 // GET /api/tasks/:id - Get single task details
 export async function GET(
@@ -33,6 +34,16 @@ export async function GET(
     });
 
     if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // `hidden` is the super-admin hard hide — `visibleTaskWhere()` documents it
+    // as "never in any user-facing list". This route read the row by id and
+    // enforced nothing, so a task pulled for fraud, or staged for a future
+    // campaign, was fully readable (and startable, via /start) by anyone who
+    // had the id. Treat it as absent rather than forbidden: confirming that a
+    // hidden task exists is itself a leak.
+    if (task.hidden) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
@@ -119,8 +130,16 @@ export async function GET(
 
     return NextResponse.json({
       task: {
-        ...task,
-        completedCount: task._count.submissions,
+        // Sanitised, not spread. See task-player-view.ts — the raw row carries
+        // the quiz answer key and the video/article proof keys.
+        ...toPlayerTask(task),
+        // The real credited counter, not `_count.submissions`. Shipping the
+        // attempt count here made a card read "47 completed / 50" on a task
+        // that actually closes at 31 — the list route fixed exactly this and
+        // documented it; the detail route still had the bug, and it disagreed
+        // with `remainingSlots` on the very next line.
+        completedCount: task.completedCount,
+        attemptCount: task._count.submissions,
         remainingSlots: task.totalLimit
           ? task.totalLimit - task.completedCount
           : null,

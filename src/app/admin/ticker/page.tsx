@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Activity } from "lucide-react";
 import { TickerSettingsForm } from "@/components/admin/ticker/ticker-settings-form";
 
 export default async function WithdrawalTickerPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "ticker.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "ticker.view"))) redirect("/admin");
 
-  const canEdit = hasPermission(adminRole, "ticker.edit");
+  const canEdit = await can(session.user.id, "ticker.edit");
 
   const rows = await prisma.systemSetting.findMany({
     where: { category: "ticker" },

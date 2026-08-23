@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { MediaLibrary } from "@/components/media/MediaLibrary";
 
@@ -10,8 +10,7 @@ export default async function MediaPage() {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "media.view")) {
+  if (!(await can(session.user.id, "media.view"))) {
     redirect("/admin");
   }
 

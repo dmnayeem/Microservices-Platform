@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { BoardDetailClient } from "@/components/admin/boards/board-detail-client";
 
 export default async function BoardDetailPage({
@@ -10,10 +10,9 @@ export default async function BoardDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "boards.view")) redirect("/admin");
-  const canManage = hasPermission(adminRole, "boards.manage");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "boards.view"))) redirect("/admin");
+  const canManage = await can(session.user.id, "boards.manage");
 
   const { id } = await params;
   const board = await prisma.taskBoard.findUnique({ where: { id } });

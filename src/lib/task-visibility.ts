@@ -59,6 +59,18 @@ export interface TaskVisibilityOpts {
   type?: TaskType | null;
   /** Category name filter, as /api/tasks supports. */
   category?: string | null;
+  /**
+   * Include tasks that belong to a board. Default false — board tasks are
+   * played from their board, and a board task completed outside its board earns
+   * nothing (`submit/route.ts` defers the payout to the board bundle), so
+   * listing them in the general task list just looks broken.
+   *
+   * `isBoardOnly` existed on the model and was read in exactly one place
+   * (`/api/tasks/summary`), never as a filter — so board-only tasks appeared in
+   * the general list, in `/api/tasks/social`, `/proxy`, `/quiz` and in the
+   * sequential-unlock chain. Board routes pass `true`.
+   */
+  includeBoardTasks?: boolean;
   now?: Date;
 }
 
@@ -77,6 +89,10 @@ export function visibleTaskWhere(
     // age) — STRICT: a viewer missing a targeted attribute is excluded.
     ...taskAudienceWhere(viewer),
   ];
+
+  if (!opts.includeBoardTasks) {
+    andClauses.push({ isBoardOnly: false, boardId: null });
+  }
 
   const where: Prisma.TaskWhereInput = {
     status: TaskStatus.ACTIVE,

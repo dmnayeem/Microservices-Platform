@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNumOrNull } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Tag } from "lucide-react";
 import Link from "next/link";
 import { CouponsAdmin } from "./_components/CouponsAdmin";
 
 export default async function AdminCouponsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "courses.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
   const [couponsRaw, categories, courses] = await Promise.all([
     prisma.courseCoupon.findMany({
@@ -31,7 +30,7 @@ export default async function AdminCouponsPage() {
     }),
   ]);
 
-  const canManage = hasPermission(role, "courses.manage");
+  const canManage = await can(session.user.id, "courses.manage");
 
   return (
     <div className="space-y-6">

@@ -1,18 +1,17 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Globe, CheckCircle, XCircle } from "lucide-react";
 import { ProxyClient } from "@/components/admin/proxy/proxy-client";
 import { ProxyMonitor } from "@/components/admin/proxy/proxy-monitor";
 
 export default async function ProxyAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "proxy.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "proxy.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "proxy.manage");
+  const canManage = await can(session.user.id, "proxy.manage");
   const servers = await prisma.proxyServer.findMany({
     orderBy: [{ status: "asc" }, { country: "asc" }],
   });

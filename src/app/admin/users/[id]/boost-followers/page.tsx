@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { BoostFollowersView } from "@/components/admin/users/boost-followers-view";
 
 interface PageProps {
@@ -10,10 +10,9 @@ interface PageProps {
 
 export default async function BoostFollowersPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "users.edit")) redirect("/admin/users");
+  if (!(await can(session.user.id, "users.edit"))) redirect("/admin/users");
 
   const { id } = await params;
   const user = await prisma.user.findUnique({

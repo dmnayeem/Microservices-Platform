@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { SendNotificationForm } from "../_components/SendNotificationForm";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
@@ -12,8 +12,7 @@ export default async function SendNotificationPage() {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "notifications.send")) {
+  if (!(await can(session.user.id, "notifications.send"))) {
     redirect("/admin/notifications");
   }
 

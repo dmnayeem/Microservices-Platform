@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Percent, Info, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getCourseCommissionConfig } from "@/lib/course-commission";
@@ -9,9 +9,8 @@ import { CourseCommissionForm } from "./_components/CourseCommissionForm";
 
 export default async function CourseSettingsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "courses.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
   const [config, categories] = await Promise.all([
     getCourseCommissionConfig(),
@@ -22,7 +21,7 @@ export default async function CourseSettingsPage() {
     }),
   ]);
 
-  const canEdit = hasPermission(role, "courses.manage");
+  const canEdit = await can(session.user.id, "courses.manage");
 
   return (
     <div className="space-y-6">

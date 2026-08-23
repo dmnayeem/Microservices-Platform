@@ -1,16 +1,17 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
 import { CreateUserForm } from "@/components/admin/users/create-user-form";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export default async function NewUserPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
   const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "users.edit")) redirect("/admin/users");
+  if (!(await can(session.user.id, "users.edit"))) redirect("/admin/users");
 
   const isSuperAdmin = adminRole === "SUPER_ADMIN";
 

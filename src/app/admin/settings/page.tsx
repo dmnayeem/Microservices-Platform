@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { SystemSettingsForm } from "@/components/admin/settings/system-settings-form";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "settings.view")) redirect("/admin");
+  if (!(await can(session.user.id, "settings.view"))) redirect("/admin");
 
-  const canEdit = hasPermission(adminRole, "settings.edit");
+  const canEdit = await can(session.user.id, "settings.edit");
 
   // Load all current settings — the form uses key-based merge with defaults
   const rows = await prisma.systemSetting.findMany();

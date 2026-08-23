@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Image as ImageIcon } from "lucide-react";
 import { BannersClient } from "@/components/admin/banners/banners-client";
 
 export default async function BannersAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "banners.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "banners.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "banners.manage");
+  const canManage = await can(session.user.id, "banners.manage");
   const banners = await prisma.banner.findMany({
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
   });

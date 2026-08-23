@@ -1,20 +1,19 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Handshake, Coins, Users, TrendingUp, MousePointerClick, Percent } from "lucide-react";
 import { getAffiliateConfig } from "@/lib/affiliate";
 import { AffiliateConfigForm } from "@/components/admin/affiliate/affiliate-config-form";
 
 export default async function AdminAffiliatePage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "marketplace.view")) redirect("/admin");
-  const canManage = hasPermission(role, "marketplace.manage");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
+  const canManage = await can(session.user.id, "marketplace.manage");
 
   const affiliateConfig = await getAffiliateConfig();
 

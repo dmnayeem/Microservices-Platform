@@ -1,11 +1,11 @@
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Shield, ChevronLeft, ChevronRight, User, Settings, Wallet, Package, Store, Ticket, Bell, Activity } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 
 interface PageProps {
@@ -45,8 +45,7 @@ export default async function AdminAuditLogsPage({ searchParams }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "logs.view")) {
+  if (!(await can(session.user.id, "logs.view"))) {
     redirect("/admin");
   }
 

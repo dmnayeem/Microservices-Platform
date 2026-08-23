@@ -1,16 +1,15 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { FolderTree } from "lucide-react";
 import Link from "next/link";
 import { CategoryManager } from "./_components/CategoryManager";
 
 export default async function CourseCategoriesPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "courses.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
   const rowsRaw = await prisma.courseCategory.findMany({
     orderBy: [{ order: "asc" }, { name: "asc" }],
@@ -34,7 +33,7 @@ export default async function CourseCategoriesPage() {
     _count: { courses: number };
   }>;
 
-  const canManage = hasPermission(role, "courses.manage");
+  const canManage = await can(session.user.id, "courses.manage");
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Inbox, CheckCircle, XCircle, Clock, Filter } from "lucide-react";
 import Link from "next/link";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -14,9 +14,8 @@ interface PageProps {
 
 export default async function TutorApplicationsPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "tutor.applications.review")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "tutor.applications.review"))) redirect("/admin");
 
   const { status } = await searchParams;
   const statusFilter =

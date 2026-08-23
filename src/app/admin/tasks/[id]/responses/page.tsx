@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { SurveyResponsesView } from "@/components/admin/tasks/survey-responses-view";
 
 interface PageProps {
@@ -10,10 +10,9 @@ interface PageProps {
 
 export default async function SurveyResponsesPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "submissions.view")) redirect("/admin");
+  if (!(await can(session.user.id, "submissions.view"))) redirect("/admin");
 
   const { id } = await params;
 
@@ -26,7 +25,7 @@ export default async function SurveyResponsesPage({ params }: PageProps) {
     redirect(`/admin/tasks/${id}`);
   }
 
-  const canExport = hasPermission(adminRole, "analytics.export");
+  const canExport = await can(session.user.id, "analytics.export");
 
   return (
     <SurveyResponsesView

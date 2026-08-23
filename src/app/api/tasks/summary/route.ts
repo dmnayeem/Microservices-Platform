@@ -32,6 +32,8 @@ export async function GET() {
     const eligible = visibleTaskWhere(ctx.viewer, {
       accessLevel: ctx.accessLevel,
       allowedTypes: ctx.allowedTypes,
+      // the summary counts board tasks separately
+      includeBoardTasks: true,
     });
 
     // Eligible active tasks per type + total earnable XP; the board aggregate

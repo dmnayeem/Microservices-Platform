@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { StatCard } from "@/components/admin/stat-card";
 import {
   AdminTable,
@@ -42,9 +42,8 @@ export default async function GameAnalyticsPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "games.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "games.view"))) redirect("/admin");
 
   const { id } = await params;
   const game = await prisma.game.findUnique({ where: { id } });

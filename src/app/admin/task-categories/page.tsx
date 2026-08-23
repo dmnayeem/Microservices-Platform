@@ -1,14 +1,13 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { getSetting } from "@/lib/system-settings";
 import { TaskCategoriesForm } from "@/components/admin/tasks/task-categories-form";
 
 export default async function TaskCategoriesAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "tasks.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "tasks.view"))) redirect("/admin");
 
   const initial = await getSetting<Record<string, boolean>>(
     "tasks.category_visibility",
@@ -18,7 +17,7 @@ export default async function TaskCategoriesAdminPage() {
   return (
     <TaskCategoriesForm
       initial={initial}
-      canManage={hasPermission(role, "tasks.edit")}
+      canManage={await can(session.user.id, "tasks.edit")}
     />
   );
 }

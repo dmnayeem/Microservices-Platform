@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CreditCard, Save, Wallet } from "lucide-react";
 import { PaymentMethodsForm } from "@/components/admin/payment-methods/payment-methods-form";
 import { DepositMethodsForm } from "@/components/admin/payment-methods/deposit-methods-form";
@@ -138,11 +138,10 @@ const DEFAULT_METHODS = [
 
 export default async function PaymentMethodsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "payment_methods.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "payment_methods.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "payment_methods.manage");
+  const canManage = await can(session.user.id, "payment_methods.manage");
 
   // Load saved configurations from SystemSetting under "payment_methods" category
   const rows = await prisma.systemSetting.findMany({

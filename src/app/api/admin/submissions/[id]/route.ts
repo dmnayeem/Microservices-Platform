@@ -128,6 +128,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // `/start` creates a PENDING row the moment a user opens a task, so PENDING
+    // alone does not mean "there is something to review". Without this an admin
+    // could approve — and pay for — a row whose proof, images and answers are
+    // all still null, simply because it appeared in the queue.
+    if (!existingSubmission.submittedAt) {
+      return NextResponse.json(
+        {
+          error:
+            "This task was opened but never submitted, so there's nothing to review yet.",
+        },
+        { status: 409 }
+      );
+    }
+
     if (normalized === "approved") {
       if (!(await can(session.user.id, "submissions.approve"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

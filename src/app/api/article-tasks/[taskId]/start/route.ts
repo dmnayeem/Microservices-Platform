@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import { SubmissionStatus } from "@/generated/prisma/client";
+import { TaskType } from "@/generated/prisma";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import { signArticleTaskToken } from "@/lib/article-task-token";
 import { getUserDayContext } from "@/lib/user-day";
+import { getTaskChainState } from "@/lib/task-sequence";
+import {
+  getTaskViewerContext,
+  visibleTaskWhere,
+} from "@/lib/task-visibility";
 
 /**
  * POST /api/article-tasks/[taskId]/start
@@ -26,10 +33,60 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // A banned or suspended account must not be able to start a task. `User.status`
+  // is otherwise only ever read at login, and the JWT lives 30 days with no
+  // status claim, so a ban had no effect until the session expired.
+  const active = await requireActiveUser(session.user.id);
+  if (!active.ok) {
+    return NextResponse.json(
+      { error: active.message },
+      { status: active.httpStatus }
+    );
+  }
+
   const { taskId } = await params;
-  const task = await prisma.task.findUnique({ where: { id: taskId } });
-  if (!task || task.type !== "ARTICLE") {
+
+  // Loaded through the SAME visibility clause the task list uses.
+  //
+  // This is a second start path, and it enforced only "exists, is ARTICLE, has
+  // a key pool" plus the per-user limits below. Everything else was missing:
+  // status, hidden, expiresAt, startsAt, minLevel, requiredAccessLevel, the
+  // per-plan feature gate and audience targeting. The PENDING submission it
+  // creates is then accepted by `/api/tasks/[id]/submit`, and key-pool ARTICLE
+  // is on the auto-approve list — so this route paid out while bypassing every
+  // eligibility rule on the platform.
+  const ctx = await getTaskViewerContext(session.user.id);
+  if (!ctx || !ctx.hasTasksFeature) {
+    return NextResponse.json(
+      { error: "Your plan doesn't include tasks." },
+      { status: 403 }
+    );
+  }
+  const task = await prisma.task.findFirst({
+    where: {
+      id: taskId,
+      ...visibleTaskWhere(ctx.viewer, {
+        accessLevel: ctx.accessLevel,
+        allowedTypes: ctx.allowedTypes,
+        type: TaskType.ARTICLE,
+      }),
+    },
+  });
+  if (!task) {
     return NextResponse.json({ error: "Article task not found" }, { status: 404 });
+  }
+
+  // Sequential-unlock chain — the same guard `/api/tasks/[id]/start` applies,
+  // so this path can't be used to skip a locked task.
+  const { lockedTaskIds } = await getTaskChainState(session.user.id);
+  if (lockedTaskIds.has(task.id)) {
+    return NextResponse.json(
+      {
+        error: "Complete the previous task first to unlock this one.",
+        code: "TASK_LOCKED",
+      },
+      { status: 403 }
+    );
   }
 
   const cfg = task.articleConfig as ArticleConfig | null;

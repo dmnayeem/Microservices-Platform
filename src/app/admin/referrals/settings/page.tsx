@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ReferralSettingsForm } from "../_components/ReferralSettingsForm";
 import { ArrowLeft, Settings } from "lucide-react";
 import Link from "next/link";
@@ -13,8 +13,7 @@ export default async function ReferralSettingsPage() {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "referrals.configure")) {
+  if (!(await can(session.user.id, "referrals.configure"))) {
     redirect("/admin/referrals");
   }
 

@@ -1,5 +1,6 @@
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -24,7 +25,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { taskDisplayId } from "@/lib/display-id";
 import { Prisma } from "@/generated/prisma/client";
 import { TaskActions } from "@/components/admin/task-actions";
@@ -71,8 +71,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "tasks.view")) {
+  if (!(await can(session.user.id, "tasks.view"))) {
     redirect("/admin");
   }
 
@@ -166,9 +165,9 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     return queryParams.toString();
   };
 
-  const canCreate = hasPermission(adminRole, "tasks.create");
-  const canEdit = hasPermission(adminRole, "tasks.edit");
-  const canDelete = hasPermission(adminRole, "tasks.delete");
+  const canCreate = await can(session.user.id, "tasks.create");
+  const canEdit = await can(session.user.id, "tasks.edit");
+  const canDelete = await can(session.user.id, "tasks.delete");
 
   return (
     <div className="space-y-8">

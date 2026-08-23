@@ -1,18 +1,17 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Megaphone, Calendar, Target, DollarSign } from "lucide-react";
 import { CampaignsClient } from "@/components/admin/campaigns/campaigns-client";
 
 export default async function CampaignsAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "campaigns.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "campaigns.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "campaigns.manage");
+  const canManage = await can(session.user.id, "campaigns.manage");
   const campaigns = await prisma.campaign.findMany({
     orderBy: [{ status: "asc" }, { startDate: "desc" }],
   });

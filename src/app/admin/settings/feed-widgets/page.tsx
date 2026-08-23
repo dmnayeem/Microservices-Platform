@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { FeedWidgetsForm } from "@/components/admin/settings/feed-widgets-form";
 import { normalizeWidgetConfig } from "@/lib/feed-widgets";
 import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
@@ -9,11 +9,10 @@ import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
 
 export default async function FeedWidgetsSettingsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "settings.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "settings.view"))) redirect("/admin");
 
-  const canEdit = hasPermission(adminRole, "settings.edit");
+  const canEdit = await can(session.user.id, "settings.edit");
 
   const rows = await prisma.systemSetting.findMany({
     where: {

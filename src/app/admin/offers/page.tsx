@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Gift } from "lucide-react";
 import { OffersClient } from "@/components/admin/offers/offers-client";
 
 export default async function OffersAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "offers.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "offers.view"))) redirect("/admin");
 
-  const canManage = hasPermission(role, "offers.manage");
+  const canManage = await can(session.user.id, "offers.manage");
   const offers = await prisma.offer.findMany({
     orderBy: { updatedAt: "desc" },
     select: { id: true, slug: true, title: true, status: true, updatedAt: true },

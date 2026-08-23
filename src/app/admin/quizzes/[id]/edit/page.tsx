@@ -1,10 +1,10 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { QuizForm, type QuizEditInitial } from "@/components/admin/quizzes/quiz-form";
 
 export default async function EditQuizPage({
@@ -13,9 +13,8 @@ export default async function EditQuizPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "quizzes.manage")) redirect("/admin/quizzes");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "quizzes.manage"))) redirect("/admin/quizzes");
 
   const { id } = await params;
   const quizRaw = await prisma.quiz.findUnique({
@@ -35,7 +34,7 @@ export default async function EditQuizPage({
   const quiz = quizRaw as typeof quizRaw & { questions: QRow[] };
 
   const canUseAI =
-    hasPermission(adminRole, "ai.manage") || hasPermission(adminRole, "quizzes.manage");
+    await can(session.user.id, "ai.manage") || await can(session.user.id, "quizzes.manage");
 
   const initial: QuizEditInitial = {
     title: quiz.title,

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -26,9 +26,8 @@ interface PageProps {
 
 export default async function MarketplaceAnalyticsPage({ params }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "marketplace.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
 
   const { id } = await params;
 

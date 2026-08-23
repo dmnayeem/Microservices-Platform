@@ -1,8 +1,8 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { RefreshCcw, Clock, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -15,9 +15,8 @@ interface PageProps {
 
 export default async function CourseRefundsPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "courses.manage")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.manage"))) redirect("/admin");
 
   const { status } = await searchParams;
   const filter =

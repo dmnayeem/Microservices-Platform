@@ -1,9 +1,9 @@
 import { usd } from "@/lib/utils";
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   GraduationCap,
   Plus,
@@ -41,9 +41,8 @@ interface PageProps {
 
 export default async function CoursesAdminPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "courses.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
   const params = await searchParams;
   const page = parsePage(params.page);
@@ -123,7 +122,7 @@ export default async function CoursesAdminPage({ searchParams }: PageProps) {
   const courses = coursesRaw as unknown as CourseRow[];
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const canManage = hasPermission(adminRole, "courses.manage");
+  const canManage = await can(session.user.id, "courses.manage");
 
   const buildHref = (newPage: number) => {
     const sp = new URLSearchParams();

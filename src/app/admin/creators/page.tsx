@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CREATOR_TYPES } from "@/lib/creator-application";
 import type { CreatorApplicationType, CreatorApplicationStatus } from "@/generated/prisma";
 import Link from "next/link";
@@ -33,9 +33,8 @@ type AppRow = {
 
 export default async function AdminCreatorsPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "creators.review")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "creators.review"))) redirect("/admin");
 
   const sp = await searchParams;
   const status = (STATUSES as readonly string[]).includes(sp.status ?? "")
@@ -60,7 +59,7 @@ export default async function AdminCreatorsPage({ searchParams }: PageProps) {
   const countByStatus: Record<string, number> = {};
   for (const c of counts) countByStatus[c.status] = c._count;
 
-  const canManage = hasPermission(role, "creators.review");
+  const canManage = await can(session.user.id, "creators.review");
 
   return (
     <div className="space-y-4 max-w-4xl">

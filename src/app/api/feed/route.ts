@@ -3,6 +3,7 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { getEffectivePackage, userCanFeature } from "@/lib/packages";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
@@ -413,6 +414,17 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // A banned or suspended account must not be able to post. Posting also
+    // pays — social earning credits the author — so this is an earning path as
+    // much as a content one.
+    const active = await requireActiveUser(session.user.id);
+    if (!active.ok) {
+      return NextResponse.json(
+        { error: active.message },
+        { status: active.httpStatus }
+      );
     }
 
     // Creating a post is ~20 DB ops plus a server-side outbound fetch for the

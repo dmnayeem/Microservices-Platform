@@ -102,9 +102,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (error instanceof Error) {
-      if (error.message === "Email already registered") {
+      // `provisionUser` throws the CODE "EMAIL_TAKEN"; this compared against the
+      // sentence "Email already registered", which nothing throws — so the most
+      // common registration failure of all fell through to a generic 500.
+      if (
+        error.message === "EMAIL_TAKEN" ||
+        error.message === "Email already registered"
+      ) {
         return NextResponse.json(
-          { success: false, error: error.message },
+          { success: false, error: "That email is already registered." },
+          { status: 409 }
+        );
+      }
+      if (error.message === "USERNAME_RESERVED") {
+        return NextResponse.json(
+          { success: false, error: "That username isn't available." },
           { status: 409 }
         );
       }

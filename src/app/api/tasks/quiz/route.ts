@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateTaskQuiz, isGeminiConfigured } from "@/lib/gemini";
-import { TaskType, TaskStatus } from "@/generated/prisma";
+// `TaskStatus` is no longer needed here: `visibleTaskWhere()` pins the status
+// (and `hidden`, the date windows, level, access level and audience) itself.
+import { TaskType } from "@/generated/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
@@ -21,6 +23,7 @@ import {
   coerceQuizAnswers,
   type QuizQuestionShape,
 } from "@/lib/quiz-shape";
+import { requireActiveUser } from "@/lib/require-active";
 
 /**
  * Strip the answer key before sending a quiz to the browser.
@@ -86,28 +89,35 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get the task
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
+    // Same visibility clause as the list and the POST. Fetching a single quiz
+    // by id used to check only `type` and `status`, which meant a hidden,
+    // expired, wrong-audience or plan-gated quiz was fully readable — and,
+    // worse, that a task with no questions triggered a Gemini generation (and a
+    // write back to the task row) for any task id an authenticated user chose
+    // to name. That is unmetered AI spend plus a user-triggerable admin-data
+    // write, both reachable without ever being eligible for the task.
+    const ctx = await getTaskViewerContext(session.user.id);
+    if (!ctx || !ctx.hasTasksFeature) {
+      return NextResponse.json(
+        { error: "Your plan doesn't include tasks." },
+        { status: 403 }
+      );
+    }
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        ...visibleTaskWhere(ctx.viewer, {
+          accessLevel: ctx.accessLevel,
+          allowedTypes: ctx.allowedTypes,
+          type: TaskType.QUIZ,
+        }),
+      },
     });
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-
-    // Check if task is a quiz type
-    if (task.type !== TaskType.QUIZ) {
       return NextResponse.json(
-        { error: "This task is not a quiz" },
-        { status: 400 }
-      );
-    }
-
-    // Check if task is active
-    if (task.status !== TaskStatus.ACTIVE) {
-      return NextResponse.json(
-        { error: "This task is not available" },
-        { status: 400 }
+        { error: "This quiz isn't available for you." },
+        { status: 404 }
       );
     }
 
@@ -204,19 +214,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the task
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
+    // A banned or suspended account must not be able to earn. `User.status` is
+    // otherwise only ever read at login, and the JWT lives 30 days.
+    const active = await requireActiveUser(session.user.id);
+    if (!active.ok) {
+      return NextResponse.json(
+        { error: active.message },
+        { status: active.httpStatus }
+      );
+    }
+
+    // Load the task through the SAME visibility clause the list uses.
+    //
+    // This handler pays money, and it used to load the task with a bare
+    // `findUnique` and check nothing but `type === QUIZ`. Every gate that
+    // `/api/tasks/[id]/start` enforces was missing: status, hidden, expiresAt,
+    // startsAt, minLevel, requiredAccessLevel, the per-plan feature flag and
+    // audience targeting. All of them were bypassable by POSTing a task id
+    // directly — a hidden quiz, an expired one, one meant for another country,
+    // or one gated behind a plan the user doesn't hold.
+    const ctx = await getTaskViewerContext(session.user.id);
+    if (!ctx || !ctx.hasTasksFeature) {
+      return NextResponse.json(
+        { error: "Your plan doesn't include tasks." },
+        { status: 403 }
+      );
+    }
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        ...visibleTaskWhere(ctx.viewer, {
+          accessLevel: ctx.accessLevel,
+          allowedTypes: ctx.allowedTypes,
+          type: TaskType.QUIZ,
+        }),
+      },
     });
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      // Deliberately indistinguishable from "no such task": confirming that a
+      // quiz exists but isn't for you is itself information.
+      return NextResponse.json(
+        { error: "This quiz isn't available for you." },
+        { status: 404 }
+      );
     }
 
-    // Check if task is a quiz type
-    if (task.type !== TaskType.QUIZ) {
+    // Global completion cap. `completedCount` is incremented once per credited
+    // approval across all users, so an exhausted task must stop paying.
+    if (task.totalLimit && task.completedCount >= task.totalLimit) {
       return NextResponse.json(
-        { error: "This task is not a quiz" },
+        { error: "This quiz has reached its completion limit." },
         { status: 400 }
       );
     }

@@ -1,8 +1,8 @@
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   Brain,
   Plus,
@@ -41,9 +41,8 @@ const DIFFICULTY_BADGES: Record<string, string> = {
 
 export default async function QuizzesAdminPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "quizzes.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "quizzes.view"))) redirect("/admin");
 
   const params = await searchParams;
   const page = parsePage(params.page);
@@ -84,7 +83,7 @@ export default async function QuizzesAdminPage({ searchParams }: PageProps) {
   const quizzes = quizzesRaw as QuizRow[];
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const canManage = hasPermission(adminRole, "quizzes.manage");
+  const canManage = await can(session.user.id, "quizzes.manage");
 
   const buildHref = (newPage: number, newStatus?: string) => {
     const sp = new URLSearchParams();

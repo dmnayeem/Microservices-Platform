@@ -21,6 +21,8 @@ export async function GET() {
     ? visibleTaskWhere(ctx.viewer, {
         accessLevel: ctx.accessLevel,
         allowedTypes: ctx.allowedTypes,
+        // the board list needs its own tasks
+        includeBoardTasks: true,
       })
     : { id: "__none__" };
 

@@ -419,12 +419,25 @@ export async function verifyEmail(token: string) {
     throw new Error("Verification token has expired");
   }
 
-  // Update user
+  // Mark verified — and only flip to ACTIVE from PENDING_VERIFICATION.
+  //
+  // This used to set `status: "ACTIVE"` unconditionally, so a user banned or
+  // suspended while still holding a live (24h) verification link could un-ban
+  // themselves by clicking it — and `completeSignupRewards()` fired for them
+  // straight afterwards.
+  const existing = await prisma.user.findUnique({
+    where: { email: verificationToken.identifier },
+    select: { id: true, status: true },
+  });
+  if (!existing) throw new Error("Invalid verification token");
+
   const user = await prisma.user.update({
     where: { email: verificationToken.identifier },
     data: {
       emailVerified: new Date(),
-      status: "ACTIVE",
+      ...(existing.status === "PENDING_VERIFICATION"
+        ? { status: "ACTIVE" as const }
+        : {}),
     },
   });
 

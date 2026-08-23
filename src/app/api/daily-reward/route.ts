@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import {
   TransactionType,
   TransactionStatus,
@@ -112,6 +113,17 @@ export async function POST() {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // A banned or suspended account must not be able to claim a reward. `User.status`
+    // is otherwise only ever read at login, and the JWT lives 30 days with no
+    // status claim, so a ban had no effect until the session expired.
+    const active = await requireActiveUser(session.user.id);
+    if (!active.ok) {
+      return NextResponse.json(
+        { error: active.message },
+        { status: active.httpStatus }
+      );
     }
 
     const user = await prisma.user.findUnique({

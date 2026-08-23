@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ReferralTreeView } from "@/components/admin/referrals/referral-tree-view";
 
 export default async function ReferralTreePage({
@@ -10,9 +10,8 @@ export default async function ReferralTreePage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "referrals.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "referrals.view"))) redirect("/admin");
 
   const { id } = await params;
   const user = await prisma.user.findUnique({

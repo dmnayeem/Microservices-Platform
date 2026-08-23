@@ -1,8 +1,8 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { UserCog, ClipboardList, Inbox, ShieldOff } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -12,9 +12,8 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 
 export default async function AdminTutorsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "tutor.applications.review")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "tutor.applications.review"))) redirect("/admin");
 
   const [tutorsRaw, pendingApps, totalTutors, suspendedTutors] = await Promise.all([
     prisma.tutorProfile.findMany({

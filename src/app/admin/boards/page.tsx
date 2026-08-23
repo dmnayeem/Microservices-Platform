@@ -1,16 +1,15 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { BoardsClient } from "@/components/admin/boards/boards-client";
 
 export default async function TaskBoardsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "boards.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "boards.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "boards.manage");
+  const canManage = await can(session.user.id, "boards.manage");
   const boards = await prisma.taskBoard.findMany({
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
   });

@@ -1,8 +1,8 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import Link from "next/link";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import {
@@ -26,9 +26,8 @@ export default async function CourseAnalyticsPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "courses.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
   const { id } = await params;
   const course = await prisma.course.findUnique({

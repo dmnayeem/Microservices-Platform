@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { FileText, Clock, CheckCircle, XCircle, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -15,9 +15,8 @@ export default async function OfferwallCallbacksPage({
   searchParams,
 }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "offerwalls.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "offerwalls.view"))) redirect("/admin");
 
   const params = await searchParams;
   const status = params.status || "";

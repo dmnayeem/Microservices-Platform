@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Gift, FileText } from "lucide-react";
 import Link from "next/link";
 import { OfferwallsClient } from "@/components/admin/offerwalls/offerwalls-client";
@@ -22,11 +22,10 @@ export default async function OfferwallsAdminPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "offerwalls.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "offerwalls.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "offerwalls.manage");
+  const canManage = await can(session.user.id, "offerwalls.manage");
   const sp = await searchParams;
   const tab: TabId = (TABS.find((t) => t.id === sp.tab)?.id ?? "providers") as TabId;
 

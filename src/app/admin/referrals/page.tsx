@@ -1,11 +1,11 @@
 import { usd } from "@/lib/utils";
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Users, DollarSign, TrendingUp, ChevronLeft, ChevronRight, Crown, Gift, Settings, Eye, Download } from "lucide-react";
 import Link from "next/link";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { getReferralBonusConfig } from "@/lib/referral-bonus";
 import { ReferralBonusConfigForm } from "@/components/admin/referrals/referral-bonus-config-form";
@@ -24,8 +24,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "referrals.view")) {
+  if (!(await can(session.user.id, "referrals.view"))) {
     redirect("/admin");
   }
 
@@ -85,7 +84,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
     }),
   ]);
 
-  const canEdit = hasPermission(adminRole, "referrals.configure");
+  const canEdit = await can(session.user.id, "referrals.configure");
 
   const buildQueryString = (newPage: number) => {
     const queryParams = new URLSearchParams();

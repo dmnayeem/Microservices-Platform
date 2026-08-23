@@ -1,9 +1,9 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CourseBuilder } from "@/components/admin/courses/course-builder/CourseBuilder";
 import { loadCategoryOptions } from "@/lib/course-categories";
 import { buildBuilderInitialFromCourse } from "@/lib/course-builder-load";
@@ -14,9 +14,8 @@ export default async function AdminEditCoursePage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "courses.manage")) redirect("/admin/courses");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.manage"))) redirect("/admin/courses");
 
   const { id } = await params;
   const courseRaw = await prisma.course.findUnique({

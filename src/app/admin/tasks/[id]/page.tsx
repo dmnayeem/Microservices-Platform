@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BrandIcon } from "@/components/ui/brand-icon";
@@ -22,7 +23,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { YouTubePlayer } from "@/components/YouTubePlayer";
 import { TaskDetailActions } from "@/components/admin/task-actions";
 import { taskDisplayId } from "@/lib/display-id";
@@ -55,8 +55,7 @@ export default async function TaskDetailPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "tasks.view")) {
+  if (!(await can(session.user.id, "tasks.view"))) {
     redirect("/admin/tasks");
   }
 
@@ -113,9 +112,9 @@ export default async function TaskDetailPage({ params }: PageProps) {
   const config = taskTypeConfig[task.type] || taskTypeConfig.CUSTOM;
   const Icon = config.icon;
 
-  const canEdit = hasPermission(adminRole, "tasks.edit");
-  const canDelete = hasPermission(adminRole, "tasks.delete");
-  const canCreate = hasPermission(adminRole, "tasks.create");
+  const canEdit = await can(session.user.id, "tasks.edit");
+  const canDelete = await can(session.user.id, "tasks.delete");
+  const canCreate = await can(session.user.id, "tasks.create");
 
   // Parse instructions into steps
   const instructionSteps = task.instructions?.split("\n").filter(Boolean) || [];

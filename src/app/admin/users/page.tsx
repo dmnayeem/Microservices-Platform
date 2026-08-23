@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
@@ -12,7 +13,7 @@ import {
   FileCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma/client";
 import { UserStatus, UserRole as UserRoleEnum, KYCStatus } from "@/generated/prisma";
 import { parsePage } from "@/lib/paginate";
@@ -44,10 +45,10 @@ interface PageProps {
 export default async function AdminUsersPage({ searchParams }: PageProps) {
   const session = await auth();
 
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
   const userRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(userRole, "users.view")) redirect("/admin");
+  if (!(await can(session.user.id, "users.view"))) redirect("/admin");
 
   const params = await searchParams;
   const page = parsePage(params.page);
@@ -211,7 +212,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
               params.role || ""
             }&kyc=${params.kyc || ""}&package=${params.package || ""}`}
           />
-          <AddUserButton canEdit={hasPermission(userRole, "users.edit")} />
+          <AddUserButton canEdit={await can(session.user.id, "users.edit")} />
         </div>
       </div>
 
@@ -432,10 +433,10 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         pageSize={pageSize}
         baseQuery={baseQuery}
         permissions={{
-          canEdit: hasPermission(userRole, "users.edit"),
-          canBan: hasPermission(userRole, "users.ban"),
-          canDelete: hasPermission(userRole, "users.delete"),
-          canImpersonate: hasPermission(userRole, "users.impersonate"),
+          canEdit: await can(session.user.id, "users.edit"),
+          canBan: await can(session.user.id, "users.ban"),
+          canDelete: await can(session.user.id, "users.delete"),
+          canImpersonate: await can(session.user.id, "users.impersonate"),
         }}
       />
 

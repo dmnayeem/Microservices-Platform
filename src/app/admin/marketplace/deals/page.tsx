@@ -1,10 +1,10 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { formatDistanceToNow } from "date-fns";
 import { Handshake, ExternalLink } from "lucide-react";
 
@@ -18,9 +18,8 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default async function AdminDealsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "marketplace.mediate")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "marketplace.mediate"))) redirect("/admin");
 
   const deals = await prisma.marketplaceDeal.findMany({
     where: { OR: [{ adminMediated: true }, { status: "DISPUTED" }] },

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { notFound, redirect } from "next/navigation";
 import { EditListingForm } from "./_components/EditListingForm";
@@ -17,8 +17,7 @@ export default async function EditListingPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  const canManage = hasPermission(adminRole, "marketplace.manage");
+  const canManage = await can(session.user.id, "marketplace.manage");
 
   if (!canManage) {
     redirect("/admin/marketplace");

@@ -1,5 +1,6 @@
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ClipboardCheck, Filter, Clock, CheckCircle, XCircle, RotateCcw, ChevronLeft, ChevronRight, Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Star, Layers, ChevronDown, Smartphone } from "lucide-react";
@@ -11,7 +12,6 @@ import { DurationCard } from "@/components/admin/submissions/duration-card";
 import type { VideoConfig } from "@/lib/video-tasks";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Prisma } from "@/generated/prisma/client";
 
 interface PageProps {
@@ -56,8 +56,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "submissions.view")) {
+  if (!(await can(session.user.id, "submissions.view"))) {
     redirect("/admin");
   }
 
@@ -66,8 +65,15 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
 
-  // Build where clause based on filters
-  const where: Prisma.TaskSubmissionWhereInput = {};
+  // Build where clause based on filters.
+  //
+  // `submittedAt: { not: null }` is the important one. `/start` creates a
+  // PENDING row the moment a user OPENS a task, so without this the queue was
+  // padded with every task anyone ever opened and abandoned — rows whose
+  // `proof`, `proofImages` and `answers` are all still null, rendered with a
+  // live Approve button. `/api/tasks/route.ts` already distinguishes the two
+  // ("SUBMITTED" vs "IN_PROGRESS"); the review queue did not.
+  const where: Prisma.TaskSubmissionWhereInput = { submittedAt: { not: null } };
   const taskWhere: Prisma.TaskWhereInput = {};
 
   if (params.status && params.status !== "all") {
@@ -145,10 +151,27 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
       },
     }),
     prisma.taskSubmission.count({ where }),
-    prisma.taskSubmission.count({ where: { status: "PENDING" } }),
-    prisma.taskSubmission.count({ where: { status: "APPROVED" } }),
-    prisma.taskSubmission.count({ where: { status: "REJECTED" } }),
-    prisma.taskSubmission.count({ where: { status: "REVISION_REQUESTED" } }),
+    // Every stat is scoped to rows that were actually submitted, matching the
+    // list. The Pending badge used to include in-progress rows nobody had
+    // submitted yet.
+    prisma.taskSubmission.count({
+      where: { status: "PENDING", submittedAt: { not: null } },
+    }),
+    // AUTO_APPROVED is the majority of approvals on this platform. Counting
+    // only APPROVED made the Approved card systematically under-report, and its
+    // filter link led somewhere that disagreed with the number on it.
+    prisma.taskSubmission.count({
+      where: {
+        status: { in: ["APPROVED", "AUTO_APPROVED"] },
+        submittedAt: { not: null },
+      },
+    }),
+    prisma.taskSubmission.count({
+      where: { status: "REJECTED", submittedAt: { not: null } },
+    }),
+    prisma.taskSubmission.count({
+      where: { status: "REVISION_REQUESTED", submittedAt: { not: null } },
+    }),
     prisma.taskBoard.findMany({
       where: { isActive: true },
       select: { id: true, title: true, iconEmoji: true },
@@ -227,8 +250,8 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
     return queryParams.toString();
   };
 
-  const canApprove = hasPermission(adminRole, "submissions.approve");
-  const canReject = hasPermission(adminRole, "submissions.reject");
+  const canApprove = await can(session.user.id, "submissions.approve");
+  const canReject = await can(session.user.id, "submissions.reject");
 
   return (
     <div className="space-y-8">

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { SettingsForm } from "../_components/SettingsForm";
 import { ArrowLeft, Settings, DollarSign, Shield, Mail, Bell, Palette, Database, Zap, Globe } from "lucide-react";
 import Link from "next/link";
@@ -130,8 +130,7 @@ export default async function SettingsCategoryPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "settings.view")) {
+  if (!(await can(session.user.id, "settings.view"))) {
     redirect("/admin");
   }
 
@@ -163,7 +162,7 @@ export default async function SettingsCategoryPage({ params }: PageProps) {
   }));
 
   const Icon = categoryConfig.icon;
-  const canEdit = hasPermission(adminRole, "settings.edit");
+  const canEdit = await can(session.user.id, "settings.edit");
 
   return (
     <div className="space-y-6">

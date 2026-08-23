@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Gamepad2 } from "lucide-react";
 import {
   GamesClient,
@@ -11,12 +11,11 @@ import type { AdminGameCategory } from "@/components/admin/games/game-categories
 
 export default async function GamesAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "games.view")) redirect("/admin");
+  if (!(await can(session.user.id, "games.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "games.manage");
+  const canManage = await can(session.user.id, "games.manage");
   const [games, categoryRows, counts] = await Promise.all([
     prisma.game.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] }),
     prisma.gameCategory.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }] }),

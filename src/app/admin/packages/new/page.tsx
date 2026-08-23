@@ -1,16 +1,15 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { PackageForm, type PackageFormPkg } from "../_components/PackageForm";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 
 export default async function NewPackagePage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "packages.edit")) redirect("/admin/packages");
+  if (!(await can(session.user.id, "packages.edit"))) redirect("/admin/packages");
 
   // Sane starter defaults — all features ON, accessLevel 1, $0 monthly.
   // Admin tweaks before saving.

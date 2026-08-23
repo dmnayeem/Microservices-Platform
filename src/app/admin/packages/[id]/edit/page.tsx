@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { PackageForm, type PackageFormPkg } from "../../_components/PackageForm";
 import { ArrowLeft, Edit } from "lucide-react";
 import Link from "next/link";
@@ -18,8 +18,7 @@ export default async function EditPackagePage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "packages.edit")) {
+  if (!(await can(session.user.id, "packages.edit"))) {
     redirect("/admin/packages");
   }
 

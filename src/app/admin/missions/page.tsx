@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Rocket } from "lucide-react";
 import { parseEventTiers } from "@/lib/events-shared";
 import {
@@ -12,11 +12,10 @@ import {
 
 export default async function MissionsAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "missions.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "missions.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "missions.manage");
+  const canManage = await can(session.user.id, "missions.manage");
   const [missions, participantGroups] = await Promise.all([
     prisma.mission.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] }),
     prisma.userMissionProgress.groupBy({

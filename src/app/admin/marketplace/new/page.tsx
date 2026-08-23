@@ -1,16 +1,15 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CreateListingForm } from "@/components/admin/marketplace/create-listing-form";
 import Link from "next/link";
 import { ArrowLeft, Package } from "lucide-react";
 
 export default async function NewMarketplaceListingPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "marketplace.manage")) redirect("/admin/marketplace");
+  if (!(await can(session.user.id, "marketplace.manage"))) redirect("/admin/marketplace");
 
   return (
     <div className="space-y-6 max-w-3xl">

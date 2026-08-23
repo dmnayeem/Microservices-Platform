@@ -1,5 +1,6 @@
 import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -17,7 +18,6 @@ import {
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { NotificationsList } from "./_components/NotificationsList";
 
 interface PageProps {
@@ -49,8 +49,7 @@ export default async function AdminNotificationsPage({ searchParams }: PageProps
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "notifications.view")) {
+  if (!(await can(session.user.id, "notifications.view"))) {
     redirect("/admin");
   }
 
@@ -121,7 +120,7 @@ export default async function AdminNotificationsPage({ searchParams }: PageProps
   });
 
   const totalPages = Math.ceil(totalCount / pageSize);
-  const canSend = hasPermission(adminRole, "notifications.send");
+  const canSend = await can(session.user.id, "notifications.send");
 
   const buildQueryString = (newPage: number, newType?: string) => {
     const queryParams = new URLSearchParams();

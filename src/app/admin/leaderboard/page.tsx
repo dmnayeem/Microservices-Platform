@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import Link from "next/link";
 import { Trophy, Settings as SettingsIcon, BarChart3 } from "lucide-react";
 import { LeaderboardSettingsForm } from "@/components/admin/leaderboard/leaderboard-settings-form";
@@ -16,11 +16,10 @@ export default async function LeaderboardManagementPage({
   searchParams,
 }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "leaderboards.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "leaderboards.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "leaderboards.manage");
+  const canManage = await can(session.user.id, "leaderboards.manage");
   const { tab = "standings" } = await searchParams;
 
   const [rows, packages] = await Promise.all([

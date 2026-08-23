@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Settings as SettingsIcon } from "lucide-react";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { getCommissionConfig } from "@/lib/marketplace-commission";
 import { getPromotionPricing } from "@/lib/promotion";
 import { getMediationConfig } from "@/lib/marketplace-mediation";
@@ -13,11 +13,10 @@ import { MediationFeeForm } from "./_components/MediationFeeForm";
 
 export default async function MarketplaceSettingsPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "marketplace.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
 
-  const canManage = hasPermission(role, "marketplace.manage");
+  const canManage = await can(session.user.id, "marketplace.manage");
   const [config, promoPackages, mediation] = await Promise.all([
     getCommissionConfig(),
     getPromotionPricing(),

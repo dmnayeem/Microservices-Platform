@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { accessLevelToTier } from "@/lib/package-tiers";
 import { toNum } from "@/lib/money";
 import type { MissionTaskType } from "@/lib/mission-labels";
@@ -9,11 +9,10 @@ import { DailyMissionsClient } from "@/components/admin/daily-missions/daily-mis
 
 export default async function DailyMissionsAdminPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "missions.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "missions.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "missions.manage");
+  const canManage = await can(session.user.id, "missions.manage");
 
   const raw = await prisma.dailyMissionTemplate.findMany({
     orderBy: [{ requiredAccessLevel: "asc" }, { order: "asc" }, { createdAt: "desc" }],

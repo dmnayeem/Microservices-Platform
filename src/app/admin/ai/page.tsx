@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { isGeminiConfigured } from "@/lib/gemini";
 import { Sparkles, Settings, Activity, KeyRound, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
@@ -10,11 +10,10 @@ import { AiContentGenerator } from "@/components/admin/ai/ai-content-generator";
 
 export default async function AIContentPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "ai.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "ai.view"))) redirect("/admin");
 
-  const canManage = hasPermission(adminRole, "ai.manage");
+  const canManage = await can(session.user.id, "ai.manage");
   const configured = isGeminiConfigured();
 
   // Pull last 30 days of AI calls from AuditLog (entity = "AI")

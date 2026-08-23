@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
 import { KycReviewActions } from "@/components/admin/kyc/kyc-review-actions";
 import { KycAppealsList } from "@/components/admin/users/kyc-appeals-list";
@@ -31,10 +31,9 @@ interface PageProps {
 
 export default async function KYCQueuePage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "kyc.view")) redirect("/admin");
+  if (!(await can(session.user.id, "kyc.view"))) redirect("/admin");
 
   const params = await searchParams;
   const tab = (params.tab === "appeals" ? "appeals" : "kyc") as
@@ -129,8 +128,8 @@ export default async function KYCQueuePage({ searchParams }: PageProps) {
     { id: "REJECTED", label: "Rejected", count: rejectedCount, color: "red" },
   ];
 
-  const canApprove = hasPermission(adminRole, "kyc.approve");
-  const canReject = hasPermission(adminRole, "kyc.reject");
+  const canApprove = await can(session.user.id, "kyc.approve");
+  const canReject = await can(session.user.id, "kyc.reject");
 
   return (
     <div className="space-y-6">
@@ -230,8 +229,8 @@ export default async function KYCQueuePage({ searchParams }: PageProps) {
       {tab === "appeals" && (
         <KycAppealsList
           canReview={
-            hasPermission(adminRole, "kyc.approve") ||
-            hasPermission(adminRole, "kyc.reject")
+            await can(session.user.id, "kyc.approve") ||
+            await can(session.user.id, "kyc.reject")
           }
         />
       )}

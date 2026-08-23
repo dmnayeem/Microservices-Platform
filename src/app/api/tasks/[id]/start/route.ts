@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import { TaskStatus, TaskType, SubmissionStatus } from "@/generated/prisma";
 import {
   getEffectivePackage,
@@ -13,6 +14,7 @@ import { isProfileComplete } from "@/lib/profile-completion";
 import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
 import { matchesTaskAudience } from "@/lib/task-targeting";
+import { stripUniqueKey, toPlayerQuestions } from "@/lib/task-player-view";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
@@ -48,6 +50,17 @@ export async function POST(
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // A banned or suspended account must not be able to start a task. `User.status`
+    // is otherwise only ever read at login, and the JWT lives 30 days with no
+    // status claim, so a ban had no effect until the session expired.
+    const active = await requireActiveUser(session.user.id);
+    if (!active.ok) {
+      return NextResponse.json(
+        { error: active.message },
+        { status: active.httpStatus }
+      );
     }
 
     // ── Anti-fraud gate (all admin-toggleable) ──────────────────────────────
@@ -108,6 +121,14 @@ export async function POST(
     });
 
     if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // The super-admin hard hide. This route checks status, expiry, start date,
+    // level, access level, audience, the unlock chain and every limit — but
+    // never read `hidden`, so "hidden" was a list filter and nothing more: a
+    // task pulled from circulation was still startable and payable by id.
+    if (task.hidden) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
@@ -350,8 +371,12 @@ export async function POST(
           socialAction: task.socialAction,
           socialUrl: task.socialUrl,
           socialConfig: task.socialConfig,
-          videoConfig: task.videoConfig,
-          questions: task.questions,
+          // Sanitised — the raw videoConfig carries `uniqueKey`, the value the
+          // submit route validates proof against, and `questions` carries the
+          // answer key. See task-player-view.ts.
+          videoConfig: stripUniqueKey(task.videoConfig),
+          articleConfig: stripUniqueKey(task.articleConfig),
+          questions: toPlayerQuestions(task.questions),
           autoApprove: task.autoApprove,
         },
         message: "Redo — your previous submission was reopened.",
@@ -412,8 +437,12 @@ export async function POST(
           socialAction: task.socialAction,
           socialUrl: task.socialUrl,
           socialConfig: task.socialConfig,
-          videoConfig: task.videoConfig,
-          questions: task.questions,
+          // Sanitised — the raw videoConfig carries `uniqueKey`, the value the
+          // submit route validates proof against, and `questions` carries the
+          // answer key. See task-player-view.ts.
+          videoConfig: stripUniqueKey(task.videoConfig),
+          articleConfig: stripUniqueKey(task.articleConfig),
+          questions: toPlayerQuestions(task.questions),
           autoApprove: task.autoApprove,
         },
         message: "You already have an active submission for this task",

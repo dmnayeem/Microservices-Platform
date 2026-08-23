@@ -71,6 +71,8 @@ export async function GET(
           ...visibleTaskWhere(ctx.viewer, {
             accessLevel: ctx.accessLevel,
             allowedTypes: ctx.allowedTypes,
+            // the board detail lists its tasks
+            includeBoardTasks: true,
           }),
           boardId: id,
         },

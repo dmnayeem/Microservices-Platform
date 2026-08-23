@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import {
   ShieldAlert,
   AlertTriangle,
@@ -22,9 +22,8 @@ const SEVERITY_CONFIG = {
 
 export default async function FraudMonitorPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "fraud.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "fraud.view"))) redirect("/admin");
 
   const [criticalCount, highCount, mediumCount, lowCount, events] =
     await Promise.all([

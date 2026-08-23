@@ -1,16 +1,15 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FolderPlus } from "lucide-react";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { CourseBuilder } from "@/components/admin/courses/course-builder/CourseBuilder";
 import { loadCategoryOptions } from "@/lib/course-categories";
 
 export default async function CreateCoursePage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "courses.manage")) redirect("/admin/courses");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "courses.manage"))) redirect("/admin/courses");
 
   const categories = await loadCategoryOptions();
 

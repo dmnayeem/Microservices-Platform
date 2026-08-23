@@ -4,6 +4,7 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
+import { requireVerifiedUser } from "@/lib/require-active";
 import { toNum } from "@/lib/money";
 import {
   WithdrawalStatus,
@@ -111,6 +112,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Money leaving the platform. `User.status` was checked only at login, and
+  // the JWT lives 30 days with no status claim — so an account banned for fraud
+  // could still file a withdrawal for whatever the fraud had earned. This route
+  // reads the strict check: an unverified account cannot take money out either.
+  const active = await requireVerifiedUser(session.user.id);
+  if (!active.ok) {
+    return NextResponse.json(
+      { error: active.message },
+      { status: active.httpStatus }
+    );
+  }
 
   // Money route. `withIdempotency` + the unique ledger constraints are what make
   // this CORRECT under retries; this limiter is so a flood can't make the

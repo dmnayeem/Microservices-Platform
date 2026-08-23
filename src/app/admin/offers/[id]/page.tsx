@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { parseBlocks } from "@/lib/offers";
 import { OfferEditor } from "@/components/admin/offers/offer-editor";
 
@@ -11,9 +11,8 @@ export default async function OfferEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const role = session.user.role as UserRole | undefined;
-  if (!hasPermission(role, "offers.manage")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "offers.manage"))) redirect("/admin");
 
   const { id } = await params;
   const offer = await prisma.offer.findUnique({ where: { id } });

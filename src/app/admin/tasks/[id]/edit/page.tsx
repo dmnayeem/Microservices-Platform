@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { TaskForm } from "../../_components/TaskForm";
 import type { SocialConfig } from "@/lib/social-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
@@ -23,8 +23,7 @@ export default async function EditTaskPage({ params }: PageProps) {
     redirect("/login");
   }
 
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "tasks.edit")) {
+  if (!(await can(session.user.id, "tasks.edit"))) {
     redirect("/admin/tasks");
   }
 

@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { Layout } from "lucide-react";
 import { LandingEditor } from "@/components/admin/landing/landing-editor";
 import { getLandingContent } from "@/lib/landing-content-server";
 
 export default async function LandingPageEditor() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "landing.view")) redirect("/admin");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "landing.view"))) redirect("/admin");
 
-  const canEdit = hasPermission(adminRole, "landing.edit");
+  const canEdit = await can(session.user.id, "landing.edit");
   const content = await getLandingContent();
 
   return (

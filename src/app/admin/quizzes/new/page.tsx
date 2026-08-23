@@ -1,17 +1,16 @@
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { hasPermission, type UserRole } from "@/lib/rbac";
 import { QuizForm } from "@/components/admin/quizzes/quiz-form";
 
 export default async function CreateQuizPage() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "quizzes.manage")) redirect("/admin/quizzes");
+  if (!session?.user?.id) redirect("/login");
+  if (!(await can(session.user.id, "quizzes.manage"))) redirect("/admin/quizzes");
 
-  const canUseAI = hasPermission(adminRole, "ai.manage") || hasPermission(adminRole, "quizzes.manage");
+  const canUseAI = await can(session.user.id, "ai.manage") || await can(session.user.id, "quizzes.manage");
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

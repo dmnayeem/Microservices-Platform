@@ -16,18 +16,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
-import {
-  hasPermission,
-  isSuperAdmin,
-  type UserRole,
-  ADMIN_ROLES,
-  ROLE_CONFIG,
-  ROLE_PERMISSIONS,
-  PERMISSION_CATALOG,
-  FINANCE_PERMISSIONS,
-  SUPERADMIN_ONLY_PERMISSIONS,
-} from "@/lib/rbac";
-import { getRolePermissionConfig } from "@/lib/permissions";
+import { isSuperAdmin, type UserRole, ADMIN_ROLES, ROLE_CONFIG, ROLE_PERMISSIONS, PERMISSION_CATALOG, FINANCE_PERMISSIONS, SUPERADMIN_ONLY_PERMISSIONS } from "@/lib/rbac";
+import { getRolePermissionConfig, can } from "@/lib/permissions";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { RolePermissionEditor } from "@/components/admin/access/role-permission-editor";
 import { CustomRolesManager } from "@/components/admin/access/custom-roles-manager";
@@ -57,7 +47,7 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
   }
 
   const adminRole = session.user.role as UserRole | undefined;
-  if (!hasPermission(adminRole, "admins.view")) {
+  if (!(await can(session.user.id, "admins.view"))) {
     redirect("/admin");
   }
 
@@ -189,7 +179,7 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
   }, {} as Record<string, number>);
 
   const totalPages = Math.ceil(totalCount / pageSize);
-  const canManage = hasPermission(adminRole, "admins.manage");
+  const canManage = await can(session.user.id, "admins.manage");
 
   const buildQueryString = (newPage: number, newRole?: string) => {
     const queryParams = new URLSearchParams();
