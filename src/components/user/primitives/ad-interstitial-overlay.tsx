@@ -33,6 +33,7 @@ export function AdInterstitialOverlay({
   skipSeconds = 5,
   placement = "GAME_INTERSTITIAL",
   allowClose = false,
+  source,
 }: {
   open: boolean;
   onDone: () => void;
@@ -41,6 +42,17 @@ export function AdInterstitialOverlay({
   /** Show an always-available × so the viewer can close the ad immediately,
    *  without waiting out the forced-watch countdown (used for video tasks). */
   allowClose?: boolean;
+  /**
+   * Fetch the ad from a caller-owned endpoint instead of the shared serve
+   * route. The response shape is identical.
+   *
+   * Games use this so the SERVER both serves the ad and records that this play
+   * session saw one. The impression path has no per-user row of its own —
+   * `serveAd` buffers a per-ad counter and the client `view` beacon is skipped
+   * for interstitials — so the serve is the only moment the platform knows who
+   * was shown what, and `rewardRequiresAd` has to be counted there.
+   */
+  source?: { url: string; body?: unknown };
 }) {
   const [ad, setAd] = useState<Ad | null>(null);
   const [left, setLeft] = useState(skipSeconds);
@@ -54,9 +66,17 @@ export function AdInterstitialOverlay({
     if (!open) return;
     let cancel = false;
     // Timeout so a hung request never blocks the host flow (the gate resolves).
-    fetch(`/api/spaces/panel?placement=${placement}`, {
-      signal: AbortSignal.timeout(8000),
-    })
+    const req: Promise<Response> = source
+      ? fetch(source.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(source.body ?? {}),
+          signal: AbortSignal.timeout(8000),
+        })
+      : fetch(`/api/spaces/panel?placement=${placement}`, {
+          signal: AbortSignal.timeout(8000),
+        });
+    req
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancel) return;
@@ -84,7 +104,11 @@ export function AdInterstitialOverlay({
       cancel = true;
       setAd(null); // clear on close so a reopen never flashes a stale ad
     };
-  }, [open, skipSeconds, placement]);
+    // `source` is intentionally read by identity, not deep-compared: callers
+    // pass a stable object, and re-fetching on every render would serve (and
+    // count) a new ad each time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, skipSeconds, placement, source?.url]);
 
   // Skip countdown.
   useEffect(() => {

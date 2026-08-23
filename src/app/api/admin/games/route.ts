@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-
-const schema = z.object({
-  title: z.string().min(2).max(120),
-  category: z.string().max(40).optional().nullable(),
-  description: z.string().max(1000).optional().nullable(),
-  iconUrl: z.string().min(1),
-  embedUrl: z.string().url(),
-  order: z.number().int().default(0),
-  isActive: z.boolean().default(true),
-});
+import { gameCreateSchema, gameConfigError } from "@/lib/games-admin";
 
 export async function GET() {
   const session = await auth();
@@ -30,25 +20,28 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id || !(await can(session.user.id, "games.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const v = schema.safeParse(await request.json());
+  const v = gameCreateSchema.safeParse(await request.json());
   if (!v.success) {
     return NextResponse.json(
       { error: v.error.issues[0]?.message ?? "Invalid input" },
       { status: 400 }
     );
   }
-  const d = v.data;
+  const configErr = gameConfigError(v.data);
+  if (configErr) return NextResponse.json({ error: configErr }, { status: 400 });
+
+  if (v.data.categoryId) {
+    const cat = await prisma.gameCategory.findUnique({
+      where: { id: v.data.categoryId },
+      select: { id: true },
+    });
+    if (!cat) {
+      return NextResponse.json({ error: "Category not found" }, { status: 400 });
+    }
+  }
+
   const game = await prisma.game.create({
-    data: {
-      title: d.title,
-      category: d.category || null,
-      description: d.description || null,
-      iconUrl: d.iconUrl,
-      embedUrl: d.embedUrl,
-      order: d.order,
-      isActive: d.isActive,
-      createdById: session.user.id,
-    },
+    data: { ...v.data, createdById: session.user.id } as never,
   });
   await prisma.auditLog.create({
     data: {
@@ -56,7 +49,7 @@ export async function POST(request: NextRequest) {
       action: "GAME_CREATED",
       entity: "Game",
       entityId: game.id,
-      newData: { title: game.title },
+      newData: { title: game.title, rewardEnabled: game.rewardEnabled },
     },
   });
   return NextResponse.json({ success: true, game }, { status: 201 });

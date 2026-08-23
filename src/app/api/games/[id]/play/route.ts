@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
-// POST /api/games/[id]/play — increment the play counter (fire-and-forget).
+/**
+ * @deprecated Replaced by `POST /api/games/:id/session`.
+ *
+ * This incremented `Game.playsCount` from a client `useEffect` with no rate
+ * limit, no dedupe and no per-user record — a shell loop could inflate it
+ * freely. Harmless for a vanity counter, but the moment points hang off play
+ * time it becomes a way to print money, so the whole flow moved to the session
+ * protocol (session → heartbeat → end) where the server measures the time.
+ *
+ * Kept as a 410 for one release because clients cached in the wild still call
+ * it; returning 404 would look like a bug, and silently accepting it would let
+ * an old client think it had counted a play.
+ */
 export async function POST(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _ctx: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { id } = await params;
-  await prisma.game
-    .update({ where: { id }, data: { playsCount: { increment: 1 } } })
-    .catch(() => {});
-  return NextResponse.json({ success: true });
+  return NextResponse.json(
+    {
+      error: "Gone. Use POST /api/games/[id]/session instead.",
+      replacedBy: "/api/games/[id]/session",
+    },
+    { status: 410 }
+  );
 }

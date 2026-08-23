@@ -36,6 +36,7 @@ export const MISSION_TASK_TYPES = [
   "SOCIAL_VOTE",
   // Platform activity (counted from their own tables)
   "LOTTERY_TICKET",
+  "GAME_PLAY",
   "REFERRAL_SIGNUP",
   "COURSE_LESSON",
   "MARKETPLACE_PURCHASE",
@@ -64,6 +65,7 @@ export const TYPE_TO_ROUTE: Record<string, string> = {
   SOCIAL_VOTE: "/social",
   // Platform activity
   LOTTERY_TICKET: "/lottery",
+  GAME_PLAY: "/games",
   REFERRAL_SIGNUP: "/referrals",
   COURSE_LESSON: "/my-learning",
   MARKETPLACE_PURCHASE: "/marketplace",
@@ -88,6 +90,7 @@ export const TYPE_LABEL: Record<string, string> = {
   SOCIAL_SHARE: "Share posts",
   SOCIAL_VOTE: "Vote on polls",
   LOTTERY_TICKET: "Buy lottery tickets",
+  GAME_PLAY: "Play games",
   REFERRAL_SIGNUP: "Invite a friend (verified)",
   COURSE_LESSON: "Finish course lessons",
   MARKETPLACE_PURCHASE: "Buy from the marketplace",
@@ -108,6 +111,8 @@ export const TYPE_HINT: Record<string, string> = {
   SOCIAL_SHARE: "Feed shares.",
   SOCIAL_VOTE: "Poll votes on the feed.",
   LOTTERY_TICKET: "Every ticket in a completed purchase. A failed purchase never counts.",
+  GAME_PLAY:
+    "One per play session that actually started. Opening the same game twice in one day counts twice, but a session with no play time still counts as one.",
   REFERRAL_SIGNUP:
     "Counts when someone signs up through the link AND verifies their email — not on the click.",
   COURSE_LESSON: "Each lesson marked complete.",

@@ -15,6 +15,7 @@ import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
 import { runAdCampaignSweep, runAdReviewSla } from "@/lib/ad-campaign-cron";
 import { flushAdCounters } from "@/lib/ad-counters";
 import { flushPageStats } from "@/lib/page-analytics";
+import { sweepStaleGameSessions } from "@/lib/game-cron";
 
 // ── Periodic sweeps (Inngest cron — replaces Vercel Cron) ────────────────────
 
@@ -159,8 +160,20 @@ export const referralMonthlyBonus = inngest.createFunction(
   async () => runPreviousMonthReferralBonuses()
 );
 
+/**
+ * Close game sessions that stopped beating. Every 15 minutes rather than hourly
+ * because one open session per user is a global rule — an abandoned session
+ * holds that user's only slot, so a long interval would leave them unable to
+ * earn from any game until it expired.
+ */
+export const gameSessionSweep = inngest.createFunction(
+  { id: "game-session-sweep", triggers: [{ cron: "*/15 * * * *" }] },
+  async () => sweepStaleGameSessions()
+);
+
 export const functions = [
   taskExpiry,
+  gameSessionSweep,
   referralMonthlyBonus,
   subscriptionExpiry,
   courseReminders,

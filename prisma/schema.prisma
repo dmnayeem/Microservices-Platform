@@ -151,24 +151,161 @@ enum BannerLocation {
   ALL
 }
 
-// HTML5 game catalog entry — admin supplies an icon + embed URL; users play it
-// in a full-screen iframe with interstitial ads on open/resume/quit. No reward.
+/// Game catalog taxonomy. Replaces the free-text `Game.category`, where
+/// "Puzzle" / "puzzle" / "Puzzles" were three different categories and the user
+/// catalog had no filter at all. Mirrors CourseCategory.
+model GameCategory {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  iconKey  String?
+  color    String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  games     Game[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
+/// HTML5 game catalog entry — admin supplies art + an embed URL; users play it
+/// in a full-screen iframe with interstitial ads on open/resume/quit.
+///
+/// Earning is OFF by default (`rewardEnabled`), so every pre-existing game keeps
+/// the original "no reward" contract exactly.
 model Game {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
+  /// legacy free-text category — kept as a fallback for rows not yet migrated,
+  /// and as the source for the one-off backfill. Superseded by `categoryId`.
   category    String?
-  description String?  @db.Text
+  categoryId  String?
+  categoryRel GameCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  description String? @db.Text
+  /// Square tile art.
   iconUrl     String
+  /// Wide cover art for the featured row. Optional; falls back to `iconUrl`.
+  coverUrl    String?
   embedUrl    String
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  playsCount  Int      @default(0)
+  isFeatured  Boolean @default(false)
+  /// ANY | PORTRAIT | LANDSCAPE — a hint for the player shell.
+  orientation String  @default("ANY")
+  /// Last server-side framing probe: {ok, xfo, csp, checkedAt}. Cross-origin JS
+  /// cannot detect `X-Frame-Options: DENY`, so without this a refusing URL just
+  /// shows users a black screen and nobody finds out.
+  embedProbe  Json?
+  order       Int     @default(0)
+  isActive    Boolean @default(true)
+  /// Historical value counts client mounts (the old, farmable endpoint). From
+  /// the session protocol onward it counts authenticated, rate-limited sessions,
+  /// so the number legitimately slows down — the UI labels it "legacy plays".
+  playsCount  Int     @default(0)
+
+  // ── Per-game ad control ──────────────────────────────────────────────────
+  adsEnabled        Boolean @default(true)
+  adOnOpen          Boolean @default(true)
+  adOnResume        Boolean @default(true)
+  adOnQuit          Boolean @default(true)
+  /// Mid-session interstitial cadence. 0 = none.
+  adIntervalSeconds Int     @default(0)
+  /// Minimum gap between interstitials (was a hardcoded AD_THROTTLE_MS).
+  adThrottleSeconds Int     @default(60)
+  /// Validated server-side against AD_PLACEMENTS and restricted to *_INTERSTITIAL:
+  /// pointing a game at IN_FEED would serve advertiser inventory full-screen in
+  /// a slot it was never bought for.
+  adPlacement       String  @default("GAME_INTERSTITIAL")
+
+  // ── Earning rules (all clamped by the global games.* SystemSettings) ─────
+  rewardEnabled        Boolean @default(false)
+  rewardPointsPerTick  Int     @default(0)
+  rewardTickSeconds    Int     @default(60)
+  /// 0 = only the daily caps apply.
+  rewardMaxPerSession  Int     @default(0)
+  rewardDailyCapPoints Int     @default(0)
+  /// Tie payout to the ads that fund it. The count is server-authoritative:
+  /// the game asks the SERVER for its interstitial (see /api/games/[id]/ad).
+  rewardRequiresAd     Boolean @default(false)
+
+  // ── Score rewards — deliberately inert without a signed callback ─────────
+  scoreRewardEnabled  Boolean @default(false)
+  /// A score posted from an arbitrary third-party embed is unverifiable. Only a
+  /// first-party game with an HMAC-signed callback may be trusted.
+  scoreTrusted        Boolean @default(false)
+  scorePointsPer1000  Int     @default(0)
+  scoreDailyCapPoints Int     @default(0)
+
+  // ── Denormalised analytics, folded in when a session ends ────────────────
+  uniquePlayersCount Int @default(0)
+  totalPlaySeconds   Int @default(0)
+  adsShownCount      Int @default(0)
+  pointsAwardedTotal Int @default(0)
+
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  sessions GameSession[]
+
   @@index([isActive])
   @@index([order])
+  @@index([isFeatured, order])
+  @@index([categoryId, isActive, order])
+}
+
+/// One play session. Time is measured by the SERVER from heartbeat gaps — the
+/// client never sends a duration, because there would be nothing stopping it
+/// sending a large one.
+///
+/// `onDelete: Restrict` on purpose: these rows are the record of what was paid.
+/// Deleting a game must not erase its payout history, so the admin route
+/// deactivates a game that has sessions instead.
+model GameSession {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  userId String
+
+  startedAt  DateTime  @default(now())
+  lastBeatAt DateTime?
+  endedAt    DateTime?
+
+  /// Server-measured foreground seconds.
+  playedSeconds   Int @default(0)
+  /// Seconds already converted into points. The gap between this and
+  /// `playedSeconds` is what the next tick pays, which makes crediting
+  /// exactly-once even if a heartbeat is replayed.
+  creditedSeconds Int @default(0)
+  pointsAwarded   Int @default(0)
+  /// Incremented by the server when it serves this session an interstitial.
+  adsShown        Int @default(0)
+  score           Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId, startedAt])
+  @@index([userId, startedAt])
+  /// Serves the "one open session per user" lookup.
+  @@index([userId, endedAt])
+}
+
+/// Money log for game earnings. Deliberately FK-free, mirroring BrowseEarnLog
+/// and AdCreditLedger: deleting a game must never delete the record of what it
+/// paid out.
+model GameEarnLog {
+  id        String   @id @default(cuid())
+  userId    String
+  gameId    String
+  sessionId String?
+  points    Int      @default(0)
+  /// TIME | SCORE
+  kind      String   @default("TIME")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, gameId, createdAt])
+  @@index([gameId, createdAt])
 }
 
 model Banner {

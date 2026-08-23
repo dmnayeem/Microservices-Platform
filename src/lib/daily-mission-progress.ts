@@ -215,6 +215,11 @@ export async function buildDailyProgress(
       where: { userId, createdAt: { gte: todayStart } },
     });
   }
+  if (wanted.has("GAME_PLAY")) {
+    countByType.GAME_PLAY = await prisma.gameSession.count({
+      where: { userId, startedAt: { gte: todayStart } },
+    });
+  }
   if (wanted.has("MARKETPLACE_PURCHASE")) {
     countByType.MARKETPLACE_PURCHASE = await prisma.marketplacePurchase.count({
       where: { buyerId: userId, status: "COMPLETED", createdAt: { gte: todayStart } },

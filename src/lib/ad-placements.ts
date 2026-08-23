@@ -80,3 +80,22 @@ export function isAdvertiserSelectable(name: string): boolean {
 export const ADVERTISER_PLACEMENTS = AD_PLACEMENTS.filter((p) =>
   isAdvertiserSelectable(p.name)
 );
+
+/**
+ * Full-screen, shown-before-a-reward inventory.
+ *
+ * `serveAd` already branches on `name.endsWith("_INTERSTITIAL")`; this exports
+ * the same rule so callers that let an admin *choose* a placement (per-game ad
+ * config) can reject anything else. Pointing a game at `IN_FEED` would serve
+ * advertiser inventory full-screen in a slot it was never bought for.
+ */
+export function isInterstitialPlacement(name: string): boolean {
+  return AD_PLACEMENTS.some(
+    (p) => p.name === name && p.name.endsWith("_INTERSTITIAL")
+  );
+}
+
+/** Placements a game may be pointed at. */
+export const GAME_AD_PLACEMENTS = AD_PLACEMENTS.filter((p) =>
+  isInterstitialPlacement(p.name)
+);
