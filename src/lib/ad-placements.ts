@@ -41,6 +41,10 @@ export const AD_PLACEMENTS = [
   { name: "NOTIFICATIONS_TOP", label: "Notifications", description: "Top of the notifications list.", where: "Notifications (/notifications) — top" },
   { name: "REFERRALS_TOP", label: "Referrals", description: "Top of the referrals page.", where: "Referrals (/referrals) — top" },
   { name: "DAILY_MISSION_TOP", label: "Daily Mission", description: "Top of the daily mission page.", where: "Daily Mission (/daily-mission) — top" },
+
+  // Watch-to-earn video. Incentivised by definition — the user is paid points
+  // for watching — so Google inventory is barred from it in code, not by memory.
+  { name: "REWARDED_VIDEO", label: "Rewarded Video", description: "Watch-to-earn video ads. The user is paid points for watching, so own/direct-sold inventory only.", where: "Browse & Earn page (/watch-ads) — watch to earn" },
 ] as const;
 
 export type AdPlacementName = (typeof AD_PLACEMENTS)[number]["name"];
@@ -144,6 +148,10 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
   NOTIFICATIONS_TOP: LEADERBOARD_SPEC,
   REFERRALS_TOP: LEADERBOARD_SPEC,
   DAILY_MISSION_TOP: LEADERBOARD_SPEC,
+
+  // A video player, not a banner: it sizes itself and the user is paid to watch
+  // it, so no Google creative may run here.
+  REWARDED_VIDEO: { sizes: ["responsive", "medium", "large_square"], maxHeightPx: 720, networkAllowed: false },
 };
 
 /** An unknown space falls back to the most restrictive sensible shape. */
@@ -240,6 +248,7 @@ const HOUSE_ONLY_PLACEMENTS = new Set<string>([
   "VIDEO_INTERSTITIAL",
   "REWARD_INTERSTITIAL",
   "EARN_BROWSE",
+  "REWARDED_VIDEO",
 ]);
 
 export function isAdvertiserSelectable(name: string): boolean {

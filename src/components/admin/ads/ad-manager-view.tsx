@@ -1566,6 +1566,11 @@ function AdModal({
   const isReviewState = ["PENDING", "REJECTED", "CHANGES_REQUESTED"].includes(status);
   const [rewardPoints, setRewardPoints] = useState(String(ad?.rewardPoints ?? 0));
   const [watchSeconds, setWatchSeconds] = useState(String(ad?.watchSeconds ?? 15));
+  // The API has always accepted this; the form never had a field for it, so
+  // every rewarded ad silently landed on the 3600s default.
+  const [rewardCooldownSec, setRewardCooldownSec] = useState(
+    String(ad?.rewardCooldownSec ?? 3600)
+  );
   // Native (post-like feed ad) fields
   const [format, setFormat] = useState(ad?.format ?? "BANNER");
   const [headline, setHeadline] = useState(ad?.headline ?? "");
@@ -1618,6 +1623,7 @@ function AdModal({
         // auto-approved server-side (the admin IS the reviewer).
         rewardPoints: Number(rewardPoints) || 0,
         watchSeconds: Number(watchSeconds) || 15,
+        rewardCooldownSec: Number(rewardCooldownSec) || 3600,
         headline,
         brandName,
         brandLogo,
@@ -1842,7 +1848,7 @@ function AdModal({
 
         <div className="rounded-lg border border-slate-800 p-3">
           <p className="text-xs font-bold text-slate-400 mb-2">Reward (Watch &amp; Earn — optional)</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Reward points</label>
               <input type="number" min={0} value={rewardPoints} onChange={(e) => setRewardPoints(e.target.value)} className={inputCls} />
@@ -1851,8 +1857,12 @@ function AdModal({
               <label className="block text-xs text-slate-400 mb-1">Watch seconds</label>
               <input type="number" min={1} value={watchSeconds} onChange={(e) => setWatchSeconds(e.target.value)} className={inputCls} />
             </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Cooldown (sec)</label>
+              <input type="number" min={60} value={rewardCooldownSec} onChange={(e) => setRewardCooldownSec(e.target.value)} className={inputCls} />
+            </div>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">Set reward points &gt; 0 to make this ad appear on the &quot;Watch &amp; Earn&quot; page.</p>
+          <p className="text-[11px] text-slate-500 mt-1">Set reward points &gt; 0 to make this ad appear on the &quot;Watch &amp; Earn&quot; page. Cooldown is how long before the same user may earn from it again (minimum 60s — a 0 would remove the gate entirely). Watch &amp; Earn must also be switched on in Monetization.</p>
         </div>
 
         <button onClick={save} disabled={busy} className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50">

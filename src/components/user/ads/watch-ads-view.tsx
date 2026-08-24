@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { detectAdblock } from "@/lib/adblock";
+import { RewardedVideoSection } from "@/components/user/ads/rewarded-video-section";
 
 interface BrowseConfig {
   enabled: boolean;
@@ -264,6 +265,11 @@ export function WatchAdsView() {
           </div>
         </div>
       </div>
+
+      {/* Watch-to-earn video. Renders nothing at all unless an admin has turned
+          rewarded ads on — the default is off, because a rewarded ad pays points
+          OUT and house inventory earns nothing back. */}
+      <RewardedVideoSection />
 
       {/* Second ad slot — more of the page is ad-supported = more impressions */}
       <AdRenderer placement="EARN_BROWSE" />

@@ -6,6 +6,7 @@ import { ensureDefaultPlacements } from "@/lib/ad-placements-server";
 import { getSetting } from "@/lib/system-settings";
 import { getAdDensity } from "@/lib/ad-density";
 import { getBrowseEarnConfig } from "@/lib/browse-earn";
+import { getRewardedConfig } from "@/lib/ads-rewarded";
 import { getAdFrequencyConfig } from "@/lib/ad-frequency";
 
 export async function GET() {
@@ -72,6 +73,7 @@ export async function GET() {
   const adsTxt = String((await getSetting<string>("ads.txt_content", "")) || "");
   const density = await getAdDensity();
   const browseEarn = await getBrowseEarnConfig();
+  const rewarded = await getRewardedConfig();
   const adFrequency = await getAdFrequencyConfig();
 
   return NextResponse.json({
@@ -85,6 +87,7 @@ export async function GET() {
     adsTxt,
     density,
     browseEarn,
+    rewarded,
     adFrequency,
   });
 }

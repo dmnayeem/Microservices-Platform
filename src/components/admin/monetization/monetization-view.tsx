@@ -53,6 +53,11 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [beSeconds, setBeSeconds] = useState(45);
   const [beCap, setBeCap] = useState(15);
   const [beBusy, setBeBusy] = useState(false);
+  // Watch-to-earn video. OFF by default — it pays points out, so with only house
+  // inventory it costs money and earns none.
+  const [rvEnabled, setRvEnabled] = useState(false);
+  const [rvCap, setRvCap] = useState(50);
+  const [rvBusy, setRvBusy] = useState(false);
   // Full-screen ad pacing. Without a cap, a user claiming several rewards in a
   // row is queued that many back-to-back full-screen ads — see ad-frequency.ts.
   const [gapSec, setGapSec] = useState(60);
@@ -86,6 +91,10 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         if (d.adFrequency) {
           setGapSec(d.adFrequency.minGapSeconds ?? 60);
           setDailyMax(d.adFrequency.dailyMax ?? 25);
+        }
+        if (d.rewarded) {
+          setRvEnabled(d.rewarded.enabled === true);
+          setRvCap(d.rewarded.dailyCap ?? 50);
         }
         if (d.browseEarn) {
           setBeEnabled(d.browseEarn.enabled !== false);
@@ -135,6 +144,29 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save ad-network settings");
     } finally {
       setNetworkBusy(false);
+    }
+  };
+
+  const saveRewarded = async () => {
+    setRvBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: {
+            "ads.rewarded_enabled": rvEnabled,
+            "ads.rewarded_daily_cap": Math.max(0, Math.min(100000, rvCap || 0)),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Watch & Earn saved");
+    } catch {
+      toast.error("Couldn't save Watch & Earn");
+    } finally {
+      setRvBusy(false);
     }
   };
 
@@ -462,6 +494,71 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
               <Save className="w-4 h-4" />
             )}
             Save ads.txt
+          </button>
+        )}
+      </section>
+
+      {/* Watch & Earn (rewarded video) */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-white">Watch &amp; Earn (rewarded video)</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Users watch a video to the end and are paid points for it.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3">
+          <p className="text-[11px] text-amber-200/90">
+            <b>This costs you money until an advertiser is paying for it.</b> Every
+            watch pays points out of your pocket. Right now the only inventory is
+            your own house ads, which earn nothing back — so this is switched off,
+            and should stay off until you have an offerwall/CPA feed or an
+            advertiser buying these views. It is built and ready for that day.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2.5 text-sm text-slate-200">
+          <input
+            type="checkbox"
+            checked={rvEnabled}
+            disabled={!canManage}
+            onChange={(e) => setRvEnabled(e.target.checked)}
+            className="w-4 h-4 accent-emerald-600"
+          />
+          Enable Watch &amp; Earn
+        </label>
+
+        <div className="max-w-xs">
+          <label className="block text-xs text-slate-400 mb-1">
+            Daily points cap per user
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100000}
+            value={rvCap}
+            disabled={!canManage}
+            onChange={(e) => setRvCap(Math.max(0, Number(e.target.value) || 0))}
+            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">
+            0 turns it off as surely as the switch does. Enforced inside a row
+            lock, so concurrent claims cannot get past it.
+          </p>
+        </div>
+
+        {canManage && (
+          <button
+            onClick={saveRewarded}
+            disabled={rvBusy}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {rvBusy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save Watch &amp; Earn
           </button>
         )}
       </section>
