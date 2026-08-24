@@ -155,8 +155,7 @@ function FeedTab({
   canShareYouTube,
   feedAdInterval,
   underPostBanner,
-  // Passed by the outer component and consumed by the rail, not here.
-  underPostInterval: _underPostInterval,
+  underPostInterval,
 }: {
   user: SessionUser;
   initialFeedAd?: FeedAd | null;
@@ -493,6 +492,17 @@ function FeedTab({
             const slot = Math.floor(i / n);
             const ad =
               (i + 1) % n === 0 && slot < feedAds.length ? feedAds[slot] : null;
+            // The under-post banner honours its interval.
+            //
+            // `underPostInterval` was read from settings, clamped, threaded
+            // through three components and then discarded here — the prop was
+            // renamed `_underPostInterval` with a comment claiming the rail
+            // consumed it, which the rail never did. FeedPostCard gated on the
+            // boolean alone, so the banner rendered under EVERY post: twenty
+            // concurrent serve calls on a twenty-post page, and an admin setting
+            // that did nothing.
+            const un = Math.max(1, underPostInterval);
+            const showUnderPost = underPostBanner && (i + 1) % un === 0;
             return (
               <Fragment key={post.id}>
                 <FeedPostCard
@@ -503,7 +513,7 @@ function FeedTab({
                   onUpdatePost={handlePostUpdated}
                   onDeletePost={handlePostDeleted}
                   onBumpPost={handlePostBumped}
-                  underPostBanner={underPostBanner}
+                  underPostBanner={showUnderPost}
                 />
                 {ad && <FeedAdCard key={`ad-${i}-${ad.adId}`} ad={ad} />}
               </Fragment>

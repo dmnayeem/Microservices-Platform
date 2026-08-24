@@ -806,8 +806,17 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-200">
                   <input type="checkbox" checked={underPostBanner} disabled={!canManage} onChange={(e) => setUnderPostBanner(e.target.checked)} />
-                  Show a compact banner under <b className="mx-1">every</b> post, above its like/comment/share row (placement <span className="font-mono text-xs text-slate-400">FEED_POST_BELOW</span>)
+                  Show a compact banner under posts, above the like/comment/share row (placement <span className="font-mono text-xs text-slate-400">FEED_POST_BELOW</span>)
                 </label>
+                {underPostBanner && (
+                  <div className="max-w-xs">
+                    {/* This setting existed and was saved, but had no input and no
+                        effect — the banner rendered under every post regardless. */}
+                    <label className="block text-xs text-slate-400 mb-1">Under-post banner — every N posts</label>
+                    <input type="number" min={1} max={20} value={underPostInterval} disabled={!canManage} onChange={(e) => setUnderPostInterval(Math.max(1, Number(e.target.value) || 3))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />
+                    <p className="text-[11px] text-slate-500 mt-1">1 = under every post. On a 20-post page that is 20 ad requests at once.</p>
+                  </div>
+                )}
                 <div className="max-w-xs">
                   <label className="block text-xs text-slate-400 mb-1">Boosted post — max times shown per user (0 = unlimited)</label>
                   <input type="number" min={0} max={1000} value={boostMaxPerUser} disabled={!canManage} onChange={(e) => setBoostMaxPerUser(Math.max(0, Number(e.target.value) || 0))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />

@@ -25,6 +25,7 @@ export type { BannerSlide } from "./banner-slider";
 export { WithdrawalTicker } from "./withdrawal-ticker";
 export type { WithdrawalTickerItem } from "./withdrawal-ticker";
 export { AdRenderer } from "./ad-renderer";
+export { AnchorAdBar } from "./anchor-ad-bar";
 export type { AdPlacement, AdType, AdResponse } from "./ad-renderer";
 export { GlobalSearch } from "./global-search";
 export { SoloRewardWidget } from "./solo-reward-widget";

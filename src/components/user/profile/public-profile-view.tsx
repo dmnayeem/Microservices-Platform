@@ -23,6 +23,7 @@ import {
   SocialStatsGroup,
   LifetimeStatsGroup,
 } from "@/components/user/profile/profile-stat-groups";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 interface LifetimeStats {
   totalEarnedPoints: number | null;
@@ -318,6 +319,10 @@ export function PublicProfileView({ userId, viewerId }: Props) {
       {tab === "posts" && <PostsTab userId={userId} />}
       {tab === "followers" && <UserListTab endpoint={`/api/users/${userId}/followers`} viewerId={viewerId} />}
       {tab === "following" && <UserListTab endpoint={`/api/users/${userId}/following`} viewerId={viewerId} />}
+
+      {/* Own-profile has carried this since the space was created; the public
+          profile at /u/[id] never did, despite being the one strangers land on. */}
+      <AdRenderer placement="PROFILE_BOTTOM" />
     </div>
   );
 }

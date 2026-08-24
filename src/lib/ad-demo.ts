@@ -235,6 +235,94 @@ const HOUSE_FALLBACK: Array<{
     color: "#2563eb",
     wide: true,
   },
+
+  // ── The nine spaces added in Phase 3 ────────────────────────────────────
+  // Phase 2 established that an empty placement is worse than no placement:
+  // the slot resolves to nothing, the surface looks broken, and nobody can
+  // tell a space with no demand from a space that was never filled. So every
+  // new space ships with a creative on day one. All are wide — the anchor
+  // ceiling is 64px and the page-top slots are 120px leaderboards.
+  {
+    placement: "ANCHOR_BOTTOM",
+    headline: "Earn more every day — upgrade",
+    body: "Higher payouts, bigger limits.",
+    cta: "See plans",
+    url: "/packages",
+    color: "#1d4ed8",
+    wide: true,
+  },
+  {
+    placement: "WITHDRAW_TOP",
+    headline: "Lower withdrawal fees on paid plans",
+    body: "Keep more of what you earn.",
+    cta: "Compare",
+    url: "/packages",
+    color: "#047857",
+    wide: true,
+  },
+  {
+    placement: "LEADERBOARD_TOP",
+    headline: "Climb faster — more daily tasks",
+    body: "Paid plans raise your daily limit.",
+    cta: "Upgrade",
+    url: "/packages",
+    color: "#b45309",
+    wide: true,
+  },
+  {
+    placement: "QUIZZES_TOP",
+    headline: "More quizzes, higher rewards",
+    body: "Unlock the full quiz catalogue.",
+    cta: "See plans",
+    url: "/packages",
+    color: "#7c3aed",
+    wide: true,
+  },
+  {
+    placement: "DEPOSIT_TOP",
+    headline: "Turn a deposit into a bigger plan",
+    body: "Higher multipliers on every task.",
+    cta: "Compare",
+    url: "/packages",
+    color: "#0891b2",
+    wide: true,
+  },
+  {
+    placement: "PACKAGES_TOP",
+    headline: "Invite friends, earn from their work",
+    body: "Three levels of referral commission.",
+    cta: "My team",
+    url: "/referrals",
+    color: "#be123c",
+    wide: true,
+  },
+  {
+    placement: "NOTIFICATIONS_TOP",
+    headline: "Don't miss a daily bonus",
+    body: "Claim your streak before it resets.",
+    cta: "Daily Mission",
+    url: "/daily-mission",
+    color: "#4338ca",
+    wide: true,
+  },
+  {
+    placement: "REFERRALS_TOP",
+    headline: "Earn from three levels of team",
+    body: "Share your link and build downline.",
+    cta: "See plans",
+    url: "/packages",
+    color: "#0d9488",
+    wide: true,
+  },
+  {
+    placement: "DAILY_MISSION_TOP",
+    headline: "Finish today's mission for a bonus",
+    body: "Streaks pay more the longer they run.",
+    cta: "Browse tasks",
+    url: "/tasks",
+    color: "#c2410c",
+    wide: true,
+  },
 ];
 
 /** Wide 728x90-shaped promo for slots that cannot be tall. */

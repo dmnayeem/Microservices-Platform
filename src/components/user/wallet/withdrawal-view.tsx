@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { cn, usd } from "@/lib/utils";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface PaymentMethod {
   id: string;
@@ -102,6 +103,7 @@ export function WithdrawalView({
         body: JSON.stringify({ amount, methodId }),
       });
       if (!res.ok) throw new Error(await res.text());
+      await runInterstitial();
       toast.success("Withdrawal request submitted", {
         description: `You'll receive your funds within ${payoutMessage} after approval.`,
       });

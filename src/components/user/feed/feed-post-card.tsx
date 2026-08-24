@@ -506,10 +506,14 @@ export const FeedPostCard = memo(function FeedPostCard({
         <DonationBlock post={post} onUpdated={onUpdated} />
       )}
 
-      {/* Compact sponsor banner under the post, above the reactions row. */}
+      {/* Compact sponsor banner under the post, above the reactions row. The
+          caller decides WHICH posts get one (ads.under_post_interval); this only
+          renders what it is told to. The old `[&_*]:max-h-16` clamp is gone —
+          FEED_POST_BELOW declares maxHeightPx: 72 and the renderer enforces it,
+          so the two were fighting over a different number. */}
       {underPostBanner && (
         <div className="px-4 pb-1">
-          <AdRenderer placement="FEED_POST_BELOW" className="[&_*]:max-h-16" />
+          <AdRenderer placement="FEED_POST_BELOW" />
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { toNum, toNumOrNull } from "@/lib/money";
 import { getEffectivePackage } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
 import { PackagesView } from "@/components/user/packages/packages-view";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 export default async function PackagesPage() {
   const session = await auth();
@@ -30,7 +31,9 @@ export default async function PackagesPage() {
   ]);
 
   return (
-    <PackagesView
+    <>
+      <AdRenderer placement="PACKAGES_TOP" className="mb-4" />
+      <PackagesView
       packages={packages.map((p) => ({
         id: p.id,
         tier: p.slug,
@@ -46,6 +49,7 @@ export default async function PackagesPage() {
       cashBalance={Number(user?.cashBalance ?? 0)}
       pointsBalance={user?.pointsBalance ?? 0}
       pointsPerUsd={pointsPerUsd}
-    />
+      />
+    </>
   );
 }

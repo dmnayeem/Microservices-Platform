@@ -16,6 +16,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface Prize {
   position: number;
@@ -124,6 +125,7 @@ export function LotteryView() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
+      await runInterstitial();
       notifyCenter.success(
         `Purchased ${quantity} ticket${quantity > 1 ? "s" : ""}!`,
         "Good luck in the draw 🍀"

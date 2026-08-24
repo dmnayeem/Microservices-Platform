@@ -5,6 +5,7 @@ import { WithdrawalView } from "@/components/user/wallet/withdrawal-view";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getWithdrawalConfig } from "@/lib/withdrawal";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 export default async function WithdrawalPage() {
   const session = await auth();
@@ -30,7 +31,10 @@ export default async function WithdrawalPage() {
   ]);
 
   return (
-    <WithdrawalView
+    <>
+      {/* Longest-dwell page on the platform by measured traffic. */}
+      <AdRenderer placement="WITHDRAW_TOP" className="mb-4" />
+      <WithdrawalView
       cashBalance={Number(user?.cashBalance ?? 0)}
       pointsBalance={user?.pointsBalance ?? 0}
       min={wcfg.min}
@@ -48,6 +52,7 @@ export default async function WithdrawalPage() {
         label: m.accountName ?? `${m.method} · ${m.accountNumber}`,
         isDefault: m.isDefault,
       }))}
-    />
+      />
+    </>
   );
 }

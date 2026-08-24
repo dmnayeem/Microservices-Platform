@@ -34,6 +34,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { deriveSource } from "@/lib/tx-sources";
 import { History } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 export interface WalletTransaction {
   id: string;
@@ -267,6 +268,7 @@ function ConvertCard({
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? "Failed");
+      await runInterstitial();
       toast.success(d.message ?? "Points converted to cash");
       router.refresh();
     } catch (err) {

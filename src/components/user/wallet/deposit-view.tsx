@@ -16,6 +16,7 @@ import {
   formatLocal,
   effectiveChargePct,
 } from "@/lib/deposit-pricing";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface Deposit {
   id: string;
@@ -116,6 +117,7 @@ export function DepositView({ from }: { from?: string } = {}) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? "Failed");
+      await runInterstitial();
       toast.success("Deposit submitted — awaiting approval");
       setAmount("");
       setTxnId("");

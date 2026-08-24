@@ -7,6 +7,7 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { cn, pct } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 type Category = "ALL" | "ACTIVITY" | "EARNINGS" | "SOCIAL" | "ENGAGEMENT" | "REFERRAL" | "PROFILE";
 
@@ -158,6 +159,10 @@ export function MilestonesView() {
                         method: "POST",
                         headers: { "Idempotency-Key": newIdempotencyKey() },
                       });
+                      // Gate AFTER the credit lands, never before: the reward is
+                      // already banked, so a slow or missing ad cannot cost the
+                      // user anything. Resolves instantly when capped.
+                      await runInterstitial();
                       setMilestones((arr) =>
                         arr.map((x) => (x.id === m.id ? { ...x, claimed: true } : x))
                       );

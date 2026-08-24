@@ -8,6 +8,7 @@ import { AppRefreshShell } from "@/components/pwa/app-refresh-shell";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { getHiddenPaths } from "@/lib/page-visibility-server";
 import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
+import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 
 export default async function MainLayout({
   children,
@@ -67,13 +68,23 @@ export default async function MainLayout({
 
         {/* Page Content */}
         {/* scroll-mt keeps in-page anchor jumps clear of the sticky header. */}
-        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-24 lg:pb-8 scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
+        {/* The bottom padding reserves room for the mobile nav AND for the
+            anchor ad bar, which is fixed and so cannot push anything itself.
+            `--anchor-ad-h` is published by AnchorAdBar and is 0px whenever the
+            bar is dismissed or has no ad — so no page loses a strip for a slot
+            that is not there. */}
+        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-[calc(6rem+var(--anchor-ad-h,0px))] lg:pb-[calc(2rem+var(--anchor-ad-h,0px))] scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
           <AppRefreshShell>{children}</AppRefreshShell>
         </main>
       </div>
 
       {/* App-style bottom nav (mobile only) */}
       <BottomTabBar features={features} hiddenPaths={hiddenPaths} />
+
+      {/* Sticky anchor ad — one mount covers every route tree in the app. Sits
+          UNDER the nav (z-30 vs z-40) and suppresses itself on incentivised
+          pages; see anchor-ad-bar.tsx. */}
+      <AnchorAdBar />
     </div>
   );
 }

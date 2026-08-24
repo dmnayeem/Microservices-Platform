@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DailyMissionView } from "@/components/user/missions/daily-mission-view";
 import { ProfileGate } from "@/components/user/profile/profile-gate";
 import { getProfileGateState } from "@/lib/profile-gate-server";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 export default async function DailyMissionPage() {
   const session = await auth();
@@ -13,5 +14,10 @@ export default async function DailyMissionPage() {
     return <ProfileGate progress={gate.progress} surface="the Daily Mission" />;
   }
 
-  return <DailyMissionView />;
+  return (
+    <>
+      <AdRenderer placement="DAILY_MISSION_TOP" className="mb-4" />
+      <DailyMissionView />
+    </>
+  );
 }

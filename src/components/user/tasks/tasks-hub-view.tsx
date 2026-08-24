@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { StatCard } from "@/components/user/primitives/stat-card";
 import { isCategoryVisible } from "@/lib/task-categories";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 // Reuse the Earn-hub tabs (single source of truth — /earn stays unchanged).
 import {
   LearnTab,
@@ -221,6 +222,11 @@ export function TasksHubView({
           Pick a task type to start earning points and XP
         </p>
       </div>
+
+      {/* The space is literally named for this page ("Tasks hub (/tasks) — top")
+          and was mounted on all thirteen per-type task lists EXCEPT this one —
+          the hub the mobile bottom nav points at. */}
+      <AdRenderer placement="TASK_LIST" />
 
       {/* Stats row: package + today's numbers */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

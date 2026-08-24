@@ -5,6 +5,7 @@ import {
   ReferralsView,
   type ReferralUser,
 } from "@/components/user/referrals/referrals-view";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 export const metadata = { title: "My Team" };
 
@@ -150,7 +151,9 @@ export default async function ReferralsPage() {
   ];
 
   return (
-    <ReferralsView
+    <>
+      <AdRenderer placement="REFERRALS_TOP" className="mb-4" />
+      <ReferralsView
       referralCode={code}
       shareUrl={shareUrl}
       l1Count={l1Total}
@@ -161,6 +164,7 @@ export default async function ReferralsPage() {
       l3Earned={l3Earned}
       thisMonthEarned={Number(thisMonthEarnings._sum.amount ?? 0)}
       team={team}
-    />
+      />
+    </>
   );
 }

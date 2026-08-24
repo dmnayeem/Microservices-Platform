@@ -19,6 +19,7 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface PlayQuestion {
   id: string;
@@ -103,6 +104,9 @@ export function QuizRunner({ quizId }: { quizId: string }) {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      // The result screen IS the reward reveal, so the gate belongs in front of
+      // it — the attempt is already recorded server-side either way.
+      if (d?.passed) await runInterstitial();
       setResult(d);
       setState("result");
     } catch (err) {

@@ -25,6 +25,22 @@ export const AD_PLACEMENTS = [
   { name: "GAME_INTERSTITIAL", label: "Game Interstitial", description: "Full-screen ad on game open / resume / quit.", where: "Games — full-screen on open/resume/quit" },
   { name: "VIDEO_INTERSTITIAL", label: "Video Interstitial", description: "Full-screen ad on video task open / before reward.", where: "Video tasks — full-screen before reward" },
   { name: "REWARD_INTERSTITIAL", label: "Reward Interstitial", description: "Full-screen ad shown on every task submit / reward claim, before the reward is revealed.", where: "Every task submit & reward claim" },
+
+  // ── Anchor + per-page top slots (Phase 3) ────────────────────────────────
+  // Before these, 27 of the 50 route trees under (main) rendered no ad at all,
+  // including two of the three bottom-nav tabs. The anchor covers the tail with
+  // one mount; the named slots exist so per-page revenue is reportable — a
+  // single shared PAGE_TOP would make every one of them indistinguishable in
+  // the very report that decides which pages are worth a slot.
+  { name: "ANCHOR_BOTTOM", label: "Anchor Bar", description: "Sticky bar pinned to the bottom of every authenticated page, above the mobile nav. Dismissible for the session.", where: "Every page in the app — bottom" },
+  { name: "WITHDRAW_TOP", label: "Withdrawal", description: "Top of the withdrawal page — the longest-dwell page on the platform.", where: "Withdrawal (/withdrawal) — top" },
+  { name: "LEADERBOARD_TOP", label: "Leaderboard", description: "Top of the leaderboard.", where: "Leaderboard (/leaderboard) — top" },
+  { name: "QUIZZES_TOP", label: "Quizzes", description: "Top of the quizzes list and quiz pages.", where: "Quizzes (/quizzes) — top" },
+  { name: "DEPOSIT_TOP", label: "Deposit", description: "Top of the deposit page.", where: "Deposit (/deposit) — top" },
+  { name: "PACKAGES_TOP", label: "Packages", description: "Top of the packages page.", where: "Packages (/packages) — top" },
+  { name: "NOTIFICATIONS_TOP", label: "Notifications", description: "Top of the notifications list.", where: "Notifications (/notifications) — top" },
+  { name: "REFERRALS_TOP", label: "Referrals", description: "Top of the referrals page.", where: "Referrals (/referrals) — top" },
+  { name: "DAILY_MISSION_TOP", label: "Daily Mission", description: "Top of the daily mission page.", where: "Daily Mission (/daily-mission) — top" },
 ] as const;
 
 export type AdPlacementName = (typeof AD_PLACEMENTS)[number]["name"];
@@ -114,6 +130,20 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
   GAME_INTERSTITIAL: INTERSTITIAL_SPEC,
   VIDEO_INTERSTITIAL: INTERSTITIAL_SPEC,
   REWARD_INTERSTITIAL: INTERSTITIAL_SPEC,
+
+  // The anchor is deliberately the shortest space on the platform. It is pinned
+  // over the page on every screen, so anything taller than a mobile banner stops
+  // being an ad and starts being a second navigation bar.
+  ANCHOR_BOTTOM: { sizes: ["mobile", "banner", "leaderboard", "responsive"], maxHeightPx: 64, networkAllowed: true },
+
+  WITHDRAW_TOP: LEADERBOARD_SPEC,
+  LEADERBOARD_TOP: LEADERBOARD_SPEC,
+  QUIZZES_TOP: LEADERBOARD_SPEC,
+  DEPOSIT_TOP: LEADERBOARD_SPEC,
+  PACKAGES_TOP: LEADERBOARD_SPEC,
+  NOTIFICATIONS_TOP: LEADERBOARD_SPEC,
+  REFERRALS_TOP: LEADERBOARD_SPEC,
+  DAILY_MISSION_TOP: LEADERBOARD_SPEC,
 };
 
 /** An unknown space falls back to the most restrictive sensible shape. */
@@ -232,6 +262,28 @@ export const ADVERTISER_PLACEMENTS = AD_PLACEMENTS.filter((p) =>
 export function isInterstitialPlacement(name: string): boolean {
   return AD_PLACEMENTS.some(
     (p) => p.name === name && p.name.endsWith("_INTERSTITIAL")
+  );
+}
+
+/**
+ * Routes the sticky anchor bar must NOT appear on.
+ *
+ * `ANCHOR_BOTTOM` carries Google inventory (`networkAllowed: true`), and it is
+ * mounted once in the app shell, so it would otherwise land on every screen —
+ * including the ones where the user is being PAID to be there. AdSense and Ad
+ * Manager prohibit their ads on incentivised surfaces, and this is the only
+ * mount in the codebase that could put one there by accident.
+ *
+ * `/watch-ads` pays points for dwell time and already carries its own
+ * `EARN_BROWSE` slots, which are house-only for exactly this reason.
+ *
+ * Prefix match: a nested route under one of these is suppressed too.
+ */
+export const ANCHOR_DENY_PREFIXES = ["/watch-ads"] as const;
+
+export function anchorAllowedOnPath(pathname: string): boolean {
+  return !ANCHOR_DENY_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
   );
 }
 

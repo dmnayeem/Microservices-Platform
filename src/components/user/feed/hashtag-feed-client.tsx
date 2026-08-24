@@ -14,6 +14,7 @@ import {
   isEmbeddableVideoUrl,
 } from "@/components/user/primitives/inline-video-embed";
 import type { LinkPreviewData } from "./social-feed-view.types";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 // First http(s) URL in text (client-safe).
 function firstUrlInText(text: string): string | null {
@@ -107,6 +108,10 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
 
   return (
     <div className="space-y-3">
+      {/* The hashtag feed shows the same posts as /social but carried no ad of
+          any kind — not IN_FEED, not FEED_POST_BELOW. */}
+      <AdRenderer placement="IN_FEED" />
+
       {items.map((p) => (
         <article key={p.id} className="glass p-4">
           <div className="flex items-center gap-2.5">

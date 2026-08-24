@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/user/primitives/empty-state";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { toast } from "@/lib/toast";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
+import { runInterstitial } from "@/lib/reward-interstitial";
 
 interface CartItem {
   id: string;
@@ -100,6 +101,7 @@ export function CartView() {
         }
         throw new Error(data.error ?? data.details ?? `HTTP ${res.status}`);
       }
+      await runInterstitial();
       toast.success(`Checkout complete · ${usd(data.total)} charged`);
       setItems([]);
       router.push("/marketplace/orders");

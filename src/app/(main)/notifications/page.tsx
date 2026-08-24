@@ -24,6 +24,7 @@ import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 interface Notification {
   id: string;
@@ -257,6 +258,8 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-5">
+      <AdRenderer placement="NOTIFICATIONS_TOP" />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
