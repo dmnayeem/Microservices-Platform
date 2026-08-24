@@ -10,7 +10,11 @@ import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
 import { bufferImpression } from "@/lib/ad-counters";
 import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
-import { composeNetworkAdHtml, getNetworkGlobals } from "@/lib/ad-network";
+import {
+  getNetworkGlobals,
+  resolveNetworkSlot,
+  type NetworkSlotConfig,
+} from "@/lib/ad-network";
 import type { FeedAd } from "@/components/user/feed/feed-ad-card";
 
 /** Shaped banner/interstitial ad — identical to the `/api/ads/serve` payload. */
@@ -32,6 +36,8 @@ export interface ServedAd {
   clickTracker?: string;
   /** Admin-granted per-ad escape hatch for network creatives (see SandboxedAdFrame). */
   allowSameOrigin?: boolean;
+  /** Present only for ADSENSE / GAM — what the client needs to build a real slot. */
+  network?: NetworkSlotConfig;
 }
 
 export interface ServeResult {
@@ -112,6 +118,15 @@ export async function serveAd(opts: {
   /** Admin preview: serve any ACTIVE ad on the placement (skip ad-free /
    *  targeting / budget / flight gates) and never count an impression. */
   preview?: boolean;
+  /**
+   * Skip AdSense/GAM and serve own/direct inventory only.
+   *
+   * Used when a Google slot comes back unfilled: rather than leave a hole where
+   * an ad should be, the client re-requests with this and gets a house or
+   * direct-sold creative. While AdSense approval is still pending this is what
+   * makes the network spaces earn anything at all.
+   */
+  ownInventoryOnly?: boolean;
 }): Promise<ServeResult> {
   const { placement, userId, preview } = opts;
   const exclude = new Set(opts.exclude ?? []);
@@ -186,6 +201,7 @@ export async function serveAd(opts: {
       // path allowed to look past the campaign gate, so an admin can still see
       // what a space renders while a campaign is paused.
       ...(preview ? {} : { campaign: servableCampaignWhere(cost, now, houseOnly) }),
+      ...(opts.ownInventoryOnly ? { type: { notIn: ["ADSENSE", "GAM"] } } : {}),
     },
     include: { campaign: { select: { title: true } } },
     take: 50,
@@ -228,12 +244,22 @@ export async function serveAd(opts: {
   );
 
   const proxy = isFirstPartyAdType(chosen.type);
-  // Network types (ADSENSE/GAM): compose a self-contained document server-side;
-  // fall back to any raw htmlContent when config is incomplete.
-  let html = chosen.htmlContent ?? undefined;
+  // Network types (ADSENSE/GAM) ship their SLOT CONFIG, not markup.
+  //
+  // They used to be composed into a self-contained document here and rendered in
+  // a sandboxed iframe, so every slot loaded its own copy of Google's script.
+  // The client now renders a real in-page `<ins>` / GPT slot from this config,
+  // against the single page-level tag in the root layout — the only arrangement
+  // Google supports, and the only one that fills properly.
+  const html = chosen.htmlContent ?? undefined;
+  let network: NetworkSlotConfig | undefined;
   if (chosen.type === "ADSENSE" || chosen.type === "GAM") {
-    const composed = composeNetworkAdHtml(chosen, await getNetworkGlobals());
-    if (composed) html = composed;
+    network =
+      resolveNetworkSlot(chosen, await getNetworkGlobals(), placement) ??
+      undefined;
+    // Incomplete network setup — the normal state before an account exists.
+    // Serving nothing is right: it keeps every Google reference off the page.
+    if (!network) return EMPTY;
   }
   return {
     poolSize: targeted.length,
@@ -258,6 +284,7 @@ export async function serveAd(opts: {
       ctaLabel: "Learn More",
       ctaUrl: chosen.targetUrl ?? undefined,
       html,
+      network,
       sponsor: undefined,
       size: chosen.size ?? undefined,
       width: chosen.width ?? undefined,

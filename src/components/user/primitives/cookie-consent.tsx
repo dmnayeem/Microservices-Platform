@@ -4,7 +4,19 @@ import { useEffect, useState } from "react";
 import { Cookie, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "cookie_consent_v1";
+import { CONSENT_STORAGE_KEY } from "@/lib/ad-consent";
+
+/**
+ * Shared with `src/lib/ad-consent.ts`, which is the only reader.
+ *
+ * Until that module existed this banner wrote a preference nothing consulted —
+ * "Reject All" changed nothing at all. The `marketing` value now decides whether
+ * Google's slots request personalised or non-personalised ads.
+ *
+ * A change made here only takes effect on the next ad request, so the page is
+ * reloaded after saving; a slot that has already been pushed cannot be re-asked.
+ */
+const STORAGE_KEY = CONSENT_STORAGE_KEY;
 
 interface Prefs {
   essential: true;
@@ -34,9 +46,21 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
   }, [enabled]);
 
   const persist = (p: Prefs) => {
+    const previous = localStorage.getItem(STORAGE_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
     setShow(false);
     setShowModal(false);
+    // Ad slots read the marketing preference once, before their first request.
+    // Changing it after ads have loaded only matters from the next page view, so
+    // a *change* (not the first choice) reloads to make it take effect now.
+    if (previous) {
+      try {
+        const before = JSON.parse(previous) as Partial<Prefs>;
+        if (before?.marketing !== p.marketing) window.location.reload();
+      } catch {
+        /* unreadable previous value — nothing to compare */
+      }
+    }
   };
 
   const acceptAll = () =>

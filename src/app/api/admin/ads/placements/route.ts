@@ -66,6 +66,10 @@ export async function GET() {
   );
   const adsenseClient = String((await getSetting<string>("ads.adsense_client", "")) || "");
   const gamNetworkCode = String((await getSetting<string>("ads.gam_network_code", "")) || "");
+  // Google policy plumbing (Phase 5): certified CMP, auto ads, ads.txt.
+  const googleCmpEnabled = !!(await getSetting<boolean>("ads.google_cmp_enabled", false));
+  const autoAdsEnabled = !!(await getSetting<boolean>("ads.auto_ads_enabled", false));
+  const adsTxt = String((await getSetting<string>("ads.txt_content", "")) || "");
   const density = await getAdDensity();
   const browseEarn = await getBrowseEarnConfig();
   const adFrequency = await getAdFrequencyConfig();
@@ -76,6 +80,9 @@ export async function GET() {
     cpcUsd,
     adsenseClient,
     gamNetworkCode,
+    googleCmpEnabled,
+    autoAdsEnabled,
+    adsTxt,
     density,
     browseEarn,
     adFrequency,

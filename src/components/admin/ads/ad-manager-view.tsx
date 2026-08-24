@@ -1351,7 +1351,15 @@ function spaceSizeLabel(name: string): string {
   return `${s.w}×${s.h}`;
 }
 
-interface PreviewAd { html?: string; videoUrl?: string; imageUrl?: string; title?: string }
+interface PreviewAd {
+  html?: string;
+  videoUrl?: string;
+  imageUrl?: string;
+  title?: string;
+  type?: string;
+  /** Present for ADSENSE/GAM — described here, never rendered. See below. */
+  network?: { kind: string; slot?: string; unitPath?: string; width?: number; height?: number };
+}
 
 /** Live, side-effect-free preview of a real served creative for a placement. */
 function SpacePreview({ placement, isFeed }: { placement: string; isFeed: boolean }) {
@@ -1387,7 +1395,26 @@ function SpacePreview({ placement, isFeed }: { placement: string; isFeed: boolea
   }
   return (
     <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mx-auto w-full" style={{ aspectRatio: ratio, maxWidth: dim?.w }}>
-      {ad.html ? (
+      {ad.network ? (
+        // A network slot is DESCRIBED, never rendered here.
+        //
+        // Rendering it would make the admin panel fetch a real Google ad every
+        // time a space preview is on screen — ad requests with no viewer behind
+        // them, which is exactly the invalid-traffic pattern publisher accounts
+        // are banned for. The same reason the preview route refuses to fire the
+        // impression pixel.
+        <div className="w-full h-full grid place-items-center p-2 text-center">
+          <div>
+            <div className="text-[10px] font-semibold text-slate-300">
+              {ad.network.kind === "ADSENSE" ? "Google AdSense" : "Google Ad Manager"}
+            </div>
+            <div className="text-[9px] text-slate-500 mt-0.5 break-all">
+              {ad.network.unitPath ?? ad.network.slot}
+            </div>
+            <div className="text-[9px] text-slate-600 mt-0.5">renders on the live page</div>
+          </div>
+        </div>
+      ) : ad.html ? (
         <SandboxedAdFrame html={ad.html} height={dim?.h ?? 120} badge={false} />
       ) : ad.videoUrl ? (
         <video src={ad.videoUrl} muted autoPlay loop playsInline className="w-full h-full object-cover" />

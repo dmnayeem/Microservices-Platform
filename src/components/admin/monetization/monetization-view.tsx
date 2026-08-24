@@ -40,6 +40,11 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [cpcUsd, setCpcUsd] = useState(0.05);
   const [placements, setPlacements] = useState<PlacementRow[]>([]);
   const [networkBusy, setNetworkBusy] = useState(false);
+  // Google policy plumbing: certified CMP, auto ads, ads.txt.
+  const [cmpEnabled, setCmpEnabled] = useState(false);
+  const [autoAds, setAutoAds] = useState(false);
+  const [adsTxt, setAdsTxt] = useState("");
+  const [adsTxtBusy, setAdsTxtBusy] = useState(false);
   const [cpcBusy, setCpcBusy] = useState(false);
   // Browse & Earn (passive CPM reward) config.
   const [beEnabled, setBeEnabled] = useState(true);
@@ -61,6 +66,9 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         if (cancel) return;
         setAdsenseClient(d.adsenseClient ?? "");
         setGamNetworkCode(d.gamNetworkCode ?? "");
+        setCmpEnabled(!!d.googleCmpEnabled);
+        setAutoAds(!!d.autoAdsEnabled);
+        setAdsTxt(d.adsTxt ?? "");
         if (typeof d.cpcUsd === "number") setCpcUsd(d.cpcUsd);
         setPlacements(Array.isArray(d.placements) ? d.placements : []);
         if (d.adFrequency) {
@@ -92,6 +100,8 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
           settings: {
             "ads.adsense_client": adsenseClient.trim(),
             "ads.gam_network_code": gamNetworkCode.trim(),
+            "ads.google_cmp_enabled": cmpEnabled,
+            "ads.auto_ads_enabled": autoAds,
           },
         }),
       });
@@ -101,6 +111,26 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save ad-network settings");
     } finally {
       setNetworkBusy(false);
+    }
+  };
+
+  const saveAdsTxt = async () => {
+    setAdsTxtBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: { "ads.txt_content": adsTxt.trim() },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("ads.txt saved");
+    } catch {
+      toast.error("Couldn't save ads.txt");
+    } finally {
+      setAdsTxtBusy(false);
     }
   };
 
@@ -271,6 +301,54 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
             />
           </div>
         </div>
+        <label className="flex items-start gap-2.5 rounded-lg border border-slate-800 bg-slate-900/60 p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={cmpEnabled}
+            disabled={!canManage}
+            onChange={(e) => setCmpEnabled(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-blue-600"
+          />
+          <span>
+            <span className="block text-xs font-semibold text-slate-200">
+              Load Google&apos;s consent message (Privacy &amp; messaging)
+            </span>
+            <span className="block text-[11px] text-slate-500 mt-0.5">
+              Required for visitors in the EEA, UK and Switzerland — Google stops
+              serving there without a certified consent platform, and a hand-built
+              banner can never be one. Turn this on after you create the message in
+              your AdSense console; this only loads it.
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2.5 rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoAds}
+            disabled={!canManage}
+            onChange={(e) => setAutoAds(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-amber-500"
+          />
+          <span>
+            <span className="block text-xs font-semibold text-amber-200">
+              Auto ads on the public marketing pages
+            </span>
+            <span className="block text-[11px] text-amber-200/70 mt-0.5">
+              Google chooses the placements itself. We only switch it on for the
+              public pages — never for the logged-in app.
+            </span>
+            <span className="block text-[11px] text-amber-300/90 mt-1.5 font-medium">
+              Read this: turning it off here does not guarantee auto ads stay off
+              the app. Auto ads run wherever the AdSense script loads, and it has
+              to load in the app for your normal ad units to fill. The only real
+              control is a <b>URL exclusion in your AdSense console</b> covering
+              every logged-in page. Earning screens are incentivised, and Google
+              ads are not allowed on those.
+            </span>
+          </span>
+        </label>
+
         {canManage && (
           <button
             onClick={saveNetworks}
@@ -283,6 +361,43 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
               <Save className="w-4 h-4" />
             )}
             Save networks
+          </button>
+        )}
+      </section>
+
+      {/* ads.txt */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-white">ads.txt</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Served at <span className="text-slate-400">/ads.txt</span>. Buyers check
+            it before bidding — without it most programmatic demand simply refuses
+            to buy, and the space earns nothing. Leave empty and the AdSense line is
+            written for you from the publisher id above; paste extra lines here when
+            another network gives you one.
+          </p>
+        </div>
+        <textarea
+          value={adsTxt}
+          onChange={(e) => setAdsTxt(e.target.value)}
+          disabled={!canManage}
+          rows={4}
+          spellCheck={false}
+          placeholder="google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0"
+          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-xs font-mono placeholder:text-slate-600 disabled:opacity-50"
+        />
+        {canManage && (
+          <button
+            onClick={saveAdsTxt}
+            disabled={adsTxtBusy}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {adsTxtBusy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save ads.txt
           </button>
         )}
       </section>

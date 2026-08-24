@@ -114,6 +114,15 @@ interface PreviewAd {
   ctaUrl?: string;
   brandLogo?: string;
   html?: string;
+  /**
+   * A one-line description of the AdSense/GAM slot — NOT markup.
+   *
+   * The preview route deliberately returns this instead of a composed network
+   * document: rendering one would make the review screen fetch a real Google ad
+   * on every open, and repeated ad requests with no viewer behind them is the
+   * invalid-traffic pattern that gets publisher accounts banned.
+   */
+  networkLabel?: string;
   allowSameOrigin?: boolean;
 }
 
@@ -318,7 +327,20 @@ export function AdReviewPanel({
           <div className="space-y-3">
             <Section title="Creative">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-                {preview?.html ? (
+                {preview?.networkLabel ? (
+                  <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/60 p-6 text-center">
+                    <div className="text-sm font-semibold text-slate-200">
+                      Network ad slot
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400 break-all">
+                      {preview.networkLabel}
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      Google fills this on the live page. It is not fetched here —
+                      ad requests with no viewer count as invalid traffic.
+                    </div>
+                  </div>
+                ) : preview?.html ? (
                   <SandboxedAdFrame
                     html={preview.html}
                     height={260}

@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Megaphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
+import type { NetworkSlotConfig } from "@/lib/ad-network";
 import {
   placementSizeKey,
   placementSpec,
   type AdPlacementName,
 } from "@/lib/ad-placements";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import { NetworkAdSlot } from "@/components/user/primitives/network-ad-slot";
 
 // Derive from the canonical catalog so this never drifts again (previously a
 // hand-maintained duplicate that was missing VIDEO_OVERLAY / REWARD_INTERSTITIAL).
@@ -34,6 +36,8 @@ export interface AdResponse {
   impressionPixel?: string;
   clickTracker?: string;
   allowSameOrigin?: boolean;
+  /** Present only for ADSENSE / GAM — what a real in-page slot needs. */
+  network?: NetworkSlotConfig;
 }
 
 interface AdRendererProps {
@@ -73,7 +77,12 @@ export function AdRenderer({
   // Fetch an ad, excluding the recently-shown ids kept in sessionStorage. On
   // success it records the new id and updates the rotation interval.
   const loadAd = useCallback(
-    async (opts?: { rotate?: boolean; initial?: boolean }) => {
+    async (opts?: {
+      rotate?: boolean;
+      initial?: boolean;
+      /** Ask for own/direct inventory only — used when a Google slot goes unfilled. */
+      excludeNetwork?: boolean;
+    }) => {
       const storeKey = `ad-recent-${placement}`;
       let recent: string[] = [];
       try {
@@ -86,7 +95,10 @@ export function AdRenderer({
         const qs = recent.length
           ? `&exclude=${encodeURIComponent(recent.join(","))}`
           : "";
-        const res = await fetch(`/api/spaces/panel?placement=${placement}${qs}`);
+        const noNet = opts?.excludeNetwork ? "&own=1" : "";
+        const res = await fetch(
+          `/api/spaces/panel?placement=${placement}${qs}${noNet}`
+        );
         const data = res.ok ? await res.json() : null;
         if (!data?.ad) {
           // Only hide the slot when the very first load finds nothing; a failed
@@ -260,12 +272,30 @@ export function AdRenderer({
     transition: "opacity 180ms ease",
   } as const;
 
-  // HTML / AdSense / GAM creative — runs inside the shared sandboxed iframe so
-  // injected <script> actually executes (dangerouslySetInnerHTML never does).
-  if (
-    (ad.type === "HTML" || ad.type === "ADSENSE" || ad.type === "GAM") &&
-    ad.html
-  ) {
+  // AdSense / Ad Manager — a REAL in-page slot, not an iframe.
+  //
+  // These used to be composed into a self-contained document and rendered in the
+  // sandboxed frame below, which loaded Google's script once per slot. The
+  // script now loads once from the root layout and this renders against it.
+  //
+  // `onUnfilled` is the fallback the platform needs while AdSense is young: when
+  // Google returns nothing, the slot asks for own/direct inventory instead of
+  // leaving a hole. Without it every unsold impression is simply lost.
+  if ((ad.type === "ADSENSE" || ad.type === "GAM") && ad.network) {
+    return (
+      <div className={cn("relative mx-auto", className)} style={outerStyle}>
+        <NetworkAdSlot
+          config={ad.network}
+          maxHeightPx={spec.maxHeightPx}
+          onUnfilled={() => void loadAd({ rotate: true, excludeNetwork: true })}
+        />
+      </div>
+    );
+  }
+
+  // HTML creative — runs inside the shared sandboxed iframe so injected <script>
+  // actually executes (dangerouslySetInnerHTML never does).
+  if (ad.type === "HTML" && ad.html) {
     return (
       <div className={cn("relative mx-auto", className)} style={outerStyle}>
         {dismissible && (

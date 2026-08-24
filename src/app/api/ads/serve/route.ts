@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
     placement,
     userId: session?.user?.id ?? null,
     exclude,
+    // `own=1` — the client asking for a replacement after a Google slot came
+    // back unfilled. Neutral param name, like the rest of this route.
+    ownInventoryOnly: searchParams.get("own") === "1",
   });
 
   // Preserve the original response shape: `{ ad: null }` when nothing eligible.

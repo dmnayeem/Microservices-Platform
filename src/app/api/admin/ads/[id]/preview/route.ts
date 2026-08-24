@@ -3,7 +3,11 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
-import { composeNetworkAdHtml, getNetworkGlobals } from "@/lib/ad-network";
+import {
+  describeNetworkSlot,
+  getNetworkGlobals,
+  resolveNetworkSlot,
+} from "@/lib/ad-network";
 import { placementSizeKey } from "@/lib/ad-placements";
 
 interface RouteParams {
@@ -34,10 +38,26 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   if (!ad) return NextResponse.json({ error: "Ad not found" }, { status: 404 });
 
   const proxy = isFirstPartyAdType(ad.type);
-  let html = ad.htmlContent ?? undefined;
+  const html = ad.htmlContent ?? undefined;
+
+  // A network ad is DESCRIBED here, never rendered.
+  //
+  // This used to compose a live AdSense/GAM document, so every time an admin
+  // opened a space or a reviewer opened an ad, the panel fetched a real Google
+  // ad. Repeated ad requests with no viewer behind them is exactly the
+  // invalid-traffic pattern publisher accounts get banned for — the same
+  // reasoning as the impression pixel below, which this route already refuses
+  // to fire for exactly that reason.
+  let networkLabel: string | undefined;
   if (ad.type === "ADSENSE" || ad.type === "GAM") {
-    const composed = composeNetworkAdHtml(ad, await getNetworkGlobals());
-    if (composed) html = composed;
+    const cfg = resolveNetworkSlot(
+      ad,
+      await getNetworkGlobals(),
+      ad.placement.name
+    );
+    networkLabel = cfg
+      ? describeNetworkSlot(cfg)
+      : `${ad.type} — not configured yet (set the publisher id in Monetization)`;
   }
 
   return NextResponse.json({
@@ -61,6 +81,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       ctaUrl: ad.targetUrl ?? undefined,
       brandLogo: ad.brandLogo ?? undefined,
       html,
+      networkLabel,
       // Never fire the advertiser's third-party pixel from an admin screen —
       // that would report an impression that no user ever saw.
       impressionPixel: undefined,

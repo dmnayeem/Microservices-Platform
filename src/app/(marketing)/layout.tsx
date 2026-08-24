@@ -4,6 +4,7 @@ import {
   MarketingBlobs,
 } from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
+import { AutoAds } from "@/components/providers/auto-ads";
 
 // Shared chrome for public marketing pages (About, Careers, Blog, Press, Help,
 // Contact, Status, and the /features/* pages) — the content-driven Navbar and
@@ -25,6 +26,9 @@ export default async function MarketingLayout({
       className="relative min-h-screen bg-(--mk-bg) text-(--mk-text) overflow-x-hidden"
     >
       <MarketingThemeScript />
+      {/* Auto ads on the public pages only — NEVER inside (main), where every
+          screen is incentivised and Google ads are not permitted. */}
+      <AutoAds />
       {animations && <MarketingBlobs />}
       <div className="relative z-10">
         <Navbar {...content.navbar} />
