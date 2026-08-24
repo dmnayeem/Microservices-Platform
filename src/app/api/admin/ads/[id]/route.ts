@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 import { clampRewardCooldown } from "@/lib/ad-billing";
 import { AdReviewError, adminSetStatus, materialChanges } from "@/lib/ad-review";
+import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -66,6 +67,39 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       (normalizeTargeting((body.targeting ?? {}) as AdTargeting) as
         | Prisma.InputJsonValue
         | null) ?? Prisma.JsonNull;
+  }
+
+  // Re-check the fit whenever size, dimensions, type or the space itself moves.
+  // An edit can put an approved creative into a space it never fitted, and size
+  // changes deliberately do not re-enter review, so this is the only gate.
+  if (
+    data.size !== undefined ||
+    data.width !== undefined ||
+    data.height !== undefined ||
+    data.type !== undefined ||
+    data.placementId !== undefined
+  ) {
+    const placementId = String(data.placementId ?? existing.placementId);
+    const target = await prisma.adPlacement.findUnique({
+      where: { id: placementId },
+      select: { name: true },
+    });
+    if (target) {
+      const problems = checkAdFitsPlacement({
+        placementName: target.name,
+        placementLabel: placementLabel(target.name),
+        size: (data.size as string | undefined) ?? existing.size,
+        width: (data.width as number | null | undefined) ?? existing.width,
+        height: (data.height as number | null | undefined) ?? existing.height,
+        type: (data.type as string | undefined) ?? existing.type,
+      });
+      if (problems.length > 0) {
+        return NextResponse.json(
+          { error: problems[0].message, problems },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const changed = materialChanges(existing as unknown as Record<string, unknown>, data);

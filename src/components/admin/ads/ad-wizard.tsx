@@ -17,7 +17,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
-import { AD_PLACEMENTS } from "@/lib/ad-placements";
+import { AD_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { AD_SIZES } from "@/lib/ad-sizes";
 import { type AdTargeting } from "@/lib/ad-targeting";
 import { DateField } from "@/components/ui/date-field";
@@ -75,6 +75,19 @@ export function AdWizard({
 
   // Step 2 — ad spaces multi-select (placement ids)
   const [selected, setSelected] = useState<string[]>([]);
+  // Sizes common to every selected space, and the shortest ceiling among them.
+  const selectedNames = selected
+    .map((id) => placements.find((pl) => pl.id === id)?.name)
+    .filter((x): x is string => !!x);
+  const allowedSizes = AD_SIZES.filter(
+    (s) =>
+      s.key === "custom" ||
+      selectedNames.length === 0 ||
+      selectedNames.every((nm) => placementSpec(nm).sizes.includes(s.key))
+  );
+  const maxHeightAcrossSelected = selectedNames.length
+    ? Math.min(...selectedNames.map((nm) => placementSpec(nm).maxHeightPx))
+    : 120;
 
   // Step 3 — creative
   const [creative, setCreative] = useState<"IMAGE" | "VIDEO" | "HTML">("IMAGE");
@@ -427,15 +440,25 @@ export function AdWizard({
 
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Size</label>
+                {/* One creative goes into every selected space, so only sizes
+                    that fit ALL of them are offered — "Select all" plus a
+                    1080x1920 "story" used to write a full-screen creative into
+                    every slot on the platform. The server refuses the same
+                    combinations; this just stops the admin getting there. */}
                 <select value={size} onChange={(e) => setSize(e.target.value)} className={inputCls}>
-                  {AD_SIZES.map((s) => (
+                  {allowedSizes.map((s) => (
                     <option key={s.key} value={s.key}>{s.label}</option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {selected.length > 1
+                    ? `Sizes that fit all ${selected.length} selected spaces. Tallest allowed: ${maxHeightAcrossSelected}px.`
+                    : `Max height for this space: ${maxHeightAcrossSelected}px.`}
+                </p>
                 {size === "custom" && (
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <input type="number" min={1} value={width} onChange={(e) => setWidth(e.target.value)} placeholder="Width (px)" className={inputCls} />
-                    <input type="number" min={1} value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Height (px)" className={inputCls} />
+                    <input type="number" min={1} max={maxHeightAcrossSelected} value={height} onChange={(e) => setHeight(e.target.value)} placeholder={`Height (max ${maxHeightAcrossSelected})`} className={inputCls} />
                   </div>
                 )}
               </div>

@@ -30,34 +30,174 @@ export const AD_PLACEMENTS = [
 export type AdPlacementName = (typeof AD_PLACEMENTS)[number]["name"];
 
 /**
- * Recommended creative size per placement (an `AD_SIZES` key). Drives the admin
- * space preview aspect-ratio + size label, and pre-fills the ad's default size
- * when creating an ad for that space. Unlisted placements → "responsive".
+ * Human name for a space, for error messages and admin UI. Lives here rather
+ * than in the admin view so a server route can name the space it rejected.
  */
-export const PLACEMENT_SIZE: Record<string, string> = {
-  TASK_LIST: "leaderboard",
-  TASK_START: "leaderboard",
-  VIDEO_ABOVE: "leaderboard",
-  VIDEO_BELOW: "leaderboard",
-  VIDEO_OVERLAY: "leaderboard",
-  TASK_COMPLETE: "medium",
-  IN_FEED: "responsive",
-  FEED_POST_BELOW: "medium",
-  FEED_SIDEBAR: "medium",
-  DASHBOARD: "leaderboard",
-  EARN_HUB: "leaderboard",
-  EARN_BROWSE: "medium",
-  WALLET_TOP: "leaderboard",
-  MARKETPLACE_TOP: "leaderboard",
-  PROFILE_BOTTOM: "medium",
-  GAME_INTERSTITIAL: "story",
-  VIDEO_INTERSTITIAL: "story",
-  REWARD_INTERSTITIAL: "story",
+export const PLACEMENT_LABEL: Record<string, string> = Object.fromEntries(
+  AD_PLACEMENTS.map((p) => [p.name, p.label])
+);
+
+export function placementLabel(name: string): string {
+  return PLACEMENT_LABEL[name] ?? name;
+}
+
+/**
+ * What a space will actually accept and how tall it may ever get.
+ *
+ * This replaces a bare "recommended size" map that nothing enforced. The result
+ * was that any size could be put in any space — and since `Ad.size` defaults to
+ * `"responsive"`, which `resolveAdSize()` turns into "no dimensions at all", the
+ * renderer applied no `maxWidth`, no aspect ratio and (anywhere in the file) no
+ * max height. A tall creative in a banner slot rendered `w-full h-auto` and ran
+ * for several screens. The loading skeleton, meanwhile, *was* shaped from the
+ * space — so the layout jumped the moment the ad arrived.
+ *
+ * `maxHeightPx` is the important field: it is enforced at render time, so it
+ * also protects against every row already in the database, which no write-time
+ * validation can reach.
+ *
+ * `networkAllowed: false` marks INCENTIVISED inventory — surfaces where the user
+ * is being paid, or is being shown the ad in order to receive a reward. Google's
+ * AdSense and Ad Manager policies prohibit their ads on incentivised placements,
+ * and breaching that is the usual way a publisher account gets actioned. Those
+ * spaces take own/direct-sold (`LOCAL`) and `HTML` creatives only, and the rule
+ * is enforced server-side rather than left to be remembered.
+ */
+export interface PlacementSpec {
+  /** `AD_SIZES` keys this space accepts. First entry is the default/prefill. */
+  sizes: string[];
+  /** Hard ceiling applied by the renderer, in CSS pixels. */
+  maxHeightPx: number;
+  /** May Google (ADSENSE / GAM) creatives run here? False = incentivised. */
+  networkAllowed: boolean;
+}
+
+/** Full-screen spaces size themselves; the overlay ignores `Ad.size` entirely. */
+const INTERSTITIAL_SPEC: PlacementSpec = {
+  sizes: ["story", "responsive", "medium", "large_square"],
+  maxHeightPx: 1920,
+  networkAllowed: false, // shown to unlock a reward — incentivised
 };
 
-/** The `AD_SIZES` key recommended for a placement (defaults to "responsive"). */
+const LEADERBOARD_SPEC: PlacementSpec = {
+  sizes: ["leaderboard", "banner", "mobile", "responsive"],
+  maxHeightPx: 120,
+  networkAllowed: true,
+};
+
+const RECTANGLE_SPEC: PlacementSpec = {
+  sizes: ["medium", "large_square", "square", "responsive"],
+  maxHeightPx: 300,
+  networkAllowed: true,
+};
+
+export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
+  TASK_LIST: LEADERBOARD_SPEC,
+  TASK_START: LEADERBOARD_SPEC,
+  VIDEO_ABOVE: LEADERBOARD_SPEC,
+  VIDEO_BELOW: LEADERBOARD_SPEC,
+  // A strip pinned over the player — deliberately shorter than a leaderboard.
+  VIDEO_OVERLAY: { sizes: ["mobile", "banner", "responsive"], maxHeightPx: 72, networkAllowed: true },
+  TASK_COMPLETE: RECTANGLE_SPEC,
+  // The native feed card defines its own geometry and never reads `Ad.size`.
+  IN_FEED: { sizes: ["responsive"], maxHeightPx: 400, networkAllowed: true },
+  // Sits between a post and its like/comment row — must stay small.
+  FEED_POST_BELOW: { sizes: ["mobile", "banner", "responsive"], maxHeightPx: 72, networkAllowed: true },
+  FEED_SIDEBAR: RECTANGLE_SPEC,
+  DASHBOARD: LEADERBOARD_SPEC,
+  EARN_HUB: LEADERBOARD_SPEC,
+  // Users are paid points for viewing this page — incentivised by definition.
+  EARN_BROWSE: { ...RECTANGLE_SPEC, networkAllowed: false },
+  WALLET_TOP: LEADERBOARD_SPEC,
+  MARKETPLACE_TOP: LEADERBOARD_SPEC,
+  PROFILE_BOTTOM: RECTANGLE_SPEC,
+  GAME_INTERSTITIAL: INTERSTITIAL_SPEC,
+  VIDEO_INTERSTITIAL: INTERSTITIAL_SPEC,
+  REWARD_INTERSTITIAL: INTERSTITIAL_SPEC,
+};
+
+/** An unknown space falls back to the most restrictive sensible shape. */
+const DEFAULT_SPEC: PlacementSpec = LEADERBOARD_SPEC;
+
+export function placementSpec(name: string): PlacementSpec {
+  return PLACEMENT_SPEC[name] ?? DEFAULT_SPEC;
+}
+
+/** The `AD_SIZES` key recommended for a placement — the spec's first entry. */
 export function placementSizeKey(name: string): string {
-  return PLACEMENT_SIZE[name] ?? "responsive";
+  return placementSpec(name).sizes[0];
+}
+
+/** Would this creative size be accepted in this space? */
+export function sizeFitsPlacement(placementName: string, size?: string | null): boolean {
+  const spec = placementSpec(placementName);
+  // `custom` is admin-only and validated on its pixel dimensions instead.
+  if (size === "custom") return true;
+  return spec.sizes.includes(size || "responsive");
+}
+
+/** May this `Ad.type` run in this space? See `networkAllowed` above. */
+export function typeFitsPlacement(placementName: string, type?: string | null): boolean {
+  if (type !== "ADSENSE" && type !== "GAM") return true;
+  return placementSpec(placementName).networkAllowed;
+}
+
+export interface AdFitProblem {
+  field: "size" | "type" | "height";
+  message: string;
+}
+
+/**
+ * Validate a creative against the space it is being placed in. Returns every
+ * problem rather than the first, so an admin fixing a form sees all of it.
+ *
+ * Deliberately a rejection, not a silent clamp: an admin who chose the wrong
+ * size should be told which sizes the space takes, not quietly given a third
+ * value they did not pick.
+ */
+export function checkAdFitsPlacement(args: {
+  placementName: string;
+  placementLabel?: string;
+  size?: string | null;
+  width?: number | null;
+  height?: number | null;
+  type?: string | null;
+}): AdFitProblem[] {
+  const spec = placementSpec(args.placementName);
+  const where = args.placementLabel || args.placementName;
+  const out: AdFitProblem[] = [];
+
+  if (!sizeFitsPlacement(args.placementName, args.size)) {
+    out.push({
+      field: "size",
+      message: `"${args.size}" doesn't fit ${where}. That space takes: ${spec.sizes.join(", ")}.`,
+    });
+  }
+
+  if (args.size === "custom") {
+    const h = Number(args.height);
+    const w = Number(args.width);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+      out.push({
+        field: "height",
+        message: "A custom size needs both a width and a height in pixels.",
+      });
+    } else if (h > spec.maxHeightPx) {
+      out.push({
+        field: "height",
+        message: `${h}px is taller than ${where} allows (max ${spec.maxHeightPx}px).`,
+      });
+    }
+  }
+
+  if (!typeFitsPlacement(args.placementName, args.type)) {
+    out.push({
+      field: "type",
+      message: `Google ads (AdSense / Ad Manager) can't run in ${where}. Users are shown that space to earn or unlock a reward, and Google's policies prohibit their ads on incentivised placements — running them there risks the account. Use your own or a direct-sold creative.`,
+    });
+  }
+
+  return out;
 }
 
 /**

@@ -53,6 +53,13 @@ export const IN_REVIEW_STATUSES: AdStatus[] = [
  * Changing any of these re-opens review: they are what a reviewer actually
  * judged. Everything else (weight, size, pause/resume) is delivery tuning and
  * must never cost an advertiser their approval.
+ *
+ * `size` deliberately stays OUT even though a resize was once a real risk — a
+ * creative could be resized into a shape its space could not hold. That is now
+ * refused at the write itself by `checkAdFitsPlacement()` on all four ad routes,
+ * so a size that survives to the database already fits. Re-reviewing a creative
+ * because its dimensions moved within the allowed set would cost the advertiser
+ * their approval for a change the reviewer never judged.
  */
 export const MATERIAL_FIELDS = [
   "targetUrl",

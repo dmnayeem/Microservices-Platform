@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Megaphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
-import { placementSizeKey, type AdPlacementName } from "@/lib/ad-placements";
+import {
+  placementSizeKey,
+  placementSpec,
+  type AdPlacementName,
+} from "@/lib/ad-placements";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 
 // Derive from the canonical catalog so this never drifts again (previously a
@@ -186,7 +190,12 @@ export function AdRenderer({
     // Truly no ad → collapse (no permanent blank box).
     if (!loading) return null;
     // First load in flight → reserve a size-shaped skeleton so nothing jumps.
+    // Uses the same space ceiling the real ad does, so the reserved box and the
+    // box that lands are the same box. They used to disagree: the skeleton was
+    // shaped from the placement while the ad was shaped from itself, which is
+    // why the layout jumped when an oversized creative arrived.
     const reserved = resolveAdSize(placementSizeKey(placement));
+    const cap = placementSpec(placement).maxHeightPx;
     return (
       <div
         className={cn(
@@ -196,7 +205,8 @@ export function AdRenderer({
         style={{
           aspectRatio: reserved ? `${reserved.w} / ${reserved.h}` : undefined,
           maxWidth: reserved?.w,
-          minHeight: reserved ? undefined : 90,
+          maxHeight: cap,
+          minHeight: reserved ? undefined : Math.min(90, cap),
         }}
       />
     );
@@ -219,11 +229,30 @@ export function AdRenderer({
   };
 
   const dim = resolveAdSize(ad.size, ad.width, ad.height);
-  // Fixed-size ads cap their width and honor the aspect ratio (no crop);
-  // responsive ads stretch to the container at natural height.
-  const mediaStyle = dim
-    ? { aspectRatio: `${dim.w} / ${dim.h}` }
-    : undefined;
+  // The SPACE decides the ceiling; the ad decides its shape within it.
+  //
+  // This used to read the ad's size alone. `Ad.size` defaults to "responsive",
+  // and `resolveAdSize` returns null for that (and for an unknown string, and
+  // for a malformed "custom") — which meant no maxWidth, no aspect ratio and no
+  // height cap anywhere. Every ad in the database is "responsive", so in
+  // practice nothing was ever capped: a tall creative rendered `w-full h-auto`
+  // and ran for several screens. The loading skeleton above already sized
+  // itself from the placement, so the layout jumped when the ad landed.
+  //
+  // `maxHeight` is the part that matters. Write-time validation cannot reach
+  // rows that already exist; this can.
+  const spec = placementSpec(placement);
+  // The ceiling goes on the MEDIA, not on the card. A LOCAL ad renders the
+  // image above a title/body block, and capping the whole card would clip the
+  // text instead of the thing that was oversized. Capping the media bounds the
+  // card anyway: image ≤ maxHeightPx, plus a fixed text block.
+  //
+  // `object-contain` (already on both elements) letterboxes rather than crops,
+  // so a tall creative is shown whole at a smaller size instead of being cut.
+  const mediaStyle = {
+    ...(dim ? { aspectRatio: `${dim.w} / ${dim.h}` } : {}),
+    maxHeight: spec.maxHeightPx,
+  };
   // Merge the rotation fade into the outer style.
   const outerStyle = {
     ...(dim ? { maxWidth: dim.w } : {}),
@@ -251,7 +280,10 @@ export function AdRenderer({
         )}
         <SandboxedAdFrame
           html={ad.html}
-          height={dim?.h ?? 250}
+          // Clamped by the space, not just the ad. A `custom` size could set an
+          // arbitrary pixel height here, and the frame applies it inline with no
+          // ceiling of its own.
+          height={Math.min(dim?.h ?? 250, spec.maxHeightPx)}
           impressionPixel={ad.impressionPixel}
           allowSameOrigin={ad.allowSameOrigin}
         />

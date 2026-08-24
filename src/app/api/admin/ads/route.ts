@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 import { clampRewardCooldown } from "@/lib/ad-billing";
+import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 
 const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
@@ -125,6 +126,37 @@ export async function POST(request: NextRequest) {
     rewardCooldownSec: clampRewardCooldown(body.rewardCooldownSec),
     watchSeconds: Math.max(1, Number(body.watchSeconds) || 15),
   };
+
+  // A creative has to fit the space it is going into.
+  //
+  // Size and placement used to be two independent, unvalidated strings on the
+  // same row — the wizard's "Select all" plus a 1080×1920 "story" size wrote a
+  // full-screen creative into every slot on the platform. `custom` also took
+  // any positive integer with no upper bound.
+  //
+  // This is also where Google's inventory is kept off incentivised surfaces:
+  // running AdSense or Ad Manager on a screen the user is shown in order to
+  // collect a reward breaches their policies and risks the account.
+  const targetPlacements = await prisma.adPlacement.findMany({
+    where: { id: { in: placementIds } },
+    select: { id: true, name: true },
+  });
+  const fitProblems = targetPlacements.flatMap((p) =>
+    checkAdFitsPlacement({
+      placementName: p.name,
+      placementLabel: placementLabel(p.name),
+      size: shared.size,
+      width: shared.width,
+      height: shared.height,
+      type: shared.type,
+    })
+  );
+  if (fitProblems.length > 0) {
+    return NextResponse.json(
+      { error: fitProblems[0].message, problems: fitProblems },
+      { status: 400 }
+    );
+  }
 
   // One id per submit so the review console can group a multi-space creative.
   const creativeGroupId = randomUUID();

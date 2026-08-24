@@ -36,7 +36,7 @@ import { AdWizard } from "@/components/admin/ads/ad-wizard";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
-import { AD_PLACEMENTS, placementSizeKey } from "@/lib/ad-placements";
+import { AD_PLACEMENTS, placementSizeKey, placementSpec } from "@/lib/ad-placements";
 import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 import { AdReviewQueue } from "@/components/admin/ads/ad-review-queue";
@@ -1454,6 +1454,21 @@ function AdModal({
         placements.find((pl) => pl.id === (ad?.placement.id ?? placements[0]?.id))?.name ?? ""
       )
   );
+  // The space currently selected in this modal, and what it will accept.
+  const activePlacementName =
+    placements.find((pl) => pl.id === placementId)?.name ?? "";
+  const activeSpec = placementSpec(activePlacementName);
+  // Changing the space re-derives the size, so the form can never sit on a
+  // combination the server is about to reject.
+  useEffect(() => {
+    if (!activePlacementName) return;
+    setSize((prev) =>
+      prev === "custom" || activeSpec.sizes.includes(prev)
+        ? prev
+        : placementSizeKey(activePlacementName)
+    );
+  }, [activePlacementName, activeSpec]);
+
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
   const [weight, setWeight] = useState(String(ad?.weight ?? 10));
@@ -1634,15 +1649,28 @@ function AdModal({
 
         <div>
           <label className="block text-xs text-slate-400 mb-1">Size</label>
+          {/* Only the sizes the chosen space can hold. Every size used to be
+              offered for every space, so a 1080x1920 "story" creative could be
+              dropped into a 728x90 banner slot — which is how ads ended up
+              taking over the page. The server refuses the same combinations, so
+              this list is a convenience, not the guard. */}
           <select value={size} onChange={(e) => setSize(e.target.value)} className={inputCls}>
-            {AD_SIZES.map((s) => (
+            {AD_SIZES.filter(
+              (s) => s.key === "custom" || activeSpec.sizes.includes(s.key)
+            ).map((s) => (
               <option key={s.key} value={s.key}>{s.label}</option>
             ))}
           </select>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {PLACEMENT_LABEL[activePlacementName] ?? activePlacementName} allows up to{" "}
+            {activeSpec.maxHeightPx}px tall.
+            {!activeSpec.networkAllowed &&
+              " Google ads (AdSense / Ad Manager) can't run here — it's an incentivised space."}
+          </p>
           {size === "custom" && (
             <div className="grid grid-cols-2 gap-3 mt-2">
               <input type="number" min={1} value={width} onChange={(e) => setWidth(e.target.value)} placeholder="Width (px)" className={inputCls} />
-              <input type="number" min={1} value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Height (px)" className={inputCls} />
+              <input type="number" min={1} max={activeSpec.maxHeightPx} value={height} onChange={(e) => setHeight(e.target.value)} placeholder={`Height (max ${activeSpec.maxHeightPx})`} className={inputCls} />
             </div>
           )}
         </div>

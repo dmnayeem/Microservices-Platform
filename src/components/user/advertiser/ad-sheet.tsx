@@ -9,7 +9,7 @@ import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import { ADVERTISER_PLACEMENTS } from "@/lib/ad-placements";
+import { ADVERTISER_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { AD_SIZES } from "@/lib/ad-sizes";
 import { type AdTargeting } from "@/lib/ad-targeting";
 
@@ -76,6 +76,14 @@ export function AdSheet({
   const [posts, setPosts] = useState<OwnPost[]>([]);
   const [postId, setPostId] = useState<string | null>(null);
   const [placements, setPlacements] = useState<string[]>(["IN_FEED"]);
+  // `placements` holds placement NAMES here (not ids). Sizes common to all of
+  // them; `custom` is admin-only and never offered to advertisers.
+  const allowedSizes = AD_SIZES.filter(
+    (s) =>
+      s.key !== "custom" &&
+      (placements.length === 0 ||
+        placements.every((nm) => placementSpec(nm).sizes.includes(s.key)))
+  );
   const [targeting, setTargeting] = useState<AdTargeting>({});
 
   // Seed from the ad being edited each time the sheet opens.
@@ -298,13 +306,21 @@ export function AdSheet({
             {format === "BANNER" && (
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5">Banner size</label>
+                {/* Only sizes that fit every selected space. One creative is
+                    written to all of them, and the server refuses a size a
+                    space can't hold. */}
                 <select value={size} onChange={(e) => setSize(e.target.value)} className={inp}>
-                  {AD_SIZES.filter((s) => s.key !== "custom").map((s) => (
+                  {allowedSizes.map((s) => (
                     <option key={s.key} value={s.key}>
                       {s.label}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  {placements.length > 1
+                    ? `Fits all ${placements.length} selected spaces.`
+                    : "Sizes this space accepts."}
+                </p>
               </div>
             )}
           </>

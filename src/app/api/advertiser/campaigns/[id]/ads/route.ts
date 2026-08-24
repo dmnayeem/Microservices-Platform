@@ -7,7 +7,7 @@ import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { userCanFeature } from "@/lib/packages";
 import { ensureDefaultPlacements } from "@/lib/ad-placements-server";
-import { isAdvertiserSelectable, placementSizeKey } from "@/lib/ad-placements";
+import { isAdvertiserSelectable, placementSizeKey, checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 import { normalizeTargeting } from "@/lib/ad-targeting";
 import { adTargetingSchema } from "@/lib/ad-targeting-schema";
 import { AD_STATUS, recordSubmission } from "@/lib/ad-review";
@@ -129,6 +129,29 @@ export async function POST(
   // decides on) the whole submission rather than N unrelated-looking ads.
   const creativeGroupId = randomUUID();
   const submittedAt = new Date();
+
+  // The creative has to fit every space it was submitted to. Self-serve
+  // advertisers pick spaces and a size independently, so one submit could put a
+  // 1080x1920 "story" creative into a 728x90 banner slot.
+  //
+  // Advertisers can only create LOCAL ads, so the network/incentivised rule
+  // below never trips here — it is checked anyway so the rule lives in one place.
+  const fitProblems = placements.flatMap((p) =>
+    checkAdFitsPlacement({
+      placementName: p.name,
+      placementLabel: placementLabel(p.name),
+      size: d.size || placementSizeKey(p.name),
+      width: d.width ?? null,
+      height: d.height ?? null,
+      type: "LOCAL",
+    })
+  );
+  if (fitProblems.length > 0) {
+    return NextResponse.json(
+      { error: fitProblems[0].message, problems: fitProblems },
+      { status: 400 }
+    );
+  }
 
   // Advertiser-submitted ads await admin approval before serving.
   const created = await prisma.$transaction(

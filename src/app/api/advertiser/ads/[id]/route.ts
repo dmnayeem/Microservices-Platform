@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 import { userCanFeature } from "@/lib/packages";
 import { normalizeTargeting } from "@/lib/ad-targeting";
 import { adTargetingSchema } from "@/lib/ad-targeting-schema";
@@ -120,6 +121,32 @@ export async function PATCH(
     );
   }
   const d = parsed.data;
+
+  // Same fit rule as create — an advertiser can resize an already-approved ad,
+  // and size changes deliberately skip re-review.
+  if (d.size !== undefined || d.width !== undefined || d.height !== undefined) {
+    const current = g.ad;
+    const target = await prisma.adPlacement.findUnique({
+      where: { id: current.placementId },
+      select: { name: true },
+    });
+    if (target) {
+      const problems = checkAdFitsPlacement({
+        placementName: target.name,
+        placementLabel: placementLabel(target.name),
+        size: d.size ?? current.size,
+        width: d.width ?? current.width,
+        height: d.height ?? current.height,
+        type: current.type,
+      });
+      if (problems.length > 0) {
+        return NextResponse.json(
+          { error: problems[0].message, problems },
+          { status: 400 }
+        );
+      }
+    }
+  }
 
   const patch: Record<string, unknown> = {};
   if (d.status !== undefined) patch.status = d.status;
