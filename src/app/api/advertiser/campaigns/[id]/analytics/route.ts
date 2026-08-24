@@ -40,7 +40,11 @@ export async function GET(
   const stats = adIds.length
     ? await prisma.adDailyStat.findMany({
         where: { adId: { in: adIds }, date: { gte: since } },
-        select: { date: true, impressions: true, clicks: true, spendUsd: true },
+        // `adId` so the per-ad table below can be windowed to the same range as
+        // the chart. It used to report LIFETIME `Ad.impressions/clicks` directly
+        // under a windowed chart — two different periods on one screen, with the
+        // range selector silently applying to only half of it.
+        select: { adId: true, date: true, impressions: true, clicks: true, spendUsd: true },
       })
     : [];
 
@@ -51,13 +55,25 @@ export async function GET(
     d.setUTCDate(since.getUTCDate() + i);
     byDay.set(d.toISOString().slice(0, 10), { impressions: 0, clicks: 0, spendUsd: 0 });
   }
+  const perAd = new Map<
+    string,
+    { impressions: number; clicks: number; spendUsd: number }
+  >(adIds.map((id) => [id, { impressions: 0, clicks: 0, spendUsd: 0 }]));
+
   for (const s of stats) {
+    const spend = toNum(s.spendUsd);
     const key = s.date.toISOString().slice(0, 10);
     const cur = byDay.get(key);
     if (cur) {
       cur.impressions += s.impressions;
       cur.clicks += s.clicks;
-      cur.spendUsd += toNum(s.spendUsd);
+      cur.spendUsd += spend;
+    }
+    const ad = perAd.get(s.adId);
+    if (ad) {
+      ad.impressions += s.impressions;
+      ad.clicks += s.clicks;
+      ad.spendUsd += spend;
     }
   }
 
@@ -65,12 +81,21 @@ export async function GET(
 
   return NextResponse.json({
     series,
-    ads: ads.map((a) => ({
-      id: a.id,
-      label: a.brandName || a.headline?.slice(0, 40) || "Ad",
-      impressions: a.impressions,
-      clicks: a.clicks,
-      ctr: a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0,
-    })),
+    ads: ads.map((a) => {
+      const w = perAd.get(a.id) ?? { impressions: 0, clicks: 0, spendUsd: 0 };
+      return {
+        id: a.id,
+        label: a.brandName || a.headline?.slice(0, 40) || "Ad",
+        // Windowed — the same range as `series`.
+        impressions: w.impressions,
+        clicks: w.clicks,
+        // Per-ad spend was not returned at all, so an advertiser could see what
+        // a campaign cost but never which creative was spending it.
+        spend: w.spendUsd,
+        ctr: w.impressions > 0 ? (w.clicks / w.impressions) * 100 : 0,
+        lifetimeImpressions: a.impressions,
+        lifetimeClicks: a.clicks,
+      };
+    }),
   });
 }

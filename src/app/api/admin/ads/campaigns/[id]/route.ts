@@ -5,9 +5,178 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { refundCampaignBudgetToCredit } from "@/lib/ad-credits";
+import { toNum } from "@/lib/money";
+import type { Prisma } from "@/generated/prisma/client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
+}
+
+interface CampaignAdRow {
+  id: string;
+  type: string;
+  format: string;
+  status: string;
+  brandName: string | null;
+  headline: string | null;
+  weight: number | null;
+  impressions: number;
+  clicks: number;
+  placement: { name: string } | null;
+}
+
+interface CampaignWithAds {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  isHouse: boolean;
+  startAt: Date | null;
+  endAt: Date | null;
+  createdAt: Date;
+  budget: Prisma.Decimal;
+  spentTotal: Prisma.Decimal;
+  advertiser: { id: string; name: string | null; email: string } | null;
+  ads: CampaignAdRow[];
+}
+
+/**
+ * One campaign, with its day-by-day performance.
+ *
+ * This route had PATCH and DELETE and no GET, so an admin could edit or destroy
+ * a campaign but never look at one: the campaign rows in the Ad Manager were
+ * dead text, and the only per-campaign figures anywhere were window totals in a
+ * top-50 table. Shaped like the advertiser's own campaign analytics so the two
+ * screens cannot drift apart.
+ */
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  const session = await auth();
+  if (!session?.user || !(await can(session.user.id, "ads.view"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const { id } = await params;
+  const days = Math.min(
+    90,
+    Math.max(1, Number(new URL(request.url).searchParams.get("days")) || 14)
+  );
+
+  // Prisma's `include` generic degrades here (the same gotcha noted in
+  // admin/analytics/page.tsx), so the row shape is stated explicitly.
+  const campaign = (await prisma.adCampaign.findUnique({
+    where: { id },
+    include: {
+      advertiser: { select: { id: true, name: true, email: true } },
+      ads: {
+        select: {
+          id: true,
+          type: true,
+          format: true,
+          status: true,
+          brandName: true,
+          headline: true,
+          weight: true,
+          impressions: true,
+          clicks: true,
+          placement: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  })) as unknown as CampaignWithAds | null;
+  if (!campaign) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Same UTC-midnight window every other ad report uses. See the note on
+  // `todayUtc()` — a "day" here is a UTC day, and the UI says so.
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  since.setUTCDate(since.getUTCDate() - (days - 1));
+
+  const adIds = campaign.ads.map((a) => a.id);
+  const stats = adIds.length
+    ? await prisma.adDailyStat.findMany({
+        where: { adId: { in: adIds }, date: { gte: since } },
+        select: { adId: true, date: true, impressions: true, clicks: true, spendUsd: true },
+      })
+    : [];
+
+  const byDay = new Map<
+    string,
+    { impressions: number; clicks: number; spendUsd: number }
+  >();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setUTCDate(since.getUTCDate() + i);
+    byDay.set(d.toISOString().slice(0, 10), { impressions: 0, clicks: 0, spendUsd: 0 });
+  }
+  // Per-ad totals for the SAME window as the chart. The advertiser view shows
+  // lifetime counters beside a windowed chart, which is two periods on one
+  // screen; this does not repeat that.
+  const perAd = new Map<
+    string,
+    { impressions: number; clicks: number; spendUsd: number }
+  >(adIds.map((a) => [a, { impressions: 0, clicks: 0, spendUsd: 0 }]));
+
+  for (const s of stats) {
+    const spend = toNum(s.spendUsd);
+    const day = byDay.get(s.date.toISOString().slice(0, 10));
+    if (day) {
+      day.impressions += s.impressions;
+      day.clicks += s.clicks;
+      day.spendUsd += spend;
+    }
+    const ad = perAd.get(s.adId);
+    if (ad) {
+      ad.impressions += s.impressions;
+      ad.clicks += s.clicks;
+      ad.spendUsd += spend;
+    }
+  }
+
+  const budget = toNum(campaign.budget);
+  const spent = toNum(campaign.spentTotal);
+
+  return NextResponse.json({
+    days,
+    campaign: {
+      id: campaign.id,
+      title: campaign.title,
+      description: campaign.description,
+      status: campaign.status,
+      isHouse: campaign.isHouse,
+      startAt: campaign.startAt,
+      endAt: campaign.endAt,
+      createdAt: campaign.createdAt,
+      advertiser: campaign.advertiser,
+      // `budget` is what is LEFT; funded is what was put in. Reporting one as
+      // the other is the mistake the finance page was making.
+      remaining: budget,
+      spent,
+      funded: budget + spent,
+    },
+    series: [...byDay.entries()].map(([date, v]) => ({ date, ...v })),
+    ads: campaign.ads.map((a) => {
+      const w = perAd.get(a.id) ?? { impressions: 0, clicks: 0, spendUsd: 0 };
+      return {
+        id: a.id,
+        label: a.brandName || a.headline?.slice(0, 40) || "Ad",
+        type: a.type,
+        format: a.format,
+        status: a.status,
+        placement: a.placement?.name ?? "—",
+        weight: a.weight,
+        // Windowed — matches the chart above it.
+        impressions: w.impressions,
+        clicks: w.clicks,
+        spend: w.spendUsd,
+        ctr: w.impressions > 0 ? (w.clicks / w.impressions) * 100 : 0,
+        // Lifetime, labelled as such, because the Ads tab shows these too.
+        lifetimeImpressions: a.impressions,
+        lifetimeClicks: a.clicks,
+      };
+    }),
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {

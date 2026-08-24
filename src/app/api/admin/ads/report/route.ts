@@ -14,8 +14,18 @@ interface Agg {
   spend: number;
   /** Impressions served by the platform's OWN inventory (isHouse campaigns). */
   houseImpressions: number;
+  /** Impressions served by AdSense / Ad Manager — revenue lives in Google's console. */
+  networkImpressions: number;
 }
-const EMPTY: Agg = { impressions: 0, clicks: 0, spend: 0, houseImpressions: 0 };
+const EMPTY: Agg = {
+  impressions: 0,
+  clicks: 0,
+  spend: 0,
+  houseImpressions: 0,
+  networkImpressions: 0,
+};
+
+const isNetworkType = (t: string) => t === "ADSENSE" || t === "GAM";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -60,11 +70,13 @@ export async function GET(req: NextRequest) {
     if (!a) continue;
     const spend = toNum(s.spendUsd);
     const house = !!a.campaign?.isHouse;
+    const network = isNetworkType(a.type);
     const bump = (cur: Agg) => {
       cur.impressions += s.impressions;
       cur.clicks += s.clicks;
       cur.spend += spend;
       if (house) cur.houseImpressions += s.impressions;
+      if (network) cur.networkImpressions += s.impressions;
     };
     const ad = perAd.get(s.adId) ?? {
       ...EMPTY,
@@ -89,14 +101,24 @@ export async function GET(req: NextRequest) {
   const shape = <T extends Agg>(m: Map<string, T>, limit?: number) => {
     const rows = [...m.values()]
       .map((v) => {
-        // eCPM against PAID impressions only.
+        // eCPM against impressions this database can ever earn from.
         //
-        // House inventory bills nothing by design (see recordClick — billing it
-        // would report income that never existed), so it contributes impressions
-        // and no revenue. Divide by the total and a well-performing space that
-        // happens to be house-filled reads as a failure, which is the opposite of
-        // what the number is for.
-        const paidImpr = Math.max(0, v.impressions - v.houseImpressions);
+        // Two kinds are excluded, for the same reason and with the same effect:
+        //
+        //  - **House** inventory bills nothing by design (see recordClick —
+        //    billing it would report income that never existed).
+        //  - **Network** (AdSense / Ad Manager) revenue is reported in Google's
+        //    console and never reaches this database, so its impressions can
+        //    only ever sit in the denominator with a structurally empty
+        //    numerator.
+        //
+        // Leave either in and a space that is working perfectly reads as a
+        // failure — which is the opposite of what the number is for. Network was
+        // the one missed when this was first written.
+        const paidImpr = Math.max(
+          0,
+          v.impressions - v.houseImpressions - v.networkImpressions
+        );
         return {
           ...v,
           paidImpressions: paidImpr,

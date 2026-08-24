@@ -245,11 +245,6 @@ async function serveAdInner(opts: {
   }
 
   const counted = opts.countImpression !== false && !preview;
-  if (counted) {
-    // Buffered — see src/lib/ad-counters.ts. This used to be two hot-row writes
-    // per served ad, on the few rows currently in rotation.
-    bufferImpression(chosen.id);
-  }
 
   const rotateSecondsRaw =
     placementRow.rotationSeconds ??
@@ -278,6 +273,20 @@ async function serveAdInner(opts: {
     // Serving nothing is right: it keeps every Google reference off the page.
     if (!network) return EMPTY;
   }
+
+  // The impression is counted HERE, after every path that can still decide not
+  // to serve.
+  //
+  // It used to be counted at the weighted pick above, which is before the
+  // network-config check — so an AdSense ad with no slot id recorded an
+  // impression for a creative the viewer never saw, and inflated the numbers of
+  // exactly the ad type that can least afford to look wrong to Google.
+  if (counted) {
+    // Buffered — see src/lib/ad-counters.ts. This used to be two hot-row writes
+    // per served ad, on the few rows currently in rotation.
+    bufferImpression(chosen.id);
+  }
+
   return {
     poolSize: targeted.length,
     rotateMs: rotateSeconds * 1000,

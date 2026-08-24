@@ -61,9 +61,11 @@ interface AdRow {
   targeting: AdTargeting | null;
   submittedAt: string | null;
   approvedAt: string | null;
+  // Windowed to the SAME range as the chart — see `load()`.
   impressions: number;
   clicks: number;
   ctr: number;
+  spend: number;
   promotedPost: { id: string; content: string; image: string | null } | null;
 }
 
@@ -95,9 +97,39 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       if (!dRes.ok) throw new Error("Not found");
       const d = await dRes.json();
       setCampaign(d.campaign);
-      setAds(d.ads ?? []);
-      const a = await aRes.json().catch(() => ({ series: [] }));
+      const a = await aRes.json().catch(() => ({ series: [], ads: [] }));
       setSeries(a.series ?? []);
+
+      // The detail route carries the creative, status and controls; the
+      // analytics route carries stats for the SELECTED window. Merge them.
+      //
+      // Before this the cards below the chart showed LIFETIME counters while
+      // the chart above honoured the 7/14/30/90 selector — two periods on one
+      // screen, and moving the selector silently changed only half of it. The
+      // per-ad spend was not available at all, so an advertiser could see what a
+      // campaign cost but never which creative was spending it.
+      const windowed = new Map<
+        string,
+        { impressions: number; clicks: number; ctr: number; spend: number }
+      >(
+        (a.ads ?? []).map(
+          (x: { id: string; impressions: number; clicks: number; ctr: number; spend: number }) => [
+            x.id,
+            { impressions: x.impressions, clicks: x.clicks, ctr: x.ctr, spend: x.spend },
+          ]
+        )
+      );
+      setAds(
+        (d.ads ?? []).map((ad: AdRow) => ({
+          ...ad,
+          ...(windowed.get(ad.id) ?? {
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            spend: 0,
+          }),
+        }))
+      );
     } catch {
       setCampaign(null);
     } finally {
@@ -436,7 +468,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       {/* Ads */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-          Ads ({ads.length})
+          Ads ({ads.length}) · last {days} days
         </p>
         <button
           onClick={() => {
@@ -497,7 +529,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                     </div>
                     <p className="text-[11px] text-gray-500 mt-0.5 tabular-nums">
                       {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} clicks ·{" "}
-                      {ad.ctr.toFixed(2)}% CTR
+                      {ad.ctr.toFixed(2)}% CTR · {usd(ad.spend ?? 0)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

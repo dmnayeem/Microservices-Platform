@@ -2,7 +2,7 @@
 
 import { confirmDialog } from "@/lib/confirm";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore} from "react";
 import {
   Newspaper,
   Megaphone,
@@ -170,6 +170,7 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
   const [reviewAdId, setReviewAdId] = useState<string | null>(null);
   const [adFilter, setAdFilter] = useState({ status: "", placement: "", q: "" });
   const [campModal, setCampModal] = useState<Campaign | "new" | null>(null);
+  const [campDetail, setCampDetail] = useState<string | null>(null);
   const [newPlacement, setNewPlacement] = useState("");
   const [demoBusy, setDemoBusy] = useState(false);
   const [rotationSeconds, setRotationSeconds] = useState(12);
@@ -696,12 +697,17 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm font-bold text-white tabular-nums">{usd(c.budget)}</span>
-                      {canManage && (
-                        <div className="flex gap-1">
-                          <IconBtn onClick={() => setCampModal(c)} title="Edit"><Pencil className="w-4 h-4" /></IconBtn>
-                          <IconBtn onClick={() => deleteCampaign(c.id)} title="Delete" danger><Trash2 className="w-4 h-4" /></IconBtn>
-                        </div>
-                      )}
+                      <div className="flex gap-1">
+                        {/* These rows were dead text — there was no way to look
+                            at a campaign, only to edit or delete one. */}
+                        <IconBtn onClick={() => setCampDetail(c.id)} title="Performance"><BarChart3 className="w-4 h-4" /></IconBtn>
+                        {canManage && (
+                          <>
+                            <IconBtn onClick={() => setCampModal(c)} title="Edit"><Pencil className="w-4 h-4" /></IconBtn>
+                            <IconBtn onClick={() => deleteCampaign(c.id)} title="Delete" danger><Trash2 className="w-4 h-4" /></IconBtn>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -926,6 +932,12 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
           }}
         />
       )}
+      {campDetail && (
+        <CampaignDetailModal
+          campaignId={campDetail}
+          onClose={() => setCampDetail(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1106,7 +1118,10 @@ function AdSpaceCard({
         Recommended size: <span className="text-slate-300 font-mono">{spaceSizeLabel(p.name)}</span>
       </p>
 
-      {/* Live stats */}
+      {/* Live stats — LIFETIME counters straight off the Ad rows. The Analytics
+          tab sums AdDailyStat over a window instead, so the two are both right
+          and will never match. Labelled rather than "reconciled". */}
+      <p className="text-[9px] uppercase tracking-wider text-slate-600 text-center">All time</p>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
           <p className="text-sm font-bold text-white tabular-nums">{stats.impressions.toLocaleString()}</p>
@@ -1225,6 +1240,46 @@ interface PlacementRow extends ReportRow {
 }
 interface CampaignRow extends ReportRow { title: string }
 const RANGES = [7, 14, 30, 90];
+
+/**
+ * "A day" in every ad report means a UTC day, not the reader's day.
+ *
+ * `AdDailyStat.date` is a DATE column written from `todayUtc()`, so a bar
+ * labelled 2026-08-24 covers 24 Aug 00:00 UTC to 25 Aug 00:00 UTC — which for a
+ * reader in UTC+6 is 06:00 to 06:00 local. Nothing used to disclose that, so
+ * "today" quietly looked wrong every morning.
+ *
+ * The offset is the BROWSER's and the server has its own, so this is read
+ * through `useSyncExternalStore` with a distinct server snapshot: React renders
+ * the neutral string on the server and swaps in the reader's offset on the
+ * client, with no hydration mismatch and no setState-in-an-effect.
+ */
+const NEUTRAL_UTC_NOTE = "Days are UTC (00:00–24:00 UTC).";
+
+/** The timezone cannot change mid-session, so there is nothing to subscribe to. */
+const noSubscribe = () => () => {};
+
+function utcDayNoteSnapshot(): string {
+  const mins = -new Date().getTimezoneOffset();
+  if (mins === 0) return "Days are UTC — the same as your timezone.";
+  const abs = Math.abs(mins);
+  const hh = Math.floor(abs / 60);
+  const mm = abs % 60;
+  const label = `UTC${mins > 0 ? "+" : "-"}${hh}${mm ? `:${String(mm).padStart(2, "0")}` : ""}`;
+  // Local clock time at which a UTC day begins.
+  const startMin = ((mins % 1440) + 1440) % 1440;
+  const startsAt = `${String(Math.floor(startMin / 60)).padStart(2, "0")}:${String(startMin % 60).padStart(2, "0")}`;
+  return `Days are UTC. You are ${label}, so each day here starts at ${startsAt} your time.`;
+}
+
+function UtcDayNote() {
+  const note = useSyncExternalStore(
+    noSubscribe,
+    utcDayNoteSnapshot,
+    () => NEUTRAL_UTC_NOTE
+  );
+  return <p className="text-[10px] text-slate-500 mb-3">{note}</p>;
+}
 const isNetworkType = (t: string) => t === "ADSENSE" || t === "GAM";
 
 function AnalyticsTab() {
@@ -1272,19 +1327,34 @@ function AnalyticsTab() {
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm font-semibold text-white">Performance</p>
-        <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden">
-          {RANGES.map((d) => (
-            <button
-              key={d}
-              onClick={() => {
-                setLoading(true);
-                setDays(d);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold ${days === d ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}
-            >
-              {d}d
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Ads were the one money domain with no export at all. */}
+          <div className="inline-flex items-center gap-1">
+            <span className="text-[11px] text-slate-500">Export</span>
+            {(["ad", "placement", "campaign", "daily"] as const).map((scope) => (
+              <a
+                key={scope}
+                href={`/api/admin/ads/report/export?days=${days}&scope=${scope}`}
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold"
+              >
+                {scope === "daily" ? "raw" : scope}
+              </a>
+            ))}
+          </div>
+          <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden">
+            {RANGES.map((d) => (
+              <button
+                key={d}
+                onClick={() => {
+                  setLoading(true);
+                  setDays(d);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold ${days === d ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1303,7 +1373,12 @@ function AnalyticsTab() {
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-3">Impressions · last {days} days</p>
+        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Impressions · last {days} days</p>
+        {/* Every ad figure is bucketed on midnight UTC (AdDailyStat.date is a
+            DATE column written via todayUtc()). Re-bucketing per viewer would
+            mean a second rollup table, so the honest move is to say so — a
+            reader in UTC+6 is otherwise looking at a "day" that closed at 6am. */}
+        <UtcDayNote />
         {loading ? (
           <p className="text-xs text-slate-500 py-6 text-center">Loading…</p>
         ) : series.every((s) => s.impressions === 0) ? (
@@ -1382,6 +1457,184 @@ function AnalyticsTab() {
         </p>
       </div>
     </div>
+  );
+}
+
+interface CampaignDetail {
+  days: number;
+  campaign: {
+    id: string;
+    title: string;
+    status: string;
+    isHouse: boolean;
+    startAt: string | null;
+    endAt: string | null;
+    advertiser: { id: string; name: string | null; email: string } | null;
+    remaining: number;
+    spent: number;
+    funded: number;
+  };
+  series: DayStat[];
+  ads: Array<{
+    id: string;
+    label: string;
+    type: string;
+    status: string;
+    placement: string;
+    impressions: number;
+    clicks: number;
+    spend: number;
+    ctr: number;
+    lifetimeImpressions: number;
+    lifetimeClicks: number;
+  }>;
+}
+
+/**
+ * One campaign's performance — the drill-down that did not exist.
+ *
+ * The per-ad rows are windowed to the SAME range as the chart above them. The
+ * advertiser's own campaign view shows lifetime counters beside a windowed
+ * chart, which is two different periods on one screen; that is not repeated
+ * here, and the lifetime figures are shown separately and labelled.
+ */
+function CampaignDetailModal({
+  campaignId,
+  onClose,
+}: {
+  campaignId: string;
+  onClose: () => void;
+}) {
+  const [days, setDays] = useState(14);
+  const [data, setData] = useState<CampaignDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    // `setLoading(true)` lives on the range button, not here — setting state in
+    // an effect body cascades a render, and the initial value is already true.
+    fetch(`/api/admin/ads/campaigns/${campaignId}?days=${days}`)
+      .then((r) => r.json())
+      .then((d) => active && setData(d?.campaign ? d : null))
+      .catch(() => {})
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [campaignId, days]);
+
+  const c = data?.campaign;
+  const series = data?.series ?? [];
+  const maxImp = Math.max(1, ...series.map((s) => s.impressions));
+  const windowSpend = series.reduce((s, d) => s + d.spendUsd, 0);
+
+  return (
+    <ModalShell title={c ? c.title : "Campaign"} onClose={onClose} size="xl">
+      {loading && !data ? (
+        <p className="text-xs text-slate-500 py-10 text-center">Loading…</p>
+      ) : !c ? (
+        <p className="text-xs text-slate-500 py-10 text-center">Campaign not found.</p>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusPill status={c.status} />
+              {c.isHouse && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-200">
+                  House — never billed
+                </span>
+              )}
+              <span className="text-[11px] text-slate-500">
+                {c.advertiser ? c.advertiser.email : "Platform-owned"}
+              </span>
+            </div>
+            <div className="inline-flex rounded-lg border border-slate-700 overflow-hidden">
+              {RANGES.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => {
+                    setLoading(true);
+                    setDays(d);
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold ${days === d ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: "Funded", value: usd(c.funded) },
+              { label: "Spent (all time)", value: usd(c.spent) },
+              { label: "Remaining", value: usd(c.remaining) },
+              { label: `Spend (${days}d)`, value: usd(windowSpend) },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">{s.label}</p>
+                <p className="text-lg font-extrabold tabular-nums text-white mt-0.5">{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+              Impressions · last {days} days
+            </p>
+            <UtcDayNote />
+            {series.every((s) => s.impressions === 0) ? (
+              <p className="text-xs text-slate-500 py-6 text-center">
+                No impressions in this window.
+              </p>
+            ) : (
+              <div className="flex items-end gap-1 h-24">
+                {series.map((s) => (
+                  <div
+                    key={s.date}
+                    className="flex-1"
+                    title={`${s.date}: ${s.impressions} impr, ${s.clicks} clicks, ${usd(s.spendUsd)}`}
+                  >
+                    <div
+                      className="w-full rounded-t bg-linear-to-t from-blue-600 to-indigo-500"
+                      style={{ height: `${(s.impressions / maxImp) * 100}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <ReportTable
+            title={`Ads · last ${days} days`}
+            cols={["Ad", "Impr", "Clicks", "CTR", "Spend"]}
+          >
+            {(data?.ads ?? []).map((a) => {
+              const net = isNetworkType(a.type);
+              return (
+                <tr key={a.id} className="border-t border-slate-800">
+                  <td className="py-1.5 pr-2 text-white truncate max-w-52">
+                    {a.label}
+                    <span className="text-[10px] text-slate-500">
+                      {" "}· {PLACEMENT_LABEL[a.placement] ?? a.placement} · {a.status}
+                      {net ? ` · ${a.type}` : ""}
+                    </span>
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums text-slate-300">{a.impressions.toLocaleString()}</td>
+                  <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : a.clicks.toLocaleString()}</td>
+                  <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "—" : `${a.ctr.toFixed(2)}%`}</td>
+                  <td className="py-1.5 text-right tabular-nums text-slate-300">{net ? "network" : usd(a.spend)}</td>
+                </tr>
+              );
+            })}
+          </ReportTable>
+          <p className="text-[10px] text-slate-500">
+            Every figure above is for the selected window. The Ads tab shows
+            lifetime counters instead, so the two will differ.
+          </p>
+        </div>
+      )}
+    </ModalShell>
   );
 }
 

@@ -23,7 +23,9 @@ export async function GET(req: NextRequest) {
   const [stats, totals, paidCampaigns, serve, cashIn] = await Promise.all([
     prisma.adDailyStat.findMany({
       where: { date: { gte: since } },
-      select: { date: true, impressions: true, clicks: true, spendUsd: true },
+      // `adId` so the eCPM denominator can drop house and network impressions —
+      // see the note where `paidImpr` is computed below.
+      select: { adId: true, date: true, impressions: true, clicks: true, spendUsd: true },
     }),
     prisma.ad.aggregate({ _sum: { impressions: true, clicks: true } }),
     // Lifetime revenue. `spentTotal` is authoritative — it was written at the
@@ -41,11 +43,23 @@ export async function GET(req: NextRequest) {
     }),
     // Cash actually RECEIVED, which is a different thing from credit consumed
     // and was surfaced nowhere in admin.
-    prisma.adCreditLedger.aggregate({
+    //
+    // NOT an aggregate on `delta`: `delta` is the CREDITED amount, bonus
+    // included. With `ads.credit_bonus_pct` at 10, $100 of real cash would be
+    // reported as $110 received. `buyAdCredits` writes the real figure into
+    // `metadata.paidUsd`, so the rows are summed by hand and only fall back to
+    // `delta` for rows written before that field existed.
+    prisma.adCreditLedger.findMany({
       where: { kind: "PURCHASE" },
-      _sum: { delta: true },
+      select: { delta: true, metadata: true },
     }),
   ]);
+
+  const cashCollected = cashIn.reduce((sum, row) => {
+    const paid = (row.metadata as { paidUsd?: unknown } | null)?.paidUsd;
+    const n = Number(paid);
+    return sum + (Number.isFinite(n) && n > 0 ? n : toNum(row.delta));
+  }, 0);
 
   const byDay = new Map<
     string,
@@ -72,7 +86,31 @@ export async function GET(req: NextRequest) {
   const lifetimeImpr = totals._sum.impressions ?? 0;
   const lifetimeClicks = totals._sum.clicks ?? 0;
   const windowSpend = [...byDay.values()].reduce((s, v) => s + v.spendUsd, 0);
-  const windowImpr = [...byDay.values()].reduce((s, v) => s + v.impressions, 0);
+
+  // Platform eCPM divides by the impressions this database can ever earn from.
+  // House inventory bills nothing by design, and network (AdSense / Ad Manager)
+  // revenue is reported in Google's console and never reaches here — so both can
+  // only sit in the denominator with an empty numerator and drag the figure
+  // down. Network was the one missed when this was first written.
+  const adIds = [...new Set(stats.map((s) => s.adId))];
+  const adRows = adIds.length
+    ? await prisma.ad.findMany({
+        where: { id: { in: adIds } },
+        select: { id: true, type: true, campaign: { select: { isHouse: true } } },
+      })
+    : [];
+  const earning = new Set(
+    adRows
+      .filter(
+        (a) =>
+          !a.campaign?.isHouse && a.type !== "ADSENSE" && a.type !== "GAM"
+      )
+      .map((a) => a.id)
+  );
+  const paidImpr = stats.reduce(
+    (sum, s) => sum + (earning.has(s.adId) ? s.impressions : 0),
+    0
+  );
   const requests = serve._sum.requests ?? 0;
   const fills = serve._sum.fills ?? 0;
 
@@ -91,9 +129,11 @@ export async function GET(req: NextRequest) {
       /** Undrawn advertiser budget — revenue not yet earned. */
       unspent: toNum(paidCampaigns._sum.budget),
       /** Real money taken for ad credit, which `spentTotal` is not. */
-      cashCollected: toNum(cashIn._sum.delta),
-      /** Window revenue per thousand impressions. */
-      ecpm: windowImpr > 0 ? (windowSpend / windowImpr) * 1000 : 0,
+      cashCollected,
+      /** Window revenue per thousand EARNING impressions (see above). */
+      ecpm: paidImpr > 0 ? (windowSpend / paidImpr) * 1000 : 0,
+      /** How many of the window's impressions could earn anything at all. */
+      paidImpressions: paidImpr,
     },
     fill: {
       requests,

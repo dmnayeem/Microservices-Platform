@@ -68,7 +68,7 @@ type FinanceBatch = [
   SumAmountCount,
   SumAmount,
   { _sum: { cashBalance: number | null; pointsBalance: number | null; adCreditBalance: number | null } },
-  { _sum: { budget: number | null } },
+  { _sum: { spentTotal: number | null; budget: number | null } },
   SumAmountCount,
   SumAmount,
   number,
@@ -121,7 +121,14 @@ export default async function AdminFinancePage() {
     prisma.user.aggregate({
       _sum: { cashBalance: true, pointsBalance: true, adCreditBalance: true },
     }),
-    prisma.adCampaign.aggregate({ _sum: { budget: true } }),
+    // Ad revenue is `spentTotal` — money actually billed. `budget` is what is
+    // LEFT, which this card used to show under the title "Ad Spend": the exact
+    // opposite figure. House campaigns are excluded because they bill nothing by
+    // design, so counting them would report income that never existed.
+    prisma.adCampaign.aggregate({
+      where: { isHouse: false },
+      _sum: { spentTotal: true, budget: true },
+    }),
     prisma.withdrawal.aggregate({
       where: { status: { in: ["PENDING", "PROCESSING"] } },
       _sum: { amount: true },
@@ -146,7 +153,9 @@ export default async function AdminFinancePage() {
   const walletLiability = toNum(userSums._sum.cashBalance);
   const pointsLiability = (userSums._sum.pointsBalance ?? 0) / pointsPerUsd;
   const adCreditOutstanding = toNum(userSums._sum.adCreditBalance);
-  const adSpendTotal = toNum(adSpend._sum.budget);
+  const adRevenueTotal = toNum(adSpend._sum.spentTotal);
+  // Funded but not yet delivered — a real liability, not revenue.
+  const adBudgetUnspent = toNum(adSpend._sum.budget);
   const pendingPayouts = toNum(withdrawPending._sum.amount);
   const totalPaid = toNum(withdrawPaid._sum.amount);
 
@@ -203,11 +212,19 @@ export default async function AdminFinancePage() {
             href="/admin/deposits?status=APPROVED"
           />
           <StatCard
-            title="Ad Spend"
-            value={usd(adSpendTotal)}
-            subtext="campaign budgets"
+            title="Ad Revenue"
+            value={usd(adRevenueTotal)}
+            subtext="billed to advertisers, all time"
             icon={Megaphone}
             tone="indigo"
+            href="/admin/ads"
+          />
+          <StatCard
+            title="Ad Budget Unspent"
+            value={usd(adBudgetUnspent)}
+            subtext="funded, not yet delivered"
+            icon={Megaphone}
+            tone="amber"
             href="/admin/ads"
           />
           <StatCard
