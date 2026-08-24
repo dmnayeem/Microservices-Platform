@@ -8,7 +8,7 @@ import {
 } from "@/lib/ad-frequency";
 import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
-import { bufferImpression } from "@/lib/ad-counters";
+import { bufferImpression, bufferServeOutcome } from "@/lib/ad-counters";
 import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
 import {
   getNetworkGlobals,
@@ -51,6 +51,23 @@ export interface ServeResult {
 }
 
 const EMPTY: ServeResult = {
+  poolSize: 0,
+  rotateMs: 0,
+  interstitialSeconds: 5,
+  ad: null,
+};
+
+/**
+ * Identical to EMPTY on the wire, but tells the wrapper below that no ad was
+ * WITHHELD rather than missing — an ad-free plan, or a frequency cap.
+ *
+ * The distinction is the whole point of fill-rate tracking. Counting a
+ * deliberate suppression as a no-fill would make every space look starved for
+ * reasons that have nothing to do with inventory, and the number would then be
+ * useless for the one decision it exists to inform: which spaces are worth
+ * keeping. Referential identity is the marker, so nothing leaks to the client.
+ */
+const SUPPRESSED: ServeResult = {
   poolSize: 0,
   rotateMs: 0,
   interstitialSeconds: 5,
@@ -110,7 +127,7 @@ export function servableCampaignWhere(
  * (so a blocked client fetch can't hide it). Returns `{ ad: null }` when nothing
  * is eligible (incl. ad-free viewers). `countImpression` defaults true.
  */
-export async function serveAd(opts: {
+async function serveAdInner(opts: {
   placement: string;
   userId?: string | null;
   exclude?: Iterable<string>;
@@ -160,7 +177,7 @@ export async function serveAd(opts: {
         cacheStrategy: { ttl: 60, swr: 300 },
       }),
     ]);
-    if (pkg?.adFree && !interstitial) return EMPTY; // Watch & Earn is unaffected
+    if (pkg?.adFree && !interstitial) return SUPPRESSED; // Watch & Earn is unaffected
     houseOnly = !!pkg?.adFree;
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
   }
@@ -177,7 +194,7 @@ export async function serveAd(opts: {
   // for anonymous viewers (there is no per-user budget to spend).
   if (!preview && userId && isFrequencyCapped(placement)) {
     const slot = await claimInterstitialSlot(userId, placement);
-    if (!slot.allowed) return EMPTY;
+    if (!slot.allowed) return SUPPRESSED;
   }
 
   const placementRow = await prisma.adPlacement.findFirst({
@@ -294,6 +311,58 @@ export async function serveAd(opts: {
       allowSameOrigin: chosen.allowSameOrigin || undefined,
     },
   };
+}
+
+/**
+ * Select an ad for a placement, and record whether the request was filled.
+ *
+ * The recording is the reason this wrapper exists. `serveAdInner` has eight paths
+ * that return no ad, and instrumenting each of them would guarantee that the next
+ * early return added silently stops counting — the denominator would drift away
+ * from the numerator and nobody would notice, because the number would still look
+ * plausible. Counting once, here, at the single boundary, cannot drift.
+ *
+ * Two outcomes are deliberately NOT counted:
+ *
+ *  - **Suppression** (ad-free plan, frequency cap). Nothing was missing; an ad was
+ *    withheld on purpose. Counting it would make every space look starved for
+ *    reasons that have nothing to do with inventory.
+ *  - **Previews.** An admin looking at a space is not a viewer.
+ *
+ * Never throws and never delays the serve: a failure to record a diagnostic must
+ * not cost a real impression.
+ */
+export async function serveAd(opts: {
+  placement: string;
+  userId?: string | null;
+  exclude?: Iterable<string>;
+  countImpression?: boolean;
+  preview?: boolean;
+  ownInventoryOnly?: boolean;
+}): Promise<ServeResult> {
+  const result = await serveAdInner(opts);
+  if (!opts.preview && result !== SUPPRESSED) {
+    // Fire-and-forget. The placement id is resolved from the same cached read
+    // `serveAdInner` just made, so this is a cache hit rather than a query.
+    void recordServeOutcome(opts.placement, !!result.ad);
+  }
+  return result;
+}
+
+async function recordServeOutcome(placement: string, filled: boolean) {
+  try {
+    const row = await prisma.adPlacement.findFirst({
+      where: { name: placement, isActive: true },
+      select: { id: true },
+      cacheStrategy: { ttl: 30, swr: 60 },
+    });
+    // An unknown or inactive space has no row to attribute the request to. That
+    // is a configuration problem, not a fill problem, and it is already visible
+    // in the placement list.
+    if (row) bufferServeOutcome(row.id, filled);
+  } catch {
+    /* a diagnostic must never break ad serving */
+  }
 }
 
 /** Order items by a weighted-random draw (higher weight → earlier, on average). */

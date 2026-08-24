@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AD_PLACEMENTS } from "@/lib/ad-placements";
+import { usd } from "@/lib/utils";
 
 /**
  * Monetization control surface — a first-class, discoverable home for the
@@ -57,6 +58,17 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [gapSec, setGapSec] = useState(60);
   const [dailyMax, setDailyMax] = useState(25);
   const [freqBusy, setFreqBusy] = useState(false);
+  // What the ads actually earn. This page showed no money at all before — the
+  // figures existed in AdDailyStat and AdCampaign.spentTotal and were surfaced
+  // only inside the Ad Manager's Analytics tab.
+  const [revenue, setRevenue] = useState<{
+    windowSpend: number;
+    lifetime: number;
+    unspent: number;
+    cashCollected: number;
+    ecpm: number;
+  } | null>(null);
+  const [fillRate, setFillRate] = useState<number | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -84,6 +96,18 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       })
       .catch(() => {})
       .finally(() => !cancel && setLoading(false));
+
+    // Revenue is a second, independent fetch: it must never delay or break the
+    // settings form, which is what this page is actually for.
+    fetch("/api/admin/ads/analytics?days=30")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancel) return;
+        if (d?.revenue) setRevenue(d.revenue);
+        if (d?.fill) setFillRate(d.fill.rate ?? null);
+      })
+      .catch(() => {});
+
     return () => {
       cancel = true;
     };
@@ -263,6 +287,46 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
           </div>
         ))}
       </div>
+
+      {/* What the ads earn — the reason the rest of this page exists. */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <p className="text-sm font-bold text-white">Ad revenue</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Own and direct-sold inventory only. AdSense and Ad Manager revenue is
+              reported in Google&apos;s console and this database never sees it.
+            </p>
+          </div>
+          <Link
+            href="/admin/ads"
+            className="text-[11px] font-semibold text-blue-400 hover:text-blue-300"
+          >
+            Full breakdown →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { label: "Revenue (30d)", value: revenue ? usd(revenue.windowSpend) : "—", tone: "text-emerald-400" },
+            { label: "Revenue (lifetime)", value: revenue ? usd(revenue.lifetime) : "—", tone: "text-white" },
+            { label: "eCPM (30d)", value: revenue ? usd(revenue.ecpm) : "—", tone: "text-blue-400" },
+            // A dash rather than 0% while nothing has been measured — the
+            // counters only start from the day they shipped.
+            { label: "Fill rate (30d)", value: fillRate === null ? "—" : `${fillRate.toFixed(0)}%`, tone: "text-amber-400" },
+          ].map((s) => (
+            <div key={s.label} className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500">{s.label}</p>
+              <p className={`text-2xl font-extrabold tabular-nums mt-0.5 ${s.tone}`}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+        {revenue && revenue.unspent > 0 && (
+          <p className="text-[11px] text-slate-500">
+            {usd(revenue.unspent)} of advertiser budget is funded but not yet spent —
+            revenue you have been paid for and have not delivered.
+          </p>
+        )}
+      </section>
 
       {/* Ad networks (publisher) */}
       <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">

@@ -176,32 +176,32 @@ model GameCategory {
 /// Earning is OFF by default (`rewardEnabled`), so every pre-existing game keeps
 /// the original "no reward" contract exactly.
 model Game {
-  id          String  @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
   /// legacy free-text category — kept as a fallback for rows not yet migrated,
   /// and as the source for the one-off backfill. Superseded by `categoryId`.
   category    String?
   categoryId  String?
   categoryRel GameCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  description String? @db.Text
+  description String?       @db.Text
   /// Square tile art.
   iconUrl     String
   /// Wide cover art for the featured row. Optional; falls back to `iconUrl`.
   coverUrl    String?
   embedUrl    String
-  isFeatured  Boolean @default(false)
+  isFeatured  Boolean       @default(false)
   /// ANY | PORTRAIT | LANDSCAPE — a hint for the player shell.
-  orientation String  @default("ANY")
+  orientation String        @default("ANY")
   /// Last server-side framing probe: {ok, xfo, csp, checkedAt}. Cross-origin JS
   /// cannot detect `X-Frame-Options: DENY`, so without this a refusing URL just
   /// shows users a black screen and nobody finds out.
   embedProbe  Json?
-  order       Int     @default(0)
-  isActive    Boolean @default(true)
+  order       Int           @default(0)
+  isActive    Boolean       @default(true)
   /// Historical value counts client mounts (the old, farmable endpoint). From
   /// the session protocol onward it counts authenticated, rate-limited sessions,
   /// so the number legitimately slows down — the UI labels it "legacy plays".
-  playsCount  Int     @default(0)
+  playsCount  Int           @default(0)
 
   // ── Per-game ad control ──────────────────────────────────────────────────
   adsEnabled        Boolean @default(true)
@@ -272,14 +272,14 @@ model GameSession {
   endedAt    DateTime?
 
   /// Server-measured foreground seconds.
-  playedSeconds   Int @default(0)
+  playedSeconds   Int  @default(0)
   /// Seconds already converted into points. The gap between this and
   /// `playedSeconds` is what the next tick pays, which makes crediting
   /// exactly-once even if a heartbeat is replayed.
-  creditedSeconds Int @default(0)
-  pointsAwarded   Int @default(0)
+  creditedSeconds Int  @default(0)
+  pointsAwarded   Int  @default(0)
   /// Incremented by the server when it serves this session an interstitial.
-  adsShown        Int @default(0)
+  adsShown        Int  @default(0)
   score           Int?
 
   createdAt DateTime @default(now())
@@ -398,12 +398,12 @@ model Mission {
   type String @default("TASK_COMPLETION")
 
   /// What counts. Shared with Event so one ACCEPTS map drives both.
-  actionType EventActionType @default(TASK_COMPLETE)
+  actionType  EventActionType @default(TASK_COMPLETE)
   /// The goal. (Was `targetValue`, which the admin form already edits.)
   targetValue Int
   /// Optional ascending tiers [{threshold, rewardPoints, rewardXp}], claimed
   /// independently — this is what makes a mission worth rushing.
-  tiers Json?
+  tiers       Json?
 
   pointsReward Int     @default(0)
   cashReward   Decimal @default(0) @db.Decimal(18, 6)
@@ -412,28 +412,28 @@ model Mission {
   /// Max actions credited per user per LOCAL day. 0 = unlimited.
   dailyCap Int @default(0)
 
-  duration    String   @default("DAILY") /// legacy, unused
-  autoRefresh Boolean  @default(true) /// legacy, unused
-  startAt     DateTime?
-  endAt       DateTime?
-  order       Int      @default(0)
+  duration        String    @default("DAILY") /// legacy, unused
+  autoRefresh     Boolean   @default(true) /// legacy, unused
+  startAt         DateTime?
+  endAt           DateTime?
+  order           Int       @default(0)
   /// Prerequisite mission — must be claimed before this one unlocks.
   unlockMissionId String?
   unlockMission   Mission?  @relation("MissionUnlockChain", fields: [unlockMissionId], references: [id], onDelete: SetNull)
   unlocks         Mission[] @relation("MissionUnlockChain")
 
-  requiredLevel       Int @default(1)
-  requiredAccessLevel Int @default(0)
+  requiredLevel       Int      @default(1)
+  requiredAccessLevel Int      @default(0)
   // Audience targeting — same nine columns and STRICT semantics as Task.
-  countries    String[] @default([])
-  genders      String[] @default([])
-  regions      String[] @default([])
-  divisions    String[] @default([])
-  districts    String[] @default([])
-  subDistricts String[] @default([])
-  postalCodes  String[] @default([])
-  minAge       Int?
-  maxAge       Int?
+  countries           String[] @default([])
+  genders             String[] @default([])
+  regions             String[] @default([])
+  divisions           String[] @default([])
+  districts           String[] @default([])
+  subDistricts        String[] @default([])
+  postalCodes         String[] @default([])
+  minAge              Int?
+  maxAge              Int?
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -458,16 +458,16 @@ model UserMissionProgress {
   missionId String
   mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
 
-  progress     Int       @default(0)
-  claimedAt    DateTime?
-  claimedTiers Int[]     @default([])
-  joinedAt     DateTime?
-  lastActionAt DateTime?
-  dayKey       String?
-  dayCount     Int       @default(0)
-  notifiedComplete Boolean @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  progress         Int       @default(0)
+  claimedAt        DateTime?
+  claimedTiers     Int[]     @default([])
+  joinedAt         DateTime?
+  lastActionAt     DateTime?
+  dayKey           String?
+  dayCount         Int       @default(0)
+  notifiedComplete Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([userId, missionId])
   @@index([missionId])
@@ -497,24 +497,24 @@ model MissionActionLog {
 // several "complete N tasks of type X" buckets. Users see today's mission for
 // their tier, work through every bucket, then claim the final reward.
 model DailyMissionTemplate {
-  id                     String   @id @default(cuid())
+  id                     String    @id @default(cuid())
   name                   String
-  description            String?  @db.Text
-  requiredAccessLevel    Int      @default(0)
-  requiredLevel          Int      @default(1)
-  completionXpReward     Int      @default(0)
-  completionPointsReward Int      @default(0)
+  description            String?   @db.Text
+  requiredAccessLevel    Int       @default(0)
+  requiredLevel          Int       @default(1)
+  completionXpReward     Int       @default(0)
+  completionPointsReward Int       @default(0)
   /// Paid alongside points on completion. 0 = points/XP only.
-  completionCashReward   Decimal  @default(0) @db.Decimal(18, 6)
+  completionCashReward   Decimal   @default(0) @db.Decimal(18, 6)
   /// Streak bonus: every `streakBonusEvery` consecutive days, add
   /// `streakBonusPoints`. 0 on either disables it. `DailyMissionClaim.streak`
   /// was already being computed and stored but never rewarded anything.
-  streakBonusEvery       Int      @default(0)
-  streakBonusPoints      Int      @default(0)
-  isActive               Boolean  @default(true)
-  autoRefresh            Boolean  @default(true)
-  linkReferralBonus      Boolean  @default(false)
-  order                  Int      @default(0)
+  streakBonusEvery       Int       @default(0)
+  streakBonusPoints      Int       @default(0)
+  isActive               Boolean   @default(true)
+  autoRefresh            Boolean   @default(true)
+  linkReferralBonus      Boolean   @default(false)
+  order                  Int       @default(0)
   /// Optional schedule. null = always running.
   startAt                DateTime?
   endAt                  DateTime?
@@ -532,9 +532,9 @@ model DailyMissionTemplate {
   minAge       Int?
   maxAge       Int?
 
-  createdById            String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   items  DailyMissionItem[]
   claims DailyMissionClaim[]
@@ -618,10 +618,10 @@ model AdCampaign {
 }
 
 model AdPlacement {
-  id                  String   @id @default(cuid())
-  name                String   @unique
-  platform            String   @default("ALL")
-  isActive            Boolean  @default(true)
+  id                  String             @id @default(cuid())
+  name                String             @unique
+  platform            String             @default("ALL")
+  isActive            Boolean            @default(true)
   // Per-space ad-rotation interval (seconds). Null = use the global
   // `ads.rotation_seconds` setting. Clamped 5–60 when set.
   rotationSeconds     Int?
@@ -629,7 +629,8 @@ model AdPlacement {
   // shows before it can be closed. Null = default 5s. Clamped 3–60 when set.
   interstitialSeconds Int?
   ads                 Ad[]
-  createdAt           DateTime @default(now())
+  serveStats          AdServeDailyStat[]
+  createdAt           DateTime           @default(now())
 }
 
 model AdNetwork {
@@ -645,17 +646,17 @@ model AdNetwork {
 }
 
 model Ad {
-  id                String        @id @default(cuid())
+  id                String         @id @default(cuid())
   campaignId        String
-  campaign          AdCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign          AdCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   placementId       String
-  placement         AdPlacement   @relation(fields: [placementId], references: [id])
-  type              String        @default("LOCAL") // LOCAL | HTML | ADSENSE | GAM
-  format            String        @default("BANNER") // BANNER | NATIVE (feed post-like)
+  placement         AdPlacement    @relation(fields: [placementId], references: [id])
+  type              String         @default("LOCAL") // LOCAL | HTML | ADSENSE | GAM
+  format            String         @default("BANNER") // BANNER | NATIVE (feed post-like)
   contentUrl        String? // image / GIF creative URL
   videoUrl          String? // MP4/WebM video creative URL
   targetUrl         String?
-  htmlContent       String?       @db.Text
+  htmlContent       String?        @db.Text
   // Third-party ad-network config (type ADSENSE | GAM). The self-contained
   // creative HTML is composed server-side in src/lib/ad-network.ts.
   adSlot            String? // AdSense ad-slot id (data-ad-slot)
@@ -665,13 +666,13 @@ model Ad {
   impressionPixel   String? // 1×1 beacon fired on view
   clickTracker      String? // pinged on click (local creatives)
   // Creative size — preset key (see src/lib/ad-sizes.ts); width/height used for "custom"
-  size              String?       @default("responsive")
+  size              String?        @default("responsive")
   width             Int?
   height            Int?
-  weight            Int           @default(10)
+  weight            Int            @default(10)
   // ACTIVE | PAUSED | INACTIVE | PENDING (awaiting admin review) | CHANGES_REQUESTED | REJECTED
   // Only src/lib/ad-review.ts may write this column — it is the review gate.
-  status            String        @default("ACTIVE")
+  status            String         @default("ACTIVE")
   // Review workflow (advertiser-submitted ads land as PENDING until an admin acts)
   submittedById     String?
   submittedAt       DateTime?
@@ -681,37 +682,37 @@ model Ad {
   // "a reviewed creative exists" bit that lets an advertiser resume a paused ad
   // without being able to activate one that was never reviewed.
   approvedAt        DateTime?
-  rejectionReason   String?       @db.Text
-  rejectionCodes    String[]      @default([])
-  reviewNote        String?       @db.Text // internal reviewer note (never shown to the advertiser)
+  rejectionReason   String?        @db.Text
+  rejectionCodes    String[]       @default([])
+  reviewNote        String?        @db.Text // internal reviewer note (never shown to the advertiser)
   // One id per submission — a multi-placement submit creates N Ad rows that a
   // reviewer should see (and decide on) together.
   creativeGroupId   String?
   // ads.manage-only escape hatch: lets a trusted network creative keep
   // `allow-same-origin` while advertiser HTML never can. See sandboxed-ad-frame.
-  allowSameOrigin   Boolean       @default(false)
+  allowSameOrigin   Boolean        @default(false)
   reviews           AdReview[]
   engagements       AdEngagement[]
-  impressions       Int           @default(0)
-  clicks            Int           @default(0)
+  impressions       Int            @default(0)
+  clicks            Int            @default(0)
   // Native (post-like) creative fields — used when format = NATIVE
-  headline          String?       @db.Text // post-like ad copy
+  headline          String?        @db.Text // post-like ad copy
   brandName         String? // shown as author name
   brandLogo         String? // author avatar URL
   ctaLabel          String? // CTA button label (e.g. "Learn More")
   // Promote-a-real-post: when set, the native ad renders this post + its author
   promotedPostId    String?
-  promotedPost      Post?         @relation("PostAds", fields: [promotedPostId], references: [id], onDelete: SetNull)
+  promotedPost      Post?          @relation("PostAds", fields: [promotedPostId], references: [id], onDelete: SetNull)
   // Simple targeting: { countries?, genders?, minLevel?, packages? } (null = everyone)
   targeting         Json?
   // Viewer-reward (watch-and-earn)
-  rewardPoints      Int           @default(0)
-  rewardCooldownSec Int           @default(3600)
-  watchSeconds      Int           @default(15)
+  rewardPoints      Int            @default(0)
+  rewardCooldownSec Int            @default(3600)
+  watchSeconds      Int            @default(15)
   views             AdView[]
   dailyStats        AdDailyStat[]
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([campaignId])
   @@index([placementId])
@@ -778,6 +779,36 @@ model AdDailyStat {
 
   @@unique([adId, date])
   @@index([adId, date])
+  // Every platform-wide report scans `date` alone (see /api/admin/ads/analytics),
+  // and the composite above cannot serve that. PageDailyStat — which the comment
+  // there says was modelled on this table — has had this index all along.
+  @@index([date])
+}
+
+/// Per-day, per-placement record of ad REQUESTS, not impressions.
+///
+/// Nothing in the platform recorded that an ad was asked for. `serveAd` has eight
+/// paths that return nothing and write nothing at all — ad-free viewer, frequency
+/// cap, inactive placement, no ad survives targeting, incomplete network config,
+/// and two feed paths — so a space that never fills looked exactly like a space
+/// nobody visits. Fill rate is the one number that separates "this space earns
+/// little" from "this space is never even filled", and it decides which spaces are
+/// worth keeping and which are only annoying people.
+///
+/// Written through the same buffered counter as impressions (`ad-counters.ts`):
+/// a diagnostic, not money, so losing a handful on an instance recycle is fine.
+model AdServeDailyStat {
+  id          String      @id @default(cuid())
+  placementId String
+  placement   AdPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  date        DateTime    @db.Date
+  /// Serve attempts, whether or not an ad came back.
+  requests    Int         @default(0)
+  /// Attempts that returned an ad. `requests - fills` is the no-fill count.
+  fills       Int         @default(0)
+
+  @@unique([placementId, date])
+  @@index([date])
 }
 
 model AdView {
@@ -964,19 +995,19 @@ model TaskBoard {
   requiredAccessLevel Int      @default(0)
   // Audience targeting — same nine columns and the same STRICT semantics as
   // Task (empty array = no constraint). See src/lib/task-targeting.ts.
-  countries    String[] @default([])
-  genders      String[] @default([])
-  regions      String[] @default([])
-  divisions    String[] @default([])
-  districts    String[] @default([])
-  subDistricts String[] @default([])
-  postalCodes  String[] @default([])
-  minAge       Int?
-  maxAge       Int?
+  countries           String[] @default([])
+  genders             String[] @default([])
+  regions             String[] @default([])
+  divisions           String[] @default([])
+  districts           String[] @default([])
+  subDistricts        String[] @default([])
+  postalCodes         String[] @default([])
+  minAge              Int?
+  maxAge              Int?
 
-  createdById   String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tasks  Task[]
   claims BoardClaim[]
@@ -2319,7 +2350,6 @@ model CartItem {
 
   @@unique([userId, listingId])
   @@index([userId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([listingId])
@@ -2481,7 +2511,6 @@ model Course {
   @@index([tutorId])
   @@index([isFeatured])
   @@index([slug])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([subcategoryId])
@@ -2565,7 +2594,6 @@ model CourseLesson {
 
   @@index([courseId])
   @@index([moduleId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([quizId])
@@ -2629,7 +2657,6 @@ model CourseReview {
 
   @@unique([courseId, userId])
   @@index([courseId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([userId])
@@ -2653,7 +2680,6 @@ model CourseQuestion {
 
   @@index([courseId])
   @@index([askerId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([answeredById])
@@ -2669,7 +2695,6 @@ model CourseBookmark {
 
   @@unique([userId, courseId])
   @@index([userId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([courseId])
@@ -2686,7 +2711,6 @@ model CourseAnnouncement {
   createdAt DateTime @default(now())
 
   @@index([courseId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([authorId])
@@ -2777,7 +2801,6 @@ model CourseAssignmentSubmission {
 
   @@index([assignmentId])
   @@index([userId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([gradedById])
@@ -2837,7 +2860,6 @@ model CourseCoupon {
   updatedAt        DateTime    @updatedAt
 
   @@index([isActive])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([createdById])
@@ -2862,7 +2884,6 @@ model CourseRefundRequest {
 
   @@index([status])
   @@index([userId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([enrollmentId])
@@ -2904,7 +2925,6 @@ model TutorApplication {
 
   @@index([userId])
   @@index([status])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([reviewedById])
@@ -2945,7 +2965,6 @@ model CreatorApplication {
   @@index([userId])
   @@index([status])
   @@index([type])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([reviewedById])
@@ -2978,7 +2997,7 @@ model TutorProfile {
 }
 
 model Lottery {
-  id                String          @id @default(cuid())
+  id                String        @id @default(cuid())
   title             String
   description       String?
   startDate         DateTime
@@ -2986,11 +3005,11 @@ model Lottery {
   drawDate          DateTime
   ticketPrice       Int
   maxTickets        Int?
-  ticketsSold       Int             @default(0)
-  maxTicketsPerUser Int             @default(10)
+  ticketsSold       Int           @default(0)
+  maxTicketsPerUser Int           @default(10)
   /// FIXED mode only: [{position, amount, description}] absolute point amounts.
   prizes            Json
-  status            LotteryStatus   @default(UPCOMING)
+  status            LotteryStatus @default(UPCOMING)
   /// legacy, unused — generated and stored but the draw never read it.
   winningNumbers    String?
   winners           Json?
@@ -3023,9 +3042,9 @@ model Lottery {
 
   settlement LotterySettlement?
 
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  tickets           LotteryTicket[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  tickets   LotteryTicket[]
 
   @@index([status])
   @@index([drawDate])
@@ -3063,10 +3082,10 @@ model LotterySettlement {
   /// Amount above `poolCapPoints` the house kept.
   overflowToHouse  Int @default(0)
 
-  rolloverToId String?
+  rolloverToId  String?
   /// The EFFECTIVE tiers used (after re-normalising for ticket count).
-  tiers        Json?
-  winners      Json?
+  tiers         Json?
+  winners       Json?
   /// sha256 of the shuffled ticket-id order — a post-hoc fairness record.
   drawOrderHash String?
 
@@ -3358,12 +3377,12 @@ model AiUsageDaily {
 // so lowering 100→50 for someone sitting at 60 pays them once (they earned it)
 // instead of replaying an already-paid index.
 model SocialRatioTally {
-  id     String @id @default(cuid())
-  userId String // the user who gets PAID — author for recipient, engager for actor
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   String // "recipient" | "actor"
-  action String // SocialAction, e.g. "LIKE_RECEIVED"
-  window String // "daily" | "lifetime"
+  id        String   @id @default(cuid())
+  userId    String // the user who gets PAID — author for recipient, engager for actor
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String // "recipient" | "actor"
+  action    String // SocialAction, e.g. "LIKE_RECEIVED"
+  window    String // "daily" | "lifetime"
   // The PAID user's local day for `daily`; the literal "*" for `lifetime`.
   dateKey   String
   count     Int      @default(0) // progress toward the next milestone
@@ -3499,7 +3518,6 @@ model UserBadge {
 
   @@unique([userId, badgeId])
   @@index([userId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([badgeId])
@@ -3533,7 +3551,6 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@index([userId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([achievementId])
@@ -3767,7 +3784,6 @@ model OfferwallOffer {
 
   @@index([isActive, categoryId, order])
   @@index([providerId, externalOfferId])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([categoryId])
@@ -3827,21 +3843,21 @@ model VideoAdConfig {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String? // the ACTOR (admin/user who performed the action)
-  action    String
-  entity    String
-  entityId  String?
+  id           String   @id @default(cuid())
+  userId       String? // the ACTOR (admin/user who performed the action)
+  action       String
+  entity       String
+  entityId     String?
   // The user AFFECTED by the action (e.g. the user an admin gave points to /
   // whose submission was approved). Powers the Admin & User Activity views.
   targetUserId String?
   // Human-readable one-liner for the activity feeds (e.g. "Gave 500 pts").
-  summary   String?
-  oldData   Json?
-  newData   Json?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  summary      String?
+  oldData      Json?
+  newData      Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
 
   @@index([userId])
   @@index([entity])
@@ -4042,28 +4058,28 @@ model Event {
 }
 
 model UserEventProgress {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventId      String
-  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId          String
+  event            Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   // Authoritative counter. Only event-progress.ts increments it; claiming must
   // never write it — a claim-time snapshot would clobber the real count.
-  progress     Int       @default(0)
-  proofUrl     String?
-  claimedAt    DateTime?
+  progress         Int       @default(0)
+  proofUrl         String?
+  claimedAt        DateTime?
   // Which tier thresholds this user has already claimed (multi-tier events).
-  claimedTiers Int[]     @default([])
+  claimedTiers     Int[]     @default([])
   // First credited action — this user's personal start line for the event.
-  joinedAt     DateTime?
-  lastActionAt DateTime?
+  joinedAt         DateTime?
+  lastActionAt     DateTime?
   // User-local day key + count, for Event.dailyCap.
-  dayKey       String?
-  dayCount     Int       @default(0)
+  dayKey           String?
+  dayCount         Int       @default(0)
   // Dedups the one-time "reward ready" notification.
-  notifiedComplete Boolean @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  notifiedComplete Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([userId, eventId])
   @@index([eventId])
@@ -4092,7 +4108,6 @@ model EventActionLog {
   @@unique([eventId, userId, dedupKey])
   @@index([eventId, userId])
   @@index([createdAt])
-
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([userId])

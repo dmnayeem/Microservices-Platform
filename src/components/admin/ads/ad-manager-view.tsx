@@ -1204,9 +1204,25 @@ function AdSpaceCard({
 }
 
 interface DayStat { date: string; impressions: number; clicks: number; spendUsd: number }
-interface ReportRow { impressions: number; clicks: number; spend: number; ctr: number }
+interface ReportRow {
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number;
+  /** Impressions on house inventory — they earn nothing and must not drag eCPM down. */
+  houseImpressions: number;
+  paidImpressions: number;
+  /** Revenue per thousand PAID impressions. */
+  ecpm: number;
+}
 interface AdRow extends ReportRow { type: string; campaign: string; placement: string }
-interface PlacementRow extends ReportRow { name: string }
+interface PlacementRow extends ReportRow {
+  name: string;
+  requests: number;
+  fills: number;
+  /** null = not measured yet (the counters only start from the day they shipped). */
+  fillRate: number | null;
+}
 interface CampaignRow extends ReportRow { title: string }
 const RANGES = [7, 14, 30, 90];
 const isNetworkType = (t: string) => t === "ADSENSE" || t === "GAM";
@@ -1215,6 +1231,13 @@ function AnalyticsTab() {
   const [days, setDays] = useState(14);
   const [series, setSeries] = useState<DayStat[]>([]);
   const [totals, setTotals] = useState({ impressions: 0, clicks: 0, ctr: 0 });
+  const [revenue, setRevenue] = useState({
+    windowSpend: 0,
+    lifetime: 0,
+    unspent: 0,
+    cashCollected: 0,
+    ecpm: 0,
+  });
   const [perAd, setPerAd] = useState<AdRow[]>([]);
   const [perPlacement, setPerPlacement] = useState<PlacementRow[]>([]);
   const [perCampaign, setPerCampaign] = useState<CampaignRow[]>([]);
@@ -1230,6 +1253,7 @@ function AnalyticsTab() {
         if (!active) return;
         setSeries(a.series ?? []);
         setTotals(a.totals ?? { impressions: 0, clicks: 0, ctr: 0 });
+        if (a.revenue) setRevenue(a.revenue);
         setPerAd(rep.perAd ?? []);
         setPerPlacement(rep.perPlacement ?? []);
         setPerCampaign(rep.perCampaign ?? []);
@@ -1268,7 +1292,14 @@ function AnalyticsTab() {
         <StatCard icon={<Eye className="w-5 h-5" />} value={totals.impressions.toLocaleString()} label="Impressions (all time)" tone="purple" />
         <StatCard icon={<MousePointer className="w-5 h-5" />} value={totals.clicks.toLocaleString()} label="Clicks (all time)" tone="amber" />
         <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${totals.ctr.toFixed(2)}%`} label="CTR" tone="emerald" />
-        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(spend)}`} label={`Spend (${days}d)`} tone="indigo" />
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(spend)}`} label={`Revenue (${days}d)`} tone="indigo" />
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(revenue.lifetime)}`} label="Revenue (lifetime)" tone="emerald" />
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(revenue.ecpm)}`} label={`eCPM (${days}d)`} tone="purple" />
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(revenue.unspent)}`} label="Advertiser budget unspent" tone="amber" />
+        <StatCard icon={<BarChart3 className="w-5 h-5" />} value={`${usd(revenue.cashCollected)}`} label="Ad credit purchased" tone="indigo" />
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
@@ -1306,13 +1337,20 @@ function AnalyticsTab() {
       </ReportTable>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <ReportTable title="By placement" cols={["Placement", "Impr", "Clicks", "CTR"]}>
+        <ReportTable title="By placement" cols={["Placement", "Impr", "Fill", "Revenue", "eCPM"]}>
           {perPlacement.map((r, i) => (
             <tr key={i} className="border-t border-slate-800">
               <td className="py-1.5 pr-2 text-white truncate max-w-40">{PLACEMENT_LABEL[r.name] ?? r.name}</td>
               <td className="py-1.5 text-right tabular-nums text-slate-300">{r.impressions.toLocaleString()}</td>
-              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.clicks.toLocaleString()}</td>
-              <td className="py-1.5 text-right tabular-nums text-slate-300">{r.ctr.toFixed(2)}%</td>
+              {/* A dash, not 0% — no requests recorded means "not measured yet",
+                  and a hard zero would read as "this space is broken". */}
+              <td className="py-1.5 text-right tabular-nums text-slate-300">
+                {r.fillRate === null ? "—" : `${r.fillRate.toFixed(0)}%`}
+              </td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">{usd(r.spend)}</td>
+              <td className="py-1.5 text-right tabular-nums text-slate-300">
+                {r.paidImpressions > 0 ? usd(r.ecpm) : "house"}
+              </td>
             </tr>
           ))}
         </ReportTable>
@@ -1327,9 +1365,22 @@ function AnalyticsTab() {
           ))}
         </ReportTable>
       </div>
-      <p className="text-[10px] text-slate-500">
-        Network (AdSense / Ad Manager) ads show served impressions only — their clicks &amp; revenue are in the network&apos;s own console.
-      </p>
+      <div className="space-y-1">
+        <p className="text-[10px] text-slate-500">
+          Network (AdSense / Ad Manager) ads show served impressions only — their clicks &amp; revenue are in the network&apos;s own console.
+        </p>
+        <p className="text-[10px] text-slate-500">
+          <b>eCPM</b> is revenue per 1,000 <i>paid</i> impressions. A space filled
+          entirely with your own house ads shows &quot;house&quot;: it earns nothing
+          by design, so dividing by its impressions would only make a working space
+          look broken.
+        </p>
+        <p className="text-[10px] text-slate-500">
+          <b>Fill</b> is how often a request for that space actually produced an ad.
+          A low fill rate means the space is asking more often than there is
+          inventory to answer — widen its interval or add creatives.
+        </p>
+      </div>
     </div>
   );
 }
