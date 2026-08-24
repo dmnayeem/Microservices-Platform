@@ -53,6 +53,8 @@ interface Campaign {
   description: string | null;
   budget: number;
   status: string;
+  /** Platform-owned inventory: exempt from the budget floor, never billed. */
+  isHouse?: boolean;
   startAt?: string | null;
   endAt?: string | null;
   _count?: { ads: number };
@@ -1783,6 +1785,11 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
   const toDateInput = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const [startAt, setStartAt] = useState(toDateInput(campaign?.startAt));
   const [endAt, setEndAt] = useState(toDateInput(campaign?.endAt));
+  // House = the platform's own inventory. Exempt from the budget floor when
+  // serving, and never billed, so it can run on a zero budget. Nothing in the
+  // app used to set this, so every campaign created after the initial migration
+  // was a paying campaign that had to carry real money to serve at all.
+  const [isHouse, setIsHouse] = useState(campaign?.isHouse ?? !campaign);
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -1800,6 +1807,7 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
           description,
           budget: Number(budget) || 0,
           status,
+          isHouse,
           startAt: startAt ? new Date(startAt).toISOString() : null,
           endAt: endAt ? new Date(endAt).toISOString() : null,
         }),
@@ -1825,6 +1833,24 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
           <label className="block text-xs text-slate-400 mb-1">Description</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={inputCls} />
         </div>
+        <label className="flex items-start gap-2.5 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isHouse}
+            onChange={(e) => setIsHouse(e.target.checked)}
+            className="mt-0.5 rounded bg-slate-800 border-slate-600 text-blue-500"
+          />
+          <span>
+            <span className="block text-sm text-white font-medium">
+              House campaign (your own inventory)
+            </span>
+            <span className="block text-xs text-slate-500 mt-0.5">
+              Runs on a zero budget and is never billed — the platform isn&apos;t
+              paying itself. Leave this on for your own promos and house ads;
+              turn it off only for a campaign a real advertiser is funding.
+            </span>
+          </span>
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-slate-400 mb-1">Budget ($)</label>

@@ -30,6 +30,19 @@ export async function POST(request: NextRequest) {
     const d = new Date(String(v));
     return isNaN(d.getTime()) ? null : d;
   };
+  // An admin-created campaign has no advertiser, so it is the platform's OWN
+  // inventory — house.
+  //
+  // `isHouse` existed, four places read it, and a one-time migration back-filled
+  // it — but nothing in the application ever wrote it, so every campaign created
+  // since has been `false`. Two things were broken as a result: the owner's own
+  // campaigns had to carry a real budget or `servableCampaignWhere` would not
+  // serve them (it exempts house campaigns from the budget floor), and the
+  // "ad-free plans still see house ads" design delivered nothing, because
+  // `houseOnly` filters on `isHouse: true` and the house pool was always empty.
+  const isHouse =
+    body.isHouse === undefined ? !body.advertiserId : Boolean(body.isHouse);
+
   const campaign = await prisma.adCampaign.create({
     data: {
       title,
@@ -38,6 +51,7 @@ export async function POST(request: NextRequest) {
       status: ["ACTIVE", "PAUSED", "ENDED"].includes(body.status) ? body.status : "ACTIVE",
       startAt: parseDate(body.startAt),
       endAt: parseDate(body.endAt),
+      isHouse,
     },
   });
   return NextResponse.json({ campaign });

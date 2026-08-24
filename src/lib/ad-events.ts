@@ -106,11 +106,34 @@ export async function recordClick(
   // REJECTED or CHANGES_REQUESTED ad must never bill: the advertiser was told it
   // had stopped.
   const ad = await prisma.ad
-    .findUnique({ where: { id: adId }, select: { campaignId: true, status: true } })
+    .findUnique({
+      where: { id: adId },
+      select: {
+        campaignId: true,
+        status: true,
+        campaign: { select: { isHouse: true } },
+      },
+    })
     .catch(() => null);
 
   if (!ad?.campaignId || ad.status !== "ACTIVE") {
     await bumpAdDailyStat(adId, { clicks: 1 });
+    return { billed: false };
+  }
+
+  // House inventory is the platform advertising to its own users. Billing it
+  // would take the platform's money from the platform's pocket and put it into
+  // `spentTotal`, which is the figure that reports "ad revenue earned" — so it
+  // would report income that never existed. The click is still counted; only the
+  // money movement is skipped.
+  //
+  // The demo campaign has been doing exactly this: seeded with a $100,000
+  // budget, it had already "spent" its way down to 99998.10.
+  if (ad.campaign?.isHouse) {
+    await prisma.ad
+      .update({ where: { id: adId }, data: { clicks: { increment: 1 } } })
+      .catch(() => null);
+    await bumpAdDailyStat(adId, { clicks: 1, spendUsd: 0 });
     return { billed: false };
   }
 
@@ -126,8 +149,8 @@ export async function recordClick(
   // billing until `runAdCampaignSweep` next ran, and a suspended advertiser's
   // campaign billed against its pre-funded budget. Billing for delivery the
   // advertiser was promised had stopped is the one thing an ad system must not
-  // do. (`isHouse` campaigns are exempt from the budget floor there, so they
-  // pass the clause and simply decrement toward zero, as before.)
+  // do. (House campaigns returned above, so anything reaching here is a real
+  // advertiser with a real budget.)
   const billed = await prisma.adCampaign.updateMany({
     where: { id: ad.campaignId, ...servableCampaignWhere(cost, now, false) },
     data: { budget: { decrement: cost }, spentTotal: { increment: cost } },

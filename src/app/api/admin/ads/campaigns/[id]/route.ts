@@ -23,6 +23,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.budget !== undefined) data.budget = Number(body.budget) || 0;
   if (body.status !== undefined && ["ACTIVE", "PAUSED", "ENDED"].includes(body.status))
     data.status = body.status;
+  // Platform-owned inventory: exempt from the budget floor in
+  // `servableCampaignWhere` and never billed by `recordClick`. Nothing in the
+  // app used to write this, so it could only be changed in the database.
+  if (body.isHouse !== undefined) data.isHouse = Boolean(body.isHouse);
   const parseDate = (v: unknown): Date | null => {
     if (!v) return null;
     const d = new Date(String(v));
