@@ -69,6 +69,26 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
     label: "Max accounts per IP",
     why: "0 would lock every user out of the platform.",
   },
+  "ads.interstitial_min_gap_sec": {
+    min: 0,
+    max: 3600,
+    integer: true,
+    label: "Minimum gap between full-screen ads",
+    why: "Seconds. 0 disables the gap, which means back-to-back full-screen ads.",
+  },
+  "ads.interstitial_daily_max": {
+    min: 0,
+    max: 500,
+    integer: true,
+    label: "Full-screen ads per user per day",
+    why: "0 disables the cap entirely.",
+  },
+  "ads.cpcUsd": {
+    min: 0.001,
+    max: 100,
+    label: "Cost per click",
+    why: "What an advertiser is billed per click — it moves real money.",
+  },
   "ai.daily_limit_per_user": {
     min: 0,
     max: 10_000,

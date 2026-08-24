@@ -6,6 +6,7 @@ import { ensureDefaultPlacements } from "@/lib/ad-placements-server";
 import { getSetting } from "@/lib/system-settings";
 import { getAdDensity } from "@/lib/ad-density";
 import { getBrowseEarnConfig } from "@/lib/browse-earn";
+import { getAdFrequencyConfig } from "@/lib/ad-frequency";
 
 export async function GET() {
   const session = await auth();
@@ -67,6 +68,7 @@ export async function GET() {
   const gamNetworkCode = String((await getSetting<string>("ads.gam_network_code", "")) || "");
   const density = await getAdDensity();
   const browseEarn = await getBrowseEarnConfig();
+  const adFrequency = await getAdFrequencyConfig();
 
   return NextResponse.json({
     placements: withStats,
@@ -76,6 +78,7 @@ export async function GET() {
     gamNetworkCode,
     density,
     browseEarn,
+    adFrequency,
   });
 }
 

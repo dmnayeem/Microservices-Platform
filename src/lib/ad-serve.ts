@@ -2,6 +2,10 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePackage } from "@/lib/packages";
 import { getAdClickCost } from "@/lib/ad-billing";
+import {
+  claimInterstitialSlot,
+  isFrequencyCapped,
+} from "@/lib/ad-frequency";
 import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
 import { bufferImpression } from "@/lib/ad-counters";
@@ -144,6 +148,21 @@ export async function serveAd(opts: {
     if (pkg?.adFree && !interstitial) return EMPTY; // Watch & Earn is unaffected
     houseOnly = !!pkg?.adFree;
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
+  }
+
+  // Full-screen frequency cap. Checked before the placement lookup so a capped
+  // user costs one cheap limiter query rather than the whole serve path.
+  //
+  // Returning EMPTY is the entire mechanism: `AdInterstitialOverlay` calls
+  // `onDone()` immediately when the serve has no ad, so a capped user's reward
+  // is neither delayed nor blocked — they simply aren't shown one. See
+  // ad-frequency.ts for why the cap has to exist at all.
+  //
+  // Skipped for previews (an admin looking at a space must always see it) and
+  // for anonymous viewers (there is no per-user budget to spend).
+  if (!preview && userId && isFrequencyCapped(placement)) {
+    const slot = await claimInterstitialSlot(userId, placement);
+    if (!slot.allowed) return EMPTY;
   }
 
   const placementRow = await prisma.adPlacement.findFirst({

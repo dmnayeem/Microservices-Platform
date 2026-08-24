@@ -47,6 +47,11 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [beSeconds, setBeSeconds] = useState(45);
   const [beCap, setBeCap] = useState(15);
   const [beBusy, setBeBusy] = useState(false);
+  // Full-screen ad pacing. Without a cap, a user claiming several rewards in a
+  // row is queued that many back-to-back full-screen ads — see ad-frequency.ts.
+  const [gapSec, setGapSec] = useState(60);
+  const [dailyMax, setDailyMax] = useState(25);
+  const [freqBusy, setFreqBusy] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -58,6 +63,10 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         setGamNetworkCode(d.gamNetworkCode ?? "");
         if (typeof d.cpcUsd === "number") setCpcUsd(d.cpcUsd);
         setPlacements(Array.isArray(d.placements) ? d.placements : []);
+        if (d.adFrequency) {
+          setGapSec(d.adFrequency.minGapSeconds ?? 60);
+          setDailyMax(d.adFrequency.dailyMax ?? 25);
+        }
         if (d.browseEarn) {
           setBeEnabled(d.browseEarn.enabled !== false);
           setBePoints(d.browseEarn.pointsPerTick ?? 1);
@@ -110,6 +119,29 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save click price");
     } finally {
       setCpcBusy(false);
+    }
+  };
+
+  const saveFrequency = async () => {
+    setFreqBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: {
+            "ads.interstitial_min_gap_sec": Math.min(3600, Math.max(0, gapSec || 0)),
+            "ads.interstitial_daily_max": Math.min(500, Math.max(0, dailyMax || 0)),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Ad pacing saved");
+    } catch {
+      toast.error("Couldn't save ad pacing");
+    } finally {
+      setFreqBusy(false);
     }
   };
 
@@ -277,6 +309,63 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
           />
           <span className="text-xs text-slate-500">per click</span>
           {cpcBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        </div>
+      </section>
+
+      {/* Full-screen ad pacing */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-white">Full-screen ad pacing</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            How often one user can be shown a full-screen ad before a reward.
+            There was no limit at all, and reward ads queue — so claiming five
+            things in a row meant five full-screen ads back to back, which is the
+            fastest way to lose a user to an ad blocker. When a user is over
+            their limit the ad is skipped and the reward is paid as normal;
+            nothing is ever blocked. Games are exempt (they pace themselves, and
+            their payout depends on ads being shown).
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Minimum gap between ads
+              <span className="text-slate-600"> · 0 = no gap</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={3600}
+                value={gapSec}
+                disabled={!canManage || freqBusy}
+                onChange={(e) => setGapSec(Number(e.target.value))}
+                onBlur={() => canManage && saveFrequency()}
+                className="w-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
+              />
+              <span className="text-xs text-slate-500">seconds</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Most full-screen ads per user per day
+              <span className="text-slate-600"> · 0 = no cap</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={500}
+                value={dailyMax}
+                disabled={!canManage || freqBusy}
+                onChange={(e) => setDailyMax(Number(e.target.value))}
+                onBlur={() => canManage && saveFrequency()}
+                className="w-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
+              />
+              <span className="text-xs text-slate-500">per day</span>
+              {freqBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+            </div>
+          </div>
         </div>
       </section>
 
