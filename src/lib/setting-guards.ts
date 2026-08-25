@@ -89,6 +89,12 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
     label: "Cost per click",
     why: "What an advertiser is billed per click — it moves real money.",
   },
+  "billing.tax_pct": {
+    min: 0,
+    max: 100,
+    label: "Invoice tax rate",
+    why: "It is added to every invoice issued from now on. 0 removes the tax line entirely.",
+  },
   "ai.daily_limit_per_user": {
     min: 0,
     max: 10_000,

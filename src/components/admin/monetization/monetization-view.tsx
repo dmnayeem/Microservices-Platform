@@ -49,6 +49,17 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [cpcBusy, setCpcBusy] = useState(false);
   const [bonusPct, setBonusPct] = useState(0);
   const [bonusBusy, setBonusBusy] = useState(false);
+  // What goes at the top of an invoice, and whether tax applies.
+  const [billing, setBilling] = useState({
+    sellerName: "",
+    sellerAddress: "",
+    sellerEmail: "",
+    sellerPhone: "",
+    taxPct: 0,
+    taxLabel: "VAT",
+    taxId: "",
+  });
+  const [billingBusy, setBillingBusy] = useState(false);
   // Browse & Earn (passive CPM reward) config.
   const [beEnabled, setBeEnabled] = useState(true);
   const [bePoints, setBePoints] = useState(1);
@@ -90,6 +101,7 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         setAdsTxt(d.adsTxt ?? "");
         if (typeof d.cpcUsd === "number") setCpcUsd(d.cpcUsd);
         if (typeof d.creditBonusPct === "number") setBonusPct(d.creditBonusPct);
+        if (d.billing) setBilling((b) => ({ ...b, ...d.billing }));
         setPlacements(Array.isArray(d.placements) ? d.placements : []);
         if (d.adFrequency) {
           setGapSec(d.adFrequency.minGapSeconds ?? 60);
@@ -208,6 +220,34 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save click price");
     } finally {
       setCpcBusy(false);
+    }
+  };
+
+  const saveBilling = async () => {
+    setBillingBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "billing",
+          settings: {
+            "billing.seller_name": billing.sellerName.trim(),
+            "billing.seller_address": billing.sellerAddress.trim(),
+            "billing.seller_email": billing.sellerEmail.trim(),
+            "billing.seller_phone": billing.sellerPhone.trim(),
+            "billing.tax_pct": Math.min(100, Math.max(0, Number(billing.taxPct) || 0)),
+            "billing.tax_label": billing.taxLabel.trim() || "VAT",
+            "billing.tax_id": billing.taxId.trim(),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Invoice details saved");
+    } catch {
+      toast.error("Couldn't save the invoice details");
+    } finally {
+      setBillingBusy(false);
     }
   };
 
@@ -610,6 +650,114 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
           <span className="text-xs text-slate-500">per click</span>
           {cpcBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
         </div>
+      </section>
+
+      {/* Invoice details */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-white">Invoice details</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            What appears at the top of every invoice and receipt you send.
+            Invoices are issued from <b>Ads → Invoices</b>.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Your business name</label>
+            <input
+              value={billing.sellerName}
+              onChange={(e) => setBilling((b) => ({ ...b, sellerName: e.target.value }))}
+              disabled={!canManage}
+              placeholder="EarnGPT"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Billing email</label>
+            <input
+              value={billing.sellerEmail}
+              onChange={(e) => setBilling((b) => ({ ...b, sellerEmail: e.target.value }))}
+              disabled={!canManage}
+              placeholder="billing@yourdomain.com"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Phone</label>
+            <input
+              value={billing.sellerPhone}
+              onChange={(e) => setBilling((b) => ({ ...b, sellerPhone: e.target.value }))}
+              disabled={!canManage}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Your tax / BIN number
+            </label>
+            <input
+              value={billing.taxId}
+              onChange={(e) => setBilling((b) => ({ ...b, taxId: e.target.value }))}
+              disabled={!canManage}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Address</label>
+          <textarea
+            value={billing.sellerAddress}
+            onChange={(e) => setBilling((b) => ({ ...b, sellerAddress: e.target.value }))}
+            disabled={!canManage}
+            rows={3}
+            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Tax rate (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={billing.taxPct}
+              onChange={(e) => setBilling((b) => ({ ...b, taxPct: Number(e.target.value) }))}
+              disabled={!canManage}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+            />
+            <p className="text-[11px] text-slate-500 mt-1">
+              Leave at 0 and no tax line appears on the invoice at all.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Tax label</label>
+            <input
+              value={billing.taxLabel}
+              onChange={(e) => setBilling((b) => ({ ...b, taxLabel: e.target.value }))}
+              disabled={!canManage}
+              placeholder="VAT"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-500">
+          The rate is copied onto each invoice when it is issued, so changing it
+          here never restates a document a client already has.
+        </p>
+        {canManage && (
+          <button
+            onClick={saveBilling}
+            disabled={billingBusy}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {billingBusy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Save invoice details
+          </button>
+        )}
       </section>
 
       {/* Ad credit bonus */}

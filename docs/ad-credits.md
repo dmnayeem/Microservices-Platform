@@ -33,3 +33,29 @@ Every movement is journalled in `AdCreditLedger` (PURCHASE / GRANT / CAMPAIGN_FU
 - Admin **house campaigns** can still be granted free `budget` directly (no
   credit needed) for the platform's own ads.
 - Ad credit never appears in the withdrawal flow (that only sees `cashBalance`).
+
+## Invoices & receipts
+
+Advertisers get real documents, issued from **Admin → Ads → Invoices**.
+
+- **Bill** — issued before payment. Send the PDF, the client pays offline
+  (bKash/Nagad), then you **Mark paid**. That single action is what credits their
+  ad balance and starts any space they booked, so nothing goes live before the
+  money arrives. Clicking it twice is safe: the ledger reference is
+  `invoice_<id>` and `AdCreditLedger` is uniquely indexed on
+  `(userId, reference)`, so a replay credits nothing.
+- **Receipt** — issued automatically, already paid, when someone buys ad credit
+  themselves. It shows the **cash paid**, not the bonused credit issued.
+
+Line kinds decide what being paid *does*: `AD_CREDIT` tops up the balance,
+`SLOT_RENTAL` activates the booking it names, `ADJUSTMENT` moves nothing (for a
+discount, a correction, or a note that needs a number).
+
+Set your business name, address and tax rate under **Monetization → Invoice
+details**. The tax rate and the client's address are both **snapshotted onto each
+invoice when it is issued**, so changing either later never restates a document
+somebody already has. At 0% no tax line is rendered at all.
+
+Amounts are USD like everything else; the PDF adds a local-currency courtesy line
+using the rate table under Financial settings when the client's country has one.
+A paid invoice cannot be voided — issue a credit note instead.

@@ -12,6 +12,7 @@ import { toast } from "@/lib/toast";
 import { promptDialog } from "@/lib/confirm";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { DateField } from "@/components/ui/date-field";
+import { InvoicesCard } from "@/components/user/advertiser/invoices-card";
 
 /** One ad-credit movement (purchase, admin grant, campaign funding, refund). */
 interface LedgerEntry {
@@ -289,6 +290,10 @@ export function AdvertiserDashboard() {
           </div>
         )}
       </div>
+
+      {/* Invoices and receipts for everything paid — the paperwork side of the
+          balance card above it. */}
+      <InvoicesCard />
 
       <div className="grid grid-cols-2 gap-2">
         <StatCard

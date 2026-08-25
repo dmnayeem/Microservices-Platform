@@ -30,7 +30,8 @@ import {
   Play,
   type LucideIcon,
 
-  CalendarClock,} from "lucide-react";
+  CalendarClock,
+  ReceiptText,} from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
@@ -44,6 +45,7 @@ import { AdReviewQueue } from "@/components/admin/ads/ad-review-queue";
 import { AdReviewPanel } from "@/components/admin/ads/ad-review-panel";
 import { ModalShell } from "@/components/admin/ads/modal-shell";
 import { BookingsTab } from "@/components/admin/ads/bookings-tab";
+import { InvoicesTab } from "@/components/admin/ads/invoices-tab";
 // Shared presentation so this view and the review console can't drift apart.
 import { StatusPill, targetingSummary } from "@/components/admin/ads/ad-ui";
 import { type AdTargeting } from "@/lib/ad-targeting";
@@ -138,6 +140,7 @@ const TABS = [
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "placements", label: "Ad Spaces", icon: Layers },
   { id: "bookings", label: "Bookings", icon: CalendarClock },
+  { id: "invoices", label: "Invoices", icon: ReceiptText },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -920,6 +923,8 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
               campaigns={campaigns}
             />
           )}
+
+          {tab === "invoices" && <InvoicesTab canManage={canManage} />}
 
           {tab === "analytics" && <AnalyticsTab />}
         </>

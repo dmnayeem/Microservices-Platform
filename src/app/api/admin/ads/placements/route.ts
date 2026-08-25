@@ -77,6 +77,17 @@ export async function GET() {
     100,
     Math.max(0, Number(await getSetting<number>("ads.credit_bonus_pct", 0)) || 0)
   );
+  // Who the invoice is FROM, and whether tax applies. Empty is fine — the PDF
+  // simply omits what is not set, and at 0% no tax line is rendered at all.
+  const billing = {
+    sellerName: String((await getSetting<string>("billing.seller_name", "")) || ""),
+    sellerAddress: String((await getSetting<string>("billing.seller_address", "")) || ""),
+    sellerEmail: String((await getSetting<string>("billing.seller_email", "")) || ""),
+    sellerPhone: String((await getSetting<string>("billing.seller_phone", "")) || ""),
+    taxPct: Math.min(100, Math.max(0, Number(await getSetting<number>("billing.tax_pct", 0)) || 0)),
+    taxLabel: String((await getSetting<string>("billing.tax_label", "VAT")) || "VAT"),
+    taxId: String((await getSetting<string>("billing.tax_id", "")) || ""),
+  };
   const density = await getAdDensity();
   const browseEarn = await getBrowseEarnConfig();
   const rewarded = await getRewardedConfig();
@@ -92,6 +103,7 @@ export async function GET() {
     autoAdsEnabled,
     adsTxt,
     creditBonusPct,
+    billing,
     density,
     browseEarn,
     rewarded,

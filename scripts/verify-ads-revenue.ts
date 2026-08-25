@@ -182,7 +182,7 @@ async function main() {
     const s = code("app/api/admin/ads/report/route.ts");
     check(
       "the report divides by PAID impressions",
-      /const paidImpr = Math\.max\(0, v\.impressions - v\.houseImpressions\);/.test(s)
+      /v\.impressions - v\.houseImpressions - v\.networkImpressions/.test(s)
     );
     check(
       "house impressions are attributed from the campaign, not guessed",

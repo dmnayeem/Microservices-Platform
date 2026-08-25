@@ -110,3 +110,26 @@ reporting** in-app: impressions, clicks, CTR, spend — see **Ads → Analytics*
   database will never see them. Network rows show impressions + a "network" marker.
 - **Ad-blockers** — AdSense/GAM scripts load third-party from Google and are
   **blockable**; only local/house ads are blocker-resistant.
+
+## Pricing — the rate card
+
+Each space carries its own price under **Ads → Ad Spaces**:
+
+- **Per click ($)** — what an advertiser is billed for a click there. Leave it
+  blank and the space uses the global rate (Monetization → click price). Until
+  this existed there was exactly one price for every space, so a click on the
+  withdrawal page cost the same as one on a banner nobody reads.
+- **Per month ($)** — the flat price to rent the space outright. Setting it makes
+  the space bookable.
+
+**Bookings** (Ads → Bookings) sell a space for a period. While an *exclusive*
+booking is active, only that campaign's ads run there — unless it has nothing
+servable, in which case the space falls back to your house ads rather than going
+blank. A booking does nothing until it is marked paid, so an unpaid agreement
+cannot hold a space.
+
+Leave **"bill each click"** off for a flat-rate sponsor: they have paid for the
+period, and charging per click on top charges them twice for the same inventory.
+
+Changing a rate never rewrites history — spend is snapshotted at the price in
+force when the click happened.

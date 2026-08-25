@@ -591,26 +591,27 @@ model DailyReferralClaim {
 }
 
 model AdCampaign {
-  id           String    @id @default(cuid())
+  id           String          @id @default(cuid())
   advertiserId String?
-  advertiser   User?     @relation("UserAdCampaigns", fields: [advertiserId], references: [id], onDelete: SetNull)
+  advertiser   User?           @relation("UserAdCampaigns", fields: [advertiserId], references: [id], onDelete: SetNull)
   title        String
-  description  String?   @db.Text
+  description  String?         @db.Text
   // Remaining (undrawn) budget — each billed click decrements it.
-  budget       Decimal   @default(0) @db.Decimal(18, 6)
+  budget       Decimal         @default(0) @db.Decimal(18, 6)
   // Lifetime billed spend. Authoritative: reporting must NOT derive spend as
   // clicks × current CPC, which rewrites history whenever the CPC changes.
-  spentTotal   Decimal   @default(0) @db.Decimal(18, 6)
+  spentTotal   Decimal         @default(0) @db.Decimal(18, 6)
   // House (platform-owned) inventory — exempt from the budget gate and the only
   // ads an ad-free package may be shown.
-  isHouse      Boolean   @default(false)
-  status       String    @default("ACTIVE") // ACTIVE | PAUSED | ENDED
+  isHouse      Boolean         @default(false)
+  bookings     AdSlotBooking[]
+  status       String          @default("ACTIVE") // ACTIVE | PAUSED | ENDED
   // Optional flight window — ads only serve while now is within [startAt, endAt].
   startAt      DateTime?
   endAt        DateTime?
   ads          Ad[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([advertiserId])
   @@index([status])
@@ -628,9 +629,67 @@ model AdPlacement {
   // Per-space interstitial ad duration (seconds) — how long the full-screen ad
   // shows before it can be closed. Null = default 5s. Clamped 3–60 when set.
   interstitialSeconds Int?
+  /// Per-space click price, in USD. Null falls back to the global `ads.cpcUsd`.
+  /// Before this there was exactly ONE price for every space, every format and
+  /// every country — a click on the withdrawal page (106s average dwell) cost
+  /// an advertiser the same as one on a banner nobody reads.
+  cpcUsd              Decimal?           @db.Decimal(18, 6)
+  /// Flat monthly sponsorship price for renting this space outright, in USD.
+  /// Null (or `isRentable: false`) means the space is not for rent.
+  monthlyUsd          Decimal?           @db.Decimal(18, 6)
+  /// May this space be sold as a flat-rate monthly slot? Admin-only decision —
+  /// interstitials and incentivised surfaces generally should not be.
+  isRentable          Boolean            @default(false)
   ads                 Ad[]
   serveStats          AdServeDailyStat[]
+  bookings            AdSlotBooking[]
   createdAt           DateTime           @default(now())
+}
+
+/// A space rented outright for a period — the platform's direct-sales product.
+///
+/// CPC only ever suited self-serve advertisers. Selling a space directly ("this
+/// banner is yours for a month") is how a publisher of this size actually earns,
+/// and there was no way to express it: `AdPlacement` carried no price of any
+/// kind and selection was a pure weighted-random draw, so a $5 campaign and a
+/// $5,000 campaign at the same weight got identical share of voice.
+///
+/// While an `exclusive` booking is ACTIVE and in window, only its campaign's ads
+/// serve on that space — with one guard, in `serveAdInner`: if the booked
+/// campaign has no servable creative the space falls through to house inventory
+/// rather than going dark. An empty space is worse than a wrong one.
+model AdSlotBooking {
+  id           String      @id @default(cuid())
+  placementId  String
+  placement    AdPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  /// The buyer. Null = the platform booked its own space.
+  advertiserId String?
+  /// Whose ads run in the space for the duration.
+  campaignId   String
+  campaign     AdCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  startAt      DateTime
+  endAt        DateTime
+  /// What was agreed for the period, in USD. Snapshotted — changing the rate
+  /// card later must never rewrite a booking that was already sold.
+  priceUsd     Decimal     @default(0) @db.Decimal(18, 6)
+  /// Exclusive takes the space over entirely; non-exclusive just guarantees a
+  /// presence alongside the normal rotation.
+  exclusive    Boolean     @default(true)
+  /// Whether clicks still draw down the campaign budget. False for a flat-rate
+  /// sponsor: they have already paid for the period, and billing per click on
+  /// top of that would charge them twice for the same inventory.
+  billClicks   Boolean     @default(false)
+  status       String      @default("PENDING_PAYMENT") // PENDING_PAYMENT | ACTIVE | ENDED | CANCELLED
+  invoiceId    String?
+  note         String?
+  createdById  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([placementId, status, startAt, endAt])
+  @@index([advertiserId])
+  @@index([campaignId])
+  @@index([invoiceId])
 }
 
 model AdNetwork {
@@ -851,6 +910,12 @@ model AdCreditLedger {
   metadata     Json?
   createdAt    DateTime @default(now())
 
+  /// The replay guard that `Transaction` has always had and this table never
+  /// did. With a deterministic reference (`invoice_<id>`), settling an invoice
+  /// twice credits the advertiser once — the database refuses the second write
+  /// rather than relying on nobody double-clicking. `reference` is nullable and
+  /// Postgres treats NULLs as distinct, so unreferenced rows are unaffected.
+  @@unique([userId, reference])
   @@index([userId, createdAt])
 }
 
@@ -4127,4 +4192,95 @@ model PostBoostView {
 
   @@unique([userId, postId])
   @@index([postId])
+}
+
+// ── Advertiser billing ──────────────────────────────────────────────────────
+// Until now there was no invoice, receipt, order or billing document anywhere in
+// this schema, and no advertiser billing identity at all — no company name, tax
+// id, address or billing email. Selling ads directly means sending someone a
+// bill, and there was nothing to send.
+
+/// Who to bill, and how to address the document.
+///
+/// Snapshotted onto each invoice at issue time (`Invoice.billTo`), so editing
+/// this later can never rewrite a document that has already been sent.
+model BillingProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  /// Company or trading name. Falls back to the user's own name when empty.
+  orgName      String?
+  /// VAT / BIN / TIN — whatever the jurisdiction calls it.
+  taxId        String?
+  email        String?
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  postalCode   String?
+  country      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// A bill sent to an advertiser, or a receipt for money already taken.
+///
+/// Two kinds, one model:
+///  - `BILL` — issued before payment. The advertiser pays offline (bKash/Nagad;
+///    the gateways are written but credential-gated), an admin marks it paid,
+///    and THAT action credits the ad credit and activates any slot booking.
+///  - `RECEIPT` — issued automatically, already `PAID`, when someone buys ad
+///    credit themselves. Every payment ends up with a document either way.
+///
+/// Amounts are USD like the rest of the platform. The PDF shows a local-currency
+/// line alongside, using the existing admin-editable rate table; that is display
+/// only and nothing is stored in another currency.
+model Invoice {
+  id           String        @id @default(cuid())
+  /// Human reference, e.g. INV-2026-0001. Unique — see `nextInvoiceNumber`.
+  number       String        @unique
+  advertiserId String
+  kind         String        @default("BILL") // BILL | RECEIPT
+  status       String        @default("DRAFT") // DRAFT | SENT | PAID | VOID
+  issuedAt     DateTime?
+  dueAt        DateTime?
+  paidAt       DateTime?
+  /// Frozen copy of the billing profile as it stood when the invoice was issued.
+  billTo       Json?
+  subtotalUsd  Decimal       @default(0) @db.Decimal(18, 6)
+  discountUsd  Decimal       @default(0) @db.Decimal(18, 6)
+  /// Snapshotted from settings at issue time, so a later VAT change does not
+  /// silently restate a document somebody already has a copy of.
+  taxPct       Decimal       @default(0) @db.Decimal(9, 4)
+  taxLabel     String?
+  taxUsd       Decimal       @default(0) @db.Decimal(18, 6)
+  totalUsd     Decimal       @default(0) @db.Decimal(18, 6)
+  /// How they paid — a bKash transaction id, a bank reference, anything.
+  paymentRef   String?
+  notes        String?       @db.Text
+  createdById  String?
+  lines        InvoiceLine[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([advertiserId, createdAt])
+  @@index([status])
+  @@index([issuedAt])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Decimal @default(1) @db.Decimal(18, 6)
+  unitUsd     Decimal @default(0) @db.Decimal(18, 6)
+  amountUsd   Decimal @default(0) @db.Decimal(18, 6)
+  /// AD_CREDIT tops up their spending balance when the invoice is paid;
+  /// SLOT_RENTAL activates the booking named by `refId`; ADJUSTMENT does neither.
+  kind        String  @default("AD_CREDIT") // AD_CREDIT | SLOT_RENTAL | ADJUSTMENT
+  /// The booking (or other entity) this line settles, when it settles one.
+  refId       String?
+  position    Int     @default(0)
+
+  @@index([invoiceId])
 }

@@ -130,6 +130,42 @@ export async function buyAdCredits(opts: {
       await journal(tx, userId, credited, "PURCHASE", bal, undefined, { currency, bonusPct: bonus, paidUsd: amountUsd });
       return bal;
     });
+    // A receipt for the money that just moved, so every payment ends up with a
+    // document whichever direction it came from — a bill the owner sent, or a
+    // self-serve top-up like this one.
+    //
+    // Best-effort and AFTER the transaction on purpose: the credit is already
+    // banked, and a paperwork failure must never roll back or block money the
+    // advertiser has paid for. Imported lazily to keep this module free of a
+    // cycle (invoices.ts imports creditAdCreditTx from here).
+    void (async () => {
+      try {
+        const { createInvoice } = await import("@/lib/invoices");
+        await createInvoice({
+          advertiserId: userId,
+          kind: "RECEIPT",
+          paid: true,
+          paymentRef: currency === "points" ? "Points" : "Wallet balance",
+          lines: [
+            {
+              description:
+                bonus > 0
+                  ? `Ad credit top-up (includes ${bonus}% bonus — ${usd(credited)} credited)`
+                  : "Ad credit top-up",
+              quantity: 1,
+              // The cash actually paid, not the credit issued. A receipt that
+              // showed the bonused figure would be a receipt for money nobody
+              // handed over.
+              unitUsd: amountUsd,
+              kind: "ADJUSTMENT",
+            },
+          ],
+        });
+      } catch {
+        /* the credit is banked; the document can be reissued */
+      }
+    })();
+
     return { ok: true, adCreditBalance: balance };
   } catch (err) {
     if (err instanceof Error && err.message === "INSUFFICIENT") {

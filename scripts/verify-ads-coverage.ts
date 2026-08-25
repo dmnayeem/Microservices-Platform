@@ -133,7 +133,16 @@ async function main() {
   }
   // And the catalog as a whole, since this is the failure mode the phase most
   // easily reintroduces.
+  //
+  // REWARDED_VIDEO is exempt, and only it: nothing mounts an `<AdRenderer>` on
+  // it. It exists so the policy gate has something to refuse Google inventory
+  // on (`networkAllowed: false`, house-only) — the watch-to-earn list is served
+  // by /api/ads/rewarded, which selects on `rewardPoints > 0` across all ads
+  // rather than by placement. An "empty" entry there renders nothing anywhere,
+  // so it cannot leave a hole on a page.
+  const NOT_A_RENDERED_SLOT = new Set(["REWARDED_VIDEO"]);
   const empty = AD_PLACEMENTS.filter((p) => {
+    if (NOT_A_RENDERED_SLOT.has(p.name)) return false;
     const row = byName.get(p.name);
     return !row || (activeBy.get(row.id) ?? 0) === 0;
   }).map((p) => p.name);
