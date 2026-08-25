@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePackage } from "@/lib/packages";
-import { getAdClickCost } from "@/lib/ad-billing";
+import { getActiveBooking, getPlacementClickCost } from "@/lib/ad-rate-card";
 import {
   claimInterstitialSlot,
   isFrequencyCapped,
@@ -203,7 +203,10 @@ async function serveAdInner(opts: {
   });
   if (!placementRow) return EMPTY;
 
-  const cost = await getAdClickCost();
+  // Per-space click price, falling back to the global one. This is the budget
+  // FLOOR here, not a charge — an ad may only serve if its campaign can afford
+  // a click on this particular space.
+  const cost = await getPlacementClickCost(placement);
   const now = new Date();
   // The eligible pool is IDENTICAL for every viewer of a placement, so it is a
   // textbook shared read: cache it. Targeting and the weighted pick still run
@@ -229,8 +232,25 @@ async function serveAdInner(opts: {
   const targeted = allAds.filter((a) => matchesTargeting(a.targeting, viewer));
   if (targeted.length === 0) return EMPTY;
 
-  const fresh = targeted.filter((a) => !exclude.has(a.id));
-  const ads = fresh.length > 0 ? fresh : targeted;
+  // A space rented outright belongs to its buyer for the period.
+  //
+  // The guard is the important half: if the booked campaign has nothing
+  // servable right now — every creative paused, rejected, or filtered out by
+  // targeting — the space falls through to the normal pool rather than going
+  // dark. An empty space is the failure mode Phase 2 existed to kill, and a
+  // sponsor who paid for a month would not thank anyone for a blank rectangle.
+  // Previews skip this: an admin looking at a space must see what it holds.
+  let pool = targeted;
+  if (!preview) {
+    const booking = await getActiveBooking(placementRow.id, now);
+    if (booking?.exclusive) {
+      const booked = targeted.filter((a) => a.campaignId === booking.campaignId);
+      if (booked.length > 0) pool = booked;
+    }
+  }
+
+  const fresh = pool.filter((a) => !exclude.has(a.id));
+  const ads = fresh.length > 0 ? fresh : pool;
 
   // Weighted pick.
   const totalWeight = ads.reduce((sum, a) => sum + (a.weight ?? 10), 0);
@@ -288,7 +308,7 @@ async function serveAdInner(opts: {
   }
 
   return {
-    poolSize: targeted.length,
+    poolSize: ads.length,
     rotateMs: rotateSeconds * 1000,
     interstitialSeconds,
     countedServerSide: counted,
@@ -421,7 +441,8 @@ export async function serveFeedAds(opts: {
   });
   if (!placement) return [];
 
-  const cost = await getAdClickCost();
+  // IN_FEED has its own rate on the card, like every other space.
+  const cost = await getPlacementClickCost("IN_FEED");
   const now = new Date();
   const ads = await prisma.ad.findMany({
     where: {

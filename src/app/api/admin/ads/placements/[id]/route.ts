@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { clearRateCardCache } from "@/lib/ad-rate-card";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -36,7 +37,44 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       ? Math.min(60, Math.max(3, Math.round(n)))
       : null;
   }
+  // ── Rate card ────────────────────────────────────────────────────────────
+  // Per-space click price. null clears it, and a cleared space falls back to the
+  // global `ads.cpcUsd` — which is what every space did before there was a rate
+  // card at all, so clearing is always safe.
+  if (body.cpcUsd === null || body.cpcUsd === "") {
+    data.cpcUsd = null;
+  } else if (body.cpcUsd !== undefined) {
+    const v = Number(body.cpcUsd);
+    // Rejected, not clamped: an admin who typed 0 meant something, and silently
+    // turning it into $0.001 would hand out inventory at a price nobody chose.
+    if (!Number.isFinite(v) || v <= 0 || v > 100) {
+      return NextResponse.json(
+        { error: "Click price must be between $0.001 and $100, or blank to use the global rate." },
+        { status: 400 }
+      );
+    }
+    data.cpcUsd = v;
+  }
+
+  // Flat monthly sponsorship price.
+  if (body.monthlyUsd === null || body.monthlyUsd === "") {
+    data.monthlyUsd = null;
+  } else if (body.monthlyUsd !== undefined) {
+    const v = Number(body.monthlyUsd);
+    if (!Number.isFinite(v) || v < 0 || v > 1_000_000) {
+      return NextResponse.json(
+        { error: "Monthly price must be between $0 and $1,000,000, or blank." },
+        { status: 400 }
+      );
+    }
+    data.monthlyUsd = v;
+  }
+  if (typeof body.isRentable === "boolean") data.isRentable = body.isRentable;
+
   const placement = await prisma.adPlacement.update({ where: { id }, data });
+  // The resolver memoises rates for 30s; an admin who just changed one should
+  // see it take effect, not wonder whether it saved.
+  clearRateCardCache();
   return NextResponse.json({ placement });
 }
 

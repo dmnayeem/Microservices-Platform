@@ -47,6 +47,8 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [adsTxt, setAdsTxt] = useState("");
   const [adsTxtBusy, setAdsTxtBusy] = useState(false);
   const [cpcBusy, setCpcBusy] = useState(false);
+  const [bonusPct, setBonusPct] = useState(0);
+  const [bonusBusy, setBonusBusy] = useState(false);
   // Browse & Earn (passive CPM reward) config.
   const [beEnabled, setBeEnabled] = useState(true);
   const [bePoints, setBePoints] = useState(1);
@@ -87,6 +89,7 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         setAutoAds(!!d.autoAdsEnabled);
         setAdsTxt(d.adsTxt ?? "");
         if (typeof d.cpcUsd === "number") setCpcUsd(d.cpcUsd);
+        if (typeof d.creditBonusPct === "number") setBonusPct(d.creditBonusPct);
         setPlacements(Array.isArray(d.placements) ? d.placements : []);
         if (d.adFrequency) {
           setGapSec(d.adFrequency.minGapSeconds ?? 60);
@@ -205,6 +208,27 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save click price");
     } finally {
       setCpcBusy(false);
+    }
+  };
+
+  const saveCreditBonus = async (value: number) => {
+    const v = Math.min(100, Math.max(0, Math.round(value) || 0));
+    setBonusBusy(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: "ads",
+          settings: { "ads.credit_bonus_pct": v },
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(v > 0 ? `Bonus set to ${v}%` : "Bonus turned off");
+    } catch {
+      toast.error("Couldn't save the credit bonus");
+    } finally {
+      setBonusBusy(false);
     }
   };
 
@@ -586,6 +610,42 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
           <span className="text-xs text-slate-500">per click</span>
           {cpcBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
         </div>
+      </section>
+
+      {/* Ad credit bonus */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-white">Ad credit bonus</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Extra credit on every top-up — your volume discount. At 10%, an
+            advertiser paying $100 receives $110 of ad credit. This has worked
+            since the credit system shipped and sat at 0 because nothing could set
+            it.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            step={1}
+            min={0}
+            max={100}
+            value={bonusPct}
+            disabled={!canManage || bonusBusy}
+            onChange={(e) => setBonusPct(Number(e.target.value))}
+            onBlur={(e) => canManage && saveCreditBonus(Number(e.target.value))}
+            className="w-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
+          />
+          <span className="text-slate-400 text-sm">%</span>
+          {bonusPct > 0 && (
+            <span className="text-[11px] text-slate-500">
+              $100 paid → {usd(100 * (1 + bonusPct / 100))} of credit
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-500">
+          Reporting knows the difference: &quot;Ad credit purchased&quot; counts
+          the cash you were paid, not the credit you issued.
+        </p>
       </section>
 
       {/* Full-screen ad pacing */}

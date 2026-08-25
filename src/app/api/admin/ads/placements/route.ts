@@ -71,6 +71,12 @@ export async function GET() {
   const googleCmpEnabled = !!(await getSetting<boolean>("ads.google_cmp_enabled", false));
   const autoAdsEnabled = !!(await getSetting<boolean>("ads.auto_ads_enabled", false));
   const adsTxt = String((await getSetting<string>("ads.txt_content", "")) || "");
+  // Volume discount on ad-credit purchases. Fully implemented since the credit
+  // system shipped, and permanently 0 because no UI ever set it.
+  const creditBonusPct = Math.min(
+    100,
+    Math.max(0, Number(await getSetting<number>("ads.credit_bonus_pct", 0)) || 0)
+  );
   const density = await getAdDensity();
   const browseEarn = await getBrowseEarnConfig();
   const rewarded = await getRewardedConfig();
@@ -85,6 +91,7 @@ export async function GET() {
     googleCmpEnabled,
     autoAdsEnabled,
     adsTxt,
+    creditBonusPct,
     density,
     browseEarn,
     rewarded,

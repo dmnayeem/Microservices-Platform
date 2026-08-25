@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { getAdClickCost } from "@/lib/ad-billing";
+import { clicksAreBillable, getPlacementClickCost } from "@/lib/ad-rate-card";
 import { bumpAdDailyStat } from "@/lib/ad-stats";
 import { bufferImpression } from "@/lib/ad-counters";
 // `ad-serve` does not import this module, so there is no cycle.
@@ -111,6 +111,10 @@ export async function recordClick(
       select: {
         campaignId: true,
         status: true,
+        // The space decides the price now, and whether a click bills at all —
+        // a flat-rate sponsor has already paid for the period.
+        placementId: true,
+        placement: { select: { name: true } },
         campaign: { select: { isHouse: true } },
       },
     })
@@ -137,7 +141,23 @@ export async function recordClick(
     return { billed: false };
   }
 
-  const cost = await getAdClickCost();
+  // A space rented outright at a flat rate does not bill per click on top. The
+  // sponsor bought the period; charging again for each click inside it would be
+  // charging twice for the same inventory. The click is still counted, exactly
+  // as a house click is — only the money movement is skipped.
+  if (!(await clicksAreBillable(ad.placementId, ad.campaignId))) {
+    await prisma.ad
+      .update({ where: { id: adId }, data: { clicks: { increment: 1 } } })
+      .catch(() => null);
+    await bumpAdDailyStat(adId, { clicks: 1, spendUsd: 0 });
+    return { billed: false };
+  }
+
+  // Per-space click price, falling back to the global `ads.cpcUsd` for any space
+  // with no rate of its own. Whatever is resolved here is what gets snapshotted
+  // into `spentTotal` and `AdDailyStat.spendUsd` below, so a later rate change
+  // never rewrites this click.
+  const cost = await getPlacementClickCost(ad.placement?.name);
   const now = new Date();
   // Atomic, no-overspend: only decrements when the budget still covers a click.
   // `spentTotal` moves in the same statement so reporting never has to derive

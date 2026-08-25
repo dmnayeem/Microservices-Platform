@@ -29,7 +29,8 @@ import {
   Pause,
   Play,
   type LucideIcon,
-} from "lucide-react";
+
+  CalendarClock,} from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
@@ -42,6 +43,7 @@ import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-fram
 import { AdReviewQueue } from "@/components/admin/ads/ad-review-queue";
 import { AdReviewPanel } from "@/components/admin/ads/ad-review-panel";
 import { ModalShell } from "@/components/admin/ads/modal-shell";
+import { BookingsTab } from "@/components/admin/ads/bookings-tab";
 // Shared presentation so this view and the review console can't drift apart.
 import { StatusPill, targetingSummary } from "@/components/admin/ads/ad-ui";
 import { type AdTargeting } from "@/lib/ad-targeting";
@@ -70,6 +72,9 @@ interface Placement {
   name: string;
   isActive: boolean;
   rotationSeconds?: number | null;
+  cpcUsd?: number | string | null;
+  monthlyUsd?: number | string | null;
+  isRentable?: boolean;
   interstitialSeconds?: number | null;
   _count?: { ads: number };
   stats?: PlacementStats;
@@ -132,6 +137,7 @@ const TABS = [
   { id: "approvals", label: "Approvals", icon: ShieldCheck },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "placements", label: "Ad Spaces", icon: Layers },
+  { id: "bookings", label: "Bookings", icon: CalendarClock },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -400,6 +406,24 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rotationSeconds: secs }),
     });
+    loadAll();
+  };
+  /** Per-space price. `cpcUsd: null` clears the override → back to the global rate. */
+  const setPlacementRate = async (
+    p: Placement,
+    patch: { cpcUsd?: number | null; monthlyUsd?: number | null; isRentable?: boolean }
+  ) => {
+    const res = await fetch(`/api/admin/ads/placements/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      // The route REJECTS a bad price rather than clamping it, so the admin has
+      // to be told — a silently-corrected price is a price nobody chose.
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Couldn't save the rate");
+    }
     loadAll();
   };
   // Per-space interstitial ad duration. `secs === null` clears it (→ default 5s).
@@ -877,14 +901,24 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
                     placement={p}
                     canManage={canManage}
                     rotationSeconds={rotationSeconds}
+                    cpcUsd={cpcUsd}
                     onToggle={() => togglePlacement(p)}
                     onSetRotation={(secs) => setPlacementRotation(p, secs)}
                     onSetInterstitial={(secs) => setPlacementInterstitial(p, secs)}
+                    onSetRate={(patch) => setPlacementRate(p, patch)}
                     onDelete={() => deletePlacement(p.id)}
                   />
                 ))}
               </div>
             </div>
+          )}
+
+          {tab === "bookings" && (
+            <BookingsTab
+              canManage={canManage}
+              placements={placements}
+              campaigns={campaigns}
+            />
           )}
 
           {tab === "analytics" && <AnalyticsTab />}
@@ -1032,17 +1066,22 @@ function AdSpaceCard({
   placement: p,
   canManage,
   rotationSeconds,
+  cpcUsd,
   onToggle,
   onSetRotation,
   onSetInterstitial,
+  onSetRate,
   onDelete,
 }: {
   placement: Placement;
   canManage: boolean;
   rotationSeconds: number;
+  /** The global click price, shown as the placeholder when a space has no rate. */
+  cpcUsd: number;
   onToggle: () => void;
   onSetRotation: (secs: number | null) => void;
   onSetInterstitial: (secs: number | null) => void;
+  onSetRate: (patch: { cpcUsd?: number | null; monthlyUsd?: number | null; isRentable?: boolean }) => void;
   onDelete: () => void;
 }) {
   // Effective interval for this space: its own override, else the global default.
@@ -1181,6 +1220,50 @@ function AdSpaceCard({
           <span className="whitespace-nowrap">
             sec{p.rotationSeconds == null && ` · default ${rotationSeconds}`}
           </span>
+        </div>
+      )}
+
+      {canManage && (
+        <div className="pt-1 border-t border-slate-800 space-y-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Rate card</p>
+          <div className="flex items-center gap-2 text-[11px] text-slate-400">
+            <label className="whitespace-nowrap w-20">Per click $</label>
+            <input
+              type="number"
+              step={0.01}
+              min={0.001}
+              defaultValue={p.cpcUsd == null ? "" : String(p.cpcUsd)}
+              placeholder={String(cpcUsd)}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if ((p.cpcUsd == null ? "" : String(Number(p.cpcUsd))) === (v === "" ? "" : String(Number(v)))) return;
+                onSetRate({ cpcUsd: v === "" ? null : Number(v) });
+              }}
+              className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-center"
+            />
+            {p.cpcUsd == null && (
+              <span className="whitespace-nowrap text-slate-600">global rate</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-slate-400">
+            <label className="whitespace-nowrap w-20">Per month $</label>
+            <input
+              type="number"
+              step={1}
+              min={0}
+              defaultValue={p.monthlyUsd == null ? "" : String(p.monthlyUsd)}
+              placeholder="not for rent"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if ((p.monthlyUsd == null ? "" : String(Number(p.monthlyUsd))) === (v === "" ? "" : String(Number(v)))) return;
+                onSetRate({ monthlyUsd: v === "" ? null : Number(v), isRentable: v !== "" });
+              }}
+              className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-center"
+            />
+            {p.isRentable && p.monthlyUsd != null && (
+              <span className="whitespace-nowrap text-emerald-400 font-semibold">for rent</span>
+            )}
+          </div>
         </div>
       )}
 

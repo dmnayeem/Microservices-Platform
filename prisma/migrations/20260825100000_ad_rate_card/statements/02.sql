@@ -1,0 +1,1 @@
+ALTER TABLE "AdPlacement" ADD COLUMN IF NOT EXISTS "monthlyUsd" DECIMAL(18,6);
