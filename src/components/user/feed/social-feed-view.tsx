@@ -61,17 +61,26 @@ export function SocialFeedView({
   const [sort, setSort] = useState<Sort>("recent");
 
   return (
+    // The right rail appears at `xl`, not `lg`, and the mobile strips below hold
+    // on until the same point.
+    //
+    // The shell already spends 352px before this component gets any width
+    // (`lg:pl-72` = 288px of nav, plus `lg:px-8` = 64px of padding). At the `lg`
+    // breakpoint that leaves 672px, but the two columns need 920px — 576 for the
+    // feed, 24 gap, 320 for the rail, which is `shrink-0`. So every laptop in the
+    // 1024–1279px band rendered the feed at ~328px: narrower than a phone, with
+    // a full-width rail beside it. 1280px is the first width where both fit.
     <div className="mx-auto w-full max-w-5xl flex justify-center gap-6">
       {/* Center feed column (FB/Twitter-width) */}
       <div className="w-full max-w-xl min-w-0 space-y-4">
         {/* Banner — above the tabs, visible on both Feed and Groups */}
         {initialBanners.length > 0 && <BannerSlider slides={initialBanners} />}
 
-        {/* Mobile/tablet earn strip — Daily Bonus + Quick Earn (desktop uses the rail) */}
-        <MobileEarnBlock quickEarn={quickEarn} className="lg:hidden" />
+        {/* Earn strip — Daily Bonus + Quick Earn. Shown until the rail appears at xl. */}
+        <MobileEarnBlock quickEarn={quickEarn} className="xl:hidden" />
 
-        {/* Mobile/tablet active-events strip — below the banner (desktop uses the rail) */}
-        <ActiveEventsCard className="lg:hidden" />
+        {/* Active-events strip, below the banner. Shown until the rail appears at xl. */}
+        <ActiveEventsCard className="xl:hidden" />
 
         {/* Top tabs */}
         <nav className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none">
@@ -120,8 +129,8 @@ export function SocialFeedView({
         {tab === "groups" && <GroupsTab />}
       </div>
 
-      {/* Right sidebar — desktop/laptop (lg+). Mobile/tablet unchanged. */}
-      <aside className="hidden lg:block w-80 shrink-0">
+      {/* Right rail — only where both columns actually fit (xl+). See above. */}
+      <aside className="hidden xl:block w-80 shrink-0">
         <div className="sticky top-20 space-y-4">
           <ActiveEventsCard />
           <FeedRightRail

@@ -77,7 +77,7 @@ function claimableNow(ev: EventItem): boolean {
 
 /**
  * Compact "Active Events" widget for the feed. Shown in the desktop right rail
- * and below the banner on mobile (a distinct instance gated `lg:hidden` by the
+ * and below the banner on narrower screens (a distinct instance gated `xl:hidden` by the
  * caller). Self-fetches `/api/events` — the same per-user endpoint the full
  * events page uses — so progress + claim state are always live. Renders nothing
  * when there are no active events, so it never leaves an empty box.

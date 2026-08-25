@@ -21,7 +21,7 @@ interface Widgets {
  * Mobile/tablet-only earn strip shown below the feed banner slider: a Daily
  * Bonus claim card on top, then the Quick Earn tiles (3-up mobile, 4-up tablet).
  * Self-fetches its widget data — it renders on a different breakpoint than the
- * desktop right rail (`lg:hidden`), so they never both mount on the same screen.
+ * desktop right rail (`xl:hidden`), so they never both mount on the same screen.
  */
 export function MobileEarnBlock({
   quickEarn,
