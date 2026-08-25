@@ -434,6 +434,71 @@ async function main() {
     );
   }
 
+  /* 13. The console itself. */
+  console.log("\n13. The console");
+  {
+    const s = code("app/admin/finance/page.tsx");
+    const raw = src("app/admin/finance/page.tsx");
+    check(
+      "it is gated on finance.view, not a new permission",
+      /can\(session\.user\.id, "finance\.view"\)/.test(s)
+    );
+    check(
+      "all four tabs exist",
+      /"overview"/.test(s) &&
+        /"sources"/.test(s) &&
+        /"ledger"/.test(s) &&
+        /"users"/.test(s)
+    );
+    check(
+      "the range selector is server-side links, so figures cannot drift",
+      /\/admin\/finance\?tab=/.test(s)
+    );
+    check(
+      "both scopes are shown side by side rather than one silently chosen",
+      /balances\.real\.walletLiabilityUsd/.test(s) &&
+        /balances\.all\.walletLiabilityUsd/.test(s)
+    );
+    check("the reconciliation gap is surfaced", /recon\.differenceUsd/.test(s));
+    check("the UTC-day convention is disclosed", /Days are UTC/.test(raw));
+    check(
+      "the invoice-details warning appears when the business details are blank",
+      /billingIncomplete/.test(s) && /billing\.seller_name/.test(s)
+    );
+    check(
+      "pending payouts are labelled as already deducted from balances",
+      /already left wallets/.test(raw)
+    );
+  }
+  {
+    const s = code("app/api/admin/finance/ledger/route.ts");
+    check("the ledger route is gated on finance.view", /"finance\.view"/.test(s));
+    check(
+      "it can export exactly what is on screen",
+      /sp\.get\("format"\) === "csv"/.test(s) && /csvResponse\(/.test(s)
+    );
+    check(
+      "it marks staff rows, so a staff-driven figure is visible in the list",
+      /isStaff/.test(s)
+    );
+    check(
+      "it reports whether the count is exact under a source filter",
+      /totalIsExact/.test(s)
+    );
+  }
+  {
+    const s = code("components/admin/finance/ledger-tab.tsx");
+    check(
+      "a row opens a drilldown that shows how it was classified",
+      /Counts as/.test(src("components/admin/finance/ledger-tab.tsx")) &&
+        /ModalShell/.test(s)
+    );
+    check(
+      "source colours come from the shared taxonomy, so admin and wallet agree",
+      /SOURCE_META/.test(s)
+    );
+  }
+
   console.log(
     `\n${passed} passed, ${failures.length} failed` +
       (failures.length ? `\n\n${failures.map((f) => `  - ${f}`).join("\n")}\n` : "\n")
