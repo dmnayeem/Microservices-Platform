@@ -4,12 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 
-/** CSV cell escaper — handles commas/quotes/newlines so Excel parses cleanly. */
-function csvCell(v: string | number | null | undefined): string {
-  if (v === null || v === undefined) return "";
-  const s = String(v);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+import { csvCell } from "@/lib/csv";
 
 /**
  * `GET /api/admin/ads/report/export?days=N&scope=ad|placement|campaign|daily`

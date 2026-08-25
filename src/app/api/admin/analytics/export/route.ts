@@ -10,10 +10,7 @@ import {
   type SurveyQuestion,
   formatAnswerForDisplay,
 } from "@/lib/survey-tasks";
-
-function csvEscape(s: string): string {
-  return `"${(s ?? "").replace(/"/g, '""')}"`;
-}
+import { csvCell, csvResponse, toCsv } from "@/lib/csv";
 
 export async function GET(request: NextRequest) {
   try {
@@ -107,7 +104,7 @@ export async function GET(request: NextRequest) {
       ];
       const questionHeaders = questions.map((q) => q.prompt);
       csvContent =
-        [...baseHeaders, ...questionHeaders].map(csvEscape).join(",") + "\n";
+        [...baseHeaders, ...questionHeaders].map(csvCell).join(",") + "\n";
 
       csvContent += rows
         .map((s) => {
@@ -126,7 +123,7 @@ export async function GET(request: NextRequest) {
               a ? formatAnswerForDisplay(q, a[q.id]) : ""
             ),
           ];
-          return cells.map(csvEscape).join(",");
+          return cells.map(csvCell).join(",");
         })
         .join("\n");
 
@@ -156,13 +153,29 @@ export async function GET(request: NextRequest) {
       type UserExport = (typeof users)[number] & {
         package: { slug: string; name: string } | null;
       };
-      csvContent = "ID,Email,Name,Created At,Status,Package,Points Balance,Cash Balance,Total Earnings,Total Withdrawals,Referral Code,Country,Last Login\n";
-      csvContent += (users as unknown as UserExport[])
-        .map(
-          (u) =>
-            `"${u.id}","${u.email}","${u.name || ""}","${format(u.createdAt, "yyyy-MM-dd HH:mm:ss")}","${u.status}","${u.package?.name ?? ""}",${u.pointsBalance},${u.cashBalance},${u.totalEarnings},${u.totalWithdrawals},"${u.referralCode}","${u.country || ""}","${u.lastLoginAt ? format(u.lastLoginAt, "yyyy-MM-dd HH:mm:ss") : ""}"`
-        )
-        .join("\n");
+      // Built through the shared escaper. These rows used to be raw template
+      // literals that wrapped values in quotes WITHOUT doubling the inner ones,
+      // so a single `"` in somebody's name silently corrupted the file from
+      // that row onward — and a comma in a country name shifted every later
+      // column. `toNum` first because these are Prisma Decimals.
+      csvContent = toCsv(
+        ["ID", "Email", "Name", "Created At", "Status", "Package", "Points Balance", "Cash Balance", "Total Earnings", "Total Withdrawals", "Referral Code", "Country", "Last Login"],
+        (users as unknown as UserExport[]).map((u) => [
+          u.id,
+          u.email,
+          u.name || "",
+          format(u.createdAt, "yyyy-MM-dd HH:mm:ss"),
+          u.status,
+          u.package?.name ?? "",
+          u.pointsBalance,
+          toNum(u.cashBalance).toFixed(2),
+          toNum(u.totalEarnings).toFixed(2),
+          toNum(u.totalWithdrawals).toFixed(2),
+          u.referralCode,
+          u.country || "",
+          u.lastLoginAt ? format(u.lastLoginAt, "yyyy-MM-dd HH:mm:ss") : "",
+        ])
+      );
     } else if (reportType === "tasks") {
       // Task submissions export
       const submissionsData = await prisma.taskSubmission.findMany({
@@ -181,13 +194,22 @@ export async function GET(request: NextRequest) {
       };
       const submissions = submissionsData as SubmissionWithRelations[];
 
-      csvContent = "ID,User Email,User Name,Task Title,Task Type,Status,Points Earned,XP Earned,Submitted At,Reviewed At\n";
-      csvContent += submissions
-        .map(
-          (s) =>
-            `"${s.id}","${s.user.email}","${s.user.name || ""}","${s.task.title}","${s.task.type}","${s.status}",${s.pointsEarned || 0},${s.xpEarned || 0},"${format(s.createdAt, "yyyy-MM-dd HH:mm:ss")}","${s.reviewedAt ? format(s.reviewedAt, "yyyy-MM-dd HH:mm:ss") : ""}"`
-        )
-        .join("\n");
+      // Task titles are user-authored and routinely contain commas and quotes.
+      csvContent = toCsv(
+        ["ID", "User Email", "User Name", "Task Title", "Task Type", "Status", "Points Earned", "XP Earned", "Submitted At", "Reviewed At"],
+        submissions.map((s) => [
+          s.id,
+          s.user.email,
+          s.user.name || "",
+          s.task.title,
+          s.task.type,
+          s.status,
+          s.pointsEarned || 0,
+          s.xpEarned || 0,
+          format(s.createdAt, "yyyy-MM-dd HH:mm:ss"),
+          s.reviewedAt ? format(s.reviewedAt, "yyyy-MM-dd HH:mm:ss") : "",
+        ])
+      );
     } else if (reportType === "withdrawals") {
       // Withdrawals export
       const withdrawalsData = await prisma.withdrawal.findMany({
@@ -204,13 +226,23 @@ export async function GET(request: NextRequest) {
       };
       const withdrawals = withdrawalsData as WithdrawalWithRelations[];
 
-      csvContent = "ID,User Email,User Name,Amount,Fee,Net Amount,Method,Status,Created At,Processed At\n";
-      csvContent += withdrawals
-        .map(
-          (w) =>
-            `"${w.id}","${w.user.email}","${w.user.name || ""}",${w.amount},${w.fee},${w.netAmount},"${w.method}","${w.status}","${format(w.createdAt, "yyyy-MM-dd HH:mm:ss")}","${w.processedAt ? format(w.processedAt, "yyyy-MM-dd HH:mm:ss") : ""}"`
-        )
-        .join("\n");
+      // Interpolating a Prisma Decimal yields its raw 6-dp string, so the CSV
+      // and the UI disagreed by a cent on halves. toNum, then fix to 2.
+      csvContent = toCsv(
+        ["ID", "User Email", "User Name", "Amount", "Fee", "Net Amount", "Method", "Status", "Created At", "Processed At"],
+        withdrawals.map((w) => [
+          w.id,
+          w.user.email,
+          w.user.name || "",
+          toNum(w.amount).toFixed(2),
+          toNum(w.fee).toFixed(2),
+          toNum(w.netAmount).toFixed(2),
+          w.method,
+          w.status,
+          format(w.createdAt, "yyyy-MM-dd HH:mm:ss"),
+          w.processedAt ? format(w.processedAt, "yyyy-MM-dd HH:mm:ss") : "",
+        ])
+      );
     } else if (reportType === "transactions") {
       // Transactions export
       const transactionsData = await prisma.transaction.findMany({
@@ -227,13 +259,23 @@ export async function GET(request: NextRequest) {
       };
       const transactions = transactionsData as TransactionWithRelations[];
 
-      csvContent = "ID,User Email,User Name,Type,Status,Points,Amount,Description,Reference,Created At\n";
-      csvContent += transactions
-        .map(
-          (t) =>
-            `"${t.id}","${t.user.email}","${t.user.name || ""}","${t.type}","${t.status}",${t.points},${t.amount},"${t.description || ""}","${t.reference || ""}","${format(t.createdAt, "yyyy-MM-dd HH:mm:ss")}"`
-        )
-        .join("\n");
+      // `description` is free text written by a dozen code paths and is the
+      // field most likely to carry a comma or a quote.
+      csvContent = toCsv(
+        ["ID", "User Email", "User Name", "Type", "Status", "Points", "Amount", "Description", "Reference", "Created At"],
+        transactions.map((t) => [
+          t.id,
+          t.user.email,
+          t.user.name || "",
+          t.type,
+          t.status,
+          t.points,
+          toNum(t.amount).toFixed(6),
+          t.description || "",
+          t.reference || "",
+          format(t.createdAt, "yyyy-MM-dd HH:mm:ss"),
+        ])
+      );
     } else if (reportType === "traffic") {
       // Page/task-page traffic export (from the PageDailyStat rollup).
       const from = startOfDay(startDate);
@@ -275,7 +317,7 @@ export async function GET(request: NextRequest) {
             p._sum.uniqueVisitors ?? 0,
             avg(p._sum.totalDwellSec, p._sum.views),
           ]
-            .map((c) => csvEscape(String(c)))
+            .map((c) => csvCell(String(c)))
             .join(",")
         )
         .join("\n");
@@ -291,7 +333,7 @@ export async function GET(request: NextRequest) {
                 t._sum.uniqueVisitors ?? 0,
                 avg(t._sum.totalDwellSec, t._sum.views),
               ]
-                .map((c) => csvEscape(String(c)))
+                .map((c) => csvCell(String(c)))
                 .join(",")
             )
             .join("\n");
@@ -356,13 +398,9 @@ export async function GET(request: NextRequest) {
       exportFilename ??
       `earngpt-${reportType}-report-${format(now, "yyyy-MM-dd")}.csv`;
 
-    return new NextResponse(csvContent, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
+    // csvResponse adds the UTF-8 BOM. Without it Excel reads the file as the
+    // local codepage and every Bengali name in it comes out as mojibake.
+    return csvResponse(csvContent, filename);
   } catch (error) {
     console.error("Error exporting analytics:", error);
     return NextResponse.json(

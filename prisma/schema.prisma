@@ -1949,6 +1949,10 @@ model Transaction {
   @@index([reference])
   // Monthly finance rollup (status + createdAt range).
   @@index([status, createdAt])
+  // Per-type time series for the finance console. The composite above cannot
+  // serve `GROUP BY type` over a date window — it leads on status — so a
+  // per-source chart would scan the table without this.
+  @@index([type, createdAt])
   // Wallet history filtered by source type.
   @@index([userId, type, createdAt])
 }
@@ -2676,6 +2680,15 @@ model CourseEnrollment {
   completedLessons String[]               @default([])
   completedAt      DateTime?
   pricePaid        Decimal                @default(0) @db.Decimal(18, 6)
+  /// The platform's cut of this sale, in USD.
+  ///
+  /// `splitCoursePrice()` has always computed it, but it was only ever written
+  /// into `Transaction.metadata.platformFee` — so course revenue could not be
+  /// summed without opening every JSON blob, and no admin screen ever tried.
+  /// Marketplace has had `MarketplacePurchase.fee` all along; this is the same
+  /// idea. Nullable because rows written before this column existed genuinely
+  /// do not know their fee.
+  platformFeeUsd   Decimal?               @db.Decimal(18, 6)
   couponCode       String?
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt

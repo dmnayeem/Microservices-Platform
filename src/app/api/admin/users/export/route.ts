@@ -7,26 +7,7 @@ import { Prisma } from "@/generated/prisma";
 import { formatInternationalPhone } from "@/lib/phone-codes";
 import { userDisplayId } from "@/lib/display-id";
 
-/** Wrap a CSV cell value: handles commas, quotes, newlines, AND prevents
- *  Excel from stripping leading zeros / interpreting `+880…` as a formula. */
-function csvCell(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const str = String(value);
-  // Strings that look numeric but should stay as text (phone numbers, IDs
-  // beginning with 0, etc.) — wrap with the Excel "text formula" trick so
-  // Excel renders the literal value instead of casting to a number.
-  // Wrap with double quotes for any value that contains , " or \n too.
-  const needsQuote = /[",\n\r]/.test(str);
-  const escaped = str.replace(/"/g, '""');
-  return needsQuote ? `"${escaped}"` : escaped;
-}
-
-/** Phone numbers specifically need Excel-text wrapping so leading zeros and
- *  the `+` prefix survive. Format: `="+8801734410309"` */
-function csvPhoneCell(value: string): string {
-  if (!value) return "";
-  return `="${value.replace(/"/g, '""')}"`;
-}
+import { csvCell, csvPhoneCell } from "@/lib/csv";
 
 // GET /api/admin/users/export - Export users as CSV
 export async function GET(request: NextRequest) {

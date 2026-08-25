@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { csvCell, csvFilename, csvResponse } from "@/lib/csv";
 
 export async function GET() {
   const session = await auth();
@@ -50,36 +51,25 @@ export async function GET() {
     "Joined At",
   ].join(",");
 
-  const escape = (s: string | null | undefined) => {
-    if (s === null || s === undefined) return "";
-    const v = String(s).replace(/"/g, '""');
-    return /[,"\n]/.test(v) ? `"${v}"` : v;
-  };
-
   type UserWithPkg = (typeof referrers)[number] & {
     package: { slug: string; name: string } | null;
   };
   const rows = (referrers as unknown as UserWithPkg[]).map((u, i) =>
     [
       i + 1,
-      escape(u.id),
-      escape(u.name),
-      escape(u.email),
-      escape(u.referralCode),
+      csvCell(u.id),
+      csvCell(u.name),
+      csvCell(u.email),
+      csvCell(u.referralCode),
       counts[i] ?? 0,
       (earningsMap.get(u.id) ?? 0).toFixed(2),
-      escape(u.package?.name ?? ""),
-      escape(u.country),
+      csvCell(u.package?.name ?? ""),
+      csvCell(u.country),
       u.createdAt.toISOString(),
     ].join(",")
   );
 
-  const csv = [header, ...rows].join("\n");
-
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="referrals_${new Date().toISOString().slice(0, 10)}.csv"`,
-    },
-  });
+  // Through the shared builder: CRLF plus a UTF-8 BOM, so Bengali names survive
+  // Excel, and a comma in a country name no longer shifts every later column.
+  return csvResponse([header, ...rows].join("\r\n"), csvFilename("referrals"));
 }

@@ -259,6 +259,11 @@ export async function POST(
           courseId: course.id,
           userId: session.user.id,
           pricePaid: finalPrice,
+          // The platform's cut, on the row rather than only inside the ledger
+          // row's JSON below. Course revenue could not be summed without opening
+          // every metadata blob, so no admin screen ever did — /admin/courses
+          // reports `pricePaid` (gross) and calls it revenue.
+          platformFeeUsd: fee,
           couponCode: couponInfo?.code ?? null,
         },
       });
