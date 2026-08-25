@@ -48,24 +48,43 @@ infrastructure wrote".
 `@@unique([userId, reference])` ledger constraints are what prevent double-pay.
 The limiters exist so the database isn't the thing absorbing an attack.
 
-## Vercel Firewall rules to add (owner action)
+## Vercel Firewall rules
 
-Project → **Firewall** → *Configure* → add these as rate-limit rules. All are per
-IP. These numbers are deliberately generous — they are an abuse ceiling, not a
-product rule.
+Run **`bash scripts/apply-firewall.sh`** — it creates these through the Vercel
+CLI, shows you a diff, and publishes. Rules cannot live in `vercel.json`: its
+`mitigate` property supports only `challenge` and `deny`, not rate limits.
 
-| # | Match | Action |
-|---|---|---|
-| 1 | Path starts with `/api/spaces/panel` **or** `/api/ads/serve` | Rate limit **300 / 1 min** → challenge |
-| 2 | Path starts with `/api/search` | Rate limit **120 / 1 min** → challenge |
-| 3 | Path starts with `/api/upload` | Rate limit **60 / 1 min** → deny |
-| 4 | Path starts with `/api/withdrawal-ticker/stream` | Rate limit **10 / 1 min** → deny (each connection holds a function open for 5 min) |
-| 5 | Path starts with `/api/auth` | Rate limit **60 / 1 min** → challenge |
-| 6 | Path starts with `/api/` and method is `POST` | Rate limit **600 / 1 min** → challenge (catch-all) |
+All are per IP. The numbers are deliberately generous — an abuse ceiling, not a
+product rule. They are listed **in priority order**, because Vercel's plan limits
+are strict: **Hobby allows one rate-limit rule and three custom rules per
+project**; Pro allows forty. The script applies them in this order and stops
+cleanly when the plan refuses the next one, so on Hobby you get rule 1 and a
+clear message about the rest.
+
+| # | Match | Limit | Action | Why |
+|---|---|---|---|---|
+| 1 | Path starts with `/api/` **and** method is `POST` | 600 / 60s | challenge | The catch-all, and the one to keep if only one is allowed. Every write in the app is a POST, so this covers withdrawal, checkout, claim and submit at once — including routes not written yet. |
+| 2 | Path starts with `/api/auth` | 60 / 60s | challenge | Credential stuffing. The in-memory limiter on these routes is per-instance and is not a real bound (see above). |
+| 3 | Path starts with `/api/media` | 600 / 60s | challenge | The private-bucket proxy every image and video is streamed through. This is the one endpoint that bills real S3 egress on somebody else's traffic. |
+| 4 | Path starts with `/api/upload` | 60 / 60s | deny | S3 writes, up to 5 MB each. Deny rather than challenge — nothing legitimate uploads sixty files a minute. |
+| 5 | Path starts with `/api/ads/serve` | 300 / 60s | challenge | Hit on every page view. A flood loads the database *and* corrupts advertiser impression figures. |
+| 6 | Path starts with `/api/search` | 120 / 60s | challenge | Four parallel `contains` scans per call. |
 
 Prefer **challenge** over **deny** on user-facing paths: a real user behind a
 shared/carrier NAT can trip these, and a challenge lets them through while a
 script does not.
+
+### A note on keeping this list honest
+
+Two earlier rules pointed at routes that no longer existed — a *spaces panel*
+and a *withdrawal-ticker stream* — and one of them was justified by an SSE
+endpoint the codebase no longer has (`grep -rl text/event-stream src/app/api`
+returns nothing; the ticker is polled via `.../recent`). A firewall rule matching
+a dead path is worse than no rule: it reads as coverage. Meanwhile the busiest
+paid endpoint on the platform, the media proxy, was not covered at all.
+
+`scripts/verify-launch-todos.ts` now asserts that every path named in this table
+resolves to a real route under `src/app/api`, so this cannot drift again.
 
 ## Adding a limiter to a new route
 

@@ -158,11 +158,24 @@ async function main() {
     "it is suppressed on Browse & Earn, where the user is paid for dwell time",
     !anchorAllowedOnPath("/watch-ads") && !anchorAllowedOnPath("/watch-ads/x")
   );
+  // `/tasks` used to be asserted here as an "ordinary page". It is not — the
+  // user is paid to complete what is on it, and the anchor bar carries Google
+  // inventory (`networkAllowed: true`). The deny list has been widened from
+  // `["/watch-ads"]` to the full set of paid surfaces (`INCENTIVISED_PREFIXES`),
+  // so every task route is suppressed now. See docs/GOOGLE-ADS-SETUP.md.
   check(
     "it renders on ordinary pages",
     anchorAllowedOnPath("/dashboard") &&
-      anchorAllowedOnPath("/tasks") &&
-      anchorAllowedOnPath("/withdrawal")
+      anchorAllowedOnPath("/withdrawal") &&
+      anchorAllowedOnPath("/social") &&
+      anchorAllowedOnPath("/wallet")
+  );
+  check(
+    "it is suppressed on every paid surface, not just Browse & Earn",
+    !anchorAllowedOnPath("/tasks") &&
+      !anchorAllowedOnPath("/video-tasks/1") &&
+      !anchorAllowedOnPath("/games") &&
+      !anchorAllowedOnPath("/offerwalls")
   );
   check(
     "a path that merely starts with the same letters is not suppressed",

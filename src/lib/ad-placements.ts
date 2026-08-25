@@ -275,25 +275,75 @@ export function isInterstitialPlacement(name: string): boolean {
 }
 
 /**
+ * Every route where the user is PAID to be on the page.
+ *
+ * `networkAllowed: false` above governs the slots *we* render. It does not
+ * govern Auto ads, which Google injects from the page-level `adsbygoogle.js`
+ * wherever it decides to — so the policy was enforced for the ads we ask for and
+ * unenforced for the ads Google places itself. Since `NetworkScripts` is mounted
+ * in the ROOT layout, that script would load on every one of these pages the
+ * moment a publisher id is saved. An Auto ad on an incentivised page is the
+ * specific thing that gets an AdSense account banned.
+ *
+ * This list is therefore the one place that answers "is the user being paid to
+ * look at this screen", and it is used to decide whether Google's scripts load
+ * at all (`src/components/providers/network-scripts.tsx`).
+ *
+ * Prefix match: a nested route under one of these is covered too.
+ * `scripts/verify-launch-todos.ts` asserts every entry resolves to a real route,
+ * so renaming a page fails the build check rather than silently losing cover.
+ */
+export const INCENTIVISED_PREFIXES = [
+  // Task surfaces — every one of these pays points on completion.
+  "/tasks",
+  "/app-install-tasks",
+  "/article-tasks",
+  "/board-tasks",
+  "/custom-tasks",
+  "/manual-tasks",
+  "/proxy-tasks",
+  "/quiz-tasks",
+  "/social-tasks",
+  "/survey-tasks",
+  "/video-tasks",
+  // Paid-attention surfaces.
+  "/watch-ads",
+  "/earn",
+  "/games",
+  "/offerwalls",
+  "/offer",
+  // Reward loops.
+  "/daily-mission",
+  "/missions",
+  "/milestones",
+  "/lottery",
+  "/quizzes",
+] as const;
+
+/** Is the user being paid to be on this path? Prefix match, nested included. */
+export function isIncentivisedPath(pathname: string): boolean {
+  return INCENTIVISED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+/**
  * Routes the sticky anchor bar must NOT appear on.
  *
  * `ANCHOR_BOTTOM` carries Google inventory (`networkAllowed: true`), and it is
  * mounted once in the app shell, so it would otherwise land on every screen —
- * including the ones where the user is being PAID to be there. AdSense and Ad
- * Manager prohibit their ads on incentivised surfaces, and this is the only
- * mount in the codebase that could put one there by accident.
+ * including the ones where the user is being PAID to be there.
  *
- * `/watch-ads` pays points for dwell time and already carries its own
- * `EARN_BROWSE` slots, which are house-only for exactly this reason.
- *
- * Prefix match: a nested route under one of these is suppressed too.
+ * Derived from `INCENTIVISED_PREFIXES` rather than kept as its own list: this
+ * used to be just `["/watch-ads"]`, which was correct for the bar but far
+ * narrower than the real set of paid surfaces. Two hand-maintained lists of "the
+ * pages Google's ads must not touch" would drift, and the narrower one would win
+ * silently.
  */
-export const ANCHOR_DENY_PREFIXES = ["/watch-ads"] as const;
+export const ANCHOR_DENY_PREFIXES = INCENTIVISED_PREFIXES;
 
 export function anchorAllowedOnPath(pathname: string): boolean {
-  return !ANCHOR_DENY_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
-  );
+  return !isIncentivisedPath(pathname);
 }
 
 /** Placements a game may be pointed at. */

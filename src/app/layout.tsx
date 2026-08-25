@@ -17,6 +17,7 @@ import "@fontsource/noto-sans-bengali/600.css";
 import "@fontsource/noto-sans-bengali/700.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { NetworkScripts } from "@/components/providers/network-scripts";
+import { getSetting } from "@/lib/system-settings";
 import { Toaster } from "sonner";
 import { CookieConsent } from "@/components/user/primitives/cookie-consent";
 import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
@@ -112,7 +113,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const ui = await getUiToggles();
+  // Google's certified CMP and our own cookie banner are two consent surfaces
+  // for the same decision. With both on, the visitor is asked twice — and the
+  // homegrown one is not TCF-certified, so it can never be the answer Google
+  // reads. When the CMP is enabled it owns consent and ours stands down;
+  // `src/lib/ad-consent.ts` keeps reading the stored preference either way, so
+  // nothing regresses for non-EEA traffic.
+  const [ui, googleCmp] = await Promise.all([
+    getUiToggles(),
+    getSetting<boolean>("ads.google_cmp_enabled", false),
+  ]);
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
@@ -158,7 +168,7 @@ export default async function RootLayout({
           <PageViewTracker />
           <ServiceWorkerRegister />
           <SplashScreen />
-          <CookieConsent enabled={ui.cookiesPopup} />
+          <CookieConsent enabled={ui.cookiesPopup && !googleCmp} />
           <PushPermissionPrompt enabled={ui.notificationPopup} />
           <PwaInstallPrompt enabled={ui.pwaInstallPrompt} />
           <ConfirmHost />

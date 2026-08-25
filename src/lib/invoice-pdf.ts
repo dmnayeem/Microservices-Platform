@@ -97,6 +97,12 @@ export async function renderInvoicePdf(inv: InvoicePdfInput): Promise<Buffer> {
   const clamp = (s: string, max: number) =>
     s.length > max ? `${s.slice(0, max - 1)}…` : s;
 
+  // Whatever the seller calls their tax number. Bangladesh issues a BIN, the
+  // EU a VAT number; printing a hardcoded "Tax ID" over a BIN is wrong on a
+  // document that has to satisfy an auditor. `billing.tax_label` already holds
+  // this and every other total on the page already uses it.
+  const taxIdLabel = safe(inv.taxLabel || "").trim() || "Tax ID";
+
   /* ── Header ─────────────────────────────────────────────────────────── */
   text(safe(inv.seller.name) || "Invoice", M, y - 4, 18, bold, accent);
   right(inv.kind === "RECEIPT" ? "RECEIPT" : "INVOICE", width - M, y - 2, 20, bold, ink);
@@ -114,7 +120,7 @@ export async function renderInvoicePdf(inv: InvoicePdfInput): Promise<Buffer> {
     y -= 11;
   }
   if (inv.seller.taxId) {
-    text(safe(`Tax ID: ${inv.seller.taxId}`), M, y, 9, font, muted);
+    text(safe(`${taxIdLabel}: ${inv.seller.taxId}`), M, y, 9, font, muted);
     y -= 11;
   }
 
@@ -143,7 +149,7 @@ export async function renderInvoicePdf(inv: InvoicePdfInput): Promise<Buffer> {
     y -= 11;
   }
   if (inv.billTo.taxId) {
-    text(safe(`Tax ID: ${inv.billTo.taxId}`), M, y, 9, font, muted);
+    text(safe(`${taxIdLabel}: ${inv.billTo.taxId}`), M, y, 9, font, muted);
     y -= 11;
   }
 
