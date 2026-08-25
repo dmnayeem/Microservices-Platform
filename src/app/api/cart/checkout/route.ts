@@ -265,6 +265,10 @@ export async function POST(request: NextRequest) {
           amount: -total,
           points: 0,
           description: `Cart checkout (${cart.length} listing${cart.length > 1 ? "s" : ""})`,
+          // Per-occurrence by design. A second checkout of a refilled cart
+          // with the same contents is a normal thing to do.
+          // A deterministic key would make `Transaction @@unique([userId, reference])`
+          // reject the second one, so this stays keyed on the instant it happened.
           reference: `cart_${Date.now()}_${userId}`,
           metadata: {
             listingIds: cart.map((c) => c.listing.id),

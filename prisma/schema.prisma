@@ -1516,8 +1516,6 @@ model User {
   badges                            UserBadge[]
   achievements                      UserAchievement[]
   referralEarnings                  ReferralEarning[]
-  pointGifts                        PointGift[]                  @relation("PointGiftSender")
-  receivedGifts                     PointGift[]                  @relation("PointGiftReceiver")
   mediaUploads                      Media[]
   cartItems                         CartItem[]
   votes                             Vote[]
@@ -2945,8 +2943,15 @@ model CourseCoupon {
 
 model CourseRefundRequest {
   id             String             @id @default(cuid())
-  enrollmentId   String
-  enrollment     CourseEnrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  /// Nullable, and SetNull rather than Cascade.
+  ///
+  /// Approving a refund deletes the enrolment (so the student can buy the
+  /// course again). Under Cascade that delete also destroyed THIS row — which
+  /// the same transaction then tried to mark APPROVED, hitting P2025 and rolling
+  /// the whole refund back. No course refund had ever succeeded. SetNull lets
+  /// the enrolment go while the refund record survives as the audit trail.
+  enrollmentId   String?
+  enrollment     CourseEnrollment?  @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   courseId       String
   course         Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
   userId         String
@@ -3624,6 +3629,13 @@ model UserAchievement {
   progress      Int         @default(0)
   isCompleted   Boolean     @default(false)
   completedAt   DateTime?
+  /// When the user collected `pointsReward` / `xpReward`.
+  ///
+  /// Unlocking and being paid are deliberately separate. Nothing ever wrote a
+  /// `UserAchievement` row before, so switching the unlock engine on would
+  /// otherwise have credited every existing user for every threshold they had
+  /// already crossed, all at once, with no record of the decision.
+  claimedAt     DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -3632,21 +3644,6 @@ model UserAchievement {
   // Foreign key with no covering index — Postgres does not create one,
   // so both the join and the parent-delete referential check were scans.
   @@index([achievementId])
-}
-
-model PointGift {
-  id         String   @id @default(cuid())
-  senderId   String
-  sender     User     @relation("PointGiftSender", fields: [senderId], references: [id])
-  receiverId String
-  receiver   User     @relation("PointGiftReceiver", fields: [receiverId], references: [id])
-  points     Int
-  message    String?
-  createdAt  DateTime @default(now())
-
-  @@index([senderId])
-  @@index([receiverId])
-  @@index([createdAt])
 }
 
 model Notification {

@@ -238,7 +238,7 @@ export async function POST() {
     // Handle day 7 bonus (mystery box)
     let bonusReward = null;
     if (reward.bonus === "mystery_box") {
-      bonusReward = await claimMysteryBox(session.user.id);
+      bonusReward = await claimMysteryBox(session.user.id, todayKey);
     }
 
     return NextResponse.json({
@@ -272,10 +272,22 @@ export async function POST() {
 }
 
 
-// Helper function for mystery box bonus
+/**
+ * Day-7 mystery box.
+ *
+ * `dayKey` is the caller's LOCAL day — the same key the daily reward row itself
+ * is written under. The reference used to be `mystery_${Date.now()}`, which was
+ * unique on every call and so could never be deduped by
+ * `Transaction @@unique([userId, reference])`; the box was only ever protected
+ * by the one-claim-per-day guard above it.
+ *
+ * Returns `null` when the box has already been opened today, so the caller can
+ * still report the daily reward it just credited.
+ */
 async function claimMysteryBox(
-  userId: string
-): Promise<{ type: string; value: number }> {
+  userId: string,
+  dayKey: string
+): Promise<{ type: string; value: number } | null> {
   // Random bonus: extra points, XP, or special reward
   const bonusTypes = [
     { type: "points", min: 100, max: 500 },
@@ -291,25 +303,39 @@ async function claimMysteryBox(
   // Apply bonus
   if (selectedBonus.type === "points") {
     const pointsPerUsd = await getPointsPerUsd();
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        pointsBalance: { increment: value },
-        totalEarnings: { increment: value / pointsPerUsd },
-      },
-    });
-
-    await prisma.transaction.create({
-      data: {
-        userId,
-        type: TransactionType.BONUS,
-        status: TransactionStatus.COMPLETED,
-        points: value,
-        amount: value / pointsPerUsd,
-        description: "Mystery Box reward",
-        reference: `mystery_${Date.now()}`,
-      },
-    });
+    try {
+      // The balance bump and the ledger row are now ONE transaction. They used
+      // to be two separate awaits, so a failure between them credited points
+      // with no ledger row behind them — invisible in history and unaccounted
+      // for in every finance total.
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            pointsBalance: { increment: value },
+            totalEarnings: { increment: value / pointsPerUsd },
+          },
+        });
+        await tx.transaction.create({
+          data: {
+            userId,
+            type: TransactionType.BONUS,
+            status: TransactionStatus.COMPLETED,
+            points: value,
+            amount: value / pointsPerUsd,
+            description: "Mystery Box reward",
+            reference: `mystery_${dayKey}`,
+          },
+        });
+      });
+    } catch (err) {
+      // Caught HERE, not by the route's outer handler. The outer catch maps a
+      // duplicate to "Daily reward already claimed today" (400) — which would be
+      // wrong and confusing, because the daily reward has just been credited
+      // successfully and only the bonus was a replay.
+      if (isDuplicateLedgerError(err)) return null;
+      throw err;
+    }
   } else if (selectedBonus.type === "xp") {
     await prisma.user.update({
       where: { id: userId },

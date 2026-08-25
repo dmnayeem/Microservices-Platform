@@ -6,6 +6,7 @@ import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getBrowseEarnConfig } from "@/lib/browse-earn";
 import { getUserDayContext } from "@/lib/user-day";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
 
 /**
  * Credit one Browse & Earn interval. The interval cooldown AND the per-local-day
@@ -29,10 +30,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Browse & Earn is off" }, { status: 400 });
   }
 
-  const { startOfDayUtc } = await getUserDayContext(userId);
+  const { startOfDayUtc, dayKey } = await getUserDayContext(userId);
   const pointsPerUsd = await getPointsPerUsd();
 
-  const outcome = await prisma.$transaction(async (tx) => {
+  // Per-INTERVAL idempotency key. The reference used to be `browse_${Date.now()}`,
+  // unique on every call, so `Transaction @@unique([userId, reference])` could
+  // never dedupe a Browse & Earn credit — the row lock below was the only guard.
+  //
+  // A per-day key would be wrong here: unlike the daily reward, this event is
+  // *meant* to repeat all day. Bucketing by tick is what makes it safe — the
+  // cooldown enforced under `FOR UPDATE` guarantees any two legitimate credits
+  // are at least `tickSeconds` apart, and two timestamps that far apart cannot
+  // land in the same bucket. A collision therefore only ever means a replay.
+  const tickIndex = Math.floor(
+    (Date.now() - startOfDayUtc.getTime()) / (cfg.tickSeconds * 1000)
+  );
+  const reference = `browse_${dayKey}_${tickIndex}`;
+
+  const outcome = await prisma
+    .$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
 
     // Interval cooldown — the last credit must be at least tickSeconds old.
@@ -77,7 +93,7 @@ export async function POST(request: NextRequest) {
         points,
         amount: points / pointsPerUsd,
         description: "Browse & Earn reward",
-        reference: `browse_${Date.now()}`,
+        reference,
       },
     });
     return {
@@ -85,7 +101,17 @@ export async function POST(request: NextRequest) {
       todayEarned: earnedToday + points,
       newBalance: user.pointsBalance,
     } as const;
-  });
+    })
+    .catch((err: unknown) => {
+      // Only reachable if an admin changes `tickSeconds` mid-day and re-indexes
+      // the buckets under a claim already made. That is a conflict, not a server
+      // fault, so it gets the same answer as the cooldown branch below rather
+      // than a 500.
+      if (isDuplicateLedgerError(err)) {
+        return { cooldownRemaining: cfg.tickSeconds } as const;
+      }
+      throw err;
+    });
 
   if ("cooldownRemaining" in outcome) {
     return NextResponse.json(

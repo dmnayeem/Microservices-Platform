@@ -344,12 +344,12 @@ async function main() {
   const achievements = await prisma.achievement.createMany({
     skipDuplicates: true,
     data: [
-      { name: "First Task", description: "Complete your first task", icon: "target", type: "tasks", threshold: 1, pointsReward: 50, xpReward: 10 },
-      { name: "Task Beginner", description: "Complete 10 tasks", icon: "clipboard", type: "tasks", threshold: 10, pointsReward: 200, xpReward: 50 },
-      { name: "Task Pro", description: "Complete 50 tasks", icon: "trophy", type: "tasks", threshold: 50, pointsReward: 500, xpReward: 150 },
-      { name: "First Referral", description: "Refer your first friend", icon: "users", type: "referrals", threshold: 1, pointsReward: 100, xpReward: 25 },
-      { name: "Referral Star", description: "Refer 5 friends", icon: "star", type: "referrals", threshold: 5, pointsReward: 500, xpReward: 100 },
-      { name: "First Withdrawal", description: "Make your first withdrawal", icon: "wallet", type: "withdrawals", threshold: 1, pointsReward: 100, xpReward: 25 },
+      { name: "First Task", description: "Complete your first task", icon: "target", type: "tasks_completed", threshold: 1, pointsReward: 50, xpReward: 10 },
+      { name: "Task Beginner", description: "Complete 10 tasks", icon: "clipboard", type: "tasks_completed", threshold: 10, pointsReward: 200, xpReward: 50 },
+      { name: "Task Pro", description: "Complete 50 tasks", icon: "trophy", type: "tasks_completed", threshold: 50, pointsReward: 500, xpReward: 150 },
+      { name: "First Referral", description: "Refer your first friend", icon: "users", type: "referrals_made", threshold: 1, pointsReward: 100, xpReward: 25 },
+      { name: "Referral Star", description: "Refer 5 friends", icon: "star", type: "referrals_made", threshold: 5, pointsReward: 500, xpReward: 100 },
+      { name: "First Withdrawal", description: "Make your first withdrawal", icon: "wallet", type: "withdrawals_made", threshold: 1, pointsReward: 100, xpReward: 25 },
     ],
   });
   console.log(`Created ${achievements.count} achievements`);

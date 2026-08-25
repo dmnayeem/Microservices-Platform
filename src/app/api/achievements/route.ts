@@ -1,10 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPointsPerUsd } from "@/lib/economy";
-import { toNum } from "@/lib/money";
+import {
+  evaluateAchievements,
+  measureAll,
+  progressFor,
+  resolveAchievementType,
+} from "@/lib/achievements";
 
-// GET /api/achievements - Get all achievements and user's progress
+/**
+ * GET /api/achievements — every achievement, with this user's progress.
+ *
+ * Reading the page also EVALUATES it. There is no background job, and the
+ * money paths only fire `runAchievementCheck` on the events they know about
+ * (task approval, referral, withdrawal); a threshold crossed some other way
+ * would otherwise sit unnoticed until one of those happened to run. Evaluation
+ * writes no money, so doing it on a read is safe.
+ */
 export async function GET() {
   try {
     const session = await auth();
@@ -12,78 +24,50 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = session.user.id;
 
-    // Get all available achievements
-    const achievements = await prisma.achievement.findMany({
-      where: { isActive: true },
-      orderBy: [{ type: "asc" }, { threshold: "asc" }],
-    });
+    // Bring unlocks up to date before reading them back, so a user who crossed
+    // a threshold sees it on this load rather than the next one.
+    await evaluateAchievements(userId).catch(() => {});
 
-    // Get user's unlocked achievements
-    const userAchievements = await prisma.userAchievement.findMany({
-      where: { userId: session.user.id },
-      select: {
-        achievementId: true,
-        completedAt: true,
-        isCompleted: true,
-        progress: true,
-      },
-    });
+    const [achievements, userAchievements] = await Promise.all([
+      prisma.achievement.findMany({
+        where: { isActive: true },
+        orderBy: [{ type: "asc" }, { threshold: "asc" }],
+      }),
+      prisma.userAchievement.findMany({
+        where: { userId },
+        select: {
+          achievementId: true,
+          completedAt: true,
+          isCompleted: true,
+          claimedAt: true,
+          progress: true,
+        },
+      }),
+    ]);
 
-    const unlockedMap = new Map(
-      userAchievements.map((ua) => [ua.achievementId, { completedAt: ua.completedAt, isCompleted: ua.isCompleted, progress: ua.progress }])
+    const stateMap = new Map(userAchievements.map((ua) => [ua.achievementId, ua]));
+
+    // One measurement per distinct type, shared across every achievement that
+    // uses it — `src/lib/achievements.ts` is the single definition of what each
+    // type counts, so this can no longer disagree with the unlock engine.
+    const measured = await measureAll(
+      userId,
+      achievements.map((a) => a.type)
     );
 
-    // Get user stats for progress calculation
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        level: true,
-        xp: true,
-        totalEarnings: true,
-        _count: {
-          select: {
-            taskSubmissions: true,
-            referrals: true,
-            transactions: true,
-          },
-        },
-      },
-    });
-
-    // Calculate progress for each achievement
-    const pointsPerUsd = await getPointsPerUsd();
     const processedAchievements = achievements.map((achievement) => {
-      const userProgress = unlockedMap.get(achievement.id);
-
-      // Calculate current progress based on achievement type
-      let currentProgress = 0;
-      if (user) {
-        switch (achievement.type) {
-          case "tasks_completed":
-            currentProgress = user._count.taskSubmissions;
-            break;
-          case "level_reached":
-            currentProgress = user.level;
-            break;
-          case "xp_earned":
-            currentProgress = user.xp;
-            break;
-          case "points_earned":
-            currentProgress = Math.round(toNum(user.totalEarnings) * pointsPerUsd);
-            break;
-          case "referrals_made":
-            currentProgress = user._count.referrals;
-            break;
-          default:
-            currentProgress = 0;
-        }
-      }
-
-      const progressPercentage = Math.min(
-        100,
-        Math.round((currentProgress / achievement.threshold) * 100)
-      );
+      const state = stateMap.get(achievement.id);
+      const currentProgress = progressFor(measured, achievement.type);
+      const progressPercentage =
+        achievement.threshold > 0
+          ? Math.min(
+              100,
+              Math.round((currentProgress / achievement.threshold) * 100)
+            )
+          : 0;
+      const isUnlocked = state?.isCompleted ?? false;
 
       return {
         id: achievement.id,
@@ -91,6 +75,8 @@ export async function GET() {
         description: achievement.description,
         icon: achievement.icon,
         type: achievement.type,
+        // What to actually do, so an unmet card is not a mystery.
+        typeLabel: resolveAchievementType(achievement.type)?.label ?? achievement.type,
         threshold: achievement.threshold,
         pointsReward: achievement.pointsReward,
         xpReward: achievement.xpReward,
@@ -99,8 +85,14 @@ export async function GET() {
           target: achievement.threshold,
           percentage: progressPercentage,
         },
-        isUnlocked: userProgress?.isCompleted || false,
-        completedAt: userProgress?.completedAt || null,
+        isUnlocked,
+        completedAt: state?.completedAt ?? null,
+        isClaimed: state?.claimedAt != null,
+        claimedAt: state?.claimedAt ?? null,
+        canClaim:
+          isUnlocked &&
+          state?.claimedAt == null &&
+          (achievement.pointsReward > 0 || achievement.xpReward > 0),
       };
     });
 
@@ -116,11 +108,16 @@ export async function GET() {
 
     // Calculate summary stats
     const totalAchievements = achievements.length;
-    const unlockedCount = userAchievements.filter((ua) => ua.isCompleted).length;
-    const totalPoints = userAchievements.reduce((sum, ua) => {
-      const achievement = achievements.find((a) => a.id === ua.achievementId);
-      return sum + (achievement?.pointsReward || 0);
-    }, 0);
+    const unlockedCount = processedAchievements.filter((a) => a.isUnlocked).length;
+    // Points actually COLLECTED. This used to sum every `UserAchievement` row
+    // regardless of `isCompleted`, so a user in progress towards an achievement
+    // was shown its reward as though they already had it.
+    const pointsEarned = processedAchievements
+      .filter((a) => a.isClaimed)
+      .reduce((sum, a) => sum + a.pointsReward, 0);
+    const pointsClaimable = processedAchievements
+      .filter((a) => a.canClaim)
+      .reduce((sum, a) => sum + a.pointsReward, 0);
 
     return NextResponse.json({
       achievements: processedAchievements,
@@ -129,27 +126,27 @@ export async function GET() {
       summary: {
         total: totalAchievements,
         unlocked: unlockedCount,
-        percentage: totalAchievements > 0
-          ? Math.round((unlockedCount / totalAchievements) * 100)
-          : 0,
-        pointsEarned: totalPoints,
+        percentage:
+          totalAchievements > 0
+            ? Math.round((unlockedCount / totalAchievements) * 100)
+            : 0,
+        pointsEarned,
+        pointsClaimable,
       },
-      recentUnlocks: userAchievements
-        .filter((ua) => ua.isCompleted && ua.completedAt)
+      recentUnlocks: processedAchievements
+        .filter((a) => a.isUnlocked && a.completedAt)
         .sort(
           (a, b) =>
-            new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime()
+            new Date(b.completedAt!).getTime() -
+            new Date(a.completedAt!).getTime()
         )
         .slice(0, 5)
-        .map((ua) => {
-          const achievement = achievements.find((a) => a.id === ua.achievementId);
-          return {
-            id: ua.achievementId,
-            name: achievement?.name,
-            icon: achievement?.icon,
-            completedAt: ua.completedAt,
-          };
-        }),
+        .map((a) => ({
+          id: a.id,
+          name: a.name,
+          icon: a.icon,
+          completedAt: a.completedAt,
+        })),
     });
   } catch (error) {
     console.error("Error fetching achievements:", error);

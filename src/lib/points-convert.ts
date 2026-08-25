@@ -85,6 +85,10 @@ export async function convertPointsToCash(
           points: -amount,
           amount: usd,
           description: `Converted ${amount.toLocaleString()} points to ${formatUsd(usd)}`,
+          // Per-occurrence by design. A user may convert points to cash
+          // twice in a session, for the same amount, quite legitimately.
+          // A deterministic key would make `Transaction @@unique([userId, reference])`
+          // reject the second one, so this stays keyed on the instant it happened.
           reference: `convert_${userId}_${Date.now()}`,
         },
       });

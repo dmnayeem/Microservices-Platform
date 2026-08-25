@@ -468,6 +468,10 @@ export async function PATCH(
           points: pointsDelta,
           amountUsd: cashDelta,
           description: `Admin balance ${pointsDelta + cashDelta >= 0 ? "credit" : "debit"}`,
+          // Per-occurrence by design. An admin may apply the same balance
+          // adjustment to one user more than once.
+          // A deterministic key would make `Transaction @@unique([userId, reference])`
+          // reject the second one, so this stays keyed on the instant it happened.
           reference: `admin_edit_${id}_${Date.now()}`,
           metadata: { adminId: session.user.id, via: "edit-user" },
         });

@@ -59,6 +59,7 @@ import {
 } from "@/lib/phash";
 import { createHash } from "crypto";
 import { recordUserAction } from "@/lib/goal-progress";
+import { runAchievementCheck } from "@/lib/achievements";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -1177,6 +1178,10 @@ export async function POST(
         action: task.type === "QUIZ" ? "quiz_approved" : "task_approved",
         targetId: submission.id,
       });
+
+      // Achievements — the auto-approve twin of the admin path. Best-effort by
+      // contract; it cannot fail the payment that has already committed.
+      await runAchievementCheck(session.user.id);
 
       return NextResponse.json({
         submission: updatedSubmission,

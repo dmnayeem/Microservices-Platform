@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
+import { runAchievementCheck } from "@/lib/achievements";
 import { toNum } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { deliverToUser } from "@/lib/notify";
@@ -211,6 +212,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (!withdrawal) {
         return NextResponse.json({ error: ALREADY_HANDLED }, { status: 409 });
       }
+
+      // A completed withdrawal is what `withdrawals_made` counts. Best-effort —
+      // it can never fail a payout that has already gone out.
+      void runAchievementCheck(existingWithdrawal.userId);
 
       await writeAudit({
         actorId: session.user.id,

@@ -5,12 +5,16 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { DisputeStatus, NotificationType, TransactionType, TransactionStatus } from "@/generated/prisma";
-import { getPointsPerUsd } from "@/lib/economy";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { reverseAffiliateCommission } from "@/lib/affiliate";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
+
+/** Cents precision for the money split. `round2` in `@/lib/money` returns a
+ *  Decimal; these figures stay plain numbers all the way to Prisma. */
+const money2 = (n: number) => Math.round(n * 100) / 100;
 
 // GET /api/admin/disputes/[id] - Get dispute details for admin
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -312,12 +316,64 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
         // Handle refund if resolving in favor of buyer
         const refundAmount = inFavorOf === "BUYER" && resolvedAmount ? resolvedAmount : 0;
-        const pointsPerUsd = await getPointsPerUsd();
+
+        // Never refund more than was actually paid. `resolvedAmount` comes
+        // straight off the admin form, so a mistyped figure used to mint money
+        // outright — rejected rather than silently capped, so the admin sees the
+        // typo instead of wondering why the refund was smaller than they entered.
+        const paidAmount = toNum(purchase?.amount);
+        if (refundAmount > 0) {
+          if (!purchase) {
+            return NextResponse.json(
+              { error: "Cannot refund: the purchase behind this dispute no longer exists" },
+              { status: 400 }
+            );
+          }
+          if (!Number.isFinite(refundAmount) || refundAmount < 0) {
+            return NextResponse.json({ error: "Invalid refund amount" }, { status: 400 });
+          }
+          if (refundAmount > paidAmount) {
+            return NextResponse.json(
+              { error: `Refund cannot exceed the amount paid (${usd(paidAmount)})` },
+              { status: 400 }
+            );
+          }
+        }
+
+        // The affiliate commission on a marketplace sale is paid OUT of the
+        // seller's cut (`api/marketplace/[id]/checkout/route.ts`), so the seller
+        // actually banked `sellerAmount - affiliateAmount`. Clawing back the
+        // full `sellerAmount` would take money the seller never received.
+        const commission = purchase
+          ? await prisma.affiliateCommission.findUnique({
+              where: {
+                sourceType_orderRef: { sourceType: "MARKETPLACE", orderRef: purchase.id },
+              },
+              select: { affiliateUserId: true, commissionAmount: true },
+            })
+          : null;
+        const affiliateAmount = toNum(commission?.commissionAmount);
+        const sellerBanked = Math.max(0, toNum(purchase?.sellerAmount) - affiliateAmount);
+        const platformFee = toNum(purchase?.fee);
+
+        // Partial refunds unwind each party proportionally; a full refund
+        // unwinds everything exactly.
+        const ratio = paidAmount > 0 ? Math.min(1, refundAmount / paidAmount) : 0;
+        const sellerOwed = money2(sellerBanked * ratio);
+        const feeReversed = money2(platformFee * ratio);
+        const sellerId = listing?.sellerId;
 
         await prisma.$transaction(async (tx) => {
-          // Update dispute
-          await tx.marketplaceDispute.update({
-            where: { id },
+          // CAS on the dispute. Resolving is what moves the money, so two admins
+          // clicking Resolve at the same time — or one double-clicking — must not
+          // both pay. Only an unresolved dispute matches.
+          const claimed = await tx.marketplaceDispute.updateMany({
+            where: {
+              id,
+              status: {
+                in: [DisputeStatus.OPEN, DisputeStatus.IN_REVIEW, DisputeStatus.ESCALATED],
+              },
+            },
             data: {
               status: newStatus,
               resolution,
@@ -326,27 +382,104 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               resolvedAt: new Date(),
             },
           });
+          if (claimed.count === 0) throw new Error("DISPUTE_ALREADY_RESOLVED");
 
           // If refund amount specified and resolving for buyer, process refund
           if (refundAmount > 0 && purchase) {
-            // Credit buyer
+            // Refund the buyer in CASH. Marketplace purchases debit
+            // `cashBalance`, so paying the refund in points handed the buyer a
+            // different currency than they spent — converted at whatever
+            // `pointsPerUsd` happened to be on the day of the dispute, which is
+            // not necessarily the rate on the day of the sale.
             await tx.user.update({
               where: { id: purchase.buyerId },
-              data: { pointsBalance: { increment: Math.round(refundAmount * pointsPerUsd) } },
+              data: { cashBalance: { increment: refundAmount } },
             });
-
-            // Create transaction record
+            // `totalEarnings` is deliberately untouched — getting your own money
+            // back is not lifetime earnings.
             await tx.transaction.create({
               data: {
                 userId: purchase.buyerId,
                 type: TransactionType.REFUND,
                 status: TransactionStatus.COMPLETED,
-                points: Math.round(refundAmount * pointsPerUsd),
+                points: 0,
                 amount: refundAmount,
                 description: `Refund from dispute resolution for "${listing?.title}"`,
                 reference: `dispute_refund_${id}`,
-                metadata: { disputeId: id, purchaseId: purchase.id },
+                metadata: {
+                  disputeId: id,
+                  purchaseId: purchase.id,
+                  paidAmount,
+                  ratio,
+                },
               },
+            });
+
+            // Claw the sale back off the seller. Without this the platform funded
+            // the refund on its own while the seller kept the proceeds — the
+            // house paid for the dispute twice over. Clamped to the seller's
+            // balance so a spent-out seller cannot be driven negative; the
+            // unrecoverable remainder is recorded rather than hidden.
+            if (sellerId && sellerOwed > 0) {
+              const sellerRow = await tx.user.findUnique({
+                where: { id: sellerId },
+                select: { cashBalance: true },
+              });
+              const debit = Math.min(toNum(sellerRow?.cashBalance), sellerOwed);
+              if (debit > 0) {
+                await tx.user.update({
+                  where: { id: sellerId },
+                  data: { cashBalance: { decrement: debit } },
+                });
+              }
+              await tx.transaction.create({
+                data: {
+                  userId: sellerId,
+                  type: TransactionType.REFUND,
+                  status: TransactionStatus.COMPLETED,
+                  points: 0,
+                  amount: -debit,
+                  description: `Sale reversed by dispute — "${listing?.title}"`,
+                  reference: `dispute_seller_clawback_${id}`,
+                  metadata: {
+                    disputeId: id,
+                    purchaseId: purchase.id,
+                    owed: sellerOwed,
+                    clawedBack: debit,
+                    shortfall: money2(sellerOwed - debit),
+                  },
+                },
+              });
+            }
+
+            // Give back the platform's commission on the part of the sale being
+            // unwound. Its own row so the finance console's revenue figure moves
+            // with the refund instead of overstating income forever.
+            if (feeReversed > 0 && sellerId) {
+              await tx.transaction.create({
+                data: {
+                  userId: sellerId,
+                  type: TransactionType.ADMIN_FEE,
+                  status: TransactionStatus.COMPLETED,
+                  points: 0,
+                  amount: -feeReversed,
+                  description: `Marketplace fee reversed by dispute — "${listing?.title}"`,
+                  reference: `dispute_fee_reversal_${id}`,
+                  metadata: {
+                    disputeId: id,
+                    purchaseId: purchase.id,
+                    originalFee: platformFee,
+                    reversed: feeReversed,
+                  },
+                },
+              });
+            }
+
+            // Mark the purchase so it cannot be refunded again through another
+            // dispute on the same order.
+            await tx.marketplacePurchase.updateMany({
+              where: { id: purchase.id, status: { not: "REFUNDED" } },
+              data: { status: ratio >= 1 ? "REFUNDED" : "PARTIALLY_REFUNDED" },
             });
           }
 
@@ -384,11 +517,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           }
         });
 
+        // Reverse the affiliate's cut too, but only on a FULL refund — the
+        // helper is all-or-nothing and idempotent per (sourceType, orderRef), so
+        // calling it on a partial refund would claw back more than was unwound.
+        // On a partial refund the affiliate keeps their commission and the
+        // shortfall is visible in the seller clawback metadata.
+        if (purchase && commission && ratio >= 1) {
+          await reverseAffiliateCommission("MARKETPLACE", purchase.id);
+        }
+
         return NextResponse.json({
           success: true,
           message: "Dispute resolved successfully",
           status: newStatus,
           refundAmount,
+          sellerClawback: sellerOwed,
+          feeReversed,
+          affiliateReversed: commission && ratio >= 1 ? affiliateAmount : 0,
         });
       }
 
@@ -449,6 +594,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
   } catch (error) {
+    // The status CAS lost — another admin (or a double-click) already resolved
+    // this dispute. The transaction rolled back, so nothing was paid twice.
+    if (error instanceof Error && error.message === "DISPUTE_ALREADY_RESOLVED") {
+      return NextResponse.json(
+        { error: "This dispute has already been resolved." },
+        { status: 409 }
+      );
+    }
     // Retry of a refund action reuses reference `dispute_refund_<id>` → P2002;
     // the refund already settled, so report success not a 500.
     if (isDuplicateLedgerError(error)) {

@@ -11,6 +11,8 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { bumpTrust, TRUST_APPROVE, TRUST_REJECT } from "@/lib/trust";
 import { notifyUser } from "@/lib/notify";
 import { recordUserAction } from "@/lib/goal-progress";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { runAchievementCheck } from "@/lib/achievements";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -230,7 +232,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // Atomically claim the review inside one transaction. The updateMany CAS
       // (only matches while still PENDING) means two concurrent approvals /
       // a double-click can't both mint points — the loser matches 0 rows and
-      // credits nothing (there is no unique backstop on Transaction.reference).
+      // credits nothing. `Transaction @@unique([userId, reference])` is the
+      // second line of defence; see `ledgerReference` below.
+      //
+      // The reference format is deliberately IDENTICAL to the auto-approve path
+      // (`api/tasks/[id]/submit/route.ts`). It used to be the bare submission id
+      // here, which meant a submission that was auto-approved, sent back for
+      // revision, resubmitted and then approved manually wrote two rows under
+      // two different keys — the constraint never fired and the user was paid
+      // TWICE for one submission.
+      const ledgerReference = `task_${existingSubmission.taskId}_${existingSubmission.id}`;
       const submission = await prisma.$transaction(async (tx) => {
         const claim = await tx.taskSubmission.updateMany({
           where: { id, status: "PENDING" },
@@ -254,11 +265,28 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           });
         }
         if (awardsPoints) {
+          // Has this submission already been paid? Checked BEFORE the budget
+          // draw so a replay does not also drain the funder's pool.
+          //
+          // A pre-check rather than catching the unique violation: in Postgres a
+          // constraint error aborts the enclosing transaction, so catching it
+          // here and carrying on is not possible — it would roll back the status
+          // claim above and strand the submission PENDING forever. The unique
+          // index still backstops a genuine concurrent race, where rolling back
+          // is the correct (non-paying) outcome.
+          const alreadyPaid = await tx.transaction.findFirst({
+            where: {
+              userId: existingSubmission.userId,
+              reference: ledgerReference,
+            },
+            select: { id: true },
+          });
+
           // Funded (user-created) task: draw from the budget pool FIRST (CAS).
           // Only credit the worker with what the pool actually covers — never
           // mint unfunded points. Unfunded (admin) tasks always credit.
-          let credit = true;
-          if (task.fundedByUserId) {
+          let credit = !alreadyPaid;
+          if (credit && task.fundedByUserId) {
             const drawn = await tx.task.updateMany({
               where: { id: task.id, remainingBudget: { gte: earnedPoints } },
               data: { remainingBudget: { decrement: earnedPoints } },
@@ -306,8 +334,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
                 status: "COMPLETED",
                 points: earnedPoints,
                 amount: earnedPoints / pointsPerUsd,
-                description: `Earned from task: ${task.title}`,
-                reference: existingSubmission.id,
+                description: `Completed task: ${task.title}`,
+                reference: ledgerReference,
+                metadata: {
+                  taskId: task.id,
+                  taskType: task.type,
+                  submissionId: existingSubmission.id,
+                  reviewedBy: session.user.id,
+                },
               },
             });
           }
@@ -326,6 +360,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // (finalStatus flipped to REJECTED) counts as a fraud strike instead.
       if (finalStatus === "APPROVED") {
         await bumpTrust(existingSubmission.userId, TRUST_APPROVE);
+        // Achievements are counted here, after the payment has committed.
+        // `runAchievementCheck` swallows its own failures — an achievement
+        // must never be able to fail a task approval.
+        await runAchievementCheck(existingSubmission.userId);
         // Event progress is credited at APPROVAL, not at submission time. The
         // old read-time computation filtered on `createdAt`, so a task
         // submitted before an event but approved during it never counted, and
@@ -525,8 +563,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      const submission = await prisma.taskSubmission.update({
-        where: { id },
+      // CAS on the status. This used to update on `where: { id }` alone, so an
+      // admin could send an ALREADY-PAID submission back for revision; the user
+      // resubmitted, `api/tasks/[id]/start` reopened the same row to PENDING,
+      // and it could be approved — and paid — a second time. Revision only makes
+      // sense on work that has not been settled, so only unsettled states match.
+      const revised = await prisma.taskSubmission.updateMany({
+        where: { id, status: { in: ["PENDING", "REVISION_REQUESTED"] } },
         data: {
           status: "REVISION_REQUESTED",
           reviewedBy: session.user.id,
@@ -534,6 +577,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           rejectionReason: rejectionReason || "Revision requested",
           feedback: feedback || "Please redo this task.",
         },
+      });
+      if (revised.count === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "This submission has already been reviewed and cannot be sent back for revision. Reject it instead if the work needs to be reversed.",
+          },
+          { status: 409 }
+        );
+      }
+      const submission = await prisma.taskSubmission.findUnique({
+        where: { id },
       });
 
       // Notify user (deep-linked so they can jump straight into the redo).
@@ -565,6 +620,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       });
     }
   } catch (error) {
+    // A genuine concurrent race on the same submission trips
+    // `Transaction @@unique([userId, reference])`. The transaction rolls back,
+    // which is the correct outcome — nobody is paid twice — but it is a
+    // conflict, not a server fault, so say so rather than returning a 500.
+    if (isDuplicateLedgerError(error)) {
+      return NextResponse.json(
+        { error: "This submission has already been paid." },
+        { status: 409 }
+      );
+    }
     console.error("Error updating submission:", error);
     return NextResponse.json(
       { error: "Failed to update submission" },

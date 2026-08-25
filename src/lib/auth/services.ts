@@ -293,6 +293,9 @@ export async function completeSignupRewards(
         action: "referral_signup",
         targetId: userId,
       });
+      // The referrer's `referrals_made` count just went up.
+      const { runAchievementCheck } = await import("@/lib/achievements");
+      await runAchievementCheck(referrerId);
     } catch {
       /* never block on event tracking */
     }

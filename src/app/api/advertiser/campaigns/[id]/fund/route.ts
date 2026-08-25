@@ -58,6 +58,10 @@ export async function POST(
       // Fund the campaign from the advertiser's Ad Credit (not cash).
       await deductAdCreditTx(tx, advertiserId, amount, {
         kind: "CAMPAIGN_FUND",
+        // Per-occurrence by design. Topping the same campaign up repeatedly, by
+        // the same amount, is exactly how a campaign gets funded. A deterministic
+        // key would make `AdCreditLedger @@unique([userId, reference])` reject
+        // every top-up after the first, so this stays keyed on the instant.
         reference: `campaign_fund_${campaign.id}_${Date.now()}`,
         metadata: { campaignId: campaign.id },
       });

@@ -123,6 +123,10 @@ export async function buyAdCredits(opts: {
           amount: currency === "cash" ? -amountUsd : 0,
           points: currency === "points" ? -pointsCost : 0,
           description: `Ad credits — ${usd(credited)}`,
+          // Per-occurrence by design. An advertiser may top up the same
+          // amount of ad credit as often as they like.
+          // A deterministic key would make `Transaction @@unique([userId, reference])`
+          // reject the second one, so this stays keyed on the instant it happened.
           reference: `adcredit_buy_${userId}_${Date.now()}`,
           metadata: { creditUsd: credited, currency, bonusPct: bonus },
         },

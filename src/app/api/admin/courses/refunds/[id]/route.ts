@@ -17,6 +17,10 @@ import {
   splitCoursePrice,
 } from "@/lib/course-commission";
 
+/** Cents precision. `round2` in `@/lib/money` returns a Decimal; these figures
+ *  stay plain numbers all the way to Prisma. */
+const money2 = (n: number) => Math.round(n * 100) / 100;
+
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("approve"),
@@ -65,7 +69,7 @@ export async function PATCH(
             category_rel: { select: { slug: true } },
           },
         },
-        enrollment: { select: { id: true, pricePaid: true } },
+        enrollment: { select: { id: true, pricePaid: true, platformFeeUsd: true } },
       },
     });
     if (!request) {
@@ -114,13 +118,67 @@ export async function PATCH(
     // ── Approve: refund the buyer + reverse tutor credit ──
     const c = request.course;
     const refundAmount = toNum(request.enrollment?.pricePaid);
-    const bps = await resolveCourseCommissionBps({
-      categorySlug: c.category_rel?.slug ?? null,
-      perCourseOverride: c.commissionRateBps,
-    });
-    const { tutorAmount } = splitCoursePrice(refundAmount, bps);
+
+    // Prefer the fee STORED on the enrolment. Recomputing from the current bps
+    // reconstructs a split that may no longer match the one the sale was
+    // actually booked at — an admin changing the commission rate between the
+    // purchase and the refund would silently move money that never moved.
+    // `platformFeeUsd` is nullable for rows written before the column existed,
+    // so the recomputation stays as the fallback for those.
+    const storedFee = request.enrollment?.platformFeeUsd;
+    let platformFee: number;
+    let tutorAmount: number;
+    if (storedFee != null) {
+      platformFee = toNum(storedFee);
+      tutorAmount = Math.max(0, refundAmount - platformFee);
+    } else {
+      const bps = await resolveCourseCommissionBps({
+        categorySlug: c.category_rel?.slug ?? null,
+        perCourseOverride: c.commissionRateBps,
+      });
+      const split = splitCoursePrice(refundAmount, bps);
+      platformFee = split.fee;
+      tutorAmount = split.tutorAmount;
+    }
+
+    // The affiliate's commission is paid OUT of the tutor's cut at enrol time
+    // (`api/courses/[id]/enroll/route.ts` — "Affiliate payout (from the tutor's
+    // cut)"), so the tutor only ever banked `tutorAmount - affiliateAmount`.
+    // This route used to claw back the full `tutorAmount` AND call
+    // `reverseAffiliateCommission`, taking the affiliate's cut twice — once from
+    // the tutor who never received it, once from the affiliate who did.
+    const commission = request.enrollmentId
+      ? await prisma.affiliateCommission.findUnique({
+          where: {
+            sourceType_orderRef: {
+              sourceType: "COURSE",
+              orderRef: request.enrollmentId,
+            },
+          },
+          select: { commissionAmount: true },
+        })
+      : null;
+    const affiliateAmount = toNum(commission?.commissionAmount);
+    const tutorOwed = Math.max(0, money2(tutorAmount - affiliateAmount));
+    // What was actually recovered from the tutor; the clamp below can lower it.
+    let tutorClawback = 0;
 
     await prisma.$transaction(async (tx) => {
+      // Claim the request. Without this a double-click ran the whole refund
+      // twice — the second pass no longer trips the ledger constraint now that
+      // the enrolment delete is survivable.
+      const claimed = await tx.courseRefundRequest.updateMany({
+        where: { id, status: CourseRefundStatus.PENDING },
+        data: {
+          status: CourseRefundStatus.APPROVED,
+          refundedAmount: refundAmount,
+          adminNote: v.data.adminNote ?? null,
+          processedById: session.user.id,
+          processedAt: new Date(),
+        },
+      });
+      if (claimed.count === 0) throw new Error("REFUND_ALREADY_PROCESSED");
+
       // 1. Restore buyer wallet
       if (refundAmount > 0) {
         await tx.user.update({
@@ -145,20 +203,31 @@ export async function PATCH(
         });
       }
       // 2. Claw back tutor credit (debit balance + counter)
-      if (c.tutorId && tutorAmount > 0) {
-        await tx.user.update({
+      if (c.tutorId && tutorOwed > 0) {
+        // Clamp to the tutor's balance. This decremented unconditionally, so a
+        // tutor who had already withdrawn their earnings was pushed to a
+        // NEGATIVE balance — which every later credit silently paid off first.
+        // The unrecoverable remainder is recorded instead of hidden.
+        const tutorRow = await tx.user.findUnique({
           where: { id: c.tutorId },
-          data: {
-            cashBalance: { decrement: tutorAmount },
-            totalEarnings: { decrement: tutorAmount },
-          },
+          select: { cashBalance: true },
         });
+        tutorClawback = Math.min(toNum(tutorRow?.cashBalance), tutorOwed);
+        if (tutorClawback > 0) {
+          await tx.user.update({
+            where: { id: c.tutorId },
+            data: {
+              cashBalance: { decrement: tutorClawback },
+              totalEarnings: { decrement: tutorClawback },
+            },
+          });
+        }
         await tx.transaction.create({
           data: {
             userId: c.tutorId,
             type: TransactionType.COURSE_REFUND,
             status: TransactionStatus.COMPLETED,
-            amount: -tutorAmount,
+            amount: -tutorClawback,
             points: 0,
             description: `Refund clawback — "${c.title}"`,
             reference: `course_refund_${c.id}_${request.id}`,
@@ -166,6 +235,10 @@ export async function PATCH(
               courseId: c.id,
               refundRequestId: request.id,
               refundToUserId: request.userId,
+              owed: tutorOwed,
+              clawedBack: tutorClawback,
+              shortfall: money2(tutorOwed - tutorClawback),
+              affiliateAmount,
             },
           },
         });
@@ -173,7 +246,32 @@ export async function PATCH(
           where: { userId: c.tutorId },
           data: {
             totalStudents: { decrement: 1 },
-            totalEarningsCents: { decrement: Math.round(tutorAmount * 100) },
+            totalEarningsCents: { decrement: Math.round(tutorClawback * 100) },
+          },
+        });
+      }
+
+      // 2b. Give back the platform's commission on the refunded sale. It was
+      // only ever implicit — the house funded 100% and recovered 80%, netting
+      // to zero — but with nothing on the ledger saying so, course revenue
+      // stayed overstated by the fee forever. Booked against the tutor's row so
+      // it sits with the sale it reverses.
+      if (c.tutorId && platformFee > 0) {
+        await tx.transaction.create({
+          data: {
+            userId: c.tutorId,
+            type: TransactionType.ADMIN_FEE,
+            status: TransactionStatus.COMPLETED,
+            amount: -platformFee,
+            points: 0,
+            description: `Course fee reversed by refund — "${c.title}"`,
+            reference: `course_fee_reversal_${c.id}_${request.id}`,
+            metadata: {
+              courseId: c.id,
+              refundRequestId: request.id,
+              originalFee: platformFee,
+              feeSource: storedFee != null ? "enrollment" : "recomputed",
+            },
           },
         });
       }
@@ -185,22 +283,16 @@ export async function PATCH(
           totalRevenueCents: { decrement: Math.round(refundAmount * 100) },
         },
       });
+      // The request row was already claimed at the top of this transaction, so
+      // it survives this delete via the SetNull FK — `enrollmentId` simply
+      // becomes null and the refund record stays as the audit trail. Under the
+      // old Cascade FK this delete destroyed the row the transaction went on to
+      // update, which is why approval always ended in P2025 and a full rollback.
       if (request.enrollmentId) {
         await tx.courseEnrollment.delete({
           where: { id: request.enrollmentId },
         });
       }
-      // 4. Mark request approved
-      await tx.courseRefundRequest.update({
-        where: { id },
-        data: {
-          status: CourseRefundStatus.APPROVED,
-          refundedAmount: refundAmount,
-          adminNote: v.data.adminNote ?? null,
-          processedById: session.user.id,
-          processedAt: new Date(),
-        },
-      });
     });
 
     // Reverse any affiliate commission earned on this enrolment (best-effort).
@@ -225,7 +317,7 @@ export async function PATCH(
           type: NotificationType.COURSE,
           title: "Refund processed",
           message: `An admin approved a ${usd(refundAmount)} refund on "${c.title}". The commission has been clawed back.`,
-          data: { courseId: c.id, refundRequestId: request.id, clawback: tutorAmount },
+          data: { courseId: c.id, refundRequestId: request.id, clawback: tutorClawback },
         },
       });
     }
@@ -237,14 +329,32 @@ export async function PATCH(
         entityId: id,
         newData: {
           refundAmount,
-          tutorClawback: tutorAmount,
+          tutorOwed,
+          tutorClawback,
+          platformFeeReversed: platformFee,
+          affiliateAmount,
           adminNote: v.data.adminNote ?? null,
         },
       },
     });
 
-    return NextResponse.json({ ok: true, refundAmount, tutorClawback: tutorAmount });
+    return NextResponse.json({
+      ok: true,
+      refundAmount,
+      tutorOwed,
+      tutorClawback,
+      platformFeeReversed: platformFee,
+      affiliateReversed: affiliateAmount,
+    });
   } catch (error) {
+    // The status CAS lost — another admin (or a double-click) already processed
+    // this request. The transaction rolled back, so nothing was refunded twice.
+    if (error instanceof Error && error.message === "REFUND_ALREADY_PROCESSED") {
+      return NextResponse.json(
+        { error: "This refund request has already been processed." },
+        { status: 409 }
+      );
+    }
     // Retry reuses reference `course_refund_<courseId>_<requestId>` → P2002; the
     // refund already settled, so report success not a 500.
     if (isDuplicateLedgerError(error)) {
