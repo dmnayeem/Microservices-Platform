@@ -241,6 +241,26 @@ export function AdRenderer({
   };
 
   const dim = resolveAdSize(ad.size, ad.width, ad.height);
+  // How wide this SPACE is meant to be, for creatives that don't say.
+  //
+  // `Ad.size` defaults to "responsive" and every row in the database uses it, so
+  // `dim` above is null for all of them and `outerStyle.maxWidth` was never set.
+  // The card then filled whatever width it was handed — which on a wide page
+  // left a small creative marooned in the middle of a very large empty band,
+  // because `object-contain` below letterboxes rather than crops.
+  //
+  // The network path already resolves in exactly these two steps
+  // (`src/lib/ad-network.ts` — `resolveAdSize(…) ?? resolveAdSize(placementSizeKey(…))`);
+  // the LOCAL path only ever did the first. A leaderboard space now caps at
+  // 728px and centres, which is what a leaderboard unit is meant to look like.
+  //
+  // Deliberately WIDTH ONLY, not the aspect ratio. The demo creatives are 600×200
+  // and a real one can be anything; forcing them into a 728×90 box would contain
+  // them down to ~270px wide. Capping the width and letting `maxHeight` bound the
+  // rest shows the creative as large as the space allows. A space whose only size
+  // is "responsive" (IN_FEED) still resolves to null and keeps filling its column,
+  // which is correct there.
+  const slotDim = dim ?? resolveAdSize(placementSizeKey(placement));
   // The SPACE decides the ceiling; the ad decides its shape within it.
   //
   // This used to read the ad's size alone. `Ad.size` defaults to "responsive",
@@ -267,7 +287,7 @@ export function AdRenderer({
   };
   // Merge the rotation fade into the outer style.
   const outerStyle = {
-    ...(dim ? { maxWidth: dim.w } : {}),
+    ...(slotDim ? { maxWidth: slotDim.w } : {}),
     opacity: fading ? 0 : 1,
     transition: "opacity 180ms ease",
   } as const;

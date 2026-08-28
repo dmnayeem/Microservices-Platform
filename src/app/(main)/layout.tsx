@@ -73,7 +73,24 @@ export default async function MainLayout({
             `--anchor-ad-h` is published by AnchorAdBar and is 0px whenever the
             bar is dismissed or has no ad — so no page loses a strip for a slot
             that is not there. */}
-        <main className="py-6 px-4 sm:px-6 lg:px-8 pb-[calc(6rem+var(--anchor-ad-h,0px))] lg:pb-[calc(2rem+var(--anchor-ad-h,0px))] scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
+        {/* `mx-auto max-w-7xl` is what stops every card spanning the display.
+            There was no width cap here at all, so on a 1920px screen the content
+            region was 1568px (1920 − 288 of sidebar − 64 of padding) and all 79
+            pages under this layout stretched to fill it — only four of them set
+            a width of their own. `TutorShell` has capped at max-w-7xl all along;
+            this shell was the odd one out.
+
+            The cap goes on <main> itself rather than an inner wrapper because
+            several components deliberately bleed past the page padding with
+            negative margins (the sticky profile nav, the edge-to-edge filter
+            strips, the chat window). On <main> they keep meeting exactly the
+            edge they meet today; inside a wrapper they would hang 16px outside
+            it.
+
+            Nothing below ~1400px moves: at 1280px the region is already 928px,
+            well under the cap, so the feed's right rail and every mobile and
+            tablet layout are untouched. */}
+        <main className="mx-auto w-full max-w-7xl py-6 px-4 sm:px-6 lg:px-8 pb-[calc(6rem+var(--anchor-ad-h,0px))] lg:pb-[calc(2rem+var(--anchor-ad-h,0px))] scroll-mt-[calc(4rem+env(safe-area-inset-top))]">
           <AppRefreshShell>{children}</AppRefreshShell>
         </main>
       </div>
