@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import {
   normalizeSocialConfig,
@@ -300,19 +301,79 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Check if task exists
     const existingTask = await prisma.task.findUnique({
       where: { id },
+      select: { id: true, title: true, status: true },
     });
 
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Delete the task
-    await prisma.task.delete({
-      where: { id },
+    // Does anyone's work hang off this task?
+    //
+    // `TaskSubmission.taskId` is Restrict, so `task.delete()` on a task with
+    // submissions raises a foreign-key error — which this handler used to
+    // swallow into a bare 500 "Failed to delete task". 52 of the 102 live tasks
+    // were in that state, so for half the catalogue the button simply did not
+    // work and said nothing useful about why.
+    //
+    // Cascading is not the fix: those rows ARE the record of work users were
+    // paid for, and every ledger entry is keyed `task_<taskId>_<submissionId>`,
+    // so deleting them orphans the money trail. A task with history is retired
+    // instead — `visibleTaskWhere()` matches only ACTIVE, so ARCHIVED leaves
+    // every user-facing list by itself.
+    const submissions = await prisma.taskSubmission.count({
+      where: { taskId: id },
     });
 
-    return NextResponse.json({ success: true, message: "Task deleted successfully" });
+    if (submissions > 0) {
+      if (existingTask.status === "ARCHIVED") {
+        return NextResponse.json({
+          success: true,
+          archived: true,
+          submissions,
+          message: "Task is already archived",
+        });
+      }
+      const archived = await prisma.task.update({
+        where: { id },
+        data: { status: "ARCHIVED" },
+        select: { id: true, status: true },
+      });
+      return NextResponse.json({
+        success: true,
+        archived: true,
+        submissions,
+        task: archived,
+        message: `Archived — ${submissions} submission${
+          submissions === 1 ? "" : "s"
+        } and their payment records are kept`,
+      });
+    }
+
+    // No history → really delete it.
+    await prisma.task.delete({ where: { id } });
+
+    return NextResponse.json({
+      success: true,
+      archived: false,
+      submissions: 0,
+      message: "Task deleted successfully",
+    });
   } catch (error) {
+    // A foreign key we did not anticipate. Say which, instead of a blanket 500 —
+    // that opacity is what made the original bug take so long to pin down.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This task still has linked records, so it can't be deleted. Archive it instead.",
+        },
+        { status: 409 }
+      );
+    }
     console.error("Error deleting task:", error);
     return NextResponse.json(
       { error: "Failed to delete task" },

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { parseDocumentImages } from "@/lib/kyc";
+import { checkDocumentNumber } from "@/lib/kyc/document-number";
 
 /**
  * User-facing KYC intake. `POST` submits identity documents (1–3 image URLs +
@@ -16,6 +17,10 @@ import { parseDocumentImages } from "@/lib/kyc";
 const submitSchema = z.object({
   documentType: z.string().min(2).max(60),
   images: z.array(z.string().url()).min(1).max(3),
+  // Required. Without it this route was the bypass: the OCR path could at least
+  // read a number off the image, while a manual submission carried none at all,
+  // so anyone choosing "manual" could verify the same ID on unlimited accounts.
+  documentNumber: z.string().min(4).max(60),
 });
 
 export async function GET() {
@@ -64,7 +69,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const { documentType, images } = v.data;
+  const { documentType, images, documentNumber } = v.data;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -83,11 +88,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // One ID, one account — checked before anything is stored. `User.nidNumber`
+  // is also unique, so this is the friendly error rather than the enforcement.
+  const check = await checkDocumentNumber(userId, documentNumber, {
+    required: true,
+  });
+  if (!check.ok) {
+    return NextResponse.json(
+      { error: check.message, reason: check.reason },
+      { status: check.reason === "DUPLICATE" ? 409 : 400 }
+    );
+  }
+
   const documentUrl = images.length === 1 ? images[0] : JSON.stringify(images);
 
   const doc = await prisma.$transaction(async (tx) => {
     const created = await tx.kYCDocument.create({
-      data: { userId, documentType, documentUrl, status: "PENDING" },
+      data: {
+        userId,
+        documentType,
+        documentUrl,
+        documentNumber: check.normalized,
+        status: "PENDING",
+      },
     });
     await tx.user.update({
       where: { id: userId },

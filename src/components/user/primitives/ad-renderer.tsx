@@ -285,6 +285,20 @@ export function AdRenderer({
     ...(dim ? { aspectRatio: `${dim.w} / ${dim.h}` } : {}),
     maxHeight: spec.maxHeightPx,
   };
+  // A STRIP space is one that is meant to be a thin bar, not a card.
+  //
+  // Capping the media alone is right for a card, and wrong for these: a LOCAL
+  // creative stacks its title/body/CTA block underneath, so `ANCHOR_BOTTOM` —
+  // specced at 64px — measured **138px** in the browser. That bar is fixed to
+  // the bottom of every screen and `<main>` reserves its height as padding on
+  // every page, so the overflow was charged to the whole app, and it took 74px
+  // off the social rail's scrolling window.
+  //
+  // Derived from the ceiling rather than a second hand-kept list of names, so a
+  // new thin placement gets the strip layout automatically: ANCHOR_BOTTOM (64),
+  // VIDEO_OVERLAY (72) and FEED_POST_BELOW (72) qualify; the leaderboard (120)
+  // and rectangle (300) spaces keep the stacked card.
+  const isStrip = spec.maxHeightPx <= 96;
   // Merge the rotation fade into the outer style.
   const outerStyle = {
     ...(slotDim ? { maxWidth: slotDim.w } : {}),
@@ -338,6 +352,80 @@ export function AdRenderer({
           allowSameOrigin={ad.allowSameOrigin}
         />
       </div>
+    );
+  }
+
+  // ── Strip layout ───────────────────────────────────────────────────────────
+  // A thin bar, laid out ACROSS instead of stacked, and capped as a whole.
+  //
+  // The stacked card below puts the media above a title/body/CTA block, so its
+  // real height is `maxHeightPx` PLUS that block — which is how a 64px anchor
+  // space became a 138px bar pinned to the bottom of every screen. Here the
+  // media sits beside the text and `maxHeight` bounds the card itself, so the
+  // space's ceiling is the height the user actually sees.
+  if (isStrip) {
+    return (
+      <a
+        href={ad.ctaUrl ?? "#"}
+        target="_blank"
+        rel="noopener sponsored noreferrer"
+        onClick={trackClick}
+        style={{ ...outerStyle, maxHeight: spec.maxHeightPx }}
+        className={cn(
+          "relative flex items-stretch gap-3 overflow-hidden rounded-xl border border-gray-800 bg-gray-900 hover:border-indigo-500/40 transition-colors group mx-auto",
+          className
+        )}
+      >
+        {ad.impressionPixel ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={ad.impressionPixel} alt="" width={1} height={1} className="absolute bottom-0 right-0 opacity-0 pointer-events-none" />
+        ) : null}
+        {ad.videoUrl ? (
+          <video
+            src={ad.videoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="h-full w-auto shrink-0 object-contain bg-black"
+          />
+        ) : (
+          ad.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={ad.imageUrl}
+              alt={ad.title ?? "Ad"}
+              className="h-full w-auto shrink-0 object-contain"
+            />
+          )
+        )}
+        <div className="min-w-0 flex-1 self-center py-1.5">
+          {ad.title && (
+            <p className="text-xs font-bold text-white truncate">{ad.title}</p>
+          )}
+          <p className="text-[10px] text-gray-500 truncate">
+            {ad.sponsor ? `by ${ad.sponsor}` : "Sponsored"}
+          </p>
+        </div>
+        <span className="self-center shrink-0 inline-flex items-center gap-1 mr-2 px-2.5 py-1 rounded-lg bg-indigo-500/15 text-[11px] font-bold text-indigo-300 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+          {ad.ctaLabel || "Learn More"}
+          <ExternalLink className="w-3 h-3" />
+        </span>
+        {dismissible && (
+          <button
+            type="button"
+            aria-label="Hide ad"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDismissed(true);
+            }}
+            className="absolute top-0.5 right-0.5 z-20 w-5 h-5 grid place-items-center rounded-full bg-black/60 backdrop-blur text-white/70 hover:text-white hover:bg-black/80"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </a>
     );
   }
 

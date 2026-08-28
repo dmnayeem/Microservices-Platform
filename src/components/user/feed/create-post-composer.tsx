@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { mediaSrc } from "@/lib/media-url";
 import {
   Image as ImageIcon,
   X,
@@ -495,9 +496,13 @@ export function CreatePostComposer({
                   key={i}
                   className="relative aspect-square rounded-lg overflow-hidden bg-gray-950 border border-gray-800"
                 >
+                  {/* `mediaSrc` for the same reason as the post card: these are
+                      the uploaded S3 URLs, and the bucket is private, so the raw
+                      URL 403s and the preview of what you just uploaded is
+                      blank. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={url}
+                    src={mediaSrc(url)}
                     alt=""
                     className="w-full h-full object-cover"
                   />

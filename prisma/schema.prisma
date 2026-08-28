@@ -64,6 +64,12 @@ enum TaskStatus {
   EXPIRED
   PENDING_REVIEW
   REJECTED
+  /// Retired by an admin. Used instead of deleting a task that already has
+  /// submissions: those rows are the record of work users were PAID for, and
+  /// every ledger entry is keyed `task_<taskId>_<submissionId>`, so removing
+  /// them would orphan the money trail. `visibleTaskWhere()` only matches
+  /// ACTIVE, so an archived task leaves every user-facing list on its own.
+  ARCHIVED
 }
 
 enum SubmissionStatus {
@@ -1437,7 +1443,10 @@ model User {
   // Extended profile fields (admin_oo.md §5.02)
   gender                            String?
   dateOfBirth                       DateTime?
-  nidNumber                         String?
+  /// One verified national ID per account. Unique so a code path that forgets
+  /// the duplicate check still cannot create a second verified account on the
+  /// same document — the database is the backstop, not the guard.
+  nidNumber                         String?                      @unique
   profession                        String?
   maritalStatus                     String?
   studyLevel                        String?
@@ -1656,6 +1665,16 @@ model KYCDocument {
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   documentType    String
   documentUrl     String
+  /// The ID number on the document, normalised (see `src/lib/kyc/document-number.ts`).
+  ///
+  /// There was no such column: the number lived only inside `extracted` JSON and
+  /// only when OCR had run, and the manual route captured nothing at all — so
+  /// the same NID could verify unlimited accounts and nothing noticed.
+  ///
+  /// Deliberately NOT unique. One user resubmitting their own ID after a
+  /// rejection is legitimate and already happens. Uniqueness belongs on
+  /// `User.nidNumber`, which is one row per account.
+  documentNumber  String?
   status          KYCStatus   @default(PENDING)
   method          String      @default("MANUAL") // MANUAL | AUTO (Gemini OCR + face match)
   extracted       Json? // auto results: { fullName, dateOfBirth, idNumber, expiry, ocrConfidence, faceSimilarity, faceMatched, decision, reasons[] }
@@ -1668,6 +1687,7 @@ model KYCDocument {
 
   @@index([userId])
   @@index([status])
+  @@index([documentNumber])
 }
 
 enum KYCAppealStatus {
@@ -1796,6 +1816,10 @@ model TaskCategory {
 model TaskSubmission {
   id              String                    @id @default(cuid())
   taskId          String
+  /// No `onDelete` on purpose — Prisma defaults to Restrict, and that is the
+  /// behaviour we want: a task with submissions must not be deletable, because
+  /// these rows back real payments. The admin route archives such a task
+  /// instead of failing. Do NOT "fix" this to Cascade.
   task            Task                      @relation(fields: [taskId], references: [id])
   userId          String
   user            User                      @relation(fields: [userId], references: [id])

@@ -48,6 +48,7 @@ const DOC_TYPES = [
 export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props) {
   const router = useRouter();
   const [documentType, setDocumentType] = useState(DOC_TYPES[0]);
+  const [documentNumber, setDocumentNumber] = useState("");
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
   const [selfie, setSelfie] = useState("");
@@ -108,16 +109,28 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
       toast.error("Upload at least your ID document photo");
       return;
     }
+    // Required, and checked here only for the message — the route enforces it.
+    // Manual used to carry no number at all, which made it the way around the
+    // one-ID-one-account rule that the scanned path already applied.
+    if (documentNumber.trim().length < 4) {
+      toast.error("Enter the number printed on your document");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/kyc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentType, images }),
+        body: JSON.stringify({
+          documentType,
+          images,
+          documentNumber: documentNumber.trim(),
+        }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
       toast.success("KYC submitted — we'll review it shortly");
+      setDocumentNumber("");
       setFront("");
       setBack("");
       setSelfie("");
@@ -273,6 +286,28 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 ))}
               </select>
             </div>
+
+            {/* Only the manual path asks for this — the scanned path reads the
+                number off the ID itself. Both end up checked against every
+                other account, so neither is a way around the other. */}
+            {mode === "manual" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                  Document number
+                </label>
+                <input
+                  value={documentNumber}
+                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  placeholder="As printed on the document"
+                  inputMode="text"
+                  autoComplete="off"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-[11px] text-gray-500 mt-1.5">
+                  Each document can verify one account only.
+                </p>
+              </div>
+            )}
 
             {mode === "auto" && autoEnabled ? (
               <>

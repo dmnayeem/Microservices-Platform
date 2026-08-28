@@ -95,7 +95,18 @@ export function TaskActions({ task, canEdit, canDelete, canCreate }: TaskActions
         throw new Error(data.error || "Failed to delete task");
       }
 
-      toast.success("Task deleted successfully");
+      // The route decides which of the two happened — a task with submissions
+      // is archived rather than deleted, because those rows back real payments.
+      // Report what it actually did instead of always claiming a delete.
+      if (data.archived) {
+        toast.success("Task archived", {
+          description: `It's hidden from users. ${data.submissions} submission${
+            data.submissions === 1 ? "" : "s"
+          } and their payment records are kept.`,
+        });
+      } else {
+        toast.success("Task deleted successfully");
+      }
       setShowDeleteModal(false);
       router.refresh();
     } catch (error) {
@@ -189,7 +200,9 @@ export function TaskActions({ task, canEdit, canDelete, canCreate }: TaskActions
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-6 border-b border-gray-800">
-              <h2 className="text-lg font-semibold text-white">Delete Task</h2>
+              <h2 className="text-lg font-semibold text-white">
+                Delete Task
+              </h2>
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
@@ -199,10 +212,17 @@ export function TaskActions({ task, canEdit, canDelete, canCreate }: TaskActions
             </div>
             <div className="p-6">
               <p className="text-gray-400">
-                Are you sure you want to delete <span className="text-white font-medium">&quot;{task.title}&quot;</span>?
+                Remove <span className="text-white font-medium">&quot;{task.title}&quot;</span>?
               </p>
-              <p className="text-red-400 text-sm mt-2">
-                This action cannot be undone. All submissions for this task will also be affected.
+              {/* The old copy promised a delete and warned that submissions
+                  "will also be affected" — neither was true. A task with
+                  submissions cannot be deleted at all (those rows back real
+                  payments), so it is archived instead, and nothing is lost. */}
+              <p className="text-gray-400 text-sm mt-2">
+                If anyone has submitted to it, the task is{" "}
+                <span className="text-amber-300 font-medium">archived</span> —
+                hidden from users, with every submission and payment record
+                kept. If it has no submissions, it is deleted outright.
               </p>
             </div>
             <div className="flex gap-3 p-6 border-t border-gray-800">

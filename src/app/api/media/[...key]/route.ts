@@ -7,10 +7,15 @@ import { getObjectStream, isS3Configured } from "@/lib/s3";
  * image renders blank. This route reads the object with the server's IAM
  * credentials (which CAN read the bucket) and streams it same-origin.
  *
- * Security: only the PUBLIC `media/` prefix is served — the same objects that
- * were already exposed via unguessable public CloudFront URLs. Private prefixes
- * (`kyc/`, `deliver/`, …) use presigned URLs and are explicitly rejected here,
- * so this open endpoint can never leak them.
+ * Security: only PUBLIC prefixes are served — the same objects that were already
+ * exposed via unguessable public CloudFront URLs. Private prefixes (`kyc/`,
+ * `deliver/`, …) use presigned URLs and are explicitly rejected here, so this
+ * open endpoint can never leak them.
+ *
+ * `posts/` holds feed post images, which are shown to every viewer of the feed
+ * and were already public by URL. They were missing from this list, so a post
+ * photo had no working path at all: the stored S3 URL 403s because the bucket is
+ * private, and the proxy refused the key.
  */
 
 export const runtime = "nodejs";
@@ -23,9 +28,16 @@ export async function GET(
   const { key: segments } = await params;
   const key = (segments ?? []).map(decodeURIComponent).join("/");
 
-  // Only public prefixes (admin media + user proof screenshots); block traversal
-  // and any non-public prefix (kyc/, deliver/, …).
-  const isPublic = key.startsWith("media/") || key.startsWith("task-proofs/");
+  // Only public prefixes (admin media, user proof screenshots, feed post
+  // images); block traversal and any non-public prefix (kyc/, deliver/, …).
+  //
+  // Keep in step with `ownMediaKey()` in src/lib/media-url.ts — that decides
+  // which URLs get rewritten to point here, and this decides which are served.
+  // A prefix in one and not the other is a broken image or an open door.
+  const isPublic =
+    key.startsWith("media/") ||
+    key.startsWith("task-proofs/") ||
+    key.startsWith("posts/");
   if (!isPublic || key.includes("..")) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

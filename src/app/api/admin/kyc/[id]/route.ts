@@ -4,11 +4,16 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { deliverToUser } from "@/lib/notify";
 import { z } from "zod";
+import { checkDocumentNumber } from "@/lib/kyc/document-number";
 
 const reviewSchema = z.object({
   action: z.enum(["approve", "reject", "request_more"]),
   rejectionReason: z.string().optional(),
   decisionNote: z.string().optional(),
+  // The reviewer can set or correct the ID number against the image — OCR
+  // mis-reads a digit often enough, and a wrong number would let the same
+  // document verify twice. Falls back to whatever the submission carried.
+  documentNumber: z.string().max(60).optional(),
 });
 
 interface RouteParams {
@@ -32,7 +37,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const { action, rejectionReason, decisionNote } = validation.data;
+    const { action, rejectionReason, decisionNote, documentNumber } =
+      validation.data;
 
     if (action === "approve" && !(await can(session.user.id, "kyc.approve"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -62,6 +68,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     if (action === "approve") {
+      // Approval is where the number is CLAIMED — only a verified document
+      // should own it. Re-checked here and not just at submission, because the
+      // queue can sit for days and another account may have been verified on
+      // the same ID in between. `User.nidNumber` is unique, so a race that beats
+      // this check still cannot produce two verified accounts.
+      const check = await checkDocumentNumber(
+        doc.userId,
+        documentNumber ?? doc.documentNumber,
+        { required: false }
+      );
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: check.message, reason: check.reason },
+          { status: check.reason === "DUPLICATE" ? 409 : 400 }
+        );
+      }
+
       await prisma.$transaction([
         prisma.kYCDocument.update({
           where: { id },
@@ -70,6 +93,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             reviewedBy: session.user.id,
             reviewedAt: new Date(),
             rejectionReason: null,
+            ...(check.normalized ? { documentNumber: check.normalized } : {}),
           },
         }),
         prisma.user.update({
@@ -77,6 +101,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           data: {
             kycStatus: "APPROVED",
             kycApprovedAt: new Date(),
+            // Claimed on approval — this is what the unique index guards, and
+            // it is why the manual path is no longer a way around the check.
+            ...(check.normalized ? { nidNumber: check.normalized } : {}),
           },
         }),
         prisma.notification.create({

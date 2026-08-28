@@ -26,6 +26,7 @@ import { getPostBackground } from "@/lib/post-backgrounds";
 import { ShareModal } from "@/components/user/primitives/share-modal";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { mediaSrc } from "@/lib/media-url";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { PollBlock } from "./poll-block";
@@ -466,10 +467,16 @@ export const FeedPostCard = memo(function FeedPostCard({
           {post.images.slice(0, 6).map((url, i) =>
             // A lone image keeps its natural shape (capped height); grids stay square.
             post.images.length === 1 ? (
+              // `mediaSrc` and not a bare src: our bucket is private, so the
+              // stored S3 URL 403s and the photo renders broken. The grid branch
+              // below always went through SmartImage (which applies the same
+              // rewrite) — only the single-image case was handing the browser the
+              // dead URL, so a post with one photo was broken and the same post
+              // with two was fine.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={i}
-                src={url}
+                src={mediaSrc(url)}
                 alt=""
                 onError={(e) => {
                   // Hide broken images so a bad URL doesn't leave a giant empty box.

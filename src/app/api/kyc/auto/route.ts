@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkDocumentNumber } from "@/lib/kyc/document-number";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -95,6 +96,29 @@ export async function POST(request: NextRequest) {
     JSON.stringify({ ...result.extracted, decision: result.decision, reasons: result.reasons })
   );
 
+  // One ID, one account. Checked before the decision branches so a duplicate is
+  // refused whether OCR would have approved it or sent it to manual review —
+  // otherwise the same document could still reach a human and be waved through.
+  const dupe = await checkDocumentNumber(userId, result.extracted.idNumber);
+  if (!dupe.ok && dupe.reason === "DUPLICATE") {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: "KYC_DUPLICATE_BLOCKED",
+        entity: "User",
+        entityId: userId,
+        newData: {
+          documentNumber: dupe.normalized,
+          conflictUserId: dupe.conflictUserId ?? null,
+        },
+      },
+    });
+    return NextResponse.json(
+      { status: "REJECTED", error: dupe.message, reason: "DUPLICATE" },
+      { status: 409 }
+    );
+  }
+
   // Clear non-ID (or floor-low confidence): don't pollute the manual queue —
   // surface an error so the user retries with a real ID. kycStatus is untouched
   // (stays NOT_SUBMITTED) so they can resubmit immediately.
@@ -129,6 +153,7 @@ export async function POST(request: NextRequest) {
           documentUrl,
           method: "AUTO",
           status: "APPROVED",
+          documentNumber: dupe.normalized || null,
           extracted,
           reviewedAt: new Date(),
         },
@@ -138,7 +163,10 @@ export async function POST(request: NextRequest) {
         kycStatus: "APPROVED",
         kycApprovedAt: new Date(),
       };
-      if (!user.nidNumber && result.extracted.idNumber) patch.nidNumber = result.extracted.idNumber;
+      // The NORMALISED form: `User.nidNumber` is unique, so it must be stored
+      // the same way it is compared, or `1234-5678` and `12345678` would be two
+      // different accounts' worth of the same ID.
+      if (!user.nidNumber && dupe.normalized) patch.nidNumber = dupe.normalized;
       if (!user.dateOfBirth && result.extracted.dateOfBirth) {
         const d = new Date(result.extracted.dateOfBirth);
         if (!Number.isNaN(d.getTime())) patch.dateOfBirth = d;
@@ -187,6 +215,7 @@ export async function POST(request: NextRequest) {
         documentUrl,
         method: "AUTO",
         status: "PENDING",
+        documentNumber: dupe.normalized || null,
         extracted,
       },
     });
