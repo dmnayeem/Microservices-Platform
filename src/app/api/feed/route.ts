@@ -21,6 +21,12 @@ import { getAdDensity } from "@/lib/ad-density";
 import { getSetting } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
 import { recordUserAction } from "@/lib/goal-progress";
+import {
+  FEED_AUTHOR_SELECT,
+  FEED_POST_SELECT,
+  formatFeedPost,
+  type FeedViewerContext,
+} from "@/lib/feed-post-shape";
 
 // GET /api/feed - Get feed posts
 // Exactly the columns `formatPost` below reads. Without a select, Prisma
@@ -28,34 +34,10 @@ import { recordUserAction } from "@/lib/goal-progress";
 // pollOptions/linkPreview JSON — which is 1-2 MB per feed request through the
 // Accelerate proxy, and heads straight for its response-size cap (P6009, which
 // this codebase deliberately never retries).
-const FEED_POST_SELECT = {
-  id: true,
-  userId: true,
-  content: true,
-  images: true,
-  backgroundStyle: true,
-  isPublic: true,
-  isPinned: true,
-  isAnnouncement: true,
-  isPromoted: true,
-  promotedUntil: true,
-  promotedNote: true,
-  boostedUntil: true,
-  likesCount: true,
-  commentsCount: true,
-  sharesCount: true,
-  viewsCount: true,
-  linkClicksCount: true,
-  uniqueLinkClicksCount: true,
-  pollOptions: true,
-  pollEndsAt: true,
-  donationGoal: true,
-  donationCollected: true,
-  linkPreview: true,
-  groupId: true,
-  createdAt: true,
-  lastActivityAt: true,
-} as const;
+// The select and the row→payload mapping live in `src/lib/feed-post-shape.ts`
+// because the saved-posts list renders the SAME `FeedPostCard` and therefore
+// has to produce the same object. A second copy here is exactly how the two
+// lists end up quietly disagreeing about which fields a post has.
 
 /** A pool row: exactly the columns FEED_POST_SELECT asks for. */
 type FeedPostRow = Prisma.PostGetPayload<{ select: typeof FEED_POST_SELECT }>;
@@ -305,17 +287,7 @@ export async function GET(request: NextRequest) {
     const userIds = [...new Set(allPosts.map((p) => p.userId))];
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        avatar: true,
-        level: true,
-        package: { select: { slug: true, name: true } },
-        isBlueVerified: true,
-        verifiedBadgeStyle: true,
-        role: true,
-      },
+      select: FEED_AUTHOR_SELECT,
     });
     const userMap = new Map(users.map((u) => [u.id, u]));
 
@@ -393,40 +365,20 @@ export async function GET(request: NextRequest) {
     }
 
     type FormattablePost = (typeof allPosts)[number];
-    const formatPost = (post: FormattablePost) => ({
-      id: post.id,
-      content: post.content,
-      images: post.images,
-      backgroundStyle: post.backgroundStyle,
-      isPublic: post.isPublic,
-      isPinned: post.isPinned,
-      isAnnouncement: post.isAnnouncement,
-      isPromoted: post.isPromoted,
-      promotedUntil: post.promotedUntil,
-      promotedNote: post.promotedNote,
-      boostedUntil: post.boostedUntil,
-      likesCount: post.likesCount,
-      commentsCount: post.commentsCount,
-      sharesCount: post.sharesCount,
-      viewsCount: post.viewsCount,
-      linkClicksCount: post.linkClicksCount,
-      uniqueLinkClicksCount: post.uniqueLinkClicksCount,
-      pollOptions: post.pollOptions ?? null,
-      pollEndsAt: post.pollEndsAt,
-      donationGoal: post.donationGoal,
-      donationCollected: post.donationCollected,
-      linkPreview: post.linkPreview ?? null,
-      groupId: post.groupId,
-      myVote: userVoteMap.get(post.id) ?? null,
-      createdAt: post.createdAt,
-      user: userMap.get(post.userId),
-      isLiked: userLikes.has(post.id),
-      myReaction: myReactions.get(post.id) ?? null,
-      reactionCounts: reactionCounts[post.id] ?? null,
-      isSaved: savedSet.has(post.id),
-      isOwner: session?.user?.id === post.userId,
-      isFollowingAuthor: followingSet.has(post.userId),
-    });
+    // Everything per-viewer is looked up in bulk above; the shared formatter
+    // just reads from those maps, so both lists shape a post identically.
+    const viewerCtx: FeedViewerContext = {
+      viewerId: session?.user?.id ?? null,
+      liked: userLikes,
+      myReactions,
+      reactionCounts,
+      saved: savedSet,
+      votes: userVoteMap,
+      following: followingSet,
+      users: userMap as Map<string, unknown>,
+    };
+    const formatPost = (post: FormattablePost) =>
+      formatFeedPost(post, viewerCtx);
 
     // Interleave: announcements at top → organic posts with one promoted
     // injected every N entries (admin-configurable, default 4).

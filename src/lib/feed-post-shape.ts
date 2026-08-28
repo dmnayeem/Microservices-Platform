@@ -40,6 +40,27 @@ export const FEED_POST_SELECT = {
   lastActivityAt: true,
 } as const;
 
+/**
+ * The author columns a post card needs.
+ *
+ * Shared for the same reason as the post select — and learned the harder way:
+ * the saved list first hand-rolled this and sent `packageTier` where the card
+ * reads `package`, and left out `verifiedBadgeStyle` entirely, so badges
+ * rendered differently on `/saved` than in the feed. Identical post fields are
+ * not enough if the author object underneath them disagrees.
+ */
+export const FEED_AUTHOR_SELECT = {
+  id: true,
+  name: true,
+  username: true,
+  avatar: true,
+  level: true,
+  package: { select: { slug: true, name: true } },
+  isBlueVerified: true,
+  verifiedBadgeStyle: true,
+  role: true,
+} as const;
+
 /** The per-viewer facts a list has to look up in bulk, not per post. */
 export interface FeedViewerContext {
   viewerId?: string | null;

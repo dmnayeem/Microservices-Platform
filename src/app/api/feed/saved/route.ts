@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  FEED_AUTHOR_SELECT,
   FEED_POST_SELECT,
   formatFeedPost,
   type FeedViewerContext,
@@ -55,16 +56,7 @@ export async function GET(request: NextRequest) {
   const [authors, likes, votes, follows, grouped] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: authorIds } },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        avatar: true,
-        level: true,
-        role: true,
-        isBlueVerified: true,
-        package: { select: { slug: true, name: true } },
-      },
+      select: FEED_AUTHOR_SELECT,
     }),
     prisma.like.findMany({
       where: { userId, postId: { in: ids } },
@@ -103,31 +95,12 @@ export async function GET(request: NextRequest) {
     saved: new Set(ids),
     votes: new Map(votes.map((v) => [v.postId, v.optionId])),
     following: new Set(follows.map((f) => f.followingId)),
+    // Straight through, exactly as the feed does. This used to remap the row by
+    // hand — renaming `package` to `packageTier` and dropping
+    // `verifiedBadgeStyle` — so the card read a field that was not there and
+    // badges rendered differently here than in the feed.
     users: new Map(
-      (
-        authors as Array<{
-          id: string;
-          name: string | null;
-          username: string | null;
-          avatar: string | null;
-          level: number;
-          role: string | null;
-          isBlueVerified: boolean;
-          package: { slug: string; name: string } | null;
-        }>
-      ).map((u) => [
-        u.id,
-        {
-          id: u.id,
-          name: u.name,
-          username: u.username,
-          avatar: u.avatar,
-          level: u.level,
-          role: u.role,
-          isBlueVerified: u.isBlueVerified,
-          packageTier: u.package?.slug ?? "free",
-        },
-      ])
+      (authors as Array<{ id: string }>).map((u) => [u.id, u])
     ),
   };
 

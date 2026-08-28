@@ -9,7 +9,10 @@ import {
   toReactionType,
   topReactions,
 } from "../src/lib/reactions";
-import { FEED_POST_SELECT } from "../src/lib/feed-post-shape";
+import {
+  FEED_AUTHOR_SELECT,
+  FEED_POST_SELECT,
+} from "../src/lib/feed-post-shape";
 
 /**
  * Feed: reactions, save, image viewer, report.
@@ -162,15 +165,90 @@ async function main() {
       "the page breakdown is one groupBy, not a query per post",
       /groupBy\(\{\s*by: \["postId", "type"\]/.test(feed)
     );
-    check("myReaction is returned", /myReaction: myReactions\.get\(post\.id\)/.test(feed));
-    check("reactionCounts is returned", /reactionCounts: reactionCounts\[post\.id\]/.test(feed));
-    check("isSaved is batched like isLiked", /savedSet\.has\(post\.id\)/.test(feed));
-
-    // The shared shape — a second copy is how two lists drift apart.
+    // The route's job is the BULK LOOKUPS; the shared formatter's job is putting
+    // them on the payload. Assert each where it actually lives — pointing these
+    // at the route is how the ads-reporting suite went red while the behaviour
+    // was fine.
     check(
-      "the saved list reuses the feed's select and formatter",
-      /FEED_POST_SELECT/.test(code("src/app/api/feed/saved/route.ts")) &&
-        /formatFeedPost/.test(code("src/app/api/feed/saved/route.ts"))
+      "the route batches reactions and saves for the whole page",
+      /myReactions = new Map\(likes\.map/.test(feed) &&
+        /savedSet = new Set\(saved\.map/.test(feed)
+    );
+    check(
+      "the route hands those maps to the formatter",
+      /myReactions,/.test(feed) && /saved: savedSet,/.test(feed)
+    );
+    const shape = code("src/lib/feed-post-shape.ts");
+    check("myReaction is on the payload", /myReaction: ctx\.myReactions\.get\(post\.id\)/.test(shape));
+    check("reactionCounts is on the payload", /reactionCounts: ctx\.reactionCounts\[post\.id\]/.test(shape));
+    check("isSaved is on the payload", /isSaved: ctx\.saved\.has\(post\.id\)/.test(shape));
+
+    // ── One definition of a post's shape ──────────────────────────────────
+    //
+    // The feed and the saved list render the SAME `FeedPostCard`, so both have
+    // to produce the same object. When they each kept their own select and
+    // formatter the two were byte-identical — and would have stayed that way
+    // only until the next field was added to the feed and not to the other,
+    // which nothing would have caught. These assertions are what makes that
+    // impossible rather than merely unlikely.
+    const FEED_ROUTE = "src/app/api/feed/route.ts";
+    const SAVED_ROUTE = "src/app/api/feed/saved/route.ts";
+    for (const f of [FEED_ROUTE, SAVED_ROUTE]) {
+      check(
+        `${f.split("/").slice(-2).join("/")} imports the shared shape`,
+        /from "@\/lib\/feed-post-shape"/.test(code(f))
+      );
+      check(
+        `${f.split("/").slice(-2).join("/")} uses the shared formatter`,
+        /formatFeedPost\(/.test(code(f))
+      );
+    }
+    // The duplication itself: only the shared module may define these.
+    const defsSelect = [FEED_ROUTE, SAVED_ROUTE].filter((f) =>
+      /^\s*(export )?const FEED_POST_SELECT = \{/m.test(code(f))
+    );
+    check(
+      "neither route declares its own FEED_POST_SELECT",
+      defsSelect.length === 0,
+      defsSelect.join(", ")
+    );
+    const defsFormat = [FEED_ROUTE, SAVED_ROUTE].filter((f) =>
+      /const formatPost = \(post: \w+\) => \(\{/.test(code(f))
+    );
+    check(
+      "neither route inlines its own post mapping",
+      defsFormat.length === 0,
+      defsFormat.join(", ")
+    );
+    check(
+      "the shared module is the only place FEED_POST_SELECT is defined",
+      /export const FEED_POST_SELECT = \{/.test(
+        code("src/lib/feed-post-shape.ts")
+      )
+    );
+    // Matching post fields are not enough if the AUTHOR underneath disagrees.
+    // The saved list first hand-rolled that object and sent `packageTier` where
+    // the card reads `package`, with no `verifiedBadgeStyle` at all — so badges
+    // rendered differently on /saved and the post fields all still matched.
+    for (const f of [FEED_ROUTE, SAVED_ROUTE]) {
+      check(
+        `${f.split("/").slice(-2).join("/")} selects authors from the shared list`,
+        /select: FEED_AUTHOR_SELECT/.test(code(f))
+      );
+    }
+    const remapped = [FEED_ROUTE, SAVED_ROUTE].filter((f) =>
+      /packageTier:/.test(code(f))
+    );
+    check(
+      "neither route remaps the author row by hand",
+      remapped.length === 0,
+      remapped.join(", ")
+    );
+    check(
+      "the shared author select still carries the badge fields the card reads",
+      ["package", "isBlueVerified", "verifiedBadgeStyle", "level", "role"].every(
+        (k) => k in (FEED_AUTHOR_SELECT as Record<string, unknown>)
+      )
     );
     check("the shared select still carries the core columns",
       ["id","userId","content","images","likesCount","commentsCount"].every(
