@@ -116,6 +116,12 @@ export interface Props {
   feedAdInterval?: number;
   underPostBanner?: boolean;
   underPostInterval?: number;
+  /**
+   * Admin switch `ui.groups_enabled` (default off). Decides whether the Groups
+   * tab exists at all. Defaults to false here too, so a caller that forgets to
+   * pass it hides the feature rather than exposing one the server is blocking.
+   */
+  groupsEnabled?: boolean;
 }
 
 export type ViewTab = "feed" | "groups";

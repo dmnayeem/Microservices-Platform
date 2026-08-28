@@ -56,9 +56,23 @@ export function SocialFeedView({
   feedAdInterval = 2,
   underPostBanner = false,
   underPostInterval = 3,
+  groupsEnabled = false,
 }: Props) {
   const [tab, setTab] = useState<ViewTab>("feed");
   const [sort, setSort] = useState<Sort>("recent");
+
+  // Groups is behind an admin switch (`ui.groups_enabled`, default off) and the
+  // flag arrives from the server — see src/lib/groups-gate.ts. `activeTab`
+  // rather than `tab` is what the render reads, so if the switch is turned off
+  // while someone is sitting on the Groups tab they fall back to the feed
+  // instead of staring at an empty column.
+  const tabs = [
+    { key: "feed", label: "Feed", icon: Compass },
+    ...(groupsEnabled
+      ? [{ key: "groups", label: "Groups", icon: Users } as const]
+      : []),
+  ] as const satisfies readonly { key: ViewTab; label: string; icon: typeof Compass }[];
+  const activeTab: ViewTab = tabs.some((t) => t.key === tab) ? tab : "feed";
 
   return (
     // The right rail appears at `xl`, not `lg`, and the mobile strips below hold
@@ -82,34 +96,33 @@ export function SocialFeedView({
         {/* Active-events strip, below the banner. Shown until the rail appears at xl. */}
         <ActiveEventsCard className="xl:hidden" />
 
-        {/* Top tabs */}
-        <nav className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none">
-          {(
-            [
-              { key: "feed", label: "Feed", icon: Compass },
-              { key: "groups", label: "Groups", icon: Users },
-            ] as const
-          ).map((t) => {
-            const isActive = t.key === tab;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
-                  isActive
-                    ? "text-white border-indigo-500"
-                    : "text-gray-500 border-transparent hover:text-white"
-                )}
-              >
-                <t.icon className="w-4 h-4" />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
+        {/* Top tabs — only rendered when there is a choice to make. With Groups
+            switched off there is one tab, and a tab strip holding a single
+            "Feed" button is worse than no strip at all. */}
+        {tabs.length > 1 && (
+          <nav className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none">
+            {tabs.map((t) => {
+              const isActive = t.key === activeTab;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
+                    isActive
+                      ? "text-white border-indigo-500"
+                      : "text-gray-500 border-transparent hover:text-white"
+                  )}
+                >
+                  <t.icon className="w-4 h-4" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
-        {tab === "feed" && (
+        {activeTab === "feed" && (
           <FeedTab
             user={user}
             initialFeedAd={initialFeedAd}
@@ -126,7 +139,7 @@ export function SocialFeedView({
           />
         )}
 
-        {tab === "groups" && <GroupsTab />}
+        {groupsEnabled && activeTab === "groups" && <GroupsTab />}
       </div>
 
       {/* Right rail — only where both columns actually fit (xl+). See above. */}

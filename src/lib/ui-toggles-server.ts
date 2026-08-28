@@ -10,6 +10,12 @@ export interface UiToggles {
   requireKycForWithdrawal: boolean;
   /** When true, a user must have a verified email before they can log in. */
   requireEmailVerification: boolean;
+  /**
+   * Groups: the tab on the social feed, the group pages, and the whole
+   * `/api/groups` surface. OFF ships the feature dark rather than deleting it —
+   * every Group, member and group post stays in the database untouched.
+   */
+  groupsEnabled: boolean;
 }
 
 const KEYS = {
@@ -19,6 +25,7 @@ const KEYS = {
   requireProfileCompletion: "ui.require_profile_completion",
   requireKycForWithdrawal: "ui.require_kyc_for_withdrawal",
   requireEmailVerification: "ui.require_email_verification",
+  groupsEnabled: "ui.groups_enabled",
 } as const;
 
 const DEFAULTS: UiToggles = {
@@ -32,6 +39,11 @@ const DEFAULTS: UiToggles = {
   // OFF by default — don't block login on email verification unless an admin
   // opts in. Google OAuth accounts are auto-verified regardless.
   requireEmailVerification: false,
+  // OFF by default. The owner asked for Groups to ship dark, and a false default
+  // means that needs no row in `SystemSetting` at all — the absence of the
+  // setting IS the off state. Turning it on later is one toggle in
+  // /admin/settings and the two existing groups come straight back.
+  groupsEnabled: false,
 };
 
 function asBool(v: unknown, fallback: boolean): boolean {
@@ -50,10 +62,11 @@ const CACHE_MS = 60_000;
 let _cache: { value: UiToggles; ts: number } | null = null;
 
 /**
- * Read the admin ON/OFF toggles for the site-wide popups (cookie consent,
- * notification permission prompt, PWA install prompt). Each defaults to `true`
- * when unset or the DB is unreachable. Memoized in-process (~60s) and cached at
- * the edge via Accelerate for cold reads.
+ * Read the admin ON/OFF toggles: the site-wide popups (cookie consent,
+ * notification permission prompt, PWA install prompt), the signup/withdrawal
+ * requirements, and the Groups feature switch. Each falls back to its entry in
+ * `DEFAULTS` when unset or the DB is unreachable. Memoized in-process (~60s) and
+ * cached at the edge via Accelerate for cold reads.
  */
 export async function getUiToggles(): Promise<UiToggles> {
   if (_cache && Date.now() - _cache.ts < CACHE_MS) return _cache.value;
@@ -85,6 +98,7 @@ export async function getUiToggles(): Promise<UiToggles> {
         map.get(KEYS.requireEmailVerification),
         DEFAULTS.requireEmailVerification
       ),
+      groupsEnabled: asBool(map.get(KEYS.groupsEnabled), DEFAULTS.groupsEnabled),
     };
     _cache = { value, ts: Date.now() };
     return value;

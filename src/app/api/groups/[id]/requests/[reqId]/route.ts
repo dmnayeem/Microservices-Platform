@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { groupsDisabled } from "@/lib/groups-gate";
 import { prisma } from "@/lib/prisma";
 import { GroupRole } from "@/generated/prisma/client";
 import { z } from "zod";
@@ -12,6 +13,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; reqId: string }> }
 ) {
+  // Feature switch — see src/lib/groups-gate.ts. Checked before auth so a
+  // disabled feature answers the same way for everyone.
+  const off = await groupsDisabled();
+  if (off) return off;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

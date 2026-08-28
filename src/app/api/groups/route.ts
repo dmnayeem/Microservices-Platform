@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { groupsDisabled } from "@/lib/groups-gate";
 import { prisma } from "@/lib/prisma";
 import { GroupType, GroupRole } from "@/generated/prisma/client";
 import { z } from "zod";
@@ -12,6 +13,10 @@ const createSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  // Feature switch — see src/lib/groups-gate.ts. Checked before auth so a
+  // disabled feature answers the same way for everyone.
+  const off = await groupsDisabled();
+  if (off) return off;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -94,6 +99,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Feature switch — see src/lib/groups-gate.ts. Checked before auth so a
+  // disabled feature answers the same way for everyone.
+  const off = await groupsDisabled();
+  if (off) return off;
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

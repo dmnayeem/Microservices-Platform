@@ -10,6 +10,7 @@ import { ProfileCompletionBanner } from "@/components/user/primitives/profile-co
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 import { getSetting } from "@/lib/system-settings";
+import { isGroupsEnabled } from "@/lib/groups-gate";
 import {
   DEFAULT_WIDGET_CONFIG,
   normalizeWidgetConfig,
@@ -134,6 +135,9 @@ export default async function SocialPage() {
     .slice(0, 5);
 
   const adDensity = await getAdDensity();
+  // Admin switch `ui.groups_enabled` — default off. The server blocks the
+  // Groups API regardless; this is what stops the tab being offered.
+  const groupsEnabled = await isGroupsEnabled();
 
   // The session doesn't carry the avatar — fetch it so the composer shows the
   // user's real picture (kept fresh; PhotoModal calls router.refresh on upload).
@@ -224,6 +228,7 @@ export default async function SocialPage() {
       feedAdInterval={adDensity.feedAdInterval}
       underPostBanner={adDensity.underPostBanner}
       underPostInterval={adDensity.underPostInterval}
+      groupsEnabled={groupsEnabled}
       tickerConfig={
         tickerPayload
           ? {

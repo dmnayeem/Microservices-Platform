@@ -38,7 +38,7 @@ const TABS = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "limits", label: "Limits", icon: SlidersHorizontal },
-  { id: "ui_toggles", label: "Popups", icon: MonitorSmartphone },
+  { id: "ui_toggles", label: "Toggles", icon: MonitorSmartphone },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -133,6 +133,7 @@ const DEFAULTS: SettingsBag = {
   "ui.pwa_install_prompt_enabled": true,
   "ui.require_profile_completion": false,
   "ui.require_kyc_for_withdrawal": true,
+  "ui.groups_enabled": false,
 };
 
 const CATEGORY_FOR_KEY: Record<string, string> = {
@@ -193,6 +194,7 @@ const CATEGORY_FOR_KEY: Record<string, string> = {
   "ui.require_profile_completion": "ui_toggles",
   "ui.require_kyc_for_withdrawal": "ui_toggles",
   "ui.require_email_verification": "ui_toggles",
+  "ui.groups_enabled": "ui_toggles",
 };
 
 export function SystemSettingsForm({
@@ -1142,7 +1144,8 @@ export function SystemSettingsForm({
         {tab === "ui_toggles" && (
           <div className="space-y-3">
             <p className="text-xs text-slate-500">
-              Turn the site-wide popups on or off for all visitors.
+              Site-wide switches. These apply to every user immediately
+              (within a minute — the values are memoised server-side).
             </p>
             <Toggle
               label="Cookie consent popup"
@@ -1181,6 +1184,14 @@ export function SystemSettingsForm({
               onChange={(v) => set("ui.require_kyc_for_withdrawal", v)}
               disabled={!canEdit}
               tone="red"
+            />
+            <Toggle
+              label="Groups"
+              description="Show the Groups tab on the social feed. When off the tab is hidden AND the group pages and API are blocked, so the feature is genuinely off. Existing groups and their members are kept and come back when you turn this on."
+              checked={values["ui.groups_enabled"] === true}
+              onChange={(v) => set("ui.groups_enabled", v)}
+              disabled={!canEdit}
+              tone="purple"
             />
             <Toggle
               label="Require email verification to log in"
