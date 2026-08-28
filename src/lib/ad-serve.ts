@@ -9,7 +9,7 @@ import {
 import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
 import { bufferImpression, bufferServeOutcome } from "@/lib/ad-counters";
-import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
+import { creativeUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
 import {
   getNetworkGlobals,
   resolveNetworkSlot,
@@ -315,16 +315,8 @@ async function serveAdInner(opts: {
     ad: {
       id: chosen.id,
       type: chosen.type,
-      imageUrl: chosen.contentUrl
-        ? proxy
-          ? firstPartyMediaUrl(chosen.id, "img")
-          : chosen.contentUrl
-        : undefined,
-      videoUrl: chosen.videoUrl
-        ? proxy
-          ? firstPartyMediaUrl(chosen.id, "video")
-          : chosen.videoUrl
-        : undefined,
+      imageUrl: creativeUrl(chosen.id, "img", chosen.contentUrl, proxy),
+      videoUrl: creativeUrl(chosen.id, "video", chosen.videoUrl, proxy),
       title: chosen.campaign.title,
       body: undefined,
       ctaLabel: "Learn More",
@@ -527,13 +519,15 @@ export async function serveFeedAds(opts: {
         author: {
           name: a.brandName || "Sponsored",
           username: null,
-          avatar: a.brandLogo ? firstPartyMediaUrl(a.id, "logo") : null,
+          avatar: creativeUrl(a.id, "logo", a.brandLogo, true) ?? null,
           isBlueVerified: false,
           verifiedBadgeStyle: null,
         },
         content: a.headline ?? "",
-        images: a.contentUrl ? [firstPartyMediaUrl(a.id, "img")] : [],
-        videoUrl: a.videoUrl ? firstPartyMediaUrl(a.id, "video") : null,
+        images: [creativeUrl(a.id, "img", a.contentUrl, true)].filter(
+          (u): u is string => !!u
+        ),
+        videoUrl: creativeUrl(a.id, "video", a.videoUrl, true) ?? null,
         backgroundStyle: null,
         ctaLabel: a.ctaLabel || "Learn More",
         targetUrl: a.targetUrl ?? null,

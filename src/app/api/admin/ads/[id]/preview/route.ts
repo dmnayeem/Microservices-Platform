@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
+import { creativeUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
 import {
   describeNetworkSlot,
   getNetworkGlobals,
@@ -65,16 +65,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       id: ad.id,
       type: ad.type,
       format: ad.format,
-      imageUrl: ad.contentUrl
-        ? proxy
-          ? firstPartyMediaUrl(ad.id, "img")
-          : ad.contentUrl
-        : undefined,
-      videoUrl: ad.videoUrl
-        ? proxy
-          ? firstPartyMediaUrl(ad.id, "video")
-          : ad.videoUrl
-        : undefined,
+      imageUrl: creativeUrl(ad.id, "img", ad.contentUrl, proxy),
+      videoUrl: creativeUrl(ad.id, "video", ad.videoUrl, proxy),
       title: ad.brandName || ad.campaign.title,
       body: ad.headline ?? undefined,
       ctaLabel: ad.ctaLabel ?? "Learn More",

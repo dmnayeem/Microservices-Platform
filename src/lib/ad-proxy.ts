@@ -38,3 +38,41 @@ export function isFirstPartyAdType(type: string | null | undefined): boolean {
     type !== "SDK" && type !== "META" && type !== "ADSENSE" && type !== "GAM"
   );
 }
+
+/**
+ * A creative stored inline rather than at a URL — `data:` (and `blob:`, which a
+ * preview can produce).
+ *
+ * These must NOT be routed through the proxy. The proxy resolves a private-S3
+ * key or fetches an http(s) URL; a `data:` URI is neither, so `assertPublicUrl`
+ * rejects it and the route answers 404 — which the browser renders as a broken
+ * image. Every seeded demo creative is an inline SVG, so all of them showed up
+ * broken wherever they were served.
+ *
+ * Nothing is lost by skipping the proxy here: the bytes are already inline and
+ * same-origin, so there is no third-party host to disguise and no URL for a
+ * blocker to match on.
+ */
+export function isInlineCreative(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const s = url.trimStart().toLowerCase();
+  return s.startsWith("data:") || s.startsWith("blob:");
+}
+
+/**
+ * The URL a client should load for one creative field.
+ *
+ * The single place that decides between the first-party proxy and the stored
+ * URL, so the inline-creative rule above cannot be forgotten at one of the call
+ * sites — which is exactly how it broke.
+ */
+export function creativeUrl(
+  adId: string,
+  field: AdMediaField,
+  stored: string | null | undefined,
+  proxy: boolean
+): string | undefined {
+  if (!stored) return undefined;
+  if (!proxy || isInlineCreative(stored)) return stored;
+  return firstPartyMediaUrl(adId, field);
+}

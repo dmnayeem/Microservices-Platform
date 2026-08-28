@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { firstPartyMediaUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
+import { creativeUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
 import { getAdClickCost } from "@/lib/ad-billing";
 import { servableCampaignWhere } from "@/lib/ad-serve";
 import { getRewardedConfig, signWatchToken } from "@/lib/ads-rewarded";
@@ -84,16 +84,8 @@ export async function GET() {
       format: ad.format,
       // `videoUrl` was missing entirely, which is why a "watch a video to earn"
       // screen could not be built on this route as it stood.
-      videoUrl: ad.videoUrl
-        ? proxy
-          ? firstPartyMediaUrl(ad.id, "video")
-          : ad.videoUrl
-        : null,
-      imageUrl: ad.contentUrl
-        ? proxy
-          ? firstPartyMediaUrl(ad.id, "img")
-          : ad.contentUrl
-        : null,
+      videoUrl: creativeUrl(ad.id, "video", ad.videoUrl, proxy) ?? null,
+      imageUrl: creativeUrl(ad.id, "img", ad.contentUrl, proxy) ?? null,
       html: ad.htmlContent ?? null,
       ctaLabel: ad.ctaLabel ?? "Learn More",
       targetUrl: ad.targetUrl ?? null,
