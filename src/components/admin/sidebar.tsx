@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { USER_HOME } from "@/lib/routes";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -317,7 +318,7 @@ function AdminSidebarContent({
         <ul className="space-y-0.5">
           <li>
             <Link
-              href="/dashboard"
+              href={USER_HOME}
               title={collapsed ? "Back to App" : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors",

@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { USER_HOME } from "@/lib/routes";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -250,7 +251,7 @@ function RegisterForm() {
           variant="secondary"
           fullWidth
           size="lg"
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          onClick={() => signIn("google", { callbackUrl: USER_HOME })}
           leftIcon={
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path

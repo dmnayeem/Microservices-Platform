@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { USER_HOME } from "@/lib/routes";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { usePathname } from "next/navigation";
 import {
@@ -127,7 +128,7 @@ export function TutorShell({ user, children }: Props) {
             </div>
           </div>
           <Link
-            href="/dashboard"
+            href={USER_HOME}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-800 font-bold"
           >
             <Home className="w-3.5 h-3.5" />

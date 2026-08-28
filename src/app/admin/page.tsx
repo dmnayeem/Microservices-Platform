@@ -1,5 +1,6 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { USER_HOME } from "@/lib/routes";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, type MoneyInput } from "@/lib/money";
@@ -60,7 +61,7 @@ function buildRevenueSeries(
 export default async function AdminDashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (!isAdmin(session.user.role as UserRole)) redirect("/dashboard");
+  if (!isAdmin(session.user.role as UserRole)) redirect(USER_HOME);
 
   // Every pending request/application this admin may review, with live counts —
   // feeds the "Pending Requests" hub below (permission-scoped, fail-safe).

@@ -142,9 +142,25 @@ export function SocialFeedView({
         {groupsEnabled && activeTab === "groups" && <GroupsTab />}
       </div>
 
-      {/* Right rail — only where both columns actually fit (xl+). See above. */}
+      {/* Right rail — only where both columns actually fit (xl+). See above.
+          The aside is deliberately left to stretch to the row height: `sticky`
+          needs a taller ancestor to travel inside, so adding `self-start` here
+          would shrink it to its content and stop the stickiness working. */}
       <aside className="hidden xl:block w-80 shrink-0">
-        <div className="sticky top-20 space-y-4">
+        {/* The rail scrolls on its own.
+            `sticky` alone pinned this column 80px below the header and then let
+            it move with the page — so once the widgets were taller than the
+            viewport, the bottom ones could never be brought into view. There was
+            no height bound and no overflow, so the column had no scrollbar of its
+            own. It stacks Active Events, best earners, who-to-follow, trending
+            hashtags, a promo, quick-earn tiles and any custom widgets, which
+            clears a laptop screen easily.
+
+            6rem = the `top-20` offset plus a little breathing room at the bottom.
+            `--anchor-ad-h` is published on the document by AnchorAdBar and is 0px
+            when there is no bar, so the rail only gives up height for a strip
+            that is actually there — the same allowance `<main>` makes. */}
+        <div className="sticky top-20 space-y-4 max-h-[calc(100vh-6rem-var(--anchor-ad-h,0px))] overflow-y-auto scrollbar-thin pr-1">
           <ActiveEventsCard />
           <FeedRightRail
             bestEarners={bestEarners}

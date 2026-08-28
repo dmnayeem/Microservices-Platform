@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
+import { USER_HOME } from "@/lib/routes";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
 import { AdminLayoutShell } from "@/components/admin/layout-shell";
@@ -28,7 +29,7 @@ export default async function AdminLayout({
   // Server-side redirect if not admin (any admin role)
   const userRole = session.user.role as UserRole | undefined;
   if (!isAdmin(userRole)) {
-    redirect("/dashboard");
+    redirect(USER_HOME);
   }
 
   // Four independent reads, run together rather than as a four-deep waterfall
