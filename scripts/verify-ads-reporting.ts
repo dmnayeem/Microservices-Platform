@@ -49,25 +49,50 @@ const code = (p: string) =>
 async function main() {
   console.log("\n=== Ad reporting ===\n");
 
-  /* A1 — the finance card. */
-  console.log("A1. Finance reports revenue, not leftover budget");
+  /* A1 — ad revenue, wherever it is reported. */
+  //
+  // These used to read `app/admin/finance/page.tsx`. The finance-console rewrite
+  // moved the calculation into `lib/finance/revenue.ts` and left the assertions
+  // pointing at a file that no longer held it — so they went red while the
+  // behaviour was fine, and meanwhile the SAME defect survived untouched on the
+  // admin dashboard with nothing watching it. They now assert the rule at every
+  // surface that reports the figure, which is what stops the two drifting apart
+  // again.
+  console.log("A1. Ad revenue is billed money, not committed budget");
   {
-    const s = code("app/admin/finance/page.tsx");
+    const revenue = code("lib/finance/revenue.ts");
+    const dash = code("app/admin/page.tsx");
+
     check(
-      "it sums spentTotal, not budget, for revenue",
-      /const adRevenueTotal = toNum\(adSpend\._sum\.spentTotal\)/.test(s)
+      "finance sums spentTotal, not budget",
+      /_sum: \{ spentTotal: true \}/.test(revenue)
     );
     check(
-      "house campaigns are excluded — they bill nothing by design",
-      /where: \{ isHouse: false \},\s*_sum: \{ spentTotal: true, budget: true \}/.test(s)
+      "finance excludes house campaigns — they bill nothing by design",
+      /where: \{ isHouse: false \},\s*_sum: \{ spentTotal: true \}/.test(revenue)
     );
     check(
-      'the card is no longer titled "Ad Spend" over a remaining balance',
-      /title="Ad Revenue"/.test(s) && !/title="Ad Spend"/.test(s)
+      "the dashboard sums spentTotal, not budget, for revenue",
+      /const adRevenueTotal = toNum\(adSpendAgg\._sum\.spentTotal\)/.test(dash)
+    );
+    check(
+      "the dashboard excludes house campaigns too",
+      /where: \{ isHouse: false \},\s*_sum: \{ spentTotal: true, budget: true \}/.test(dash)
+    );
+    check(
+      'the dashboard card is no longer titled "Ad Spend" over committed budget',
+      /title="Ad Revenue"/.test(dash) && !/title="Ad Spend"/.test(dash)
     );
     check(
       "unspent budget is shown separately, as the liability it is",
-      /title="Ad Budget Unspent"/.test(s)
+      /title="Ad Budget Unspent"/.test(dash) &&
+        /adBudgetUnspent = Math\.max\(/.test(dash)
+    );
+    // The console must still source its ad figure from the shared module, or
+    // the two screens can disagree again without any check noticing.
+    check(
+      "the finance console reports ads through that shared module",
+      /getRevenueBreakdown/.test(code("app/admin/finance/page.tsx"))
     );
   }
 

@@ -191,8 +191,18 @@ export default async function AdminDashboardPage() {
     prisma.user.aggregate({ _sum: { cashBalance: true } }),
     // Ad credit outstanding — non-withdrawable balance advertisers can still spend.
     prisma.user.aggregate({ _sum: { adCreditBalance: true } }),
-    // Ad spend — total campaign budgets committed.
-    prisma.adCampaign.aggregate({ _sum: { budget: true } }),
+    // Ad REVENUE — what advertisers have actually been billed.
+    //
+    // This summed `budget` and called it "Ad Spend": money COMMITTED, not money
+    // earned. It counted budget still sitting unspent in live campaigns, and it
+    // counted house campaigns, which bill nothing by design. The same figure was
+    // wrong on the finance page until it was corrected there; the correction
+    // never reached this card. `where`/`_sum` deliberately match
+    // `src/lib/finance/revenue.ts`, so the two screens report one number.
+    prisma.adCampaign.aggregate({
+      where: { isHouse: false },
+      _sum: { spentTotal: true, budget: true },
+    }),
     // Moved out of the post-batch waterfall.
     prisma.withdrawal.count({ where: { status: "COMPLETED" } }),
     prisma.user.count({ where: { referredById: { not: null } } }),
@@ -249,7 +259,13 @@ export default async function AdminDashboardPage() {
   const approvedDepositsAmount = toNum(approvedDepositsAgg._sum.amount);
   const walletLiability = toNum(walletLiabilityAgg._sum.cashBalance);
   const adCreditOutstanding = toNum(adCreditOutstandingAgg._sum.adCreditBalance);
-  const adSpend = toNum(adSpendAgg._sum.budget);
+  const adRevenueTotal = toNum(adSpendAgg._sum.spentTotal);
+  // What advertisers have put in but not yet used. A liability, not income —
+  // which is exactly why it must not be added to the revenue figure above.
+  const adBudgetUnspent = Math.max(
+    0,
+    toNum(adSpendAgg._sum.budget) - adRevenueTotal
+  );
 
   // activeSubscriptions captured above for future surfacing — no use today.
   void activeSubscriptions;
@@ -403,11 +419,19 @@ export default async function AdminDashboardPage() {
             href="/admin/ads"
           />
           <StatCard
-            title="Ad Spend"
-            value={usd(adSpend)}
-            subtext="campaign budgets"
+            title="Ad Revenue"
+            value={usd(adRevenueTotal)}
+            subtext="billed to advertisers"
             icon={TrendingUp}
             tone="purple"
+            href="/admin/ads"
+          />
+          <StatCard
+            title="Ad Budget Unspent"
+            value={usd(adBudgetUnspent)}
+            subtext="funded, not yet delivered"
+            icon={Megaphone}
+            tone="amber"
             href="/admin/ads"
           />
         </div>
