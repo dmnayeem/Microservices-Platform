@@ -13,6 +13,8 @@ import {
   BarChart3,
   MousePointerClick,
   CheckCircle,
+  Bookmark,
+  Flag,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +26,14 @@ import { cn } from "@/lib/utils";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import { getPostBackground } from "@/lib/post-backgrounds";
 import { ShareModal } from "@/components/user/primitives/share-modal";
+import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
+import { ReportContent } from "@/components/user/primitives/report-content";
+import { ReactionButton } from "./reaction-button";
+import {
+  DEFAULT_REACTION,
+  topReactions,
+  type ReactionType,
+} from "@/lib/reactions";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { mediaSrc } from "@/lib/media-url";
@@ -86,6 +96,12 @@ export const FeedPostCard = memo(function FeedPostCard({
   );
   const [showComments, setShowComments] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  // -1 = closed. The zoom modal already handles prev/next and the keyboard.
+  const [zoomIndex, setZoomIndex] = useState(-1);
+  // Heart burst after a double-tap on the photo.
+  const [burst, setBurst] = useState(false);
+  const lastTapRef = useRef(0);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
@@ -248,11 +264,18 @@ export const FeedPostCard = memo(function FeedPostCard({
     // Optimistic
     onUpdated({
       isLiked: !wasLiked,
+      myReaction: wasLiked ? null : DEFAULT_REACTION,
       likesCount: post.likesCount + (wasLiked ? -1 : 1),
     });
     try {
       const res = await fetch(`/api/feed/${post.id}/like`, {
         method: wasLiked ? "DELETE" : "POST",
+        ...(wasLiked
+          ? {}
+          : {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ type: DEFAULT_REACTION }),
+            }),
       });
       if (!res.ok && res.status !== 409) {
         // 409 = already liked
@@ -262,6 +285,7 @@ export const FeedPostCard = memo(function FeedPostCard({
       // Revert
       onUpdated({
         isLiked: wasLiked,
+        myReaction: post.myReaction ?? null,
         likesCount: post.likesCount,
       });
       toast.error("Couldn't update like");
@@ -270,11 +294,87 @@ export const FeedPostCard = memo(function FeedPostCard({
     }
   };
 
+  /**
+   * Pick a specific emoji.
+   *
+   * The count only moves when this is the viewer's FIRST reaction on the post —
+   * switching between emojis is one row being updated, and the server
+   * deliberately credits nothing for it (otherwise cycling five reactions would
+   * mint points). The optimistic update has to model that or the number would
+   * drift away from what the server returns.
+   */
+  const react = async (type: ReactionType) => {
+    if (busy) return;
+    const wasLiked = post.isLiked;
+    const prev = { isLiked: wasLiked, myReaction: post.myReaction ?? null, likesCount: post.likesCount };
+    setBusy(true);
+    onUpdated({
+      isLiked: true,
+      myReaction: type,
+      likesCount: post.likesCount + (wasLiked ? 0 : 1),
+    });
+    try {
+      const res = await fetch(`/api/feed/${post.id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json().catch(() => null);
+      // Trust the server's count — it is the one that knows whether this was a
+      // new reaction or a switch.
+      if (d && typeof d.likesCount === "number") {
+        onUpdated({ likesCount: d.likesCount, myReaction: d.reaction ?? type });
+      }
+    } catch {
+      onUpdated(prev);
+      toast.error("Couldn't update reaction");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleSave = async () => {
+    const wasSaved = !!post.isSaved;
+    onUpdated({ isSaved: !wasSaved });
+    try {
+      const res = await fetch(`/api/feed/${post.id}/save`, {
+        method: wasSaved ? "DELETE" : "POST",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success(wasSaved ? "Removed from saved" : "Saved");
+    } catch {
+      onUpdated({ isSaved: wasSaved });
+      toast.error("Couldn't update saved posts");
+    }
+  };
+
+  /** Double-tap a photo to like — the gesture people already expect. */
+  const onImageTap = (index: number) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      lastTapRef.current = 0;
+      if (!post.isLiked) void react(DEFAULT_REACTION);
+      setBurst(true);
+      setTimeout(() => setBurst(false), 700);
+      return;
+    }
+    lastTapRef.current = now;
+    setTimeout(() => {
+      // Still a single tap after the double-tap window → open the viewer.
+      if (lastTapRef.current === now) {
+        lastTapRef.current = 0;
+        setZoomIndex(index);
+      }
+    }, 300);
+  };
+
   return (
     <article
       ref={articleRef}
       className={cn(
-        "relative rounded-xl border bg-gray-900 overflow-hidden",
+        "relative rounded-xl border bg-gray-900 overflow-hidden animate-card-in",
+        "transition-colors duration-200 hover:border-gray-700",
         post.isAnnouncement
           ? "border-cyan-500/40 ring-1 ring-cyan-500/20"
           : promotionActive
@@ -372,6 +472,35 @@ export const FeedPostCard = memo(function FeedPostCard({
               </button>
               {menuOpen && (
                 <div className="absolute right-0 mt-1 w-52 rounded-lg border border-gray-700 bg-gray-950 shadow-xl z-20 overflow-hidden">
+                  {/* Available to everyone, own post or not. */}
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void toggleSave();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-gray-900 inline-flex items-center gap-2"
+                  >
+                    <Bookmark
+                      className={cn(
+                        "w-3.5 h-3.5",
+                        post.isSaved ? "text-amber-400 fill-amber-400" : "text-amber-400"
+                      )}
+                    />
+                    {post.isSaved ? "Remove from saved" : "Save post"}
+                  </button>
+                  {!post.isOwner && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setReportOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-gray-900 inline-flex items-center gap-2"
+                    >
+                      <Flag className="w-3.5 h-3.5 text-rose-400" />
+                      Report post
+                    </button>
+                  )}
+                  <div className="border-t border-gray-800" />
                   {isAdmin && (
                     <>
                       <button
@@ -458,7 +587,7 @@ export const FeedPostCard = memo(function FeedPostCard({
       {post.images.length > 0 && (
         <div
           className={cn(
-            "grid gap-px bg-gray-800",
+            "relative grid gap-px bg-gray-800",
             post.images.length === 1 && "grid-cols-1",
             post.images.length === 2 && "grid-cols-2",
             post.images.length >= 3 && "grid-cols-3"
@@ -478,14 +607,19 @@ export const FeedPostCard = memo(function FeedPostCard({
                 key={i}
                 src={mediaSrc(url)}
                 alt=""
+                onClick={() => onImageTap(i)}
                 onError={(e) => {
                   // Hide broken images so a bad URL doesn't leave a giant empty box.
                   e.currentTarget.style.display = "none";
                 }}
-                className="w-full bg-gray-950 max-h-[70vh] object-contain"
+                className="w-full bg-gray-950 max-h-[70vh] object-contain cursor-zoom-in select-none"
               />
             ) : (
-              <div key={i} className="relative aspect-square overflow-hidden">
+              <div
+                key={i}
+                onClick={() => onImageTap(i)}
+                className="relative aspect-square overflow-hidden cursor-zoom-in select-none"
+              >
                 <SmartImage
                   src={url}
                   alt=""
@@ -499,6 +633,13 @@ export const FeedPostCard = memo(function FeedPostCard({
                 />
               </div>
             )
+          )}
+          {/* Double-tap feedback. Pointer-events off so it never eats the tap
+              that produced it. */}
+          {burst && (
+            <span className="pointer-events-none absolute inset-0 grid place-items-center z-10">
+              <Heart className="w-24 h-24 text-white/90 fill-rose-500 drop-shadow-2xl animate-heart-burst" />
+            </span>
           )}
         </div>
       )}
@@ -524,26 +665,37 @@ export const FeedPostCard = memo(function FeedPostCard({
         </div>
       )}
 
+      {/* Who reacted, and with what. Counts come from one grouped query per
+          page, so this costs nothing per card. */}
+      {post.likesCount > 0 && (
+        <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1">
+          <span className="flex -space-x-1">
+            {topReactions(post.reactionCounts ?? undefined).map((r) => (
+              <span
+                key={r.type}
+                title={`${r.count}`}
+                className="grid place-items-center w-5 h-5 rounded-full bg-gray-900 border border-gray-800 text-[11px] leading-none"
+              >
+                {r.emoji}
+              </span>
+            ))}
+          </span>
+          <span className="text-xs text-gray-500 tabular-nums">
+            {post.likesCount}
+          </span>
+        </div>
+      )}
+
       {/* Reactions row */}
-      <div className="flex items-center gap-4 px-4 py-2.5 border-t border-gray-800">
-        <button
-          onClick={toggleLike}
+      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-gray-800 [&>button]:px-2 [&>button]:py-2 [&>button]:rounded-lg [&>button]:hover:bg-gray-800/60 [&>button]:transition-colors">
+        <ReactionButton
+          count={post.likesCount}
+          reacted={post.isLiked}
+          reaction={post.myReaction}
           disabled={busy}
-          className={cn(
-            "inline-flex items-center gap-1.5 text-sm transition-colors",
-            post.isLiked
-              ? "text-red-400"
-              : "text-gray-400 hover:text-red-400"
-          )}
-        >
-          <Heart
-            className={cn(
-              "w-4 h-4",
-              post.isLiked && "fill-red-400 text-red-400"
-            )}
-          />
-          <span className="tabular-nums font-medium">{post.likesCount}</span>
-        </button>
+          onToggle={toggleLike}
+          onPick={react}
+        />
         <button
           onClick={() => setShowComments((v) => !v)}
           className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
@@ -559,6 +711,17 @@ export const FeedPostCard = memo(function FeedPostCard({
         >
           <Share2 className="w-4 h-4" />
           Share
+        </button>
+        <button
+          onClick={toggleSave}
+          aria-label={post.isSaved ? "Remove from saved" : "Save post"}
+          title={post.isSaved ? "Saved" : "Save"}
+          className={cn(
+            "inline-flex items-center gap-1.5 text-sm transition-colors",
+            post.isSaved ? "text-amber-400" : "text-gray-400 hover:text-amber-400"
+          )}
+        >
+          <Bookmark className={cn("w-4 h-4", post.isSaved && "fill-current")} />
         </button>
         {post.isOwner &&
           canBoost &&
@@ -605,8 +768,37 @@ export const FeedPostCard = memo(function FeedPostCard({
       )}
 
       {showComments && (
-        <CommentsSection postId={post.id} currentUserId={currentUserId} onCommentAdded={() => { onUpdated({ commentsCount: post.commentsCount + 1 }); onBumpPost?.(post.id); }} />
+        <div className="animate-card-in">
+          <CommentsSection
+            postId={post.id}
+            currentUserId={currentUserId}
+            onCommentAdded={() => {
+              onUpdated({ commentsCount: post.commentsCount + 1 });
+              onBumpPost?.(post.id);
+            }}
+          />
+        </div>
       )}
+
+      {/* Tapping a photo used to do nothing at all, even though this modal —
+          multi-image, prev/next, Esc and arrow keys — already existed as a
+          primitive and was only being used elsewhere. */}
+      <ImageZoomModal
+        open={zoomIndex >= 0}
+        images={post.images.map((u) => mediaSrc(u))}
+        index={Math.max(0, zoomIndex)}
+        onClose={() => setZoomIndex(-1)}
+        onIndexChange={setZoomIndex}
+      />
+
+      {/* Same story: SocialReport, /api/reports and the admin queue all already
+          accepted POST — there was simply no way to report one. */}
+      <ReportContent
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        targetType="POST"
+        targetId={post.id}
+      />
 
       <ShareModal
         open={shareOpen}

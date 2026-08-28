@@ -33,6 +33,7 @@ import {
   Handshake,
   Coins,
   Rocket,
+  Bookmark,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
@@ -68,6 +69,7 @@ const navigationGroups: { section: string; items: NavItem[] }[] = [
     section: "Main",
     items: [
       { name: "Home", href: "/social", icon: Home },
+      { name: "Saved", href: "/saved", icon: Bookmark },
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Courses", href: "/courses", icon: GraduationCap, feature: "courses" },
       { name: "Marketplace", href: "/marketplace", icon: Store, feature: "marketplace" },

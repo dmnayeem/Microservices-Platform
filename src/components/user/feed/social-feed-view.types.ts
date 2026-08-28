@@ -70,6 +70,11 @@ export interface FeedPost {
     role?: string | null;
   };
   isLiked: boolean;
+  /** Which emoji the viewer left: LIKE | LOVE | HAHA | WOW | SAD. */
+  myReaction?: string | null;
+  /** Per-type totals for the card's emoji cluster, computed per page. */
+  reactionCounts?: Record<string, number> | null;
+  isSaved?: boolean;
   isOwner: boolean;
   isFollowingAuthor?: boolean;
 }

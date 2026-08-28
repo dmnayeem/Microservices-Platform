@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { recordUserAction } from "@/lib/goal-progress";
+import { toReactionType } from "@/lib/reactions";
 
 // POST /api/feed/:id/like - Like a post
 export async function POST(
@@ -30,6 +31,11 @@ export async function POST(
     if (limited) return limited;
 
     const { id } = await params;
+    // Which emoji. Anything unrecognised (or absent, e.g. an older client)
+    // becomes a plain 👍, so this stays backward-compatible with callers that
+    // just POST an empty body.
+    const body = await request.json().catch(() => ({}));
+    const type = toReactionType((body as { type?: unknown })?.type);
 
     // Check if post exists
     const post = await prisma.post.findUnique({
@@ -50,18 +56,41 @@ export async function POST(
       },
     });
 
+    // Changing which emoji you picked is NOT a new reaction.
+    //
+    // The credit below (`awardSocialEarning`) and the event progress are keyed
+    // on the post, precisely so unlike-then-relike cannot pay twice — which is
+    // also why the DELETE handler deliberately doesn't decrement. Reactions have
+    // to respect the same rule: switching between five emojis in a loop would
+    // otherwise be a points printer. So a switch updates the row and returns,
+    // touching no counter and crediting nothing.
     if (existingLike) {
-      return NextResponse.json(
-        { error: "Already liked" },
-        { status: 400 }
-      );
+      if (existingLike.type === type) {
+        return NextResponse.json({
+          liked: true,
+          reaction: type,
+          likesCount: post.likesCount,
+          changed: false,
+        });
+      }
+      await prisma.like.update({
+        where: { postId_userId: { postId: id, userId: session.user.id } },
+        data: { type },
+      });
+      return NextResponse.json({
+        liked: true,
+        reaction: type,
+        likesCount: post.likesCount,
+        changed: true,
+      });
     }
 
-    // Create like
+    // First reaction from this user on this post — this is the one that counts.
     await prisma.like.create({
       data: {
         userId: session.user.id,
         postId: id,
+        type,
       },
     });
 
@@ -97,7 +126,9 @@ export async function POST(
 
     return NextResponse.json({
       liked: true,
+      reaction: type,
       likesCount,
+      changed: true,
     });
   } catch (error) {
     console.error("Error liking post:", error);

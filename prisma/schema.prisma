@@ -1485,6 +1485,7 @@ model User {
   accounts                          Account[]
   sessions                          Session[]
   kycDocuments                      KYCDocument[]
+  savedPosts                        SavedPost[]
   kycAppeals                        KYCAppeal[]
   taskSubmissions                   TaskSubmission[]
   transactions                      Transaction[]
@@ -3250,6 +3251,7 @@ model Post {
   // the feed (not a permanent pin), capped per-viewer via PostBoostView.
   boostedUntil          DateTime?
   boostViews            PostBoostView[]
+  savedBy               SavedPost[]
   likesCount            Int             @default(0)
   commentsCount         Int             @default(0)
   sharesCount           Int             @default(0)
@@ -3595,11 +3597,35 @@ model Like {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  /// Which reaction: LIKE | LOVE | HAHA | WOW | SAD.
+  ///
+  /// One row per (post, user) whatever the emoji — so `Post.likesCount` keeps
+  /// meaning "people who reacted" and every existing sort, counter and
+  /// notification stays correct. Changing the emoji updates this column and
+  /// nothing else; it must NOT re-credit `awardSocialEarning`, or cycling
+  /// through five reactions would be a points printer.
+  type      String   @default("LIKE")
   createdAt DateTime @default(now())
 
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId, postId])
+  @@index([postId, type])
+}
+
+/// A post someone kept for later. Private to the user — no counters, no points,
+/// nothing here can affect earnings.
+model SavedPost {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId, createdAt])
+  @@index([postId])
 }
 
 model Badge {

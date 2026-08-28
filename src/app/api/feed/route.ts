@@ -319,18 +319,52 @@ export async function GET(request: NextRequest) {
     });
     const userMap = new Map(users.map((u) => [u.id, u]));
 
+    // Which reaction did the viewer leave, and what does the post's cluster look
+    // like? Both are answered for the WHOLE page in one query each — a per-post
+    // lookup would be a query per card.
+    const pageIds = allPosts.map((p) => p.id);
+
+    // Per-type totals for the little emoji cluster. Deliberately computed rather
+    // than denormalised onto Post: at this size the grouping is cheap, and a
+    // cached counter is the kind of thing that drifts away from the rows.
+    const reactionCounts: Record<string, Record<string, number>> = {};
+    if (pageIds.length > 0) {
+      const grouped = await prisma.like.groupBy({
+        by: ["postId", "type"],
+        where: { postId: { in: pageIds } },
+        _count: { _all: true },
+      });
+      for (const g of grouped as Array<{
+        postId: string;
+        type: string;
+        _count: { _all: number };
+      }>) {
+        (reactionCounts[g.postId] ??= {})[g.type] = g._count._all;
+      }
+    }
+
     // Check if current user has liked each post
     let userLikes: Set<string> = new Set();
+    let myReactions = new Map<string, string>();
+    let savedSet: Set<string> = new Set();
     let followingSet: Set<string> = new Set();
     if (session?.user?.id) {
       const likes = await prisma.like.findMany({
         where: {
           userId: session.user.id,
-          postId: { in: allPosts.map((p) => p.id) },
+          postId: { in: pageIds },
         },
-        select: { postId: true },
+        select: { postId: true, type: true },
       });
       userLikes = new Set(likes.map((l) => l.postId));
+      myReactions = new Map(likes.map((l) => [l.postId, l.type]));
+
+      // Saved posts — same batching as likes, one query for the page.
+      const saved = await prisma.savedPost.findMany({
+        where: { userId: session.user.id, postId: { in: pageIds } },
+        select: { postId: true },
+      });
+      savedSet = new Set(saved.map((x) => x.postId));
 
       // Which post-authors does the viewer already follow?
       if (userIds.length > 0) {
@@ -387,6 +421,9 @@ export async function GET(request: NextRequest) {
       createdAt: post.createdAt,
       user: userMap.get(post.userId),
       isLiked: userLikes.has(post.id),
+      myReaction: myReactions.get(post.id) ?? null,
+      reactionCounts: reactionCounts[post.id] ?? null,
+      isSaved: savedSet.has(post.id),
       isOwner: session?.user?.id === post.userId,
       isFollowingAuthor: followingSet.has(post.userId),
     });
