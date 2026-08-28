@@ -159,8 +159,18 @@ export function SocialFeedView({
             6rem = the `top-20` offset plus a little breathing room at the bottom.
             `--anchor-ad-h` is published on the document by AnchorAdBar and is 0px
             when there is no bar, so the rail only gives up height for a strip
-            that is actually there — the same allowance `<main>` makes. */}
-        <div className="sticky top-20 space-y-4 max-h-[calc(100vh-6rem-var(--anchor-ad-h,0px))] overflow-y-auto scrollbar-thin pr-1">
+            that is actually there — the same allowance `<main>` makes.
+
+            The scrollbar is deliberately the DEFAULT one, not `scrollbar-thin`.
+            Measured in a real browser: the rail holds 2423px of widgets in a
+            666px window, and the thin variant is 4px wide — which, sitting
+            inside `pr-1`'s 4px of padding, was invisible against a dark
+            background. The column scrolled perfectly well; nobody could tell
+            that it could. `pr-2` keeps the cards clear of the 8px track.
+
+            `overscroll-contain` stops a flick at the end of the rail carrying on
+            into the page behind it. */}
+        <div className="sticky top-20 space-y-4 max-h-[calc(100vh-6rem-var(--anchor-ad-h,0px))] overflow-y-auto overscroll-contain pr-2">
           <ActiveEventsCard />
           <FeedRightRail
             bestEarners={bestEarners}

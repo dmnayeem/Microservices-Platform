@@ -62,15 +62,24 @@ function main() {
       /--anchor-ad-h/.test(rail),
       rail
     );
+    // Measured in Chrome: the rail holds ~2600px of widgets in a 666px window,
+    // and `scrollbar-thin` renders 4px — which sat inside `pr-1`'s 4px of
+    // padding and was invisible on a dark background. The column scrolled fine;
+    // there was no way to tell that it could. The default 8px track is the
+    // affordance, so neither the thin variant nor the padding that hid it may
+    // come back.
     check(
-      "the scrollbar is the thin one used elsewhere in the app",
-      /scrollbar-thin/.test(rail)
+      "the scrollbar is not the near-invisible thin variant",
+      !/scrollbar-thin/.test(rail) && !/scrollbar-none/.test(rail),
+      rail
     );
-    // The utility has to actually exist or the class is a no-op.
     check(
-      "scrollbar-thin is a real utility",
-      /@utility scrollbar-thin/.test(read("src/app/globals.css"))
+      "there is room for the 8px track beside the cards",
+      /(^|\s)pr-2(\s|$)/.test(rail),
+      rail
     );
+    // A flick at the end of the rail should not carry on into the page behind.
+    check("scrolling does not chain to the page", /overscroll-contain/.test(rail));
 
     // `self-start` on the aside would shrink it to its content, leaving `sticky`
     // nothing to travel inside — the classic silent way to break this.
