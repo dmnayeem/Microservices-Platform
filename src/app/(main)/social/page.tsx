@@ -15,6 +15,7 @@ import {
   DEFAULT_WIDGET_CONFIG,
   normalizeWidgetConfig,
 } from "@/lib/feed-widgets";
+import { NON_STAFF_WHERE } from "@/lib/staff";
 import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
 import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
 import { getEffectiveFeatures } from "@/lib/packages";
@@ -83,8 +84,11 @@ export default async function SocialPage() {
       ),
       getTickerPayload(),
       // Cheap "top earners" (no 500-user combined-score scan) — cached.
+      // Staff are excluded at the query, not after the `take`: filtering five
+      // fetched rows down would leave the widget showing three names.
       safeRead(
         prisma.user.findMany({
+          where: NON_STAFF_WHERE,
           orderBy: { totalEarnings: "desc" },
           take: 5,
           select: { id: true, name: true, username: true, avatar: true, level: true, totalEarnings: true },

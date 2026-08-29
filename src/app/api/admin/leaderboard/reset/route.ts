@@ -16,6 +16,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { invalidateSettingsCache } from "@/lib/system-settings";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { NON_STAFF_WHERE } from "@/lib/staff";
 
 const schema = z.object({
   period: z.enum(["daily", "weekly", "monthly"]),
@@ -94,9 +95,17 @@ function distributePrizes(total: number, count: number, custom: number[] | null)
   return weights.map((w) => Math.round(total * w));
 }
 
+/**
+ * The winners of one cycle, for whichever metric the admin configured.
+ *
+ * Every branch excludes staff. This function does not just rank people — its
+ * result is paid out in real balance further down, so leaving an admin in the
+ * pool is not a display bug, it is the platform paying its own staff a prize
+ * from the prize pot.
+ */
 async function topUsers(metric: Metric, take: number, eligibleSet: Set<string>) {
   if (metric === "COMBINED") {
-    // Use the shared lib — already applies eligibility filtering.
+    // Use the shared lib — already applies eligibility AND the staff filter.
     const top = await computeCombinedTopUsers({
       limit: take,
       eligiblePackages: Array.from(eligibleSet),
@@ -119,6 +128,7 @@ async function topUsers(metric: Metric, take: number, eligibleSet: Set<string>) 
   if (metric === "POINTS_EARNED") {
     const pointsPerUsd = await getPointsPerUsd();
     const usersRaw = await prisma.user.findMany({
+      where: NON_STAFF_WHERE,
       orderBy: { totalEarnings: "desc" },
       take: POOL,
       select: {
@@ -142,6 +152,7 @@ async function topUsers(metric: Metric, take: number, eligibleSet: Set<string>) 
   }
   if (metric === "XP_EARNED") {
     const usersRaw = await prisma.user.findMany({
+      where: NON_STAFF_WHERE,
       orderBy: { xp: "desc" },
       take: POOL,
       select: {
@@ -165,6 +176,7 @@ async function topUsers(metric: Metric, take: number, eligibleSet: Set<string>) 
   }
   if (metric === "REFERRALS") {
     const usersRaw = await prisma.user.findMany({
+      where: NON_STAFF_WHERE,
       orderBy: { referrals: { _count: "desc" } },
       take: POOL,
       select: {
@@ -192,6 +204,7 @@ async function topUsers(metric: Metric, take: number, eligibleSet: Set<string>) 
   }
   // TASKS_COMPLETED
   const usersRaw = await prisma.user.findMany({
+    where: NON_STAFF_WHERE,
     orderBy: { taskSubmissions: { _count: "desc" } },
     take: POOL,
     select: {
@@ -257,7 +270,9 @@ export async function POST(request: NextRequest) {
     await readSetting(`lb_${period}_distribution`)
   );
 
-  const totalUsers = await prisma.user.count();
+  // Counts the same population the prize is drawn from — staff cannot win it,
+  // so they must not be what pushes a cycle over the minimum-entries gate.
+  const totalUsers = await prisma.user.count({ where: NON_STAFF_WHERE });
   if (totalUsers < minEntries) {
     return NextResponse.json(
       { error: `Need at least ${minEntries} users to publish a cycle` },

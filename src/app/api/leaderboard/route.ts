@@ -9,6 +9,7 @@ import {
 } from "@/lib/leaderboard";
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
+import { NON_STAFF_WHERE, isStaffRole } from "@/lib/staff";
 
 // The combined board is identical for every viewer — cache it for 60s so the
 // expensive 500-user pipeline runs at most once per minute (was per request).
@@ -21,8 +22,12 @@ const cachedCombinedTop = unstable_cache(
 
 // A full-table user COUNT is brutal at 10M rows; the participant total is
 // display-only and barely changes minute-to-minute — cache it for 60s.
+//
+// Staff are left out of the count as well: it sits directly under a board they
+// no longer appear on, so counting them would say "40 competing" over a list of
+// 29 people who actually compete.
 const cachedTotalParticipants = unstable_cache(
-  async () => prisma.user.count(),
+  async () => prisma.user.count({ where: NON_STAFF_WHERE }),
   ["leaderboard-total-participants"],
   { revalidate: 60 }
 );
@@ -48,7 +53,10 @@ export async function GET(request: NextRequest) {
         packageSlug: string;
         isInTop: boolean;
       } | null = null;
-      if (session?.user?.id) {
+      // A staff viewer is not on the board, so there is no rank to report. The
+      // fallback below would otherwise hand them "501" — a position on a list
+      // they were deliberately left off.
+      if (session?.user?.id && !isStaffRole(session.user.role)) {
         const inTopIdx = top.findIndex((r) => r.userId === session.user.id);
         if (inTopIdx !== -1) {
           const me = top[inTopIdx];
@@ -113,6 +121,7 @@ export async function GET(request: NextRequest) {
 
     if (type === "points") {
       const usersRaw = await prisma.user.findMany({
+        where: NON_STAFF_WHERE,
         orderBy: { totalEarnings: "desc" },
         take: limit,
         // SHARED board, polled every 30s by every viewer. 60s of staleness on a
@@ -140,6 +149,7 @@ export async function GET(request: NextRequest) {
       }));
     } else if (type === "xp") {
       const usersRaw = await prisma.user.findMany({
+        where: NON_STAFF_WHERE,
         orderBy: { xp: "desc" },
         take: limit,
         cacheStrategy: { ttl: 60, swr: 300 },
@@ -165,6 +175,7 @@ export async function GET(request: NextRequest) {
       }));
     } else if (type === "referrals") {
       const usersRaw = await prisma.user.findMany({
+        where: NON_STAFF_WHERE,
         orderBy: {
           referrals: { _count: "desc" },
         },
@@ -204,6 +215,7 @@ export async function GET(request: NextRequest) {
       }));
     } else if (type === "tasks") {
       const usersRaw = await prisma.user.findMany({
+        where: NON_STAFF_WHERE,
         orderBy: {
           taskSubmissions: { _count: "desc" },
         },
@@ -243,9 +255,10 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    // Get current user's rank if authenticated
+    // Get current user's rank if authenticated — same rule as the combined
+    // board above: staff are off the board, so they get no rank line.
     let currentUserRank = null;
-    if (session?.user?.id) {
+    if (session?.user?.id && !isStaffRole(session.user.role)) {
       const userIndex = leaderboard.findIndex(
         (entry) => entry.userId === session.user.id
       );

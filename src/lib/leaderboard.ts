@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
 import { toNum } from "@/lib/money";
+import { NON_STAFF_WHERE } from "@/lib/staff";
 
 export type LeaderboardMetric =
   | "POINTS_EARNED"
@@ -67,8 +68,14 @@ export async function computeCombinedTopUsers(options: {
   // Pull a generous candidate pool. We pre-filter with totalEarnings DESC
   // (the most common headline metric) but rerank in JS using all 4 metrics.
   // 500 candidates × 4 metric values is a tiny working set.
+  //
+  // Staff are excluded here, at the single place the combined board is built,
+  // so the public board, the "your rank" line and the prize reset in
+  // `api/admin/leaderboard/reset` all draw from the same population. The reset
+  // pays real balances to the top N — an admin left in this pool gets paid.
   const POOL = 500;
   const usersRaw = await prisma.user.findMany({
+    where: NON_STAFF_WHERE,
     orderBy: { totalEarnings: "desc" },
     take: POOL,
     select: {
