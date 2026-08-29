@@ -13,6 +13,7 @@ import { notifyUser } from "@/lib/notify";
 import { recordUserAction } from "@/lib/goal-progress";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { runAchievementCheck } from "@/lib/achievements";
+import { closeTaskIfFull } from "@/lib/task-slots";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -359,6 +360,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // Reputation: approving nudges trust up; an all-rejected social bundle
       // (finalStatus flipped to REJECTED) counts as a fraud strike instead.
       if (finalStatus === "APPROVED") {
+        // The slot counter just went up — if that filled the task's global
+        // `totalLimit`, retire it. Nothing used to do this, so a full task
+        // stayed ACTIVE in every list and every user who opened it got as far
+        // as "start" before being told it was full.
+        await closeTaskIfFull(existingSubmission.taskId);
         await bumpTrust(existingSubmission.userId, TRUST_APPROVE);
         // Achievements are counted here, after the payment has committed.
         // `runAchievementCheck` swallows its own failures — an achievement

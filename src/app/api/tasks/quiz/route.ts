@@ -26,6 +26,7 @@ import {
   type QuizQuestionShape,
 } from "@/lib/quiz-shape";
 import { requireActiveUser } from "@/lib/require-active";
+import { closeTaskIfFull } from "@/lib/task-slots";
 
 /**
  * Strip the answer key before sending a quiz to the browser.
@@ -439,6 +440,10 @@ export async function POST(request: NextRequest) {
             xpEarned,
           },
         });
+
+    // A pass just took a slot — retire the task if that filled its global
+    // `totalLimit`. Outside the transaction: the reward is already committed.
+    if (passed) await closeTaskIfFull(taskId);
 
     return NextResponse.json({
       submissionId: submission.id,

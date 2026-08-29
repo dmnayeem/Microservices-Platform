@@ -15,6 +15,8 @@ import {
   type AppInstallConfig,
 } from "@/lib/app-install-tasks";
 import { resolveTaskThumbnail } from "@/lib/task-thumbnail";
+import { taskCompletabilityError } from "@/lib/task-completability";
+import { isGeminiConfigured } from "@/lib/gemini";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -192,6 +194,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       appInstallConfigOut = JSON.parse(
         JSON.stringify(normalizeAppInstallConfig(appInstallConfig as AppInstallConfig))
       );
+    }
+
+    // The same completability gate as creation. A task that was fine when it
+    // was created and is then edited into an unfinishable state is exactly as
+    // broken — and the edit path is the easier one to leave ungated.
+    const completability = taskCompletabilityError(
+      {
+        type,
+        pointsReward: pointsRewardOut,
+        xpReward: xpReward,
+        contentUrl,
+        questions,
+        videoConfig,
+        articleConfig,
+      },
+      { aiQuizAvailable: isGeminiConfigured() }
+    );
+    if (completability) {
+      return NextResponse.json({ error: completability }, { status: 400 });
     }
 
     // Auto-derive a thumbnail from the task's link when none was set.

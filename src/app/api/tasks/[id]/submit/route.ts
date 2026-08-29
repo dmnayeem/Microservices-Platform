@@ -60,6 +60,7 @@ import {
 import { createHash } from "crypto";
 import { recordUserAction } from "@/lib/goal-progress";
 import { runAchievementCheck } from "@/lib/achievements";
+import { closeTaskIfFull } from "@/lib/task-slots";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -1127,6 +1128,11 @@ export async function POST(
         }),
       ]);
 
+      // The slot counter just went up — retire the task if that filled its
+      // global `totalLimit`. Outside the transaction on purpose: the reward is
+      // already committed, and housekeeping must not be able to fail a payout.
+      await closeTaskIfFull(task.id);
+
       // Check for level up
       // `user` is the RESULT of the `user.update` above, so `user.xp` already
       // includes `effectiveXp`. Adding it again counted every reward twice and
@@ -1207,6 +1213,7 @@ export async function POST(
           where: { id: task.id },
           data: { completedCount: { increment: 1 } },
         });
+        await closeTaskIfFull(task.id);
       }
       await prisma.notification.create({
         data: {

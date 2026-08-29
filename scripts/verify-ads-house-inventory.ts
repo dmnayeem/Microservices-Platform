@@ -50,9 +50,15 @@ async function main() {
   });
   const catalogNames = new Set<string>(AD_PLACEMENTS.map((p) => p.name));
 
+  // Rewarded video ships OFF (`ads.rewarded_enabled` defaults to false and both
+  // routes refuse while it is), so it has no inventory ON PURPOSE. Requiring an
+  // ACTIVE ad there would be demanding stock for a surface that cannot serve.
+  const OFF_BY_DEFAULT = new Set(["REWARDED_VIDEO"]);
+
   const empty: string[] = [];
   for (const p of placements) {
     if (!catalogNames.has(p.name)) continue; // stray rows reported below
+    if (OFF_BY_DEFAULT.has(p.name)) continue;
     const n = await prisma.ad.count({
       where: { placementId: p.id, status: "ACTIVE" },
     });

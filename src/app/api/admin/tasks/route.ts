@@ -16,6 +16,8 @@ import {
   bundleTotalPoints,
 } from "@/lib/social-tasks";
 import { resolveTaskThumbnail } from "@/lib/task-thumbnail";
+import { taskCompletabilityError } from "@/lib/task-completability";
+import { isGeminiConfigured } from "@/lib/gemini";
 
 export async function POST(request: NextRequest) {
   try {
@@ -166,6 +168,26 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // Can a user actually finish this and get paid? APPINSTALL, CUSTOM and
+    // SOCIAL are validated above; VIDEO, ARTICLE and QUIZ had no gate at all,
+    // and nothing checked the reward — which is how 8 live video tasks paying
+    // 0/0 and 6 article tasks with no article ended up visible to every user.
+    const completability = taskCompletabilityError(
+      {
+        type,
+        pointsReward: pointsRewardOut,
+        xpReward: xpReward,
+        contentUrl,
+        questions,
+        videoConfig,
+        articleConfig,
+      },
+      { aiQuizAvailable: isGeminiConfigured() }
+    );
+    if (completability) {
+      return NextResponse.json({ error: completability }, { status: 400 });
     }
 
     // Auto-derive a thumbnail from the task's link when none was set.

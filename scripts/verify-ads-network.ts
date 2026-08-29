@@ -71,13 +71,23 @@ async function main() {
       "the page-level script component returns null when neither network is set",
       /if \(!client && !gam\) return null;/.test(s)
     );
+    // The <Script> tags themselves moved to `network-script-tags.tsx` when the
+    // per-route AdSense gate went in: the decision to skip incentivised pages
+    // needs `usePathname()`, which is client-only. The server half above still
+    // reads the config and short-circuits; the per-network guards live next
+    // door, so assert them where they actually are.
+    const tags = src("components/providers/network-script-tags.tsx");
     check(
       "the AdSense tag is emitted only when a publisher id exists",
-      /\{client && \(\s*<Script/.test(s)
+      /\{client && \(\s*<Script/.test(tags)
     );
     check(
       "the GPT tag is emitted only when a network code exists",
-      /\{gam && \(/.test(s)
+      /\{gam && \(/.test(tags)
+    );
+    check(
+      "…and neither is emitted at all on a page that pays the viewer",
+      /if \(isIncentivisedPath\(pathname\)\) return null;/.test(tags)
     );
   }
   {

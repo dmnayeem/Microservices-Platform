@@ -138,7 +138,10 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
   // The anchor is deliberately the shortest space on the platform. It is pinned
   // over the page on every screen, so anything taller than a mobile banner stops
   // being an ad and starts being a second navigation bar.
-  ANCHOR_BOTTOM: { sizes: ["mobile", "banner", "leaderboard", "responsive"], maxHeightPx: 64, networkAllowed: true },
+  // No "leaderboard" here: 728x90 cannot render inside a 64px bar, so offering
+  // it meant an advertiser could buy a size that arrives letterboxed. `banner`
+  // (468x60) is the tallest preset that actually fits.
+  ANCHOR_BOTTOM: { sizes: ["mobile", "banner", "responsive"], maxHeightPx: 64, networkAllowed: true },
 
   WITHDRAW_TOP: LEADERBOARD_SPEC,
   LEADERBOARD_TOP: LEADERBOARD_SPEC,
