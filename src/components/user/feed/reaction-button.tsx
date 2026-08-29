@@ -41,6 +41,7 @@ export function ReactionButton({
   const [open, setOpen] = useState(false);
   const [bump, setBump] = useState(false);
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heldRef = useRef(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -48,6 +49,29 @@ export function ReactionButton({
   const showEmoji = reacted && (reaction ?? DEFAULT_REACTION) !== DEFAULT_REACTION;
 
   const close = useCallback(() => setOpen(false), []);
+
+  /**
+   * Hover open/close, with a grace period.
+   *
+   * Closing the instant the pointer leaves made the picker unreachable: it sits
+   * above the button, and a fast diagonal move to an emoji can clip outside the
+   * wrapper for a frame. The padding trick below removes the dead zone; this
+   * covers the rest.
+   */
+  const cancelClose = () => {
+    if (closeRef.current) {
+      clearTimeout(closeRef.current);
+      closeRef.current = null;
+    }
+  };
+  const openNow = () => {
+    cancelClose();
+    setOpen(true);
+  };
+  const closeSoon = () => {
+    cancelClose();
+    closeRef.current = setTimeout(() => setOpen(false), 180);
+  };
 
   // Close on outside tap / Escape. Without this the picker survives a scroll on
   // touch, where there is no pointerleave to close it.
@@ -67,6 +91,7 @@ export function ReactionButton({
 
   useEffect(() => () => {
     if (holdRef.current) clearTimeout(holdRef.current);
+    if (closeRef.current) clearTimeout(closeRef.current);
   }, []);
 
   const startHold = () => {
@@ -92,12 +117,22 @@ export function ReactionButton({
       ref={wrapRef}
       className="relative"
       // Hover opens on pointer devices; touch uses the hold timer above.
-      onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
-      onPointerLeave={(e) => e.pointerType === "mouse" && setOpen(false)}
+      onPointerEnter={(e) => e.pointerType === "mouse" && openNow()}
+      onPointerLeave={(e) => e.pointerType === "mouse" && closeSoon()}
     >
       {open && (
+        // The gap between the button and the emojis is PADDING on this
+        // wrapper, not margin on the picker. With `mb-2` the 8px between them
+        // belonged to nobody: the pointer left the wrapper on its way up and
+        // the picker closed before it could be reached. As padding, the hover
+        // region is continuous while the picker still floats clear.
         <div
-          className="absolute bottom-full left-0 mb-2 z-30 flex items-center gap-0.5 rounded-full border border-gray-700 bg-gray-900/95 backdrop-blur px-1.5 py-1 shadow-xl animate-pop-in"
+          className="absolute bottom-full left-0 pb-2 z-30"
+          onPointerEnter={openNow}
+          onPointerLeave={closeSoon}
+        >
+        <div
+          className="flex items-center gap-0.5 rounded-full border border-gray-700 bg-gray-900/95 backdrop-blur px-1.5 py-1 shadow-xl animate-pop-in"
           role="menu"
         >
           {REACTIONS.map((r) => (
@@ -113,6 +148,7 @@ export function ReactionButton({
               {r.emoji}
             </button>
           ))}
+        </div>
         </div>
       )}
 

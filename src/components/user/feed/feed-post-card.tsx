@@ -29,11 +29,7 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
 import { ReportContent } from "@/components/user/primitives/report-content";
 import { ReactionButton } from "./reaction-button";
-import {
-  DEFAULT_REACTION,
-  topReactions,
-  type ReactionType,
-} from "@/lib/reactions";
+import { DEFAULT_REACTION, type ReactionType } from "@/lib/reactions";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { mediaSrc } from "@/lib/media-url";
@@ -95,6 +91,9 @@ export const FeedPostCard = memo(function FeedPostCard({
     [onDeletePost, post.id]
   );
   const [showComments, setShowComments] = useState(false);
+  // Set while the comment box has text. Clicking away must not throw away a
+  // half-written comment, so the collapse below refuses to run while it is true.
+  const [hasDraft, setHasDraft] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   // -1 = closed. The zoom modal already handles prev/next and the keyboard.
@@ -348,6 +347,35 @@ export const FeedPostCard = memo(function FeedPostCard({
       toast.error("Couldn't update saved posts");
     }
   };
+
+  /**
+   * Clicking outside this card collapses its comments.
+   *
+   * Guarded on the draft: a stray click while someone is mid-sentence would
+   * otherwise discard what they typed, which is worse than the section staying
+   * open. Clicks anywhere INSIDE the card — the input, a link, the photo
+   * viewer — are ignored, so only genuinely leaving the post collapses it.
+   */
+  useEffect(() => {
+    if (!showComments) return;
+    const onDown = (e: PointerEvent) => {
+      if (hasDraft) return;
+      if (articleRef.current?.contains(e.target as Node)) return;
+      // The image viewer is portalled to the body, so a click on it is outside
+      // the article but very much still "in" this post.
+      if (zoomIndex >= 0) return;
+      setShowComments(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !hasDraft) setShowComments(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showComments, hasDraft, zoomIndex]);
 
   /** Double-tap a photo to like — the gesture people already expect. */
   const onImageTap = (index: number) => {
@@ -665,27 +693,6 @@ export const FeedPostCard = memo(function FeedPostCard({
         </div>
       )}
 
-      {/* Who reacted, and with what. Counts come from one grouped query per
-          page, so this costs nothing per card. */}
-      {post.likesCount > 0 && (
-        <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1">
-          <span className="flex -space-x-1">
-            {topReactions(post.reactionCounts ?? undefined).map((r) => (
-              <span
-                key={r.type}
-                title={`${r.count}`}
-                className="grid place-items-center w-5 h-5 rounded-full bg-gray-900 border border-gray-800 text-[11px] leading-none"
-              >
-                {r.emoji}
-              </span>
-            ))}
-          </span>
-          <span className="text-xs text-gray-500 tabular-nums">
-            {post.likesCount}
-          </span>
-        </div>
-      )}
-
       {/* Reactions row */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-t border-gray-800 [&>button]:px-2 [&>button]:py-2 [&>button]:rounded-lg [&>button]:hover:bg-gray-800/60 [&>button]:transition-colors">
         <ReactionButton
@@ -776,6 +783,8 @@ export const FeedPostCard = memo(function FeedPostCard({
               onUpdated({ commentsCount: post.commentsCount + 1 });
               onBumpPost?.(post.id);
             }}
+            onDraftChange={setHasDraft}
+            onHide={() => setShowComments(false)}
           />
         </div>
       )}

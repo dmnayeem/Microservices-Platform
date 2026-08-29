@@ -325,6 +325,108 @@ async function main() {
     check("cards animate in", /animate-card-in/.test(card));
   }
 
+  /* ── 5. The card polish round ── */
+  console.log("\n5. Picker reachable, comments collapsible, mentions findable");
+  {
+    const card = code("src/components/user/feed/feed-post-card.tsx");
+    const picker = code("src/components/user/feed/reaction-button.tsx");
+    const comments = code("src/components/user/feed/comments-section.tsx");
+    const mention = code("src/components/user/feed/mention-autocomplete.tsx");
+
+    // The emoji cluster sat directly above the like button showing the SAME
+    // number, one line apart.
+    check(
+      "the duplicate emoji cluster is gone from the card",
+      !/topReactions\(/.test(card)
+    );
+    check(
+      "the count is still shown once, by the reaction button",
+      /<ReactionButton/.test(card) && /count=\{post\.likesCount\}/.test(card)
+    );
+
+    // Both halves of the hover fix. `mb-2` left an 8px strip belonging to
+    // nobody, so moving up to an emoji fired pointerleave and closed the picker
+    // before it could be reached.
+    check(
+      "the picker's gap is padding on the hover wrapper, not margin on the picker",
+      /absolute bottom-full left-0 pb-2/.test(picker) &&
+        !/bottom-full left-0 mb-2/.test(picker)
+    );
+    check(
+      "the wrapper itself keeps the picker open while the pointer crosses",
+      /onPointerEnter=\{openNow\}/.test(picker)
+    );
+    check(
+      "closing is deferred and cancellable",
+      /closeRef\.current = setTimeout/.test(picker) && /cancelClose\(\)/.test(picker)
+    );
+
+    // Comments: preview, an explicit way out, and the guard that matters.
+    check(
+      "comments show a preview before the full thread",
+      /PREVIEW_COUNT/.test(comments) &&
+        /View all \{topLevel\.length\} comments/.test(comments)
+    );
+    check("there is a Hide comments control", /Hide comments/.test(comments));
+    // It has to sit outside the `topLevel.length > 0` branch: on a post with no
+    // comments the section still opens, and without this the only way out is the
+    // button that opened it, scrolled off above.
+    check(
+      "…and it is offered even when the post has no comments yet",
+      /\{!loading && \(\s*<div className="flex items-center justify-between gap-3 mt-2">/.test(
+        comments
+      )
+    );
+    check(
+      "the card collapses comments on an outside click",
+      /articleRef\.current\?\.contains\(e\.target as Node\)/.test(card)
+    );
+    // The owner's explicit decision, and the easiest thing for a later edit to
+    // drop: never discard a half-written comment.
+    check(
+      "…but NOT while a comment is half-written",
+      /if \(hasDraft\) return;/.test(card) &&
+        /onDraftChange=\{setHasDraft\}/.test(card)
+    );
+
+    // Mentions already worked; only the autocomplete was missing.
+    check(
+      "the autocomplete reuses the existing user search",
+      /\/api\/users\/search\?q=/.test(mention)
+    );
+    check(
+      "no new endpoint was added for it",
+      !fs.existsSync(path.join(root, "src/app/api/users/mentions")) &&
+        !fs.existsSync(path.join(root, "src/app/api/mentions"))
+    );
+    check(
+      "it is mounted on both the composer and the comment box",
+      /useMentionAutocomplete/.test(
+        code("src/components/user/feed/create-post-composer.tsx")
+      ) && /useMentionAutocomplete/.test(comments)
+    );
+    check(
+      "the keyboard works, not just the mouse",
+      /"ArrowDown"/.test(mention) &&
+        /"Enter" \|\| e\.key === "Tab"/.test(mention) &&
+        /"Escape"/.test(mention)
+    );
+    // Enter must pick a name rather than posting the comment.
+    check(
+      "the picker gets first refusal on Enter in the comment box",
+      /if \(mention\.onKeyDown\(e\)\) return;/.test(comments)
+    );
+    // And the half that already existed must still be intact.
+    const feedRoute = code("src/app/api/feed/route.ts");
+    check(
+      "the server still resolves mentions and credits them",
+      /extractMentionUsernames/.test(feedRoute) &&
+        /resolveMentionedUsers/.test(feedRoute) &&
+        /mention\.createMany/.test(feedRoute) &&
+        /MENTION_RECEIVED/.test(feedRoute)
+    );
+  }
+
   console.log(
     `\n${passed} passed, ${failures.length} failed` +
       (failures.length ? `\n\n${failures.map((f) => `  - ${f}`).join("\n")}\n` : "\n")

@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  MentionSuggestions,
+  useMentionAutocomplete,
+} from "./mention-autocomplete";
 import { mediaSrc } from "@/lib/media-url";
 import {
   Image as ImageIcon,
@@ -84,6 +88,11 @@ export function CreatePostComposer({
   const previewedUrlRef = useRef<string | null>(null);
   const dismissedUrlRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mention = useMentionAutocomplete({
+    value: content,
+    onChange: setContent,
+    fieldRef: textareaRef,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // A colored background only applies to text-only posts.
@@ -460,16 +469,28 @@ export function CreatePostComposer({
           {/* Composer surface — a colored background applies to text-only posts */}
           <div
             className={cn(
-              "rounded-xl border transition-colors",
+              "relative rounded-xl border transition-colors",
               activeBg
                 ? cn("border-transparent", activeBg.className)
                 : "border-gray-800 bg-gray-950"
             )}
           >
+            {/* Opens DOWNWARD: the composer sits at the top of the feed, so
+                there is room below and none above. */}
+            {mention.open && (
+              <MentionSuggestions
+                items={mention.items}
+                active={mention.active}
+                onPick={mention.insert}
+                onHover={mention.setActive}
+                className="top-full left-3 mt-1"
+              />
+            )}
             <textarea
               ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              onKeyDown={(e) => mention.onKeyDown(e)}
               placeholder="What's on your mind?"
               rows={activeBg ? 5 : 4}
               maxLength={2000}

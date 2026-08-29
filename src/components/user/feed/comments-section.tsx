@@ -6,6 +6,10 @@ import { formatDistanceToNow } from "date-fns";
 import { Loader2, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeedComment } from "./social-feed-view.types";
+import {
+  MentionSuggestions,
+  useMentionAutocomplete,
+} from "./mention-autocomplete";
 import { RenderedContent } from "./feed-content";
 import { Avatar } from "@/components/user/primitives/avatar";
 
@@ -13,21 +17,44 @@ import { Avatar } from "@/components/user/primitives/avatar";
 // Comments
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** How many comments show before "View all". */
+const PREVIEW_COUNT = 2;
+
 export function CommentsSection({
   postId,
   currentUserId,
   onCommentAdded,
+  onDraftChange,
+  onHide,
 }: {
   postId: string;
   currentUserId: string;
   onCommentAdded: () => void;
+  /** Told when the box goes from empty to non-empty. The card uses it to avoid
+   *  collapsing on an outside click and throwing away a half-written comment. */
+  onDraftChange?: (hasDraft: boolean) => void;
+  /** Collapse from down here, rather than only from the button above. */
+  onHide?: () => void;
 }) {
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [replyTo, setReplyTo] = useState<FeedComment | null>(null);
+  // Preview first. Every loaded comment rendering at once buries the post it
+  // belongs to; two is enough to see the conversation is alive.
+  const [showAll, setShowAll] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    onDraftChange?.(text.trim().length > 0);
+  }, [text, onDraftChange]);
+
+  const mention = useMentionAutocomplete({
+    value: text,
+    onChange: setText,
+    fieldRef: inputRef,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -168,12 +195,31 @@ export function CommentsSection({
           </button>
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="relative flex gap-2">
+        {/* Opens UPWARD: the comment box sits at the bottom of the card, so a
+            list below it would fall off the viewport. */}
+        {mention.open && (
+          <MentionSuggestions
+            items={mention.items}
+            active={mention.active}
+            onPick={mention.insert}
+            onHover={mention.setActive}
+            className="bottom-full left-0 mb-1"
+          />
+        )}
         <input
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), void submit())}
+          onKeyDown={(e) => {
+            // The picker gets first refusal on Enter — otherwise picking a name
+            // would post the comment instead.
+            if (mention.onKeyDown(e)) return;
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void submit();
+            }
+          }}
           placeholder={replyTo ? `Reply to ${replyTo.user?.name ?? "comment"}…` : "Add a comment…"}
           maxLength={500}
           disabled={busy}
@@ -206,7 +252,39 @@ export function CommentsSection({
       )}
 
       {!loading && topLevel.length > 0 && (
-        <ul className="space-y-2">{topLevel.map((c) => renderComment(c))}</ul>
+        <ul className="space-y-2">
+          {(showAll ? topLevel : topLevel.slice(0, PREVIEW_COUNT)).map((c) =>
+            renderComment(c)
+          )}
+        </ul>
+      )}
+
+      {/* Outside the list on purpose: "Hide comments" has to be there even on a
+          post with nothing to show, or the only way to close an empty section is
+          to scroll back up to the button that opened it. */}
+      {!loading && (
+        <div className="flex items-center justify-between gap-3 mt-2">
+          {!showAll && topLevel.length > PREVIEW_COUNT ? (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+            >
+              View all {topLevel.length} comments
+            </button>
+          ) : (
+            <span />
+          )}
+          {onHide && (
+            <button
+              type="button"
+              onClick={onHide}
+              className="text-xs text-gray-500 hover:text-gray-300"
+            >
+              Hide comments
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
