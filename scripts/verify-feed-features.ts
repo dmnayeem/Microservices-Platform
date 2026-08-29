@@ -332,6 +332,8 @@ async function main() {
     const picker = code("src/components/user/feed/reaction-button.tsx");
     const comments = code("src/components/user/feed/comments-section.tsx");
     const mention = code("src/components/user/feed/mention-autocomplete.tsx");
+    const breakdown = code("src/components/user/feed/reaction-breakdown.tsx");
+    const reactions = code("src/lib/reactions.ts");
 
     // The emoji cluster sat directly above the like button showing the SAME
     // number, one line apart.
@@ -340,8 +342,54 @@ async function main() {
       !/topReactions\(/.test(card)
     );
     check(
-      "the count is still shown once, by the reaction button",
-      /<ReactionButton/.test(card) && /count=\{post\.likesCount\}/.test(card)
+      "the count is still shown exactly once in the action row",
+      (card.match(/count=\{post\.likesCount\}/g) ?? []).length === 1
+    );
+
+    // Where the breakdown went instead: behind a tap on the number. The count
+    // had to leave the like button first — inside it, a tap could only ever
+    // mean "like".
+    check(
+      "the count is no longer inside the toggle button",
+      !/count/.test(picker) && /<ReactionBreakdown/.test(card)
+    );
+    check(
+      "tapping the number opens the per-emoji split",
+      /onClick=\{\(\) => setOpen\(\(v\) => !v\)\}/.test(breakdown) &&
+        /reactionBreakdown\(counts\)/.test(breakdown)
+    );
+    check(
+      "it costs no request — the counts already arrive with the post",
+      !/fetch\(/.test(breakdown) && /reactionCounts/.test(card)
+    );
+    check(
+      "a post nobody reacted to offers no tap into an empty box",
+      /if \(count <= 0\)/.test(breakdown)
+    );
+    check(
+      "it dismisses on outside pointer and Escape, like the picker",
+      /pointerdown/.test(breakdown) && /"Escape"/.test(breakdown)
+    );
+    check(
+      "every reaction is listed in catalog order, zeros included",
+      /REACTIONS\.map/.test(reactions) &&
+        /count: Math\.max\(0, Math\.trunc\(counts\?\.\[r\.type\] \?\? 0\)\)/.test(
+          reactions
+        )
+    );
+    // Without this the split still shows the emoji you just removed.
+    check(
+      "the split moves with an optimistic reaction, both ways",
+      (card.match(/shiftReactionCounts\(/g) ?? []).length === 2
+    );
+    check(
+      "…and a failed request puts the old split back",
+      /reactionCounts: post\.reactionCounts/.test(card)
+    );
+    check(
+      "switching emoji moves one across without changing the total",
+      /if \(from === to\) return next;/.test(reactions) &&
+        /next\[from\] = Math\.max\(0, \(next\[from\] \?\? 0\) - 1\)/.test(reactions)
     );
 
     // Both halves of the hover fix. `mb-2` left an 8px strip belonging to

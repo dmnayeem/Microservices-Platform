@@ -117,11 +117,21 @@ async function main() {
       /key\.includes\("\.\."\)/.test(route) && !/startsWith\("kyc\//.test(route)
     );
 
-    // The single-image branch was the one rendering a raw URL.
+    // The single-image branch was the one rendering a raw URL. Scoped to that
+    // `<img>` and not the whole file: the grid below it passes a bare `url` to
+    // SmartImage on purpose, which applies the same rewrite itself. The first
+    // version of this check searched the file for `src={url}` on its own line —
+    // it passed only because the working copy had CRLF endings, and went red
+    // the moment a tool rewrote the file with LF without changing a character
+    // of the code it was testing.
     const card = code("src/components/user/feed/feed-post-card.tsx");
+    const imgStart = card.indexOf("<img");
+    const imgBlock = card.slice(imgStart, card.indexOf("/>", imgStart));
     check(
       "the single-image post no longer renders a bare src",
-      /src=\{mediaSrc\(url\)\}/.test(card) && !/\n\s*src=\{url\}\n/.test(card)
+      imgStart !== -1 &&
+        /src=\{mediaSrc\(url\)\}/.test(imgBlock) &&
+        !/src=\{url\}/.test(imgBlock)
     );
     check(
       "the composer preview goes through the proxy too",

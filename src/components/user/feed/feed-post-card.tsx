@@ -29,7 +29,12 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
 import { ReportContent } from "@/components/user/primitives/report-content";
 import { ReactionButton } from "./reaction-button";
-import { DEFAULT_REACTION, type ReactionType } from "@/lib/reactions";
+import { ReactionBreakdown } from "./reaction-breakdown";
+import {
+  DEFAULT_REACTION,
+  shiftReactionCounts,
+  type ReactionType,
+} from "@/lib/reactions";
 import { PostAnalyticsPanel } from "@/components/user/feed/post-analytics-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { mediaSrc } from "@/lib/media-url";
@@ -260,11 +265,18 @@ export const FeedPostCard = memo(function FeedPostCard({
     if (busy) return;
     setBusy(true);
     const wasLiked = post.isLiked;
-    // Optimistic
+    const wasReaction = post.myReaction ?? (wasLiked ? DEFAULT_REACTION : null);
+    // Optimistic. The per-type map moves with the headline count, or the
+    // breakdown behind the number would still show the reaction just removed.
     onUpdated({
       isLiked: !wasLiked,
       myReaction: wasLiked ? null : DEFAULT_REACTION,
       likesCount: post.likesCount + (wasLiked ? -1 : 1),
+      reactionCounts: shiftReactionCounts(
+        post.reactionCounts,
+        wasReaction,
+        wasLiked ? null : DEFAULT_REACTION
+      ),
     });
     try {
       const res = await fetch(`/api/feed/${post.id}/like`, {
@@ -286,6 +298,7 @@ export const FeedPostCard = memo(function FeedPostCard({
         isLiked: wasLiked,
         myReaction: post.myReaction ?? null,
         likesCount: post.likesCount,
+        reactionCounts: post.reactionCounts,
       });
       toast.error("Couldn't update like");
     } finally {
@@ -305,12 +318,24 @@ export const FeedPostCard = memo(function FeedPostCard({
   const react = async (type: ReactionType) => {
     if (busy) return;
     const wasLiked = post.isLiked;
-    const prev = { isLiked: wasLiked, myReaction: post.myReaction ?? null, likesCount: post.likesCount };
+    const prev = {
+      isLiked: wasLiked,
+      myReaction: post.myReaction ?? null,
+      likesCount: post.likesCount,
+      reactionCounts: post.reactionCounts,
+    };
     setBusy(true);
     onUpdated({
       isLiked: true,
       myReaction: type,
       likesCount: post.likesCount + (wasLiked ? 0 : 1),
+      // A switch leaves the total alone but still moves one from the old emoji
+      // to the new one — which is exactly what the breakdown is there to show.
+      reactionCounts: shiftReactionCounts(
+        post.reactionCounts,
+        post.myReaction ?? (wasLiked ? DEFAULT_REACTION : null),
+        type
+      ),
     });
     try {
       const res = await fetch(`/api/feed/${post.id}/like`, {
@@ -696,12 +721,17 @@ export const FeedPostCard = memo(function FeedPostCard({
       {/* Reactions row */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-t border-gray-800 [&>button]:px-2 [&>button]:py-2 [&>button]:rounded-lg [&>button]:hover:bg-gray-800/60 [&>button]:transition-colors">
         <ReactionButton
-          count={post.likesCount}
           reacted={post.isLiked}
           reaction={post.myReaction}
           disabled={busy}
           onToggle={toggleLike}
           onPick={react}
+        />
+        {/* The number sits outside the button on purpose — tapping it opens the
+            per-emoji split instead of liking. */}
+        <ReactionBreakdown
+          count={post.likesCount}
+          counts={post.reactionCounts}
         />
         <button
           onClick={() => setShowComments((v) => !v)}

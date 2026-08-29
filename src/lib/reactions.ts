@@ -37,6 +37,47 @@ export function toReactionType(v: unknown): ReactionType {
 }
 
 /**
+ * Every reaction with its count, in the fixed catalog order.
+ *
+ * Catalog order, not count order: the breakdown is read repeatedly on different
+ * posts, and a list whose rows reshuffle by popularity has to be re-read every
+ * time. Types nobody picked are included with 0 so the list has the same five
+ * rows everywhere.
+ */
+export function reactionBreakdown(
+  counts: Record<string, number> | null | undefined
+): { type: ReactionType; emoji: string; label: string; count: number }[] {
+  return REACTIONS.map((r) => ({
+    type: r.type,
+    emoji: r.emoji,
+    label: r.label,
+    count: Math.max(0, Math.trunc(counts?.[r.type] ?? 0)),
+  }));
+}
+
+/**
+ * Move one viewer's reaction from `from` to `to` in a per-type count map.
+ *
+ * Used for the optimistic update. `null` on either side means "no reaction", so
+ * this covers all four transitions: first reaction, switch, un-react, and the
+ * no-op of picking what you already had.
+ *
+ * Returns a new object — mutating the one held in state would leave React
+ * showing the old numbers.
+ */
+export function shiftReactionCounts(
+  counts: Record<string, number> | null | undefined,
+  from: string | null | undefined,
+  to: string | null | undefined
+): Record<string, number> {
+  const next: Record<string, number> = { ...(counts ?? {}) };
+  if (from === to) return next;
+  if (from) next[from] = Math.max(0, (next[from] ?? 0) - 1);
+  if (to) next[to] = (next[to] ?? 0) + 1;
+  return next;
+}
+
+/**
  * The emojis to show on a card, most-used first.
  *
  * Takes the per-type counts for one post and returns at most three, so the

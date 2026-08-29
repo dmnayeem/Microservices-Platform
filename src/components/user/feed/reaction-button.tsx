@@ -20,16 +20,20 @@ import {
  * The picker is deliberately NOT a click-to-open menu: an extra tap on the most
  * used control in the feed is a real cost, and hold-to-choose is the gesture
  * people already have from other apps.
+ *
+ * The count is NOT here. It moved to `ReactionBreakdown` next door so that
+ * tapping the number can open the per-emoji split — inside this button the
+ * number could only ever mean "like", since a tap anywhere on the button
+ * toggles. Hovering still opens the picker over both, because they share the
+ * action row.
  */
 export function ReactionButton({
-  count,
   reacted,
   reaction,
   disabled,
   onToggle,
   onPick,
 }: {
-  count: number;
   reacted: boolean;
   reaction?: string | null;
   disabled?: boolean;
@@ -188,7 +192,6 @@ export function ReactionButton({
             />
           )}
         </span>
-        <span className="tabular-nums font-medium">{count}</span>
       </button>
     </div>
   );
