@@ -191,16 +191,29 @@ export function visibleBoardWhere(
  * The quiz-GAME gate (the standalone `Quiz` model — not `Task{type:QUIZ}`).
  * Kept beside the task one so the two quiz systems' rules stay visibly distinct.
  */
-export function publishedQuizWhere(viewer: {
-  level?: number | null;
-  accessLevel: number;
-}): Prisma.QuizWhereInput {
+export function publishedQuizWhere(
+  viewer: {
+    level?: number | null;
+    accessLevel: number;
+  },
+  now: Date = new Date()
+): Prisma.QuizWhereInput {
   return {
     status: "PUBLISHED",
     requiredLevel: { lte: viewer.level ?? 1 },
-    OR: [
-      { requiredAccessLevel: null },
-      { requiredAccessLevel: { lte: viewer.accessLevel } },
+    // Two independent OR groups, so they have to be ANDed rather than sharing
+    // one OR — a scheduling window that merely widened the access-level clause
+    // would show plan-gated quizzes to everyone.
+    AND: [
+      {
+        OR: [
+          { requiredAccessLevel: null },
+          { requiredAccessLevel: { lte: viewer.accessLevel } },
+        ],
+      },
+      // Scheduling window: null on either side means "no bound".
+      { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+      { OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
     ],
   };
 }

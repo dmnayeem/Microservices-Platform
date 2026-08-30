@@ -32,6 +32,17 @@ const updateSchema = z.object({
   cashReward: z.number().min(0),
   maxAttempts: z.number().int().min(1),
   cooldownHours: z.number().int().min(0),
+  repeat: z.enum(["ONCE", "DAILY", "WEEKLY", "MONTHLY"]).default("ONCE"),
+  // 0 and null both mean "no cap" — the form sends 0 when the field is cleared.
+  maxParticipants: z
+    .number()
+    .int()
+    .min(0)
+    .max(1_000_000)
+    .optional()
+    .nullable(),
+  startsAt: z.string().datetime().optional().nullable(),
+  expiresAt: z.string().datetime().optional().nullable(),
   requiredLevel: z.number().int().min(1),
   requiredAccessLevel: z.number().int().min(0).max(1000).optional().nullable(),
   questions: z.array(questionSchema).min(1),
@@ -97,6 +108,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         cashReward: data.cashReward,
         maxAttempts: data.maxAttempts,
         cooldownHours: data.cooldownHours,
+        repeat: data.repeat,
+        maxParticipants:
+          data.maxParticipants && data.maxParticipants > 0
+            ? data.maxParticipants
+            : null,
+        startsAt: data.startsAt ? new Date(data.startsAt) : null,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
         requiredLevel: data.requiredLevel,
         // Only overwrite when explicitly provided (form may not manage it).
         ...(body.requiredAccessLevel !== undefined

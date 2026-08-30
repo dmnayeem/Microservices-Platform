@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { publishedQuizWhere } from "@/lib/task-visibility";
+import { getUserDayContext } from "@/lib/user-day";
+import {
+  describeQuizRepeat,
+  quizPeriodStart,
+  type QuizRepeat,
+} from "@/lib/quiz-period";
 
 // GET /api/quizzes — published quizzes the current user qualifies for, with
 // their per-quiz attempt state (for the /quizzes list cards).
@@ -35,6 +41,9 @@ export async function GET() {
       xpReward: true,
       maxAttempts: true,
       cooldownHours: true,
+      repeat: true,
+      maxParticipants: true,
+      expiresAt: true,
       _count: { select: { questions: true } },
     },
   });
@@ -43,16 +52,36 @@ export async function GET() {
   >;
 
   // This user's attempts across these quizzes.
+  // `startedAt` comes back too because a repeating quiz counts attempts within
+  // the CURRENT period only — without it a card would still read "0 tries left"
+  // on a quiz that reset hours ago.
   const attempts = await prisma.quizAttempt.findMany({
     where: { userId, quizId: { in: quizzes.map((q) => q.id) } },
-    select: { quizId: true, score: true, passed: true, completedAt: true },
+    select: {
+      quizId: true,
+      score: true,
+      passed: true,
+      completedAt: true,
+      startedAt: true,
+    },
   });
+  const { tz } = await getUserDayContext(userId);
+  const periodStartFor = new Map<string, Date | null>(
+    quizzes.map((q) => [
+      q.id,
+      quizPeriodStart((q.repeat ?? "ONCE") as QuizRepeat, tz),
+    ])
+  );
 
   const byQuiz = new Map<
     string,
     { used: number; best: number; passed: boolean; lastAt: Date | null }
   >();
   for (const a of attempts) {
+    // Outside the current period this attempt is history: it neither spends an
+    // attempt nor keeps the quiz marked as already passed.
+    const from = periodStartFor.get(a.quizId) ?? null;
+    if (from && a.startedAt < from) continue;
     const cur = byQuiz.get(a.quizId) ?? { used: 0, best: 0, passed: false, lastAt: null };
     cur.used += 1;
     cur.best = Math.max(cur.best, a.score);
@@ -81,6 +110,14 @@ export async function GET() {
       pointsReward: q.pointsReward,
       xpReward: q.xpReward,
       maxAttempts: q.maxAttempts,
+      repeat: q.repeat ?? "ONCE",
+      // One sentence the card can print, instead of leaving the user to work
+      // out what "3 attempts · 24h cooldown · DAILY" adds up to.
+      repeatLabel: describeQuizRepeat(
+        (q.repeat ?? "ONCE") as QuizRepeat,
+        q.maxAttempts
+      ),
+      endsAt: q.expiresAt ? q.expiresAt.toISOString() : null,
       attemptsUsed: st?.used ?? 0,
       attemptsLeft,
       bestScore: st?.best ?? null,

@@ -6,6 +6,7 @@ import { Plus, Trash2, Sparkles, Loader2, Save, X } from "lucide-react";
 // (icons all imported above)
 import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
+import { describeQuizRepeat } from "@/lib/quiz-repeat-label";
 
 interface Question {
   question: string;
@@ -30,9 +31,28 @@ export interface QuizEditInitial {
   cashReward: number;
   maxAttempts: number;
   cooldownHours: number;
+  repeat: "ONCE" | "DAILY" | "WEEKLY" | "MONTHLY";
+  maxParticipants: number | null;
+  startsAt: string | null;
+  expiresAt: string | null;
   requiredLevel: number;
   requiredAccessLevel: number | null;
   questions: Question[];
+}
+
+/** `datetime-local` wants "YYYY-MM-DDTHH:mm" in LOCAL time; the API speaks ISO
+ *  UTC. These two convert between them without dragging in a date library. */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInput(v: string): string | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 interface QuizFormProps {
@@ -71,6 +91,16 @@ export function QuizForm({ canUseAI, initial, quizId }: QuizFormProps) {
     cashReward: initial?.cashReward ?? 0,
     maxAttempts: initial?.maxAttempts ?? 3,
     cooldownHours: initial?.cooldownHours ?? 24,
+    repeat: (initial?.repeat ?? "ONCE") as
+      | "ONCE"
+      | "DAILY"
+      | "WEEKLY"
+      | "MONTHLY",
+    // 0 means "no cap" — an empty number input reads as NaN, so the field
+    // coerces to 0 rather than sending a broken value.
+    maxParticipants: initial?.maxParticipants ?? 0,
+    startsAt: toLocalInput(initial?.startsAt),
+    expiresAt: toLocalInput(initial?.expiresAt),
     requiredLevel: initial?.requiredLevel ?? 1,
     requiredPackage: "" as "" | "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP",
   });
@@ -247,6 +277,10 @@ export function QuizForm({ canUseAI, initial, quizId }: QuizFormProps) {
             ...meta,
             status: publish ? "PUBLISHED" : "DRAFT",
             requiredPackage: meta.requiredPackage || null,
+            // The inputs hold local wall-clock strings; the API stores UTC.
+            startsAt: fromLocalInput(meta.startsAt),
+            expiresAt: fromLocalInput(meta.expiresAt),
+            maxParticipants: meta.maxParticipants || null,
             questions,
             aiGenerated,
             aiPrompt: aiGenerated ? aiTopic : null,
@@ -459,6 +493,92 @@ export function QuizForm({ canUseAI, initial, quizId }: QuizFormProps) {
             <option value="VIP">VIP</option>
           </select>
         </Field>
+      </section>
+
+      {/* Availability — how often it comes back, how many people may play it,
+          and when it opens and closes. */}
+      <section className="bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Availability</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            How often it comes back, how many people can play it, and when it
+            opens and closes.
+          </p>
+        </div>
+
+        <Field label="Repeats">
+          <select
+            value={meta.repeat}
+            onChange={(e) => setMetaField("repeat", e.target.value as never)}
+            className={inp}
+          >
+            <option value="ONCE">One time only</option>
+            <option value="DAILY">Every day</option>
+            <option value="WEEKLY">Every week</option>
+            <option value="MONTHLY">Every month</option>
+          </select>
+          {/* Spelling out the combined effect, because "3 attempts + DAILY" is
+              not obvious: the attempts and the reward BOTH reset. */}
+          <p className="text-xs text-slate-500 mt-1.5">
+            {describeQuizRepeat(meta.repeat, meta.maxAttempts)}
+          </p>
+        </Field>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label="Stop after (people)">
+            <input
+              type="number"
+              min={0}
+              value={meta.maxParticipants}
+              onChange={(e) =>
+                setMetaField(
+                  "maxParticipants",
+                  Math.max(0, parseInt(e.target.value) || 0)
+                )
+              }
+              className={inp}
+              placeholder="0 = no limit"
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              {meta.maxParticipants > 0
+                ? `Closes itself once ${meta.maxParticipants} different ${
+                    meta.maxParticipants === 1 ? "person has" : "people have"
+                  } completed it. Retries by the same person do not count.`
+                : "No limit — anyone who qualifies can play."}
+            </p>
+          </Field>
+          <Field label="Opens at">
+            <input
+              type="datetime-local"
+              value={meta.startsAt}
+              onChange={(e) => setMetaField("startsAt", e.target.value)}
+              className={inp}
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              {meta.startsAt ? "Hidden until then." : "Live as soon as it is published."}
+            </p>
+          </Field>
+          <Field label="Closes at">
+            <input
+              type="datetime-local"
+              value={meta.expiresAt}
+              onChange={(e) => setMetaField("expiresAt", e.target.value)}
+              className={inp}
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              {meta.expiresAt ? "Disappears after then." : "Runs until you stop it."}
+            </p>
+          </Field>
+        </div>
+
+        {meta.startsAt &&
+          meta.expiresAt &&
+          new Date(meta.expiresAt) <= new Date(meta.startsAt) && (
+            <p className="text-xs text-rose-400">
+              The closing time is before the opening time — nobody would ever see
+              this quiz.
+            </p>
+          )}
       </section>
 
       {/* Questions */}

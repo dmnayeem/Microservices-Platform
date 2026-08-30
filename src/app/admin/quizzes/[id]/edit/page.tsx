@@ -49,6 +49,11 @@ export default async function EditQuizPage({
     cashReward: toNum(quiz.cashReward),
     maxAttempts: quiz.maxAttempts,
     cooldownHours: quiz.cooldownHours,
+    repeat: quiz.repeat as "ONCE" | "DAILY" | "WEEKLY" | "MONTHLY",
+    maxParticipants: quiz.maxParticipants,
+    // ISO in, local wall-clock out — the form converts for the input.
+    startsAt: quiz.startsAt ? quiz.startsAt.toISOString() : null,
+    expiresAt: quiz.expiresAt ? quiz.expiresAt.toISOString() : null,
     requiredLevel: quiz.requiredLevel,
     requiredAccessLevel: quiz.requiredAccessLevel,
     questions: quiz.questions.map((q) => ({

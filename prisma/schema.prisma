@@ -149,6 +149,20 @@ enum QuizStatus {
   ARCHIVED
 }
 
+/// How often a quiz comes back for the SAME user.
+///
+/// `ONCE` is the original behaviour and stays the default: `maxAttempts` is a
+/// lifetime allowance and the reward pays exactly once, ever. Any other value
+/// makes both of those per-period — the allowance resets and the reward can be
+/// earned again in the next period, which is what "the same quiz comes back
+/// every day" actually requires.
+enum QuizRepeat {
+  ONCE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 enum BannerLocation {
   HOME
   EARN_HUB
@@ -1146,8 +1160,20 @@ model Quiz {
   pointsReward        Int            @default(50)
   xpReward            Int            @default(25)
   cashReward          Decimal        @default(0) @db.Decimal(18, 6)
+  /// Attempts allowed. A lifetime total when `repeat` is ONCE, otherwise the
+  /// allowance within each period.
   maxAttempts         Int            @default(3)
   cooldownHours       Int            @default(24)
+  /// See `QuizRepeat`. ONCE keeps the pre-existing behaviour exactly.
+  repeat              QuizRepeat     @default(ONCE)
+  /// Stop the quiz automatically once this many DIFFERENT users have completed
+  /// it. Null = no cap. The count is distinct users, not attempts, so somebody
+  /// retrying does not use up another person's place.
+  maxParticipants     Int?
+  /// Scheduling window. Outside it the quiz is neither listed nor attemptable,
+  /// without an admin having to remember to publish and unpublish by hand.
+  startsAt            DateTime?
+  expiresAt           DateTime?
   requiredLevel       Int            @default(1)
   requiredAccessLevel Int?
   questions           QuizQuestion[]
@@ -1161,6 +1187,8 @@ model Quiz {
   @@index([status])
   @@index([category])
   @@index([difficulty])
+  // The list query filters on status AND the scheduling window together.
+  @@index([status, startsAt, expiresAt])
 }
 
 model QuizQuestion {

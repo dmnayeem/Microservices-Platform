@@ -9,6 +9,13 @@ import {
 import { getPointsPerUsd, usdToPoints } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { getUserDayContext } from "@/lib/user-day";
+import {
+  quizPeriodKey,
+  quizPeriodStart,
+  type QuizRepeat,
+} from "@/lib/quiz-period";
+import { closeQuizIfFull, quizParticipantCount } from "@/lib/quiz-slots";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -50,14 +57,70 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Upgrade your plan to take this quiz." }, { status: 403 });
   }
 
-  // Enforce attempt limit + cooldown (cooldown skipped once already passed).
+  // Scheduling window. Checked here and not only in the list query: a user who
+  // still has the page open when the window closes must not be able to submit.
+  const now = new Date();
+  if (quiz.startsAt && now < quiz.startsAt) {
+    return NextResponse.json(
+      { error: "This quiz hasn't started yet." },
+      { status: 403 }
+    );
+  }
+  if (quiz.expiresAt && now > quiz.expiresAt) {
+    return NextResponse.json({ error: "This quiz has ended." }, { status: 403 });
+  }
+
+  // Global participant cap. Counted as DISTINCT users who have completed an
+  // attempt, so one person retrying never uses up somebody else's place. A user
+  // already among them is not blocked — they are inside the cap, not applying
+  // for a new place.
+  if (quiz.maxParticipants && quiz.maxParticipants > 0) {
+    const alreadyIn = await prisma.quizAttempt.count({
+      where: { quizId: id, userId, completedAt: { not: null } },
+    });
+    if (alreadyIn === 0) {
+      const taken = await quizParticipantCount(id);
+      if (taken >= quiz.maxParticipants) {
+        // Also retire it, so the next person is filtered out by the list rather
+        // than getting this far.
+        await closeQuizIfFull(id);
+        return NextResponse.json(
+          { error: "This quiz is full." },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
+  // Attempt limit + cooldown.
+  //
+  // For a repeating quiz both the allowance and "have you already passed it"
+  // are scoped to the CURRENT period — that is what makes the same quiz come
+  // back tomorrow instead of being spent forever. For ONCE (the default, and
+  // every quiz that existed before this) `periodStart` is null and the window
+  // is all of time, which is exactly the old behaviour.
+  const repeat = (quiz.repeat ?? "ONCE") as QuizRepeat;
+  const { tz } = await getUserDayContext(userId);
+  const periodStart = quizPeriodStart(repeat, tz, now);
   const prior = await prisma.quizAttempt.findMany({
-    where: { userId, quizId: id },
+    where: {
+      userId,
+      quizId: id,
+      ...(periodStart ? { startedAt: { gte: periodStart } } : {}),
+    },
     orderBy: { completedAt: "desc" },
     select: { passed: true, completedAt: true },
   });
   if (prior.length >= quiz.maxAttempts) {
-    return NextResponse.json({ error: "No attempts left for this quiz." }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          repeat === "ONCE"
+            ? "No attempts left for this quiz."
+            : "No attempts left for now — this quiz comes back next period.",
+      },
+      { status: 403 }
+    );
   }
   const everPassed = prior.some((a) => a.passed);
   if (!everPassed && prior[0]?.completedAt) {
@@ -109,6 +172,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   // here; a STABLE per-user-per-quiz reference (`quiz_reward_<userId>_<quizId>`)
   // makes the (userId, reference) unique enforce exactly one reward — the loser
   // hits P2002 and awards nothing.
+  const periodKey = quizPeriodKey(repeat, tz, now);
   let pointsAwarded = 0;
   let xpAwarded = 0;
   if (passed && !everPassed) {
@@ -137,7 +201,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             points: pointsAwarded,
             amount: pointsAwarded / pointsPerUsd,
             description: `Passed quiz: ${quiz.title}`,
-            reference: `quiz_reward_${userId}_${id}`,
+            // ONCE keeps the original key exactly, so nobody can re-claim a
+            // quiz they were already paid for. A repeating quiz appends the
+            // period, which is what lets it pay again tomorrow — and the
+            // unique (userId, reference) index still makes it once per period.
+            reference: periodKey
+              ? `quiz_reward_${userId}_${id}_${periodKey}`
+              : `quiz_reward_${userId}_${id}`,
             metadata: { quizId: id, attemptId: attempt.id, percent, xp: xpAwarded, cashFoldedToPoints: cash },
           },
         }),
@@ -158,6 +228,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       xpAwarded = 0;
     }
   }
+
+  // This attempt may have taken the last place. Retire the quiz now rather than
+  // letting the next person discover it at the door.
+  await closeQuizIfFull(id);
 
   return NextResponse.json({
     score: correct,
