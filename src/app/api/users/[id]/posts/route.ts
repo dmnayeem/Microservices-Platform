@@ -25,6 +25,9 @@ export async function GET(
       id: true,
       content: true,
       images: true,
+      // The grid renders a text-only post on its coloured background, the same
+      // one the feed gives it — without this those tiles are blank rectangles.
+      backgroundStyle: true,
       isPinned: true,
       likesCount: true,
       commentsCount: true,

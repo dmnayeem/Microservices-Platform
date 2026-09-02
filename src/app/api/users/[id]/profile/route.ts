@@ -31,6 +31,14 @@ export async function GET(
     profession: string | null;
     nationality: string | null;
     language: string | null;
+    gender: string | null;
+    dateOfBirth: Date | null;
+    bloodGroup: string | null;
+    maritalStatus: string | null;
+    studyLevel: string | null;
+    timezone: string | null;
+    city: string | null;
+    district: string | null;
     socialAccounts: Array<{
       id: string;
       platform: string;
@@ -81,6 +89,17 @@ export async function GET(
       profession: true,
       nationality: true,
       language: true,
+      gender: true,
+      dateOfBirth: true,
+      bloodGroup: true,
+      maritalStatus: true,
+      studyLevel: true,
+      timezone: true,
+      // Coarse location only. `city` and `district` say roughly where somebody
+      // is; `street` and `postalCode` say which door to knock on, so they are
+      // not selected at all — same reasoning as email and phone.
+      city: true,
+      district: true,
       socialAccounts: {
         select: {
           id: true,
@@ -214,6 +233,16 @@ export async function GET(
       profession: u.profession,
       nationality: u.nationality,
       language: u.language,
+      gender: u.gender,
+      dateOfBirth: u.dateOfBirth,
+      bloodGroup: u.bloodGroup,
+      maritalStatus: u.maritalStatus,
+      studyLevel: u.studyLevel,
+      timezone: u.timezone,
+      // City and district ride with the country, behind the same
+      // `privacyLocation` switch — one setting for "where I am", not three.
+      city: showByPrivacy(u.privacyLocation) ? u.city : null,
+      district: showByPrivacy(u.privacyLocation) ? u.district : null,
       // Connected accounts are the point of connecting them — a stranger
       // deciding whether to follow or buy wants to see them. Gated behind the
       // same switch as the rest of the profile detail.
