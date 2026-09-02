@@ -195,11 +195,20 @@ export async function buildDailyProgress(
 
   const countByType: Record<string, number> = {};
   for (const s of submissions) {
+    // A task that lives inside a board counts for NOTHING on its own.
+    //
+    // A board is one piece of work presented as one thing: the user is paid for
+    // the board, not for its parts (`/api/tasks/boards/[id]/claim` is the only
+    // place a board task's reward is released). Letting the parts also tick off
+    // mission items would pay the same effort twice — a five-task board would
+    // have cleared a "do 3 videos" item by itself, and the same submissions
+    // would then ALSO have counted as five separate BOARD completions.
+    //
+    // BOARD is counted from BoardClaim below, which is the row that actually
+    // means "this person finished a board".
+    if (s.task.boardId) continue;
     const t = s.task.type;
     countByType[t] = (countByType[t] ?? 0) + 1;
-    if (s.task.boardId) {
-      countByType.BOARD = (countByType.BOARD ?? 0) + 1;
-    }
   }
 
   // Source 2: platform activity that has its own table. Each query only runs
@@ -210,6 +219,14 @@ export async function buildDailyProgress(
   // never complete, which is worse than not offering it at all.
   const wanted = new Set(items.map((i) => i.taskType));
 
+  if (wanted.has("BOARD")) {
+    // One completed board = one BoardClaim row = one BOARD credit, however many
+    // tasks the board contained. `@@unique([userId, boardId])` means a board
+    // can only ever be claimed once, so this cannot double-count either.
+    countByType.BOARD = await prisma.boardClaim.count({
+      where: { userId, claimedAt: { gte: todayStart } },
+    });
+  }
   if (wanted.has("LOTTERY_TICKET")) {
     countByType.LOTTERY_TICKET = await prisma.lotteryTicket.count({
       where: { userId, createdAt: { gte: todayStart } },

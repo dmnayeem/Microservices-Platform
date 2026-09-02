@@ -81,7 +81,7 @@ export const TYPE_LABEL: Record<string, string> = {
   PROXY: "Proxy session",
   OFFERWALL: "Offerwall offer",
   APPINSTALL: "Install an app",
-  BOARD: "Board task",
+  BOARD: "Finish a Task Board",
   MANUAL: "Manual task",
   CUSTOM: "Custom task",
   SOCIAL_LIKE: "Like posts",
@@ -102,7 +102,8 @@ export const TYPE_LABEL: Record<string, string> = {
  * misunderstanding of the counting rule rather than a bug.
  */
 export const TYPE_HINT: Record<string, string> = {
-  BOARD: "Any approved task that belongs to a Task Board.",
+  BOARD:
+    "One credit per Task Board the user FINISHES and claims — not per task inside it. The tasks within a board count for nothing on their own, here or in any other mission type: a board is paid as one piece of work, so its parts must not also tick off mission items.",
   MANUAL: "Counted with Custom tasks — they share one bucket.",
   SOCIAL_LIKE:
     "Feed likes. Counts once per post if 'distinct post' is on in Social Earning, otherwise every like.",
