@@ -1,7 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 /**
@@ -77,31 +76,19 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
 
-      // Pass-through response that forwards the current pathname to server
-      // components (the admin layout reads `x-pathname` for its central guard).
+      // Allow. Nothing more.
       //
-      // It also persists a `?ref=` referral code into a short-lived cookie.
-      // Referral links land on `/register?ref=CODE`, but signing up with Google
-      // sends the visitor off to Google and back on a different URL, so the
-      // query string is gone by the time the account is created — which is why
-      // every Google referral used to lose its attribution. The cookie is the
-      // only thing that survives that round trip.
-      const allow = () => {
-        const headers = new Headers(request.headers);
-        headers.set("x-pathname", pathname);
-        const res = NextResponse.next({ request: { headers } });
-        const ref = nextUrl.searchParams.get("ref");
-        if (ref && /^[A-Za-z0-9_-]{4,32}$/.test(ref)) {
-          res.cookies.set(REFERRAL_COOKIE, ref, {
-            maxAge: 60 * 60 * 24 * 30, // 30 days — people don't sign up at once
-            httpOnly: true,
-            sameSite: "lax", // must survive the redirect back from Google
-            secure: process.env.NODE_ENV === "production",
-            path: "/",
-          });
-        }
-        return res;
-      };
+      // This used to return `NextResponse.next({ request: { headers } })`
+      // carrying `x-pathname`, with the `?ref=` referral cookie set on it. Auth
+      // .js reads this callback's return value only as ALLOW / DENY / redirect:
+      // a plain `next()` counts as "allowed" and is then discarded. So neither
+      // the header nor the cookie ever reached the app — the admin layout's
+      // route guard read an empty pathname and did nothing, and every Google
+      // referral lost its attribution.
+      //
+      // Both now live in `middleware.ts`, where the response returned is the
+      // one the browser actually gets. `true` is what this callback is for.
+      const allow = () => true;
 
       // Public routes that don't require authentication
       const publicRoutes = [

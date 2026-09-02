@@ -9,6 +9,7 @@ import {
   NotificationType,
 } from "@/generated/prisma/client";
 import { getPointsPerUsd } from "@/lib/economy";
+import { recordUserAction } from "@/lib/goal-progress";
 import {
   getTaskViewerContext,
   visibleTaskWhere,
@@ -212,6 +213,19 @@ export async function POST(
       data: { transactionId: tx.id },
     });
   }
+
+  // Event / quest progress for the board — ONE credit, however many tasks it
+  // held. The tasks inside a board deliberately record nothing of their own
+  // (see the guard in `/api/admin/submissions/[id]`), so this is the only place
+  // a board can count, and `BoardClaim`'s unique (userId, boardId) means it can
+  // only happen once. Outside the writes above and awaited, by the contract in
+  // lib/goal-progress.ts: the reward is already committed, and progress must
+  // never be able to fail a payout.
+  await recordUserAction({
+    userId,
+    action: "board_claim",
+    targetId: board.id,
+  });
 
   return NextResponse.json({
     success: true,

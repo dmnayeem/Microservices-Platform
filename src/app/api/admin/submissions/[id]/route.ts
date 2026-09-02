@@ -375,14 +375,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         // submitted before an event but approved during it never counted, and
         // one submitted during the window counted even if it was approved after
         // the event ended.
-        await recordUserAction({
-          userId: existingSubmission.userId,
-          action:
-            existingSubmission.task?.type === "QUIZ"
-              ? "quiz_approved"
-              : "task_approved",
-          targetId: existingSubmission.id,
-        });
+        //
+        // A task inside a Task Board credits NOTHING here — the board is one
+        // piece of work, and `/api/tasks/boards/[id]/claim` emits a single
+        // `board_claim` when it is finished. Without this guard a five-task
+        // board ticked a "complete 3 tasks" goal on its own, and then the claim
+        // would have counted again on top. The auto-approve path in
+        // `/api/tasks/[id]/submit` already skips board tasks (its whole reward
+        // block is behind `!isBoardTask`); this was the one path that did not.
+        if (!isBoardTask) {
+          await recordUserAction({
+            userId: existingSubmission.userId,
+            action:
+              existingSubmission.task?.type === "QUIZ"
+                ? "quiz_approved"
+                : "task_approved",
+            targetId: existingSubmission.id,
+          });
+        }
       } else {
         await bumpTrust(existingSubmission.userId, TRUST_REJECT, {
           strike: true,

@@ -64,6 +64,7 @@ export type GoalActionKey =
   | "feed_vote"
   | "task_approved"
   | "quiz_approved"
+  | "board_claim"
   | "lottery_ticket"
   | "referral_signup";
 
@@ -89,7 +90,12 @@ const FEED_KEYS: GoalActionKey[] = [
 const ACCEPTS: Record<EventActionType, GoalActionKey[]> = {
   TEAM_ADD: ["referral_signup"],
   REFERRAL_SIGNUP: ["referral_signup"],
-  TASK_COMPLETE: ["task_approved", "quiz_approved"],
+  // A finished Task Board counts as ONE task completion, and its individual
+  // tasks count as none — the same rule the daily mission uses. A board is one
+  // piece of work presented as one thing; letting its five tasks each tick a
+  // "complete 3 tasks" goal pays the same effort twice. The action sites skip
+  // board sub-tasks; `board_claim` is emitted once, by the claim route.
+  TASK_COMPLETE: ["task_approved", "quiz_approved", "board_claim"],
   QUIZ_COMPLETE: ["quiz_approved"],
   LOTTERY_BUY: ["lottery_ticket"],
   FEED_LIKE: ["feed_like"],
@@ -315,6 +321,10 @@ function dedupKeyFor(action: GoalActionKey, targetId: string): string {
     case "task_approved":
     case "quiz_approved":
       return `submission:${targetId}`;
+    case "board_claim":
+      // Keyed on the BOARD, not the claim row: `BoardClaim` is already unique
+      // per (user, board), and this makes the dedup obvious at a glance.
+      return `board:${targetId}`;
     case "lottery_ticket":
       return `lottery:${targetId}`;
     case "referral_signup":
