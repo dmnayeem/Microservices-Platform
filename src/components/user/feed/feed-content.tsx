@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { POST_URL_SOURCE } from "@/lib/post-urls";
 import Link from "next/link";
 import { trackLinkClick } from "@/lib/track-link-click";
 
@@ -13,8 +14,15 @@ import { trackLinkClick } from "@/lib/track-link-click";
 // parser in lib/mentions.ts — dots and hyphens are legal in a handle, and
 // `john.doe` is exactly what a Google email address produces. The lookbehind
 // stops an email in post text ("bob@x.com") becoming a bogus @x.com mention.
-const ENTITY_RE =
-  /(https?:\/\/[^\s]+)|(?<![a-zA-Z0-9._-])@([a-zA-Z0-9_][a-zA-Z0-9._-]{1,29})|#([\p{L}\p{N}_]{2,50})/gu;
+// The URL half is spliced in from `@/lib/post-urls` so the composer's preview
+// and this renderer's link agree on what a link is. It used to be a local
+// `https?:\/\/[^\s]+`, which meant "example.com" was neither previewed nor
+// linked — it just sat there as text. `POST_URL_SOURCE` has no capture groups
+// of its own, so the group numbering below is unchanged.
+const ENTITY_RE = new RegExp(
+  `(${POST_URL_SOURCE})|(?<![a-zA-Z0-9._-])@([a-zA-Z0-9_][a-zA-Z0-9._-]{1,29})|#([\\p{L}\\p{N}_]{2,50})`,
+  "gui"
+);
 // Trailing punctuation that should NOT be part of a matched URL.
 const URL_TRAILING_RE = /[.,;:!?)\]}'"]+$/;
 // …or of a matched @handle. Kept out of the link and pushed back as text.
@@ -26,11 +34,16 @@ function urlLabel(url: string): string {
   if (s.length > 50) s = s.slice(0, 48) + "…";
   return s;
 }
-// Render **bold** and *italic* markdown within a plain-text chunk as React nodes
-// (no HTML injection). Used between @mention segments in RenderedContent.
+// Render **bold**, *italic* and __underline__ markdown within a plain-text
+// chunk as React nodes (no HTML injection). Used between @mention segments in
+// RenderedContent.
+//
+// Underline is `__x__` and NOT `_x_` on purpose: single underscores are ordinary
+// characters in file names, handles and snake_case, and a post reading
+// "run make_all_now" would otherwise render half of itself underlined.
 export function renderFormatted(text: string, keyPrefix: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
-  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*|__([^_]+)__/g;
   let last = 0;
   let k = 0;
   let m: RegExpExecArray | null;
@@ -49,6 +62,12 @@ export function renderFormatted(text: string, keyPrefix: string): React.ReactNod
         <em key={`${keyPrefix}-i${k++}`} className="italic">
           {m[2]}
         </em>
+      );
+    } else if (m[3] !== undefined) {
+      out.push(
+        <u key={`${keyPrefix}-u${k++}`} className="underline">
+          {m[3]}
+        </u>
       );
     }
     last = m.index + m[0].length;
@@ -115,11 +134,17 @@ export function RenderedContent({
     const matchLen = m[0].length;
     if (urlRaw) {
       const trailing = urlRaw.match(URL_TRAILING_RE)?.[0] ?? "";
-      const url = trailing ? urlRaw.slice(0, -trailing.length) : urlRaw;
+      const shown = trailing ? urlRaw.slice(0, -trailing.length) : urlRaw;
+      // `href` gets the scheme the author did not type; the LABEL keeps what
+      // they wrote. Someone who pastes "example.com" should see "example.com"
+      // and still land on https://example.com when they click it.
+      const url = /^https?:\/\//i.test(shown) ? shown : `https://${shown}`;
       let valid = false;
       try {
         const u = new URL(url);
-        valid = u.protocol === "http:" || u.protocol === "https:";
+        valid =
+          (u.protocol === "http:" || u.protocol === "https:") &&
+          u.hostname.includes(".");
       } catch {
         valid = false;
       }
@@ -136,7 +161,7 @@ export function RenderedContent({
           onClick={() => trackLinkClick(postId)}
           className="text-indigo-400 hover:text-indigo-300 hover:underline break-all"
         >
-          {urlLabel(url)}
+          {urlLabel(shown)}
         </a>
       );
       lastIdx = start + (matchLen - trailing.length);

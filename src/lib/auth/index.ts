@@ -72,6 +72,38 @@ export const {
   // available.
   unstable_update: updateSession,
 } = NextAuth({
+  /**
+   * Downgrade the one error that is not an error.
+   *
+   * A browser holding a session cookie encrypted with a previous
+   * `NEXTAUTH_SECRET` — after a rotation, or an @auth/core bump that changes the
+   * encryption — makes Auth.js throw `JWTSessionError: no matching decryption
+   * secret`. `getSession()` below already catches it and treats the visitor as
+   * signed out, which is the correct outcome. But Auth.js logs through its OWN
+   * logger before throwing, so three red Console Errors appeared on every page
+   * load anyway, for a condition the app handles and that clears itself at the
+   * next sign-in.
+   *
+   * Only that one case is downgraded; every other auth error still logs loudly.
+   */
+  logger: {
+    error(err: Error) {
+      const cause = (err as { cause?: unknown })?.cause;
+      const text = `${err?.name ?? ""} ${err?.message ?? ""} ${
+        typeof cause === "string" ? cause : JSON.stringify(cause ?? "")
+      }`;
+      if (
+        err?.name === "JWTSessionError" ||
+        /no matching decryption secret/i.test(text)
+      ) {
+        console.warn(
+          "[auth] stale session cookie (encrypted with an older secret) — treating as signed out; it clears at the next sign-in"
+        );
+        return;
+      }
+      console.error(err);
+    },
+  },
   // JWT-only auth (no database sessions). We deliberately don't use an adapter:
   // the User model uses `avatar` (not `image`) and requires a unique
   // `referralCode`, so we find-or-create the app user ourselves in `jwt`.

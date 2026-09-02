@@ -30,6 +30,7 @@ import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
 import { ReportContent } from "@/components/user/primitives/report-content";
 import { ReactionButton } from "./reaction-button";
 import { ReactionBreakdown } from "./reaction-breakdown";
+import { findFirstUrl } from "@/lib/post-urls";
 import {
   DEFAULT_REACTION,
   shiftReactionCounts,
@@ -53,11 +54,9 @@ import {
 } from "@/components/user/primitives/inline-video-embed";
 import type { FeedPost } from "./social-feed-view.types";
 
-// First http(s) URL in text (client-safe; server lib pulls node:dns so not imported here).
-function firstUrlInText(text: string): string | null {
-  const m = text.match(/https?:\/\/[^\s<]+/i);
-  return m ? m[0].replace(/[.,;:!?)\]}'"]+$/, "") : null;
-}
+// URL detection lives in `@/lib/post-urls`, shared with the composer so that
+// what previews there is what links here. The local copy this replaced required
+// an explicit "https://", so a post saying "example.com" showed neither.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FeedPostCard
@@ -625,7 +624,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             so it doesn't compete with post media. A YouTube/Vimeo/video URL plays
             inline; any other URL gets an OpenGraph card. */}
         {!postBg && post.images.length === 0 && (() => {
-          const url = firstUrlInText(post.content);
+          const url = findFirstUrl(post.content)?.href ?? null;
           if (url && isEmbeddableVideoUrl(url)) {
             return <div className="mt-3"><InlineVideoEmbed url={url} /></div>;
           }
@@ -779,7 +778,7 @@ export const FeedPostCard = memo(function FeedPostCard({
         )}
         {post.isOwner && (
           <div className="ml-auto flex items-center gap-3">
-            {!!(post.linkPreview || firstUrlInText(post.content)) && (
+            {!!(post.linkPreview || findFirstUrl(post.content)) && (
               <span
                 className="inline-flex items-center gap-1.5 text-sm text-amber-400"
                 title="Link clicks (total)"

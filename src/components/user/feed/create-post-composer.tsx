@@ -18,10 +18,10 @@ import {
   Plus,
   Bold as BoldIcon,
   Italic as ItalicIcon,
+  Underline as UnderlineIcon,
   Smile,
   Palette,
   Lock,
-  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,12 @@ import {
   getPostBackground,
 } from "@/lib/post-backgrounds";
 import { compressForUpload } from "@/lib/image-compress";
-import { ComposerToolBtn, EmojiPopover } from "./composer-bits";
+import { findFirstUrl } from "@/lib/post-urls";
+import {
+  ComposerToolBtn,
+  EmojiPopover,
+  SelectionFormatBtn,
+} from "./composer-bits";
 import { LinkPreviewCard } from "./link-preview-card";
 import { Avatar } from "@/components/user/primitives/avatar";
 import {
@@ -44,11 +49,10 @@ import type {
   LinkPreviewData,
 } from "./social-feed-view.types";
 
-// First http(s) URL in text (client-safe). Mirrors feed-post-card's helper.
-function firstUrlInText(text: string): string | null {
-  const m = text.match(/https?:\/\/[^\s<]+/i);
-  return m ? m[0].replace(/[.,;:!?)\]}'"]+$/, "") : null;
-}
+// URL detection lives in `@/lib/post-urls` — the same rule the post card uses,
+// so what previews here is what links there. The local copy this replaced
+// required an explicit "https://", which is why pasting "example.com" produced
+// no preview and no link at all.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composer
@@ -75,7 +79,6 @@ export function CreatePostComposer({
   const [bg, setBg] = useState<string>(""); // colored-background id ("" = none)
   const [uploading, setUploading] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
-  const [showMore, setShowMore] = useState(false); // reveals formatting/bg/image-URL row
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [pollDuration, setPollDuration] = useState<24 | 48 | 72>(24);
   const [donationGoal, setDonationGoal] = useState<number>(1000);
@@ -88,6 +91,8 @@ export function CreatePostComposer({
   const previewedUrlRef = useRef<string | null>(null);
   const dismissedUrlRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Is any text selected right now? Drives the floating format bar.
+  const [hasSelection, setHasSelection] = useState(false);
   const mention = useMentionAutocomplete({
     value: content,
     onChange: setContent,
@@ -100,7 +105,9 @@ export function CreatePostComposer({
 
   // The URL (if any) we'd preview: text-only posts, no image (image wins).
   const currentUrl =
-    mode === "text" && images.length === 0 ? firstUrlInText(content) : null;
+    mode === "text" && images.length === 0
+      ? (findFirstUrl(content)?.href ?? null)
+      : null;
   const previewSuppressed =
     previewDismissed && dismissedUrlRef.current === currentUrl;
   const currentUrlIsVideo = !!currentUrl && isEmbeddableVideoUrl(currentUrl);
@@ -165,7 +172,8 @@ export function CreatePostComposer({
     });
   };
 
-  // Wrap the current selection in a markdown marker (** bold, * italic).
+  // Wrap the current selection in a markdown marker (** bold, * italic,
+  // __ underline).
   const wrapSelection = (marker: string) => {
     const el = textareaRef.current;
     if (!el) return;
@@ -486,10 +494,54 @@ export function CreatePostComposer({
                 className="top-full left-3 mt-1"
               />
             )}
+            {/* Format bar — appears the moment text is selected.
+                
+                Anchored to the top of the composer surface rather than floated
+                at the selection itself. A textarea exposes no client rects for
+                its selection, so a bubble at the caret has to be positioned by
+                mirroring the text into a hidden element and measuring that —
+                which drifts on every wrap, resize and scroll, and fights the
+                native selection menu on touch. A bar in a fixed, predictable
+                place appears on selection just the same and cannot land in the
+                wrong spot. */}
+            {hasSelection && (
+              <div className="absolute -top-3 left-3 z-20 flex items-center gap-0.5 rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur px-1 py-0.5 shadow-xl animate-pop-in">
+                <SelectionFormatBtn
+                  title="Bold"
+                  onClick={() => wrapSelection("**")}
+                >
+                  <BoldIcon className="w-3.5 h-3.5" />
+                </SelectionFormatBtn>
+                <SelectionFormatBtn
+                  title="Italic"
+                  onClick={() => wrapSelection("*")}
+                >
+                  <ItalicIcon className="w-3.5 h-3.5" />
+                </SelectionFormatBtn>
+                <SelectionFormatBtn
+                  title="Underline"
+                  onClick={() => wrapSelection("__")}
+                >
+                  <UnderlineIcon className="w-3.5 h-3.5" />
+                </SelectionFormatBtn>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              // `onSelect` fires for mouse drags, double-clicks, shift-arrows
+              // and touch handles alike — every way a selection can be made.
+              onSelect={(e) => {
+                const el = e.currentTarget;
+                setHasSelection((el.selectionEnd ?? 0) > (el.selectionStart ?? 0));
+              }}
+              onBlur={() => {
+                // Delayed: clicking a format button blurs the textarea, and
+                // clearing the flag synchronously would unmount the button
+                // before its click landed.
+                setTimeout(() => setHasSelection(false), 180);
+              }}
               onKeyDown={(e) => mention.onKeyDown(e)}
               placeholder="What's on your mind?"
               rows={activeBg ? 5 : 4}
@@ -577,23 +629,11 @@ export function CreatePostComposer({
             ) : null
           )}
 
-          {/* Progressive disclosure — secondary controls stay tucked away until
-              the user asks for them, keeping the default composer uncluttered.
-              State persists while hidden (no reset on collapse). */}
-          <button
-            type="button"
-            onClick={() => setShowMore((v) => !v)}
-            className={cn(
-              "inline-flex items-center gap-1.5 text-xs font-semibold transition-colors self-start",
-              showMore ? "text-indigo-300" : "text-gray-400 hover:text-gray-200"
-            )}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            {showMore ? "Fewer options" : "More options"}
-          </button>
-
-          {showMore && (
-            <>
+          {/* The controls below used to sit behind a More/Fewer options toggle.
+              Hiding the photo button, the backgrounds and the image-URL field
+              behind a link made them invisible to anyone who did not think to
+              press it — a composer whose main features are one click away from
+              being discovered. They are always on now. */}
           {/* Formatting toolbar */}
           <div className="flex items-center gap-1">
             <ComposerToolBtn title="Bold" onClick={() => wrapSelection("**")}>
@@ -635,9 +675,6 @@ export function CreatePostComposer({
               className="hidden"
               onChange={handleFile}
             />
-            <span className="ml-auto text-[11px] text-gray-500 hidden sm:inline">
-              **bold** · *italic*
-            </span>
           </div>
 
           {/* Colored background swatches (text-only posts) */}
@@ -690,8 +727,6 @@ export function CreatePostComposer({
               Add
             </button>
           </div>
-            </>
-          )}
         </>
       )}
 

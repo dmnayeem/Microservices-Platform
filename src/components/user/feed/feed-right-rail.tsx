@@ -373,11 +373,17 @@ export function FeedRightRail({
           {/* Task breakdown — name + progress + points, so it's clear what the
               mission is and what each task pays. */}
           {widgets.mission.items.length > 0 && (
-            <ul className="mt-3 space-y-1.5">
+            // The two number columns are FIXED width and right-aligned. They
+            // used to follow a flexible label directly, so "0/5" and "+50"
+            // landed at a different x on every row depending on how long the
+            // task name was — nine rows of numbers in nine different places,
+            // which is what made this read as a jumble rather than a list.
+            // Fixed columns turn it into something the eye can scan down.
+            <ul className="mt-3 space-y-px">
               {widgets.mission.items.map((it, i) => (
                 <li
                   key={`${it.taskType}-${i}`}
-                  className="flex items-center gap-2 text-xs"
+                  className="flex items-center gap-2 text-xs rounded-md px-1 py-1.25 transition-colors hover:bg-gray-800/40"
                 >
                   {it.done ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -386,17 +392,17 @@ export function FeedRightRail({
                   )}
                   <span
                     className={cn(
-                      "flex-1 truncate",
+                      "flex-1 min-w-0 truncate",
                       it.done ? "text-gray-500 line-through" : "text-gray-300"
                     )}
                   >
                     {missionItemLabel(it.taskType, it.description)}
                   </span>
-                  <span className="text-gray-500 tabular-nums shrink-0">
+                  <span className="w-9 text-right text-gray-500 tabular-nums shrink-0">
                     {it.completedToday}/{it.target}
                   </span>
-                  <span className="inline-flex items-center gap-0.5 text-amber-400 font-semibold tabular-nums shrink-0">
-                    <Coins className="w-3 h-3" />+{it.points}
+                  <span className="w-12 inline-flex items-center justify-end gap-0.5 text-amber-400/90 font-semibold tabular-nums shrink-0">
+                    <Coins className="w-3 h-3 shrink-0" />+{it.points}
                   </span>
                 </li>
               ))}

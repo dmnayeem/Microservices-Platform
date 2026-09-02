@@ -207,7 +207,8 @@ export function AdRenderer({
     // shaped from the placement while the ad was shaped from itself, which is
     // why the layout jumped when an oversized creative arrived.
     const reserved = resolveAdSize(placementSizeKey(placement));
-    const cap = placementSpec(placement).maxHeightPx;
+    const placeSpec = placementSpec(placement);
+    const cap = placeSpec.maxHeightPx;
     return (
       <div
         className={cn(
@@ -216,7 +217,11 @@ export function AdRenderer({
         )}
         style={{
           aspectRatio: reserved ? `${reserved.w} / ${reserved.h}` : undefined,
-          maxWidth: reserved?.w,
+          // Same rule as the loaded ad: a `fillsColumn` space reserves the
+          // column, not the preset width. Reserving 300px and then landing a
+          // 408px card is exactly the layout jump this skeleton exists to
+          // prevent.
+          maxWidth: placeSpec.fillsColumn ? undefined : reserved?.w,
           maxHeight: cap,
           minHeight: reserved ? undefined : Math.min(90, cap),
         }}
@@ -301,7 +306,10 @@ export function AdRenderer({
   const isStrip = spec.maxHeightPx <= 96;
   // Merge the rotation fade into the outer style.
   const outerStyle = {
-    ...(slotDim ? { maxWidth: slotDim.w } : {}),
+    // `fillsColumn` spaces skip the width cap — see the note on PlacementSpec.
+    // In the feed rail the cap made the ad narrower than every widget beneath
+    // it, which is the opposite of what the cap is for.
+    ...(slotDim && !spec.fillsColumn ? { maxWidth: slotDim.w } : {}),
     opacity: fading ? 0 : 1,
     transition: "opacity 180ms ease",
   } as const;

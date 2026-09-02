@@ -145,9 +145,16 @@ export function ProfileTabBody({
                 </p>
               </div>
             </div>
+            {/* No inner scroll, and no `slice`.
+
+                A scrollbar inside a card the page can already scroll hides work
+                the user is being asked to do — the list said "16 items left" and
+                showed four, with the rest behind a track most people never
+                notice. The column has the room now that Verification and
+                Courses sit under it. */}
             {completion.missing.length > 0 && (
-              <div className="mt-3 space-y-1.5 max-h-44 overflow-y-auto">
-                {completion.missing.slice(0, 8).map((it) => (
+              <div className="mt-3 space-y-1.5">
+                {completion.missing.map((it) => (
                   <button
                     key={it.key}
                     onClick={() => onJumpCompletion(it.href)}
@@ -161,106 +168,13 @@ export function ProfileTabBody({
               </div>
             )}
           </Card>
-        </div>
-
-        {/* Right rail (2/3) — about, address, verification, socials, lifetime */}
-        <div className="space-y-5 lg:col-span-2">
-          <Card
-            title="Personal Info"
-            icon={<User className="w-3.5 h-3.5" />}
-            tone="purple"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
-              <DataLine label="First name" value={profile.firstName} />
-              <DataLine label="Last name" value={profile.lastName} />
-              <DataLine label="Username" value={profile.username && `@${profile.username}`} />
-              <DataLine
-                label="Date of birth"
-                value={
-                  profile.dateOfBirth
-                    ? new Date(profile.dateOfBirth).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : null
-                }
-              />
-              <DataLine label="Gender" value={profile.gender} />
-              <DataLine
-                label="Blood group"
-                value={profile.bloodGroup}
-                icon={<Droplet className="w-3.5 h-3.5 text-rose-400" />}
-              />
-              <DataLine label="Nationality" value={profile.nationality} />
-              <DataLine
-                label="Profession"
-                value={profile.profession}
-                icon={<Briefcase className="w-3.5 h-3.5 text-amber-400" />}
-              />
-              <DataLine label="Secondary email" value={profile.secondaryEmail} />
-              <DataLine label="Secondary phone" value={profile.secondaryPhone} />
-            </div>
-            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
-              <button
-                onClick={() => openEdit("personal")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Edit Personal Info
-              </button>
-            </div>
-          </Card>
-
-          <Card
-            title="Address"
-            icon={<MapPin className="w-3.5 h-3.5" />}
-            tone="rose"
-          >
-            {address.street ||
-            address.village ||
-            address.city ||
-            address.district ||
-            address.country ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
-                <DataLine label="Street / House" value={address.street} />
-                <DataLine label="Village / Neighborhood" value={address.village} />
-                <DataLine label="City" value={address.city} />
-                <DataLine label="Sub-district" value={address.subDistrict} />
-                <DataLine label="District" value={address.district} />
-                <DataLine label="Division / State" value={address.division} />
-                <DataLine label="Region" value={address.region} />
-                <DataLine label="Postal Code" value={address.postalCode} />
-                <DataLine label="Country" value={address.country} />
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950 p-4 text-center">
-                <MapPin className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                <p className="text-sm text-gray-400 font-semibold">
-                  No address set yet
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Add one to boost your profile completion.
-                </p>
-              </div>
-            )}
-            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
-              <button
-                onClick={() => openEdit("address")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Edit Address
-              </button>
-            </div>
-          </Card>
 
           <Card
             title="Verification & Security"
             icon={<Shield className="w-3.5 h-3.5" />}
             tone="sky"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               <VerifTile
                 icon={<Mail className="w-4 h-4" />}
                 label="Email"
@@ -313,7 +227,7 @@ export function ProfileTabBody({
             icon={<GraduationCap className="w-3.5 h-3.5" />}
             tone="emerald"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {/* Courses */}
               <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
                 <div className="flex items-center gap-2 mb-3">
@@ -420,6 +334,100 @@ export function ProfileTabBody({
               </div>
             </div>
           </Card>
+        </div>
+
+        {/* Right rail (2/3) — about, address, socials, lifetime */}
+        <div className="space-y-5 lg:col-span-2">
+          <Card
+            title="Personal Info"
+            icon={<User className="w-3.5 h-3.5" />}
+            tone="purple"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
+              <DataLine label="First name" value={profile.firstName} />
+              <DataLine label="Last name" value={profile.lastName} />
+              <DataLine label="Username" value={profile.username && `@${profile.username}`} />
+              <DataLine
+                label="Date of birth"
+                value={
+                  profile.dateOfBirth
+                    ? new Date(profile.dateOfBirth).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : null
+                }
+              />
+              <DataLine label="Gender" value={profile.gender} />
+              <DataLine
+                label="Blood group"
+                value={profile.bloodGroup}
+                icon={<Droplet className="w-3.5 h-3.5 text-rose-400" />}
+              />
+              <DataLine label="Nationality" value={profile.nationality} />
+              <DataLine
+                label="Profession"
+                value={profile.profession}
+                icon={<Briefcase className="w-3.5 h-3.5 text-amber-400" />}
+              />
+              <DataLine label="Secondary email" value={profile.secondaryEmail} />
+              <DataLine label="Secondary phone" value={profile.secondaryPhone} />
+            </div>
+            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
+              <button
+                onClick={() => openEdit("personal")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Edit Personal Info
+              </button>
+            </div>
+          </Card>
+
+          <Card
+            title="Address"
+            icon={<MapPin className="w-3.5 h-3.5" />}
+            tone="rose"
+          >
+            {address.street ||
+            address.village ||
+            address.city ||
+            address.district ||
+            address.country ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
+                <DataLine label="Street / House" value={address.street} />
+                <DataLine label="Village / Neighborhood" value={address.village} />
+                <DataLine label="City" value={address.city} />
+                <DataLine label="Sub-district" value={address.subDistrict} />
+                <DataLine label="District" value={address.district} />
+                <DataLine label="Division / State" value={address.division} />
+                <DataLine label="Region" value={address.region} />
+                <DataLine label="Postal Code" value={address.postalCode} />
+                <DataLine label="Country" value={address.country} />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950 p-4 text-center">
+                <MapPin className="w-6 h-6 text-gray-600 mx-auto mb-1" />
+                <p className="text-sm text-gray-400 font-semibold">
+                  No address set yet
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Add one to boost your profile completion.
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
+              <button
+                onClick={() => openEdit("address")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Edit Address
+              </button>
+            </div>
+          </Card>
+
 
           <BecomeTutorCard />
 

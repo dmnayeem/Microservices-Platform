@@ -90,6 +90,17 @@ export interface PlacementSpec {
   maxHeightPx: number;
   /** May Google (ADSENSE / GAM) creatives run here? False = incentivised. */
   networkAllowed: boolean;
+  /**
+   * Let the creative fill its column instead of being capped at the preset
+   * width.
+   *
+   * The width cap exists so a 300px creative is not marooned in the middle of a
+   * 1216px band. In a column that is narrow BY CONSTRUCTION — the feed rail —
+   * the cap does the opposite: it leaves the ad visibly smaller than every
+   * widget stacked under it, which is exactly what widening the rail from 320
+   * to 416 exposed.
+   */
+  fillsColumn?: boolean;
 }
 
 /** Full-screen spaces size themselves; the overlay ignores `Ad.size` entirely. */
@@ -123,7 +134,10 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
   IN_FEED: { sizes: ["responsive"], maxHeightPx: 400, networkAllowed: true },
   // Sits between a post and its like/comment row — must stay small.
   FEED_POST_BELOW: { sizes: ["mobile", "banner", "responsive"], maxHeightPx: 72, networkAllowed: true },
-  FEED_SIDEBAR: RECTANGLE_SPEC,
+  // The rail is 320–416px wide depending on the breakpoint, and every other
+  // widget in it is full-width. `fillsColumn` keeps the ad the same width as its
+  // neighbours instead of pinning it to the 300px preset.
+  FEED_SIDEBAR: { ...RECTANGLE_SPEC, fillsColumn: true },
   DASHBOARD: LEADERBOARD_SPEC,
   EARN_HUB: LEADERBOARD_SPEC,
   // Users are paid points for viewing this page — incentivised by definition.

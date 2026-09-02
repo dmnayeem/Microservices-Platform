@@ -67,3 +67,34 @@ export function EmojiPopover({
     </>
   );
 }
+
+/**
+ * A button in the selection format bar.
+ *
+ * Separate from `ComposerToolBtn` because it must NOT take focus:
+ * `onMouseDown` + `preventDefault` keeps the textarea's selection alive, and
+ * without that the click would blur the field, collapse the selection, and
+ * `wrapSelection` would wrap nothing.
+ */
+export function SelectionFormatBtn({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className="p-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+    >
+      {children}
+    </button>
+  );
+}
