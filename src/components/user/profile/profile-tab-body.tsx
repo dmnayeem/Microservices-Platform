@@ -588,7 +588,11 @@ export function ProfileTabBody({
               />
             )}
             {editTab === "privacy" && (
-              <PrivacyTab privacy={preferences.privacy} patch={patch} />
+              <PrivacyTab
+                privacy={preferences.privacy}
+                privacyFields={preferences.privacyFields}
+                patch={patch}
+              />
             )}
             {editTab === "theme" && <ThemeTab preferences={preferences} patch={patch} />}
             {editTab === "security" && <SecurityTab verification={verification} />}

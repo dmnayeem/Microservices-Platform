@@ -93,7 +93,13 @@ for (const field of [
   "studyLevel",
   "timezone",
 ]) {
-  check(`the API publishes ${field}`, new RegExp(`${field}: u\\.${field}`).test(api));
+  // Each of these used to be published unconditionally. They are still
+  // published — now through the per-field privacy gate, so somebody can
+  // restrict one without losing the rest. See verify-profile-privacy.
+  check(
+    `the API publishes ${field}`,
+    new RegExp(`${field}: show\\("${field}"\\) \\? u\\.${field} : null`).test(api)
+  );
 }
 check(
   "city and district ride behind the location switch",
@@ -103,8 +109,8 @@ check(
 );
 check(
   "connected accounts are published",
-  /socialAccounts: showByPrivacy\(u\.privacyBio\) \? u\.socialAccounts : \[\]/.test(api),
-  "gated behind the same switch as the rest of the profile detail"
+  /socialAccounts: show\("socialAccounts"\) \? u\.socialAccounts : \[\]/.test(api),
+  "on their own switch — hiding a bio should not also hide linked accounts"
 );
 check(
   "what the person has published is counted",

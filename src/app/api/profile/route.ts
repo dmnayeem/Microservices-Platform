@@ -20,6 +20,10 @@ import {
   BIO_WORD_LIMIT,
   countWords,
 } from "@/lib/word-count";
+import {
+  effectivePrivacy,
+  parsePrivacyFields,
+} from "@/lib/profile-privacy";
 
 const PROFILE_FIELDS = {
   id: true,
@@ -82,6 +86,7 @@ const PROFILE_FIELDS = {
   privacyStats: true,
   privacyEarnings: true,
   privacyLocation: true,
+  privacyFields: true,
   followersCount: true,
   followingCount: true,
   displayFollowersBoost: true,
@@ -355,6 +360,10 @@ export async function GET() {
           email: u.emailNotifications,
           push: u.pushNotifications,
         },
+        // The five legacy keys stay, so nothing that reads them breaks. The
+        // settings page reads `privacyFields` instead: every controllable item
+        // with the level actually in force, defaults resolved, so it renders
+        // exactly what the public API will enforce.
         privacy: {
           avatar: u.privacyAvatar,
           bio: u.privacyBio,
@@ -362,6 +371,7 @@ export async function GET() {
           earnings: u.privacyEarnings,
           location: u.privacyLocation,
         },
+        privacyFields: effectivePrivacy(u),
       },
       socialAccounts: socialAccounts.map((s) => ({
         id: s.id,
@@ -639,6 +649,22 @@ export async function PATCH(request: NextRequest) {
         }
         updateData[f] = v;
       }
+    }
+
+    // Per-field privacy. Merged, not replaced: the settings page sends one
+    // changed key at a time, and a replace would wipe every other choice.
+    // Unknown keys and bad levels are dropped by `parsePrivacyFields`, so a
+    // stale key cannot linger looking like a setting that does something.
+    if (body.privacyFields !== undefined) {
+      const incoming = parsePrivacyFields(body.privacyFields);
+      // Read only when there is something to merge into — a settings save that
+      // does not touch privacy should not pay for this query.
+      const existing = (await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { privacyFields: true },
+      })) as { privacyFields: unknown } | null;
+      const current = parsePrivacyFields(existing?.privacyFields);
+      updateData.privacyFields = { ...current, ...incoming };
     }
 
     // Notification prefs

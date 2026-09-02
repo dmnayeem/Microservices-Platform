@@ -121,6 +121,8 @@ export interface ProfileResponse {
     themeAccent: string;
     notifications: { enabled: boolean; email: boolean; push: boolean };
     privacy: { avatar: string; bio: string; stats: string; earnings: string; location: string };
+    /** Every controllable item with the level in force — see lib/profile-privacy.ts. */
+    privacyFields?: Record<string, string>;
   };
   socialAccounts: SocialAccount[];
   completion: {

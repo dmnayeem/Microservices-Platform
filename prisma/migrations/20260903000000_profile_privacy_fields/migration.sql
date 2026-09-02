@@ -1,0 +1,12 @@
+-- Per-field profile visibility.
+--
+-- One JSON map (`fieldKey -> PUBLIC | FRIENDS | PRIVATE`) rather than a column
+-- per field. NULL means nothing has been customised, and every field falls back
+-- to the default in src/lib/profile-privacy.ts — which matches what is visible
+-- today, so this migration changes nobody's profile until they choose to.
+--
+-- Idempotent: this is applied statement-by-statement against the live database
+-- first (`prisma db execute --file`, one statement per file, and NO --schema
+-- flag — it is not valid in this Prisma version and makes every call fail while
+-- looking like it succeeded).
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "privacyFields" JSONB;

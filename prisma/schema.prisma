@@ -1507,6 +1507,13 @@ model User {
   privacyStats                      String                       @default("PUBLIC")
   privacyEarnings                   String                       @default("PRIVATE")
   privacyLocation                   String                       @default("FRIENDS")
+  /// Per-field visibility for everything the five columns above do not cover —
+  /// profession, gender, birthday, blood group, connected accounts and the
+  /// rest. One JSON map of `fieldKey -> PUBLIC | FRIENDS | PRIVATE` instead of a
+  /// column per field. Null means "nothing customised": each field falls back
+  /// to the default in `src/lib/profile-privacy.ts`, which is what is live
+  /// today. The five columns stay authoritative for their own items.
+  privacyFields                     Json?
   createdAt                         DateTime                     @default(now())
   updatedAt                         DateTime                     @updatedAt
   lastLoginAt                       DateTime?

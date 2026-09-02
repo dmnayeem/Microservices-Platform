@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getXpRank } from "@/lib/user-rank";
+import {
+  canSee,
+  visibleTo,
+  type PrivacyLevel,
+} from "@/lib/profile-privacy";
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 
@@ -58,6 +63,7 @@ export async function GET(
     privacyStats: string;
     privacyEarnings: string;
     privacyLocation: string;
+    privacyFields: unknown;
     followersCount: number;
     followingCount: number;
     displayFollowersBoost: number;
@@ -122,6 +128,7 @@ export async function GET(
       privacyStats: true,
       privacyEarnings: true,
       privacyLocation: true,
+      privacyFields: true,
       followersCount: true,
       followingCount: true,
       displayFollowersBoost: true,
@@ -174,14 +181,16 @@ export async function GET(
     isFollowedBy = !!f2;
   }
 
-  // Privacy gates
-  const showByPrivacy = (level: string): boolean => {
-    if (isMe) return true;
-    if (level === "PUBLIC") return true;
-    if (level === "PRIVATE") return false;
-    if (level === "FRIENDS") return isFollowing && isFollowedBy; // mutual
-    return true;
-  };
+  // Privacy gates.
+  //
+  // `showByPrivacy` takes a level (the five legacy columns); `show` takes a
+  // FIELD KEY and resolves its level itself, covering everything else through
+  // `User.privacyFields`. Both end at the same `canSee`, so "Followers" means
+  // mutual in one place, not two.
+  const viewerCtx = { isMe, isMutual: isFollowing && isFollowedBy };
+  const showByPrivacy = (level: string): boolean =>
+    canSee((level as PrivacyLevel) ?? "PUBLIC", viewerCtx);
+  const show = (key: string): boolean => visibleTo(u, key, viewerCtx);
 
   const postsCount = await prisma.post.count({
     where: { userId: u.id, isPublic: true },
@@ -230,15 +239,16 @@ export async function GET(
       bio: showByPrivacy(u.privacyBio) ? u.bio : null,
       country: showByPrivacy(u.privacyLocation) ? u.country : null,
       tags: u.tags,
-      profession: u.profession,
-      nationality: u.nationality,
-      language: u.language,
-      gender: u.gender,
-      dateOfBirth: u.dateOfBirth,
-      bloodGroup: u.bloodGroup,
-      maritalStatus: u.maritalStatus,
-      studyLevel: u.studyLevel,
-      timezone: u.timezone,
+      // Each of these is now the user's call — see lib/profile-privacy.ts.
+      profession: show("profession") ? u.profession : null,
+      nationality: show("nationality") ? u.nationality : null,
+      language: show("language") ? u.language : null,
+      gender: show("gender") ? u.gender : null,
+      dateOfBirth: show("dateOfBirth") ? u.dateOfBirth : null,
+      bloodGroup: show("bloodGroup") ? u.bloodGroup : null,
+      maritalStatus: show("maritalStatus") ? u.maritalStatus : null,
+      studyLevel: show("studyLevel") ? u.studyLevel : null,
+      timezone: show("timezone") ? u.timezone : null,
       // City and district ride with the country, behind the same
       // `privacyLocation` switch — one setting for "where I am", not three.
       city: showByPrivacy(u.privacyLocation) ? u.city : null,
@@ -246,11 +256,15 @@ export async function GET(
       // Connected accounts are the point of connecting them — a stranger
       // deciding whether to follow or buy wants to see them. Gated behind the
       // same switch as the rest of the profile detail.
-      socialAccounts: showByPrivacy(u.privacyBio) ? u.socialAccounts : [],
-      creations: {
-        coursesCreated,
-        marketplaceListings: u._count.marketplaceListings,
-      },
+      // These used to ride on the bio switch, which meant hiding your bio also
+      // hid your linked accounts — two unrelated decisions on one control.
+      socialAccounts: show("socialAccounts") ? u.socialAccounts : [],
+      creations: show("creations")
+        ? {
+            coursesCreated,
+            marketplaceListings: u._count.marketplaceListings,
+          }
+        : { coursesCreated: 0, marketplaceListings: 0 },
       level: u.level,
       isBlueVerified: u.isBlueVerified,
       verifiedBadgeStyle: u.verifiedBadgeStyle ?? "BLUE",

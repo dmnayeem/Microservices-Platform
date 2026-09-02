@@ -20,6 +20,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  PRIVACY_FIELDS,
+  PRIVACY_GROUPS,
+  PRIVACY_LABELS,
+  PRIVACY_LEVELS,
+  type PrivacyField,
+} from "@/lib/profile-privacy";
+import {
   BIO_CHAR_LIMIT,
   BIO_WORD_LIMIT,
   countWords,
@@ -452,43 +459,94 @@ export function SocialTab({
 
 export function PrivacyTab({
   privacy,
+  privacyFields,
   patch,
 }: {
   privacy: { avatar: string; bio: string; stats: string; earnings: string; location: string };
+  /** Every controllable item with the level actually in force, defaults resolved. */
+  privacyFields?: Record<string, string>;
   patch: (body: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const fields: { key: keyof typeof privacy; label: string; hint: string }[] = [
-    { key: "avatar", label: "Profile photo", hint: "Who can see your avatar" },
-    { key: "bio", label: "Bio", hint: "Who can see your about-me" },
-    { key: "stats", label: "Stats", hint: "Level, points balance, total earnings" },
-    { key: "earnings", label: "Earnings", hint: "Lifetime earnings detail" },
-    { key: "location", label: "Location", hint: "City / country shown on profile" },
-  ];
+  // Optimistic, because a select that snaps back to its old value while the
+  // request is in flight reads as "that didn't work".
+  const [levels, setLevels] = useState<Record<string, string>>(
+    privacyFields ?? {}
+  );
+
+  const setLevel = async (f: PrivacyField, next: string) => {
+    const prev = levels[f.key];
+    setLevels((p) => ({ ...p, [f.key]: next }));
+    // The five original items still write their own column; everything else
+    // goes into the JSON map. One control either way — the user should not have
+    // to know which of their settings happens to have a column behind it.
+    const ok = await patch(
+      f.column ? { [f.column]: next } : { privacyFields: { [f.key]: next } }
+    );
+    if (!ok) setLevels((p) => ({ ...p, [f.key]: prev }));
+  };
 
   return (
     <Card title="Privacy Settings">
-      <div className="space-y-2">
-        {fields.map((f) => (
-          <div
-            key={f.key}
-            className="flex items-center gap-3 p-3 rounded-lg bg-gray-950 border border-gray-800"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white">{f.label}</p>
-              <p className="text-xs text-gray-500">{f.hint}</p>
+      <p className="text-xs text-gray-500 -mt-1 mb-3">
+        Choose who can see each part of your profile. “Followers” means people
+        you follow who follow you back.
+      </p>
+
+      <div className="space-y-4">
+        {PRIVACY_GROUPS.map((group) => {
+          const fields = PRIVACY_FIELDS.filter((f) => f.group === group);
+          if (fields.length === 0) return null;
+          return (
+            <div key={group}>
+              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">
+                {group}
+              </p>
+              <div className="space-y-1.5">
+                {fields.map((f) => {
+                  const value =
+                    levels[f.key] ??
+                    (f.column
+                      ? privacy[
+                          f.key as keyof typeof privacy
+                        ]
+                      : f.fallback);
+                  return (
+                    <div
+                      key={f.key}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-gray-950 border border-gray-800"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white">{f.label}</p>
+                        <p className="text-xs text-gray-500">{f.hint}</p>
+                      </div>
+                      <select
+                        value={value}
+                        onChange={(e) => setLevel(f, e.target.value)}
+                        aria-label={`Who can see ${f.label}`}
+                        className={cn(
+                          "bg-gray-800 border rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 shrink-0",
+                          value === "PRIVATE"
+                            ? "border-rose-500/40"
+                            : value === "FRIENDS"
+                              ? "border-amber-500/40"
+                              : "border-gray-700"
+                        )}
+                      >
+                        {PRIVACY_LEVELS.map((l) => (
+                          <option key={l} value={l}>
+                            {PRIVACY_LABELS[l]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <select
-              value={privacy[f.key]}
-              onChange={(e) => patch({ [`privacy${f.key.charAt(0).toUpperCase()}${f.key.slice(1)}`]: e.target.value })}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="FRIENDS">Friends</option>
-              <option value="PRIVATE">Private</option>
-            </select>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
         <a
           href="/api/profile/export"
