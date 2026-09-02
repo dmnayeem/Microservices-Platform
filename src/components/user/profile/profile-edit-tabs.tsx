@@ -19,6 +19,12 @@ import {
   Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  BIO_CHAR_LIMIT,
+  BIO_WORD_LIMIT,
+  countWords,
+  truncateWords,
+} from "@/lib/word-count";
 import { LocationSelector } from "@/components/shared/location-selector";
 import {
   useTheme,
@@ -93,6 +99,10 @@ export function PersonalTab({
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
+  // Counted with the same function the API validates with, so the number under
+  // the box is the number the server will agree with.
+  const bioWords = countWords(form.bio);
+
   return (
     <Card title="Personal Info">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -159,11 +169,25 @@ export function PersonalTab({
         <textarea
           rows={3}
           value={form.bio}
-          onChange={(e) => set("bio", e.target.value)}
-          maxLength={500}
+          // Trimmed to the limit on the way in rather than refused at save.
+          // `maxLength` alone cannot express a WORD limit, and the old value
+          // (500) did not even match what the server accepted — you could fill
+          // the box and only find out it was too long after pressing Save.
+          onChange={(e) => set("bio", truncateWords(e.target.value, BIO_WORD_LIMIT))}
+          maxLength={BIO_CHAR_LIMIT}
           placeholder="A short intro that appears on your public profile."
           className={inp}
         />
+        <div className="flex justify-end mt-1">
+          <span
+            className={cn(
+              "text-xs tabular-nums",
+              bioWords >= BIO_WORD_LIMIT ? "text-amber-400" : "text-gray-500"
+            )}
+          >
+            {bioWords} / {BIO_WORD_LIMIT} words
+          </span>
+        </div>
       </Field>
       <div className="flex justify-end pt-2">
         <button

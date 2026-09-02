@@ -80,13 +80,29 @@ export function SocialFeedView({
     //
     // The shell already spends 352px before this component gets any width
     // (`lg:pl-72` = 288px of nav, plus `lg:px-8` = 64px of padding). At the `lg`
-    // breakpoint that leaves 672px, but the two columns need 920px — 576 for the
-    // feed, 24 gap, 320 for the rail, which is `shrink-0`. So every laptop in the
-    // 1024–1279px band rendered the feed at ~328px: narrower than a phone, with
-    // a full-width rail beside it. 1280px is the first width where both fit.
-    <div className="mx-auto w-full max-w-5xl flex justify-center gap-6">
+    // breakpoint that leaves 672px, but two columns need at least 920px — 576
+    // for the feed, 24 gap, 320 for the rail, which is `shrink-0`. So every
+    // laptop in the 1024–1279px band rendered the feed at ~328px: narrower than
+    // a phone, with a full-width rail beside it. 1280px is the first width where
+    // both fit, which is why the rail starts at `xl`.
+    //
+    // The widths above `xl` are measured, not guessed. At 1920 the feed used to
+    // begin 352px right of the nav with 180px of dead space on either side of
+    // the pair, because the centring happens twice: `main` centres itself inside
+    // `max-w-7xl`, and then this row centred a 920px block inside main's 1216px
+    // again. Widening both columns pulls the block left and fills that corridor
+    // instead of leaving it down the middle of the screen — the feed now starts
+    // 80px further left and the side space is 84px rather than 180px.
+    //
+    // The rail only grows at `2xl`, and that is the constraint that decides
+    // everything else. At exactly 1280 the row has 920px to work with, and
+    // 672 + 24 + 416 does not fit: the feed would be squeezed to 480px, NARROWER
+    // than it is today. So the rail holds at 320 through the whole xl band and
+    // takes its extra width at 1536+, where `main` is capped and the room is
+    // genuinely spare.
+    <div className="mx-auto w-full max-w-5xl xl:max-w-6xl flex justify-center gap-6">
       {/* Center feed column (FB/Twitter-width) */}
-      <div className="w-full max-w-xl min-w-0 space-y-4">
+      <div className="w-full max-w-xl xl:max-w-[42rem] min-w-0 space-y-4">
         {/* Banner — above the tabs, visible on both Feed and Groups */}
         {initialBanners.length > 0 && <BannerSlider slides={initialBanners} />}
 
@@ -146,7 +162,7 @@ export function SocialFeedView({
           The aside is deliberately left to stretch to the row height: `sticky`
           needs a taller ancestor to travel inside, so adding `self-start` here
           would shrink it to its content and stop the stickiness working. */}
-      <aside className="hidden xl:block w-80 shrink-0">
+      <aside className="hidden xl:block w-80 2xl:w-[26rem] shrink-0">
         {/* The rail scrolls on its own.
             `sticky` alone pinned this column 80px below the header and then let
             it move with the page — so once the widgets were taller than the

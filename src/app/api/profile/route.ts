@@ -15,6 +15,11 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { checkUsername, USERNAME_RULE_MESSAGE } from "@/lib/username";
 import { getUserDayContext } from "@/lib/user-day";
+import {
+  BIO_CHAR_LIMIT,
+  BIO_WORD_LIMIT,
+  countWords,
+} from "@/lib/word-count";
 
 const PROFILE_FIELDS = {
   id: true,
@@ -437,10 +442,33 @@ export async function PATCH(request: NextRequest) {
     }
     // `gender` is NOT in this list: it is a targeting dimension and must be one
     // of the three canonical values, not free text. See below.
+    // Bio is validated on WORDS, not the 200-character rule the fields below
+    // share. Seventy words of ordinary prose runs well past 200 characters, so
+    // leaving it in that loop would have made the word limit unreachable — the
+    // character check would always fire first.
+    if (body.bio !== undefined) {
+      const raw = body.bio === null ? null : String(body.bio).trim();
+      if (raw) {
+        const words = countWords(raw);
+        if (words > BIO_WORD_LIMIT) {
+          return NextResponse.json(
+            { error: `Your bio is ${words} words — the limit is ${BIO_WORD_LIMIT}.` },
+            { status: 400 }
+          );
+        }
+        // Seventy "words" can still be one enormous run of characters.
+        if (raw.length > BIO_CHAR_LIMIT) {
+          return NextResponse.json(
+            { error: "Your bio is too long." },
+            { status: 400 }
+          );
+        }
+      }
+      updateData.bio = raw || null;
+    }
     for (const f of [
       "firstName",
       "lastName",
-      "bio",
       "profession",
       "maritalStatus",
       "studyLevel",
