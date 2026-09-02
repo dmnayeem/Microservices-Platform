@@ -202,21 +202,22 @@ check(
   /completion\.missing\.map\(/.test(profile) &&
     !/completion\.missing\.slice\(0, 8\)/.test(profile)
 );
-const leftCol = profile.slice(
-  profile.indexOf('title="Profile Completion"'),
-  profile.indexOf("Right rail")
-);
+// Where those two cards live is asserted in
+// `verify-profile-layout-and-public.ts` now. They spent one commit inside the
+// 1/3 column, which fixed the void under it and created a worse one down the
+// right of the page; they sit in a full-width two-up row below the grid
+// instead. Two suites checking the same arrangement from opposite directions is
+// how one of them ends up pinning the arrangement that was replaced.
 check(
-  "Verification & Security moved into the left column",
-  leftCol.includes('title="Verification & Security"')
-);
-check(
-  "Courses & Marketplace moved with it",
-  leftCol.includes('title="Courses & Marketplace"')
-);
-check(
-  "…and they stack in one column now that the column is narrow",
-  !/grid grid-cols-1 sm:grid-cols-2 gap-2">\s*<VerifTile/.test(leftCol)
+  "the two big cards are out of the 1/3 column",
+  // Anchored on real code, not on a comment: `code()` strips comments, so
+  // `indexOf("Right rail")` was -1 and the slice ran to the end of the file.
+  !profile
+    .slice(
+      profile.indexOf('title="Profile Completion"'),
+      profile.indexOf('lg:col-span-2')
+    )
+    .includes('title="Verification & Security"')
 );
 
 /* ── 6. The auth noise ── */

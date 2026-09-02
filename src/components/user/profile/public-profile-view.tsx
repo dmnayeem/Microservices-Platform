@@ -12,12 +12,19 @@ import {
   Coins,
   Crown,
   Lock,
+  Briefcase,
+  Languages,
+  Globe,
+  GraduationCap,
+  ShoppingBag,
+  CheckCircle2,
 } from "lucide-react";
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 import { RenderedContent } from "@/components/user/feed/feed-content";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { toast } from "@/lib/toast";
+import { LANGUAGES } from "./profile-view.constants";
 import { cn } from "@/lib/utils";
 import {
   SocialStatsGroup,
@@ -45,6 +52,17 @@ interface ProfileResp {
     bio: string | null;
     country: string | null;
     tags: string[];
+    profession: string | null;
+    nationality: string | null;
+    language: string | null;
+    socialAccounts: {
+      id: string;
+      platform: string;
+      username: string;
+      url: string | null;
+      verified: boolean;
+    }[];
+    creations: { coursesCreated: number; marketplaceListings: number };
     level: number;
     isBlueVerified: boolean;
     verifiedBadgeStyle: string | null;
@@ -292,6 +310,98 @@ export function PublicProfileView({ userId, viewerId }: Props) {
         </div>
       )}
 
+      {/* About — the facts a stranger can act on.
+      
+          The public profile used to stop at bio / country / joined, so opening
+          somebody else's page showed almost nothing: not what they do, not what
+          they speak, not the accounts they connected, not what they have
+          published. Everything here is something the person chose to put on
+          their own profile; email, phone, date of birth, national ID and street
+          address are deliberately absent and are not even selected by the API.
+          Hidden entirely when the person has filled none of it in, rather than
+          printing a card of dashes. */}
+      {(user.profession ||
+        user.nationality ||
+        user.language ||
+        user.socialAccounts.length > 0 ||
+        user.creations.coursesCreated > 0 ||
+        user.creations.marketplaceListings > 0) && (
+        <section className="glass p-4">
+          <h2 className="text-sm font-bold text-white mb-3">About</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+            {user.profession && (
+              <PublicFact icon={<Briefcase className="w-3.5 h-3.5" />} label="Works as" value={user.profession} />
+            )}
+            {user.language && (
+              <PublicFact
+                icon={<Languages className="w-3.5 h-3.5" />}
+                label="Speaks"
+                value={LANGUAGES.find((l) => l.code === user.language)?.name ?? user.language}
+              />
+            )}
+            {user.nationality && (
+              <PublicFact icon={<Globe className="w-3.5 h-3.5" />} label="Nationality" value={user.nationality} />
+            )}
+            {user.creations.coursesCreated > 0 && (
+              <PublicFact
+                icon={<GraduationCap className="w-3.5 h-3.5" />}
+                label="Courses published"
+                value={String(user.creations.coursesCreated)}
+              />
+            )}
+            {user.creations.marketplaceListings > 0 && (
+              <PublicFact
+                icon={<ShoppingBag className="w-3.5 h-3.5" />}
+                label="Marketplace listings"
+                value={String(user.creations.marketplaceListings)}
+              />
+            )}
+          </div>
+
+          {user.socialAccounts.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-800">
+              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2">
+                Connected accounts
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {user.socialAccounts.map((a) => {
+                  const chip = (
+                    <>
+                      <span className="text-xs font-semibold text-gray-200">
+                        {a.platform.charAt(0) + a.platform.slice(1).toLowerCase()}
+                      </span>
+                      <span className="text-xs text-gray-500 truncate max-w-32">@{a.username}</span>
+                      {a.verified && <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
+                    </>
+                  );
+                  // Only a stored URL becomes a link — a bare handle has nowhere
+                  // safe to point, and guessing a profile URL per platform is how
+                  // you send people to the wrong account.
+                  return a.url ? (
+                    <a
+                      key={a.id}
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 hover:border-indigo-500/40 transition-colors"
+                    >
+                      {chip}
+                    </a>
+                  ) : (
+                    <span
+                      key={a.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800"
+                    >
+                      {chip}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Tab nav */}
       <nav className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none">
         {(
@@ -530,6 +640,29 @@ function UserListTab({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** One labelled fact in the public About card. */
+function PublicFact({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 text-gray-500 shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+          {label}
+        </p>
+        <p className="text-sm text-gray-200 break-words">{value}</p>
+      </div>
     </div>
   );
 }

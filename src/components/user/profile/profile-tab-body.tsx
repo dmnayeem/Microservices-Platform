@@ -168,172 +168,6 @@ export function ProfileTabBody({
               </div>
             )}
           </Card>
-
-          <Card
-            title="Verification & Security"
-            icon={<Shield className="w-3.5 h-3.5" />}
-            tone="sky"
-          >
-            <div className="grid grid-cols-1 gap-2">
-              <VerifTile
-                icon={<Mail className="w-4 h-4" />}
-                label="Email"
-                ok={verification.isEmailVerified}
-                action={
-                  verification.isEmailVerified
-                    ? null
-                    : { label: "Verify", href: "/verify-email" }
-                }
-              />
-              <VerifTile
-                icon={<Phone className="w-4 h-4" />}
-                label="Phone"
-                ok={verification.isPhoneVerified}
-                action={
-                  verification.isPhoneVerified
-                    ? null
-                    : { label: "Verify", href: "/verify-phone" }
-                }
-              />
-              <VerifTile
-                icon={<Shield className="w-4 h-4" />}
-                label="KYC"
-                ok={verification.kycStatus === "APPROVED"}
-                pending={verification.kycStatus === "PENDING"}
-                rejected={verification.kycStatus === "REJECTED"}
-                action={
-                  verification.kycStatus === "APPROVED"
-                    ? null
-                    : verification.kycStatus === "REJECTED"
-                    ? { label: "Appeal", href: "/kyc/appeal" }
-                    : { label: "Submit", href: "/kyc" }
-                }
-              />
-              <VerifTile
-                icon={<Lock className="w-4 h-4" />}
-                label="2FA"
-                ok={verification.twoFactorEnabled}
-                action={
-                  verification.twoFactorEnabled
-                    ? null
-                    : { label: "Enable", href: "/2fa-setup" }
-                }
-              />
-            </div>
-          </Card>
-
-          <Card
-            title="Courses & Marketplace"
-            icon={<GraduationCap className="w-3.5 h-3.5" />}
-            tone="emerald"
-          >
-            <div className="grid grid-cols-1 gap-3">
-              {/* Courses */}
-              <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4" />
-                  </div>
-                  <p className="text-sm font-bold text-white">Courses</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    href="/courses?filter=enrolled"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-emerald-500/40 transition-colors"
-                  >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-                      Enrolled
-                    </p>
-                    <p className="text-lg font-extrabold text-white tabular-nums">
-                      {stats.coursesEnrolled.toLocaleString()}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/courses?filter=created"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-emerald-500/40 transition-colors"
-                  >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-                      Created
-                    </p>
-                    <p className="text-lg font-extrabold text-white tabular-nums">
-                      {stats.coursesCreated.toLocaleString()}
-                    </p>
-                  </Link>
-                </div>
-                <Link
-                  href="/courses"
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-300 hover:text-emerald-200 font-semibold"
-                >
-                  Browse courses
-                  <ChevronRight className="w-3 h-3" />
-                </Link>
-              </div>
-
-              {/* Marketplace */}
-              <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                    <ShoppingBag className="w-4 h-4" />
-                  </div>
-                  <p className="text-sm font-bold text-white">Marketplace</p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Link
-                    href="/marketplace?tab=listings"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
-                  >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-                      Listings
-                    </p>
-                    <p className="text-lg font-extrabold text-white tabular-nums">
-                      {stats.marketplaceListings.toLocaleString()}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/marketplace?tab=sales"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
-                  >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-                      Sales
-                    </p>
-                    <p className="text-lg font-extrabold text-white tabular-nums">
-                      {stats.marketplaceSales.toLocaleString()}
-                    </p>
-                  </Link>
-                  <Link
-                    href="/marketplace?tab=purchases"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
-                  >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
-                      Bought
-                    </p>
-                    <p className="text-lg font-extrabold text-white tabular-nums">
-                      {stats.marketplacePurchases.toLocaleString()}
-                    </p>
-                  </Link>
-                </div>
-                {stats.marketplaceSalesAmount > 0 && (
-                  <p className="text-[11px] text-amber-300 mt-2 inline-flex items-center gap-1">
-                    <Coins className="w-3 h-3" />
-                    Earned{" "}
-                    <span className="font-bold tabular-nums">
-                      ${stats.marketplaceSalesAmount.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>{" "}
-                    from sales
-                  </p>
-                )}
-                <Link
-                  href="/marketplace"
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-300 hover:text-amber-200 font-semibold"
-                >
-                  Open marketplace
-                  <ChevronRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
-          </Card>
         </div>
 
         {/* Right rail (2/3) — about, address, socials, lifetime */}
@@ -511,6 +345,181 @@ export function ProfileTabBody({
             </div>
           </Card>
         </div>
+      </div>
+
+      {/* Courses & Marketplace beside Verification & Security, full width.
+
+          They used to sit stacked in the 1/3 column, which left that column
+          far taller than the 2/3 one beside it — so the page ended in a tall
+          empty band down the right-hand side, and both cards were squeezed
+          into a third of the width for no reason. Side by side across the
+          full width they fill the row, and the void goes with them. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Card
+            title="Courses & Marketplace"
+            icon={<GraduationCap className="w-3.5 h-3.5" />}
+            tone="emerald"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Courses */}
+              <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <p className="text-sm font-bold text-white">Courses</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href="/courses?filter=enrolled"
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-emerald-500/40 transition-colors"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      Enrolled
+                    </p>
+                    <p className="text-lg font-extrabold text-white tabular-nums">
+                      {stats.coursesEnrolled.toLocaleString()}
+                    </p>
+                  </Link>
+                  <Link
+                    href="/courses?filter=created"
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-emerald-500/40 transition-colors"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      Created
+                    </p>
+                    <p className="text-lg font-extrabold text-white tabular-nums">
+                      {stats.coursesCreated.toLocaleString()}
+                    </p>
+                  </Link>
+                </div>
+                <Link
+                  href="/courses"
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-300 hover:text-emerald-200 font-semibold"
+                >
+                  Browse courses
+                  <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {/* Marketplace */}
+              <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                    <ShoppingBag className="w-4 h-4" />
+                  </div>
+                  <p className="text-sm font-bold text-white">Marketplace</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Link
+                    href="/marketplace?tab=listings"
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      Listings
+                    </p>
+                    <p className="text-lg font-extrabold text-white tabular-nums">
+                      {stats.marketplaceListings.toLocaleString()}
+                    </p>
+                  </Link>
+                  <Link
+                    href="/marketplace?tab=sales"
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      Sales
+                    </p>
+                    <p className="text-lg font-extrabold text-white tabular-nums">
+                      {stats.marketplaceSales.toLocaleString()}
+                    </p>
+                  </Link>
+                  <Link
+                    href="/marketplace?tab=purchases"
+                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      Bought
+                    </p>
+                    <p className="text-lg font-extrabold text-white tabular-nums">
+                      {stats.marketplacePurchases.toLocaleString()}
+                    </p>
+                  </Link>
+                </div>
+                {stats.marketplaceSalesAmount > 0 && (
+                  <p className="text-[11px] text-amber-300 mt-2 inline-flex items-center gap-1">
+                    <Coins className="w-3 h-3" />
+                    Earned{" "}
+                    <span className="font-bold tabular-nums">
+                      ${stats.marketplaceSalesAmount.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>{" "}
+                    from sales
+                  </p>
+                )}
+                <Link
+                  href="/marketplace"
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-300 hover:text-amber-200 font-semibold"
+                >
+                  Open marketplace
+                  <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            title="Verification & Security"
+            icon={<Shield className="w-3.5 h-3.5" />}
+            tone="sky"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <VerifTile
+                icon={<Mail className="w-4 h-4" />}
+                label="Email"
+                ok={verification.isEmailVerified}
+                action={
+                  verification.isEmailVerified
+                    ? null
+                    : { label: "Verify", href: "/verify-email" }
+                }
+              />
+              <VerifTile
+                icon={<Phone className="w-4 h-4" />}
+                label="Phone"
+                ok={verification.isPhoneVerified}
+                action={
+                  verification.isPhoneVerified
+                    ? null
+                    : { label: "Verify", href: "/verify-phone" }
+                }
+              />
+              <VerifTile
+                icon={<Shield className="w-4 h-4" />}
+                label="KYC"
+                ok={verification.kycStatus === "APPROVED"}
+                pending={verification.kycStatus === "PENDING"}
+                rejected={verification.kycStatus === "REJECTED"}
+                action={
+                  verification.kycStatus === "APPROVED"
+                    ? null
+                    : verification.kycStatus === "REJECTED"
+                    ? { label: "Appeal", href: "/kyc/appeal" }
+                    : { label: "Submit", href: "/kyc" }
+                }
+              />
+              <VerifTile
+                icon={<Lock className="w-4 h-4" />}
+                label="2FA"
+                ok={verification.twoFactorEnabled}
+                action={
+                  verification.twoFactorEnabled
+                    ? null
+                    : { label: "Enable", href: "/2fa-setup" }
+                }
+              />
+            </div>
+          </Card>
       </div>
 
       {/* Edit drawer (in-page accordion) */}
