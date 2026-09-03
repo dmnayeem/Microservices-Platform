@@ -109,6 +109,8 @@ export async function PATCH(
           action: "COURSE_REFUND_REJECTED",
           entity: "CourseRefundRequest",
           entityId: id,
+          targetUserId: request.userId,
+          summary: `Rejected a course refund${v.data.adminNote ? ` — ${v.data.adminNote}` : ""}`,
           newData: { adminNote: v.data.adminNote ?? null },
         },
       });
@@ -327,6 +329,8 @@ export async function PATCH(
         action: "COURSE_REFUND_APPROVED",
         entity: "CourseRefundRequest",
         entityId: id,
+        targetUserId: request.userId,
+        summary: `Approved a course refund of ${usd(refundAmount)}`,
         newData: {
           refundAmount,
           tutorOwed,

@@ -63,6 +63,7 @@ export function CreatePostComposer({
   onCreated,
   canShareLinks = false,
   canShareYouTube = false,
+  canDonate = false,
 }: {
   user: SessionUser;
   onCreated: (post: FeedPost) => void;
@@ -70,6 +71,8 @@ export function CreatePostComposer({
   canShareLinks?: boolean;
   /** Admin-granted: may post YouTube/video links. */
   canShareYouTube?: boolean;
+  /** May open a donation post. Admin-granted: a donation post asks real people for real points. */
+  canDonate?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<ComposerMode>("text");
@@ -450,7 +453,12 @@ export function CreatePostComposer({
           [
             { key: "text", label: "Text", icon: TypeIcon },
             { key: "poll", label: "Poll", icon: ListChecks },
-            { key: "donation", label: "Donation", icon: HandCoins },
+            // Donation is admin-granted. Hidden rather than shown-disabled: a
+            // greyed-out tab invites a support ticket for a capability most
+            // accounts are never meant to have. The server enforces it too.
+            ...(canDonate
+              ? ([{ key: "donation", label: "Donation", icon: HandCoins }] as const)
+              : []),
           ] as const
         ).map((m) => {
           const isActive = m.key === mode;

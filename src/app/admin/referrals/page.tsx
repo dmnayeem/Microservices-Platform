@@ -41,6 +41,42 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
 
   const bonusConfig = await getReferralBonusConfig();
 
+  // The page ranked who refers the MOST but never answered the other direction
+  // — "this account, where did it come from?" That is the question that gets
+  // asked when a batch of suspicious signups turns up, and it was unanswerable
+  // from here. Newest first, because that is when it matters.
+  const recentReferredRaw = await prisma.user.findMany({
+    where: { referredById: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 25,
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      email: true,
+      status: true,
+      createdAt: true,
+      referredBy: {
+        select: { id: true, name: true, username: true, referralCode: true },
+      },
+    },
+  });
+  type RecentReferred = {
+    id: string;
+    name: string | null;
+    username: string | null;
+    email: string;
+    status: string;
+    createdAt: Date;
+    referredBy: {
+      id: string;
+      name: string | null;
+      username: string | null;
+      referralCode: string;
+    } | null;
+  };
+  const recentReferred = recentReferredRaw as unknown as RecentReferred[];
+
   // Fetch top referrers
   const topReferrersRaw = await prisma.user.findMany({
     where: {
@@ -226,6 +262,80 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
                 Configure Levels
               </Link>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Who came in through whom */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="p-6 border-b border-gray-800">
+          <h2 className="text-lg font-semibold text-white">Recent Referred Signups</h2>
+          <p className="text-sm text-gray-400 mt-0.5">
+            The newest 25 accounts that arrived through somebody&apos;s link.
+          </p>
+        </div>
+        {recentReferred.length > 0 ? (
+          <AdminTable
+            bare
+            rows={recentReferred}
+            getRowKey={(r) => r.id}
+            columns={[
+              {
+                key: "user",
+                header: "User",
+                cell: (r) => (
+                  <Link
+                    href={`/admin/users/${r.id}`}
+                    className="text-white hover:text-indigo-400"
+                  >
+                    <span className="block">{r.name || r.username || "Unnamed"}</span>
+                    <span className="block text-xs text-gray-500">{r.email}</span>
+                  </Link>
+                ),
+              },
+              {
+                key: "referrer",
+                header: "Referred by",
+                cell: (r) =>
+                  r.referredBy ? (
+                    <Link
+                      href={`/admin/users/${r.referredBy.id}`}
+                      className="text-indigo-400 hover:text-indigo-300"
+                    >
+                      <span className="block">
+                        {r.referredBy.name || r.referredBy.username || "Unnamed"}
+                      </span>
+                      <span className="block text-[11px] font-mono text-gray-500">
+                        {r.referredBy.referralCode}
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="text-gray-600">—</span>
+                  ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                mobileHidden: true,
+                cell: (r) => (
+                  <span className="text-xs text-gray-400">{r.status}</span>
+                ),
+              },
+              {
+                key: "joined",
+                header: "Joined",
+                mobileHidden: true,
+                cell: (r) => (
+                  <span className="text-xs text-gray-500">
+                    {r.createdAt.toLocaleDateString()}
+                  </span>
+                ),
+              },
+            ]}
+          />
+        ) : (
+          <div className="p-6 text-sm text-gray-500">
+            No referred signups yet.
           </div>
         )}
       </div>

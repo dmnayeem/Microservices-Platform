@@ -6,6 +6,7 @@ import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { sendNotificationEmail, isSmtpConfigured } from "@/lib/email";
 import { getPointsPerUsd } from "@/lib/economy";
 import { z } from "zod";
+import { writeAuditMany } from "@/lib/audit";
 
 // Bulk action schema
 const bulkActionSchema = z.object({
@@ -167,15 +168,41 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: adminId,
-        action: `BULK_${action.toUpperCase()}`,
-        entity: "User",
-        newData: { ids: targetIds, reason: reason ?? null, count: targetIds.length },
+    // One row PER AFFECTED USER, not one row for the batch. The batch row named
+    // nobody, so a bulk ban or a bulk points adjustment was invisible on every
+    // account it touched — including in User Activity, which pivots on
+    // targetUserId. The action code stays per-user too (USER_BANNED, not
+    // BULK_BAN) so that filtering by "who was banned" catches both paths.
+    const perAction: Record<string, { code: string; describe: () => string }> = {
+      ban: { code: "USER_BANNED", describe: () => "Banned in a bulk action" },
+      unban: { code: "USER_UNBANNED", describe: () => "Unbanned in a bulk action" },
+      delete: { code: "USER_DELETED", describe: () => "Soft-deleted (banned) in a bulk action" },
+      sendEmail: { code: "USER_EMAILED", describe: () => `Sent bulk email: ${subject ?? ""}` },
+      adjustPoints: {
+        code: (points ?? 0) >= 0 ? "BALANCE_ADD_POINTS" : "BALANCE_DEDUCT_POINTS",
+        describe: () =>
+          `${(points ?? 0) >= 0 ? "Gave" : "Deducted"} ${Math.abs(points ?? 0)} pts in a bulk action`,
       },
-    });
+      changeTier: { code: "USER_PACKAGE_CHANGED", describe: () => "Changed plan in a bulk action" },
+    };
+    const spec = perAction[action];
+    await writeAuditMany(
+      targetIds.map((uid) => ({
+        actorId: adminId,
+        action: spec.code,
+        entity: "User",
+        entityId: uid,
+        targetUserId: uid,
+        summary: `${spec.describe()}${reason ? ` — ${reason}` : ""}`,
+        meta: {
+          bulk: true,
+          batchSize: targetIds.length,
+          reason: reason ?? null,
+          ...(action === "adjustPoints" ? { points } : {}),
+          ...(action === "changeTier" ? { packageId } : {}),
+        },
+      }))
+    );
 
     return NextResponse.json({
       success: true,

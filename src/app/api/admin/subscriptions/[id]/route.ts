@@ -182,6 +182,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             action: "SUBSCRIPTION_APPROVED",
             entity: "Subscription",
             entityId: subscription.id,
+            targetUserId: subscription.userId,
+            summary: `Approved a ${planLabel} subscription`,
             newData: {
               userId: subscription.userId,
               packageId: subscription.packageId,
@@ -234,6 +236,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             action: "SUBSCRIPTION_REJECTED",
             entity: "Subscription",
             entityId: subscription.id,
+            targetUserId: subscription.userId,
+            summary: `Rejected a ${planLabel} subscription${rejectionReason ? ` — ${rejectionReason}` : ""}`,
             newData: {
               userId: subscription.userId,
               packageId: subscription.packageId,
@@ -323,6 +327,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           action: "SUBSCRIPTION_CANCELLED",
           entity: "Subscription",
           entityId: subscription.id,
+          targetUserId: subscription.userId,
+          summary: `Cancelled a ${planLabel} subscription${reason ? ` — ${reason}` : ""}`,
           newData: {
             userId: subscription.userId,
             packageId: subscription.packageId,

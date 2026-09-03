@@ -39,6 +39,8 @@ interface UserRow {
   cashBalance: number;
   level: number;
   country: string | null;
+  /** Who brought this account in. Null = signed up directly. */
+  referredBy: { id: string; name: string | null; username: string | null } | null;
   createdAt: Date;
   lastLoginAt: Date | null;
 }
@@ -249,6 +251,7 @@ export function UsersTableClient({
                 <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Package</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Balance</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Country</th>
+                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Referred by</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Joined</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Actions</th>
               </tr>
@@ -372,6 +375,18 @@ export function UsersTableClient({
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-400">
                         {u.country || "—"}
+                      </td>
+                      <td className="py-4 px-4 text-sm">
+                        {u.referredBy ? (
+                          <Link
+                            href={`/admin/users/${u.referredBy.id}`}
+                            className="text-indigo-400 hover:text-indigo-300"
+                          >
+                            {u.referredBy.name || u.referredBy.username || "Unnamed"}
+                          </Link>
+                        ) : (
+                          <span className="text-slate-600">Direct</span>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-sm text-slate-400">
                         <p>
@@ -531,6 +546,17 @@ export function UsersTableClient({
                       />
                     )}
                   </div>
+                  {u.referredBy && (
+                    <p className="mt-1.5 text-[11px] text-slate-500">
+                      via{" "}
+                      <Link
+                        href={`/admin/users/${u.referredBy.id}`}
+                        className="text-indigo-400"
+                      >
+                        {u.referredBy.name || u.referredBy.username || "Unnamed"}
+                      </Link>
+                    </p>
+                  )}
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <p className="text-sm text-white tabular-nums">
                       {usd(u.cashBalance)}

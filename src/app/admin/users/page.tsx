@@ -126,6 +126,10 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         cashBalance: true,
         level: true,
         country: true,
+        // Who brought them in. The list could filter on "has referrals"
+        // (downstream) but never showed the upstream side, so there was no way
+        // to see that a run of new accounts all came from one person.
+        referredBy: { select: { id: true, name: true, username: true } },
         createdAt: true,
         lastLoginAt: true,
       },

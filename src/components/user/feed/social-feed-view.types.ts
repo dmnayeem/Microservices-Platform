@@ -117,6 +117,8 @@ export interface Props {
   canBoost?: boolean;
   canShareLinks?: boolean;
   canShareYouTube?: boolean;
+  /** May open a donation post (admin-granted). */
+  canDonate?: boolean;
   /** Feed ad density (admin-configurable). */
   feedAdInterval?: number;
   underPostBanner?: boolean;

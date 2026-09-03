@@ -2130,6 +2130,9 @@ model Package {
   shareYoutubeEnabled    Boolean @default(false)
   // Self-serve task audience targeting — default OFF (granted per-user by admin)
   targetTasksEnabled     Boolean @default(false)
+  // Asking followers for money is a trust decision, not a default: a donation
+  // post collects real points from real people. Default OFF, granted per user.
+  donationsEnabled       Boolean @default(false)
 
   // Per-task-type toggles
   socialTasksEnabled    Boolean @default(true)

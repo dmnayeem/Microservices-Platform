@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { z } from "zod";
 import {
   approveTutorApplication,
@@ -103,16 +104,14 @@ export async function PATCH(
       });
     }
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: `TUTOR_APPLICATION_${action.action.toUpperCase()}`,
-        entity: "TutorApplication",
-        entityId: id,
-        newData: {
-          adminNote: action.adminNote ?? null,
-        },
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: `TUTOR_APPLICATION_${action.action.toUpperCase()}`,
+      entity: "TutorApplication",
+      entityId: id,
+      targetUserId: (updated as { userId?: string } | null)?.userId ?? null,
+      summary: `${action.action === "approve" ? "Approved" : "Rejected"} tutor application${action.adminNote ? ` — ${action.adminNote}` : ""}`,
+      meta: { adminNote: action.adminNote ?? null },
     });
 
     return NextResponse.json({ application: updated });

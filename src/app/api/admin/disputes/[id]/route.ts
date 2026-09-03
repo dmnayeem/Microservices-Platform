@@ -7,6 +7,7 @@ import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { DisputeStatus, NotificationType, TransactionType, TransactionStatus } from "@/generated/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { reverseAffiliateCommission } from "@/lib/affiliate";
+import { writeAudit } from "@/lib/audit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -525,6 +526,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         if (purchase && commission && ratio >= 1) {
           await reverseAffiliateCommission("MARKETPLACE", purchase.id);
         }
+
+        // Resolving a dispute moves cash between two real accounts and had no
+        // audit record at all. Written against the BUYER, with the seller in the
+        // meta: one row per resolution, and the money side is what the summary
+        // states, because "resolved" alone does not say who paid.
+        await writeAudit({
+          actorId: session.user.id,
+          action: `DISPUTE_RESOLVED_${inFavorOf}`,
+          entity: "MarketplaceDispute",
+          entityId: id,
+          targetUserId: purchase?.buyerId ?? null,
+          summary:
+            refundAmount > 0
+              ? `Resolved a dispute for the ${inFavorOf.toLowerCase()} — refunded ${usd(refundAmount)}, clawed back ${usd(sellerOwed)} from the seller`
+              : `Resolved a dispute for the ${inFavorOf.toLowerCase()} — no refund`,
+          meta: {
+            inFavorOf,
+            resolution,
+            refundAmount,
+            sellerId: sellerId ?? null,
+            sellerClawback: sellerOwed,
+            feeReversed,
+            affiliateReversed: commission && ratio >= 1 ? affiliateAmount : 0,
+            purchaseId: purchase?.id ?? null,
+          },
+        });
 
         return NextResponse.json({
           success: true,

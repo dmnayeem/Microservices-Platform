@@ -47,6 +47,7 @@ export default async function NewPackagePage() {
     shareLinksEnabled: false,
     shareYoutubeEnabled: false,
     targetTasksEnabled: false,
+    donationsEnabled: false,
 
     socialTasksEnabled: true,
     proxyTasksEnabled: true,

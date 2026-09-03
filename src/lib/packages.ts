@@ -58,6 +58,7 @@ export interface PackageRow {
   shareLinksEnabled: boolean;
   shareYoutubeEnabled: boolean;
   targetTasksEnabled: boolean;
+  donationsEnabled: boolean;
   socialTasksEnabled: boolean;
   proxyTasksEnabled: boolean;
   articleTasksEnabled: boolean;

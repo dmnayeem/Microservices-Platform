@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import crypto from "crypto";
 
 // POST /api/admin/users/[id]/impersonate - Impersonate a user (super admin only)
@@ -64,18 +65,18 @@ export async function POST(
       },
     });
 
-    // Audit trail — impersonation must be attributable to the admin.
-    await prisma.auditLog
-      .create({
-        data: {
-          userId: session.user.id,
-          action: "IMPERSONATE_START",
-          entity: "User",
-          entityId: targetUser.id,
-          newData: { targetEmail: targetUser.email },
-        },
-      })
-      .catch(() => {});
+    // Audit trail — impersonation must be attributable to the admin. It was
+    // recorded without `targetUserId`, so signing in as somebody never showed
+    // up on that person's own activity, which is the one place it matters.
+    await writeAudit({
+      actorId: session.user.id,
+      action: "IMPERSONATE_START",
+      entity: "User",
+      entityId: targetUser.id,
+      targetUserId: targetUser.id,
+      summary: "Signed in as this user (impersonation)",
+      meta: { targetEmail: targetUser.email },
+    });
 
     return NextResponse.json({
       message: "Impersonation token generated",

@@ -110,7 +110,16 @@ export async function getUserActivity(userId: string): Promise<ActivityEvent[]> 
         select: { id: true, name: true, email: true, createdAt: true },
       }),
       prisma.auditLog.findMany({
-        where: { targetUserId: userId },
+        // `targetUserId` is the right column, but rows written before it was
+        // filled in only carry the user in `entityId`. Matching both means the
+        // history already on disk shows up here instead of appearing to start
+        // on the day the writers were fixed.
+        where: {
+          OR: [
+            { targetUserId: userId },
+            { targetUserId: null, entity: "User", entityId: userId },
+          ],
+        },
         orderBy: { createdAt: "desc" },
         take: PER_SOURCE,
         select: {

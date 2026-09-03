@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { deliverToUser } from "@/lib/notify";
 import {
@@ -49,14 +49,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             adminNote: adminNote ?? null,
           });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: action === "approve" ? "CREATOR_APP_APPROVE" : "CREATOR_APP_REJECT",
-        entity: "CreatorApplication",
-        entityId: id,
-        newData: { type: app.type, adminNote: adminNote ?? null },
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: action === "approve" ? "CREATOR_APP_APPROVE" : "CREATOR_APP_REJECT",
+      entity: "CreatorApplication",
+      entityId: id,
+      targetUserId: app.userId,
+      summary: `${action === "approve" ? "Approved" : "Rejected"} ${app.type} application${adminNote ? ` — ${adminNote}` : ""}`,
+      meta: { type: app.type, adminNote: adminNote ?? null },
     });
 
     const meta = CREATOR_TYPES[app.type];

@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Eye, EyeOff, Loader2, Save, Layers, Shield } from "lucide-react";
+import { Eye, EyeOff, Loader2, Save, Layers, Shield, UserCog } from "lucide-react";
+import { UserVisibilityPanel } from "./user-visibility-panel";
 import { toast } from "@/lib/toast";
 import {
   USER_PAGES,
@@ -22,7 +23,7 @@ const ROLES: { key: string; label: string }[] = [
   { key: "FINANCE_ADMIN", label: "Finance Admin" },
 ];
 
-type Tab = "packages" | "roles";
+type Tab = "packages" | "roles" | "user";
 
 interface Props {
   packages: { slug: string; name: string }[];
@@ -40,7 +41,9 @@ export function VisibilityMatrix({ packages, initialRules }: Props) {
   const columns =
     tab === "packages"
       ? packages.map((p) => ({ key: p.slug, label: p.name }))
-      : ROLES;
+      : tab === "roles"
+        ? ROLES
+        : [];
 
   const bucket = tab === "packages" ? rules.packages : rules.roles;
 
@@ -118,9 +121,9 @@ export function VisibilityMatrix({ packages, initialRules }: Props) {
           <Eye className="w-6 h-6 text-indigo-400" /> Page Visibility
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Show or hide user-facing pages per package or per role. A checked box =
-          visible; unchecked = hidden. Per-user overrides live on the user&apos;s
-          edit screen and win over these rules.
+          Show or hide user-facing pages per package, per role, or for one named
+          person. A checked box = visible; unchecked = hidden. A per-user setting
+          wins over both of the other two.
         </p>
       </div>
 
@@ -147,9 +150,20 @@ export function VisibilityMatrix({ packages, initialRules }: Props) {
           >
             <Shield className="w-4 h-4" /> By role
           </button>
+          <button
+            onClick={() => setTab("user")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              tab === "user"
+                ? "bg-indigo-500 text-white"
+                : "bg-slate-800 text-slate-300"
+            }`}
+          >
+            <UserCog className="w-4 h-4" /> By user
+          </button>
         </div>
         <button
           onClick={save}
+          hidden={tab === "user"}
           disabled={saving || !dirty}
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
         >
@@ -162,7 +176,9 @@ export function VisibilityMatrix({ packages, initialRules }: Props) {
         </button>
       </div>
 
-      {columns.length === 0 ? (
+      {tab === "user" ? (
+        <UserVisibilityPanel />
+      ) : columns.length === 0 ? (
         <p className="text-sm text-slate-500">No {tab} to configure.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-800">

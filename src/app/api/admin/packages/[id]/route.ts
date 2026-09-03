@@ -51,6 +51,7 @@ const PLAN_PATCH = z
     shareLinksEnabled: z.boolean().optional(),
     shareYoutubeEnabled: z.boolean().optional(),
     targetTasksEnabled: z.boolean().optional(),
+    donationsEnabled: z.boolean().optional(),
 
     socialTasksEnabled: z.boolean().optional(),
     proxyTasksEnabled: z.boolean().optional(),

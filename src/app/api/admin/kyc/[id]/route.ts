@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { deliverToUser } from "@/lib/notify";
 import { z } from "zod";
 import { checkDocumentNumber } from "@/lib/kyc/document-number";
@@ -118,14 +119,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }),
       ]);
 
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "KYC_APPROVED",
-          entity: "KYCDocument",
-          entityId: id,
-          newData: { decisionNote: decisionNote ?? null },
-        },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "KYC_APPROVED",
+        entity: "KYCDocument",
+        entityId: id,
+        targetUserId: doc.userId,
+        summary: `Approved KYC${decisionNote ? ` — ${decisionNote}` : ""}`,
+        meta: { decisionNote: decisionNote ?? null },
       });
 
       void deliverToUser({
@@ -163,17 +164,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }),
       ]);
 
-      await prisma.auditLog.create({
-        data: {
-          userId: session.user.id,
-          action: "KYC_REJECTED",
-          entity: "KYCDocument",
-          entityId: id,
-          newData: {
-            rejectionReason,
-            decisionNote: decisionNote ?? null,
-          },
-        },
+      await writeAudit({
+        actorId: session.user.id,
+        action: "KYC_REJECTED",
+        entity: "KYCDocument",
+        entityId: id,
+        targetUserId: doc.userId,
+        summary: `Rejected KYC — ${rejectionReason}`,
+        meta: { rejectionReason, decisionNote: decisionNote ?? null },
       });
 
       void deliverToUser({

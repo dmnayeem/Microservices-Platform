@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Save, X, Plus, Trash2, AlertCircle, Loader2, Image as ImageIcon, Smartphone } from "lucide-react";
 import { MediaSelector } from "@/components/media/MediaSelector";
 import { SmartImage } from "@/components/user/primitives/smart-image";
@@ -124,11 +124,22 @@ interface QuizQuestion {
 
 export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   // When creating, restrict the type picker to types the admin may create.
   const visibleTaskTypes =
     allowedTypes && !task
       ? taskTypes.filter((t) => allowedTypes.includes(t.id))
       : taskTypes;
+
+  // Creating is a two-step flow: pick a type, then fill the form. The step used
+  // to live only in React state, so the browser Back button had nothing to pop
+  // and left the page entirely — you landed on /admin/tasks instead of back on
+  // the type picker. The chosen type now lives in the URL (`?type=`), so Back
+  // steps back through the flow the way it reads.
+  const isCreate = !task;
+  const typeFromUrl = isCreate
+    ? visibleTaskTypes.find((t) => t.id === searchParams.get("type"))?.id ?? ""
+    : "";
   // After the in-place save creates a brand-new task, we hold its id
   // here so subsequent saves PATCH the right row instead of POSTing
   // duplicates. Also surfaces the id to child components (the article
@@ -143,7 +154,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     description: task?.description || "",
     instructions: task?.instructions || "",
     instructionVideoUrl: task?.instructionVideoUrl || "",
-    type: task?.type || "",
+    type: task?.type || typeFromUrl,
     pointsReward: task?.pointsReward || 0,
     xpReward: task?.xpReward || 0,
     dailyLimit: task?.dailyLimit || "",
@@ -174,6 +185,59 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     autoApprove: task?.autoApprove || false,
     boardId: task?.boardId ?? defaultBoardId ?? "",
   });
+
+  // Keep `?type=` and the picked type in step with each other.
+  //
+  // `history.pushState` rather than `router.push`: this is the same page either
+  // way, and a full navigation would refetch the board list and throw away
+  // everything already typed into the form. Next keeps `useSearchParams` in sync
+  // with the History API, and Back fires `popstate` below.
+  const pushedTypeRef = useRef(false);
+
+  const selectType = (id: string) => {
+    setFormData((prev) => ({ ...prev, type: id }));
+    if (!isCreate) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("type", id);
+    window.history.pushState(null, "", `${window.location.pathname}?${params}`);
+    pushedTypeRef.current = true;
+  };
+
+  const clearType = () => {
+    // "Change Type" should land where Back lands — one behaviour, not two.
+    if (isCreate && pushedTypeRef.current) {
+      window.history.back();
+      return;
+    }
+    setFormData((prev) => ({ ...prev, type: "" }));
+    if (!isCreate) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete("type");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    );
+  };
+
+  useEffect(() => {
+    if (!isCreate) return;
+    const onPop = () => {
+      const next = new URLSearchParams(window.location.search).get("type") ?? "";
+      // Anything not on the picker resolves to "no type", which shows step 1
+      // rather than a form for a type this admin may not create.
+      const valid = visibleTaskTypes.some((t) => t.id === next) ? next : "";
+      if (!valid) pushedTypeRef.current = false;
+      // The rest of the form is deliberately kept: going back to the picker and
+      // choosing the same type again should not wipe what was already written.
+      setFormData((prev) => (prev.type === valid ? prev : { ...prev, type: valid }));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // visibleTaskTypes is derived from props that do not change for a mounted form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreate]);
 
   // Task Boards available to assign — loaded once on mount
   const [boards, setBoards] = useState<
@@ -596,7 +660,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             return (
               <button
                 key={type.id}
-                onClick={() => setFormData({ ...formData, type: type.id })}
+                onClick={() => selectType(type.id)}
                 className={`p-6 bg-gray-900 rounded-xl border border-gray-800 hover:border-${type.color}-500/50 transition-all text-center group`}
               >
                 <div className={`w-12 h-12 mx-auto mb-3 rounded-xl bg-${type.color}-500/10 flex items-center justify-center`}>
@@ -639,7 +703,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         </div>
         <button
           type="button"
-          onClick={() => setFormData({ ...formData, type: "" })}
+          onClick={clearType}
           className="text-sm text-gray-400 hover:text-white transition-colors"
         >
           Change Type

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { z } from "zod";
 
 const schema = z.object({
@@ -61,15 +62,14 @@ export async function PATCH(
     },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      userId: session.user.id,
-      action: "USER_DISPLAY_BOOST_UPDATED",
-      entity: "User",
-      entityId: id,
-      oldData: existing,
-      newData: updated,
-    },
+  await writeAudit({
+    actorId: session.user.id,
+    action: "USER_DISPLAY_BOOST_UPDATED",
+    entity: "User",
+    entityId: id,
+    targetUserId: id,
+    summary: `Set display boost — followers ${updated.displayFollowersBoost}, following ${updated.displayFollowingBoost}, posts ${updated.displayPostsBoost}`,
+    meta: { before: existing, after: updated },
   });
 
   return NextResponse.json({ success: true, boost: updated });

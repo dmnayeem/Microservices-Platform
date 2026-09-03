@@ -60,6 +60,7 @@ export interface PackageFormPkg {
   shareLinksEnabled: boolean;
   shareYoutubeEnabled: boolean;
   targetTasksEnabled: boolean;
+  donationsEnabled: boolean;
 
   // Per-task-type toggles
   socialTasksEnabled: boolean;
@@ -129,6 +130,7 @@ const CREATOR_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip
   { key: "shareLinksEnabled", label: "Share Links in Posts", tooltip: "Lets users post clickable links (with previews) in the social feed." },
   { key: "shareYoutubeEnabled", label: "Share YouTube / Video Links", tooltip: "Lets users post YouTube/Vimeo/video links that play inline in the feed." },
   { key: "targetTasksEnabled", label: "Target Tasks (audience)", tooltip: "Lets users target their own tasks by country/state/district/upazila, gender & age when creating them." },
+  { key: "donationsEnabled", label: "Ask for Donations in Posts", tooltip: "Lets users open a donation post that collects points from other users. Off by default — anyone with this can ask your users for money." },
 ];
 
 // Per-task-type toggles (right grid). Each gates a TaskType in /api/tasks/*.

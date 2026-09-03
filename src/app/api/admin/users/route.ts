@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { type UserRole } from "@/lib/rbac";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -205,18 +206,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "USER_CREATED",
-        entity: "User",
-        entityId: user.id,
-        newData: {
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        },
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: "USER_CREATED",
+      entity: "User",
+      entityId: user.id,
+      targetUserId: user.id,
+      summary: `Created a ${user.role} account for ${user.email}`,
+      meta: { email: user.email, name: user.name, role: user.role },
     });
 
     return NextResponse.json({

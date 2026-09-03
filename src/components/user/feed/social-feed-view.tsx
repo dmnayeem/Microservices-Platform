@@ -53,6 +53,7 @@ export function SocialFeedView({
   canBoost,
   canShareLinks,
   canShareYouTube,
+  canDonate,
   feedAdInterval = 2,
   underPostBanner = false,
   underPostInterval = 3,
@@ -149,6 +150,7 @@ export function SocialFeedView({
             canBoost={canBoost}
             canShareLinks={canShareLinks}
             canShareYouTube={canShareYouTube}
+            canDonate={canDonate}
             feedAdInterval={feedAdInterval}
             underPostBanner={underPostBanner}
             underPostInterval={underPostInterval}
@@ -217,6 +219,7 @@ function FeedTab({
   canBoost,
   canShareLinks,
   canShareYouTube,
+  canDonate,
   feedAdInterval,
   underPostBanner,
   underPostInterval,
@@ -230,6 +233,7 @@ function FeedTab({
   canBoost?: boolean;
   canShareLinks?: boolean;
   canShareYouTube?: boolean;
+  canDonate?: boolean;
   feedAdInterval: number;
   underPostBanner: boolean;
   underPostInterval: number;
@@ -509,6 +513,7 @@ function FeedTab({
         onCreated={handlePostCreated}
         canShareLinks={canShareLinks}
         canShareYouTube={canShareYouTube}
+        canDonate={canDonate}
       />
 
       {/* Sort toggle */}

@@ -523,6 +523,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Opening a donation post asks real people for real points, so it is an
+    // admin-granted capability rather than something every account has. The
+    // composer hides the tab; this is the gate that actually holds, because the
+    // tab is not what a scripted request goes through.
+    if (typeof donationGoal === "number" && donationGoal > 0 && !isPrivileged) {
+      if (!(await userCanFeature(session.user.id, "donations"))) {
+        return NextResponse.json(
+          {
+            error:
+              "Donation posts aren't enabled for your account. Ask an admin to enable it.",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Per-plan daily post limit (-1 = unlimited).
     const pkg = await getEffectivePackage(session.user.id);
     const dailyPostLimit = pkg?.dailyPostLimit ?? -1;

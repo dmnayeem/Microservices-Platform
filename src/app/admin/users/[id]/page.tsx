@@ -136,6 +136,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               id: true,
               name: true,
               email: true,
+              username: true,
+              referralCode: true,
             },
           },
         },
@@ -209,6 +211,13 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       status: string;
       createdAt: Date;
     }>;
+    referredBy: {
+      id: string;
+      name: string | null;
+      email: string;
+      username: string | null;
+      referralCode: string;
+    } | null;
     package: {
       id: string;
       slug: string;
@@ -742,21 +751,37 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </div>
       )}
 
-      {/* Referrer Info */}
-      {user.referredById && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-          <div className="flex items-center gap-3">
-            <Gift className="w-5 h-5 text-indigo-400" />
-            <span className="text-sm text-gray-400">Referred by:</span>
-            <Link
-              href={`/admin/users/${user.referredById}`}
-              className="text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              View referrer
-            </Link>
-          </div>
+      {/* Where this account came from. The referrer's name was already being
+          fetched and then thrown away — "View referrer" made you click through
+          to find out who it was, once per user you were checking. */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Gift className="w-5 h-5 text-indigo-400 shrink-0" />
+          <span className="text-sm text-gray-400">Referred by:</span>
+          {user.referredBy ? (
+            <>
+              <Link
+                href={`/admin/users/${user.referredBy.id}`}
+                className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+              >
+                {user.referredBy.name || user.referredBy.username || "Unnamed"}
+              </Link>
+              <span className="text-xs text-gray-500">
+                {user.referredBy.email}
+              </span>
+              {user.referredBy.referralCode && (
+                <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
+                  {user.referredBy.referralCode}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-sm text-gray-500">
+              Nobody — signed up directly
+            </span>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-800">

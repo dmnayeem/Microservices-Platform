@@ -156,6 +156,13 @@ export default async function SocialPage() {
   const canBoost = effectiveFeatures.enabled.has("boost");
   const canShareLinks = effectiveFeatures.enabled.has("shareLinks");
   const canShareYouTube = effectiveFeatures.enabled.has("shareYouTube");
+  // Staff bypass the donation gate server-side (`!isPrivileged` in POST /api/feed),
+  // so the composer has to agree — otherwise an admin is shown no Donation tab
+  // for something they are in fact allowed to post.
+  const donationRole = session.user.role;
+  const canDonate =
+    effectiveFeatures.enabled.has("donations") ||
+    (!!donationRole && donationRole !== "USER" && donationRole !== "user");
 
   const quickEarn = normalizeQuickEarn(quickEarnRaw);
   const customWidgets = normalizeCustomWidgets(customWidgetsRaw);
@@ -229,6 +236,7 @@ export default async function SocialPage() {
       canBoost={canBoost}
       canShareLinks={canShareLinks}
       canShareYouTube={canShareYouTube}
+      canDonate={canDonate}
       feedAdInterval={adDensity.feedAdInterval}
       underPostBanner={adDensity.underPostBanner}
       underPostInterval={adDensity.underPostInterval}

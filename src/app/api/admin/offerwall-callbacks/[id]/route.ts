@@ -89,6 +89,8 @@ export async function PATCH(
           action: "OFFERWALL_CALLBACK_APPROVED",
           entity: "OfferwallCallback",
           entityId: id,
+          targetUserId: callback.userId,
+          summary: `Approved an offerwall callback${credited ? " and released the hold early" : ""}`,
           newData: {
             releasedEarly: credited,
             completionId: completion?.id ?? null,
@@ -148,6 +150,8 @@ export async function PATCH(
           action: "OFFERWALL_CALLBACK_APPROVED",
           entity: "OfferwallCallback",
           entityId: id,
+          targetUserId: callback.userId,
+          summary: `Approved an offerwall callback and credited ${callback.userPayout} pts`,
           newData: {
             credited: callback.userPayout,
             transactionId: callback.transactionId,
@@ -172,6 +176,8 @@ export async function PATCH(
         action: "OFFERWALL_CALLBACK_REJECTED",
         entity: "OfferwallCallback",
         entityId: id,
+        targetUserId: callback.userId,
+        summary: `Rejected an offerwall callback${note ? ` — ${note}` : ""}`,
         newData: { reason: note },
       },
     });

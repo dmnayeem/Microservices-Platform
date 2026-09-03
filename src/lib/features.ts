@@ -27,6 +27,7 @@ export type PackageFeatureKey =
   | "shareLinks"
   | "shareYouTube"
   | "targetTasks"
+  | "donations"
   // Per-task-type
   | "socialTasks"
   | "proxyTasks"
@@ -56,6 +57,7 @@ export const FEATURE_TO_COLUMN: Record<PackageFeatureKey, string> = {
   shareLinks: "shareLinksEnabled",
   shareYouTube: "shareYoutubeEnabled",
   targetTasks: "targetTasksEnabled",
+  donations: "donationsEnabled",
   socialTasks: "socialTasksEnabled",
   proxyTasks: "proxyTasksEnabled",
   articleTasks: "articleTasksEnabled",
@@ -96,6 +98,7 @@ export const FEATURES: {
   { key: "shareLinks", label: "Share Links in Posts", group: "creator" },
   { key: "shareYouTube", label: "Share YouTube / Video Links", group: "creator" },
   { key: "targetTasks", label: "Target Tasks (audience)", group: "creator" },
+  { key: "donations", label: "Ask for Donations in Posts", group: "creator" },
   { key: "socialTasks", label: "Social Tasks", group: "task" },
   { key: "proxyTasks", label: "Proxy Tasks", group: "task" },
   { key: "articleTasks", label: "Article Tasks", group: "task" },

@@ -89,9 +89,11 @@ export async function PATCH(
     await tx.auditLog.create({
       data: {
         userId: session.user!.id,
-        action: v.data.action === "approve" ? "kyc.appeal.approve" : "kyc.appeal.reject",
+        action: v.data.action === "approve" ? "KYC_APPEAL_APPROVED" : "KYC_APPEAL_REJECTED",
         entity: "KYCAppeal",
         entityId: id,
+        targetUserId: appeal.userId,
+        summary: `${v.data.action === "approve" ? "Approved" : "Rejected"} a KYC appeal${v.data.adminNote ? ` — ${v.data.adminNote}` : ""}`,
         newData: { adminNote: v.data.adminNote ?? null },
       },
     });

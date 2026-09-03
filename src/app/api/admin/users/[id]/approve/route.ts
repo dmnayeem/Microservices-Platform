@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 
 // POST /api/admin/users/[id]/approve - Approve a pending user
 export async function POST(
@@ -59,6 +60,19 @@ export async function POST(
         status: "ACTIVE",
         emailVerified: user.emailVerified || new Date(),
       },
+    });
+
+    // Activating an account is one of the actions a super admin most needs to
+    // be able to attribute, and it was writing nothing at all — the account
+    // simply turned ACTIVE with no record of who did it.
+    await writeAudit({
+      actorId: session.user.id,
+      action: "USER_ACTIVATED",
+      entity: "User",
+      entityId: id,
+      targetUserId: id,
+      summary: `Activated account (was ${user.status})`,
+      meta: { previousStatus: user.status, email: user.email },
     });
 
     // Create notification for the user
