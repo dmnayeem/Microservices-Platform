@@ -157,9 +157,25 @@ export function CompletionRing({ percentage }: { percentage: number }) {
   );
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({
+  label,
+  anchor,
+  children,
+}: {
+  label: string;
+  /**
+   * Stable id so the Profile Completion list can send someone to this exact
+   * field instead of the top of a form. Prefixed `pf-` so it cannot collide
+   * with an input's own id.
+   */
+  anchor?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
+    <div
+      id={anchor ? `pf-${anchor}` : undefined}
+      className={anchor ? "scroll-mt-24 rounded-lg transition-shadow" : undefined}
+    >
       <label className="block text-[11px] font-medium text-gray-400 mb-1">{label}</label>
       {children}
     </div>

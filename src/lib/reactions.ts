@@ -18,13 +18,30 @@ export const REACTIONS = [
 
 export type ReactionType = (typeof REACTIONS)[number]["type"];
 
-export const DEFAULT_REACTION: ReactionType = "LIKE";
+/**
+ * The only reaction the UI sets any more.
+ *
+ * The five-emoji picker is gone at the owner's request — one heart, one tap.
+ * The catalogue below is KEPT rather than deleted: rows written while the
+ * picker existed still hold HAHA/WOW/SAD/LIKE, the API still accepts them, and
+ * `reactionMeta` still has to be able to name them. Deleting the types would
+ * turn that stored data into unlabelled garbage for no gain.
+ *
+ * `Post.likesCount` is unaffected either way — it has always been one row per
+ * (post, user) whatever the emoji.
+ */
+export const DEFAULT_REACTION: ReactionType = "LOVE";
 
 const BY_TYPE = new Map(REACTIONS.map((r) => [r.type, r]));
 
 /** Unknown / legacy values fall back to 👍 — every pre-existing like is one. */
 export function reactionMeta(type?: string | null) {
-  return BY_TYPE.get((type ?? DEFAULT_REACTION) as ReactionType) ?? REACTIONS[0];
+  // A stored value still resolves to its own emoji; only a missing/unknown one
+  // falls back, and it falls back to whatever the UI sets today.
+  return (
+    BY_TYPE.get((type ?? DEFAULT_REACTION) as ReactionType) ??
+    BY_TYPE.get(DEFAULT_REACTION)!
+  );
 }
 
 export function isReactionType(v: unknown): v is ReactionType {

@@ -532,12 +532,34 @@ export function ProfileTabBody({
             <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
               <Edit3 className="w-4 h-4 text-indigo-400" />
             </div>
-            <div className="text-left">
-              <p className="text-sm font-bold text-white">Edit Profile & Settings</p>
+            <div className="text-left min-w-0">
+              <p className="text-sm font-bold text-white">Edit Profile &amp; Settings</p>
               <p className="text-[11px] text-gray-500">
                 Personal info, address, KYC, privacy, theme, security
               </p>
             </div>
+          </div>
+          {/* Progress, on the panel you actually fill the profile in.
+              The ring lives up in the sidebar card; once the edit drawer is
+              open on a phone that card is far off-screen, so while you were
+              doing the work there was nothing telling you how much was left. */}
+          <div className="hidden sm:flex items-center gap-2 ml-auto mr-2 shrink-0">
+            <div className="w-28 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-[width] duration-500",
+                  completion.percentage >= 90
+                    ? "bg-emerald-400"
+                    : completion.percentage >= 60
+                      ? "bg-amber-400"
+                      : "bg-indigo-400"
+                )}
+                style={{ width: `${completion.percentage}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-bold text-gray-300 tabular-nums">
+              {completion.percentage}%
+            </span>
           </div>
           <ChevronRight
             className={cn(
@@ -549,6 +571,36 @@ export function ProfileTabBody({
 
         {editOpen && (
           <div className="mt-3 space-y-3">
+            {completion.missing.length > 0 && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-950 border border-gray-800">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <p className="text-[11px] font-bold text-gray-300">
+                      Profile {completion.percentage}% complete
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      {completion.missing.length} left
+                    </p>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-[width] duration-500",
+                        completion.percentage >= 90
+                          ? "bg-emerald-400"
+                          : completion.percentage >= 60
+                            ? "bg-amber-400"
+                            : "bg-indigo-400"
+                      )}
+                      style={{ width: `${completion.percentage}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1.5 truncate">
+                    Next: {completion.missing.slice(0, 3).map((m) => m.label).join(", ")}
+                  </p>
+                </div>
+              </div>
+            )}
             <nav className="flex gap-1 overflow-x-auto -mx-2 px-2 pb-1 border-b border-gray-800 scrollbar-thin">
               {(
                 [

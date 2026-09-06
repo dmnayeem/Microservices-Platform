@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
+import { taskSnapshot } from "@/lib/task-audit";
 import { Prisma } from "@/generated/prisma";
 
 // POST /api/admin/tasks/[id]/duplicate - Duplicate a task
@@ -82,6 +84,22 @@ export async function POST(
         expiresAt: null,
         completedCount: 0,
         createdById: session.user.id,
+      },
+    });
+
+    // A copy is a new task somebody made, so it belongs in the history like any
+    // other creation — with a pointer back to what it was copied from, which is
+    // the part a plain TASK_CREATED would lose.
+    await writeAudit({
+      actorId: session.user.id,
+      action: "TASK_DUPLICATED",
+      entity: "Task",
+      entityId: duplicatedTask.id,
+      summary: `Duplicated "${originalTask.title}" → "${duplicatedTask.title}"`,
+      meta: {
+        ...taskSnapshot(duplicatedTask),
+        copiedFromTaskId: originalTask.id,
+        copiedFromTitle: originalTask.title,
       },
     });
 

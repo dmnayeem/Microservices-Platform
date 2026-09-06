@@ -113,10 +113,10 @@ export function PersonalTab({
   return (
     <Card title="Personal Info">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="First Name">
+        <Field label="First Name" anchor="firstName">
           <input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className={inp} />
         </Field>
-        <Field label="Last Name">
+        <Field label="Last Name" anchor="lastName">
           <input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className={inp} />
         </Field>
         <UsernameField
@@ -124,10 +124,10 @@ export function PersonalTab({
           onChange={(v) => set("username", v)}
           currentUsername={profile.username ?? null}
         />
-        <Field label="Date of Birth">
+        <Field label="Date of Birth" anchor="dateOfBirth">
           <DateField type="date" value={form.dateOfBirth} onChange={(v) => set("dateOfBirth", v)} className={inp} />
         </Field>
-        <Field label="Gender">
+        <Field label="Gender" anchor="gender">
           <select value={form.gender} onChange={(e) => set("gender", e.target.value)} className={inp}>
             <option value="">—</option>
             <option value="MALE">Male</option>
@@ -135,7 +135,7 @@ export function PersonalTab({
             <option value="OTHER">Other</option>
           </select>
         </Field>
-        <Field label="National ID / Passport">
+        <Field label="National ID / Passport" anchor="nidNumber">
           <input value={form.nidNumber} onChange={(e) => set("nidNumber", e.target.value)} className={inp} />
         </Field>
         <Field label="Profession">
@@ -159,7 +159,7 @@ export function PersonalTab({
             ))}
           </select>
         </Field>
-        <Field label="Phone">
+        <Field label="Phone" anchor="phone">
           <input type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+880 1234 567890" className={inp} />
         </Field>
         <Field label="Secondary Phone">
@@ -172,7 +172,7 @@ export function PersonalTab({
           <input value={form.timezone} onChange={(e) => set("timezone", e.target.value)} placeholder="Asia/Dhaka" className={inp} />
         </Field>
       </div>
-      <Field label="Bio (about you)">
+      <Field label="Bio (about you)" anchor="bio">
         <textarea
           rows={3}
           value={form.bio}

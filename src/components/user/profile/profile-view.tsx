@@ -2,6 +2,7 @@
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { confirmDialog } from "@/lib/confirm";
 import { profileHref } from "@/lib/user-href";
@@ -65,13 +66,32 @@ export function ProfileView() {
     dismissed: boolean;
   } | null>(null);
   const editAnchorRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
-  const openEdit = (which: EditTab = "personal") => {
+  const openEdit = (which: EditTab = "personal", field?: string) => {
     setEditTab(which);
     setEditOpen(true);
     setPrimaryTab("profile");
     requestAnimationFrame(() => {
       editAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!field) return;
+      // The tab has to render before the field exists. One more frame plus a
+      // short delay covers the panel's open transition; if it is still not
+      // there we simply leave the user at the top of the right tab, which is
+      // where they used to land anyway.
+      setTimeout(() => {
+        const el = document.getElementById(`pf-${field}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        // A ring rather than focus(): focusing a <select> on mobile pops the
+        // picker open before the user has seen what they were sent to.
+        el.classList.add("pf-highlight");
+        setTimeout(() => el.classList.remove("pf-highlight"), 2200);
+        const input = el.querySelector<HTMLElement>("input, textarea, select");
+        if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+          input.focus({ preventScroll: true });
+        }
+      }, 260);
     });
   };
 
@@ -470,9 +490,29 @@ export function ProfileView() {
           openEdit={openEdit}
           onJumpCompletion={(href) => {
             if (!href) return;
+            // Each item now says where it is genuinely edited, which is not
+            // always a tab: the photos and the tags live in modals on this
+            // page, and email/phone verification lives on its own route. The
+            // old handler read only `?tab=` and sent everything to the personal
+            // form — so "Profile photo" opened a form with no photo control.
+            if (href.startsWith("/")) {
+              router.push(href);
+              return;
+            }
             const params = new URLSearchParams(href.replace(/^\?/, ""));
+            const modal = params.get("modal");
+            if (modal === "photo") {
+              setPhotoTarget(
+                params.get("which") === "coverPhoto" ? "coverPhoto" : "avatar"
+              );
+              return;
+            }
+            if (modal === "tags") {
+              setTagModalOpen(true);
+              return;
+            }
             const t = params.get("tab") as EditTab | null;
-            openEdit(t ?? "personal");
+            openEdit(t ?? "personal", params.get("field") ?? undefined);
           }}
           onConnectSocial={(p) => setConnectPlatform(p)}
           onDisconnectSocial={disconnectSocial}

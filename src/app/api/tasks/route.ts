@@ -169,6 +169,36 @@ export async function GET(request: NextRequest) {
         orderBy: [{ order: "asc" }, { createdAt: "desc" }],
         skip,
         take: limit,
+        // Explicit, and only what the DTO below actually reads.
+        //
+        // This used to select every column — which meant `createdById` (which
+        // admin made the task) was loaded on every user's task list. The DTO
+        // never emitted it, so nothing leaked; but "safe because the mapping
+        // happens to be careful" is one `...task` away from not being safe, and
+        // the answer to "which admin made this" is not a user's business.
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          instructions: true,
+          instructionVideoUrl: true,
+          type: true,
+          pointsReward: true,
+          xpReward: true,
+          duration: true,
+          thumbnailUrl: true,
+          contentUrl: true,
+          videoConfig: true,
+          minLevel: true,
+          requiredAccessLevel: true,
+          socialPlatform: true,
+          socialAction: true,
+          autoApprove: true,
+          expiresAt: true,
+          completedCount: true,
+          dailyLimit: true,
+          totalLimit: true,
+        },
       }),
       prisma.task.count({ where }),
     ]);

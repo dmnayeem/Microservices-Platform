@@ -3,6 +3,7 @@ import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import { TaskHistoryPanel } from "@/components/admin/tasks/task-history-panel";
 import {
   ArrowLeft,
   Video,
@@ -566,6 +567,10 @@ export default async function TaskDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Who made this task and what has been done to it since. Admin-only —
+          the endpoint behind it requires `tasks.view`. */}
+      <TaskHistoryPanel taskId={task.id} />
     </div>
   );
 }

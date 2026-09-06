@@ -893,3 +893,27 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #9aa6b8; 
   [data-mk-anim="on"] .mk-zoom:hover { transform: none; }
   [data-mk-anim="on"] .mk-blob { animation: none; }
 }
+
+/* Profile Completion → field highlight.
+   Sending someone to a field is only half the job; without a marker they still
+   have to work out which of a dozen inputs they were sent to. Ring + fade,
+   auto-removed after ~2s by the caller. */
+.pf-highlight {
+  animation: pf-highlight 2.2s ease-out;
+}
+@keyframes pf-highlight {
+  0%,
+  40% {
+    box-shadow: 0 0 0 2px rgb(99 102 241 / 0.9), 0 0 0 6px rgb(99 102 241 / 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgb(99 102 241 / 0), 0 0 0 6px rgb(99 102 241 / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-highlight {
+    animation: none;
+    box-shadow: 0 0 0 2px rgb(99 102 241 / 0.9);
+  }
+}
+

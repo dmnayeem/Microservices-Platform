@@ -17,6 +17,8 @@ import {
 import { resolveTaskThumbnail } from "@/lib/task-thumbnail";
 import { taskCompletabilityError } from "@/lib/task-completability";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { writeAudit } from "@/lib/audit";
+import { taskSnapshot } from "@/lib/task-audit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -285,14 +287,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "TASK_UPDATED",
-        entity: "Task",
-        entityId: task.id,
-        newData: { type, title, pointsReward: task.pointsReward },
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: "TASK_UPDATED",
+      entity: "Task",
+      entityId: task.id,
+      summary: `Edited "${task.title}" (${type}, ${task.pointsReward} pts)`,
+      meta: { type, title, pointsReward: task.pointsReward },
     });
 
     return NextResponse.json({ success: true, task });
@@ -320,9 +321,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     // Check if task exists
+    // Read a snapshot BEFORE touching anything. A task with no submissions is
+    // hard-deleted below, and once that row is gone there is nothing left to
+    // join to — so the audit record has to carry its own copy of what the task
+    // was, not just its id.
     const existingTask = await prisma.task.findUnique({
       where: { id },
-      select: { id: true, title: true, status: true },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        type: true,
+        pointsReward: true,
+        xpReward: true,
+        completedCount: true,
+        createdById: true,
+        createdAt: true,
+      },
     });
 
     if (!existingTask) {
@@ -360,6 +375,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         data: { status: "ARCHIVED" },
         select: { id: true, status: true },
       });
+      // Archiving and deleting are recorded as DIFFERENT events on purpose:
+      // one is reversible and the task is still there, the other is not and it
+      // is not. Collapsing them into "removed" would lose the distinction
+      // exactly where it matters.
+      await writeAudit({
+        actorId: session.user.id,
+        action: "TASK_ARCHIVED",
+        entity: "Task",
+        entityId: id,
+        summary: `Archived "${existingTask.title}" — ${submissions} submission${
+          submissions === 1 ? "" : "s"
+        } kept`,
+        meta: { ...taskSnapshot(existingTask), submissions, reversible: true },
+      });
       return NextResponse.json({
         success: true,
         archived: true,
@@ -373,6 +402,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // No history → really delete it.
     await prisma.task.delete({ where: { id } });
+
+    // Written AFTER the delete succeeds, so the log never claims a removal that
+    // did not happen. The snapshot above is the only surviving description of
+    // this task — the row it described no longer exists.
+    await writeAudit({
+      actorId: session.user.id,
+      action: "TASK_DELETED",
+      entity: "Task",
+      entityId: id,
+      summary: `Deleted "${existingTask.title}" (${existingTask.type}, ${existingTask.pointsReward} pts) — no submissions, removed permanently`,
+      meta: { ...taskSnapshot(existingTask), submissions: 0, reversible: false },
+    });
 
     return NextResponse.json({
       success: true,
@@ -448,6 +489,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const task = await prisma.task.update({
       where: { id },
       data: { status: newStatus },
+    });
+
+    // Pausing a task takes it out of every user-facing list just as surely as
+    // archiving does, so it belongs in the same history rather than being the
+    // one lifecycle change that leaves no trace.
+    await writeAudit({
+      actorId: session.user.id,
+      action: "TASK_STATUS_CHANGED",
+      entity: "Task",
+      entityId: id,
+      summary: `${existingTask.status} → ${newStatus} on "${existingTask.title}"`,
+      meta: { from: existingTask.status, to: newStatus, action },
     });
 
     return NextResponse.json({ success: true, task });

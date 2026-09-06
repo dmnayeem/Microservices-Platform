@@ -258,8 +258,11 @@ async function main() {
 
     // Reaction helpers.
     check("there are five reactions", REACTIONS.length === 5);
-    check("an unknown type falls back to 👍", reactionMeta("NONSENSE").type === "LIKE");
-    check("an unknown type normalises to LIKE", toReactionType(undefined) === "LIKE");
+    // The catalogue still holds five so rows written while the picker existed
+    // keep their own emoji; the UI only ever SETS Love now, so that is what an
+    // unknown value resolves to.
+    check("an unknown type falls back to the one the UI sets", reactionMeta("NONSENSE").type === "LOVE");
+    check("an unknown type normalises to LOVE", toReactionType(undefined) === "LOVE");
     check(
       "the cluster shows the most-used first, capped at three",
       JSON.stringify(
@@ -307,7 +310,7 @@ async function main() {
   {
     const card = code("src/components/user/feed/feed-post-card.tsx");
     check("the post card mounts the image viewer", /<ImageZoomModal/.test(card));
-    check("photos are clickable", /onClick=\{\(\) => onImageTap\(/.test(card));
+    check("photos are clickable", /onClick=\{\(e\) => onImageTap\(/.test(card));
     check("double-tap likes the post", /lastTapRef/.test(card) && /setBurst\(true\)/.test(card));
     check("the post card mounts the report modal", /<ReportContent/.test(card));
     check('report targets a POST', /targetType="POST"/.test(card));
@@ -332,7 +335,6 @@ async function main() {
     const picker = code("src/components/user/feed/reaction-button.tsx");
     const comments = code("src/components/user/feed/comments-section.tsx");
     const mention = code("src/components/user/feed/mention-autocomplete.tsx");
-    const breakdown = code("src/components/user/feed/reaction-breakdown.tsx");
     const reactions = code("src/lib/reactions.ts");
 
     // The emoji cluster sat directly above the like button showing the SAME
@@ -341,72 +343,52 @@ async function main() {
       "the duplicate emoji cluster is gone from the card",
       !/topReactions\(/.test(card)
     );
-    check(
-      "the count is still shown exactly once in the action row",
-      (card.match(/count=\{post\.likesCount\}/g) ?? []).length === 1
-    );
 
-    // Where the breakdown went instead: behind a tap on the number. The count
-    // had to leave the like button first — inside it, a tap could only ever
-    // mean "like".
+    // The five-emoji picker and the tap-the-number split are BOTH gone: the
+    // owner cut reactions down to Love. With one reaction a per-emoji breakdown
+    // could only ever repeat the number beside it.
     check(
-      "the count is no longer inside the toggle button",
-      !/count/.test(picker) && /<ReactionBreakdown/.test(card)
+      "the reaction picker is gone",
+      !/REACTIONS\.map/.test(picker) && !/onPick/.test(picker)
     );
     check(
-      "tapping the number opens the per-emoji split",
-      /onClick=\{\(\) => setOpen\(\(v\) => !v\)\}/.test(breakdown) &&
-        /reactionBreakdown\(counts\)/.test(breakdown)
-    );
-    check(
-      "it costs no request — the counts already arrive with the post",
-      !/fetch\(/.test(breakdown) && /reactionCounts/.test(card)
-    );
-    check(
-      "a post nobody reacted to offers no tap into an empty box",
-      /if \(count <= 0\)/.test(breakdown)
-    );
-    check(
-      "it dismisses on outside pointer and Escape, like the picker",
-      /pointerdown/.test(breakdown) && /"Escape"/.test(breakdown)
-    );
-    check(
-      "every reaction is listed in catalog order, zeros included",
-      /REACTIONS\.map/.test(reactions) &&
-        /count: Math\.max\(0, Math\.trunc\(counts\?\.\[r\.type\] \?\? 0\)\)/.test(
-          reactions
+      "the per-emoji split is gone with it",
+      !/<ReactionBreakdown/.test(card) &&
+        !fs.existsSync(
+          path.join(root, "src/components/user/feed/reaction-breakdown.tsx")
         )
     );
-    // Without this the split still shows the emoji you just removed.
     check(
-      "the split moves with an optimistic reaction, both ways",
+      "the count is still shown, and rendered in exactly one place",
+      // Only the JSX render site — the other `post.likesCount` reads are the
+      // optimistic update and its rollback.
+      (card.match(/^\s*\{post\.likesCount\}\s*$/gm) ?? []).length === 1 &&
+        /post\.likesCount > 0 &&/.test(card)
+    );
+    check(
+      "hold-to-open is gone — it competed with the scroll that starts the same way",
+      !/startHold/.test(picker) && !/holdRef/.test(picker)
+    );
+    check(
+      "the button no longer sits inside a wrapper div",
+      !/<div\s+ref=\{wrapRef\}/.test(picker),
+      "the wrapper is why the action row's padding never reached this button"
+    );
+
+    // The catalogue is KEPT on purpose — stored HAHA/WOW/SAD rows still have to
+    // resolve to something, and the API still accepts them.
+    check(
+      "the stored reaction types are not deleted out from under old rows",
+      /REACTIONS\.map/.test(reactions) && /HAHA/.test(reactions)
+    );
+    // Without this the optimistic count drifts from the server's.
+    check(
+      "the count moves optimistically, both ways",
       (card.match(/shiftReactionCounts\(/g) ?? []).length === 2
     );
     check(
-      "…and a failed request puts the old split back",
+      "…and a failed request puts the old value back",
       /reactionCounts: post\.reactionCounts/.test(card)
-    );
-    check(
-      "switching emoji moves one across without changing the total",
-      /if \(from === to\) return next;/.test(reactions) &&
-        /next\[from\] = Math\.max\(0, \(next\[from\] \?\? 0\) - 1\)/.test(reactions)
-    );
-
-    // Both halves of the hover fix. `mb-2` left an 8px strip belonging to
-    // nobody, so moving up to an emoji fired pointerleave and closed the picker
-    // before it could be reached.
-    check(
-      "the picker's gap is padding on the hover wrapper, not margin on the picker",
-      /absolute bottom-full left-0 pb-2/.test(picker) &&
-        !/bottom-full left-0 mb-2/.test(picker)
-    );
-    check(
-      "the wrapper itself keeps the picker open while the pointer crosses",
-      /onPointerEnter=\{openNow\}/.test(picker)
-    );
-    check(
-      "closing is deferred and cancellable",
-      /closeRef\.current = setTimeout/.test(picker) && /cancelClose\(\)/.test(picker)
     );
 
     // Comments: preview, an explicit way out, and the guard that matters.

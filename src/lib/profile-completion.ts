@@ -36,6 +36,21 @@ export interface CompletionItem {
   category: "basic" | "contact" | "address" | "verification" | "social";
   done: boolean;
   weight: number;
+  /**
+   * Where this item is actually edited.
+   *
+   * Every item used to say `?tab=personal`, which was wrong for most of them:
+   * the profile photo and cover are set in a modal on the header, tags in
+   * another modal, and the National ID sits on the personal tab rather than the
+   * KYC one. Clicking "Profile photo" opened a form that has no photo control
+   * on it, so the list pointed people away from the thing it was asking for.
+   *
+   * Grammar:
+   *   ?modal=photo&which=avatar|coverPhoto   → the header photo picker
+   *   ?modal=tags                            → the tag picker
+   *   ?tab=<editTab>[&field=<anchor>]        → edit panel, scrolled to a field
+   *   /some/path                             → its own page (verification flows)
+   */
   href?: string;
 }
 
@@ -58,19 +73,23 @@ const has = (v: unknown): boolean => {
 export function calculateProfileCompletion(p: ProfileSnapshot): CompletionResult {
   const items: CompletionItem[] = [
     // Basic — heaviest weight (this is what people see first)
-    { key: "avatar", label: "Profile photo", category: "basic", weight: 8, done: has(p.avatar), href: "?tab=personal" },
-    { key: "coverPhoto", label: "Cover photo", category: "basic", weight: 4, done: has(p.coverPhoto), href: "?tab=personal" },
-    { key: "firstName", label: "First name", category: "basic", weight: 5, done: has(p.firstName), href: "?tab=personal" },
-    { key: "lastName", label: "Last name", category: "basic", weight: 5, done: has(p.lastName), href: "?tab=personal" },
-    { key: "bio", label: "Bio", category: "basic", weight: 6, done: has(p.bio), href: "?tab=personal" },
-    { key: "gender", label: "Gender", category: "basic", weight: 3, done: has(p.gender), href: "?tab=personal" },
-    { key: "dateOfBirth", label: "Date of birth", category: "basic", weight: 4, done: has(p.dateOfBirth), href: "?tab=personal" },
-    { key: "tags", label: "Profile tags", category: "basic", weight: 3, done: (p.tags?.length ?? 0) > 0, href: "?tab=personal" },
+    { key: "avatar", label: "Profile photo", category: "basic", weight: 8, done: has(p.avatar), href: "?modal=photo&which=avatar" },
+    { key: "coverPhoto", label: "Cover photo", category: "basic", weight: 4, done: has(p.coverPhoto), href: "?modal=photo&which=coverPhoto" },
+    { key: "firstName", label: "First name", category: "basic", weight: 5, done: has(p.firstName), href: "?tab=personal&field=firstName" },
+    { key: "lastName", label: "Last name", category: "basic", weight: 5, done: has(p.lastName), href: "?tab=personal&field=lastName" },
+    { key: "bio", label: "Bio", category: "basic", weight: 6, done: has(p.bio), href: "?tab=personal&field=bio" },
+    { key: "gender", label: "Gender", category: "basic", weight: 3, done: has(p.gender), href: "?tab=personal&field=gender" },
+    { key: "dateOfBirth", label: "Date of birth", category: "basic", weight: 4, done: has(p.dateOfBirth), href: "?tab=personal&field=dateOfBirth" },
+    { key: "tags", label: "Profile tags", category: "basic", weight: 3, done: (p.tags?.length ?? 0) > 0, href: "?modal=tags" },
     // Contact
-    { key: "emailVerified", label: "Verified email", category: "contact", weight: 8, done: has(p.emailVerified), href: "?tab=personal" },
-    { key: "phone", label: "Phone number", category: "contact", weight: 5, done: has(p.phone), href: "?tab=personal" },
-    { key: "phoneVerified", label: "Verified phone", category: "contact", weight: 6, done: has(p.phoneVerified), href: "?tab=personal" },
-    // Address
+    // Their own pages — there is no email/phone verification control on any
+    // profile tab, so pointing at one would just be a different wrong door.
+    { key: "emailVerified", label: "Verified email", category: "contact", weight: 8, done: has(p.emailVerified), href: "/verify-email" },
+    { key: "phone", label: "Phone number", category: "contact", weight: 5, done: has(p.phone), href: "?tab=personal&field=phone" },
+    { key: "phoneVerified", label: "Verified phone", category: "contact", weight: 6, done: has(p.phoneVerified), href: "/verify-phone" },
+    // Address — the whole tab is one short form built from a shared location
+    // picker, so there is no per-field anchor to claim. Landing on the tab IS
+    // the specific destination here.
     { key: "country", label: "Country", category: "address", weight: 5, done: has(p.country), href: "?tab=address" },
     { key: "city", label: "City", category: "address", weight: 3, done: has(p.city), href: "?tab=address" },
     { key: "street", label: "Street address", category: "address", weight: 3, done: has(p.street), href: "?tab=address" },
@@ -78,7 +97,7 @@ export function calculateProfileCompletion(p: ProfileSnapshot): CompletionResult
     // Verification — KYC is intentionally NOT part of profile completion; it's a
     // separate identity step (prompted after the profile is complete, required
     // only for withdrawals). The ring reflects profile fields only.
-    { key: "nidNumber", label: "National ID number", category: "verification", weight: 4, done: has(p.nidNumber), href: "?tab=kyc" },
+    { key: "nidNumber", label: "National ID number", category: "verification", weight: 4, done: has(p.nidNumber), href: "?tab=personal&field=nidNumber" },
     // Social
     { key: "social", label: "At least 1 social account connected", category: "social", weight: 5, done: (p.socialAccountsCount ?? 0) > 0, href: "?tab=social" },
     { key: "socialThree", label: "3+ social accounts connected", category: "social", weight: 4, done: (p.socialAccountsCount ?? 0) >= 3, href: "?tab=social" },
@@ -115,12 +134,14 @@ interface RequiredItem {
 }
 
 export const UNLOCK_REQUIRED: RequiredItem[] = [
-  { key: "avatar", label: "Profile photo", href: "/profile?tab=personal" },
-  { key: "firstName", label: "First name", href: "/profile?tab=personal" },
-  { key: "lastName", label: "Last name", href: "/profile?tab=personal" },
-  { key: "dateOfBirth", label: "Date of birth", href: "/profile?tab=personal" },
-  { key: "gender", label: "Gender", href: "/profile?tab=personal" },
-  { key: "phone", label: "Phone number", href: "/profile?tab=personal" },
+  // Same destinations as the completion list above — the photo is a modal on
+  // the header, not a field on the personal form.
+  { key: "avatar", label: "Profile photo", href: "/profile?modal=photo&which=avatar" },
+  { key: "firstName", label: "First name", href: "/profile?tab=personal&field=firstName" },
+  { key: "lastName", label: "Last name", href: "/profile?tab=personal&field=lastName" },
+  { key: "dateOfBirth", label: "Date of birth", href: "/profile?tab=personal&field=dateOfBirth" },
+  { key: "gender", label: "Gender", href: "/profile?tab=personal&field=gender" },
+  { key: "phone", label: "Phone number", href: "/profile?tab=personal&field=phone" },
   { key: "country", label: "Country", href: "/profile?tab=address" },
 ];
 

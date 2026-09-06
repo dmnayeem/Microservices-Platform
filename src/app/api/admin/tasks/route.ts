@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { can, canAny } from "@/lib/permissions";
 import { taskCreatePermFor, TASK_CREATE_PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
+import { taskSnapshot } from "@/lib/task-audit";
 import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import { validateCustomConfig, type CustomConfig } from "@/lib/custom-tasks";
 import {
@@ -262,14 +264,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "TASK_CREATED",
-        entity: "Task",
-        entityId: task.id,
-        newData: { type, title, pointsReward: task.pointsReward },
-      },
+    await writeAudit({
+      actorId: session.user.id,
+      action: "TASK_CREATED",
+      entity: "Task",
+      entityId: task.id,
+      summary: `Created "${task.title}" (${type}, ${task.pointsReward} pts)`,
+      meta: { ...taskSnapshot(task) },
     });
 
     return NextResponse.json({ success: true, task }, { status: 201 });

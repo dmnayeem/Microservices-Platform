@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
+import { usd } from "@/lib/utils";
 import { notifyUser } from "@/lib/notify";
 import { getPointsPerUsd } from "@/lib/economy";
 import { TransactionType, TransactionStatus, NotificationType } from "@/generated/prisma/client";
@@ -53,6 +55,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         link: "/create-task",
       }).catch(() => {});
     }
+    await writeAudit({
+      actorId: session.user.id,
+      action: "TASK_REVIEWED",
+      entity: "Task",
+      entityId: id,
+      targetUserId: task.fundedByUserId ?? null,
+      summary: `Approved "${task.title}" — now live`,
+      meta: { decision: "approve", title: task.title },
+    });
     return NextResponse.json({ success: true, status: "ACTIVE" });
   }
 
@@ -97,5 +108,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       link: "/create-task",
     }).catch(() => {});
   }
+  await writeAudit({
+    actorId: session.user.id,
+    action: "TASK_REVIEWED",
+    entity: "Task",
+    entityId: id,
+    targetUserId: task.fundedByUserId ?? null,
+    summary: `Rejected "${task.title}"${reason ? ` — ${reason}` : ""} · refunded ${usd(refundUsd)}`,
+    meta: { decision: "reject", reason: reason ?? null, refundUsd, title: task.title },
+  });
   return NextResponse.json({ success: true, status: "REJECTED", refundUsd });
 }

@@ -29,7 +29,6 @@ import { ShareModal } from "@/components/user/primitives/share-modal";
 import { ImageZoomModal } from "@/components/user/primitives/image-zoom-modal";
 import { ReportContent } from "@/components/user/primitives/report-content";
 import { ReactionButton } from "./reaction-button";
-import { ReactionBreakdown } from "./reaction-breakdown";
 import { findFirstUrl } from "@/lib/post-urls";
 import {
   DEFAULT_REACTION,
@@ -104,7 +103,21 @@ export const FeedPostCard = memo(function FeedPostCard({
   const [zoomIndex, setZoomIndex] = useState(-1);
   // Heart burst after a double-tap on the photo.
   const [burst, setBurst] = useState(false);
-  const lastTapRef = useRef(0);
+  const lastTapRef = useRef<{
+    at: number;
+    index: number;
+    pt: { x: number; y: number } | null;
+  }>({ at: 0, index: -1, pt: null });
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A card can be unmounted mid-gesture — the feed reshuffles, or the post is
+  // deleted between the two taps. Without this the pending single-tap fires
+  // into a dead component and tries to open a viewer that is gone.
+  useEffect(
+    () => () => {
+      if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+    },
+    []
+  );
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
@@ -401,24 +414,53 @@ export const FeedPostCard = memo(function FeedPostCard({
     };
   }, [showComments, hasDraft, zoomIndex]);
 
-  /** Double-tap a photo to like — the gesture people already expect. */
-  const onImageTap = (index: number) => {
+  /**
+   * Double-tap a photo to love it — the gesture people already expect.
+   *
+   * The window was 300ms with no tolerance for anything else, which is why it
+   * "did not always work":
+   *  - 300ms is tight for a real thumb. 450ms is the usual figure and is what
+   *    the platforms use.
+   *  - Two taps a few pixels apart were still two taps as far as this was
+   *    concerned, but a tap that drifted during a scroll also counted — so a
+   *    flick down the feed could open the viewer, and a genuine double-tap on a
+   *    moving finger could be split across two images.
+   *  - The pending single-tap timer was never cleared, only out-voted by a ref
+   *    comparison; a re-render between the two taps lost the race.
+   *
+   * Now: a real timer that is cancelled, a longer window, and both taps have to
+   * land near each other AND on the same image.
+   */
+  const onImageTap = (index: number, e?: { clientX: number; clientY: number }) => {
     const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      lastTapRef.current = 0;
+    const pt = e ? { x: e.clientX, y: e.clientY } : null;
+    const prev = lastTapRef.current;
+    const near =
+      !pt ||
+      !prev.pt ||
+      (Math.abs(pt.x - prev.pt.x) < 44 && Math.abs(pt.y - prev.pt.y) < 44);
+
+    if (now - prev.at < 450 && prev.index === index && near) {
+      if (singleTapTimer.current) {
+        clearTimeout(singleTapTimer.current);
+        singleTapTimer.current = null;
+      }
+      lastTapRef.current = { at: 0, index: -1, pt: null };
+      // Double-tap only ever ADDS. Taking a love away by accident on a gesture
+      // meant to give one is the wrong way for a mistake to go.
       if (!post.isLiked) void react(DEFAULT_REACTION);
       setBurst(true);
       setTimeout(() => setBurst(false), 700);
       return;
     }
-    lastTapRef.current = now;
-    setTimeout(() => {
-      // Still a single tap after the double-tap window → open the viewer.
-      if (lastTapRef.current === now) {
-        lastTapRef.current = 0;
-        setZoomIndex(index);
-      }
-    }, 300);
+
+    lastTapRef.current = { at: now, index, pt };
+    if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+    singleTapTimer.current = setTimeout(() => {
+      singleTapTimer.current = null;
+      lastTapRef.current = { at: 0, index: -1, pt: null };
+      setZoomIndex(index);
+    }, 450);
   };
 
   return (
@@ -659,7 +701,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                 key={i}
                 src={mediaSrc(url)}
                 alt=""
-                onClick={() => onImageTap(i)}
+                onClick={(e) => onImageTap(i, e)}
                 onError={(e) => {
                   // Hide broken images so a bad URL doesn't leave a giant empty box.
                   e.currentTarget.style.display = "none";
@@ -669,7 +711,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             ) : (
               <div
                 key={i}
-                onClick={() => onImageTap(i)}
+                onClick={(e) => onImageTap(i, e)}
                 className="relative aspect-square overflow-hidden cursor-zoom-in select-none"
               >
                 <SmartImage
@@ -717,47 +759,57 @@ export const FeedPostCard = memo(function FeedPostCard({
         </div>
       )}
 
-      {/* Reactions row */}
-      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-gray-800 [&>button]:px-2 [&>button]:py-2 [&>button]:rounded-lg [&>button]:hover:bg-gray-800/60 [&>button]:transition-colors">
+      {/* Reactions row.
+          Every control here is a real ≥44px target with breathing room between
+          them. The old row set padding with `[&>button]`, which reaches DIRECT
+          button children only — the like button sat inside its own wrapper and
+          so got none of it, ending up a ~20px target wedged against its
+          neighbours. That is the "have to press it two or three times" bug:
+          the presses were landing in the 4px gap, or on the row.
+          `touch-manipulation` drops the browser's own double-tap-zoom wait, so
+          the first tap registers immediately instead of ~300ms later. */}
+      <div className="flex items-center gap-1.5 sm:gap-2 px-1.5 py-1 border-t border-gray-800 [&>button]:min-h-11 [&>button]:min-w-11 [&>button]:px-3 [&>button]:rounded-lg [&>button]:hover:bg-gray-800/60 [&>button]:active:bg-gray-800 [&>button]:transition-colors [&>button]:touch-manipulation">
         <ReactionButton
           reacted={post.isLiked}
-          reaction={post.myReaction}
           disabled={busy}
           onToggle={toggleLike}
-          onPick={react}
         />
-        {/* The number sits outside the button on purpose — tapping it opens the
-            per-emoji split instead of liking. */}
-        <ReactionBreakdown
-          count={post.likesCount}
-          counts={post.reactionCounts}
-        />
+        {/* Just the count now. With one reaction there is no split to open, so
+            the tap-to-break-down popover has been removed rather than left as a
+            control that shows the same number a second time. */}
+        {post.likesCount > 0 && (
+          <span className="text-sm text-gray-400 tabular-nums font-medium -ml-1 mr-0.5">
+            {post.likesCount}
+          </span>
+        )}
         <button
           onClick={() => setShowComments((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          aria-label="Comments"
+          className="inline-flex items-center justify-center gap-1.5 text-sm text-gray-400 hover:text-white"
         >
-          <MessageCircle className="w-4 h-4" />
+          <MessageCircle className="w-5 h-5" />
           <span className="tabular-nums font-medium">
             {post.commentsCount}
           </span>
         </button>
         <button
           onClick={() => setShareOpen(true)}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          aria-label="Share"
+          className="inline-flex items-center justify-center gap-1.5 text-sm text-gray-400 hover:text-white"
         >
-          <Share2 className="w-4 h-4" />
-          Share
+          <Share2 className="w-5 h-5" />
+          <span className="hidden sm:inline">Share</span>
         </button>
         <button
           onClick={toggleSave}
           aria-label={post.isSaved ? "Remove from saved" : "Save post"}
           title={post.isSaved ? "Saved" : "Save"}
           className={cn(
-            "inline-flex items-center gap-1.5 text-sm transition-colors",
+            "inline-flex items-center justify-center gap-1.5 text-sm transition-colors",
             post.isSaved ? "text-amber-400" : "text-gray-400 hover:text-amber-400"
           )}
         >
-          <Bookmark className={cn("w-4 h-4", post.isSaved && "fill-current")} />
+          <Bookmark className={cn("w-5 h-5", post.isSaved && "fill-current")} />
         </button>
         {post.isOwner &&
           canBoost &&

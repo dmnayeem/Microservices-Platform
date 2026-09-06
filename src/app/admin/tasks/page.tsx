@@ -22,6 +22,8 @@ import {
   Clock,
   CheckCircle,
   Star,
+  UserRound,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -146,6 +148,27 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     select: { id: true, title: true },
   });
 
+  // Who made each task on this page, by name.
+  //
+  // `Task.createdById` is a bare string with no relation, so the card was
+  // printing a raw cuid — technically the answer, practically unreadable. One
+  // lookup for the whole page resolves them, the same way the admin activity
+  // feed resolves its actors. `role` comes along because a task created by a
+  // normal user (self-serve) is a different thing from one an admin made, and
+  // the card should not make them look alike.
+  const creatorIds = [
+    ...new Set(tasksRaw.map((t) => t.createdById).filter(Boolean)),
+  ] as string[];
+  const creators = creatorIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: creatorIds } },
+        select: { id: true, name: true, email: true, role: true },
+      })
+    : [];
+  const creatorMap = new Map(
+    creators.map((c) => [c.id, { name: c.name || c.email, role: c.role }])
+  );
+
   // Type assertion for Prisma Accelerate
   type TaskWithCount = typeof tasksRaw[0] & {
     _count: { submissions: number };
@@ -198,6 +221,16 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
               Review Queue ({pendingSubmissions})
             </Link>
           )}
+          {/* A deleted task leaves no card behind, so the only way to reach the
+              record of it is a link that does not depend on the task existing. */}
+          <Link
+            href="/admin/tasks/removed"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-200 rounded-lg hover:bg-gray-700 transition-colors"
+            title="Tasks that were archived or deleted, and who did it"
+          >
+            <History className="w-4 h-4" />
+            Removed
+          </Link>
           {canCreate && (
             <Link
               href="/admin/tasks/new"
@@ -407,6 +440,48 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
                   {task.description}
                 </p>
 
+                {/* Who made it. Shown on every task, not just the ones awaiting
+                    review — "which admin created this" is a question asked of
+                    ordinary tasks, and it was unanswerable from here. */}
+                {(() => {
+                  const c = task.createdById
+                    ? creatorMap.get(task.createdById)
+                    : null;
+                  const isStaff = !!c && c.role !== "USER";
+                  return (
+                    <p className="text-[11px] text-gray-500 mt-2 flex items-center gap-1.5 flex-wrap">
+                      <UserRound className="w-3 h-3 shrink-0" />
+                      <span>Created by</span>
+                      {c ? (
+                        <>
+                          <Link
+                            href={`/admin/users/${task.createdById}`}
+                            className="text-gray-300 hover:text-indigo-400 font-medium"
+                          >
+                            {c.name}
+                          </Link>
+                          <span
+                            className={
+                              isStaff
+                                ? "px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 text-[10px] font-semibold"
+                                : "px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-[10px] font-semibold"
+                            }
+                          >
+                            {isStaff ? c.role.replace(/_/g, " ") : "USER"}
+                          </span>
+                        </>
+                      ) : (
+                        // Tasks that predate `createdById` being written, and
+                        // seeded rows. Saying so is better than an empty dash
+                        // that reads like a loading failure.
+                        <span className="text-gray-600">
+                          not recorded (created before this was tracked)
+                        </span>
+                      )}
+                    </p>
+                  );
+                })()}
+
                 {/* Rewards */}
                 <div className="flex items-center gap-4 mt-4 text-sm">
                   <div className="flex items-center gap-1">
@@ -435,8 +510,10 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div>
                         <p className="text-slate-500">Creator</p>
-                        <p className="text-slate-300 font-mono truncate">
-                          {task.createdById ?? "—"}
+                        <p className="text-slate-300 truncate">
+                          {(task.createdById &&
+                            creatorMap.get(task.createdById)?.name) ??
+                            "—"}
                         </p>
                       </div>
                       <div>
