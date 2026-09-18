@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { appendArticleToken } from "../src/lib/article-task-token";
 import { renderedPopupCount } from "../src/lib/article-tasks";
+import { authConfig } from "../src/lib/auth/config";
 
 /**
  * Article embed — the cross-domain Unique Key Pool script.
@@ -444,6 +445,55 @@ function main() {
       "reopening reuses the same journey instead of minting a second token",
       /if \(articleUrl\) \{/.test(src)
     );
+  }
+
+  /* ── 9. The embed is reachable from someone else's website ── */
+  console.log("\n9. A third-party page can actually load the embed");
+  {
+    // This is why the feature had never worked anywhere but the admin's own
+    // machine. In production the middleware sent /embed/article.js and all
+    // three embed APIs to /login with a 307, so the script tag on a real
+    // article downloaded a redirect instead of JavaScript. Locally it looked
+    // perfect, because middleware does not run under `next dev` on Next 16 —
+    // which is also why this has to be asserted by calling the callback
+    // directly rather than by fetching the dev server.
+    //
+    // A session could never have authenticated these anyway: the script tag
+    // and its fetches are cross-site, so the SameSite=Lax cookie is not sent
+    // even for a reader signed in here. That is the phone case too.
+    type Req = { nextUrl: URL };
+    const authorized = authConfig.callbacks?.authorized as unknown as
+      | ((p: { auth: unknown; request: Req }) => boolean | Response)
+      | undefined;
+    check("the auth config still exposes an authorized callback", !!authorized);
+
+    const verdict = (path: string, signedIn = false) => {
+      const r = authorized!({
+        auth: signedIn ? { user: { id: "u1" } } : null,
+        request: { nextUrl: new URL(`https://earngpt.app${path}`) },
+      });
+      return r === true ? "allow" : r === false ? "deny" : "redirect";
+    };
+
+    for (const p of [
+      "/embed/article.js",
+      "/api/article-tasks/abc/embed-config",
+      "/api/article-tasks/abc/popup-progress",
+      "/api/article-tasks/abc/generate-key",
+    ]) {
+      check(`a signed-out third-party reader may reach ${p}`, verdict(p) === "allow");
+    }
+
+    // The other half of the rule. `start` mints the token that authenticates
+    // everything above, so it must keep demanding a real session — opening it
+    // would let anyone mint a journey token for any task.
+    check(
+      "…but /start still requires a session",
+      verdict("/api/article-tasks/abc/start") === "deny",
+      "start is what issues the token; it cannot be public"
+    );
+    check("and ordinary pages are untouched", verdict("/dashboard") === "deny");
+    check("and admin is untouched", verdict("/admin") === "deny");
   }
 
   console.log(

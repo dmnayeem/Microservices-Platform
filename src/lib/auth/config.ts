@@ -132,8 +132,32 @@ export const authConfig: NextAuthConfig = {
       // Public API routes
       const isPublicApiRoute = pathname.startsWith("/api/auth");
 
+      /**
+       * The article-task embed, which runs on somebody else's website.
+       *
+       * These were being redirected to /login, so the whole feature had never
+       * worked anywhere except the admin's own machine — middleware does not
+       * run under `next dev` on Next 16, which is exactly why local testing
+       * looked fine while every real site got a 307 and no script at all.
+       *
+       * A session cannot authenticate these anyway. The script tag and its
+       * fetches are cross-site requests from a third-party article, so the
+       * SameSite=Lax session cookie is not sent — even for a reader who is
+       * signed in here. That is why nothing worked on a phone either.
+       *
+       * They are not unprotected: each of the three APIs verifies the signed
+       * `eg` token, which is bound to one submission, one task and one user.
+       * `start` is deliberately NOT in this list — it mints that token and
+       * must keep requiring a real session.
+       */
+      const isArticleEmbedRoute =
+        pathname.startsWith("/embed/") ||
+        /^\/api\/article-tasks\/[^/]+\/(embed-config|popup-progress|generate-key)$/.test(
+          pathname
+        );
+
       // Allow public routes and API routes
-      if (isPublicRoute || isPublicApiRoute) {
+      if (isPublicRoute || isPublicApiRoute || isArticleEmbedRoute) {
         return allow();
       }
 
