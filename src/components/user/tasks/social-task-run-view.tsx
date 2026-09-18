@@ -762,7 +762,11 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
   // ── Run page ──────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-28">
+    /* The submit bar floats over this content, so the last card needs room to
+     * clear it: the bar itself (pb-28's 7rem, unchanged) plus everything the
+     * bar now sits above — the nav, the safe area, and any anchor ad. Without
+     * this the bar just covers the last link instead of the Submit button. */
+    <div className="max-w-2xl mx-auto space-y-4 pb-[calc(7rem+3.5rem+env(safe-area-inset-bottom)+var(--anchor-ad-h,0px))] md:pb-[calc(7rem+var(--anchor-ad-h,0px))]">
       <Link
         href="/social-tasks"
         className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
@@ -1242,9 +1246,18 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         );
       })}
 
-      {/* Sticky submit bar */}
+      {/* Sticky submit bar.
+       *
+       * It sat at `bottom-0`, which on a phone is exactly where BottomTabBar
+       * is — and that nav is z-40 against this bar's z-30, so the tab bar
+       * covered Submit and the task could not be finished on mobile at all.
+       *
+       * Same offset the anchor ad uses: clear the nav (min-h-14 plus the
+       * device's safe area) and clear the ad itself, which parks in that same
+       * strip and publishes its measured height as --anchor-ad-h. From `md`
+       * the nav is hidden, so only the ad's allowance remains. */}
       {total > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-30 border-t border-gray-800 bg-gray-950/95 backdrop-blur px-4 py-3">
+        <div className="fixed inset-x-0 z-30 border-t border-gray-800 bg-gray-950/95 backdrop-blur px-4 py-3 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+var(--anchor-ad-h,0px))] md:bottom-[var(--anchor-ad-h,0px)]">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-xs text-gray-400">

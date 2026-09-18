@@ -249,6 +249,42 @@ function main() {
       "the header hamburger hides at the same breakpoint",
       /items-center gap-0\.5 md:hidden/.test(hdr)
     );
+    // Nothing else may park at bottom-0 on a phone.
+    //
+    // The tab bar is z-40 and owns that strip. The social task's submit bar
+    // was `fixed bottom-0 z-30`, so on a phone the nav sat on top of it and
+    // Submit could not be tapped — the task was impossible to finish on
+    // mobile, which is not a layout blemish but a dead end.
+    //
+    // The house pattern is the anchor ad's: clear the nav (3.5rem, matching
+    // the tabs' `min-h-14`) plus the safe area plus `--anchor-ad-h`, and drop
+    // the nav's share from `md`, where the nav is hidden.
+    {
+      const run = read("src/components/user/tasks/social-task-run-view.tsx");
+      const NAV_CLEARANCE = /3\.5rem\+env\(safe-area-inset-bottom\)\+var\(--anchor-ad-h,0px\)/;
+      check(
+        "the social submit bar clears the phone nav instead of hiding under it",
+        !/fixed bottom-0/.test(run) && NAV_CLEARANCE.test(run),
+        "bottom-0 puts it under the z-40 tab bar, where it cannot be tapped"
+      );
+      check(
+        "…and drops the nav's share of that offset from md",
+        /md:bottom-\[var\(--anchor-ad-h,0px\)\]/.test(run)
+      );
+      check(
+        "the content below is padded for the bar's new position",
+        /pb-\[calc\(7rem\+3\.5rem\+env\(safe-area-inset-bottom\)/.test(run),
+        "otherwise the bar simply covers the last card instead of the button"
+      );
+      // The number this offset is built on. If the tabs grow, the bar has to
+      // be told — nothing else connects the two.
+      check(
+        "the nav is still the 3.5rem tall that offset assumes",
+        /min-h-14/.test(bar),
+        "the submit bar's clearance is hard-coded to this height"
+      );
+    }
+
     // A bar that is `md:hidden` but polls on `max-width: 1023px` runs a 60s
     // fetch loop for every tablet and desktop user to feed a badge they cannot
     // see. The media query and the class have to name the same edge.
