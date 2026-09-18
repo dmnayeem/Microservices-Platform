@@ -328,6 +328,32 @@ function buildScript(origin: string): string {
       var absTop = r.top + (window.pageYOffset || 0);
       var invisible = r.width < 4 || r.height < 4;
       var pastEnd = docH > 0 && absTop > docH;
+
+      // Keep it on screen horizontally.
+      //
+      // \`left\` is the badge's CENTRE, because of translateX(-50%), and that
+      // centre is jittered across the middle 40% of the article. On a phone
+      // that is enough to push a wide badge past the right edge, where it is
+      // clipped and cannot be tapped. The real width is only knowable after
+      // layout, which is here, so the correction belongs here too.
+      if (!invisible) {
+        var vw = document.documentElement
+          ? document.documentElement.clientWidth
+          : window.innerWidth;
+        var pageX = window.pageXOffset || 0;
+        var half = r.width / 2;
+        var margin = 8;
+        if (vw > 0 && r.width + margin * 2 <= vw) {
+          var centre = r.left + half + pageX;
+          var minC = pageX + margin + half;
+          var maxC = pageX + vw - margin - half;
+          var clamped = centre < minC ? minC : (centre > maxC ? maxC : centre);
+          if (Math.abs(clamped - centre) > 1) {
+            node.style.setProperty('left', Math.round(clamped) + 'px', 'important');
+          }
+        }
+      }
+
       if (!invisible && !pastEnd) return;
       node.style.setProperty('position', 'fixed', 'important');
       node.style.setProperty('top', 'auto', 'important');
@@ -384,14 +410,28 @@ function buildScript(origin: string): string {
     var zone = POSITION_TO_ZONE[pos];
     if (zone == null) zone = 1;
 
-    // Compute Y, with up-to-8 attempts to dodge ad-overlap by shifting
-    // the popup vertically within ±60px of the chosen fraction.
+    // The admin picked a slot, so USE it. Only move if something is there.
+    //
+    // This used to jitter on the first attempt too, so the popup landed
+    // ±60px off the chosen fraction every single time, whether or not there
+    // was anything to dodge — "middle" was never actually the middle, and a
+    // position dropdown that is always approximately obeyed reads as ignored.
+    // The jitter exists to dodge an ad zone; it now runs only when there is
+    // one in the way, and falls back to the exact position if no clear offset
+    // is found rather than leaving it wherever the last random guess landed.
     var baseY = articleTop + fraction * articleHeight;
     var top = baseY;
-    for (var attempt = 0; attempt < 8; attempt++) {
-      var jitterY = (Math.random() - 0.5) * 120; // ±60px
-      var candY = baseY + jitterY;
-      if (!zonesOverlap(candY, adZones)) { top = candY; break; }
+    if (zonesOverlap(baseY, adZones)) {
+      // Nearest clear spot, not a random one. The offsets are tried closest
+      // first and alternate above/below, so the popup ends up as near the
+      // admin's slot as the page allows. Eight random draws inside ±60px
+      // could all land back on the ad — rare, but it happened about 1 run in
+      // 60 in testing, and when it does the popup sits on top of an ad.
+      var OFFSETS = [36, -36, 72, -72, 110, -110, 150, -150];
+      for (var attempt = 0; attempt < OFFSETS.length; attempt++) {
+        var candY = baseY + OFFSETS[attempt];
+        if (!zonesOverlap(candY, adZones)) { top = candY; break; }
+      }
     }
 
     // X: small horizontal jitter within the central 40% of article width.
