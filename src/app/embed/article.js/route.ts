@@ -25,9 +25,36 @@ import { NextRequest } from "next/server";
  *     CTA → click → atomic claim → redirect to OUR_ORIGIN/article-tasks/
  *     complete?... for auto-submit.
  */
+/**
+ * Where to send the reader, as opposed to where to send our own fetches.
+ *
+ * API calls must go back to whoever served this script — that is the origin
+ * holding the session and answering CORS, and it is what keeps a local test
+ * talking to a local server. But the "Submit on EarnGPT" link is a place a
+ * person goes to log in, so it has to be the site's real address. Two things
+ * make the request's own origin wrong for that: an admin testing on localhost
+ * hands the reader a localhost link, and behind a proxy or CDN `nextUrl.origin`
+ * can be an internal hostname the public has never heard of.
+ *
+ * Only an absolute http(s) URL is accepted, and a local one is ignored, so a
+ * half-configured env cannot produce a worse link than the fallback.
+ */
+function publicOrigin(fallback: string): string {
+  const configured = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/+$/, "");
+  if (!configured) return fallback;
+  try {
+    const u = new URL(configured);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return fallback;
+    if (/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(u.hostname)) return fallback;
+    return u.origin;
+  } catch {
+    return fallback;
+  }
+}
+
 export function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
-  const script = buildScript(origin);
+  const script = buildScript(origin, publicOrigin(origin));
   return new Response(script, {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
@@ -38,11 +65,13 @@ export function GET(req: NextRequest) {
   });
 }
 
-function buildScript(origin: string): string {
+function buildScript(origin: string, appOrigin: string): string {
   return `/* EarnGPT article-task embed v3 — built ${new Date().toISOString()} */
 (function() {
   'use strict';
   var ORIGIN = ${JSON.stringify(origin)};
+  // Our own fetches use ORIGIN; anything the reader clicks uses APP_ORIGIN.
+  var APP_ORIGIN = ${JSON.stringify(appOrigin)};
   var STYLE_ID = '__eg_at_style__';
   var ITEM_CLASS = '__eg_at_item';
   var FINAL_CLASS = '__eg_at_final_cta';
@@ -645,8 +674,9 @@ function buildScript(origin: string): string {
   }
 
   function buildKeyRevealCard(key) {
-    // Build the task-page URL on OUR origin so the user can submit manually.
-    var taskPageUrl = ORIGIN + '/article-tasks/' + encodeURIComponent(taskId) +
+    // The reader clicks this, so it must be the public site — not the host we
+    // happened to be fetched from.
+    var taskPageUrl = APP_ORIGIN + '/article-tasks/' + encodeURIComponent(taskId) +
                       '?key=' + encodeURIComponent(key);
 
     var card = document.createElement('div');

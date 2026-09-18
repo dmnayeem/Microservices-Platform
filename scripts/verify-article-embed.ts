@@ -266,12 +266,59 @@ function main() {
       "the admin is warned when that origin is still local",
       /originIsLocal/.test(builder)
     );
-    // The server side must keep using the request's own origin — the script is
-    // served from wherever it was fetched, and hardcoding would break previews.
+    // The server side must keep using the request's own origin for its own
+    // fetches — that is where the session and the CORS answer are, and it is
+    // what lets a local test talk to a local server.
     check(
-      "the served script still resolves its own origin from the request",
+      "the script's API base still comes from the request's origin",
       /req\.nextUrl\.origin/.test(routeSrc)
     );
+  }
+
+  /* ── 5. The reader is sent to the real site ── */
+  console.log("\n5. The submit link points at the public site, not localhost");
+  {
+    // The two origins must stay separate. Collapsing them either sends the
+    // reader to localhost (what the owner saw) or sends our fetches to
+    // production from a dev box.
+    check(
+      "the reader-facing link uses APP_ORIGIN, not the API origin",
+      /var taskPageUrl = APP_ORIGIN \+ '\/article-tasks\/'/.test(routeSrc),
+      "the key-reveal card is the only thing the reader clicks through"
+    );
+    check(
+      "fetches still use ORIGIN",
+      /fetch\(ORIGIN \+ '\/api\/article-tasks\//.test(routeSrc)
+    );
+
+    const fnSrc = extractFunction(routeSrc, "publicOrigin").replace(
+      /^function publicOrigin\([^)]*\)\s*:\s*\w+/,
+      "function publicOrigin(fallback)"
+    );
+    const makeResolver = (envValue: string | undefined) =>
+      new Function(
+        "env",
+        `var process = { env: env }; ${fnSrc} return publicOrigin;`
+      )({ NEXT_PUBLIC_APP_URL: envValue }) as (fallback: string) => string;
+
+    const FALLBACK = "https://from-the-request.example";
+    const cases: Array<[string, string | undefined, string]> = [
+      ["a configured production URL wins", "https://earngpt.app", "https://earngpt.app"],
+      ["a trailing slash is trimmed", "https://earngpt.app/", "https://earngpt.app"],
+      ["surrounding whitespace is tolerated", "  https://earngpt.app  ", "https://earngpt.app"],
+      // Each of these would produce a link worse than the fallback, so the
+      // fallback has to win rather than the env being trusted blindly.
+      ["an unset env falls back", undefined, FALLBACK],
+      ["an empty env falls back", "", FALLBACK],
+      ["a localhost env falls back", "http://localhost:3000", FALLBACK],
+      ["a 127.0.0.1 env falls back", "http://127.0.0.1:3000", FALLBACK],
+      ["a non-http scheme falls back", "ftp://earngpt.app", FALLBACK],
+      ["an unparseable value falls back", "earngpt.app", FALLBACK],
+    ];
+    for (const [label, env, want] of cases) {
+      const got = makeResolver(env)(FALLBACK);
+      check(label, got === want, `got ${got}`);
+    }
   }
 
   console.log(
