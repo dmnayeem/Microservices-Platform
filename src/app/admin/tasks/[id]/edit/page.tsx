@@ -37,6 +37,13 @@ export default async function EditTaskPage({ params }: PageProps) {
     notFound();
   }
 
+  // `cashReward` is a Prisma Decimal, and a Decimal instance cannot cross the
+  // server→client boundary — React rejects the whole payload. It only reached
+  // the client because the row is spread into the form wholesale; TaskForm
+  // does not take the field and never reads it. Dropped rather than converted,
+  // so the prop stays exactly the shape the form declares.
+  const { cashReward: _cashReward, ...taskForForm } = task;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -56,7 +63,7 @@ export default async function EditTaskPage({ params }: PageProps) {
       {/* Form */}
       <TaskForm
         task={{
-          ...task,
+          ...taskForForm,
           socialConfig: task.socialConfig as SocialConfig | null,
           articleConfig: task.articleConfig as ArticleConfig | null,
           videoConfig: task.videoConfig as VideoConfig | null,
