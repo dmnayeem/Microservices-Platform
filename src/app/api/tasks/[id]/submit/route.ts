@@ -73,6 +73,10 @@ import {
 } from "@/lib/phash";
 import { createHash } from "crypto";
 import { recordUserAction } from "@/lib/goal-progress";
+import {
+  proofUrlRule,
+  destinationFieldFor,
+} from "@/lib/social-proof-url";
 import { runAchievementCheck } from "@/lib/achievements";
 import { closeTaskIfFull } from "@/lib/task-slots";
 import {
@@ -560,11 +564,27 @@ export async function POST(
             );
           }
           const req = cfgItem.proofRequirements;
-          if (req.url && !String(p.proofUrl ?? "").trim()) {
+          const submittedUrl = String(p.proofUrl ?? "").trim();
+          if (req.url && !submittedUrl) {
             return NextResponse.json(
               { error: `Please provide the proof URL for: ${label}` },
               { status: 400 }
             );
+          }
+          // "Not empty" was the only thing ever asked of this field, so a
+          // Pinterest pin task could be completed by pasting the admin's own
+          // destination link back into it — or any link at all — and approved.
+          // Where we can say what the link must BE, say it here: it is
+          // deterministic, needs no network, and a wrong link is better
+          // refused at the form than sent to a reviewer.
+          if (submittedUrl) {
+            const shape = proofUrlRule(socialCfg.platform, cfgItem.action);
+            if (shape && !shape.test(submittedUrl)) {
+              return NextResponse.json(
+                { error: `${label}: ${shape.hint}` },
+                { status: 400 }
+              );
+            }
           }
           if (req.screenshot && !String(p.screenshotUrl ?? "").trim()) {
             return NextResponse.json(
@@ -858,9 +878,36 @@ export async function POST(
       // a silent pass. Whole bundle verified → auto-approve.
       if (socialBundle) {
         const cfg = normalizeSocialConfig(task.socialConfig);
+        /**
+         * A requirement the task carries whether or not the admin configured
+         * verification: the pin must point where the campaign says.
+         *
+         * The shape gate at submit already refuses anything that is not a pin
+         * link, but a real pin of the user's own would still pass it. What
+         * makes a pin count for THIS task is its destination — the link the
+         * advertiser is paying to have shared — and only the page itself can
+         * answer that. So the destination becomes a `url` criterion evaluated
+         * by the same machinery as the admin's own rules.
+         *
+         * `onMismatch: "manual"` on purpose. A pin whose destination we could
+         * not read must reach a human, not a rejection; `shouldAutoReject` is
+         * still the only thing that can reject, and only where the admin asked.
+         */
+        const implicitRulesFor = (it: (typeof cfg.items)[number]) => {
+          const field = destinationFieldFor(cfg.platform, it.action);
+          const dest = field ? String(it.fields?.[field] ?? "").trim() : "";
+          if (!dest) return null;
+          return {
+            ...defaultContentRules(),
+            criteria: [{ kind: "url" as const, value: dest }],
+            matchMode: "all" as const,
+            onMismatch: "manual" as const,
+          };
+        };
+
         const verifyIdx = cfg.items
-          .map((it, i) => ({ it, i }))
-          .filter((x) => !!x.it.verify);
+          .map((it, i) => ({ it, i, implicit: implicitRulesFor(it) }))
+          .filter((x) => !!x.it.verify || !!x.implicit);
         if (verifyIdx.length > 0) {
           const metaItems = submissionMetadata.items as Array<
             Record<string, unknown>
@@ -890,7 +937,12 @@ export async function POST(
           const fetchUrls = [
             ...new Set(
               verifyIdx
-                .filter((x) => x.it.verify === "CODE" || x.it.verify === "CONTENT")
+                .filter(
+                  (x) =>
+                    x.it.verify === "CODE" ||
+                    x.it.verify === "CONTENT" ||
+                    !!x.implicit
+                )
                 .map((x) => (socialBundle[x.i]?.proofUrl as string | undefined) ?? "")
                 .filter(Boolean)
             ),
@@ -926,7 +978,7 @@ export async function POST(
           }
 
           let allVerified = true;
-          for (const { it, i } of verifyIdx) {
+          for (const { it, i, implicit } of verifyIdx) {
             let status:
               | "verified"
               | "failed"
@@ -946,14 +998,29 @@ export async function POST(
                     ? "verified"
                     : "code_missing";
               }
-            } else if (it.verify === "CONTENT") {
+            } else if (it.verify === "CONTENT" || implicit) {
               // Smart Auto Verification: compare the published page against the
               // admin's own rules (required link / keywords / hashtags /
               // username). See lib/link-verify for why a login wall must come
               // back "unverifiable" and never "criteria_failed".
               const proofUrl =
                 (socialBundle[i]?.proofUrl as string | undefined) ?? "";
-              const rules = it.contentRules ?? defaultContentRules();
+              // The admin's own rules, plus the destination the task exists
+              // for. Merged rather than replaced, so a task that already had
+              // criteria keeps every one of them.
+              const configured =
+                it.verify === "CONTENT"
+                  ? (it.contentRules ?? defaultContentRules())
+                  : null;
+              const rules = implicit
+                ? {
+                    ...(configured ?? implicit),
+                    criteria: [
+                      ...(configured?.criteria ?? []),
+                      ...implicit.criteria,
+                    ],
+                  }
+                : (configured ?? defaultContentRules());
               const html = proofUrl ? (pageByUrl.get(proofUrl) ?? null) : null;
               const evaluation = evaluateContentRules(
                 html === null ? null : toPageContent(html),
