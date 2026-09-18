@@ -740,8 +740,34 @@ function RewardBadge({
 function KeyPoolStartCard({ taskId }: { taskId: string }) {
   const [busy, setBusy] = useState(false);
   const [opened, setOpened] = useState(false);
+  // Kept so "Reopen" returns to the SAME journey. Minting a second token each
+  // time would hand the reader a new session and orphan the progress they had.
+  const [articleUrl, setArticleUrl] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(false);
 
   const start = async () => {
+    if (articleUrl) {
+      // Already have the link — a plain open, still inside the click.
+      window.open(articleUrl, "_blank");
+      return;
+    }
+    // Open the tab NOW, while the browser still counts this as the user's
+    // click. The token takes a network round-trip to mint, and a window
+    // opened after an `await` has lost the gesture — every popup blocker
+    // stops it and the reader gets a permission prompt instead of the
+    // article. So the tab is opened blank up-front and navigated once the
+    // URL exists.
+    const tab = window.open("", "_blank");
+    // Cut the article site's handle back to this tab. We keep ours, which is
+    // the direction that matters, and lose the one that lets a third-party
+    // page touch this one.
+    if (tab) {
+      try {
+        tab.opener = null;
+      } catch {
+        /* cross-origin already; nothing to detach */
+      }
+    }
     setBusy(true);
     try {
       const res = await fetch(`/api/article-tasks/${taskId}/start`, {
@@ -751,13 +777,26 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
       const url = data.firstPageUrl as string | undefined;
       if (!url) throw new Error("Missing first page URL");
-      window.open(url, "_blank", "noopener,noreferrer");
-      setOpened(true);
-      toast.success("Article journey started in a new tab", {
-        description:
-          "Complete all pages — you'll be redirected back here automatically with your key.",
-      });
+      setArticleUrl(url);
+      if (tab && !tab.closed) {
+        tab.location.replace(url);
+        setOpened(true);
+        setBlocked(false);
+        toast.success("Article journey started in a new tab", {
+          description:
+            "Complete all pages — you'll be redirected back here automatically with your key.",
+        });
+      } else {
+        // The blocker won, or the reader closed the blank tab. A real link
+        // that the reader clicks themselves is never blocked, so offer that
+        // rather than asking them to change a browser setting.
+        setBlocked(true);
+        toast.info("Your browser blocked the new tab", {
+          description: "Use the link below to open the article.",
+        });
+      }
     } catch (err) {
+      if (tab && !tab.closed) tab.close();
       toast.error("Couldn't start", {
         description: err instanceof Error ? err.message : String(err),
       });
@@ -780,13 +819,35 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
         </p>
       </div>
 
-      {opened && (
+      {opened && !blocked && (
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-200 flex items-start gap-2">
           <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span className="min-w-0">
             Article opened in a new tab. Keep this tab open — your reward
             will land here when you finish.
           </span>
+        </div>
+      )}
+
+      {blocked && articleUrl && (
+        <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-200 space-y-2">
+          <p className="flex items-start gap-2">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span className="min-w-0">
+              Your browser blocked the new tab. Open the article with this
+              link instead — your journey is already started.
+            </span>
+          </p>
+          <a
+            href={articleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpened(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/20 px-2.5 py-1.5 font-semibold text-amber-100 hover:bg-amber-500/30"
+          >
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            Open the article
+          </a>
         </div>
       )}
 

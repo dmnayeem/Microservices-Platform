@@ -77,20 +77,95 @@ function buildScript(origin: string, appOrigin: string): string {
   var FINAL_CLASS = '__eg_at_final_cta';
   var DEFAULT_THEME = { textColor: '#0f172a', bgColor: '#0f172a', accentColor: '#6366f1' };
 
+  // Say why nothing happened.
+  //
+  // This script used to return silently at every failure — no task id, no
+  // token, a rejected config, a dead network. On the admin's side that is
+  // indistinguishable from "the script never loaded", which is exactly the
+  // report we kept getting: pasted the snippet, opened the article, nothing.
+  // The console line costs a reader nothing and is the only way to tell those
+  // cases apart from outside.
+  function log(msg, extra) {
+    try {
+      if (extra === undefined) console.info('[EarnGPT article task] ' + msg);
+      else console.info('[EarnGPT article task] ' + msg, extra);
+    } catch (e) { /* console missing (old embedded webviews) */ }
+  }
+
+  // Only complain once the page has had a chance to succeed elsewhere.
+  //
+  // A publisher may carry snippets for two different tasks on one article, and
+  // the reader's token matches exactly one of them. The other instance fails,
+  // and if it spoke up immediately the reader would be told the link is broken
+  // while the task is in fact running fine beside it. So a failing instance
+  // waits, and stays quiet if any instance got its config.
+  function maybeNotice(title, detail) {
+    setTimeout(function() {
+      if (window.__egAtLoaded) return;
+      showNotice(title, detail);
+    }, 1500);
+  }
+
+  // A visible notice, but ONLY for someone who arrived with a token — i.e. a
+  // reader sent here to do the task, who would otherwise sit on the page
+  // waiting for a popup that is never coming. A passer-by with no token sees
+  // the article exactly as the publisher wrote it.
+  function showNotice(title, detail) {
+    try {
+      if (document.getElementById('__eg_at_notice')) return;
+      var box = document.createElement('div');
+      box.id = '__eg_at_notice';
+      box.setAttribute('role', 'status');
+      box.style.cssText = [
+        'position:fixed', 'z-index:2147483641', 'bottom:18px', 'right:18px',
+        'max-width:min(360px, calc(100vw - 36px))', 'box-sizing:border-box',
+        'padding:14px 16px', 'border-radius:14px',
+        'background:#111827', 'color:#f9fafb', 'border:1px solid #374151',
+        'box-shadow:0 10px 30px rgba(0,0,0,.35)',
+        'font:600 13px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif'
+      ].join(';');
+      var h = document.createElement('div');
+      h.textContent = title;
+      var p = document.createElement('div');
+      p.textContent = detail;
+      p.style.cssText = 'margin-top:4px;font-weight:400;color:#9ca3af';
+      var a = document.createElement('a');
+      a.href = APP_ORIGIN + '/article-tasks';
+      a.textContent = 'Back to EarnGPT';
+      a.style.cssText = 'display:inline-block;margin-top:10px;color:#a5b4fc;text-decoration:none';
+      box.appendChild(h); box.appendChild(p); box.appendChild(a);
+      (document.body || document.documentElement).appendChild(box);
+    } catch (e) { /* never let the notice break the host page */ }
+  }
+
   // Self-script detection.
   var selfTag = document.currentScript;
   if (!selfTag || !selfTag.getAttribute('data-task')) {
     var all = document.querySelectorAll('script[data-task]');
     selfTag = all.length ? all[all.length - 1] : null;
   }
-  if (!selfTag) return;
+  if (!selfTag) {
+    log('no <script data-task="..."> tag found on this page — check the snippet was pasted with its data-task attribute.');
+    return;
+  }
   var taskId = selfTag.getAttribute('data-task');
   var pageStr = selfTag.getAttribute('data-page') || '1';
   var pageNumber = parseInt(pageStr, 10) || 1;
   var token = getQueryParam('eg');
 
-  // Silent fail if essentials missing — random visitors see the article unchanged.
-  if (!taskId || !token) return;
+  // A visitor with no token is just a reader: the article stays untouched.
+  // But say so in the console, because an admin testing the snippet by opening
+  // the article directly lands here and sees nothing at all.
+  if (!taskId) {
+    log('the snippet has no data-task id, so there is nothing to run.');
+    return;
+  }
+  if (!token) {
+    log('no "eg" token in the page URL, so this is an ordinary reader and the ' +
+        'article is left alone. To test, start the task from EarnGPT — that is ' +
+        'what adds ?eg=... to the link.');
+    return;
+  }
 
   var state = {
     config: null,
@@ -121,14 +196,39 @@ function buildScript(origin: string, appOrigin: string): string {
         return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; });
       })
       .then(function(res) {
-        if (!res.ok) return; // silent on config error to keep the page clean
+        if (!res.ok) {
+          var why = (res.data && res.data.error) || ('HTTP ' + res.status);
+          log('the server refused the embed config: ' + why, res.data);
+          // 403 means this snippet belongs to a DIFFERENT task than the token
+          // the reader arrived with. A publisher can legitimately carry two
+          // tasks' snippets on one article, in which case the other instance
+          // is the right one and this one has nothing to say. Never show a
+          // failure for it.
+          if (res.status === 403) return;
+          maybeNotice(
+            res.status === 401
+              ? 'This article link has expired'
+              : 'This task could not be loaded',
+            res.status === 401
+              ? 'Start the task again on EarnGPT to get a fresh link.'
+              : why
+          );
+          return;
+        }
+        window.__egAtLoaded = true;
         state.config = res.data;
         state.clicked = (res.data.progress && res.data.progress.popupsCompleted) || 0;
         injectStyles(res.data.theme || DEFAULT_THEME);
         startEngagementTracking();
         renderItems();
       })
-      .catch(function() { /* silent on network failure */ });
+      .catch(function(e) {
+        log('could not reach ' + ORIGIN + ' for the embed config.', e);
+        maybeNotice(
+          'Could not reach EarnGPT',
+          'Check your connection and reload this page.'
+        );
+      });
   });
 
   // ── v3 engagement tracking ─────────────────────────────────────────────

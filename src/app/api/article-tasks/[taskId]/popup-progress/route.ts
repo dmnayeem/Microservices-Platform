@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { renderedPopupCount } from "@/lib/article-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import { verifyArticleTaskToken } from "@/lib/article-task-token";
 import { corsPreflight, corsResponse } from "@/lib/article-task-cors";
@@ -48,7 +49,9 @@ export async function POST(
     return corsResponse({ error: "Page not found" }, { status: 404 });
   }
 
-  const required = pageDef.popupCount;
+  // Must be the number the embed actually draws, or the page can never
+  // be completed. See renderedPopupCount.
+  const required = renderedPopupCount(pageDef);
   const clamped = Math.min(popupsCompleted, required);
   const pageCompleted = clamped >= required;
 

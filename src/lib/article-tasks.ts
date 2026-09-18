@@ -443,6 +443,30 @@ export interface EngagementPlan {
  * Build a deterministic engagement plan for one user/task/page. Same inputs
  * → same output, so a refresh resumes identically.
  */
+/**
+ * How many popups this page ACTUALLY shows — the one number that decides both
+ * what the embed draws and what the server accepts as "page finished".
+ *
+ * These were two different numbers. The embed renders `page.popups` when the
+ * admin has defined them and falls back to synthesising `popupCount`
+ * placeholders when they have not; but `popup-progress` and `generate-key`
+ * both read `popupCount` directly. An admin who set the count to 2 and then
+ * wrote a single popup produced a page that could never be completed: the
+ * reader clicked the only popup there was, the server kept waiting for a
+ * second one, the page never flipped to done, and the unique key was never
+ * issued. From the outside it looked exactly like "the popups don't work".
+ *
+ * The rendered list wins wherever it exists, because that is what a reader can
+ * physically click. `popupCount` remains the fallback for older tasks that
+ * never had a `popups` array.
+ */
+export function renderedPopupCount(page: ArticlePage): number {
+  const defined = (page.popups ?? []).filter(
+    (p) => String(p?.text ?? "").trim().length > 0
+  ).length;
+  return defined > 0 ? defined : page.popupCount;
+}
+
 export function buildEngagementPlan(
   seedHex: string,
   popupCount: number,

@@ -5,7 +5,10 @@ import { requireActiveUser } from "@/lib/require-active";
 import { SubmissionStatus } from "@/generated/prisma/client";
 import { TaskType } from "@/generated/prisma";
 import type { ArticleConfig } from "@/lib/article-tasks";
-import { signArticleTaskToken } from "@/lib/article-task-token";
+import {
+  signArticleTaskToken,
+  appendArticleToken,
+} from "@/lib/article-task-token";
 import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
 import {
@@ -197,7 +200,7 @@ export async function POST(
     u: session.user.id,
   });
 
-  const firstPageUrl = appendToken(pages[0].url, token);
+  const firstPageUrl = appendArticleToken(pages[0].url, token);
 
   return NextResponse.json({
     submissionId: submission.id,
@@ -205,9 +208,4 @@ export async function POST(
     firstPageUrl,
     pageCount: pages.length,
   });
-}
-
-function appendToken(url: string, token: string): string {
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}eg=${encodeURIComponent(token)}`;
 }

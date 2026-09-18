@@ -1,6 +1,8 @@
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
+import { appendArticleToken } from "../src/lib/article-task-token";
+import { renderedPopupCount } from "../src/lib/article-tasks";
 
 /**
  * Article embed — the cross-domain Unique Key Pool script.
@@ -213,18 +215,20 @@ function main() {
   /* ── 3. The token survives the URL it is appended to ── */
   console.log("\n3. The page token survives every URL shape");
   {
-    const cfg = read("src/app/api/article-tasks/[taskId]/embed-config/route.ts");
-    // The real function, with only its signature's type annotations removed so
-    // it can be executed. The body is untouched, which is the point — these
-    // assertions are on the shipped logic, not a copy of it.
-    const fnSrc = extractFunction(cfg, "appendToken").replace(
-      /^function appendToken\([^)]*\)\s*:\s*\w+/,
-      "function appendToken(url, token)"
-    );
-    check("the helper is executable once its types are stripped", !/:\s*string/.test(fnSrc.split("\n")[0]));
-    const appendToken = new Function(
-      `${fnSrc} return appendToken;`
-    )() as (url: string, token: string) => string;
+    // One implementation, imported and run for real. It used to exist twice —
+    // and after the copy in embed-config was fixed, the copy in the start
+    // route (the reader's FIRST link, so the one that mattered most) still
+    // mangled fragment URLs and stacked duplicate tokens.
+    const appendToken = appendArticleToken;
+    for (const f of [
+      "src/app/api/article-tasks/[taskId]/start/route.ts",
+      "src/app/api/article-tasks/[taskId]/embed-config/route.ts",
+    ]) {
+      check(
+        `${f.split("/").slice(-2)[0]} uses the shared helper, not a local copy`,
+        /appendArticleToken\(/.test(read(f)) && !/function appendToken\(/.test(read(f))
+      );
+    }
 
     const cases: Array<[string, string, string]> = [
       ["a plain URL", "https://site.com/a", "eg=TOK"],
@@ -319,6 +323,127 @@ function main() {
       const got = makeResolver(env)(FALLBACK);
       check(label, got === want, `got ${got}`);
     }
+  }
+
+  /* ── 6. One popup count ── */
+  console.log("\n6. The count drawn and the count required are the same number");
+  {
+    // The bug the owner hit: an admin set popupCount=2 and wrote one popup.
+    // The embed drew the one, the server waited for two, the page never
+    // completed and the unique key was never issued — which from the outside
+    // reads as "the popups don't work".
+    type P = Parameters<typeof renderedPopupCount>[0];
+    const page = (popupCount: number, texts: string[]): P =>
+      ({
+        url: "https://x.test/a",
+        popupCount,
+        popups: texts.map((t) => ({ text: t })),
+      }) as unknown as P;
+
+    check(
+      "a defined popup list wins over a stale popupCount",
+      renderedPopupCount(page(2, ["Click me"])) === 1
+    );
+    check("…and the other way round too", renderedPopupCount(page(1, ["a", "b", "c"])) === 3);
+    check(
+      "a popup with no text is not counted — the embed drops those",
+      renderedPopupCount(page(5, ["real", "  ", ""])) === 1
+    );
+    check(
+      "a legacy page with no popups array falls back to popupCount",
+      renderedPopupCount({ url: "https://x.test/a", popupCount: 3 } as unknown as P) === 3
+    );
+    check(
+      "a page that asks for none still means none",
+      renderedPopupCount({ url: "https://x.test/a", popupCount: 0 } as unknown as P) === 0,
+      "pages with no popups are auto-complete; making them 1 would deadlock the journey"
+    );
+
+    // The two routes that DECIDE whether a page is finished must never read
+    // the raw field again — that is the regression that deadlocked the
+    // journey, and it looks like a harmless simplification in review.
+    for (const f of ["popup-progress", "generate-key"]) {
+      const src = read(`src/app/api/article-tasks/[taskId]/${f}/route.ts`);
+      check(
+        `${f} counts popups through the shared helper`,
+        /renderedPopupCount\(/.test(src) && !/\bpage(Def|s\[\w+\])?\.popupCount\b/.test(src),
+        "a raw popupCount here is what made the page impossible to finish"
+      );
+    }
+    {
+      // embed-config still reads the raw field, legitimately: it is the
+      // fallback that synthesises placeholder popups for a legacy page that
+      // has no `popups` array. What it must not do is REPORT a different
+      // number than it draws.
+      const src = read("src/app/api/article-tasks/[taskId]/embed-config/route.ts");
+      check(
+        "embed-config reports the rendered count",
+        /popupCount: renderedPopupCount\(page\)/.test(src)
+      );
+      check(
+        "…and its only raw use is the legacy placeholder synthesis",
+        (src.match(/\bpage\.popupCount\b/g) ?? []).length === 2 &&
+          /Array\.from\(\{ length: page\.popupCount \}/.test(src)
+      );
+    }
+  }
+
+  /* ── 7. Nothing fails in silence ── */
+  console.log("\n7. A failure says why");
+  {
+    const src = read(ROUTE);
+    check("there is a console logger", /function log\(msg, extra\)/.test(src));
+    check(
+      "a missing token explains itself instead of returning silently",
+      /no "eg" token in the page URL/.test(src)
+    );
+    check(
+      "a refused config tells the reader",
+      /maybeNotice\(/.test(src) && /This article link has expired/.test(src)
+    );
+    // The article the owner is actually using carries two tasks' snippets, so
+    // one of them always gets a 403. It has to stay quiet, or it would tell a
+    // reader the link is broken while the task runs fine beside it.
+    check(
+      "a snippet for a different task stays quiet",
+      /if \(res\.status === 403\) return;/.test(src)
+    );
+    check(
+      "…and any other failure first waits to see whether another snippet won",
+      /window\.__egAtLoaded/.test(src) && /function maybeNotice/.test(src)
+    );
+  }
+
+  /* ── 8. Starting the journey needs no browser permission ── */
+  console.log("\n8. The article opens without a popup-blocker prompt");
+  {
+    const src = read("src/components/user/tasks/article-task-detail-view.tsx");
+    // window.open AFTER an await has lost the user's gesture, and every popup
+    // blocker stops it — the reader gets a permission prompt instead of the
+    // article. The tab has to be opened while the click is still in scope.
+    // Scoped to this card's own body — the file holds several other cards
+    // that fetch, and comparing against the first `await fetch(` in the whole
+    // file would compare against one of theirs.
+    const card = src.slice(src.indexOf("function KeyPoolStartCard"));
+    const body = card.slice(0, card.indexOf("\n  return ("));
+    const openAt = body.indexOf('const tab = window.open("", "_blank")');
+    check(
+      "the tab is opened during the click, before the token round-trip",
+      openAt >= 0 && openAt < body.indexOf("await fetch("),
+      "opening after the fetch is what triggered the blocker"
+    );
+    check(
+      "the blank tab is then navigated to the article",
+      /tab\.location\.replace\(url\)/.test(src)
+    );
+    check(
+      "a blocked tab falls back to a real link the reader clicks",
+      /setBlocked\(true\)/.test(src) && /Open the article/.test(src)
+    );
+    check(
+      "reopening reuses the same journey instead of minting a second token",
+      /if \(articleUrl\) \{/.test(src)
+    );
   }
 
   console.log(

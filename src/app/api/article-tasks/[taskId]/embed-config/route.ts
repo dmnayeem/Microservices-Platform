@@ -5,9 +5,13 @@ import {
   sanitizePopupHtml,
   DEFAULT_POPUP_THEME,
   buildEngagementPlan,
+  renderedPopupCount,
 } from "@/lib/article-tasks";
 import { createHmac } from "crypto";
-import { verifyArticleTaskToken } from "@/lib/article-task-token";
+import {
+  verifyArticleTaskToken,
+  appendArticleToken,
+} from "@/lib/article-task-token";
 import { corsPreflight, corsResponse } from "@/lib/article-task-cors";
 
 export function OPTIONS() {
@@ -151,7 +155,9 @@ export async function GET(
     pageCount: pages.length,
     isFinal,
     // Legacy fields (still consumed by older embed builds).
-    popupCount: page.popupCount,
+    // The number the reader will actually see, which is the same number
+    // popup-progress requires — these must never disagree again.
+    popupCount: renderedPopupCount(page),
     popupTitle: cfg.popupTitle ?? "Continue reading",
     popupHtml: sanitizePopupHtml(cfg.popupHtml ?? ""),
     popupDelaySeconds: Math.max(0, Math.min(60, cfg.popupDelaySeconds ?? 5)),
@@ -182,7 +188,7 @@ export async function GET(
     popupAfterClickMessage:
       cfg.popupAfterClickMessage ??
       "Nice — keep reading, the next prompt will appear soon.",
-    nextPageUrl: next ? appendToken(next.url, token!) : null,
+    nextPageUrl: next ? appendArticleToken(next.url, token!) : null,
     completeUrl, // where to redirect with the key after generation
     progress: {
       popupsCompleted: progress?.popupsCompleted ?? 0,
@@ -206,18 +212,3 @@ export async function GET(
  * Parsed properly, with the string form kept as a fallback for a relative or
  * malformed URL an admin may have typed.
  */
-function appendToken(url: string, token: string): string {
-  try {
-    const u = new URL(url);
-    u.searchParams.set("eg", token);
-    return u.toString();
-  } catch {
-    const [beforeHash, ...hashParts] = url.split("#");
-    const hash = hashParts.length ? `#${hashParts.join("#")}` : "";
-    const stripped = beforeHash
-      .replace(/([?&])eg=[^&]*/g, "$1")
-      .replace(/[?&]$/, "");
-    const sep = stripped.includes("?") ? "&" : "?";
-    return `${stripped}${sep}eg=${encodeURIComponent(token)}${hash}`;
-  }
-}

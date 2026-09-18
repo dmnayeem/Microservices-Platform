@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { renderedPopupCount } from "@/lib/article-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import { verifyArticleTaskToken } from "@/lib/article-task-token";
 import { corsPreflight, corsResponse } from "@/lib/article-task-cors";
@@ -71,14 +72,17 @@ export async function POST(
     // Pages with popupCount=0 are auto-complete (the embed redirects to
     // the next page without firing popup-progress). Skip the validation
     // for those — applies to middle pages and the final page alike.
-    if (pages[i].popupCount === 0) continue;
+    if (renderedPopupCount(pages[i]) === 0) continue;
     if (!completedSet.has(i)) {
       return corsResponse(
         {
           error: `Page ${i + 1} not yet completed`,
           missingPages: pages
             .map((_, idx) => idx)
-            .filter((idx) => !completedSet.has(idx) && pages[idx].popupCount > 0)
+            .filter(
+              (idx) =>
+                !completedSet.has(idx) && renderedPopupCount(pages[idx]) > 0
+            )
             .map((idx) => idx + 1),
         },
         { status: 400 }

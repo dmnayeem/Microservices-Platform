@@ -124,3 +124,39 @@ export function verifyArticleTaskToken(
 
   return { ok: true, payload };
 }
+
+/**
+ * Put the session token on an article page URL.
+ *
+ * Every page of the journey is reached by this, and the embed reads the token
+ * with `searchParams.get('eg')` — so the token has to end up in the QUERY, on
+ * whatever URL the admin actually typed. Two shapes broke the naive
+ * `url + '?eg=' + token`:
+ *
+ *  - `https://site.com/a#part2` put the query inside the fragment, where
+ *    `searchParams` cannot see it. The embed then found no token and returned
+ *    silently, so the page simply showed no popups and said nothing.
+ *  - Re-entering a page that already carried a token appended a second `eg=`,
+ *    and the URL grew on every hop through the pool.
+ *
+ * This lives in one place because it was previously implemented twice — the
+ * copy in the start route (the reader's FIRST link) still had both bugs after
+ * the one in embed-config was fixed.
+ */
+export function appendArticleToken(url: string, token: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.set("eg", token);
+    return u.toString();
+  } catch {
+    // A relative or otherwise unparseable URL, handled textually so an admin
+    // who typed one still gets a working link.
+    const [beforeHash, ...hashParts] = url.split("#");
+    const hash = hashParts.length ? `#${hashParts.join("#")}` : "";
+    const stripped = beforeHash
+      .replace(/([?&])eg=[^&]*/g, "$1")
+      .replace(/[?&]$/, "");
+    const sep = stripped.includes("?") ? "&" : "?";
+    return `${stripped}${sep}eg=${encodeURIComponent(token)}${hash}`;
+  }
+}
