@@ -303,6 +303,40 @@ function buildScript(origin: string): string {
       articleRoot.appendChild(node);
     }
 
+    // Prove it is actually reachable, and rescue it if not.
+    //
+    // The badge is absolutely positioned at a computed pixel depth on a page we
+    // do not control. A host site can defeat that in ways we cannot predict
+    // from here: \`body { overflow: hidden }\`, a transform on an ancestor (which
+    // makes it the containing block, so our document-space \`top\` means
+    // something else entirely), a scroll container that is not the window, or a
+    // document that grew after we measured because images loaded late — and the
+    // badge lands past the end of the content.
+    //
+    // Every one of those looks identical to the reader: the article, no popup,
+    // and no way to finish the task. So after the browser has laid it out, we
+    // check it has a real box inside the document, and if it does not, we pin
+    // it to the viewport instead. A badge in the corner is not the intended
+    // design; a badge nobody can reach is a broken task.
+    requestAnimationFrame(function() {
+      if (!node.parentNode) return;
+      var r = node.getBoundingClientRect();
+      var docH = Math.max(
+        document.body ? document.body.scrollHeight : 0,
+        document.documentElement ? document.documentElement.scrollHeight : 0
+      );
+      var absTop = r.top + (window.pageYOffset || 0);
+      var invisible = r.width < 4 || r.height < 4;
+      var pastEnd = docH > 0 && absTop > docH;
+      if (!invisible && !pastEnd) return;
+      node.style.setProperty('position', 'fixed', 'important');
+      node.style.setProperty('top', 'auto', 'important');
+      node.style.setProperty('bottom', '18px', 'important');
+      node.style.setProperty('left', 'auto', 'important');
+      node.style.setProperty('right', '18px', 'important');
+      node.style.setProperty('transform', 'none', 'important');
+    });
+
     state.activeNode = node;
     state.activeAnchor = null;
     state.activeZone = place.zone;

@@ -1804,7 +1804,7 @@ function EmbedSnippets({
   pageCount: number;
 }) {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [origin, setOrigin] = useState("");
+  const [browserOrigin, setBrowserOrigin] = useState("");
 
   // Reading `window` after mount is the SSR-safe way to get the origin: a lazy
   // `useState` initialiser would produce "" on the server and the real origin on
@@ -1813,8 +1813,30 @@ function EmbedSnippets({
   // rather than the code being made wrong to satisfy it.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
-    if (typeof window !== "undefined") setOrigin(window.location.origin);
+    if (typeof window !== "undefined") setBrowserOrigin(window.location.origin);
   }, []);
+
+  /**
+   * The snippet has to point at the PLATFORM, not at wherever the admin happens
+   * to be browsing.
+   *
+   * It used to be built from `window.location.origin`. An admin writing the task
+   * on `http://localhost:3000` got a snippet hardcoded to localhost, pasted it
+   * onto a real article page, and the script tag then pointed at the READER's
+   * own machine — so it silently never loaded. No popups, and the final page
+   * never handed out a key. It appeared to "work sometimes" only because it
+   * does work while the admin is testing from localhost too.
+   *
+   * `NEXT_PUBLIC_APP_URL` is the platform's public address and is the same
+   * value everything else that has to be absolute uses (og: tags, e-mail links).
+   */
+  const configured = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
+  const origin = configured || browserOrigin;
+  // A snippet that cannot work off this machine, flagged before it is pasted
+  // rather than after it has silently failed on a live article.
+  const originIsLocal = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/i.test(
+    origin
+  );
 
   if (!taskId || pageCount === 0) {
     return (
@@ -1857,6 +1879,23 @@ function EmbedSnippets({
           domains.
         </p>
       </div>
+
+      {/* Said before the snippet is pasted, not discovered after it has been
+          live on an article for a week doing nothing. */}
+      {originIsLocal && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5">
+          <p className="text-xs font-bold text-amber-300">
+            These snippets point at {origin} — they will not work on a real site
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-amber-200/90">
+            A reader&apos;s browser would try to load the script from their own
+            machine, so nothing happens: no popups, and the last page never
+            hands out a key. Set <code>NEXT_PUBLIC_APP_URL</code> to the
+            platform&apos;s public address and copy these again.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         {Array.from({ length: pageCount }, (_, i) => {
           const snippet = `<script src="${origin}/embed/article.js" data-task="${taskId}" data-page="${i + 1}" async></script>`;

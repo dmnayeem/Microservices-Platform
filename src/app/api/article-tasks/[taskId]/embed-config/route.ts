@@ -191,7 +191,33 @@ export async function GET(
   });
 }
 
+/**
+ * Put `?eg=<token>` on the next page's URL.
+ *
+ * Naive concatenation gets two cases wrong, and both end with the embed script
+ * going silent on that page — it returns immediately when the token is missing,
+ * so the reader sees the article with no popups and never reaches the key:
+ *
+ *  - **A fragment.** `…/article#intro` + `?eg=T` gives `#intro?eg=T`, where the
+ *    query is part of the FRAGMENT. `searchParams.get('eg')` returns null.
+ *  - **A token already there.** Re-entering a page appended a second `eg=`,
+ *    and the first one wins, which may be an expired token.
+ *
+ * Parsed properly, with the string form kept as a fallback for a relative or
+ * malformed URL an admin may have typed.
+ */
 function appendToken(url: string, token: string): string {
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}eg=${encodeURIComponent(token)}`;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("eg", token);
+    return u.toString();
+  } catch {
+    const [beforeHash, ...hashParts] = url.split("#");
+    const hash = hashParts.length ? `#${hashParts.join("#")}` : "";
+    const stripped = beforeHash
+      .replace(/([?&])eg=[^&]*/g, "$1")
+      .replace(/[?&]$/, "");
+    const sep = stripped.includes("?") ? "&" : "?";
+    return `${stripped}${sep}eg=${encodeURIComponent(token)}${hash}`;
+  }
 }
