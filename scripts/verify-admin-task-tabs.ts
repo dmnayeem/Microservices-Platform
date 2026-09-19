@@ -160,4 +160,12 @@ async function main() {
   if (failures.length) process.exitCode = 1;
 }
 
-main().finally(() => process.exit(process.exitCode ?? 0));
+// A thrown error must not read as a pass. Without this, a database blip in
+// section 4 killed main() mid-run and the process still exited 0 — a suite
+// that reports success by dying is worse than no suite.
+main()
+  .catch((e) => {
+    console.error(`  FAIL suite crashed — ${(e as Error).message}`);
+    process.exitCode = 1;
+  })
+  .finally(() => process.exit(process.exitCode ?? 0));
