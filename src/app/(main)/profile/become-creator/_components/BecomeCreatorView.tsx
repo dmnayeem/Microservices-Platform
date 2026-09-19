@@ -55,9 +55,15 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
           <Sparkles className="w-6 h-6 text-indigo-400" />
           Become a Creator
         </h1>
+        {/* Buying is on this page too, and nothing said so. Everything about
+          * it read as selling — "Become a Creator", "creator/seller role" —
+          * so someone who wanted to PAY people to do a job had no reason to
+          * think this was their page. */}
         <p className="text-sm text-gray-400 mt-1">
-          Apply to unlock a creator/seller role. An admin reviews each request and
-          you&apos;ll be notified once approved.
+          Apply to sell on the marketplace, run ads, or{" "}
+          <span className="text-gray-200">buy tasks</span> — paying people here
+          to follow, share or complete a job you set. An admin reviews each
+          request and you&apos;ll be notified once approved.
         </p>
       </header>
 

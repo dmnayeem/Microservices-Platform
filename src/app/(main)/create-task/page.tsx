@@ -14,7 +14,16 @@ export default async function CreateTaskPage() {
   if (!session?.user) redirect("/login");
 
   const { enabled } = await getEffectiveFeatures(session.user.id);
-  if (!enabled.has("createTasks")) return <FeatureLock title="Create Task" />;
+  // Somebody who came here to PAY people for a job is exactly the person who
+  // should be applying for buyer access, and this lock sent them nowhere —
+  // alone among the gated pages, six of which already offer the link. It is
+  // the most likely reason not one buyer application has ever been submitted.
+  //
+  // The second lock below deliberately has no apply link: that one means the
+  // admin has switched buyer creation off, which applying cannot fix.
+  if (!enabled.has("createTasks")) {
+    return <FeatureLock title="Create Task" applyHref="/profile/become-creator" />;
+  }
 
   const [pointsPerUsd, buyer, taskCredit, scope] = await Promise.all([
     getPointsPerUsd(),

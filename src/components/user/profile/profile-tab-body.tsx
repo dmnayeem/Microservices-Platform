@@ -280,10 +280,11 @@ export function ProfileTabBody({
                   <ShoppingBag className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white">Sell &amp; earn as a creator</p>
+                  <p className="text-sm font-bold text-white">Sell, advertise or buy tasks</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Apply to sell on the marketplace, run ads, become an affiliate, or start a
-                    promotion agency. Admin reviews each request.
+                    Apply to sell on the marketplace, run ads, become an affiliate, start a
+                    promotion agency, or buy tasks — pay people here to do a job you set.
+                    Admin reviews each request.
                   </p>
                 </div>
               </div>
