@@ -219,10 +219,6 @@ export function buildDiyContentPrompt(
   return lines.join("\n");
 }
 
-/** The note shown next to an image prompt, telling the user what to do with it. */
-export function buildImageInstruction(platformLabel: string): string {
-  return `Paste this prompt into ChatGPT or Gemini and ask it for the image. Download the image it gives you, then upload that image to ${platformLabel} when you create your post.`;
-}
 
 /** Convenience for callers that just want the DIY text from a def + values. */
 export function diyPromptFor(

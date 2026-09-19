@@ -38,6 +38,8 @@ import {
   ShieldCheck,
   ScanSearch,
   Wand2,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
@@ -668,6 +670,14 @@ function AiPromptSection({
     .map((s) => s.label);
   // The exact text a user in copy-prompt mode will be handed. Showing it here is
   // the admin's only way to check the recipe is actually complete before saving.
+  // Does this action even take an image prompt? A "follow a profile" task has
+  // no picture, and offering an explanation for a field that does not exist
+  // would be its own confusion.
+  const hasImagePrompt = (def.adminFields ?? []).some(
+    (f) => f.role === "imagePrompt"
+  );
+  const imagePromptSet = !!(fields.imagePrompt ?? "").trim();
+
   const preview = diyPromptFor(
     def,
     label,
@@ -681,14 +691,61 @@ function AiPromptSection({
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-purple-400" />
         <p className="text-sm font-bold text-purple-300">
-          Extra AI instructions (optional)
+          {label} content prompt — extra instructions (optional)
         </p>
       </div>
+
+      {/* Which prompt is which.
+        *
+        * A post like a Pinterest pin needs two completely different things
+        * from an AI — the words and the picture — and they are produced by two
+        * different fields in this form. The box below only shapes the WORDS;
+        * the picture comes from the "Image prompt" field further up. Nothing
+        * said so, so it was easy to write image directions in here and wonder
+        * why users kept getting the wrong thing. */}
+      <div className="rounded-lg border border-gray-800 bg-gray-950/60 p-2.5 space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+          What the user receives
+        </p>
+        <div className="flex items-start gap-2">
+          <FileText className="w-3.5 h-3.5 mt-0.5 shrink-0 text-purple-400" />
+          <p className="text-xs text-gray-300">
+            <span className="font-bold text-purple-300">
+              {label} task content prompt
+            </span>{" "}
+            — writes the {generatableLabels.length
+              ? generatableLabels.join(", ").toLowerCase()
+              : "text"}
+            . Built from this task&apos;s title, description and your reference
+            content, plus whatever you add in the box below.
+          </p>
+        </div>
+        {hasImagePrompt && (
+          <div className="flex items-start gap-2">
+            <ImageIcon className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
+            <p className="text-xs text-gray-300">
+              <span className="font-bold text-amber-300">
+                {label} task image prompt
+              </span>{" "}
+              — describes the picture. It comes from the{" "}
+              <span className="font-semibold">Image prompt</span> field above,
+              not from this box.{" "}
+              {imagePromptSet ? (
+                <span className="text-emerald-400">Set.</span>
+              ) : (
+                <span className="text-amber-400">
+                  Empty — users will get no image prompt unless you upload an
+                  image instead.
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+
       <p className="text-xs text-gray-400">
-        Users get a unique {def.label.toLowerCase()} built from this task&apos;s
-        title/description and your reference content above. Add any extra
-        guidance (tone, length, hashtags) here — leave blank for sensible
-        defaults.
+        Add any extra guidance for the text (tone, length, hashtags) — leave
+        blank for sensible defaults. Image directions do not belong here.
       </p>
       <textarea
         rows={6}

@@ -11,7 +11,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { AiMode, ResolvedStep } from "@/lib/social-tasks";
-import { buildImageInstruction } from "@/lib/social-ai-recipe";
 import { CopyButton, CopyField } from "@/components/user/primitives/copy-field";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { ownMediaKey, mediaSrc } from "@/lib/media-url";
@@ -140,15 +139,22 @@ function DiyPromptBlock({
   return (
     <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/30 p-3 space-y-2">
       <div className="flex items-center gap-2">
-        <Wand2 className="w-4 h-4 text-indigo-400" />
-        <p className="text-sm font-bold text-indigo-300">
-          Make it yourself — free
+        <Wand2 className="w-4 h-4 shrink-0 text-indigo-400" />
+        <p className="min-w-0 text-sm font-bold text-indigo-300">
+          Text prompt — writes your {platformLabel} post
         </p>
+        <span className="ml-auto shrink-0 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-300">
+          Free
+        </span>
       </div>
-      <p className="text-xs text-indigo-200/80">
-        Copy this prompt, paste it into ChatGPT or Gemini, and it will write your{" "}
-        {platformLabel} post for you. Then copy each line from its answer.
-      </p>
+      <PromptHowTo
+        tone="indigo"
+        steps={[
+          "Copy the prompt below.",
+          "Paste it into ChatGPT or Gemini and send it.",
+          `Copy the title and description it writes, and use them in your ${platformLabel} post.`,
+        ]}
+      />
       {/* The same collapsing treatment as every other long value: this prompt
           is written FOR ChatGPT, not for the person reading the page. It used
           to render as a 13rem scroll box nested inside the page's own scroll,
@@ -156,6 +162,43 @@ function DiyPromptBlock({
           phone. `CopyField` shows a few lines and copies the whole thing. */}
       <CopyField label="Prompt" value={prompt} />
     </div>
+  );
+}
+
+/**
+ * The three moves, spelled out.
+ *
+ * Both prompts on this screen are written FOR an AI, not for the person
+ * holding the phone — they open with "You are an expert…" and run to
+ * thousands of characters. Read as prose that looks like the task itself,
+ * which is why people were copying it into Pinterest instead of into ChatGPT.
+ * Numbered steps say what the long text is for before it is read.
+ */
+function PromptHowTo({
+  tone,
+  steps,
+}: {
+  tone: "indigo" | "amber";
+  steps: string[];
+}) {
+  const dot =
+    tone === "amber"
+      ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
+      : "border-indigo-500/40 bg-indigo-500/15 text-indigo-200";
+  const text = tone === "amber" ? "text-amber-100/90" : "text-indigo-100/90";
+  return (
+    <ol className="space-y-1.5">
+      {steps.map((s, i) => (
+        <li key={s} className="flex items-start gap-2">
+          <span
+            className={`mt-px grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] font-bold ${dot}`}
+          >
+            {i + 1}
+          </span>
+          <span className={`min-w-0 text-[11px] leading-snug ${text}`}>{s}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -186,10 +229,20 @@ function RecipeStep({
         value={step.value}
         badge={badge}
       >
-        <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/25 rounded p-2 flex items-start gap-1.5">
-          <ImageIcon className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          {buildImageInstruction(platformLabel)}
-        </p>
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-2 space-y-1.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold text-amber-200">
+            <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+            This one makes the picture, not the text
+          </p>
+          <PromptHowTo
+            tone="amber"
+            steps={[
+              "Copy the prompt above.",
+              "Paste it into ChatGPT or Gemini and ask for the image.",
+              `Download the image, then upload it to ${platformLabel} when you create your post.`,
+            ]}
+          />
+        </div>
       </CopyField>
     );
   }
