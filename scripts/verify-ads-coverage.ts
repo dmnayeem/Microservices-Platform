@@ -792,12 +792,11 @@ async function main() {
       return v ? token(v[1], theme) : raw;
     };
 
-    // The headline is no longer ON the creative, so there is no band to measure.
-    // It was overlaid on a dark gradient, and that gradient is what the owner
-    // reported as a black shadow across every ad; the text moved below the
-    // picture instead. Measured where it actually sits now — on the card, in
-    // both themes — which is a stronger check than the old one, because it no
-    // longer depends on the advertiser's creative at all.
+    // Contrast is measured on the CARD, in both themes, rather than against a
+    // creative we do not control. That stays true for the shared renderer,
+    // whose headline sits below the picture; the in-feed card puts its
+    // headline back on the image to match the reference layout, and the rules
+    // that keep that readable are asserted separately below.
     const chipAlpha = Number(
       src(REND).match(/const CHIP_BG = "rgba\(8,9,14,(0\.\d+)\)"/)?.[1] ?? 0
     );
@@ -805,10 +804,35 @@ async function main() {
     const chip = flatten([8, 9, 14], chipAlpha, "#ffffff");
 
     check(
-      "no dark scrim is painted over a creative any more",
+      "no flat dark scrim is painted over a creative",
       !/rgba\(8,9,14,0\.(8|9)/.test(src(REND)) &&
         !/rgba\(8,9,14,0\.(8|9)/.test(src(FEED)),
       "the band under the headline is what read as a black shadow on every ad"
+    );
+
+    /* The headline is back ON the creative in the in-feed card, because the
+       owner asked for the reference card's layout and pointed at it twice.
+       Its own row — two lines of heading plus a 44px circle, above a
+       description that is usually the same sentence again — was most of why
+       this card stood so much taller than the reference.
+       What must NOT come back with it is the full-height band that was
+       reported as a black shadow, so the darkening is pinned to the bottom of
+       the image and has to fade out. */
+    check(
+      "the headline's darkening is anchored to the bottom, not the whole image",
+      /absolute inset-x-0 bottom-0[^"]*h-2\/5 bg-linear-to-t/.test(src(FEED)),
+      "a full-cover overlay is the black shadow, whatever its opacity"
+    );
+    check(
+      "…and fades to nothing rather than ending in a hard edge",
+      /from-black\/70 via-black\/25 to-transparent/.test(src(FEED))
+    );
+    check(
+      "…and is not drawn at all when the ad has no headline",
+      /\{\(lead \|\| accent\) && \(\s*<span className="pointer-events-none absolute inset-x-0 bottom-0/.test(
+        src(FEED)
+      ),
+      "an ad with no text would otherwise get a dark bottom for nothing"
     );
 
     const rows: [string, string, string, number][] = [

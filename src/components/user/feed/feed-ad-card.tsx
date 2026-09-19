@@ -226,34 +226,45 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           </span>
         </span>
 
+        {/* Headline and arrow, on the creative — the reference card's layout.
+          *
+          * They used to sit in a row of their own beneath the image, and that
+          * row is most of why this card was so much taller than the reference:
+          * two lines of heading plus a 44px circle, above a description that is
+          * usually the same sentence again.
+          *
+          * The headline was moved off the image once before, because a full
+          * gradient band across the creative was the "black shadow" reported
+          * over and over. What comes back is not that band: it covers the
+          * bottom of the image only, fades to nothing well before the middle,
+          * and exists solely so text on an unknown photo stays readable — the
+          * same treatment the reference card uses. Nothing is drawn at all
+          * when there is no headline. */}
+        {(lead || accent) && (
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 block h-2/5 bg-linear-to-t from-black/70 via-black/25 to-transparent" />
+        )}
+        {((lead || accent) || url) && (
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end gap-2 p-3">
+            {(lead || accent) && (
+              <span className="on-media line-clamp-2 min-w-0 flex-1 text-base font-extrabold leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+                {lead}
+                {accent ? (
+                  <span className="text-(--app-info)">
+                    {lead ? " " : ""}
+                    {accent}
+                  </span>
+                ) : null}
+              </span>
+            )}
+            {url ? (
+              <span className="app-accent ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full">
+                <ArrowUpRight className="h-4 w-4" />
+              </span>
+            ) : null}
+          </span>
+        )}
       </div>
   );
-
-  /* The headline sits UNDER the creative, not on it.
-     It used to be overlaid on a black gradient band, and that band is what the
-     owner kept reporting as a black shadow across every ad. There is no way to
-     put light text on an arbitrary photo without darkening something, so the
-     text moved off the photo instead — no scrim, nothing to darken, and the
-     creative is shown whole. It stays inside the same anchor, so a tap on it is
-     still the one recorded click. */
-  const headlineRow = (lead || accent) ? (
-    <span className="flex items-center gap-2 px-4 pt-3 pb-1">
-      <span className="line-clamp-2 min-w-0 flex-1 text-lg font-extrabold leading-tight text-(--app-ink)">
-        {lead}
-        {accent ? (
-          <span className="text-(--app-info)">
-            {lead ? " " : ""}
-            {accent}
-          </span>
-        ) : null}
-      </span>
-      {url ? (
-        <span className="app-accent grid h-11 w-11 shrink-0 place-items-center rounded-full">
-          <ArrowUpRight className="h-5 w-5" />
-        </span>
-      ) : null}
-    </span>
-  ) : null;
 
   return (
     <article
@@ -263,13 +274,9 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
       {url ? (
         <a {...linkProps} className="app-press block" aria-label={`${headline || brand} — ${brand}`}>
           {creative}
-          {headlineRow}
         </a>
       ) : (
-        <>
-          {creative}
-          {headlineRow}
-        </>
+        creative
       )}
 
       {/* Dismiss (×) — over the creative, never over a button. */}
