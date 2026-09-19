@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isBotUserAgent } from "@/lib/bot-detect";
 import { z } from "zod";
 import { registerUser } from "@/lib/auth/services";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -42,6 +43,35 @@ export async function POST(request: NextRequest) {
     );
     const ip = clientIp(request);
     const fraud = await getFraudConfig();
+
+    // An automated signup, recorded before the account exists.
+    //
+    // The per-IP cap below catches someone making many accounts; it says
+    // nothing about ONE account made by a script, which is the case the owner
+    // asked to be able to see. A self-identifying client — curl, a request
+    // library, headless automation, or no user agent at all — is not a person
+    // filling in a form, and an account created that way is worth knowing
+    // about before it starts earning.
+    //
+    // Recorded, not blocked. This test is a string match on a header the
+    // client chooses, so refusing on it would turn one spoofed header into a
+    // locked-out real user, while a determined bot simply sends a browser
+    // agent and walks through. The event puts it in front of an admin, and the
+    // trust and spot-check gates still stand between the account and a payout.
+    const signupUa = request.headers.get("user-agent");
+    if (isBotUserAgent(signupUa)) {
+      await recordFraudEvent({
+        eventType: "BOT_SIGNUP",
+        severity: "MEDIUM",
+        ipAddress: ip,
+        userAgent: signupUa,
+        details: {
+          at: "signup",
+          reason: signupUa ? "automated user agent" : "no user agent sent",
+          email: validatedData.email,
+        },
+      });
+    }
     if (fraud.maxUsersPerIp > 0) {
       const existing = await accountsOnIp(ip);
       if (existing >= fraud.maxUsersPerIp) {

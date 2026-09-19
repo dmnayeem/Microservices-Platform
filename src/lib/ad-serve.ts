@@ -9,6 +9,7 @@ import {
 import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
 import { bufferImpression, bufferServeOutcome } from "@/lib/ad-counters";
+import { isBotRequest } from "@/lib/bot-detect";
 import { resolveEventCountry } from "@/lib/ad-geo";
 import { resolveCountryCode } from "@/lib/country-codes";
 import { creativeUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
@@ -362,10 +363,21 @@ async function serveAdInner(opts: {
     // nothing here. On Vercel the edge header wins anyway and the profile is
     // never consulted — which matters, because only 18 of 48 accounts have a
     // country set and an anonymous viewer has no profile at all.
-    bufferImpression(
-      chosen.id,
-      await resolveEventCountry({ userId, profileCountry: viewer.country })
-    );
+    // A crawler's page load is not an impression.
+    //
+    // Impressions are counted here, at delivery, which is the right ruler for
+    // an ad server — but it means every search, preview and monitoring bot
+    // that renders a page counts as a view. Against 210 deduplicated,
+    // user-attributed views this platform had 16,506 counted impressions, and
+    // inventory nobody saw is neither sellable nor a CTR the owner can read.
+    // The fill counters above still record the serve, because the ad genuinely
+    // was delivered — it is the audience number that must stay honest.
+    if (!(await isBotRequest())) {
+      bufferImpression(
+        chosen.id,
+        await resolveEventCountry({ userId, profileCountry: viewer.country })
+      );
+    }
   }
 
   return {
@@ -624,7 +636,9 @@ export async function serveFeedAds(opts: {
   //
   // The `kind:"view"` beacon no longer increments any counter (see
   // `recordImpression` in ad-events.ts), so this does not double-count.
-  if (out.length > 0) {
+  // Same bot rule as the single-ad path above — one test, both rulers, or the
+  // feed and every other space would be measuring different audiences again.
+  if (out.length > 0 && !(await isBotRequest())) {
     const country = await resolveEventCountry({
       userId,
       profileCountry: viewer.country,
