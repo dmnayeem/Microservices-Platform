@@ -24,6 +24,8 @@ import {
   Star,
   UserRound,
   History,
+  Archive,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -66,6 +68,24 @@ const taskTypeColors: Record<string, string> = {
   CUSTOM: "text-indigo-400 bg-indigo-500/10",
 };
 
+/**
+ * The status tabs, in the order an admin works through them: what is live,
+ * what they stopped, what is unfinished, what is done, and what was retired.
+ *
+ * ARCHIVED is here because it had no entry point at all. It is where a task
+ * goes instead of being deleted — its submissions are the record of work users
+ * were paid for — so those tasks existed with no way to look at them.
+ */
+const STATUS_TABS = [
+  { value: "all", label: "All", Icon: LayoutGrid, iconCls: "text-slate-400", activeCls: "border-slate-500 bg-slate-700" },
+  { value: "ACTIVE", label: "Active", Icon: CheckCircle, iconCls: "text-emerald-400", activeCls: "border-emerald-500 bg-emerald-600" },
+  { value: "PAUSED", label: "Paused", Icon: Pause, iconCls: "text-amber-400", activeCls: "border-amber-500 bg-amber-600" },
+  { value: "DRAFT", label: "Draft", Icon: FileText, iconCls: "text-slate-400", activeCls: "border-slate-500 bg-slate-600" },
+  { value: "COMPLETED", label: "Completed", Icon: ListTodo, iconCls: "text-blue-400", activeCls: "border-blue-500 bg-blue-600" },
+  { value: "EXPIRED", label: "Expired", Icon: Clock, iconCls: "text-orange-400", activeCls: "border-orange-500 bg-orange-600" },
+  { value: "ARCHIVED", label: "Archived", Icon: Archive, iconCls: "text-rose-400", activeCls: "border-rose-500 bg-rose-600" },
+] as const;
+
 export default async function AdminTasksPage({ searchParams }: PageProps) {
   const session = await auth();
 
@@ -78,6 +98,24 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   }
 
   const params = await searchParams;
+
+  /**
+   * A tab link that keeps every other filter.
+   *
+   * The old stat-card links were bare `/admin/tasks?status=X`, so switching
+   * status silently dropped the type, board and search an admin had just set.
+   * Page resets, though — page 4 of Active is not page 4 of Draft.
+   */
+  const tabHref = (status: string) => {
+    const q = new URLSearchParams();
+    if (status !== "all") q.set("status", status);
+    if (params.type) q.set("type", params.type);
+    if (params.difficulty) q.set("difficulty", params.difficulty);
+    if (params.board) q.set("board", params.board);
+    if (params.search) q.set("search", params.search);
+    const qs = q.toString();
+    return qs ? `/admin/tasks?${qs}` : "/admin/tasks";
+  };
   const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
@@ -118,6 +156,9 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     pausedCount,
     completedCount,
     draftCount,
+    archivedCount,
+    expiredCount,
+    allCount,
     pendingSubmissions,
     pendingReviewCount,
   ] = await Promise.all([
@@ -139,6 +180,11 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     prisma.task.count({ where: { status: "PAUSED" } }),
     prisma.task.count({ where: { status: "COMPLETED" } }),
     prisma.task.count({ where: { status: "DRAFT" } }),
+    prisma.task.count({ where: { status: "ARCHIVED" } }),
+    prisma.task.count({ where: { status: "EXPIRED" } }),
+    // "All" needs its own count: `totalCount` is the count of the CURRENT
+    // filter, so it would read as whatever tab is open.
+    prisma.task.count(),
     prisma.taskSubmission.count({ where: { status: "PENDING" } }),
     prisma.task.count({ where: { status: "PENDING_REVIEW" } }),
   ]);
@@ -269,72 +315,66 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Stats — 4-card row per spec (Active / Paused / Completed / Draft) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Link
-          href="/admin/tasks?status=ACTIVE"
-          className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
-            params.status === "ACTIVE" ? "border-emerald-500/50" : "border-slate-800 hover:border-emerald-500/50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white tabular-nums">{activeCount}</p>
-              <p className="text-sm text-slate-500">Active</p>
-            </div>
-          </div>
-        </Link>
-        <Link
-          href="/admin/tasks?status=PAUSED"
-          className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
-            params.status === "PAUSED" ? "border-amber-500/50" : "border-slate-800 hover:border-amber-500/50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <Pause className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white tabular-nums">{pausedCount}</p>
-              <p className="text-sm text-slate-500">Paused</p>
-            </div>
-          </div>
-        </Link>
-        <Link
-          href="/admin/tasks?status=COMPLETED"
-          className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
-            params.status === "COMPLETED" ? "border-blue-500/50" : "border-slate-800 hover:border-blue-500/50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <ListTodo className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white tabular-nums">{completedCount}</p>
-              <p className="text-sm text-slate-500">Completed</p>
-            </div>
-          </div>
-        </Link>
-        <Link
-          href="/admin/tasks?status=DRAFT"
-          className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
-            params.status === "DRAFT" ? "border-slate-500/50" : "border-slate-800 hover:border-slate-500/50"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-700/40 rounded-lg">
-              <FileText className="w-5 h-5 text-slate-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white tabular-nums">{draftCount}</p>
-              <p className="text-sm text-slate-500">Draft</p>
-            </div>
-          </div>
-        </Link>
+      {/* Status tabs.
+        *
+        * These four numbers used to be stat cards that happened to be links,
+        * which is two problems at once: they read as a dashboard rather than
+        * as the control they were, and clicking one threw away whatever type,
+        * board or search filter was already applied — so narrowing a list and
+        * then switching status started over.
+        *
+        * One row of tabs instead, carrying the same counts. It adds the two
+        * that were missing and that an admin genuinely needs: Archived, which
+        * had no way in at all despite being where retired tasks live, and All,
+        * which had no way back.
+        */}
+      <div
+        role="tablist"
+        aria-label="Filter tasks by status"
+        className="flex flex-wrap items-center gap-1.5"
+      >
+        {STATUS_TABS.map((t) => {
+          const current =
+            (params.status ?? "all").toUpperCase() === t.value.toUpperCase();
+          const count =
+            t.value === "all"
+              ? allCount
+              : t.value === "ACTIVE"
+                ? activeCount
+                : t.value === "PAUSED"
+                  ? pausedCount
+                  : t.value === "DRAFT"
+                    ? draftCount
+                    : t.value === "COMPLETED"
+                      ? completedCount
+                      : t.value === "EXPIRED"
+                        ? expiredCount
+                        : archivedCount;
+          return (
+            <Link
+              key={t.value}
+              href={tabHref(t.value)}
+              role="tab"
+              aria-selected={current}
+              aria-current={current ? "page" : undefined}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+                current
+                  ? `${t.activeCls} text-white`
+                  : "border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+              }`}
+            >
+              <t.Icon className={`w-4 h-4 shrink-0 ${current ? "" : t.iconCls}`} />
+              {t.label}
+              <span
+                className={`rounded px-1.5 py-0.5 text-[11px] tabular-nums ${
+                  current ? "bg-white/15" : "bg-slate-800 text-slate-400"
+                }`}
+              >
+                {count.toLocaleString()}
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Filters — 5 filters per spec: Search, Type, Status, Difficulty, Board */}
