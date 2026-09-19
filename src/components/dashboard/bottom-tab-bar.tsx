@@ -87,6 +87,7 @@ export function BottomTabBar({
   return (
     <nav
       aria-label="Primary"
+      data-chrome="bottom"
       className="app-chrome md:hidden fixed bottom-0 inset-x-0 z-40 rounded-none border-0 border-t border-(--shell-border)"
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",

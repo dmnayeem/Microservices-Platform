@@ -170,7 +170,13 @@ export function Header({ user, avatar }: HeaderProps) {
 
   return (
     <>
-      <header className="app-chrome sticky top-0 z-30 border-0 border-b border-(--shell-border) rounded-none safe-t">
+      {/* data-chrome marks this as a bar the feed may slide out of the way
+        * while the reader scrolls down. Both this and the tab bar carry
+        * `app-chrome`, so that class cannot say which is which. */}
+      <header
+        data-chrome="top"
+        className="app-chrome sticky top-0 z-30 border-0 border-b border-(--shell-border) rounded-none safe-t"
+      >
         {/* Seven controls in one row is what "crowded" meant: a logo, a search
             box, a theme toggle, a Reports link, a points pill, a bell and an
             avatar, all at the same weight. Two of them have moved (see the

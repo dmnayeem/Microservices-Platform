@@ -14,6 +14,7 @@ import {
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { useAppRefresh } from "@/hooks/use-app-refresh";
 import { cn } from "@/lib/utils";
+import { useChromeAutoHide } from "@/lib/use-chrome-autohide";
 import {
   BannerSlider,
   type BannerSlide,
@@ -64,6 +65,11 @@ export function SocialFeedView({
   groupsEnabled = false,
   hiddenPaths,
 }: Props) {
+  // Scrolling down hands the screen back to the posts: the header, this
+  // toolbar and the bottom tab bar slide away, and any upward scroll returns
+  // them. Phones and tablets only — see globals.css, which owns the movement.
+  useChromeAutoHide();
+
   const [tab, setTab] = useState<ViewTab>("feed");
   const [sort, setSort] = useState<Sort>("recent");
   // The rail's contents, reachable below `xl` where the rail itself does not
@@ -148,7 +154,10 @@ export function SocialFeedView({
             It sticks under the app header (h-16 plus the safe-area inset) at
             z-20 — below the header's z-30 — so the controls stay reachable while
             reading without ever covering the header's own menus. */}
-        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 flex items-center gap-2 rounded-(--app-r-card) border border-(--app-line) bg-(--app-surface) px-2 py-2 shadow-(--app-e1)">
+        <div
+          data-chrome="toolbar"
+          className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 flex items-center gap-2 rounded-(--app-r-card) border border-(--app-line) bg-(--app-surface) px-2 py-2 shadow-(--app-e1)"
+        >
           {/* The BAR stays when Groups is off — it carries the sort control and
               the panel handle, which are worth a row on their own. The TABS do
               not: one tab is not a choice, it is a button that reports where you

@@ -2514,3 +2514,55 @@ html[data-theme="light"][data-accent="silver"] {
   --app-rail-a: #6b7688;
   --app-rail-b: #314158;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Chrome auto-hide (feed, phones and tablets)
+
+   Scrolling down slides the header, the feed's filter toolbar and the bottom
+   tab bar out of the way; scrolling up brings them straight back. The state
+   is a data attribute on <html>, set by useChromeAutoHide, so a scroll does
+   not re-render anything — CSS does all the moving.
+
+   Below lg only. A laptop has the room, and the persistent sidebar makes a
+   disappearing header read as a glitch rather than a feature.
+
+   Each bar is moved fully clear of its own edge rather than by a fixed
+   distance, because none of the three has a height this file can know:
+   the header carries the safe-area inset, the toolbar sits 4rem down the
+   page, and the tab bar's height depends on how many tabs the user's plan
+   gives them.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  [data-chrome="top"],
+  [data-chrome="toolbar"],
+  [data-chrome="bottom"] {
+    transition: transform 200ms ease;
+    will-change: transform;
+  }
+
+  html[data-chrome-hidden="1"] [data-chrome="top"] {
+    transform: translateY(-100%);
+  }
+
+  /* The toolbar is sticky 4rem down, so clearing its own height is not
+     enough — it has to clear the gap above it as well, or it stops halfway
+     and hangs at the top of the screen. */
+  html[data-chrome-hidden="1"] [data-chrome="toolbar"] {
+    transform: translateY(calc(-100% - 4rem - env(safe-area-inset-top)));
+    pointer-events: none;
+  }
+
+  html[data-chrome-hidden="1"] [data-chrome="bottom"] {
+    transform: translateY(100%);
+  }
+}
+
+/* Someone who has asked for less motion still gets the space back — they
+   just get it without the slide. */
+@media (prefers-reduced-motion: reduce) {
+  [data-chrome="top"],
+  [data-chrome="toolbar"],
+  [data-chrome="bottom"] {
+    transition: none;
+  }
+}
