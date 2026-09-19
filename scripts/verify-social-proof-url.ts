@@ -219,6 +219,30 @@ function main() {
       /onMismatch: "manual" as const/.test(src),
       "shouldAutoReject is still the only thing that may reject, and only where the admin asked"
     );
+
+    // The last link in the chain, and the one the owner actually asked for:
+    // a matching pin APPROVES, with nothing for the admin to switch on.
+    //
+    // Auto-approval requires every item in the bundle to have been verified,
+    // counted as `verifyIdx.length === cfg.items.length`. That equality is why
+    // the implicit rule had to join `verifyIdx` rather than being checked off
+    // to the side — an item verified outside it would make the counts disagree
+    // and send a perfectly good pin to manual review instead.
+    check(
+      "a verified item feeds the auto-approve decision",
+      /socialCodeAutoApprove =[\s\S]{0,40}allVerified && verifyIdx\.length === cfg\.items\.length/.test(
+        src
+      ),
+      "the count must include the implicitly-verified item or it never approves"
+    );
+    check(
+      "a matching destination is recorded as verified",
+      /evaluation\.verdict === "verified"\s*\?\s*"verified"/.test(src)
+    );
+    check(
+      "…and anything else stops the approval",
+      /if \(status !== "verified"\) allVerified = false;/.test(src)
+    );
   }
 
   console.log(
