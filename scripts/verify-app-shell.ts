@@ -261,10 +261,10 @@ function main() {
     // the nav's share from `md`, where the nav is hidden.
     {
       const run = read("src/components/user/tasks/social-task-run-view.tsx");
-      const NAV_CLEARANCE = /3\.5rem\+env\(safe-area-inset-bottom\)\+var\(--anchor-ad-h,0px\)/;
       check(
         "the social submit bar clears the phone nav instead of hiding under it",
-        !/fixed bottom-0/.test(run) && NAV_CLEARANCE.test(run),
+        !/fixed bottom-0/.test(run) &&
+          /bottom-\[calc\(var\(--bottom-nav-h,3\.5rem\)\+var\(--anchor-ad-h,0px\)\)\]/.test(run),
         "bottom-0 puts it under the z-40 tab bar, where it cannot be tapped"
       );
       check(
@@ -273,15 +273,21 @@ function main() {
       );
       check(
         "the content below is padded for the bar's new position",
-        /pb-\[calc\(7rem\+3\.5rem\+env\(safe-area-inset-bottom\)/.test(run),
+        /pb-\[calc\(7rem\+var\(--bottom-nav-h,3\.5rem\)/.test(run),
         "otherwise the bar simply covers the last card instead of the button"
       );
-      // The number this offset is built on. If the tabs grow, the bar has to
-      // be told — nothing else connects the two.
+      // The nav's height is measured, not assumed. A constant was wrong on a
+      // real phone — it ignores the safe-area inset, the top border and label
+      // reflow — and a few pixels short is enough to bury the Submit button
+      // under a z-40 nav.
       check(
-        "the nav is still the 3.5rem tall that offset assumes",
-        /min-h-14/.test(bar),
-        "the submit bar's clearance is hard-coded to this height"
+        "the nav publishes its measured height",
+        /--bottom-nav-h/.test(bar) && /new ResizeObserver\(sync\)/.test(bar),
+        "a hard-coded 3.5rem is what clipped the Submit button"
+      );
+      check(
+        "…and gives the space back when it unmounts",
+        /setProperty\(NAV_HEIGHT_VAR, "0px"\)/.test(bar)
       );
     }
 

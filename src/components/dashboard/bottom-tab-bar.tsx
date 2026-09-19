@@ -2,12 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Home, ListTodo, Wallet, Target, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { haptic } from "@/lib/haptics";
+
+/**
+ * The bar's measured height, in px, on <html>. Anything that has to sit above
+ * the phone nav reads this instead of guessing.
+ */
+const NAV_HEIGHT_VAR = "--bottom-nav-h";
 
 // Left → right: two smaller page tabs, the bigger center Home, then Wallet + Menu.
 const TABS = [
@@ -77,6 +83,7 @@ export function BottomTabBar({
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
+  const navRef = useRef<HTMLElement | null>(null);
   const hidden = new Set(hiddenPaths ?? []);
   const tabs = TABS.filter(
     (t) =>
@@ -84,8 +91,40 @@ export function BottomTabBar({
       !hidden.has(t.href)
   );
 
+  /**
+   * Publish this bar's real height so anything sitting above it can clear it
+   * exactly.
+   *
+   * Callers used to hard-code 3.5rem, from the tabs' `min-h-14`. That number
+   * is only ever approximately right: the safe-area inset differs per device,
+   * the labels reflow at large text sizes, and the raised Home button and the
+   * top border add to it. Being a few pixels short puts the bottom of whatever
+   * is above — the task screen's Submit button, for one — underneath a z-40
+   * nav, where it cannot be tapped.
+   *
+   * Measured, like the anchor ad does, rather than assumed. At `md` the bar is
+   * `display: none`, so the measurement is 0 there and desktop layouts get
+   * their space back with no breakpoint logic of their own.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    const el = navRef.current;
+    if (!el) return;
+    const sync = () => {
+      root.style.setProperty(NAV_HEIGHT_VAR, `${Math.round(el.offsetHeight)}px`);
+    };
+    sync();
+    const obs = new ResizeObserver(sync);
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      root.style.setProperty(NAV_HEIGHT_VAR, "0px");
+    };
+  }, []);
+
   return (
     <nav
+      ref={navRef}
       aria-label="Primary"
       data-chrome="bottom"
       className="app-chrome md:hidden fixed bottom-0 inset-x-0 z-40 rounded-none border-0 border-t border-(--shell-border)"

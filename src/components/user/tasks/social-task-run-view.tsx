@@ -766,7 +766,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
      * clear it: the bar itself (pb-28's 7rem, unchanged) plus everything the
      * bar now sits above — the nav, the safe area, and any anchor ad. Without
      * this the bar just covers the last link instead of the Submit button. */
-    <div className="max-w-2xl mx-auto space-y-4 pb-[calc(7rem+3.5rem+env(safe-area-inset-bottom)+var(--anchor-ad-h,0px))] md:pb-[calc(7rem+var(--anchor-ad-h,0px))]">
+    <div className="max-w-2xl mx-auto space-y-4 pb-[calc(7rem+var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:pb-[calc(7rem+var(--anchor-ad-h,0px))]">
       <Link
         href="/social-tasks"
         className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
@@ -1252,12 +1252,19 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
        * is — and that nav is z-40 against this bar's z-30, so the tab bar
        * covered Submit and the task could not be finished on mobile at all.
        *
-       * Same offset the anchor ad uses: clear the nav (min-h-14 plus the
-       * device's safe area) and clear the ad itself, which parks in that same
-       * strip and publishes its measured height as --anchor-ad-h. From `md`
-       * the nav is hidden, so only the ad's allowance remains. */}
+       * Then it cleared `3.5rem`, from the tabs' `min-h-14`, and Submit was
+       * still being clipped on a real phone: that constant ignores the device
+       * safe area, the top border, and label reflow at larger text sizes, and
+       * a few pixels short is all it takes to put the bottom of the button
+       * under a z-40 nav.
+       *
+       * So neither bar guesses any more. The nav measures itself into
+       * `--bottom-nav-h` and the anchor ad into `--anchor-ad-h`, and this
+       * clears the sum of the two. The 3.5rem fallback only covers the frame
+       * before the nav's observer has run; `md:` still pins the desktop case,
+       * where the nav is display:none and measures 0 anyway. */}
       {total > 0 && (
-        <div className="fixed inset-x-0 z-30 border-t border-gray-800 bg-gray-950/95 backdrop-blur px-4 py-3 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+var(--anchor-ad-h,0px))] md:bottom-[var(--anchor-ad-h,0px)]">
+        <div className="fixed inset-x-0 z-30 border-t border-gray-800 bg-gray-950/95 backdrop-blur px-4 py-3 bottom-[calc(var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:bottom-[var(--anchor-ad-h,0px)]">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-xs text-gray-400">
