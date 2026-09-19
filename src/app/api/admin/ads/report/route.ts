@@ -236,6 +236,38 @@ export async function GET(req: NextRequest) {
     countryNames
   );
 
+  /**
+   * How much of this window the country breakdown actually describes.
+   *
+   * Every share in that panel is a share of the country table's OWN total, so
+   * they add to 100% however little of the window was attributed. Per-country
+   * recording began partway through this platform's life — before that, every
+   * impression was counted but none carried a country — so a wide date range
+   * shows a panel that looks complete while describing a fraction of the
+   * traffic in the totals beside it. That is what "the report doesn't show the
+   * right numbers" was.
+   *
+   * Same treatment as `fillRate` below: report the measurement honestly and
+   * let the UI say so, rather than presenting a number that reads as whole.
+   */
+  const windowImpressions = stats.reduce(
+    (sum, s) => (inFilter(adMap.get(s.adId)) ? sum + s.impressions : sum),
+    0
+  );
+  const attributedImpressions = perCountry.perCountry.reduce(
+    (sum, r) => sum + r.impressions,
+    0
+  );
+  const countryCoverage = {
+    windowImpressions,
+    attributedImpressions,
+    /** 0–100, or null when the window has no impressions to compare against. */
+    coveragePct:
+      windowImpressions > 0
+        ? Math.min(100, (attributedImpressions / windowImpressions) * 100)
+        : null,
+  };
+
   if (stats.length === 0) {
     return NextResponse.json({
       days,
@@ -243,6 +275,7 @@ export async function GET(req: NextRequest) {
       perPlacement: [],
       perCampaign: [],
       ...perCountry,
+      countryCoverage,
     });
   }
 
@@ -359,5 +392,6 @@ export async function GET(req: NextRequest) {
     }).sort((a, b) => b.impressions - a.impressions),
     perCampaign: shape(perCampaign, 50),
     ...perCountry,
+    countryCoverage,
   });
 }

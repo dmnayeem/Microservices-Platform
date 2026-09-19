@@ -653,6 +653,39 @@ async function main() {
       "the admin can sort the breakdown",
       /countrySort/.test(report) && /countrySort/.test(ui)
     );
+
+    /* The panel says how much of the window it actually describes.
+     *
+     * Every share in it is a share of the country table's OWN total, so they
+     * add to 100% however little of the window carried a country — and
+     * per-country recording started partway through this platform's life. On a
+     * 90-day range the panel described 14.7% of the impressions while sitting
+     * beside totals seven times larger, which is what "the report doesn't show
+     * the right numbers" meant. The unknown-share sentence above did not cover
+     * this: its denominator is the attributed total too. */
+    check(
+      "the API reports what fraction of the window carries a country",
+      /const windowImpressions = stats\.reduce\(/.test(report) &&
+        /attributedImpressions/.test(report) &&
+        /coveragePct/.test(report),
+      "without it the panel cannot tell a full window from a fifth of one"
+    );
+    check(
+      "the window total is measured through the same filter as the panel",
+      /inFilter\(adMap\.get\(s\.adId\)\) \? sum \+ s\.impressions : sum/.test(report),
+      "comparing a filtered breakdown against an unfiltered total invents a gap"
+    );
+    check(
+      "…and the screen states the coverage when it is short",
+      /coverage\.coveragePct < 99/.test(ui) &&
+        /covers\{" "\}/.test(ui),
+      "a partial breakdown that looks complete is worse than no breakdown"
+    );
+    check(
+      "a fully-covered window is not nagged about",
+      /coveragePct !== null &&/.test(ui),
+      "a banner on every range would be ignored by the time it mattered"
+    );
   }
 
   /* D3 — the stored data itself. */

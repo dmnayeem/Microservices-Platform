@@ -1504,6 +1504,12 @@ interface CountryTotals {
   unknownShare: number;
   countries: number;
 }
+/** How much of the window the country panel actually describes. */
+interface CountryCoverage {
+  windowImpressions: number;
+  attributedImpressions: number;
+  coveragePct: number | null;
+}
 const COUNTRY_SORTS = [
   { key: "impressions", label: "Impr" },
   { key: "clicks", label: "Clicks" },
@@ -1570,6 +1576,7 @@ function AnalyticsTab() {
   const [perCampaign, setPerCampaign] = useState<CampaignRow[]>([]);
   const [perCountry, setPerCountry] = useState<CountryRow[]>([]);
   const [countryTotals, setCountryTotals] = useState<CountryTotals | null>(null);
+  const [countryCoverage, setCountryCoverage] = useState<CountryCoverage | null>(null);
   const [countrySort, setCountrySort] = useState<CountrySortKey>("impressions");
   const [loading, setLoading] = useState(true);
 
@@ -1591,6 +1598,7 @@ function AnalyticsTab() {
         setPerCampaign(rep.perCampaign ?? []);
         setPerCountry(rep.perCountry ?? []);
         setCountryTotals(rep.countryTotals ?? null);
+        setCountryCoverage(rep.countryCoverage ?? null);
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
@@ -1728,6 +1736,7 @@ function AnalyticsTab() {
       <CountryBreakdown
         rows={perCountry}
         totals={countryTotals}
+        coverage={countryCoverage}
         sort={countrySort}
         onSort={(k) => {
           setLoading(true);
@@ -1949,6 +1958,7 @@ function CampaignDetailModal({
 function CountryBreakdown({
   rows,
   totals,
+  coverage,
   sort,
   onSort,
   days,
@@ -1956,6 +1966,7 @@ function CountryBreakdown({
 }: {
   rows: CountryRow[];
   totals: CountryTotals | null;
+  coverage: CountryCoverage | null;
   sort: CountrySortKey;
   onSort: (k: CountrySortKey) => void;
   days: number;
@@ -2056,15 +2067,38 @@ function CountryBreakdown({
         </div>
       )}
 
+      {/* What this panel covers, before anything inside it is read.
+        *
+        * Every share in the table is a share of the country table's own total,
+        * so they add to 100% however little of the window carried a country —
+        * and per-country recording started partway through this platform's
+        * life. On a wide date range that made a panel describing a fraction of
+        * the traffic look like the whole picture, sitting next to totals that
+        * were several times larger. */}
+      {coverage &&
+        coverage.coveragePct !== null &&
+        coverage.coveragePct < 99 && (
+          <p className="text-[10px] text-amber-300/90">
+            This breakdown covers{" "}
+            <b>{coverage.coveragePct.toFixed(1)}%</b> of the impressions in this
+            date range ({coverage.attributedImpressions.toLocaleString()} of{" "}
+            {coverage.windowImpressions.toLocaleString()}). The rest were
+            recorded before per-country tracking began and carry no country at
+            all, so they are not in the table above — the percentages below are
+            shares of what was attributed, not of all traffic. Narrow the date
+            range to see a period that is fully covered.
+          </p>
+        )}
+
       {totals && totals.impressions > 0 && (
         <p className="text-[10px] text-amber-300/90">
-          <b>{totals.unknownShare.toFixed(1)}%</b> of impressions in this window
+          <b>{totals.unknownShare.toFixed(1)}%</b> of the attributed impressions
           ({totals.unknownImpressions.toLocaleString()} of{" "}
-          {totals.impressions.toLocaleString()}) have no country. Countries are
-          read from the request at the edge; anything recorded before country
-          tracking shipped, and any request that arrives without it, counts as
-          Unknown. It is listed above rather than dropped — the remaining shares
-          would otherwise renormalise and read as certainty you do not have.
+          {totals.impressions.toLocaleString()}) reached us with no country.
+          Countries are read from the request at the edge, and a request that
+          arrives without one counts as Unknown. It is listed above rather than
+          dropped — the remaining shares would otherwise renormalise and read as
+          certainty you do not have.
         </p>
       )}
       <p className="text-[10px] text-slate-500">
