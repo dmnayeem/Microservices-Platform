@@ -100,8 +100,43 @@ export function DepositMethodsForm({
             <Field label="Receiving account / address (shown to users)">
               <input value={m.account} onChange={(e) => update(i, { account: e.target.value })} disabled={!canEdit} placeholder="Binance UID / bKash number / PayPal email / wallet address" className={inp} />
             </Field>
-            <Field label="QR code image (optional — users scan to pay)">
+            {/* Crypto-only, and the pair that loses money when wrong: the
+              * chain the transfer must go over, and the memo some exchanges
+              * need to attribute it. Left blank for every non-crypto method,
+              * where neither line is shown to the user at all. */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Network (crypto only — e.g. TRC20)">
+                <input value={m.network ?? ""} onChange={(e) => update(i, { network: e.target.value })} disabled={!canEdit} placeholder="TRC20 (Tron) / BEP20 (BSC)" className={inp} />
+              </Field>
+              <Field label="Memo / Tag (only if required)">
+                <input value={m.memo ?? ""} onChange={(e) => update(i, { memo: e.target.value })} disabled={!canEdit} placeholder="Leave empty unless the wallet asks for one" className={inp} />
+              </Field>
+            </div>
+            <Field label="QR code">
+              <label className="flex items-start gap-2 text-xs text-gray-300 mb-2">
+                <input
+                  type="checkbox"
+                  checked={m.autoQr === true}
+                  onChange={(e) => update(i, { autoQr: e.target.checked })}
+                  disabled={!canEdit}
+                  className="mt-0.5"
+                />
+                <span>
+                  Generate the QR from the receiving account above
+                  <span className="block text-[11px] text-gray-500">
+                    Recommended for wallet addresses. It always matches the
+                    account — an uploaded image keeps pointing at the old
+                    wallet after you change the address here.
+                  </span>
+                </span>
+              </label>
               <ImageUploadField value={m.qrUrl ?? ""} onChange={(url) => update(i, { qrUrl: url })} previewSize="square" title="Payment QR code" />
+              {m.qrUrl && m.autoQr && (
+                <p className="text-[11px] text-amber-300 mt-1">
+                  An uploaded image is set, so it is used instead of the
+                  generated one. Remove it to use the generated QR.
+                </p>
+              )}
             </Field>
             <Field label="Instructions (how to pay)">
               <textarea rows={2} value={m.instructions} onChange={(e) => update(i, { instructions: e.target.value })} disabled={!canEdit} className={inp + " resize-none"} />
@@ -114,6 +149,26 @@ export function DepositMethodsForm({
                 <input type="number" step={1} value={m.maxAmount} onChange={(e) => update(i, { maxAmount: parseFloat(e.target.value) || 0 })} disabled={!canEdit} className={inp} />
               </Field>
             </div>
+            {/* The second kind of fee. A network fee costs the same on a $5
+              * transfer as on a $5,000 one, so a percentage either overstates
+              * it or hides it. Quoted in USD because that is what the chain
+              * charges in; the user's screen converts it. */}
+            <Field label="Flat fee ($ — crypto network fee)">
+              <input
+                type="number"
+                step={0.01}
+                min={0}
+                value={m.feeFlatUsd ?? 0}
+                onChange={(e) => update(i, { feeFlatUsd: parseFloat(e.target.value) || 0 })}
+                disabled={!canEdit}
+                className={inp}
+              />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Added on top of the amount, alongside any percentage above. The
+                user&apos;s wallet is still credited the amount they entered.
+                Leave 0 for methods with no fixed cost.
+              </p>
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Charge type">
                 <select

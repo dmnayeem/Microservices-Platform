@@ -136,6 +136,7 @@ enum PaymentMethod {
   NAGAD
   ROCKET
   BINANCE
+  BITGET
   PAYPAL
 }
 

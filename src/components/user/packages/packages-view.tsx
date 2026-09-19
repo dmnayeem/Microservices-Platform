@@ -12,7 +12,7 @@ import { BrandIcon } from "@/components/ui/brand-icon";
 
 type Tier = "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP";
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
-type Method = "POINTS" | "CASH" | "CARD" | "BKASH" | "NAGAD" | "BINANCE";
+type Method = "POINTS" | "CASH" | "CARD" | "BKASH" | "NAGAD" | "BINANCE" | "BITGET";
 
 // Hardcoded display sets per legacy tier slug. Falls back to the FREE entry
 // when the plan slug isn't one of the original 5 (since admin can now create
@@ -324,6 +324,7 @@ export function PackagesView({
               { value: "BKASH", label: "bKash", info: "Mobile" },
               { value: "NAGAD", label: "Nagad", info: "Mobile" },
               { value: "BINANCE", label: "Binance Pay", info: "Crypto" },
+              { value: "BITGET", label: "Bitget", info: "Crypto" },
             ] as const
           ).map((m) => (
             <label

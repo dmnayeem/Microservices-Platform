@@ -67,6 +67,11 @@ const BRAND: Record<string, BrandDef> = {
   apple: { Icon: FaApple, color: "#000000" },
   // Payments
   binance: { Icon: SiBinance, color: "#F0B90B" },
+  // simple-icons carries no Bitget logo, so this is registered without an
+  // Icon on purpose: a known brand falls back to a coloured "BG" badge,
+  // which reads as Bitget, while an unregistered one would show the
+  // caller's generic emoji and look like a missing method.
+  bitget: { color: "#00F0FF", short: "BG" },
   paypal: { Icon: SiPaypal, color: "#003087" },
   visa: { Icon: SiVisa, color: "#1A1F71" },
   mastercard: { Icon: SiMastercard, color: "#EB001B" },
@@ -94,6 +99,9 @@ const ALIAS: Record<string, string> = {
   playstore: "googleplay",
   play: "googleplay",
   binancepay: "binance",
+  // The deposit-method keys, so the wallet screen resolves them too.
+  bitgetpay: "bitget",
+  bitgetusdt: "bitget",
   usdt: "tether",
   usdttrc20: "tether",
   crypto: "bitcoin",

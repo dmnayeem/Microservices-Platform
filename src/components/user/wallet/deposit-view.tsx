@@ -40,7 +40,7 @@ export function DepositView({ from }: { from?: string } = {}) {
   const [txnId, setTxnId] = useState("");
   const [proofUrl, setProofUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [gateways, setGateways] = useState<{ key: string; label: string }[]>([]);
   const [currency, setCurrency] = useState<Currency | null>(null);
@@ -79,20 +79,26 @@ export function DepositView({ from }: { from?: string } = {}) {
     amountUsd: Number(amount) || 0,
     currency,
     chargePct,
+    feeFlatUsd: selected?.feeFlatUsd ?? 0,
     vatEnabled: vat.enabled,
     vatPct: vat.pct,
   });
   const hasLocal = !!currency && breakdown.amountUsd > 0;
-  const copyAccount = async () => {
-    if (!selected?.account) return;
+  // Copy any of the values the user has to reproduce exactly. A wallet address
+  // is far too long to retype and a mistyped one loses the money, so the copy
+  // button is the primary control here rather than a convenience — and the
+  // memo has the same property.
+  const copy = async (value: string, field: string) => {
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(selected.account);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
     } catch {
-      /* ignore */
+      /* clipboard blocked (insecure context / denied) — the text stays selectable */
     }
   };
+  const copyAccount = () => copy(selected?.account ?? "", "account");
 
   const submitManual = async () => {
     const amt = Number(amount);
@@ -242,12 +248,21 @@ export function DepositView({ from }: { from?: string } = {}) {
             </div>
             {breakdown.charge > 0 && (
               <div className="flex items-center justify-between text-xs">
+                {/* Name the charge that actually applies. A flat network fee
+                  * with no percentage would otherwise read "charge (0%)" while
+                  * a real amount was added on the right, which looks like a
+                  * bug and invites a support ticket every time. */}
                 <span className="text-gray-400">
-                  {selected?.label} charge ({chargePct}%)
-                  <span className="block text-[10px] text-gray-500">
-                    {currency?.symbol ?? ""}{(chargePct * 10).toFixed(1)} per{" "}
-                    {currency?.symbol ?? ""}1,000
-                  </span>
+                  {selected?.label} charge
+                  {chargePct > 0 && ` (${chargePct}%)`}
+                  {(selected?.feeFlatUsd ?? 0) > 0 &&
+                    ` ${chargePct > 0 ? "+" : ""} $${selected?.feeFlatUsd} network fee`}
+                  {chargePct > 0 && (
+                    <span className="block text-[10px] text-gray-500">
+                      {currency?.symbol ?? ""}{(chargePct * 10).toFixed(1)} per{" "}
+                      {currency?.symbol ?? ""}1,000
+                    </span>
+                  )}
                 </span>
                 <span className="text-orange-300 tabular-nums">
                   + {formatLocal(breakdown.charge, currency)}
@@ -353,24 +368,99 @@ export function DepositView({ from }: { from?: string } = {}) {
                   onClick={copyAccount}
                   className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? "Copied" : "Copy"}
+                  {copiedField === "account" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedField === "account" ? "Copied" : "Copy"}
                 </button>
               </div>
             </div>
 
-            {selected.qrUrl && (
+            {/* The network, before anything else about the transfer.
+              *
+              * On-chain this is the costliest field on the page: USDT sent on
+              * BEP20 to a TRC20 address is gone, and nothing on our side can
+              * bring it back. It gets its own line, in warning colours, rather
+              * than a clause inside the instructions paragraph. */}
+            {selected.network && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5">
+                <p className="text-[11px] text-amber-300/80 mb-0.5">Network</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-sm font-bold text-amber-100 break-all">
+                    {selected.network}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => copy(selected.network ?? "", "network")}
+                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/20 text-amber-100 text-[11px] font-bold hover:bg-amber-500/30"
+                  >
+                    {copiedField === "network" ? (
+                      <Check className="w-3 h-3" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-amber-200/70 mt-1">
+                  Send on this network only. A transfer on any other network
+                  cannot be recovered.
+                </p>
+              </div>
+            )}
+
+            {/* A memo is as mandatory as the address on the exchanges that use
+              * one — the transfer arrives unattributed without it. */}
+            {selected.memo && (
+              <div>
+                <p className="text-[11px] text-gray-400 mb-1">Memo / Tag (required)</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-sm text-white break-all bg-gray-900/60 rounded px-2 py-1.5">
+                    {selected.memo}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => copy(selected.memo ?? "", "memo")}
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
+                  >
+                    {copiedField === "memo" ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    {copiedField === "memo" ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* An uploaded QR wins when the admin supplied one — some methods'
+              * codes carry more than the bare account. Otherwise it is drawn
+              * from the account itself, which cannot fall out of step with it. */}
+            {(selected.qrUrl || (selected.autoQr && selected.account)) && (
               <div className="flex flex-col items-center gap-1.5 py-1">
                 <div className="rounded-xl bg-white p-2">
-                  <SmartImage
-                    src={selected.qrUrl}
-                    alt={`${selected.label} payment QR`}
-                    width={176}
-                    height={176}
-                    className="h-44 w-44 object-contain"
-                  />
+                  {selected.qrUrl ? (
+                    <SmartImage
+                      src={selected.qrUrl}
+                      alt={`${selected.label} payment QR`}
+                      width={176}
+                      height={176}
+                      className="h-44 w-44 object-contain"
+                    />
+                  ) : (
+                    // Plain <img>: the source is our own PNG route, and the
+                    // optimizer has nothing to add to a 320px QR.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/deposits/qr?method=${encodeURIComponent(selected.key)}`}
+                      alt={`${selected.label} payment QR`}
+                      width={176}
+                      height={176}
+                      className="h-44 w-44 object-contain"
+                    />
+                  )}
                 </div>
-                <p className="text-[10px] text-gray-400">Scan the QR to pay</p>
+                <p className="text-[10px] text-gray-400">
+                  Scan to pay{selected.network ? ` — ${selected.network} only` : ""}
+                </p>
               </div>
             )}
 

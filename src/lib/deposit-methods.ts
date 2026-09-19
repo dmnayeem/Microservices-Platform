@@ -29,11 +29,67 @@ export interface DepositMethod {
   chargePct?: number;
   /** How the charge applies: personal → charge, cash-out/none → no charge. */
   chargeType?: "none" | "personal" | "cashout";
+  /**
+   * A fixed charge in USD, on top of the percentage.
+   *
+   * Crypto is the reason this exists: a network fee is a flat cost per
+   * transfer, not a share of it, so a percentage either overstates it on a
+   * large deposit or hides it on a small one. Same meaning as `chargePct` —
+   * what the user pays beyond the amount their wallet is credited.
+   */
+  feeFlatUsd?: number;
+  /**
+   * The chain to send on. Crypto only, and the single most costly thing to get
+   * wrong: USDT sent on BEP20 to a TRC20 address is gone, and no admin action
+   * here can recover it. Shown as its own line, not buried in instructions.
+   */
+  network?: string;
+  /** Memo / tag some exchanges require alongside the address. */
+  memo?: string;
+  /**
+   * Draw the QR from `account` instead of an uploaded image.
+   *
+   * A wallet address is exactly what a QR is for, and asking an admin to
+   * generate and host a PNG for an address they already typed is a step that
+   * can silently go stale — the image keeps pointing at the old address after
+   * the account is changed. `qrUrl` still wins when set, for methods whose QR
+   * is not simply the account string.
+   */
+  autoQr?: boolean;
 }
 
 const SETTING_KEY = "deposit_methods";
 
 export const DEPOSIT_METHOD_PRESETS: DepositMethod[] = [
+  // Bitget, in the two shapes people actually pay with. Kept separate on
+  // purpose: a UID transfer is instant and free, an on-chain transfer has a
+  // network and a fee, and merging them would hide whichever the user picked.
+  {
+    key: "bitget",
+    label: "Bitget Pay",
+    accountLabel: "Bitget UID",
+    account: "",
+    instructions:
+      "Open Bitget → Pay → Send, enter the UID above, send the amount, then paste the order / transaction ID.",
+    enabled: false,
+    minAmount: 1,
+    maxAmount: 100000,
+    autoQr: true,
+  },
+  {
+    key: "bitget_usdt",
+    label: "Bitget — USDT (TRC20)",
+    accountLabel: "USDT deposit address",
+    account: "",
+    network: "TRC20 (Tron)",
+    instructions:
+      "Withdraw USDT from Bitget to the address above on the TRC20 network, then paste the transaction hash (TxID). Sending on any other network will lose the funds.",
+    enabled: false,
+    minAmount: 1,
+    maxAmount: 100000,
+    feeFlatUsd: 1,
+    autoQr: true,
+  },
   { key: "binance", label: "Binance Pay", accountLabel: "Binance Pay ID / UID", account: "", instructions: "Send via Binance Pay to the ID above, then paste the transaction ID.", enabled: false, minAmount: 1, maxAmount: 100000 },
   // Mobile-banking presets carry the personal send-money fee that scales with
   // amount: bKash 20 BDT / 1000 (2%), Nagad & DBBL/Rocket 15 / 1000 (1.5%).
@@ -73,6 +129,10 @@ function normalize(raw: unknown): DepositMethod[] {
           o.chargeType === "personal" || o.chargeType === "cashout"
             ? o.chargeType
             : "none",
+        feeFlatUsd: num(o.feeFlatUsd, 0),
+        network: o.network ? String(o.network).trim() : undefined,
+        memo: o.memo ? String(o.memo).trim() : undefined,
+        autoQr: o.autoQr === true,
       } satisfies DepositMethod;
     })
     .filter((m) => m.key);

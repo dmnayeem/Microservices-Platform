@@ -11,7 +11,7 @@ import { lt, toNum } from "@/lib/money";
 const schema = z.object({
   packageId: z.string().min(1),
   duration: z.enum(["MONTHLY", "QUARTERLY", "YEARLY", "LIFETIME"]),
-  method: z.enum(["POINTS", "CASH", "CARD", "BKASH", "NAGAD", "BINANCE"]),
+  method: z.enum(["POINTS", "CASH", "CARD", "BKASH", "NAGAD", "BINANCE", "BITGET"]),
 });
 
 const DURATION_DAYS: Record<string, number> = {
@@ -143,9 +143,9 @@ export async function POST(request: NextRequest) {
       );
     }
   }
-  // CARD / BKASH / NAGAD / BINANCE would normally redirect to a payment processor,
+  // CARD / BKASH / NAGAD / BINANCE / BITGET would normally redirect to a payment processor,
   // but for now we record an intent and require admin to verify.
-  const isOffPlatform = ["CARD", "BKASH", "NAGAD", "BINANCE"].includes(
+  const isOffPlatform = ["CARD", "BKASH", "NAGAD", "BINANCE", "BITGET"].includes(
     v.data.method
   );
 
@@ -216,6 +216,8 @@ export async function POST(request: NextRequest) {
                 ? PaymentMethod.NAGAD
                 : v.data.method === "BINANCE"
                   ? PaymentMethod.BINANCE
+                  : v.data.method === "BITGET"
+                    ? PaymentMethod.BITGET
                   : null,
           isActive: !isOffPlatform,
           autoRenew: false,

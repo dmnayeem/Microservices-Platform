@@ -278,6 +278,7 @@ function getMethodName(method: PaymentMethod): string {
     NAGAD: "Nagad",
     ROCKET: "Rocket",
     BINANCE: "Binance",
+    BITGET: "Bitget",
     PAYPAL: "PayPal",
   };
   return names[method];
@@ -289,6 +290,7 @@ function getMethodIcon(method: PaymentMethod): string {
     NAGAD: "📱",
     ROCKET: "🚀",
     BINANCE: "₿",
+    BITGET: "₿",
     PAYPAL: "💳",
   };
   return icons[method];
@@ -300,6 +302,7 @@ function getMinWithdrawal(method: PaymentMethod): number {
     NAGAD: 5,
     ROCKET: 5,
     BINANCE: 20,
+    BITGET: 20,
     PAYPAL: 10,
   };
   return mins[method];
@@ -311,6 +314,7 @@ function getFeeInfo(method: PaymentMethod): { percentage: number; fixed: number 
     NAGAD: { percentage: 1.5, fixed: 0 },
     ROCKET: { percentage: 1.8, fixed: 0 },
     BINANCE: { percentage: 0.5, fixed: 0 },
+    BITGET: { percentage: 0.5, fixed: 0 },
     PAYPAL: { percentage: 2.5, fixed: 0 },
   };
   return fees[method];
