@@ -1921,6 +1921,36 @@ function main() {
           /useState<Accent>\(DEFAULT_ACCENT as Accent\)/.test(provider),
           "a second copy of the default is how the two drift apart"
         );
+
+        /* Choosing a colour must not be a one-way door.
+           The picker could set a preference and nothing could clear one, so a
+           user who had ever tapped a swatch could never see the platform's own
+           colour again — or see it change when the platform's did. */
+        check(
+          "an accent can be cleared back to the platform's",
+          /localStorage\.removeItem\(ACCENT_KEY\)/.test(provider) &&
+            /removeAttribute\("data-accent"\)/.test(provider),
+          "clearing the attribute is not a state change the effect can express"
+        );
+        for (const f of [
+          "src/components/user/settings/settings-view.tsx",
+          "src/components/user/profile/profile-edit-tabs.tsx",
+        ]) {
+          const picker = read(f);
+          check(
+            `${f.split("/").pop()} offers Default beside the swatches`,
+            /applyAccent\(null\)/.test(picker) && /accentIsDefault/.test(picker),
+            "the two pickers must offer the same choices"
+          );
+        }
+        // And the server has to accept it, or the column hands the old colour
+        // back on the next sign-in.
+        const api = read("src/app/api/profile/route.ts");
+        check(
+          "the profile API accepts a cleared accent",
+          /body\.themeAccent !== null && !validAccents\.includes/.test(api) &&
+            !/themeAccent: u\.themeAccent \?\? "indigo"/.test(api)
+        );
       }
 
       check(

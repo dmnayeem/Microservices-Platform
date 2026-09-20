@@ -90,7 +90,7 @@ export function SettingsView({
   language: languageInit,
 }: Props) {
   const router = useRouter();
-  const { theme, setTheme, accent, setAccent } = useTheme();
+  const { theme, setTheme, accent, setAccent, accentIsDefault } = useTheme();
   const [emailNotif, setEmailNotif] = useState(emailNotifInit);
   const [pushNotif, setPushNotif] = useState(pushNotifInit);
   const [twoFA, setTwoFA] = useState(twoFAInit);
@@ -147,8 +147,10 @@ export function SettingsView({
     setTheme(mode);
     patchProfile({ theme: mode });
   };
-  const applyAccent = (id: (typeof ACCENTS)[number]) => {
+  const applyAccent = (id: (typeof ACCENTS)[number] | null) => {
     setAccent(id);
+    // `null` on the profile too, or the server would keep handing the old
+    // choice back on the next device the user signs in on.
     patchProfile({ themeAccent: id });
   };
 
@@ -486,7 +488,26 @@ export function SettingsView({
                     <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">
                       Accent Color
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Default, first and set apart.
+                        * Picking a colour used to be a one-way door: the
+                        * picker could set a preference but nothing could
+                        * clear one, so a user who had ever tapped a swatch
+                        * could never get back to the platform's own colour —
+                        * or see it change when the platform's did. */}
+                      <button
+                        onClick={() => applyAccent(null)}
+                        className={cn(
+                          "app-press h-8 rounded-full border px-3 text-xs font-bold transition-all",
+                          accentIsDefault
+                            ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
+                            : "border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink)"
+                        )}
+                        title="Use the platform's own colour"
+                      >
+                        Default
+                      </button>
+                      <span className="h-6 w-px bg-(--app-line)" aria-hidden />
                       {ACCENTS.map((id) => (
                         <button
                           key={id}
@@ -494,7 +515,9 @@ export function SettingsView({
                           style={{ background: ACCENT_GRADIENT[id] ?? ACCENT_HEX[id] }}
                           className={cn(
                             "w-8 h-8 rounded-full ring-2 ring-offset-2 ring-offset-gray-900 transition-all capitalize",
-                            accent === id ? "ring-white" : "ring-transparent hover:ring-white/40"
+                            accent === id && !accentIsDefault
+                              ? "ring-white"
+                              : "ring-transparent hover:ring-white/40"
                           )}
                           title={id}
                         />

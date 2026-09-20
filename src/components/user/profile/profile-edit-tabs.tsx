@@ -572,14 +572,14 @@ export function ThemeTab({
   preferences: { theme: string; themeAccent: string; notifications: { enabled: boolean; email: boolean; push: boolean } };
   patch: (body: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const { setTheme, setAccent } = useTheme();
+  const { setTheme, setAccent, accentIsDefault } = useTheme();
 
   const applyTheme = (mode: Theme) => {
     setTheme(mode); // provider resolves "system" (OS-reactive) + persists
     patch({ theme: mode });
   };
 
-  const applyAccent = (id: Accent) => {
+  const applyAccent = (id: Accent | null) => {
     setAccent(id);
     patch({ themeAccent: id });
   };
@@ -620,7 +620,23 @@ export function ThemeTab({
         </div>
 
         <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mt-4 mb-2">Accent Color</p>
-        <div className="flex flex-wrap gap-2">
+        {/* Same Default entry as Settings — the two pickers must offer the
+          * same choices, or clearing one's accent would depend on which
+          * screen the user happened to open. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => applyAccent(null)}
+            className={cn(
+              "app-press h-9 rounded-full border px-3 text-xs font-bold transition-all",
+              accentIsDefault
+                ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
+                : "border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink)"
+            )}
+            title="Use the platform's own colour"
+          >
+            Default
+          </button>
+          <span className="h-7 w-px bg-(--app-line)" aria-hidden />
           {ACCENTS.map((id) => (
             <button
               key={id}
@@ -628,7 +644,9 @@ export function ThemeTab({
               style={{ background: ACCENT_GRADIENT[id] ?? ACCENT_HEX[id] }}
               className={cn(
                 "w-9 h-9 rounded-full ring-2 ring-offset-2 ring-offset-gray-900 transition-all capitalize",
-                preferences.themeAccent === id ? "ring-white" : "ring-transparent"
+                preferences.themeAccent === id && !accentIsDefault
+                  ? "ring-white"
+                  : "ring-transparent"
               )}
               title={id}
             />

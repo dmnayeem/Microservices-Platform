@@ -355,7 +355,9 @@ export async function GET() {
       },
       preferences: {
         theme: u.theme,
-        themeAccent: u.themeAccent ?? "indigo",
+        // Null means the platform default; naming a colour here would make
+        // every account look like it had chosen one.
+        themeAccent: u.themeAccent,
         notifications: {
           enabled: u.notificationsEnabled,
           email: u.emailNotifications,
@@ -645,7 +647,10 @@ export async function PATCH(request: NextRequest) {
         "teal", "cyan", "sky", "blue", "indigo", "violet", "purple",
         "fuchsia", "pink", "rose", "gold", "silver",
       ];
-      if (!validAccents.includes(body.themeAccent)) {
+      // `null` is a real value here: "no choice of mine, use the platform's".
+      // Without it the picker could set an accent but never clear one, so the
+      // column kept handing the old colour back on the next sign-in.
+      if (body.themeAccent !== null && !validAccents.includes(body.themeAccent)) {
         return NextResponse.json({ error: "Invalid accent color" }, { status: 400 });
       }
       updateData.themeAccent = body.themeAccent;
