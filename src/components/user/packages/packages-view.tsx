@@ -300,7 +300,7 @@ export function PackagesView({
           <div className="flex gap-2">
             <button
               onClick={() => setStep(1)}
-              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-(--app-ink) font-bold"
             >
               Back
             </button>
@@ -361,7 +361,7 @@ export function PackagesView({
           <div className="flex gap-2">
             <button
               onClick={() => setStep(2)}
-              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-(--app-ink) font-bold"
             >
               Back
             </button>
@@ -412,7 +412,7 @@ export function PackagesView({
           <div className="flex gap-2">
             <button
               onClick={() => setStep(3)}
-              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-(--app-ink) font-bold"
             >
               Back
             </button>

@@ -70,7 +70,7 @@ export function DonationBlock({
         {!post.isOwner && (
           <button
             onClick={() => setOpen(true)}
-            className="app-press app-tap-row w-full mt-2.5 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) hover:border-(--app-line-strong) text-white text-xs font-extrabold inline-flex items-center justify-center gap-1.5"
+            className="app-press app-tap-row w-full mt-2.5 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) hover:border-(--app-line-strong) text-(--app-ink) text-xs font-extrabold inline-flex items-center justify-center gap-1.5"
           >
             💝 Donate pts
           </button>
@@ -96,7 +96,7 @@ export function DonationBlock({
               max={100000}
               value={amount}
               onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-pink-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-pink-500"
             />
             <div className="flex gap-2 mt-2">
               {[50, 100, 500, 1000].map((v) => (
@@ -113,7 +113,7 @@ export function DonationBlock({
               <button
                 onClick={() => setOpen(false)}
                 disabled={busy}
-                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
               >
                 Cancel
               </button>

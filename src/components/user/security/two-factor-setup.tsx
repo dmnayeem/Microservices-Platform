@@ -126,7 +126,7 @@ export function TwoFactorSetup() {
                 Or enter manually
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs font-mono text-white break-all">
+                <code className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs font-mono text-(--app-ink) break-all">
                   {data.secret}
                 </code>
                 <button
@@ -151,7 +151,7 @@ export function TwoFactorSetup() {
                 placeholder="000000"
                 maxLength={6}
                 inputMode="numeric"
-                className="w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-center text-2xl font-bold font-mono tracking-widest tabular-nums focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-center text-2xl font-bold font-mono tracking-widest tabular-nums focus:outline-none focus:border-blue-500"
               />
             </div>
             <button

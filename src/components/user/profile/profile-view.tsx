@@ -255,7 +255,7 @@ export function ProfileView() {
 
       {/* Profile Header */}
       <div className="relative rounded-2xl overflow-hidden glass">
-        <div className="relative h-36 sm:h-48 bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600">
+        <div className="relative h-36 sm:h-48 bg-linear-to-br from-(--app-grad-a) via-(--app-rail-b) to-(--app-grad-b)">
           {profile.coverPhoto && (
             <SmartImage
               src={profile.coverPhoto}
@@ -297,7 +297,7 @@ export function ProfileView() {
           <div className="flex justify-end mb-2 gap-2">
             <Link
               href={profileHref(profile)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
             >
               <EyeIcon className="w-3.5 h-3.5" />
               View as public

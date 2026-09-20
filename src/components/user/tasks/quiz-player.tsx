@@ -177,7 +177,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           <TaskUpgradeNotice message={upgradeMsg} />
           <button
             onClick={onClose}
-            className="mt-2 px-5 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
+            className="mt-2 px-5 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
           >
             Close
           </button>
@@ -213,7 +213,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
+            className="px-4 py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
           >
             Close
           </button>
@@ -264,7 +264,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
             </div>
             <div className="max-w-3xl mx-auto mt-2 h-1 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
-                className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width]"
+                className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width]"
                 style={{ width: `${((idx + 1) / questions.length) * 100}%` }}
               />
             </div>
@@ -327,7 +327,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
               {idx > 0 && (
                 <button
                   onClick={() => setIdx((i) => Math.max(0, i - 1))}
-                  className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
+                  className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
                 >
                   Back
                 </button>

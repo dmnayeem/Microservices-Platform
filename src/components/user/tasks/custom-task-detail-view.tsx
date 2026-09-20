@@ -362,7 +362,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               type="button"
               onClick={submit}
               disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -393,7 +393,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               }
               disabled={busy}
               placeholder="Add any note for the reviewer…"
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
           </div>
           <div className="sticky bottom-4 z-10 mt-6">
@@ -401,7 +401,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               type="button"
               onClick={submit}
               disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

@@ -222,7 +222,7 @@ export function CartView() {
           <button
             onClick={checkout}
             disabled={checkingOut || hasUnavailable}
-            className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {checkingOut ? (
               <Loader2 className="w-4 h-4 animate-spin" />

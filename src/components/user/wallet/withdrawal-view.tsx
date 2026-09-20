@@ -222,7 +222,7 @@ export function WithdrawalView({
                   value={amountStr}
                   onChange={(e) => onAmountChange(e.target.value)}
                   placeholder={String(min)}
-                  className="w-full pl-7 pr-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-base font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+                  className="w-full pl-7 pr-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-base font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
                 />
               </div>
               <div className="flex items-center justify-between text-[11px] mt-1.5">

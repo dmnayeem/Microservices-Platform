@@ -69,7 +69,7 @@ export function AiImageGenerator({ onGenerated }: AiImageGeneratorProps) {
         maxLength={5000}
         disabled={loading}
         placeholder="e.g. A colorful banner showing people earning rewards on their phones, flat illustration style"
-        className="w-full px-4 py-3 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none disabled:opacity-60"
+        className="w-full px-4 py-3 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none disabled:opacity-60"
       />
 
       <div className="flex flex-wrap gap-2">

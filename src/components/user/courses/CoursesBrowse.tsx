@@ -178,7 +178,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full pl-9 pr-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             placeholder="Search courses…"
           />
         </div>
@@ -205,7 +205,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="appearance-none pl-3 pr-9 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
+              className="appearance-none pl-3 pr-9 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>

@@ -124,7 +124,7 @@ export function ProfileTabBody({
             </div>
             <button
               onClick={() => openEdit("personal")}
-              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
+              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit Details
@@ -272,7 +272,7 @@ export function ProfileTabBody({
           {/* Sell & earn — apply for marketplace / advertiser / agency / affiliate access */}
           <Link
             href="/profile/become-creator"
-            className="block rounded-2xl border border-fuchsia-500/30 bg-linear-to-br from-fuchsia-500/10 via-indigo-500/5 to-transparent p-4 hover:border-fuchsia-500/50 transition-colors"
+            className="block rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-transparent p-4 hover:border-(--app-accent-edge)/50 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">

@@ -134,7 +134,7 @@ export function CourseCreator() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
         <div>
@@ -145,7 +145,7 @@ export function CourseCreator() {
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm resize-none focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm resize-none focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
         <div>
@@ -167,7 +167,7 @@ export function CourseCreator() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-xs focus:outline-none focus:border-(--app-accent-edge)"
             >
               <option>BUSINESS</option>
               <option>TECH</option>
@@ -183,7 +183,7 @@ export function CourseCreator() {
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-xs focus:outline-none focus:border-(--app-accent-edge)"
             >
               <option>BEGINNER</option>
               <option>INTERMEDIATE</option>
@@ -199,7 +199,7 @@ export function CourseCreator() {
               min={0}
               value={pointsReward}
               onChange={(e) => setPointsReward(Number(e.target.value))}
-              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-xs focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
         </div>

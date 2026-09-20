@@ -251,7 +251,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
               }
             }}
             placeholder="Type a message..."
-            className="flex-1 max-h-24 px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+            className="flex-1 max-h-24 px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-2xl text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
           />
           <button
             disabled={!input.trim() || sending}

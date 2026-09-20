@@ -167,10 +167,10 @@ function LoginForm() {
         {/* Logo & Header */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-2xl font-bold bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
               EarnGPT
             </span>
           </Link>
@@ -273,7 +273,7 @@ function LoginForm() {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                 placeholder="123456"
-                className="w-full px-4 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-center tracking-[0.4em] font-mono placeholder-gray-600 focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-4 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-center tracking-[0.4em] font-mono placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           )}

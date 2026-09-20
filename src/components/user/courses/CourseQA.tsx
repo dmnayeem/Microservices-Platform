@@ -79,7 +79,7 @@ export function CourseQA({ courseId, initial, isEnrolled, viewerId, tutorId }: P
             rows={2}
             maxLength={2000}
             placeholder="Ask the tutor a question…"
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-fuchsia-500 resize-none"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-fuchsia-500 resize-none"
           />
           <div className="flex justify-end">
             <button
@@ -215,7 +215,7 @@ function QuestionCard({
               onChange={(e) => setAnswer(e.target.value)}
               rows={3}
               maxLength={4000}
-              className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-fuchsia-500 resize-none"
+              className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-(--app-ink) focus:outline-none focus:border-fuchsia-500 resize-none"
               placeholder="Your answer"
             />
             <div className="flex justify-end gap-2">

@@ -94,7 +94,7 @@ export function AdblockHost() {
         <button
           onClick={onRecheck}
           disabled={checking}
-          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold active:scale-[0.98] transition-transform disabled:opacity-60"
         >
           {checking ? (
             <Loader2 className="w-4 h-4 animate-spin" />

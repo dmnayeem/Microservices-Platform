@@ -137,7 +137,7 @@ export function BidPanel({
   };
 
   return (
-    <section className="rounded-xl border border-purple-500/20 bg-linear-to-br from-purple-500/5 via-gray-900 to-gray-900 p-4 sm:p-5 space-y-3">
+    <section className="rounded-xl border border-purple-500/20 bg-linear-to-br from-(--app-rail-a)/5 via-gray-900 to-gray-900 p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 flex items-center justify-center">
@@ -235,13 +235,13 @@ export function BidPanel({
               min={minNextBid}
               step="0.01"
               placeholder={`Min ${minNextBid.toLocaleString()}`}
-              className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 tabular-nums"
+              className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-purple-500 tabular-nums"
             />
             <button
               type="button"
               onClick={placeBid}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white text-sm font-bold disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -259,7 +259,7 @@ export function BidPanel({
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Optional message to seller…"
             maxLength={500}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-purple-500"
           />
           {buyNowPrice != null && (
             <p className="text-[11px] text-(--app-ink-3)">

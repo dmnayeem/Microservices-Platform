@@ -132,7 +132,7 @@ export function SoloRewardWidget({
                     </div>
                     <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
                       <div
-                        className="h-full bg-linear-to-r from-indigo-500 to-purple-500"
+                        className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b)"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -216,7 +216,7 @@ export function SoloRewardWidget({
               <button
                 disabled={claiming}
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
               >
                 Not Now
               </button>

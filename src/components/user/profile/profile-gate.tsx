@@ -84,7 +84,7 @@ export function ProfileGate({
 
         <Link
           href="/profile?tab=personal"
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold active:scale-[0.97] transition-transform"
+          className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold active:scale-[0.97] transition-transform"
         >
           <UserCog className="w-4 h-4" />
           Complete profile

@@ -26,7 +26,7 @@ function OfferButton({
 }) {
   const cls = cn(
     "inline-flex items-center justify-center px-6 py-3 rounded-xl font-bold transition-transform hover:scale-[1.02]",
-    variant === "primary" && "bg-linear-to-r from-indigo-500 to-purple-600 text-white",
+    variant === "primary" && "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white",
     variant === "secondary" && "bg-(--app-bright) text-(--app-on-bright)",
     variant === "outline" && "border border-white/30 text-white hover:bg-white/10"
   );
@@ -55,7 +55,7 @@ function Block({ block }: { block: OfferBlock }) {
           className={cn(
             "relative rounded-2xl overflow-hidden px-6 py-14 sm:py-20 text-center my-6",
             "bg-linear-to-br",
-            block.bgGradient || "from-indigo-600 to-purple-700"
+            block.bgGradient || "from-(--app-grad-a) to-(--app-grad-b)"
           )}
           style={
             block.imageUrl

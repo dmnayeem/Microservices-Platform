@@ -266,7 +266,7 @@ export function GamePlayer({
 
         <button
           onClick={quit}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
         >
           <X className="w-4 h-4" /> Quit
         </button>
@@ -312,7 +312,7 @@ export function GamePlayer({
                   href={game.embedUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Open in a new tab
                 </a>

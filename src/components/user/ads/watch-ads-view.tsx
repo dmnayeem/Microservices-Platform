@@ -242,7 +242,7 @@ export function WatchAdsView() {
             {/* Interval progress */}
             <div className="mt-2 h-2.5 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
-                className="h-full bg-linear-to-r from-indigo-500 to-violet-500 transition-[width] duration-500 ease-linear"
+                className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width] duration-500 ease-linear"
                 style={{ width: `${pct}%` }}
               />
             </div>

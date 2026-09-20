@@ -199,7 +199,7 @@ export function DateField({
                 type="time"
                 value={timePart(value)}
                 onChange={(e) => setTime(e.target.value)}
-                className="flex-1 px-2 py-1.5 rounded-md bg-(--app-page) border border-(--app-line) text-white text-sm"
+                className="flex-1 px-2 py-1.5 rounded-md bg-(--app-page) border border-(--app-line) text-(--app-ink) text-sm"
               />
               <button
                 type="button"

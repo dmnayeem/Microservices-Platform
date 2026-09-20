@@ -268,7 +268,7 @@ export function CourseEnrollCta({
                   }}
                   maxLength={60}
                   placeholder="Have a code?"
-                  className="flex-1 px-2 py-1 bg-(--app-surface) border border-(--app-line) rounded text-xs text-white placeholder-gray-500 font-mono uppercase focus:outline-none focus:border-(--app-accent-edge)"
+                  className="flex-1 px-2 py-1 bg-(--app-surface) border border-(--app-line) rounded text-xs text-(--app-ink) placeholder:text-(--app-ink-3) font-mono uppercase focus:outline-none focus:border-(--app-accent-edge)"
                 />
                 <button
                   type="button"

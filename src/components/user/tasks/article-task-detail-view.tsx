@@ -634,7 +634,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
                 value={proofUrl}
                 onChange={(e) => setProofUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           )}
@@ -661,7 +661,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
                 value={uniqueKey}
                 onChange={(e) => setUniqueKey(e.target.value)}
                 placeholder="Enter the key you found"
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500 font-mono"
               />
               {cfg?.uniqueKeyHint && (
                 <p className="text-[11px] text-amber-400/80 mt-1">
@@ -681,7 +681,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <Link
               href="/article-tasks"
-              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold text-center transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold text-center transition-colors"
             >
               Cancel
             </Link>
@@ -854,7 +854,7 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
       <button
         disabled={busy}
         onClick={start}
-        className="w-full py-3 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+        className="w-full py-3 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
       >
         {busy ? (
           <Loader2 className="w-4 h-4 animate-spin" />

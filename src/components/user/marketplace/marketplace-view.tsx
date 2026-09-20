@@ -221,7 +221,7 @@ export function MarketplaceView() {
       <select
         value={ageBucket}
         onChange={(e) => setAgeBucket(e.target.value)}
-        className="px-2.5 py-1 rounded-full border border-(--app-line) bg-(--app-surface) text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
+        className="px-2.5 py-1 rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink) text-xs focus:outline-none focus:border-(--app-accent-edge)"
         aria-label="Asset age"
       >
         <option value="">Any age</option>
@@ -296,13 +296,13 @@ export function MarketplaceView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search marketplace (title, description, niche)…"
-            className="w-full pl-9 pr-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full pl-9 pr-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+          className="px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
         >
           {SORT_OPTIONS.map((s) => (
             <option key={s.value} value={s.value}>

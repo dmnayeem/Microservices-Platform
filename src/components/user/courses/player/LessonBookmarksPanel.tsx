@@ -37,7 +37,7 @@ export function LessonBookmarksPanel({ bookmarks, onChange }: Props) {
           onChange={(e) => setLabel(e.target.value)}
           maxLength={120}
           placeholder="Label (optional)"
-          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
         />
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-(--app-ink-3) uppercase font-bold">
@@ -48,7 +48,7 @@ export function LessonBookmarksPanel({ bookmarks, onChange }: Props) {
             min={0}
             value={position}
             onChange={(e) => setPosition(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1 bg-(--app-page) border border-(--app-line) rounded text-xs text-white tabular-nums"
+            className="w-20 px-2 py-1 bg-(--app-page) border border-(--app-line) rounded text-xs text-(--app-ink) tabular-nums"
           />
           <span className="text-[11px] text-(--app-ink-3)">seconds</span>
           <button

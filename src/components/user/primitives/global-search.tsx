@@ -121,7 +121,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                 if (e.key === "Enter") pushRecent(query);
               }}
               placeholder="Search tasks, users, courses, listings…"
-              className="w-full pl-9 pr-9 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full pl-9 pr-9 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             {query && (
               <button

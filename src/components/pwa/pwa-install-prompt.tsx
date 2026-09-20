@@ -106,7 +106,7 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-1.5rem)]">
-      <div className="rounded-2xl border border-(--app-accent-edge)/40 bg-linear-to-br from-indigo-500/15 via-purple-500/10 to-gray-900 backdrop-blur-xl p-4 shadow-2xl">
+      <div className="rounded-2xl border border-(--app-accent-edge)/40 bg-linear-to-br from-(--app-rail-a)/15 via-(--app-rail-b)/10 to-gray-900 backdrop-blur-xl p-4 shadow-2xl">
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -135,11 +135,11 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
           <div className="mt-3 rounded-xl bg-(--app-page)/70 border border-(--app-line) px-3 py-2.5 text-xs text-(--app-ink-2)">
             <p className="inline-flex items-center gap-1.5 flex-wrap">
               Tap
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-white font-semibold">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink) font-semibold">
                 <Share className="w-3.5 h-3.5 text-sky-400" /> Share
               </span>
               then
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-white font-semibold">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink) font-semibold">
                 <Plus className="w-3.5 h-3.5 text-emerald-400" /> Add to Home Screen
               </span>
             </p>
@@ -148,14 +148,14 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
           <div className="flex gap-2 mt-3">
             <button
               onClick={snoozeAndClose}
-              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) text-white text-xs font-semibold hover:bg-(--app-surface-2)"
+              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold hover:bg-(--app-surface-2)"
             >
               Not now
             </button>
             <button
               onClick={install}
               disabled={!deferred}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold hover:opacity-90 disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-xs font-bold hover:opacity-90 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
               Install

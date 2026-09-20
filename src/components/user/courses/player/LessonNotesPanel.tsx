@@ -37,7 +37,7 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
           rows={2}
           maxLength={2000}
           placeholder="Take a note. Markdown is fine."
-          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
         />
         <div className="flex items-center gap-2">
           <label className="text-[11px] text-(--app-ink-3) uppercase font-bold">
@@ -48,7 +48,7 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
             min={0}
             value={position}
             onChange={(e) => setPosition(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1 bg-(--app-page) border border-(--app-line) rounded text-xs text-white tabular-nums"
+            className="w-20 px-2 py-1 bg-(--app-page) border border-(--app-line) rounded text-xs text-(--app-ink) tabular-nums"
           />
           <span className="text-[11px] text-(--app-ink-3)">seconds</span>
           <button

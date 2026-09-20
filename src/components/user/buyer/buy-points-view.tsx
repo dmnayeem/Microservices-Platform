@@ -146,7 +146,7 @@ export function BuyPointsView({
             step={100}
             value={points}
             onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-            className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-4 py-2.5 text-white focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-4 py-2.5 text-(--app-ink) focus:border-violet-500 focus:outline-none"
           />
         </div>
 

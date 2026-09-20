@@ -190,7 +190,7 @@ export default async function TutorDashboardPage() {
                       className="w-8 h-8 rounded-full object-cover bg-(--app-surface-2)"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-(--app-ink)">
                       {(e.user.name ?? e.user.email ?? "?").slice(0, 1).toUpperCase()}
                     </div>
                   )}

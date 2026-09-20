@@ -70,7 +70,7 @@ function ImpersonateInner() {
               <p className="text-red-400 mb-4">{error}</p>
               <button
                 onClick={() => router.push("/admin/users")}
-                className="px-4 py-2 bg-(--app-surface-2) text-white rounded-lg hover:bg-(--app-surface-2) transition-colors"
+                className="px-4 py-2 bg-(--app-surface-2) text-(--app-ink) rounded-lg hover:bg-(--app-surface-2) transition-colors"
               >
                 Back to Users
               </button>

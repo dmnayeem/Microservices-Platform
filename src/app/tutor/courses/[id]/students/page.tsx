@@ -97,7 +97,7 @@ export default async function TutorCourseStudentsPage({
                     className="w-8 h-8 rounded-full object-cover bg-(--app-surface-2)"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-white">
+                  <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-(--app-ink)">
                     {(e.user.name ?? e.user.email ?? "?").slice(0, 1).toUpperCase()}
                   </div>
                 )}
@@ -171,7 +171,7 @@ function ProgressBar({ value }: { value: number }) {
     <div className="flex items-center gap-2 min-w-[140px]">
       <div className="h-1.5 flex-1 bg-(--app-surface-2) rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500"
+          className="h-full bg-gradient-to-r from-(--app-grad-a) to-emerald-500"
           style={{ width: `${pct}%` }}
         />
       </div>

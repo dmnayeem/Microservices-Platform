@@ -27,7 +27,7 @@ export default async function CertificatePage({
         <ArrowLeft className="w-3.5 h-3.5" /> Back to my learning
       </Link>
 
-      <div className="rounded-3xl border-4 border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-indigo-500/10 p-10 text-center space-y-4">
+      <div className="rounded-3xl border-4 border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-(--app-rail-b)/10 p-10 text-center space-y-4">
         <Award className="w-16 h-16 text-amber-300 mx-auto" />
         <p className="text-sm font-bold text-amber-300 uppercase tracking-widest">
           Certificate of Completion

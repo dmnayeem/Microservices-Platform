@@ -538,7 +538,7 @@ export function SettingsView({
                   <select
                     value={language}
                     onChange={(e) => onLanguage(e.target.value)}
-                    className="bg-(--app-surface-2) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
+                    className="bg-(--app-surface-2) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
                   >
                     <option value="en">English</option>
                     <option value="bn">বাংলা</option>
@@ -588,7 +588,7 @@ export function SettingsView({
                   setShowDelete(false);
                   setDeleteConfirm("");
                 }}
-                className="flex-1 py-2 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
+                className="flex-1 py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
               >
                 Cancel
               </button>

@@ -16,7 +16,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/35 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
+          "bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) text-white shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/35 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
         secondary:
           "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2) border border-(--app-line) shadow-sm",
         outline:

@@ -138,7 +138,7 @@ export function TransactionHistory({
         <select
           value={range}
           onChange={(e) => changeRange(e.target.value as RangePreset)}
-          className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
+          className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
         >
           {(Object.keys(RANGE_LABELS) as RangePreset[]).map((r) => (
             <option key={r} value={r}>
@@ -151,7 +151,7 @@ export function TransactionHistory({
             type="date"
             value={day}
             onChange={(v) => changeDay(v)}
-            className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
+            className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
           />
         )}
       </div>
@@ -284,7 +284,7 @@ export function TransactionHistory({
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-white disabled:opacity-40"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-(--app-ink) disabled:opacity-40"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Prev
           </button>
@@ -294,7 +294,7 @@ export function TransactionHistory({
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-white disabled:opacity-40"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-(--app-ink) disabled:opacity-40"
           >
             Next <ChevronRight className="w-3.5 h-3.5" />
           </button>

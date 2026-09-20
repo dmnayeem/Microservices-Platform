@@ -129,10 +129,10 @@ export function AnalyticsPanel({
                 title={`${d.date}: ${d.views} views`}
               >
                 <div
-                  className="w-full rounded-t bg-linear-to-t from-indigo-600 to-purple-500 hover:from-indigo-400 hover:to-purple-300 transition-colors min-h-0.5"
+                  className="w-full rounded-t bg-linear-to-t from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-rail-b) transition-colors min-h-0.5"
                   style={{ height: `${Math.max(2, heightPct)}%` }}
                 />
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-(--app-surface-2) text-[10px] text-(--app-ink) opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
                   {d.views}
                 </span>
               </div>

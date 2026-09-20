@@ -285,7 +285,7 @@ export function MediaSelector({
                     placeholder="Search media..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+                    className="w-full pl-10 pr-4 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   />
                 </div>
 
@@ -293,7 +293,7 @@ export function MediaSelector({
                 <select
                   value={filterType || "all"}
                   onChange={(e) => setFilterType(e.target.value as MediaFilter["fileType"])}
-                  className="px-4 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+                  className="px-4 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                 >
                   <option value="all">All Types</option>
                   <option value="IMAGE">Images</option>

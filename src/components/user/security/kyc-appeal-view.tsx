@@ -190,7 +190,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
                 value={selectedDocId}
                 onChange={(e) => setSelectedDocId(e.target.value)}
                 disabled={busy}
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
               >
                 {appealableDocs.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -232,7 +232,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
               disabled={busy}
               placeholder="Explain what was incorrect about the rejection — e.g. the document was clear, the address matches, the photo wasn't blurry…"
               maxLength={2000}
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
             <p className="text-[10px] text-(--app-ink-3) mt-1 tabular-nums">
               {reason.length}/2000 · minimum 20 characters
@@ -302,12 +302,12 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
                 }
                 disabled={busy || evidence.length >= 10}
                 placeholder="https://…"
-                className="flex-1 px-3 py-1.5 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                className="flex-1 px-3 py-1.5 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
               <button
                 onClick={addEvidence}
                 disabled={busy || !evidenceInput.trim() || evidence.length >= 10}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add
@@ -322,7 +322,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
               !selectedDocId ||
               reason.trim().length < 20
             }
-            className="w-full py-2.5 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 text-white font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] transition-transform"
+            className="w-full py-2.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] transition-transform"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />

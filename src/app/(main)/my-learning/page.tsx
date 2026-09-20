@@ -345,7 +345,7 @@ function EnrollmentList({
               </div>
               <div className="h-1.5 bg-(--app-surface-2) rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500"
+                  className="h-full bg-gradient-to-r from-(--app-grad-a) to-emerald-500"
                   style={{ width: `${Math.max(0, Math.min(100, e.progress))}%` }}
                 />
               </div>
@@ -453,7 +453,7 @@ function CertificateList({
       {items.map((c) => (
         <li
           key={c.id}
-          className="bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-indigo-500/5 rounded-2xl border border-amber-500/30 p-5"
+          className="bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-(--app-rail-b)/5 rounded-2xl border border-amber-500/30 p-5"
         >
           <div className="flex items-start gap-3">
             <Award className="w-10 h-10 text-amber-300 shrink-0" />

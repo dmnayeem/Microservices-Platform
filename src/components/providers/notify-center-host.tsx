@@ -62,10 +62,10 @@ const TONE: Record<
   },
   info: {
     icon: Info,
-    gradient: "from-indigo-500 to-violet-600",
+    gradient: "from-(--app-grad-a) to-(--app-grad-b)",
     glow: "bg-(--app-cta)/25",
     border: "border-(--app-accent-edge)/25",
-    line: "via-indigo-500/60",
+    line: "via-(--app-rail-b)/60",
     bar: "bg-(--app-cta)",
     shadow: "shadow-indigo-500/30",
   },

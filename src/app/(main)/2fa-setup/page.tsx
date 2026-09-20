@@ -123,7 +123,7 @@ export default function TwoFactorSetupPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="000000"
-                className="w-full px-3 py-3 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-2xl font-bold text-center tracking-widest tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-3 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-2xl font-bold text-center tracking-widest tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
             <button

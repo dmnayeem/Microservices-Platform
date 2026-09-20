@@ -12,10 +12,10 @@ const SEEN_KEY = "splash_seen_v1";
 function BrandLogo() {
   return (
     <div className="flex flex-col items-center justify-center gap-4">
-      <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+      <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center shadow-lg shadow-indigo-500/30">
         <Sparkles className="w-12 h-12 text-white" />
       </div>
-      <span className="text-2xl font-black bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+      <span className="text-2xl font-black bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
         EarnGPT
       </span>
     </div>
@@ -131,14 +131,14 @@ export function SplashScreen() {
           {isLast ? (
             <button
               onClick={dismiss}
-              className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 text-white font-bold"
+              className="w-full py-3 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white font-bold"
             >
               Get started
             </button>
           ) : (
             <button
               onClick={() => setActive((p) => Math.min(p + 1, cfg.slides.length - 1))}
-              className="w-full py-3 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white font-semibold inline-flex items-center justify-center gap-1"
+              className="w-full py-3 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) font-semibold inline-flex items-center justify-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>

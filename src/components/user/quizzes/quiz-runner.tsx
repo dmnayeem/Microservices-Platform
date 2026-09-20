@@ -164,7 +164,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         </p>
         <Link
           href="/quizzes"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
         >
           <ArrowLeft className="w-4 h-4" /> Back to quizzes
         </Link>
@@ -302,7 +302,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
       </div>
       <div className="mt-2 h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
         <div
-          className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width]"
+          className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width]"
           style={{ width: `${((idx + 1) / questions.length) * 100}%` }}
         />
       </div>
@@ -403,7 +403,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         {idx > 0 && (
           <button
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
-            className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
+            className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
           >
             Back
           </button>

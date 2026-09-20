@@ -108,7 +108,7 @@ export function QuizzesView() {
                 className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 flex flex-col hover:border-(--app-accent-edge)/40 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center text-2xl shrink-0">
                     🧠
                   </div>
                   <div className="flex-1 min-w-0">

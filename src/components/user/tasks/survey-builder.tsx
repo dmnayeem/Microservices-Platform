@@ -179,7 +179,7 @@ export function SurveyBuilder({
                       required: q.required,
                     });
                   }}
-                  className="min-w-0 flex-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1.5 text-xs text-white focus:border-(--app-accent-edge) focus:outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1.5 text-xs text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
                 >
                   {TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -291,7 +291,7 @@ export function SurveyBuilder({
                         ),
                       })
                     }
-                    className="w-20 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+                    className="w-20 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
                   />
                 </label>
               )}
@@ -311,7 +311,7 @@ export function SurveyBuilder({
                   onChange={(e) => setQ(i, { hint: e.target.value })}
                   maxLength={300}
                   placeholder="Helper text (optional)"
-                  className="min-w-0 flex-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1 text-[11px] text-(--app-ink-2) placeholder-gray-600 focus:border-(--app-accent-edge) focus:outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1 text-[11px] text-(--app-ink-2) placeholder:text-(--app-ink-3) focus:border-(--app-accent-edge) focus:outline-none"
                 />
               </div>
             </div>

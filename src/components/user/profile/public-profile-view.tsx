@@ -260,7 +260,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
     <div className="space-y-5">
       {/* Header — cover + avatar */}
       <div className="rounded-2xl overflow-hidden glass">
-        <div className="relative h-32 sm:h-44 bg-linear-to-br from-indigo-600 via-purple-600 to-pink-600">
+        <div className="relative h-32 sm:h-44 bg-linear-to-br from-(--app-grad-a) via-(--app-rail-b) to-(--app-grad-b)">
           {user.coverPhoto && (
             <SmartImage
               src={user.coverPhoto}
@@ -286,7 +286,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             {viewer.isMe ? (
               <Link
                 href="/profile"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
               >
                 Edit Profile
               </Link>

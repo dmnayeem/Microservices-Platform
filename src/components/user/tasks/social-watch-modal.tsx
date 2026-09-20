@@ -369,7 +369,7 @@ export function SocialWatchModal({
           </div>
           <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
             <div
-              className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width] duration-300"
+              className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width] duration-300"
               style={{ width: `${(watched / target) * 100}%` }}
             />
           </div>

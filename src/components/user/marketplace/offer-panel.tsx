@@ -182,7 +182,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
               min={1}
               step="0.01"
               placeholder={`Offer (asking $${askingPrice.toLocaleString()})`}
-              className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 tabular-nums"
+              className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-emerald-500 tabular-nums"
             />
             <button
               type="button"
@@ -203,7 +203,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Optional message — give context for your offer…"
             maxLength={500}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-emerald-500"
           />
           <button
             type="button"
@@ -319,7 +319,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                         setCounterDraft({ ...counterDraft, amount: e.target.value })
                       }
                       placeholder="Counter amount"
-                      className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 tabular-nums"
+                      className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) focus:outline-none focus:border-amber-500 tabular-nums"
                     />
                     <button
                       type="button"
@@ -352,7 +352,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                       setCounterDraft({ ...counterDraft, message: e.target.value })
                     }
                     placeholder="Optional counter message…"
-                    className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
                   />
                   <button
                     type="button"

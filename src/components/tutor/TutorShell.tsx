@@ -57,7 +57,7 @@ export function TutorShell({ user, children }: Props) {
       >
         <div className="flex items-center justify-between p-4 border-b border-(--app-line)">
           <Link href="/tutor/dashboard" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-(--app-grad-a) to-(--app-grad-b) text-white flex items-center justify-center">
               <GraduationCap className="w-5 h-5" />
             </div>
             <div>

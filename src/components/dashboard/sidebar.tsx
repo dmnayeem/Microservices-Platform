@@ -296,7 +296,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter menu…"
             aria-label="Filter navigation"
-            className="app-tap-row w-full pl-10 pr-10 py-2 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) focus:ring-1 focus:ring-(--app-accent-edge)"
+            className="app-tap-row w-full pl-10 pr-10 py-2 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) focus:ring-1 focus:ring-(--app-accent-edge)"
           />
           {filter && (
             <button

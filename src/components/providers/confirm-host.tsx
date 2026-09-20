@@ -160,7 +160,7 @@ function DialogView({ request }: { request: DialogRequest }) {
                 onChange={(e) => setText(e.target.value)}
                 placeholder={options.placeholder}
                 rows={3}
-                className="mt-4 w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+                className="mt-4 w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
               />
             ) : (
               <input
@@ -168,7 +168,7 @@ function DialogView({ request }: { request: DialogRequest }) {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={options.placeholder}
-                className="mt-4 w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                className="mt-4 w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             ))}
 
@@ -185,7 +185,7 @@ function DialogView({ request }: { request: DialogRequest }) {
                 ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-red-500"
               />
             </div>
           )}

@@ -65,7 +65,7 @@ export default function UpdatePasswordPage() {
               type={showCur ? "text" : "password"}
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
-              className="w-full px-3 py-2 pr-9 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 pr-9 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
             <button
               onClick={() => setShowCur((s) => !s)}
@@ -85,7 +85,7 @@ export default function UpdatePasswordPage() {
               type={showNew ? "text" : "password"}
               value={next}
               onChange={(e) => setNext(e.target.value)}
-              className="w-full px-3 py-2 pr-9 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 pr-9 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
             <button
               onClick={() => setShowNew((s) => !s)}
@@ -104,7 +104,7 @@ export default function UpdatePasswordPage() {
             type={showNew ? "text" : "password"}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
       </div>

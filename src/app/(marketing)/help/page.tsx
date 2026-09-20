@@ -65,7 +65,7 @@ export default function PublicHelpPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-16 sm:pt-24">
       <div className="text-center">
-        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-blue-500 to-purple-600">
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
           <LifeBuoy className="h-7 w-7 text-white" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-(--mk-text) tracking-tight">How can we help?</h1>
@@ -78,7 +78,7 @@ export default function PublicHelpPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search help articles…"
-          className="w-full rounded-2xl mk-card backdrop-blur-xl pl-12 pr-4 py-4 text-(--mk-text) placeholder-slate-500 focus:outline-none focus:border-blue-500/40"
+          className="w-full rounded-2xl mk-card backdrop-blur-xl pl-12 pr-4 py-4 text-(--mk-text) placeholder:text-(--app-ink-3) focus:outline-none focus:border-blue-500/40"
         />
       </div>
 
@@ -113,7 +113,7 @@ export default function PublicHelpPage() {
         <div className="mb-2 inline-flex items-center gap-2 text-(--mk-accent)"><Mail className="h-4 w-4" /><span className="text-sm font-bold uppercase tracking-wider">Still need help?</span></div>
         <p className="text-(--mk-muted) text-sm">Our support team replies around the clock.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
-          <Link href="/contact" className="rounded-xl bg-linear-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-sm font-bold text-white hover:scale-105 transition-transform">Contact support</Link>
+          <Link href="/contact" className="rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-5 py-2.5 text-sm font-bold text-white hover:scale-105 transition-transform">Contact support</Link>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="rounded-xl border border-(--mk-border-strong) bg-(--mk-surface) px-5 py-2.5 text-sm font-semibold text-(--mk-text) hover:bg-(--mk-surface-2)">{SUPPORT_EMAIL}</a>
         </div>
       </div>

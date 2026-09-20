@@ -129,7 +129,7 @@ export function CoursePlayerShell({
             </span>
             <div className="h-1 flex-1 max-w-[160px] bg-(--app-surface-2) rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500"
+                className="h-full bg-gradient-to-r from-(--app-grad-a) to-emerald-500"
                 style={{ width: `${progressPct}%` }}
               />
             </div>

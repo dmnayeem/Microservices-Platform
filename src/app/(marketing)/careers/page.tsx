@@ -54,7 +54,7 @@ export default function CareersPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PERKS.map((p) => (
             <GlassCard key={p.title}>
-              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-purple-600">
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
                 <p.icon className="h-5 w-5 text-white" />
               </div>
               <h3 className="text-lg font-bold text-(--mk-text)">{p.title}</h3>
@@ -83,7 +83,7 @@ export default function CareersPage() {
                     <span className="rounded-full mk-card px-2.5 py-1">{r.type}</span>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white shrink-0">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-4 py-2 text-sm font-bold text-white shrink-0">
                   Apply <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </div>
@@ -97,7 +97,7 @@ export default function CareersPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {HIRING.map((h) => (
             <GlassCard key={h.step}>
-              <div className="mb-2 grid h-9 w-9 place-items-center rounded-full bg-linear-to-br from-blue-500 to-purple-600 text-sm font-bold text-white">{h.step}</div>
+              <div className="mb-2 grid h-9 w-9 place-items-center rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-sm font-bold text-white">{h.step}</div>
               <h3 className="font-bold text-(--mk-text)">{h.title}</h3>
               <p className="mt-1 text-sm text-(--mk-muted)">{h.body}</p>
             </GlassCard>

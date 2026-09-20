@@ -885,7 +885,7 @@ export function BuyerHubView({
                                     value={reportText}
                                     onChange={(e) => setReportText(e.target.value)}
                                     placeholder="What is wrong with this one? An admin reads this."
-                                    className="w-full resize-none rounded-md border border-(--app-line) bg-(--app-page) px-2 py-1.5 text-xs text-white focus:border-amber-500 focus:outline-none"
+                                    className="w-full resize-none rounded-md border border-(--app-line) bg-(--app-page) px-2 py-1.5 text-xs text-(--app-ink) focus:border-amber-500 focus:outline-none"
                                   />
                                   <p className="text-[10px] leading-relaxed text-(--app-ink-3)">
                                     This does not undo the payment and does not
@@ -1209,7 +1209,7 @@ function EditTaskModal({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
-            className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+            className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
           />
         </div>
 
@@ -1221,7 +1221,7 @@ function EditTaskModal({
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full resize-none rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+            className="w-full resize-none rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
           />
         </div>
 
@@ -1235,7 +1235,7 @@ function EditTaskModal({
                 <select
                   value={socialPlatform}
                   onChange={(e) => pickPlatform(e.target.value)}
-                  className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+                  className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
                 >
                   <option value="">Choose…</option>
                   {platformOptions.map((p) => (
@@ -1253,7 +1253,7 @@ function EditTaskModal({
                   value={socialAction}
                   onChange={(e) => setSocialAction(e.target.value)}
                   disabled={!platformDef}
-                  className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
+                  className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
                 >
                   <option value="">
                     {platformDef ? "Choose…" : "Pick a platform first"}
@@ -1274,7 +1274,7 @@ function EditTaskModal({
                 value={socialUrl}
                 onChange={(e) => setSocialUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
               />
             </div>
           </>
@@ -1296,7 +1296,7 @@ function EditTaskModal({
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             placeholder="Optional — extra detail shown alongside the task"
-            className="w-full resize-none rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+            className="w-full resize-none rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
           />
         </div>
 
@@ -1311,7 +1311,7 @@ function EditTaskModal({
               value={pointsReward}
               disabled={!notYetLive}
               onChange={(e) => setPointsReward(Number(e.target.value))}
-              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
             />
           </div>
           <div>
@@ -1324,7 +1324,7 @@ function EditTaskModal({
               value={targetCount}
               disabled={!notYetLive}
               onChange={(e) => setTargetCount(Number(e.target.value))}
-              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
             />
           </div>
           <div>
@@ -1336,7 +1336,7 @@ function EditTaskModal({
               min={1}
               value={minLevel}
               onChange={(e) => setMinLevel(Number(e.target.value))}
-              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
             />
           </div>
         </div>

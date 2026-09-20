@@ -60,7 +60,7 @@ export function UpdatePasswordView() {
               type={showCur ? "text" : "password"}
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
-              className="w-full px-3 py-2.5 pr-10 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2.5 pr-10 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={() => setShowCur((v) => !v)}
@@ -82,7 +82,7 @@ export function UpdatePasswordView() {
               value={next}
               onChange={(e) => setNext(e.target.value)}
               minLength={8}
-              className="w-full px-3 py-2.5 pr-10 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2.5 pr-10 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={() => setShowNew((v) => !v)}
@@ -105,7 +105,7 @@ export function UpdatePasswordView() {
             type={showNew ? "text" : "password"}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>

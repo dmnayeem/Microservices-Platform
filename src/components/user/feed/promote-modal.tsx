@@ -136,7 +136,7 @@ export function PromoteModal({
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={120}
                 placeholder='e.g. "NordVPN", "Coinbase"'
-                className="w-full bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
+                className="w-full bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
               />
               <p className="text-[10px] text-(--app-ink-3) mt-1">
                 Shown as a tooltip on the PROMOTED badge.

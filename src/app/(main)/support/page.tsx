@@ -141,7 +141,7 @@ export default function HelpPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search articles..."
-          className="w-full pl-9 pr-3 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+          className="w-full pl-9 pr-3 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
         />
       </div>
 

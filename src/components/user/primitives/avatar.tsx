@@ -39,7 +39,7 @@ interface AvatarProps {
 }
 
 const FALLBACK_BG: Record<AvatarFallbackStyle, string> = {
-  gradient: "bg-linear-to-br from-indigo-500 to-purple-600",
+  gradient: "bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b)",
   "solid-gray": "bg-(--app-surface-2)",
   "solid-slate": "bg-(--app-surface-2)",
 };

@@ -301,7 +301,7 @@ function ReferralCard({ referral }: { referral: RailWidgets["referral"] }) {
         Invite friends — earn commission on their activity.
       </p>
       <div className="mt-3 flex items-center gap-2">
-        <code className="app-tap-row flex-1 min-w-0 flex items-center truncate rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) px-3 text-sm font-mono font-bold text-white">
+        <code className="app-tap-row flex-1 min-w-0 flex items-center truncate rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) px-3 text-sm font-mono font-bold text-(--app-ink)">
           {referral.code}
         </code>
         <button

@@ -797,7 +797,7 @@ export function VideoTaskPlayer({
             </div>
             <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
-                className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width] duration-300"
+                className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width] duration-300"
                 style={{ width: `${watchPct}%` }}
               />
             </div>
@@ -903,7 +903,7 @@ export function VideoTaskPlayer({
                                   }))
                                 }
                                 placeholder="Paste the proof link (e.g. your comment URL)"
-                                className="w-full pl-8 pr-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                                className="w-full pl-8 pr-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
                               />
                             </div>
                           )}
@@ -943,7 +943,7 @@ export function VideoTaskPlayer({
                       value={uniqueKey}
                       onChange={(e) => setUniqueKey(e.target.value)}
                       placeholder="Enter the key shown in the video"
-                      className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                      className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500 font-mono"
                     />
                     {cfg?.uniqueKeyHint && (
                       <p className="text-[11px] text-amber-400/80 mt-1">
@@ -1055,7 +1055,7 @@ export function VideoTaskPlayer({
                       value={uniqueKey}
                       onChange={(e) => setUniqueKey(e.target.value)}
                       placeholder="Enter the key shown in the video"
-                      className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                      className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500 font-mono"
                     />
                     {cfg?.uniqueKeyHint && (
                       <p className="text-[11px] text-amber-400/80 mt-1">

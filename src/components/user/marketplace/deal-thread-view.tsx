@@ -277,7 +277,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               }}
               rows={1}
               placeholder="Type a message…"
-              className="flex-1 resize-none bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) max-h-32"
+              className="flex-1 resize-none bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) max-h-32"
             />
             <button
               onClick={send}

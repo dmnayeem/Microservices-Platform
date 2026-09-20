@@ -277,7 +277,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
               <select
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
-                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               >
                 {DOC_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -301,7 +301,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                   placeholder="As printed on the document"
                   inputMode="text"
                   autoComplete="off"
-                  className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                  className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
                 />
                 <p className="text-[11px] text-(--app-ink-3) mt-1.5">
                   Each document can verify one account only.
@@ -367,7 +367,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 <button
                   onClick={submitAuto}
                   disabled={verifying}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-sm font-bold disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm font-bold disabled:opacity-50"
                 >
                   {verifying ? (
                     <>

@@ -81,7 +81,7 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
         <div className="flex gap-2 mt-3">
           <button
             onClick={dismiss}
-            className="flex-1 py-1.5 rounded-lg bg-(--app-surface-2) text-white text-xs font-semibold"
+            className="flex-1 py-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
           >
             Not Now
           </button>

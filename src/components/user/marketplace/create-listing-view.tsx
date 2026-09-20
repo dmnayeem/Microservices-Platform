@@ -272,7 +272,7 @@ export function CreateListingView() {
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={100}
                 placeholder="What are you selling?"
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
             <div>
@@ -285,7 +285,7 @@ export function CreateListingView() {
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={1000}
                 placeholder="Tell buyers what they're getting…"
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
               />
             </div>
             <div className="w-40">
@@ -298,7 +298,7 @@ export function CreateListingView() {
                 min={0.5}
                 value={price}
                 onChange={(e) => setPrice(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           </section>
@@ -384,7 +384,7 @@ export function CreateListingView() {
                 onChange={(e) =>
                   setAffType(e.target.value as "" | "PERCENT" | "FIXED")
                 }
-                className="px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                className="px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               >
                 <option value="">No affiliate</option>
                 <option value="PERCENT">% of sale</option>
@@ -399,7 +399,7 @@ export function CreateListingView() {
                     value={affValue || ""}
                     onChange={(e) => setAffValue(Number(e.target.value))}
                     placeholder={affType === "PERCENT" ? "e.g. 20" : "e.g. 5.00"}
-                    className="w-32 pl-7 pr-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                    className="w-32 pl-7 pr-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
                   />
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-(--app-ink-3) text-sm">
                     {affType === "PERCENT" ? "%" : "$"}

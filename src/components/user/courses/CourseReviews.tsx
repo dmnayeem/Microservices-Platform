@@ -215,7 +215,7 @@ function ReviewComposer({
         onChange={(e) => setTitle(e.target.value)}
         maxLength={120}
         placeholder="Headline (optional)"
-        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
       />
       <textarea
         value={comment}
@@ -223,7 +223,7 @@ function ReviewComposer({
         rows={3}
         maxLength={2000}
         placeholder="What did you think? (optional)"
-        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <button
         type="button"

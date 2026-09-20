@@ -43,7 +43,7 @@ export const VERIFIED_BADGE_STYLES: Record<
     label: "Emerald",
   },
   PURPLE: {
-    gradient: "bg-linear-to-br from-fuchsia-400 via-purple-500 to-violet-600",
+    gradient: "bg-linear-to-br from-fuchsia-400 via-purple-500 to-purple-700",
     glow: "bg-purple-400/60",
     label: "Purple",
   },
@@ -133,7 +133,7 @@ export function VerifiedBadge({
       {/* Hover tooltip — modern pill with subtle pop animation */}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 translate-y-1 opacity-0 group-hover/vb:opacity-100 group-hover/vb:translate-y-0 transition-all duration-200 whitespace-nowrap rounded-lg bg-(--app-page)/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 border border-white/10 shadow-xl ring-1 ring-black/20 z-50 inline-flex items-center gap-1"
+        className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 translate-y-1 opacity-0 group-hover/vb:opacity-100 group-hover/vb:translate-y-0 transition-all duration-200 whitespace-nowrap rounded-lg bg-(--app-page)/95 backdrop-blur-md text-(--app-ink) text-[10px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 border border-white/10 shadow-xl ring-1 ring-black/20 z-50 inline-flex items-center gap-1"
       >
         <Check className="w-2.5 h-2.5 text-emerald-400" strokeWidth={4} />
         {tooltip}

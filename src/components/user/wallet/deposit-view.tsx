@@ -360,7 +360,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 {selected.accountLabel || "Receiving account"}
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-sm text-white break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
+                <code className="flex-1 text-sm text-(--app-ink) break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
                   {selected.account}
                 </code>
                 <button
@@ -412,7 +412,7 @@ export function DepositView({ from }: { from?: string } = {}) {
               <div>
                 <p className="text-[11px] text-(--app-ink-3) mb-1">Memo / Tag (required)</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm text-white break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
+                  <code className="flex-1 text-sm text-(--app-ink) break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
                     {selected.memo}
                   </code>
                   <button
@@ -516,7 +516,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             <button
               onClick={() => payOnline()}
               disabled={busy}
-              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
             >
               <ExternalLink className="w-4 h-4" />
               Pay online
@@ -527,7 +527,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 key={g.key}
                 onClick={() => payOnline(g.key)}
                 disabled={busy}
-                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
               >
                 <ExternalLink className="w-4 h-4" />
                 {g.label}

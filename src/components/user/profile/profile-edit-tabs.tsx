@@ -550,7 +550,7 @@ export function PrivacyTab({
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-(--app-line)">
         <a
           href="/api/profile/export"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
         >
           ⬇️ Download My Data
         </a>

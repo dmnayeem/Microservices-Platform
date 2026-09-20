@@ -200,7 +200,7 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
             onChange={(e) => setMessage(e.target.value)}
             rows={4}
             placeholder="Your experience, what you'll do, and why we should approve you…"
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
@@ -211,7 +211,7 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
           <input
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
@@ -224,7 +224,7 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
             onChange={(e) => setLinks(e.target.value)}
             rows={2}
             placeholder="https://…"
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
@@ -232,7 +232,7 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
           <button
             onClick={onClose}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>

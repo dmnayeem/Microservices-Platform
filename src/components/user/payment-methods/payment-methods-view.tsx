@@ -248,7 +248,7 @@ export function PaymentMethodsView() {
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
           >
             {available.map((a) => (
               <option key={a.method} value={a.method}>
@@ -271,7 +271,7 @@ export function PaymentMethodsView() {
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value)}
             placeholder="e.g. 01XXXXXXXXX"
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
@@ -284,7 +284,7 @@ export function PaymentMethodsView() {
             value={accountName}
             onChange={(e) => setAccountName(e.target.value)}
             placeholder="Name on the account"
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 

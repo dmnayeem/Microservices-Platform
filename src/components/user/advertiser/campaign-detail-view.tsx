@@ -456,7 +456,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                 title={`${s.date}: ${s.impressions} impressions · ${s.clicks} clicks · ${usd(Number(s.spendUsd ?? 0))}`}
               >
                 <div
-                  className="w-full rounded-t bg-linear-to-t from-indigo-600 to-purple-500"
+                  className="w-full rounded-t bg-linear-to-t from-(--app-grad-a) to-(--app-grad-b)"
                   style={{ height: `${((Number(s[metric]) || 0) / metricMax) * 100}%` }}
                 />
               </div>

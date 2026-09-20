@@ -155,7 +155,7 @@ export function ReferralsView({
       </header>
 
       {/* Total earnings header card */}
-      <div className="rounded-2xl bg-linear-to-r from-purple-600/25 to-pink-500/15 border border-purple-500/40 backdrop-blur-xl p-5">
+      <div className="rounded-2xl bg-linear-to-r from-(--app-rail-a)/25 to-(--app-rail-b)/15 border border-(--app-accent-edge)/40 backdrop-blur-xl p-5">
         <p className="text-xs uppercase tracking-widest font-bold text-purple-200">
           Total Referral Earnings
         </p>
@@ -284,7 +284,7 @@ export function ReferralsView({
               type="text"
               value={shareUrl}
               readOnly
-              className="flex-1 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-white text-sm focus:outline-none"
+              className="flex-1 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-(--app-ink) text-sm focus:outline-none"
             />
             <button
               onClick={() => copyText(shareUrl, "Link")}
@@ -299,14 +299,14 @@ export function ReferralsView({
         <div className="flex gap-2">
           <button
             onClick={() => setShowQr((v) => !v)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
           >
             <QrCode className="w-4 h-4" />
             {showQr ? "Hide QR" : "Show QR"}
           </button>
           <button
             onClick={() => setShowShare(true)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold hover:scale-[1.02] transition-transform"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold hover:scale-[1.02] transition-transform"
           >
             <Share2 className="w-4 h-4" />
             Share

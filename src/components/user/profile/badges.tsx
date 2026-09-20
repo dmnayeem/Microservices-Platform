@@ -21,7 +21,7 @@ export const PACKAGE_TIER_STYLES: Record<
     label: "Starter",
   },
   PRO: {
-    gradient: "from-purple-600 to-pink-500",
+    gradient: "from-purple-500 to-pink-500",
     border: "border-purple-400/40",
     ring: "ring-purple-400/30",
     text: "text-purple-50",

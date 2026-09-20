@@ -28,7 +28,7 @@ export default function BlogIndexPage() {
           className="group block rounded-3xl mk-card backdrop-blur-xl overflow-hidden hover:border-blue-500/30 transition-all"
         >
           <div className="grid md:grid-cols-2">
-            <div className="grid place-items-center bg-linear-to-br from-blue-500/20 to-purple-600/20 p-12 text-7xl">
+            <div className="grid place-items-center bg-linear-to-br from-(--mk-grad-a)/20 to-(--mk-rail-b)/20 p-12 text-7xl">
               {featured.emoji}
             </div>
             <div className="p-6 sm:p-10">
@@ -54,7 +54,7 @@ export default function BlogIndexPage() {
               href={`/blog/${p.slug}`}
               className="group flex flex-col rounded-2xl mk-card backdrop-blur-xl overflow-hidden hover:border-blue-500/30 transition-all"
             >
-              <div className="grid place-items-center bg-linear-to-br from-blue-500/15 to-purple-600/15 py-10 text-5xl">{p.emoji}</div>
+              <div className="grid place-items-center bg-linear-to-br from-(--mk-grad-a)/15 to-(--mk-rail-b)/15 py-10 text-5xl">{p.emoji}</div>
               <div className="flex flex-1 flex-col p-5">
                 <div className="flex items-center gap-2 text-[11px] text-(--mk-muted)">
                   <span className="rounded-full mk-card px-2 py-0.5">{p.category}</span>

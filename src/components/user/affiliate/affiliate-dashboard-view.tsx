@@ -137,7 +137,7 @@ export function AffiliateDashboardView({
             ) : (
               <Link
                 href="/profile/become-creator"
-                className="mt-5 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold"
+                className="mt-5 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold"
               >
                 <Handshake className="w-4 h-4" />
                 Apply to become an affiliate
@@ -147,7 +147,7 @@ export function AffiliateDashboardView({
             <button
               onClick={join}
               disabled={joining}
-              className="mt-5 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold disabled:opacity-60"
+              className="mt-5 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold disabled:opacity-60"
             >
               {joining ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

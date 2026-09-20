@@ -56,7 +56,7 @@ export function AnnouncementComposer({
         onChange={(e) => setTitle(e.target.value)}
         maxLength={140}
         placeholder="Title"
-        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-(--app-accent-edge)"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
       />
       <textarea
         value={body}
@@ -64,7 +64,7 @@ export function AnnouncementComposer({
         rows={3}
         maxLength={2000}
         placeholder="What do you want to tell your students?"
-        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-(--app-ink-3)">

@@ -180,7 +180,7 @@ export default function ArticleTaskCompleteClient() {
               </Link>
               <Link
                 href="/dashboard"
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-lg bg-linear-to-r from-emerald-500 to-indigo-500 hover:from-emerald-600 hover:to-indigo-600 text-white"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold rounded-lg bg-linear-to-r from-emerald-500 to-(--app-grad-b) hover:from-emerald-600 hover:to-(--app-grad-b) text-white"
               >
                 Dashboard
                 <ArrowRight className="w-4 h-4" />

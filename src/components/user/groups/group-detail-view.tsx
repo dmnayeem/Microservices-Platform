@@ -189,7 +189,7 @@ export function GroupDetailView({ groupId }: Props) {
 
       {/* Banner / header */}
       <div className="relative rounded-2xl overflow-hidden border border-(--app-line)">
-        <div className="relative h-28 bg-linear-to-br from-indigo-500 to-purple-600">
+        <div className="relative h-28 bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b)">
           {group.bannerUrl && (
             <SmartImage
               src={group.bannerUrl}
@@ -250,7 +250,7 @@ export function GroupDetailView({ groupId }: Props) {
               <button
                 onClick={leave}
                 disabled={busy}
-                className="px-4 py-2 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
               >
                 <LogOut className="w-4 h-4" />
                 Leave group

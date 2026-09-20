@@ -157,7 +157,7 @@ export function DailyMissionView() {
       </header>
 
       {/* Mission header card */}
-      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-gray-900 p-5">
+      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-gray-900 p-5">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl bg-(--app-cta)/20 flex items-center justify-center text-2xl shrink-0">
             🎯
@@ -218,7 +218,7 @@ export function DailyMissionView() {
           </div>
           <div className="h-2 rounded-full bg-(--app-page) overflow-hidden">
             <div
-              className="h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-[width]"
+              className="h-full bg-linear-to-r from-(--app-grad-a) to-emerald-500 transition-[width]"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -289,7 +289,7 @@ export function DailyMissionView() {
                       "h-full transition-[width]",
                       it.done
                         ? "bg-emerald-500"
-                        : "bg-linear-to-r from-indigo-500 to-purple-500"
+                        : "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b)"
                     )}
                     style={{ width: `${itemPct}%` }}
                   />
@@ -328,7 +328,7 @@ export function DailyMissionView() {
           claimedToday
             ? "bg-(--app-surface-2) text-(--app-ink-3) cursor-default"
             : progress.allDone
-            ? "bg-linear-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+            ? "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white"
             : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
         )}
       >

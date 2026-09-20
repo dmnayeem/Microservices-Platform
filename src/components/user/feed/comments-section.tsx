@@ -223,7 +223,7 @@ export function CommentsSection({
           placeholder={replyTo ? `Reply to ${replyTo.user?.name ?? "comment"}…` : "Add a comment…"}
           maxLength={500}
           disabled={busy}
-          className="flex-1 bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+          className="flex-1 bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
         />
         <button
           onClick={submit}

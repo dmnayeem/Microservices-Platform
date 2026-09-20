@@ -434,7 +434,7 @@ export function CreateTaskView({
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
             placeholder="What should people do?"
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
@@ -447,7 +447,7 @@ export function CreateTaskView({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe the task for participants..."
-            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
           />
         </div>
 
@@ -461,7 +461,7 @@ export function CreateTaskView({
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
                 placeholder="https://youtube.com/watch?v=…"
-                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
               />
               <p className="mt-1 text-[11px] text-(--app-ink-3)">
                 YouTube, Facebook, Vimeo or a direct video file.
@@ -479,7 +479,7 @@ export function CreateTaskView({
                 onChange={(e) =>
                   setWatchSeconds(parseInt(e.target.value) || 30)
                 }
-                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
+                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
               />
               <p className="mt-1 text-[11px] leading-relaxed text-(--app-ink-3)">
                 Watch time is counted on our server while the video is actually
@@ -502,7 +502,7 @@ export function CreateTaskView({
                 <select
                   value={socialPlatform}
                   onChange={(e) => pickPlatform(e.target.value)}
-                  className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                  className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
                 >
                   <option value="">Choose…</option>
                   {platforms.map((p) => (
@@ -520,7 +520,7 @@ export function CreateTaskView({
                   value={socialAction}
                   onChange={(e) => setSocialAction(e.target.value)}
                   disabled={!platformDef}
-                  className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50"
                 >
                   <option value="">
                     {platformDef ? "Choose…" : "Pick a platform first"}
@@ -541,7 +541,7 @@ export function CreateTaskView({
                 value={socialUrl}
                 onChange={(e) => setSocialUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           </>
@@ -563,7 +563,7 @@ export function CreateTaskView({
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Step-by-step instructions for completing this task..."
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
           </div>
         )}
@@ -579,7 +579,7 @@ export function CreateTaskView({
               step={1}
               value={pointsReward}
               onChange={(e) => setPointsReward(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
@@ -592,7 +592,7 @@ export function CreateTaskView({
               step={1}
               value={targetCount}
               onChange={(e) => setTargetCount(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
             <p className="text-[10px] text-(--app-ink-3) mt-1">
               How many completions to fund
@@ -608,7 +608,7 @@ export function CreateTaskView({
               step={1}
               value={minLevel}
               onChange={(e) => setMinLevel(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
         </div>

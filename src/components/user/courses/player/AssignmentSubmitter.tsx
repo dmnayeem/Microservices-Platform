@@ -211,7 +211,7 @@ export function AssignmentSubmitter({
                 }
                 rows={4}
                 disabled={isGraded}
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 resize-y"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) focus:outline-none focus:border-amber-500 resize-y"
               />
             ) : (
               <input
@@ -227,7 +227,7 @@ export function AssignmentSubmitter({
                   setAnswers((prev) => ({ ...prev, [f.id]: e.target.value }))
                 }
                 disabled={isGraded}
-                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) focus:outline-none focus:border-amber-500"
               />
             )}
             {f.hint && (

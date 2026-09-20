@@ -90,7 +90,7 @@ export default async function TutorCourseAnnouncementsPage({
                       className="w-8 h-8 rounded-full object-cover bg-(--app-surface-2)"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-(--app-ink)">
                       {(a.author.name ?? "?").slice(0, 1).toUpperCase()}
                     </div>
                   )}

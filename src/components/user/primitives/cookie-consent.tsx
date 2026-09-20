@@ -95,7 +95,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
             </button>
             <button
               onClick={rejectAll}
-              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
+              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
             >
               Reject All
             </button>
@@ -185,7 +185,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => persist(prefs)}
-                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
               >
                 Save Preferences
               </button>

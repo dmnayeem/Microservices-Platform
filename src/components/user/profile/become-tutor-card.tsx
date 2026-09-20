@@ -143,7 +143,7 @@ export function BecomeTutorCard() {
 
   // No application yet — show CTA
   return (
-    <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-pink-500/5 p-4">
+    <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-gradient-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-transparent p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-(--app-cta)/20 text-(--app-accent-ink) flex items-center justify-center shrink-0">

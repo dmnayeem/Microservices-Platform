@@ -62,7 +62,7 @@ export function CreateGroupModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Crypto Earners"
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
@@ -74,7 +74,7 @@ export function CreateGroupModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this group about?"
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
@@ -103,7 +103,7 @@ export function CreateGroupModal({
           <button
             onClick={onClose}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>

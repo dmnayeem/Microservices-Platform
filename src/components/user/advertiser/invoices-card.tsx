@@ -130,7 +130,7 @@ export function InvoicesCard() {
         value={(draft[key] as string) ?? ""}
         placeholder={placeholder}
         onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-        className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder:text-(--app-glyph)"
+        className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-glyph)"
       />
     </div>
   );

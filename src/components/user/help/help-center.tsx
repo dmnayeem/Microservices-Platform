@@ -127,7 +127,7 @@ export function HelpCenter() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search help articles..."
-          className="w-full pl-9 pr-3 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          className="w-full pl-9 pr-3 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-blue-500"
         />
       </div>
 

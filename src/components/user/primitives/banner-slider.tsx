@@ -22,10 +22,10 @@ interface BannerSliderProps {
 }
 
 const FALLBACK_GRADIENTS = [
-  "from-indigo-600 to-purple-600",
+  "from-(--app-grad-a) to-(--app-grad-b)",
   "from-emerald-600 to-cyan-600",
   "from-amber-500 to-pink-600",
-  "from-purple-600 to-pink-600",
+  "from-(--app-grad-a) to-pink-600",
 ];
 
 export function BannerSlider({

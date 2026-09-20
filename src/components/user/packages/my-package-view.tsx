@@ -235,7 +235,7 @@ export function MyPackageView({
               <button
                 onClick={() => setShowCancelModal(false)}
                 disabled={busy}
-                className="flex-1 py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-bold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold disabled:opacity-50"
               >
                 Keep plan
               </button>
@@ -366,7 +366,7 @@ function OverviewTab({
       <div className="space-y-2">
         <Link
           href="/packages"
-          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 text-white font-bold hover:scale-[1.01] transition-transform"
+          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white font-bold hover:scale-[1.01] transition-transform"
         >
           <CreditCard className="w-4 h-4" />
           {isFree ? "Upgrade Plan" : "Change Plan"}

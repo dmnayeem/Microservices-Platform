@@ -36,7 +36,7 @@ export default function ContactPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-16 sm:pt-24">
       <div className="text-center">
-        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-blue-500 to-purple-600"><MessageSquare className="h-7 w-7 text-white" /></div>
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)"><MessageSquare className="h-7 w-7 text-white" /></div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-(--mk-text) tracking-tight">Get in touch</h1>
         <p className="mt-4 text-(--mk-muted) max-w-xl mx-auto">Questions, feedback, or need a hand? Our team is here 24/7 and typically replies within a few hours.</p>
       </div>
@@ -51,7 +51,7 @@ export default function ContactPage() {
             { icon: LifeBuoy, title: "Help Center", body: "Browse guides & FAQs", href: "/help" },
           ].map((c) => (
             <a key={c.title} href={c.href ?? "#"} className={`flex items-start gap-3 rounded-2xl mk-card p-4 ${c.href ? "hover:border-blue-500/30 transition-all" : ""}`}>
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-blue-500 to-purple-600"><c.icon className="h-5 w-5 text-white" /></div>
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)"><c.icon className="h-5 w-5 text-white" /></div>
               <div><p className="text-sm font-bold text-(--mk-text)">{c.title}</p><p className="text-sm text-(--mk-muted)">{c.body}</p></div>
             </a>
           ))}
@@ -82,7 +82,7 @@ export default function ContactPage() {
               <div><label className="block text-xs text-(--mk-muted) mb-1.5">Message</label><textarea rows={5} value={form.message} onChange={(e) => set("message", e.target.value)} className={`${inp} resize-none`} placeholder="Tell us what's going on…" /></div>
               {/* Honeypot */}
               <input tabIndex={-1} autoComplete="off" value={form.website} onChange={(e) => set("website", e.target.value)} className="hidden" aria-hidden />
-              <button type="submit" disabled={busy} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-600 to-purple-600 px-6 py-3.5 text-sm font-bold text-white hover:scale-[1.02] transition-transform disabled:opacity-50">
+              <button type="submit" disabled={busy} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-6 py-3.5 text-sm font-bold text-white hover:scale-[1.02] transition-transform disabled:opacity-50">
                 {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send message"}
               </button>
               <p className="text-center text-[11px] text-(--mk-subtle)">We&apos;ll only use your email to reply. See our Privacy Policy.</p>

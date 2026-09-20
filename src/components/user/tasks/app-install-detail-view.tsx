@@ -396,7 +396,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
                             [it.id]: { ...p[it.id], value: e.target.value },
                           }))
                         }
-                        className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-emerald-500"
                         placeholder={
                           it.kind === "LEVEL"
                             ? `e.g. ${it.target ?? 10}`

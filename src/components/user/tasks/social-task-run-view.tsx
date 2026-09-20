@@ -721,7 +721,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           </Link>
           <Link
             href="/social-tasks?tab=submitted"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
           >
             View my submissions
           </Link>
@@ -818,7 +818,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           </div>
           <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
             <div
-              className="h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-[width] duration-300"
+              className="h-full bg-linear-to-r from-(--app-grad-a) to-emerald-500 transition-[width] duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -1161,7 +1161,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   }
                   rows={3}
                   placeholder="Paste the text you published — it helps us approve you faster."
-                  className="w-full px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-xs text-white placeholder-gray-600 resize-y"
+                  className="w-full px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-xs text-(--app-ink) placeholder:text-(--app-ink-3) resize-y"
                 />
               </div>
             )}
@@ -1205,7 +1205,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                     value={proof.url}
                     onChange={(e) => setProof(idx, { url: e.target.value })}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                    className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
                   />
                   <p className="text-[10px] text-(--app-ink-3) mt-1">
                     URL of your post / comment / share / profile.
@@ -1235,7 +1235,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                     value={proof.username}
                     onChange={(e) => setProof(idx, { username: e.target.value })}
                     placeholder="@yourhandle"
-                    className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
+                    className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
                   />
                 </div>
               )}

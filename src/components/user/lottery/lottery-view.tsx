@@ -201,7 +201,7 @@ export function LotteryView() {
                   key={l.id}
                   className="glass rounded-xl p-3 flex items-center gap-3"
                 >
-                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center text-white">
                     <Ticket className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -278,7 +278,7 @@ function FeaturedLotteryCard({
   const isActive = lottery.status === "ACTIVE";
 
   return (
-    <div className="rounded-2xl bg-linear-to-br from-purple-600/30 via-pink-500/20 to-amber-400/20 border border-purple-500/40 backdrop-blur-xl p-5 shadow-2xl">
+    <div className="rounded-2xl bg-linear-to-br from-(--app-rail-a)/30 via-(--app-rail-b)/20 to-amber-400/20 border border-(--app-accent-edge)/40 backdrop-blur-xl p-5 shadow-2xl">
       <div className="flex items-center gap-2 text-purple-200">
         <Crown className="w-5 h-5 text-amber-300" />
         <p className="text-xs uppercase tracking-widest font-bold">

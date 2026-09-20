@@ -154,14 +154,14 @@ export function WalletView(props: WalletViewProps) {
       <div className="flex gap-2">
         <Link
           href="/deposit"
-          className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-white text-sm font-extrabold"
+          className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-(--app-ink) text-sm font-extrabold"
         >
           <Plus className="w-4 h-4 text-(--app-in)" />
           Add funds
         </Link>
         <Link
           href="/withdrawal"
-          className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-white text-sm font-extrabold"
+          className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-(--app-ink) text-sm font-extrabold"
         >
           <ArrowUpRight className="w-4 h-4 text-(--app-ink-3)" />
           Withdraw
@@ -318,7 +318,7 @@ function ConvertCard({
                 value={amountStr}
                 onChange={(e) => onAmountChange(e.target.value)}
                 placeholder={String(minConvert)}
-                className="app-tap-row w-full pl-3.5 pr-16 bg-(--app-surface-2) border border-(--app-line) rounded-(--app-r-control) text-white text-sm font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
+                className="app-tap-row w-full pl-3.5 pr-16 bg-(--app-surface-2) border border-(--app-line) rounded-(--app-r-control) text-(--app-ink) text-sm font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
               />
               <button
                 type="button"
@@ -650,7 +650,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
   return (
     <div className="space-y-4">
       {/* Header earnings card */}
-      <div className="rounded-2xl bg-linear-to-r from-purple-500/20 to-pink-500/10 border border-purple-500/30 backdrop-blur-xl p-5">
+      <div className="rounded-2xl bg-linear-to-r from-(--app-rail-a)/20 to-(--app-rail-b)/10 border border-(--app-accent-edge)/30 backdrop-blur-xl p-5">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-purple-400" />
           <p className="text-xs uppercase tracking-wider text-purple-300 font-bold">
@@ -863,7 +863,7 @@ function WithdrawTab({
             "mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
             isFreeTier || !hasCash
               ? "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed pointer-events-none"
-              : "bg-linear-to-r from-indigo-500 to-purple-600 text-white hover:scale-[1.02]"
+              : "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white hover:scale-[1.02]"
           )}
         >
           <ArrowUpRight className="w-4 h-4" />

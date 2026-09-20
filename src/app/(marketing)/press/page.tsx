@@ -67,7 +67,7 @@ export default function PressPage() {
         <SectionHeading badge="Brand" tone="purple" title="Logo & colors" subtitle="Please don't alter, recolor, or stretch the logo. Keep clear space around it and use it on dark backgrounds where possible." />
         <div className="grid gap-4 sm:grid-cols-2">
           <GlassCard className="flex items-center gap-3">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-blue-500 to-purple-600">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
               <Sparkles className="h-7 w-7 text-white" />
             </div>
             <div>

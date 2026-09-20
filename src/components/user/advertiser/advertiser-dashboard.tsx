@@ -207,7 +207,7 @@ export function AdvertiserDashboard() {
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-2xl border border-(--app-accent-edge)/20 bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent p-4">
+      <div className="relative overflow-hidden rounded-2xl border border-(--app-accent-edge)/20 bg-linear-to-br from-(--app-rail-a)/20 via-(--app-rail-b)/10 to-transparent p-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-(--app-cta)/20 grid place-items-center text-(--app-accent-ink) shrink-0">
             <Target className="w-6 h-6" />
@@ -380,7 +380,7 @@ export function AdvertiserDashboard() {
               </div>
               <div className="mt-2 h-1 rounded-full bg-(--app-surface-2) overflow-hidden">
                 <div
-                  className="h-full bg-linear-to-r from-indigo-500 to-purple-500"
+                  className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b)"
                   style={{ width: `${Math.min(100, pct)}%` }}
                 />
               </div>
@@ -417,7 +417,7 @@ export function AdvertiserDashboard() {
             <button
               disabled={busy}
               onClick={() => setCreating(false)}
-              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
             >
               Cancel
             </button>
@@ -437,7 +437,7 @@ export function AdvertiserDashboard() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
@@ -448,7 +448,7 @@ export function AdvertiserDashboard() {
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm resize-none focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm resize-none focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
@@ -461,7 +461,7 @@ export function AdvertiserDashboard() {
               step={5}
               value={budget}
               onChange={(e) => setBudget(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -473,7 +473,7 @@ export function AdvertiserDashboard() {
                 type="date"
                 value={startAt}
                 onChange={(v) => setStartAt(v)}
-                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
             <div>
@@ -484,7 +484,7 @@ export function AdvertiserDashboard() {
                 type="date"
                 value={endAt}
                 onChange={(v) => setEndAt(v)}
-                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
+                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           </div>
@@ -500,7 +500,7 @@ export function AdvertiserDashboard() {
             <button
               disabled={buyBusy}
               onClick={() => setBuying(false)}
-              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
             >
               Cancel
             </button>
@@ -527,7 +527,7 @@ export function AdvertiserDashboard() {
               step={5}
               value={buyAmount}
               onChange={(e) => setBuyAmount(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-emerald-500"
             />
             <div className="flex gap-2 mt-2">
               {[10, 20, 50, 100].map((a) => (

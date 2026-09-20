@@ -744,12 +744,12 @@ export function CreatePostComposer({
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
               placeholder="…or paste an image URL"
               disabled={busy}
-              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-xs text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             <button
               onClick={addImage}
               disabled={busy || !imageInput.trim()}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
             >
               <Plus className="w-3.5 h-3.5" />
               Add
@@ -877,7 +877,7 @@ export function CreatePostComposer({
             "inline-flex items-center gap-1.5 px-4 py-2 text-white text-sm font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity hover:opacity-90",
             canAnnounce && postAsAnnouncement
               ? "bg-linear-to-r from-cyan-500 to-blue-600"
-              : "bg-linear-to-r from-indigo-500 to-purple-600"
+              : "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b)"
           )}
         >
           {busy ? (
@@ -936,7 +936,7 @@ function PollComposer({
               }}
               placeholder={`Option ${i + 1}`}
               maxLength={120}
-              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             {options.length > 2 && (
               <button
@@ -998,7 +998,7 @@ function DonationComposer({
         placeholder="What's your donation cause?"
         rows={3}
         maxLength={2000}
-        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
+        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <div className="flex items-center gap-2">
         <span className="text-xs text-(--app-ink-3)">Goal (pts):</span>
@@ -1008,7 +1008,7 @@ function DonationComposer({
           step={100}
           value={goal}
           onChange={(e) => onGoalChange(parseInt(e.target.value) || 0)}
-          className="w-32 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
+          className="w-32 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge)"
         />
       </div>
     </div>

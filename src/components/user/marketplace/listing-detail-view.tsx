@@ -423,7 +423,7 @@ export function ListingDetailView({
                 <button
                   onClick={addToCart}
                   disabled={addingToCart}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-bold disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold disabled:opacity-50"
                 >
                   {addingToCart ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -435,7 +435,7 @@ export function ListingDetailView({
                 <button
                   onClick={buy}
                   disabled={busy}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white text-sm font-bold disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold disabled:opacity-50"
                 >
                   {busy ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
