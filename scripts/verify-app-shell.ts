@@ -345,6 +345,17 @@ function main() {
         "the post age stays on one line",
         /shrink-0 whitespace-nowrap/.test(card)
       );
+
+      // The reactions row belongs to the post. A banner above it ran between
+      // what somebody wrote and the buttons for reacting to it, splitting the
+      // card in two — "under the post" means after the whole post.
+      const reactionsAt = card.indexOf("{/* Reactions row.");
+      const bannerAt = card.indexOf("placement=\"FEED_POST_BELOW\"");
+      check(
+        "the sponsor banner sits after the reactions row, not through the post",
+        reactionsAt > 0 && bannerAt > reactionsAt,
+        "above the row it cuts the post off from its own buttons"
+      );
     }
 
     // A bar that is `md:hidden` but polls on `max-width: 1023px` runs a 60s

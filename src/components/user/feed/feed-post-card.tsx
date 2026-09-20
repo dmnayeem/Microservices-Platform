@@ -806,17 +806,6 @@ export const FeedPostCard = memo(function FeedPostCard({
         <DonationBlock post={post} onUpdated={onUpdated} />
       )}
 
-      {/* Compact sponsor banner under the post, above the reactions row. The
-          caller decides WHICH posts get one (ads.under_post_interval); this only
-          renders what it is told to. The old `[&_*]:max-h-16` clamp is gone —
-          FEED_POST_BELOW declares maxHeightPx: 72 and the renderer enforces it,
-          so the two were fighting over a different number. */}
-      {underPostBanner && (
-        <div className="px-(--app-pad) pb-1">
-          <AdRenderer placement="FEED_POST_BELOW" />
-        </div>
-      )}
-
       {/* Reactions row.
           Every control here is a real ≥44px target with breathing room between
           them. The old row set padding with `[&>button]`, which reaches DIRECT
@@ -919,6 +908,21 @@ export const FeedPostCard = memo(function FeedPostCard({
           </div>
         )}
       </div>
+      {/* Compact sponsor banner under the post. The caller decides WHICH posts
+          get one (ads.under_post_interval); this only renders what it is told
+          to. FEED_POST_BELOW declares maxHeightPx: 72 and the renderer
+          enforces it.
+
+          It used to sit above the reactions row, and that row is part of the
+          post — so the banner ran between what somebody wrote and the buttons
+          for reacting to it, splitting the card in two. "Under the post" means
+          after the whole post, which is also where a reader expects the next
+          thing in the feed to begin. */}
+      {underPostBanner && (
+        <div className="border-t border-(--app-line) px-(--app-pad) py-1.5">
+          <AdRenderer placement="FEED_POST_BELOW" />
+        </div>
+      )}
 
       {showAnalytics && post.isOwner && (
         <PostAnalyticsPanel postId={post.id} />
