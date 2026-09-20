@@ -66,8 +66,12 @@ check(
 console.log("\n2. The daily-mission rows line up");
 const rail = code("src/components/user/feed/feed-right-rail.tsx");
 check(
+  // The colour is deliberately not part of this pattern. What matters here is
+  // that the column is a fixed width, right-aligned and tabular; which ink it
+  // uses is the light-theme suite's business, and pinning it here only made
+  // this assertion fail the day the palette moved onto tokens.
   "the progress column is fixed width and right-aligned",
-  /w-9 text-right text-gray-500 tabular-nums/.test(rail)
+  /w-9 text-right text-\([^)]+\) tabular-nums/.test(rail)
 );
 check(
   "the points column is too",

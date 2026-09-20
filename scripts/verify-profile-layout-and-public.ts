@@ -177,10 +177,10 @@ check(
   "there is no permalink page for a post, so the profile itself has to show it"
 );
 check(
+  // Shape, not colour: a square tile with the same corner and the same border
+  // weight as a real post. The token names are free to change.
   "the loading state is the grid's own shape",
-  /aspect-square rounded-xl border border-gray-800 bg-gray-900\/40 animate-pulse/.test(
-    view
-  ),
+  /aspect-square rounded-xl border border-\S+ bg-\S+ animate-pulse/.test(view),
   "a differently-shaped skeleton makes the page jump when the posts land"
 );
 
