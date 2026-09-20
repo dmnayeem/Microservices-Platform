@@ -177,7 +177,7 @@ export default async function DashboardPage() {
         <h1 className="t-title text-white">
           Welcome back, {user.name?.split(" ")[0] || "User"}!
         </h1>
-        <p className="t-body text-gray-400 mt-1">
+        <p className="t-body text-(--app-ink-3) mt-1">
           Here&apos;s what&apos;s happening with your earnings today.
         </p>
       </div>
@@ -236,7 +236,7 @@ export default async function DashboardPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="t-card-title text-white">Convert points to cash</p>
-            <p className="t-meta text-gray-400 mt-0.5">
+            <p className="t-meta text-(--app-ink-3) mt-0.5">
               You have enough points to convert into withdrawable cash.
             </p>
           </div>
@@ -248,7 +248,7 @@ export default async function DashboardPage() {
 
       {/* Quick actions — compact chips (no cramped 2-up on phones) */}
       <div>
-        <p className="t-eyebrow text-gray-500 mb-2.5 px-1">Quick Access</p>
+        <p className="t-eyebrow text-(--app-ink-3) mb-2.5 px-1">Quick Access</p>
         <div className="grid grid-cols-4 gap-2">
           {[
             ...QUICK_ACTIONS,
@@ -264,7 +264,7 @@ export default async function DashboardPage() {
               <div className="app-icon">
                 <qa.icon className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-bold text-gray-300 group-hover:text-white text-center leading-tight">
+              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-white text-center leading-tight">
                 {qa.label}
               </span>
             </Link>
@@ -274,7 +274,7 @@ export default async function DashboardPage() {
 
       {/* Explore the platform — surfaces every earning + spending surface */}
       <div>
-        <p className="t-eyebrow text-gray-500 mb-2.5 px-1">Explore</p>
+        <p className="t-eyebrow text-(--app-ink-3) mb-2.5 px-1">Explore</p>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {EXPLORE.map((e) => (
             <Link
@@ -282,8 +282,8 @@ export default async function DashboardPage() {
               href={e.href}
               className="group app-card app-press app-lift app-tap-row flex items-center gap-2 p-2.5"
             >
-              <e.icon className="w-4 h-4 shrink-0 text-gray-400" />
-              <span className="text-[11px] font-bold text-gray-300 group-hover:text-white truncate min-w-0">
+              <e.icon className="w-4 h-4 shrink-0 text-(--app-ink-3)" />
+              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-white truncate min-w-0">
                 {e.label}
               </span>
             </Link>
@@ -373,7 +373,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="t-card-title text-white truncate">{t.title}</p>
-                  <p className="t-meta text-gray-500 capitalize mt-0.5">
+                  <p className="t-meta text-(--app-ink-3) capitalize mt-0.5">
                     {t.type.toLowerCase()}
                     {t.difficulty ? ` · ${t.difficulty.toLowerCase()}` : ""}
                   </p>
@@ -386,7 +386,7 @@ export default async function DashboardPage() {
                     +{t.pointsReward.toLocaleString()}
                   </p>
                   {t.xpReward > 0 && (
-                    <p className="t-meta text-gray-500">+{t.xpReward} XP</p>
+                    <p className="t-meta text-(--app-ink-3)">+{t.xpReward} XP</p>
                   )}
                 </div>
               </Link>

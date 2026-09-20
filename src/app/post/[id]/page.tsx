@@ -102,24 +102,24 @@ export default async function PublicPostPage({ params }: PageProps) {
   const url = publicPostUrl(post.id);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-(--app-page) text-(--app-ink)">
       {/* Header — the only navigation a stranger gets, and it points at the
           product rather than at the app shell they cannot enter. */}
-      <header className="sticky top-0 z-30 border-b border-gray-800 bg-gray-950/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
           <Link href="/" className="text-base font-extrabold text-white">
-            Earn<span className="text-indigo-400">GPT</span>
+            Earn<span className="text-(--app-accent-ink)">GPT</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="inline-flex h-10 items-center rounded-lg px-3 text-sm font-semibold text-gray-300 hover:text-white"
+              className="inline-flex h-10 items-center rounded-lg px-3 text-sm font-semibold text-(--app-ink-2) hover:text-white"
             >
               Log in
             </Link>
             <Link
               href="/register"
-              className="inline-flex h-10 items-center rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-600"
+              className="inline-flex h-10 items-center rounded-lg bg-(--app-cta) px-4 text-sm font-semibold text-(--app-on-cta) hover:bg-(--app-cta)"
             >
               Sign up
             </Link>
@@ -128,7 +128,7 @@ export default async function PublicPostPage({ params }: PageProps) {
       </header>
 
       <main className="mx-auto w-full max-w-2xl px-4 py-6">
-        <article className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+        <article className="overflow-hidden rounded-2xl border border-(--app-line) bg-(--app-surface)">
           {/* Author */}
           <div className="flex items-center gap-3 px-4 pt-4">
             {post.author.avatar ? (
@@ -143,7 +143,7 @@ export default async function PublicPostPage({ params }: PageProps) {
             ) : (
               <span
                 aria-hidden
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-indigo-500/20 text-base font-bold text-indigo-300"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-(--app-cta)/20 text-base font-bold text-(--app-accent-ink)"
               >
                 {post.author.name.slice(0, 1).toUpperCase()}
               </span>
@@ -158,7 +158,7 @@ export default async function PublicPostPage({ params }: PageProps) {
               {/* No profile link: every profile route lives under the
                   authenticated shell, so linking it would send a logged-out
                   reader straight into a login redirect. */}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 {post.author.username ? `@${post.author.username} · ` : ""}
                 <time dateTime={post.createdAt.toISOString()}>
                   {formatDate(post.createdAt)}
@@ -180,7 +180,7 @@ export default async function PublicPostPage({ params }: PageProps) {
             </div>
           ) : (
             post.content.trim().length > 0 && (
-              <p className="mt-3 whitespace-pre-wrap break-words px-4 text-[15px] leading-relaxed text-gray-200">
+              <p className="mt-3 whitespace-pre-wrap break-words px-4 text-[15px] leading-relaxed text-(--app-ink)">
                 {post.content}
               </p>
             )
@@ -221,7 +221,7 @@ export default async function PublicPostPage({ params }: PageProps) {
               href={post.linkPreview.url}
               target="_blank"
               rel="noopener noreferrer nofollow ugc"
-              className="mx-4 mt-3 block overflow-hidden rounded-xl border border-gray-800 bg-gray-950 hover:border-gray-700"
+              className="mx-4 mt-3 block overflow-hidden rounded-xl border border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
             >
               {post.linkPreview.image && (
                 <div className="relative aspect-[1.91/1] w-full">
@@ -237,7 +237,7 @@ export default async function PublicPostPage({ params }: PageProps) {
               )}
               <div className="p-3">
                 {post.linkPreview.siteName && (
-                  <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                  <p className="text-[11px] uppercase tracking-wide text-(--app-ink-3)">
                     {post.linkPreview.siteName}
                   </p>
                 )}
@@ -245,7 +245,7 @@ export default async function PublicPostPage({ params }: PageProps) {
                   {post.linkPreview.title ?? post.linkPreview.url}
                 </p>
                 {post.linkPreview.description && (
-                  <p className="mt-1 line-clamp-2 text-xs text-gray-400">
+                  <p className="mt-1 line-clamp-2 text-xs text-(--app-ink-3)">
                     {post.linkPreview.description}
                   </p>
                 )}
@@ -257,7 +257,7 @@ export default async function PublicPostPage({ params }: PageProps) {
               button: both POST to session-guarded routes, so a logged-out tap
               could only ever fail. The call to action below is the one control
               on the page that works. */}
-          <div className="mt-4 flex items-center gap-5 border-t border-gray-800 px-4 py-3 text-sm text-gray-400">
+          <div className="mt-4 flex items-center gap-5 border-t border-(--app-line) px-4 py-3 text-sm text-(--app-ink-3)">
             <span className="inline-flex items-center gap-1.5">
               <Heart className="h-4 w-4" aria-hidden />
               <span className="tabular-nums">{post.likesCount}</span>
@@ -278,21 +278,21 @@ export default async function PublicPostPage({ params }: PageProps) {
 
         <PublicPostShare url={url} title={`${post.author.name} on EarnGPT`} text={postSummary(post.content, 120)} />
 
-        <section className="mt-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-center">
+        <section className="mt-4 rounded-2xl border border-(--app-accent-edge)/30 bg-(--app-cta)/10 p-5 text-center">
           <h2 className="text-lg font-bold text-white">Join the conversation</h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-gray-300">
+          <p className="mx-auto mt-1 max-w-sm text-sm text-(--app-ink-2)">
             Create a free EarnGPT account to react, comment and start earning
             from what you post.
           </p>
           <Link
             href="/register"
-            className="mt-4 inline-flex h-11 items-center rounded-lg bg-indigo-500 px-6 text-sm font-semibold text-white hover:bg-indigo-600"
+            className="mt-4 inline-flex h-11 items-center rounded-lg bg-(--app-cta) px-6 text-sm font-semibold text-(--app-on-cta) hover:bg-(--app-cta)"
           >
             Create a free account
           </Link>
         </section>
 
-        <footer className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-400">
+        <footer className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-(--app-ink-3)">
           <Link href="/privacy" className="hover:text-white">
             Privacy
           </Link>

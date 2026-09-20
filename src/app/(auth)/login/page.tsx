@@ -162,7 +162,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="text-center space-y-2">
@@ -177,7 +177,7 @@ function LoginForm() {
           <h1 className="text-2xl font-bold text-white">
             Welcome back
           </h1>
-          <p className="text-gray-400">
+          <p className="text-(--app-ink-3)">
             Sign in to continue earning
           </p>
         </div>
@@ -199,18 +199,18 @@ function LoginForm() {
         {/* A Google-only account has no password to get wrong — say so instead
             of "invalid email or password", which reads as a broken login. */}
         {oauthOnly && (
-          <div className="p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm space-y-2">
-            <p className="text-indigo-300 font-semibold">
+          <div className="p-4 rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/20 text-sm space-y-2">
+            <p className="text-(--app-accent-ink) font-semibold">
               This account signs in with Google.
             </p>
-            <p className="text-gray-400 text-xs">
+            <p className="text-(--app-ink-3) text-xs">
               You never set a password here. Use the Google button below — or
               choose &quot;Forgot password&quot; to add one.
             </p>
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className="text-indigo-400 hover:text-indigo-300 text-xs font-bold underline"
+              className="text-(--app-accent-ink) hover:text-(--app-accent-ink) text-xs font-bold underline"
             >
               Continue with Google
             </button>
@@ -232,7 +232,7 @@ function LoginForm() {
             {devVerifyUrl && (
               <a
                 href={devVerifyUrl}
-                className="block break-all text-indigo-400 hover:text-indigo-300 underline"
+                className="block break-all text-(--app-accent-ink) hover:text-(--app-accent-ink) underline"
               >
                 {devVerifyUrl}
               </a>
@@ -262,7 +262,7 @@ function LoginForm() {
 
           {needsOtp && (
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-(--app-ink-2) mb-1.5">
                 Two-Factor Code
               </label>
               <input
@@ -273,7 +273,7 @@ function LoginForm() {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                 placeholder="123456"
-                className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-center tracking-[0.4em] font-mono placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+                className="w-full px-4 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-center tracking-[0.4em] font-mono placeholder-gray-600 focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           )}
@@ -281,7 +281,7 @@ function LoginForm() {
           <div className="flex justify-end">
             <Link
               href="/forgot-password"
-              className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="text-sm text-(--app-accent-ink) hover:text-(--app-accent-ink) transition-colors"
             >
               Forgot password?
             </Link>
@@ -295,10 +295,10 @@ function LoginForm() {
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-800" />
+            <div className="w-full border-t border-(--app-line)" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-gray-950 text-gray-500">
+            <span className="px-4 bg-(--app-page) text-(--app-ink-3)">
               or continue with
             </span>
           </div>
@@ -336,11 +336,11 @@ function LoginForm() {
         </Button>
 
         {/* Register Link */}
-        <p className="text-center text-gray-400">
+        <p className="text-center text-(--app-ink-3)">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            className="text-(--app-accent-ink) hover:text-(--app-accent-ink) font-medium transition-colors"
           >
             Sign up
           </Link>

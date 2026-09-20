@@ -20,7 +20,7 @@ export default async function HashtagPage({
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/social"
-          className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
+          className="p-2 rounded-lg hover:bg-white/5 text-(--app-ink-3) hover:text-white transition-colors"
           aria-label="Back to feed"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -30,7 +30,7 @@ export default async function HashtagPage({
         </div>
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-white truncate">#{tag}</h1>
-          <p className="text-xs text-gray-500">Posts with this hashtag</p>
+          <p className="text-xs text-(--app-ink-3)">Posts with this hashtag</p>
         </div>
       </div>
 

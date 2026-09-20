@@ -62,7 +62,7 @@ export default function TwoFactorSetupPage() {
         <h1 className="text-xl font-bold text-white flex items-center gap-2">
           🛡️ Two-Factor Authentication
         </h1>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-(--app-ink-3) mt-1">
           Add an extra layer of security to your account.
         </p>
       </div>
@@ -81,8 +81,8 @@ export default function TwoFactorSetupPage() {
 
       {!enabled && (
         <>
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 text-center">
-            <p className="text-xs text-gray-400 mb-3">
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 text-center">
+            <p className="text-xs text-(--app-ink-3) mb-3">
               1. Scan this QR code with Google Authenticator, Authy, or any TOTP
               app.
             </p>
@@ -93,17 +93,17 @@ export default function TwoFactorSetupPage() {
               </div>
             ) : (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-(--app-ink-3)" />
               </div>
             )}
             {secret && (
               <div className="mt-3">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">
+                <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
                   Or enter manually
                 </p>
                 <button
                   onClick={copySecret}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 text-xs font-mono hover:bg-gray-700"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) text-xs font-mono hover:bg-(--app-surface-2)"
                 >
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                   {secret.match(/.{1,4}/g)?.join("-") ?? secret}
@@ -112,9 +112,9 @@ export default function TwoFactorSetupPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-3">
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 space-y-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">
                 2. Enter the 6-digit code from your app
               </label>
               <input
@@ -123,13 +123,13 @@ export default function TwoFactorSetupPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="000000"
-                className="w-full px-3 py-3 bg-gray-950 border border-gray-700 rounded-lg text-white text-2xl font-bold text-center tracking-widest tabular-nums focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-3 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-2xl font-bold text-center tracking-widest tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
             <button
               disabled={busy || code.length !== 6}
               onClick={verify}
-              className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

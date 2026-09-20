@@ -38,12 +38,12 @@ export function TutorShell({ user, children }: Props) {
     pathname === href || (href !== "/tutor" && pathname?.startsWith(`${href}/`));
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-(--app-page)">
       {/* Mobile drawer toggle */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-40 p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200"
+        className="lg:hidden fixed top-3 left-3 z-40 p-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink)"
       >
         <Menu className="w-5 h-5" />
       </button>
@@ -51,11 +51,11 @@ export function TutorShell({ user, children }: Props) {
       {/* Sidebar */}
       <aside
         className={
-          "fixed inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 z-50 transform transition-transform " +
+          "fixed inset-y-0 left-0 w-64 bg-(--app-surface) border-r border-(--app-line) z-50 transform transition-transform " +
           (open ? "translate-x-0" : "-translate-x-full lg:translate-x-0")
         }
       >
-        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+        <div className="flex items-center justify-between p-4 border-b border-(--app-line)">
           <Link href="/tutor/dashboard" className="inline-flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center">
               <GraduationCap className="w-5 h-5" />
@@ -64,7 +64,7 @@ export function TutorShell({ user, children }: Props) {
               <p className="text-sm font-bold text-white leading-tight">
                 Tutor Hub
               </p>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+              <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider">
                 EarnGPT
               </p>
             </div>
@@ -72,7 +72,7 @@ export function TutorShell({ user, children }: Props) {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="lg:hidden text-slate-400 hover:text-white"
+            className="lg:hidden text-(--app-ink-3) hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
@@ -90,8 +90,8 @@ export function TutorShell({ user, children }: Props) {
                 className={
                   "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors " +
                   (active
-                    ? "bg-indigo-600/20 text-white border border-indigo-500/40"
-                    : "text-slate-300 hover:bg-slate-800")
+                    ? "bg-(--app-cta)/20 text-(--app-on-cta) border border-(--app-accent-edge)/40"
+                    : "text-(--app-ink-2) hover:bg-(--app-surface-2)")
                 }
               >
                 <Icon className="w-4 h-4" />
@@ -110,7 +110,7 @@ export function TutorShell({ user, children }: Props) {
           </Link>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800 bg-slate-900">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-(--app-line) bg-(--app-surface)">
           <div className="flex items-center gap-2 mb-2">
             <Avatar
               src={user.avatar}
@@ -124,12 +124,12 @@ export function TutorShell({ user, children }: Props) {
               <p className="text-sm font-bold text-white truncate">
                 {user.name ?? "Tutor"}
               </p>
-              <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+              <p className="text-[11px] text-(--app-ink-3) truncate">{user.email}</p>
             </div>
           </div>
           <Link
             href={USER_HOME}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-800 font-bold"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-(--app-ink-2) hover:bg-(--app-surface-2) font-bold"
           >
             <Home className="w-3.5 h-3.5" />
             Back to platform

@@ -202,10 +202,10 @@ export default async function MyLearningPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <GraduationCap className="w-6 h-6 text-indigo-300" />
+          <GraduationCap className="w-6 h-6 text-(--app-accent-ink)" />
           My learning
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           Pick up where you left off, manage your wishlist, and grab your
           certificates.
         </p>
@@ -307,7 +307,7 @@ function EnrollmentList({
           className="card card-interactive overflow-hidden group"
         >
           <Link href={`/learn/${e.course.id}`} className="block">
-            <div className="aspect-video bg-gray-950 relative">
+            <div className="aspect-video bg-(--app-page) relative">
               {e.course.thumbnail ? (
                 <Image
                   src={e.course.thumbnail}
@@ -328,28 +328,28 @@ function EnrollmentList({
               )}
             </div>
             <div className="p-3 space-y-2">
-              <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-indigo-200">
+              <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-(--app-accent-ink)">
                 {e.course.title}
               </p>
               {e.course.tutor && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-(--app-ink-3)">
                   by {e.course.tutor.name ?? "Tutor"}
                 </p>
               )}
-              <div className="flex items-center gap-2 text-[10px] text-gray-500">
+              <div className="flex items-center gap-2 text-[10px] text-(--app-ink-3)">
                 <Clock className="w-3 h-3" />
                 {Math.round(e.course.totalDuration / 60)}h
                 <span className="ml-auto">
                   Updated {formatDistanceToNow(e.updatedAt, { addSuffix: true })}
                 </span>
               </div>
-              <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-(--app-surface-2) rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500"
                   style={{ width: `${Math.max(0, Math.min(100, e.progress))}%` }}
                 />
               </div>
-              <p className="text-[11px] text-gray-400 tabular-nums">
+              <p className="text-[11px] text-(--app-ink-3) tabular-nums">
                 {e.progress}% complete
               </p>
             </div>
@@ -397,7 +397,7 @@ function WishlistList({
             className="card overflow-hidden group hover:border-rose-500/40!"
           >
             <Link href={`/courses/${c.slug ?? c.id}`} className="block">
-              <div className="aspect-video bg-gray-950 relative">
+              <div className="aspect-video bg-(--app-page) relative">
                 {c.thumbnail ? (
                   <Image
                     src={c.thumbnail}
@@ -464,10 +464,10 @@ function CertificateList({
               <p className="text-base font-bold text-white mt-1 truncate">
                 {c.course.title}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-(--app-ink-3) mt-1">
                 Issued {new Date(c.issuedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
               </p>
-              <p className="text-[10px] text-gray-500 font-mono mt-2 truncate">
+              <p className="text-[10px] text-(--app-ink-3) font-mono mt-2 truncate">
                 #{c.serial}
               </p>
               <div className="mt-3 flex gap-2">
@@ -479,7 +479,7 @@ function CertificateList({
                 </Link>
                 <Link
                   href={`/courses/${c.course.slug ?? c.course.id}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-bold"
                 >
                   Back to course
                 </Link>
@@ -520,7 +520,7 @@ function QuizAttempts({
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white truncate">{a.quiz.title}</p>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-xs text-(--app-ink-3) truncate">
               {a.quiz.course.title} ·{" "}
               {a.submittedAt
                 ? formatDistanceToNow(a.submittedAt, { addSuffix: true })
@@ -569,7 +569,7 @@ function AssignmentSubs({
             <p className="text-sm font-bold text-white truncate">
               {s.assignment.title}
             </p>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-xs text-(--app-ink-3) truncate">
               {s.assignment.course.title} ·{" "}
               {formatDistanceToNow(s.submittedAt, { addSuffix: true })}
             </p>

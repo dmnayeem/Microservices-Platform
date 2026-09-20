@@ -22,7 +22,7 @@ export default async function CertificatePage({
     <div className="max-w-2xl mx-auto py-12 space-y-6">
       <Link
         href="/my-learning?tab=certificates"
-        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to my learning
       </Link>
@@ -32,15 +32,15 @@ export default async function CertificatePage({
         <p className="text-sm font-bold text-amber-300 uppercase tracking-widest">
           Certificate of Completion
         </p>
-        <p className="text-base text-gray-300">This certifies that</p>
+        <p className="text-base text-(--app-ink-2)">This certifies that</p>
         <p className="text-3xl font-extrabold text-white">
           {cert.user.name ?? cert.user.email}
         </p>
-        <p className="text-base text-gray-300">has successfully completed</p>
+        <p className="text-base text-(--app-ink-2)">has successfully completed</p>
         <p className="text-2xl font-bold text-amber-200">
           {cert.course.title}
         </p>
-        <p className="text-sm text-gray-400 pt-4">
+        <p className="text-sm text-(--app-ink-3) pt-4">
           Issued{" "}
           {new Date(cert.issuedAt).toLocaleDateString(undefined, {
             month: "long",
@@ -48,7 +48,7 @@ export default async function CertificatePage({
             year: "numeric",
           })}
         </p>
-        <p className="text-[10px] text-gray-500 font-mono pt-2">
+        <p className="text-[10px] text-(--app-ink-3) font-mono pt-2">
           Serial: {cert.serial}
         </p>
       </div>
@@ -58,7 +58,7 @@ export default async function CertificatePage({
           href={cert.pdfUrl ?? `/cert-print/${cert.serial}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold"
         >
           <Award className="w-4 h-4" />
           Download PDF

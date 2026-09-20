@@ -18,17 +18,17 @@ const buttonVariants = cva(
         primary:
           "bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/35 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
         secondary:
-          "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700 shadow-sm",
+          "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2) border border-(--app-line) shadow-sm",
         outline:
-          "border border-gray-700 bg-transparent text-white hover:bg-gray-800 hover:border-gray-600",
+          "border border-(--app-line) bg-transparent text-white hover:bg-(--app-surface-2) hover:border-(--app-line)",
         ghost:
-          "text-gray-400 hover:text-white hover:bg-gray-800",
+          "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)",
         danger:
           "bg-red-500 text-white shadow-lg shadow-red-600/20 hover:bg-red-600 hover:-translate-y-0.5 focus-visible:ring-red-500",
         success:
           "bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-600 hover:-translate-y-0.5 focus-visible:ring-emerald-500",
         gold: "bg-linear-to-br from-amber-400 to-yellow-600 text-(--app-on-bright) shadow-lg shadow-amber-500/25 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-amber-500",
-        link: "text-indigo-400 underline-offset-4 hover:underline",
+        link: "text-(--app-accent-ink) underline-offset-4 hover:underline",
       },
       size: {
         sm: "h-9 px-3 text-sm",

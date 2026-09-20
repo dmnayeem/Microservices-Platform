@@ -67,10 +67,10 @@ export default async function TutorCoursesPage({ searchParams }: PageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-indigo-300" />
+            <BookOpen className="w-6 h-6 text-(--app-accent-ink)" />
             My courses
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-(--app-ink-3) text-sm mt-1">
             Everything you&apos;ve created. Draft new content, submit it for review,
             or update what&apos;s live.
           </p>
@@ -124,12 +124,12 @@ export default async function TutorCoursesPage({ searchParams }: PageProps) {
       </div>
 
       {courses.length === 0 ? (
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-12 text-center">
-          <div className="w-12 h-12 rounded-full bg-slate-800 mx-auto flex items-center justify-center text-slate-500 mb-3">
+        <div className="bg-(--app-surface) rounded-2xl border border-(--app-line) p-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-(--app-surface-2) mx-auto flex items-center justify-center text-(--app-ink-3) mb-3">
             <BookOpen className="w-6 h-6" />
           </div>
           <p className="text-white font-bold">No courses here yet</p>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-(--app-ink-3) mt-1">
             Build your first course — it should take 15 minutes.
           </p>
           <Link
@@ -182,9 +182,9 @@ function CourseCard({
   return (
     <Link
       href={`/tutor/courses/${c.id}`}
-      className="bg-slate-900 rounded-xl border border-slate-800 hover:border-indigo-500/40 transition-colors overflow-hidden group"
+      className="bg-(--app-surface) rounded-xl border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors overflow-hidden group"
     >
-      <div className="aspect-video bg-slate-950 relative">
+      <div className="aspect-video bg-(--app-page) relative">
         {c.thumbnail ? (
           <Image
             src={c.thumbnail}
@@ -203,13 +203,13 @@ function CourseCard({
         </div>
       </div>
       <div className="p-3 space-y-2">
-        <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-indigo-200">
+        <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-(--app-accent-ink)">
           {c.title}
         </p>
         {c.subtitle && (
-          <p className="text-xs text-slate-400 line-clamp-2">{c.subtitle}</p>
+          <p className="text-xs text-(--app-ink-3) line-clamp-2">{c.subtitle}</p>
         )}
-        <div className="flex items-center gap-3 text-xs text-slate-500">
+        <div className="flex items-center gap-3 text-xs text-(--app-ink-3)">
           <span className="inline-flex items-center gap-1">
             <Users className="w-3 h-3" />
             {c.enrollmentCount}
@@ -235,11 +235,11 @@ function CourseCard({
 
 function StatusPill({ status }: { status: string }) {
   const cfg: Record<string, { label: string; cls: string }> = {
-    DRAFT: { label: "Draft", cls: "bg-slate-700 text-slate-200" },
+    DRAFT: { label: "Draft", cls: "bg-(--app-surface-2) text-(--app-ink)" },
     PENDING_REVIEW: { label: "In review", cls: "bg-amber-500 text-(--app-on-bright)" },
     PUBLISHED: { label: "Live", cls: "bg-emerald-500 text-(--app-on-bright)" },
     SUSPENDED: { label: "Suspended", cls: "bg-rose-500 text-white" },
-    ARCHIVED: { label: "Archived", cls: "bg-slate-600 text-white" },
+    ARCHIVED: { label: "Archived", cls: "bg-(--app-surface-2) text-(--app-ink-3)" },
   };
   const c = cfg[status] ?? cfg.DRAFT;
   return (
@@ -269,19 +269,19 @@ function FilterPill({
       ? "text-emerald-300"
       : tone === "rose"
       ? "text-rose-300"
-      : "text-slate-300";
+      : "text-(--app-ink-2)";
   return (
     <Link
       href={href}
       className={
         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold border " +
         (active
-          ? "border-indigo-500 bg-indigo-500/20 text-white"
-          : `border-slate-700 bg-slate-900 hover:bg-slate-800 ${toneCls}`)
+          ? "border-(--app-accent-edge) bg-(--app-cta)/20 text-(--app-on-cta)"
+          : `border-(--app-line) bg-(--app-surface) hover:bg-(--app-surface-2) ${toneCls}`)
       }
     >
       {label}
-      <span className="ml-1 text-slate-500 tabular-nums">{count}</span>
+      <span className="ml-1 text-(--app-ink-3) tabular-nums">{count}</span>
     </Link>
   );
 }

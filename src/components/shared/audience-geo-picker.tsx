@@ -96,7 +96,7 @@ async function loadChildren(params: {
 }
 
 const fieldCls =
-  "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 disabled:opacity-50";
+  "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50";
 
 export function Chip({
   label,
@@ -108,13 +108,13 @@ export function Chip({
   disabled?: boolean;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/15 border border-indigo-500/25 text-xs text-indigo-200">
+    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-(--app-cta)/15 border border-(--app-accent-edge)/25 text-xs text-(--app-accent-ink)">
       {label}
       {!disabled && (
         <button
           type="button"
           onClick={onRemove}
-          className="text-indigo-300/70 hover:text-white"
+          className="text-(--app-accent-ink)/70 hover:text-white"
           aria-label={`Remove ${label}`}
         >
           <X className="w-3 h-3" />
@@ -182,8 +182,8 @@ export function AudienceGeoPicker({
 
   return (
     <div>
-      <label className="flex text-sm font-medium text-gray-300 mb-2 items-center gap-1.5">
-        <MapPin className="w-4 h-4 text-gray-500" /> Location
+      <label className="flex text-sm font-medium text-(--app-ink-2) mb-2 items-center gap-1.5">
+        <MapPin className="w-4 h-4 text-(--app-ink-3)" /> Location
       </label>
 
       {anyChips && (
@@ -191,7 +191,7 @@ export function AudienceGeoPicker({
           {chipGroups.map((g) =>
             (value[g.key] ?? []).length ? (
               <div key={g.key} className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] uppercase tracking-wide text-gray-500 w-16 shrink-0">
+                <span className="text-[11px] uppercase tracking-wide text-(--app-ink-3) w-16 shrink-0">
                   {g.label}
                 </span>
                 {(value[g.key] ?? []).map((v) => (
@@ -203,9 +203,9 @@ export function AudienceGeoPicker({
         </div>
       )}
 
-      <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950/60 p-3 space-y-3">
+      <div className="rounded-lg border border-dashed border-(--app-line) bg-(--app-page)/60 p-3 space-y-3">
         <div>
-          <span className="text-[11px] text-gray-500">Browse country</span>
+          <span className="text-[11px] text-(--app-ink-3)">Browse country</span>
           <select
             value={browseIso}
             disabled={disabled}
@@ -222,12 +222,12 @@ export function AudienceGeoPicker({
         </div>
 
         {!browseIso ? (
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-(--app-ink-3)">
             Pick a country to target specific states / districts / upazilas (optional). Leave as{" "}
             <strong>None</strong> to reach everywhere.
           </p>
         ) : levels.length === 0 ? (
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-(--app-ink-3)">
             No sub-national levels configured for this country — country-level targeting only.
           </p>
         ) : (
@@ -240,20 +240,20 @@ export function AudienceGeoPicker({
           />
         )}
       </div>
-      <p className="text-[11px] text-gray-500 mt-1">
+      <p className="text-[11px] text-(--app-ink-3) mt-1">
         {hint ??
           "Empty = anywhere in the targeted countries. Add a division to target all of it, or drill down to specific districts / upazilas."}
       </p>
 
       {/* Postal / ZIP codes — free-text (not a hierarchy level) */}
       <div className="mt-3">
-        <span className="text-[11px] text-gray-500">Postal / ZIP codes</span>
+        <span className="text-[11px] text-(--app-ink-3)">Postal / ZIP codes</span>
         <PostalCodeInput
           value={value.postalCodes ?? []}
           onChange={(next) => onChange({ postalCodes: next })}
           disabled={disabled}
         />
-        <p className="text-[11px] text-gray-500 mt-1">
+        <p className="text-[11px] text-(--app-ink-3) mt-1">
           Exact match against the user&apos;s postal code. Empty = any postal code.
         </p>
       </div>
@@ -387,7 +387,7 @@ function CascadeAdd({
 
         return (
           <div key={level}>
-            <span className="text-[11px] text-gray-500">{label}</span>
+            <span className="text-[11px] text-(--app-ink-3)">{label}</span>
 
             {showText ? (
               <div className="flex items-center gap-1.5 mt-1">
@@ -410,7 +410,7 @@ function CascadeAdd({
                   disabled={disabled || !(customText[level] ?? "").trim()}
                   onClick={() => addTyped(level)}
                   title={`Add this ${label}`}
-                  className="shrink-0 p-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="shrink-0 p-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -420,7 +420,7 @@ function CascadeAdd({
                     disabled={disabled}
                     onClick={() => setCustomMode((p) => ({ ...p, [level]: false }))}
                     title="Use the list instead"
-                    className="shrink-0 p-2 rounded-lg text-gray-400 hover:text-white"
+                    className="shrink-0 p-2 rounded-lg text-(--app-ink-3) hover:text-white"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -448,7 +448,7 @@ function CascadeAdd({
                   disabled={disabled || !selectedIds[level]}
                   onClick={() => addSelected(level)}
                   title={`Add this ${label}`}
-                  className="shrink-0 p-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="shrink-0 p-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -458,7 +458,7 @@ function CascadeAdd({
                     disabled={disabled}
                     onClick={() => setCustomMode((p) => ({ ...p, [level]: true }))}
                     title="Type a custom value"
-                    className="shrink-0 p-2 rounded-lg text-gray-400 hover:text-white"
+                    className="shrink-0 p-2 rounded-lg text-(--app-ink-3) hover:text-white"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -526,7 +526,7 @@ function PostalCodeInput({
           disabled={disabled || !text.trim()}
           onClick={add}
           title="Add postal code"
-          className="shrink-0 p-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 p-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
         </button>

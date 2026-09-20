@@ -136,24 +136,24 @@ export default function HelpPage() {
       <h1 className="text-xl font-bold text-white">❓ Help Center</h1>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search articles..."
-          className="w-full pl-9 pr-3 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          className="w-full pl-9 pr-3 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
         />
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-center text-sm text-gray-500 py-8">
+        <p className="text-center text-sm text-(--app-ink-3) py-8">
           No articles match your search.
         </p>
       )}
 
       {filtered.map((s) => (
-        <div key={s.title} className="rounded-xl border border-gray-800 bg-gray-900">
-          <div className="px-3 py-2 border-b border-gray-800">
+        <div key={s.title} className="rounded-xl border border-(--app-line) bg-(--app-surface)">
+          <div className="px-3 py-2 border-b border-(--app-line)">
             <p className="text-sm font-bold text-white">
               <span className="mr-1.5">{s.emoji}</span>
               {s.title}
@@ -167,18 +167,18 @@ export default function HelpPage() {
                   <button
                     onClick={() => toggle(a.id)}
                     className={cn(
-                      "w-full text-left px-3 py-2.5 flex items-center gap-2 hover:bg-gray-800/40"
+                      "w-full text-left px-3 py-2.5 flex items-center gap-2 hover:bg-(--app-surface-2)/40"
                     )}
                   >
                     {isOpen ? (
-                      <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                      <ChevronDown className="w-3.5 h-3.5 text-(--app-ink-3)" />
                     ) : (
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                      <ChevronRight className="w-3.5 h-3.5 text-(--app-ink-3)" />
                     )}
                     <span className="text-sm text-white flex-1">{a.q}</span>
                   </button>
                   {isOpen && (
-                    <p className="px-9 pb-3 text-xs text-gray-300 leading-relaxed">
+                    <p className="px-9 pb-3 text-xs text-(--app-ink-2) leading-relaxed">
                       {a.a}
                     </p>
                   )}

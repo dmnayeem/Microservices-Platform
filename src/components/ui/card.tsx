@@ -20,7 +20,7 @@ const PAD: Record<NonNullable<CardProps["padding"]>, string> = {
 /**
  * Premium surface card — uses the `card` utility (real elevation + hairline
  * border + subtle top highlight) defined in globals.css. Replaces the flat
- * `bg-gray-900 border border-gray-800 rounded-xl` pattern.
+ * `bg-(--app-surface) border border-(--app-line) rounded-xl` pattern.
  */
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, interactive, glass, padding = "md", ...props }, ref) => (

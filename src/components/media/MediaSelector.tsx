@@ -146,7 +146,7 @@ export function MediaSelector({
       case "DOCUMENT":
         return <FileText className="w-5 h-5 text-amber-400" />;
       default:
-        return <File className="w-5 h-5 text-gray-400" />;
+        return <File className="w-5 h-5 text-(--app-ink-3)" />;
     }
   };
 
@@ -198,38 +198,38 @@ export function MediaSelector({
     >
       <div
         ref={modalRef}
-        className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-6xl mx-4 max-h-[90vh] flex flex-col"
+        className="bg-(--app-surface) rounded-xl border border-(--app-line) w-full max-w-6xl mx-4 max-h-[90vh] flex flex-col"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onFocus={(e) => e.stopPropagation()}
         onBlur={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-800">
+        <div className="flex items-center justify-between p-6 border-b border-(--app-line)">
           <div>
             <h2 className="text-xl font-semibold text-white">{title}</h2>
             {selectedMedia.length > 0 && (
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-(--app-ink-3) mt-1">
                 {selectedMedia.length} selected
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-(--app-surface-2) rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-(--app-ink-3)" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-800">
+        <div className="flex border-b border-(--app-line)">
           <button
             onClick={() => setActiveTab("library")}
             className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
               activeTab === "library"
-                ? "border-indigo-500 text-white"
-                : "border-transparent text-gray-400 hover:text-white"
+                ? "border-(--app-accent-edge) text-white"
+                : "border-transparent text-(--app-ink-3) hover:text-white"
             }`}
           >
             Media Library
@@ -238,8 +238,8 @@ export function MediaSelector({
             onClick={() => setActiveTab("upload")}
             className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
               activeTab === "upload"
-                ? "border-indigo-500 text-white"
-                : "border-transparent text-gray-400 hover:text-white"
+                ? "border-(--app-accent-edge) text-white"
+                : "border-transparent text-(--app-ink-3) hover:text-white"
             }`}
           >
             Upload Files
@@ -249,11 +249,11 @@ export function MediaSelector({
               onClick={() => setActiveTab("ai")}
               className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-1.5 ${
                 activeTab === "ai"
-                  ? "border-indigo-500 text-white"
-                  : "border-transparent text-gray-400 hover:text-white"
+                  ? "border-(--app-accent-edge) text-white"
+                  : "border-transparent text-(--app-ink-3) hover:text-white"
               }`}
             >
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <Sparkles className="w-4 h-4 text-(--app-accent-ink)" />
               AI Generate
             </button>
           )}
@@ -276,16 +276,16 @@ export function MediaSelector({
           ) : (
             <>
               {/* Toolbar */}
-              <div className="flex items-center gap-4 p-4 border-b border-gray-800">
+              <div className="flex items-center gap-4 p-4 border-b border-(--app-line)">
                 {/* Search */}
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
                   <input
                     type="text"
                     placeholder="Search media..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+                    className="w-full pl-10 pr-4 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   />
                 </div>
 
@@ -293,7 +293,7 @@ export function MediaSelector({
                 <select
                   value={filterType || "all"}
                   onChange={(e) => setFilterType(e.target.value as MediaFilter["fileType"])}
-                  className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+                  className="px-4 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                 >
                   <option value="all">All Types</option>
                   <option value="IMAGE">Images</option>
@@ -303,11 +303,11 @@ export function MediaSelector({
                 </select>
 
                 {/* View Mode */}
-                <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-lg p-1">
+                <div className="flex gap-1 bg-(--app-surface-2) border border-(--app-line) rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("grid")}
                     className={`p-2 rounded ${
-                      viewMode === "grid" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"
+                      viewMode === "grid" ? "bg-(--app-surface-2) text-white" : "text-(--app-ink-3) hover:text-white"
                     }`}
                   >
                     <Grid3x3 className="w-4 h-4" />
@@ -315,7 +315,7 @@ export function MediaSelector({
                   <button
                     onClick={() => setViewMode("list")}
                     className={`p-2 rounded ${
-                      viewMode === "list" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"
+                      viewMode === "list" ? "bg-(--app-surface-2) text-white" : "text-(--app-ink-3) hover:text-white"
                     }`}
                   >
                     <List className="w-4 h-4" />
@@ -327,10 +327,10 @@ export function MediaSelector({
               <div className="flex-1 overflow-y-auto p-4">
                 {loading && media.length === 0 ? (
                   <div className="flex items-center justify-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    <Loader2 className="w-8 h-8 animate-spin text-(--app-ink-3)" />
                   </div>
                 ) : media.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                  <div className="flex flex-col items-center justify-center h-64 text-(--app-ink-3)">
                     <File className="w-12 h-12 mb-4" />
                     <p>No media found</p>
                   </div>
@@ -363,13 +363,13 @@ export function MediaSelector({
                                 className="object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                              <div className="w-full h-full bg-(--app-surface-2) flex items-center justify-center">
                                 {getFileIcon(item)}
                               </div>
                             )}
 
                             {isSelected && (
-                              <div className="absolute top-2 right-2 bg-indigo-500 rounded-full p-1">
+                              <div className="absolute top-2 right-2 bg-(--app-cta) rounded-full p-1">
                                 <CheckCircle className="w-4 h-4 text-white" />
                               </div>
                             )}
@@ -387,7 +387,7 @@ export function MediaSelector({
                             key={item.id}
                             onClick={() => handleSelectMedia(item)}
                             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
-                              isSelected ? "bg-indigo-500/20 border-2 border-indigo-500" : "bg-gray-800 hover:bg-gray-700"
+                              isSelected ? "bg-(--app-cta)/20 border-2 border-(--app-accent-edge)" : "bg-(--app-surface-2) hover:bg-(--app-surface-2)"
                             }`}
                           >
                             <div className="shrink-0">
@@ -400,7 +400,7 @@ export function MediaSelector({
                                   className="w-12 h-12 rounded object-cover"
                                 />
                               ) : (
-                                <div className="w-12 h-12 bg-gray-700 rounded flex items-center justify-center">
+                                <div className="w-12 h-12 bg-(--app-surface-2) rounded flex items-center justify-center">
                                   {getFileIcon(item)}
                                 </div>
                               )}
@@ -408,13 +408,13 @@ export function MediaSelector({
 
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white truncate">{item.originalFilename}</p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-(--app-ink-3)">
                                 {formatFileSize(item.fileSize)} • {new Date(item.createdAt).toLocaleDateString()}
                               </p>
                             </div>
 
                             {isSelected && (
-                              <CheckCircle className="w-5 h-5 text-indigo-400 shrink-0" />
+                              <CheckCircle className="w-5 h-5 text-(--app-accent-ink) shrink-0" />
                             )}
                           </div>
                         );
@@ -440,8 +440,8 @@ export function MediaSelector({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-800">
-          <div className="text-sm text-gray-400">
+        <div className="flex items-center justify-between p-6 border-t border-(--app-line)">
+          <div className="text-sm text-(--app-ink-3)">
             {activeTab === "library" && `${media.length} items`}
           </div>
           <div className="flex gap-3">

@@ -36,28 +36,28 @@ export default async function BecomeTutorPage() {
       <div>
         <Link
           href="/profile"
-          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to profile
         </Link>
         <h1 className="text-2xl font-bold text-white mt-2 inline-flex items-center gap-2">
-          <GraduationCap className="w-6 h-6 text-indigo-300" />
+          <GraduationCap className="w-6 h-6 text-(--app-accent-ink)" />
           Become a tutor
         </h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Tell us what you&apos;d teach. Admins review applications before approving.
           Once approved, you can build and publish courses and earn from each
           enrollment.
         </p>
       </div>
 
-      <div className="bg-indigo-500/5 border border-indigo-500/30 rounded-xl p-4 text-sm text-indigo-100/90 space-y-2">
+      <div className="bg-(--app-cta)/5 border border-(--app-accent-edge)/30 rounded-xl p-4 text-sm text-(--app-accent-ink)/90 space-y-2">
         <p className="font-bold flex items-center gap-2">
-          <Shield className="w-4 h-4 text-indigo-300" />
+          <Shield className="w-4 h-4 text-(--app-accent-ink)" />
           How it works
         </p>
-        <ul className="list-disc list-inside text-xs space-y-1 text-indigo-100/80">
+        <ul className="list-disc list-inside text-xs space-y-1 text-(--app-accent-ink)/80">
           <li>Submit this short application — bio, expertise, a sample course outline.</li>
           <li>Admins review it (usually within a few business days).</li>
           <li>On approval your account becomes a Tutor and unlocks the tutor dashboard.</li>

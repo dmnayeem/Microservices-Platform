@@ -28,9 +28,9 @@ const TONE: Record<
 > = {
   info: {
     icon: Info,
-    accent: "text-indigo-400",
-    ring: "bg-indigo-500/10 ring-1 ring-(--app-accent-edge)/20",
-    confirmBtn: "bg-indigo-500 hover:bg-indigo-600 text-white",
+    accent: "text-(--app-accent-ink)",
+    ring: "bg-(--app-cta)/10 ring-1 ring-(--app-accent-edge)/20",
+    confirmBtn: "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)",
   },
   success: {
     icon: CheckCircle2,
@@ -127,11 +127,11 @@ function DialogView({ request }: { request: DialogRequest }) {
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl overflow-hidden animate-sheet-up sm:animate-none pb-[env(safe-area-inset-bottom)] sm:pb-0"
+        className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-(--app-line) bg-(--app-surface) shadow-2xl overflow-hidden animate-sheet-up sm:animate-none pb-[env(safe-area-inset-bottom)] sm:pb-0"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Drag handle (mobile bottom-sheet affordance) */}
-        <div className="sm:hidden mx-auto mt-2 mb-0.5 h-1.5 w-12 rounded-full bg-gray-700" />
+        <div className="sm:hidden mx-auto mt-2 mb-0.5 h-1.5 w-12 rounded-full bg-(--app-surface-2)" />
         <div className="p-5">
           <div className="flex items-start gap-3">
             <div
@@ -145,7 +145,7 @@ function DialogView({ request }: { request: DialogRequest }) {
             <div className="min-w-0 flex-1 pt-0.5">
               <h2 className="text-base font-bold text-white">{options.title}</h2>
               {options.description && (
-                <p className="text-sm text-gray-400 mt-1 whitespace-pre-line">
+                <p className="text-sm text-(--app-ink-3) mt-1 whitespace-pre-line">
                   {options.description}
                 </p>
               )}
@@ -160,7 +160,7 @@ function DialogView({ request }: { request: DialogRequest }) {
                 onChange={(e) => setText(e.target.value)}
                 placeholder={options.placeholder}
                 rows={3}
-                className="mt-4 w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+                className="mt-4 w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
               />
             ) : (
               <input
@@ -168,15 +168,15 @@ function DialogView({ request }: { request: DialogRequest }) {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={options.placeholder}
-                className="mt-4 w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="mt-4 w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
               />
             ))}
 
           {needsType && (
             <div className="mt-4">
-              <p className="text-xs text-gray-400 mb-1">
+              <p className="text-xs text-(--app-ink-3) mb-1">
                 Type{" "}
-                <span className="font-mono font-bold text-gray-200">
+                <span className="font-mono font-bold text-(--app-ink)">
                   {options.requireText}
                 </span>{" "}
                 to confirm
@@ -185,17 +185,17 @@ function DialogView({ request }: { request: DialogRequest }) {
                 ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-red-500"
               />
             </div>
           )}
         </div>
 
-        <div className="flex gap-2 px-5 py-4 bg-gray-950/40 border-t border-gray-800">
+        <div className="flex gap-2 px-5 py-4 bg-(--app-page)/40 border-t border-(--app-line)">
           <button
             onClick={onCancel}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-semibold border border-gray-700 transition-colors disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold border border-(--app-line) transition-colors disabled:opacity-50"
           >
             {options.cancelLabel ?? "Cancel"}
           </button>

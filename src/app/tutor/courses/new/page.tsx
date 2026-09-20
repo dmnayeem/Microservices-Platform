@@ -16,13 +16,13 @@ export default async function TutorNewCoursePage() {
       <div>
         <Link
           href="/tutor/courses"
-          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           Back to my courses
         </Link>
         <h1 className="text-2xl font-bold text-white mt-1">Build a new course</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Step through the wizard at your own pace. Saving as draft is always
           safe — submit for review when you&apos;re ready.
         </p>

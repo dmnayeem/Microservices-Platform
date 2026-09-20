@@ -55,7 +55,7 @@ export default async function TutorCourseStudentsPage({
       <div>
         <Link
           href={`/tutor/courses/${id}`}
-          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           Back to course
@@ -64,7 +64,7 @@ export default async function TutorCourseStudentsPage({
           <Users className="w-6 h-6 text-emerald-300" />
           Enrolled students
         </h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           {course.title} — {course.enrollmentCount} total enrolment{course.enrollmentCount === 1 ? "" : "s"}.
         </p>
       </div>
@@ -73,10 +73,10 @@ export default async function TutorCourseStudentsPage({
         rows={enrollments}
         getRowKey={(e) => e.id}
         empty={
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-12 text-center">
-            <Search className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+          <div className="bg-(--app-surface) rounded-2xl border border-(--app-line) p-12 text-center">
+            <Search className="w-8 h-8 text-(--app-ink-3) mx-auto mb-2" />
             <p className="text-white font-bold">No enrolments yet</p>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-(--app-ink-3) mt-1">
               Once a student enrols, they&apos;ll show up here with live progress.
             </p>
           </div>
@@ -94,10 +94,10 @@ export default async function TutorCourseStudentsPage({
                     alt=""
                     width={32}
                     height={32}
-                    className="w-8 h-8 rounded-full object-cover bg-slate-800"
+                    className="w-8 h-8 rounded-full object-cover bg-(--app-surface-2)"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
+                  <div className="w-8 h-8 rounded-full bg-(--app-surface-2) flex items-center justify-center text-[10px] font-bold text-white">
                     {(e.user.name ?? e.user.email ?? "?").slice(0, 1).toUpperCase()}
                   </div>
                 )}
@@ -105,7 +105,7 @@ export default async function TutorCourseStudentsPage({
                   <p className="text-white truncate font-medium">
                     {e.user.name ?? "—"}
                   </p>
-                  <p className="text-[11px] text-slate-500 truncate">
+                  <p className="text-[11px] text-(--app-ink-3) truncate">
                     {e.user.email}
                   </p>
                 </div>
@@ -115,7 +115,7 @@ export default async function TutorCourseStudentsPage({
           {
             key: "country",
             header: "Country",
-            cell: (e) => <span className="text-slate-400">{e.user.country ?? "—"}</span>,
+            cell: (e) => <span className="text-(--app-ink-3)">{e.user.country ?? "—"}</span>,
           },
           {
             key: "progress",
@@ -136,7 +136,7 @@ export default async function TutorCourseStudentsPage({
             header: "Enrolled",
             className: "whitespace-nowrap",
             cell: (e) => (
-              <span className="text-slate-400">
+              <span className="text-(--app-ink-3)">
                 {formatDistanceToNow(e.createdAt, { addSuffix: true })}
               </span>
             ),
@@ -150,11 +150,11 @@ export default async function TutorCourseStudentsPage({
                   Completed
                 </span>
               ) : e.progress > 0 ? (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-medium">
                   Learning
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-400 text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-(--app-surface-2)/40 text-(--app-ink-3) text-xs font-medium">
                   Not started
                 </span>
               ),
@@ -169,13 +169,13 @@ function ProgressBar({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(100, value));
   return (
     <div className="flex items-center gap-2 min-w-[140px]">
-      <div className="h-1.5 flex-1 bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-1.5 flex-1 bg-(--app-surface-2) rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-[11px] text-slate-400 tabular-nums w-9 text-right">
+      <span className="text-[11px] text-(--app-ink-3) tabular-nums w-9 text-right">
         {pct}%
       </span>
     </div>

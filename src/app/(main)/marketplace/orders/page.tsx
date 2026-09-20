@@ -47,7 +47,7 @@ export default async function OrdersPage() {
             <div key={o.id} className="space-y-1.5">
             <Link
               href={`/marketplace/${o.listing.id}`}
-              className="flex items-center gap-3 p-3 rounded-xl border border-gray-800 bg-gray-900 hover:border-gray-700"
+              className="flex items-center gap-3 p-3 rounded-xl border border-(--app-line) bg-(--app-surface) hover:border-(--app-line)"
             >
               {o.listing.images[0] ? (
                 <SmartImage
@@ -55,16 +55,16 @@ export default async function OrdersPage() {
                   alt=""
                   width={48}
                   height={48}
-                  className="w-12 h-12 rounded-lg bg-gray-800 object-cover"
+                  className="w-12 h-12 rounded-lg bg-(--app-surface-2) object-cover"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-gray-800" />
+                <div className="w-12 h-12 rounded-lg bg-(--app-surface-2)" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">
                   {o.listing.title}
                 </p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-(--app-ink-3)">
                   {format(o.createdAt, "MMM d, yyyy")} · {o.status}
                 </p>
               </div>
@@ -75,7 +75,7 @@ export default async function OrdersPage() {
             {o.status === "COMPLETED" && o.listing.files.length > 0 && (
               <a
                 href={`/api/marketplace/listings/${o.listing.id}/download`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 text-xs font-bold hover:bg-indigo-500/25"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/40 text-xs font-bold hover:bg-(--app-cta)/25"
               >
                 <Download className="w-3.5 h-3.5" />
                 Download

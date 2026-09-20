@@ -27,17 +27,17 @@ export default async function TransactionsPage() {
       <header className="flex items-start gap-3">
         <Link
           href="/wallet"
-          className="mt-0.5 rounded-lg border border-gray-800 p-2 text-gray-400 hover:text-white"
+          className="mt-0.5 rounded-lg border border-(--app-line) p-2 text-(--app-ink-3) hover:text-white"
           aria-label="Back to wallet"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
           <h1 className="inline-flex items-center gap-2 text-xl font-bold text-white">
-            <Receipt className="h-5 w-5 text-indigo-400" />
+            <Receipt className="h-5 w-5 text-(--app-accent-ink)" />
             Transactions
           </h1>
-          <p className="mt-0.5 text-sm text-gray-400">
+          <p className="mt-0.5 text-sm text-(--app-ink-3)">
             Every movement of money on your account.
           </p>
         </div>

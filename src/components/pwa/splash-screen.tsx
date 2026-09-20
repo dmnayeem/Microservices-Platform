@@ -85,14 +85,14 @@ export function SplashScreen() {
       {/* Skip */}
       <button
         onClick={dismiss}
-        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-900/70 text-gray-300 text-xs font-semibold hover:text-white"
+        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-(--app-surface)/70 text-(--app-ink-2) text-xs font-semibold hover:text-white"
       >
         Skip <X className="w-3.5 h-3.5" />
       </button>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <div className="w-full max-w-sm">
-          <div className="relative aspect-square w-full max-w-xs mx-auto rounded-3xl overflow-hidden bg-gray-900 border border-gray-800 flex items-center justify-center mb-8">
+          <div className="relative aspect-square w-full max-w-xs mx-auto rounded-3xl overflow-hidden bg-(--app-surface) border border-(--app-line) flex items-center justify-center mb-8">
             {slide.imageUrl && !imgFailed ? (
               <SmartImage
                 src={slide.imageUrl}
@@ -108,7 +108,7 @@ export function SplashScreen() {
           </div>
           <h1 className="text-2xl font-bold text-white">{slide.title}</h1>
           {slide.content && (
-            <p className="mt-3 text-gray-400 leading-relaxed whitespace-pre-wrap">{slide.content}</p>
+            <p className="mt-3 text-(--app-ink-3) leading-relaxed whitespace-pre-wrap">{slide.content}</p>
           )}
         </div>
       </div>
@@ -122,7 +122,7 @@ export function SplashScreen() {
               onClick={() => setActive(i)}
               aria-label={`Slide ${i + 1}`}
               className={`h-1.5 rounded-full transition-all ${
-                i === active ? "w-6 bg-indigo-500" : "w-1.5 bg-gray-700"
+                i === active ? "w-6 bg-(--app-cta)" : "w-1.5 bg-(--app-surface-2)"
               }`}
             />
           ))}
@@ -138,7 +138,7 @@ export function SplashScreen() {
           ) : (
             <button
               onClick={() => setActive((p) => Math.min(p + 1, cfg.slides.length - 1))}
-              className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-semibold inline-flex items-center justify-center gap-1"
+              className="w-full py-3 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white font-semibold inline-flex items-center justify-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>

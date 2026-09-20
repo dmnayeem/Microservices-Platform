@@ -16,14 +16,14 @@ export function LiveClassRoom({ meetingUrl, title }: Props) {
 
   if (!meetingUrl.trim()) {
     return (
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-8 text-center text-sm text-gray-400">
+      <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-8 text-center text-sm text-(--app-ink-3)">
         The room for this class hasn&apos;t been set yet. Check back near the start time.
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[70vh] rounded-xl overflow-hidden border border-gray-800 bg-black">
+    <div className="w-full h-[70vh] rounded-xl overflow-hidden border border-(--app-line) bg-black">
       <iframe
         src={src}
         title={title}

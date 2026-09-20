@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
             <h1 className="text-2xl font-bold text-white">
               Check your email
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               If an account exists with this email, you will receive a password reset link.
             </p>
           </div>
@@ -75,12 +75,12 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
       <div className="w-full max-w-md space-y-8">
         {/* Back Link */}
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-(--app-ink-3) hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to login
@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
           <h1 className="text-2xl font-bold text-white">
             Forgot password?
           </h1>
-          <p className="text-gray-400">
+          <p className="text-(--app-ink-3)">
             No worries, we&apos;ll send you reset instructions.
           </p>
         </div>
@@ -128,11 +128,11 @@ export default function ForgotPasswordPage() {
         </form>
 
         {/* Register Link */}
-        <p className="text-center text-gray-400">
+        <p className="text-center text-(--app-ink-3)">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            className="text-(--app-accent-ink) hover:text-(--app-accent-ink) font-medium transition-colors"
           >
             Sign up
           </Link>

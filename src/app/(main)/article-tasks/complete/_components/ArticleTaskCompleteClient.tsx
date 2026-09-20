@@ -107,11 +107,11 @@ export default function ArticleTaskCompleteClient() {
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-(--app-line) bg-(--app-surface) p-6 shadow-xl">
         {state.phase === "loading" && (
           <div className="flex flex-col items-center text-center py-6 gap-3">
-            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-            <p className="text-sm text-gray-300">
+            <Loader2 className="w-8 h-8 text-(--app-accent-ink) animate-spin" />
+            <p className="text-sm text-(--app-ink-2)">
               Verifying your unique key…
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function ArticleTaskCompleteClient() {
               <h1 className="text-xl font-bold text-white">
                 Task completed!
               </h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-(--app-ink-3)">
                 Your unique key was verified and your reward has been
                 credited automatically.
               </p>
@@ -140,24 +140,24 @@ export default function ArticleTaskCompleteClient() {
                 tone="bg-amber-500/10 border-amber-500/30 text-amber-200"
               />
               <RewardCard
-                icon={<Sparkles className="w-5 h-5 text-indigo-400" />}
+                icon={<Sparkles className="w-5 h-5 text-(--app-accent-ink)" />}
                 label="XP"
                 value={`+${state.xp.toLocaleString()}`}
-                tone="bg-indigo-500/10 border-indigo-500/30 text-indigo-200"
+                tone="bg-(--app-cta)/10 border-(--app-accent-edge)/30 text-(--app-accent-ink)"
               />
             </div>
 
-            <div className="rounded-lg bg-gray-950 border border-gray-800 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">
+            <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
+              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
                 Your Unique Key
               </p>
               <div className="flex items-center justify-between gap-2">
-                <code className="text-xs font-mono text-gray-300 break-all">
+                <code className="text-xs font-mono text-(--app-ink-2) break-all">
                   {state.keyValue}
                 </code>
                 <button
                   onClick={copyKey}
-                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md"
+                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) rounded-md"
                 >
                   {copied ? (
                     <Check className="w-3 h-3 text-emerald-400" />
@@ -174,7 +174,7 @@ export default function ArticleTaskCompleteClient() {
             <div className="flex gap-2">
               <Link
                 href="/article-tasks"
-                className="flex-1 py-2.5 text-center text-sm font-semibold rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200"
+                className="flex-1 py-2.5 text-center text-sm font-semibold rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink)"
               >
                 More tasks
               </Link>
@@ -202,17 +202,17 @@ export default function ArticleTaskCompleteClient() {
             </div>
 
             {state.keyValue && (
-              <div className="rounded-lg bg-gray-950 border border-gray-800 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">
+              <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
+                <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
                   Your Generated Key
                 </p>
                 <div className="flex items-center justify-between gap-2">
-                  <code className="text-xs font-mono text-gray-300 break-all">
+                  <code className="text-xs font-mono text-(--app-ink-2) break-all">
                     {state.keyValue}
                   </code>
                   <button
                     onClick={copyKey}
-                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md"
+                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) rounded-md"
                   >
                     {copied ? (
                       <Check className="w-3 h-3 text-emerald-400" />
@@ -222,7 +222,7 @@ export default function ArticleTaskCompleteClient() {
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-500 mt-2">
+                <p className="text-[11px] text-(--app-ink-3) mt-2">
                   Save this key — you can paste it manually on the task
                   page if needed.
                 </p>
@@ -232,13 +232,13 @@ export default function ArticleTaskCompleteClient() {
             <div className="flex gap-2">
               <button
                 onClick={() => router.refresh()}
-                className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200"
+                className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink)"
               >
                 Retry
               </button>
               <Link
                 href="/article-tasks"
-                className="flex-1 inline-flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white"
+                className="flex-1 inline-flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
               >
                 Back to tasks
               </Link>

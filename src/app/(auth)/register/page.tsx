@@ -71,7 +71,7 @@ function RegisterForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -80,7 +80,7 @@ function RegisterForm() {
             <h1 className="text-2xl font-bold text-white">
               {emailSent ? "Check your email" : "Account created"}
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               {emailSent
                 ? "We've sent a verification link to your email address. Please click the link to verify your account."
                 : "Email delivery is not configured on this server. Use the link below to verify the account."}
@@ -123,7 +123,7 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="text-center space-y-2">
@@ -138,7 +138,7 @@ function RegisterForm() {
           <h1 className="text-2xl font-bold text-white">
             Create your account
           </h1>
-          <p className="text-gray-400">
+          <p className="text-(--app-ink-3)">
             Start earning money today
           </p>
         </div>
@@ -212,11 +212,11 @@ function RegisterForm() {
             label={
               <>
                 I agree to the{" "}
-                <Link href="/terms" className="text-indigo-400 hover:underline">
+                <Link href="/terms" className="text-(--app-accent-ink) hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-indigo-400 hover:underline">
+                <Link href="/privacy" className="text-(--app-accent-ink) hover:underline">
                   Privacy Policy
                 </Link>
               </>
@@ -237,10 +237,10 @@ function RegisterForm() {
             attribution now survives the trip to Google and back. */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-800" />
+            <div className="w-full border-t border-(--app-line)" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-gray-950 text-gray-500">
+            <span className="px-4 bg-(--app-page) text-(--app-ink-3)">
               or sign up with
             </span>
           </div>
@@ -284,11 +284,11 @@ function RegisterForm() {
         )}
 
         {/* Benefits */}
-        <div className="p-4 rounded-lg bg-gray-900 border border-gray-800">
+        <div className="p-4 rounded-lg bg-(--app-surface) border border-(--app-line)">
           <h3 className="text-sm font-medium text-white mb-3">
             Start earning with EarnGPT:
           </h3>
-          <ul className="space-y-2 text-sm text-gray-400">
+          <ul className="space-y-2 text-sm text-(--app-ink-3)">
             <li className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-400" />
               Complete tasks and earn points
@@ -305,11 +305,11 @@ function RegisterForm() {
         </div>
 
         {/* Login Link */}
-        <p className="text-center text-gray-400">
+        <p className="text-center text-(--app-ink-3)">
           Already have an account?{" "}
           <Link
             href="/login"
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            className="text-(--app-accent-ink) hover:text-(--app-accent-ink) font-medium transition-colors"
           >
             Sign in
           </Link>

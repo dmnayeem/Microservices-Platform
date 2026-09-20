@@ -51,10 +51,10 @@ export function AiImageGenerator({ onGenerated }: AiImageGeneratorProps) {
   return (
     <div className="p-6 space-y-4 max-w-2xl mx-auto">
       <div className="flex items-center gap-2 text-white">
-        <Sparkles className="w-5 h-5 text-indigo-400" />
+        <Sparkles className="w-5 h-5 text-(--app-accent-ink)" />
         <h3 className="text-base font-semibold">Generate an image with AI</h3>
       </div>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-(--app-ink-3)">
         Describe the image you want. It will be created with Gemini, saved to your
         media library, and selected automatically.
       </p>
@@ -69,7 +69,7 @@ export function AiImageGenerator({ onGenerated }: AiImageGeneratorProps) {
         maxLength={5000}
         disabled={loading}
         placeholder="e.g. A colorful banner showing people earning rewards on their phones, flat illustration style"
-        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none disabled:opacity-60"
+        className="w-full px-4 py-3 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none disabled:opacity-60"
       />
 
       <div className="flex flex-wrap gap-2">
@@ -79,7 +79,7 @@ export function AiImageGenerator({ onGenerated }: AiImageGeneratorProps) {
             type="button"
             disabled={loading}
             onClick={() => setPrompt(s)}
-            className="text-xs px-3 py-1.5 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-indigo-500 transition-colors disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded-full bg-(--app-surface-2) border border-(--app-line) text-(--app-ink-2) hover:text-white hover:border-(--app-accent-edge) transition-colors disabled:opacity-50"
           >
             {s}
           </button>
@@ -107,11 +107,11 @@ export function AiImageGenerator({ onGenerated }: AiImageGeneratorProps) {
             </>
           )}
         </Button>
-        <span className="text-xs text-gray-500">Ctrl/⌘ + Enter</span>
+        <span className="text-xs text-(--app-ink-3)">Ctrl/⌘ + Enter</span>
       </div>
 
       {loading && (
-        <div className="flex flex-col items-center justify-center h-56 rounded-lg border border-dashed border-gray-700 text-gray-400">
+        <div className="flex flex-col items-center justify-center h-56 rounded-lg border border-dashed border-(--app-line) text-(--app-ink-3)">
           <Loader2 className="w-8 h-8 animate-spin mb-3" />
           <p className="text-sm">Creating your image… this can take a few seconds.</p>
         </div>
@@ -126,7 +126,7 @@ export function AiImageGenerator({ onGenerated }: AiImageGeneratorProps) {
           <img
             src={preview}
             alt="AI generated preview"
-            className="w-full max-h-72 object-contain rounded-lg border border-gray-800 bg-gray-950"
+            className="w-full max-h-72 object-contain rounded-lg border border-(--app-line) bg-(--app-page)"
           />
         </div>
       )}

@@ -179,8 +179,8 @@ export function LocationSelector({ value, onChange, disabled }: Props) {
       {/* If country chosen but no levels are enabled, fall back to plain
           text inputs for the most-commonly-needed fields. */}
       {country && enabledLevels.length === 0 && (
-        <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950 p-3 space-y-3">
-          <p className="text-[11px] text-gray-500 inline-flex items-center gap-1.5">
+        <div className="rounded-lg border border-dashed border-(--app-line) bg-(--app-page) p-3 space-y-3">
+          <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1.5">
             <MapPin className="w-3 h-3" />
             No location options for {country.name} yet — enter manually.
           </p>
@@ -390,7 +390,7 @@ function CascadingLevels({
                         setCustomMode((p) => ({ ...p, [level]: false }));
                         onChange({ [fieldKey]: null });
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-(--app-ink-3) hover:text-white"
                       title="Use dropdown"
                     >
                       <XIcon className="w-3.5 h-3.5" />
@@ -458,7 +458,7 @@ function CascadingLevels({
                       setCustomMode((p) => ({ ...p, [level]: true }))
                     }
                     title="Type custom value"
-                    className="absolute right-7 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white"
+                    className="absolute right-7 top-1/2 -translate-y-1/2 p-1 text-(--app-ink-3) hover:text-white"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -491,12 +491,12 @@ function Field({
 }) {
   return (
     <div>
-      <label className={cn("block text-xs font-medium text-slate-400 mb-1.5")}>
+      <label className={cn("block text-xs font-medium text-(--app-ink-3) mb-1.5")}>
         {icon && <span className="inline-flex items-center mr-1">{icon}</span>}
         {label}
         {required && <span className="text-red-400 ml-1">*</span>}
         {hint && (
-          <span className="text-slate-600 ml-2 font-normal">· {hint}</span>
+          <span className="text-(--app-ink-3) ml-2 font-normal">· {hint}</span>
         )}
       </label>
       {children}
@@ -531,7 +531,7 @@ function FreeText({
 }
 
 const fieldCls =
-  "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50";
+  "w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Country combobox — searchable input with filtered dropdown.
@@ -635,25 +635,25 @@ function CountryCombobox({
           )}
         >
           {loading ? (
-            <span className="text-slate-500">Loading…</span>
+            <span className="text-(--app-ink-3)">Loading…</span>
           ) : selected ? (
             <>
               <span className="text-base shrink-0">{selected.flag ?? "🏳️"}</span>
               <span className="flex-1 min-w-0 truncate">{selected.name}</span>
               {selected.phoneCode && (
-                <span className="text-slate-500 text-xs">
+                <span className="text-(--app-ink-3) text-xs">
                   {selected.phoneCode}
                 </span>
               )}
             </>
           ) : (
-            <span className="text-slate-500 flex-1">Select country</span>
+            <span className="text-(--app-ink-3) flex-1">Select country</span>
           )}
-          <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
+          <ChevronDown className="w-4 h-4 text-(--app-ink-3) shrink-0" />
         </button>
       ) : (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3) pointer-events-none" />
           <input
             ref={inputRef}
             type="text"
@@ -685,7 +685,7 @@ function CountryCombobox({
               setOpen(false);
               changeQuery("");
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-(--app-ink-3) hover:text-white"
             tabIndex={-1}
           >
             <XIcon className="w-3.5 h-3.5" />
@@ -697,10 +697,10 @@ function CountryCombobox({
       {open && (
         <div
           ref={listRef}
-          className="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-xl"
+          className="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-y-auto rounded-lg border border-(--app-line) bg-(--app-surface) shadow-xl"
         >
           {filtered.length === 0 ? (
-            <div className="px-3 py-3 text-xs text-slate-500">
+            <div className="px-3 py-3 text-xs text-(--app-ink-3)">
               No countries match &ldquo;{query}&rdquo;
             </div>
           ) : (
@@ -718,16 +718,16 @@ function CountryCombobox({
                     "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
                     isActive
                       ? "bg-blue-500/15 text-white"
-                      : "text-slate-300 hover:bg-slate-800"
+                      : "text-(--app-ink-2) hover:bg-(--app-surface-2)"
                   )}
                 >
                   <span className="text-base shrink-0">{c.flag ?? "🏳️"}</span>
                   <span className="flex-1 min-w-0 truncate">{c.name}</span>
-                  <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                  <span className="text-[10px] text-(--app-ink-3) font-mono shrink-0">
                     {c.iso2}
                   </span>
                   {c.phoneCode && (
-                    <span className="text-[10px] text-slate-500 shrink-0">
+                    <span className="text-[10px] text-(--app-ink-3) shrink-0">
                       {c.phoneCode}
                     </span>
                   )}

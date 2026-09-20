@@ -52,16 +52,16 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
     <div className="space-y-5 max-w-3xl">
       <header>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-indigo-400" />
+          <Sparkles className="w-6 h-6 text-(--app-accent-ink)" />
           Become a Creator
         </h1>
         {/* Buying is on this page too, and nothing said so. Everything about
           * it read as selling — "Become a Creator", "creator/seller role" —
           * so someone who wanted to PAY people to do a job had no reason to
           * think this was their page. */}
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           Apply to sell on the marketplace, run ads, or{" "}
-          <span className="text-gray-200">buy tasks</span> — paying people here
+          <span className="text-(--app-ink)">buy tasks</span> — paying people here
           to follow, share or complete a job you set. An admin reviews each
           request and you&apos;ll be notified once approved.
         </p>
@@ -73,15 +73,15 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
           return (
             <div
               key={c.key}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-4 flex flex-col"
+              className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 flex flex-col"
             >
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 grid place-items-center shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-(--app-cta)/10 text-(--app-accent-ink) grid place-items-center shrink-0">
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-sm font-bold text-white">{c.label}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{c.blurb}</p>
+                  <p className="text-xs text-(--app-ink-3) mt-0.5">{c.blurb}</p>
                 </div>
               </div>
 
@@ -91,7 +91,7 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
                 </p>
               )}
 
-              <div className="mt-3 pt-3 border-t border-gray-800">
+              <div className="mt-3 pt-3 border-t border-(--app-line)">
                 {c.status === "has_access" ? (
                   <Link
                     href={c.dashboardHref}
@@ -107,7 +107,7 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
                 ) : c.applyHref ? (
                   <Link
                     href={c.applyHref}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                   >
                     {c.status === "rejected" ? "Re-apply" : "Apply"}
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -116,7 +116,7 @@ export function BecomeCreatorView({ cards }: { cards: RoleCard[] }) {
                   <button
                     type="button"
                     onClick={() => setApplying(c)}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                   >
                     {c.status === "rejected" ? "Re-apply" : "Apply"}
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -181,18 +181,18 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-5 space-y-4"
+        className="w-full max-w-md rounded-2xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-base font-bold text-white">Apply — {card.label}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
+          <button onClick={onClose} className="text-(--app-ink-3) hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Why you? Tell us about yourself <span className="text-red-400">*</span>
           </label>
           <textarea
@@ -200,23 +200,23 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
             onChange={(e) => setMessage(e.target.value)}
             rows={4}
             placeholder="Your experience, what you'll do, and why we should approve you…"
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             {detailLabel}
           </label>
           <input
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Links (portfolio / website / social) — one per line
           </label>
           <textarea
@@ -224,7 +224,7 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
             onChange={(e) => setLinks(e.target.value)}
             rows={2}
             placeholder="https://…"
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
@@ -232,14 +232,14 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
           <button
             onClick={onClose}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Submit application

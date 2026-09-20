@@ -43,27 +43,27 @@ export default async function TutorEditCoursePage({
         <div>
           <Link
             href="/tutor/courses"
-            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+            className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
             Back to my courses
           </Link>
           <h1 className="text-2xl font-bold text-white mt-1">Edit course</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-(--app-ink-3) text-sm mt-1">
             {courseRaw.title}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href={`/tutor/courses/${id}/students`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold"
           >
             <Users className="w-4 h-4" />
             Students
           </Link>
           <Link
             href={`/tutor/courses/${id}/announcements`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold"
           >
             <Megaphone className="w-4 h-4" />
             Announcements

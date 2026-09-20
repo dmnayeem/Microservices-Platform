@@ -116,7 +116,7 @@ function Block({ block }: { block: OfferBlock }) {
             img
           )}
           {block.caption && (
-            <figcaption className="mt-2 text-center text-sm text-slate-400">
+            <figcaption className="mt-2 text-center text-sm text-(--app-ink-3)">
               {block.caption}
             </figcaption>
           )}
@@ -130,7 +130,7 @@ function Block({ block }: { block: OfferBlock }) {
         <figure className="my-4">
           <InlineVideoEmbed url={block.url} className="rounded-xl overflow-hidden" />
           {block.caption && (
-            <figcaption className="mt-2 text-center text-sm text-slate-400">
+            <figcaption className="mt-2 text-center text-sm text-(--app-ink-3)">
               {block.caption}
             </figcaption>
           )}
@@ -164,7 +164,7 @@ function Block({ block }: { block: OfferBlock }) {
                 {it.emoji && <div className="text-3xl mb-2">{it.emoji}</div>}
                 <p className="font-bold text-white">{it.title}</p>
                 {it.text && (
-                  <p className="text-sm text-slate-400 mt-1">{it.text}</p>
+                  <p className="text-sm text-(--app-ink-3) mt-1">{it.text}</p>
                 )}
               </div>
             ))}

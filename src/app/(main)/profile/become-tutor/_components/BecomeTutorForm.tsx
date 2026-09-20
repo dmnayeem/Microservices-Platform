@@ -98,10 +98,10 @@ export function BecomeTutorForm() {
 
   return (
     <div className="space-y-5">
-      <section className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3">
+      <section className="bg-(--app-surface) rounded-xl border border-(--app-line) p-5 space-y-3">
         <div>
           <h2 className="text-base font-bold text-white">About you</h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-(--app-ink-3)">
             Who you are, what you teach, why students should trust you. At least 50 characters.
           </p>
         </div>
@@ -113,15 +113,15 @@ export function BecomeTutorForm() {
           className={inputCls + " resize-none"}
           placeholder="e.g. 10-year full-stack engineer, former Google, taught 8k students on YouTube. Will teach React + system design."
         />
-        <p className="text-[11px] text-slate-500 tabular-nums">
+        <p className="text-[11px] text-(--app-ink-3) tabular-nums">
           {bio.length} / 2000
         </p>
       </section>
 
-      <section className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3">
+      <section className="bg-(--app-surface) rounded-xl border border-(--app-line) p-5 space-y-3">
         <div>
           <h2 className="text-base font-bold text-white">Expertise tags</h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-(--app-ink-3)">
             Up to 10 topics or skills you can teach. Add one at a time.
           </p>
         </div>
@@ -143,7 +143,7 @@ export function BecomeTutorForm() {
           <button
             type="button"
             onClick={addExpertise}
-            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"
+            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -154,13 +154,13 @@ export function BecomeTutorForm() {
             {expertise.map((e) => (
               <span
                 key={e}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-medium"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-medium"
               >
                 {e}
                 <button
                   type="button"
                   onClick={() => removeExpertise(e)}
-                  className="text-indigo-300/70 hover:text-white"
+                  className="text-(--app-accent-ink)/70 hover:text-white"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -170,10 +170,10 @@ export function BecomeTutorForm() {
         )}
       </section>
 
-      <section className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3">
+      <section className="bg-(--app-surface) rounded-xl border border-(--app-line) p-5 space-y-3">
         <div>
           <h2 className="text-base font-bold text-white">Sample course outline</h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-(--app-ink-3)">
             Optional. A rough table of contents for the first course you&apos;d like to publish.
           </p>
         </div>
@@ -187,17 +187,17 @@ export function BecomeTutorForm() {
         />
       </section>
 
-      <section className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3">
+      <section className="bg-(--app-surface) rounded-xl border border-(--app-line) p-5 space-y-3">
         <div>
           <h2 className="text-base font-bold text-white">Proof & credibility</h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-(--app-ink-3)">
             Optional but speeds up review. Link to existing work and upload a
             government ID so admins can verify identity.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="block">
-            <span className="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
+            <span className="block text-xs font-medium text-(--app-ink-3) uppercase tracking-wide mb-1">
               Portfolio / YouTube / GitHub URL
             </span>
             <input
@@ -209,7 +209,7 @@ export function BecomeTutorForm() {
             />
           </label>
           <div>
-            <span className="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">
+            <span className="block text-xs font-medium text-(--app-ink-3) uppercase tracking-wide mb-1">
               Government ID (image / PDF)
             </span>
             <input
@@ -224,13 +224,13 @@ export function BecomeTutorForm() {
               }}
             />
             {idDocumentUrl ? (
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-700 text-xs">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-(--app-page) border border-(--app-line) text-xs">
                 <ImageIcon className="w-4 h-4 text-emerald-300" />
-                <span className="text-slate-300 break-all min-w-0 flex-1">{idDocumentUrl}</span>
+                <span className="text-(--app-ink-2) break-all min-w-0 flex-1">{idDocumentUrl}</span>
                 <button
                   type="button"
                   onClick={() => setIdDocumentUrl("")}
-                  className="text-slate-500 hover:text-rose-300"
+                  className="text-(--app-ink-3) hover:text-rose-300"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -240,7 +240,7 @@ export function BecomeTutorForm() {
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 text-xs disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-(--app-line) hover:border-(--app-accent-edge) text-(--app-ink-3) hover:text-(--app-accent-ink) text-xs disabled:opacity-50"
               >
                 {uploading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -259,7 +259,7 @@ export function BecomeTutorForm() {
           type="button"
           onClick={submit}
           disabled={busy}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold disabled:opacity-50"
         >
           {busy ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -274,4 +274,4 @@ export function BecomeTutorForm() {
 }
 
 const inputCls =
-  "w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500";
+  "w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-(--app-accent-edge)";

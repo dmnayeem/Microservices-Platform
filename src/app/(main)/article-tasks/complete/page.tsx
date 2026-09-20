@@ -13,7 +13,7 @@ export default function ArticleTaskCompletePage() {
   return (
     <Suspense
       fallback={
-        <div className="p-6 text-center text-sm text-gray-400">Loading…</div>
+        <div className="p-6 text-center text-sm text-(--app-ink-3)">Loading…</div>
       }
     >
       <ArticleTaskCompleteClient />

@@ -85,16 +85,16 @@ function VerifyEmailContent() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
-          <div className="w-20 h-20 mx-auto rounded-full bg-indigo-500/10 flex items-center justify-center">
-            <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+          <div className="w-20 h-20 mx-auto rounded-full bg-(--app-cta)/10 flex items-center justify-center">
+            <Loader2 className="w-10 h-10 text-(--app-accent-ink) animate-spin" />
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-white">
               Verifying your email...
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               Please wait while we verify your email address.
             </p>
           </div>
@@ -105,7 +105,7 @@ function VerifyEmailContent() {
 
   if (status === "success") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -114,7 +114,7 @@ function VerifyEmailContent() {
             <h1 className="text-2xl font-bold text-white">
               Email Verified!
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               Your email has been successfully verified. Redirecting to login...
             </p>
           </div>
@@ -132,7 +132,7 @@ function VerifyEmailContent() {
 
   if (status === "error") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
             <XCircle className="w-10 h-10 text-red-400" />
@@ -141,7 +141,7 @@ function VerifyEmailContent() {
             <h1 className="text-2xl font-bold text-white">
               Verification Failed
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               {error || "The verification link is invalid or has expired."}
             </p>
           </div>
@@ -166,7 +166,7 @@ function VerifyEmailContent() {
 
   // Resend form
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="text-center space-y-2">
@@ -181,7 +181,7 @@ function VerifyEmailContent() {
           <h1 className="text-2xl font-bold text-white">
             Verify your email
           </h1>
-          <p className="text-gray-400">
+          <p className="text-(--app-ink-3)">
             Enter your email to resend the verification link.
           </p>
         </div>
@@ -235,11 +235,11 @@ function VerifyEmailContent() {
         </div>
 
         {/* Login Link */}
-        <p className="text-center text-gray-400">
+        <p className="text-center text-(--app-ink-3)">
           Already verified?{" "}
           <Link
             href="/login"
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            className="text-(--app-accent-ink) hover:text-(--app-accent-ink) font-medium transition-colors"
           >
             Sign in
           </Link>
@@ -252,8 +252,8 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
-        <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-(--app-page)">
+        <div className="animate-spin w-8 h-8 border-2 border-(--app-accent-edge) border-t-transparent rounded-full" />
       </div>
     }>
       <VerifyEmailContent />

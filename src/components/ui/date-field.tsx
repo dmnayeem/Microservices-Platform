@@ -159,13 +159,13 @@ export function DateField({
         disabled={disabled}
         aria-label="Open calendar"
         aria-expanded={open}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-(--app-ink-3) hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         <CalendarDays className="w-4 h-4" />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 right-0 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-2">
+        <div className="absolute z-50 mt-1 right-0 rounded-xl border border-(--app-line) bg-(--app-surface) shadow-2xl p-2">
           <DayPicker
             mode="single"
             selected={selected}
@@ -191,20 +191,20 @@ export function DateField({
             }
           />
           {type === "datetime-local" && (
-            <div className="flex items-center gap-2 px-2 pt-2 border-t border-gray-800">
-              <label className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+            <div className="flex items-center gap-2 px-2 pt-2 border-t border-(--app-line)">
+              <label className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                 Time
               </label>
               <input
                 type="time"
                 value={timePart(value)}
                 onChange={(e) => setTime(e.target.value)}
-                className="flex-1 px-2 py-1.5 rounded-md bg-gray-950 border border-gray-700 text-white text-sm"
+                className="flex-1 px-2 py-1.5 rounded-md bg-(--app-page) border border-(--app-line) text-white text-sm"
               />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="px-3 py-1.5 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+                className="px-3 py-1.5 rounded-md bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
               >
                 Done
               </button>

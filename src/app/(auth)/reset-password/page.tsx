@@ -58,7 +58,7 @@ function ResetPasswordContent() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
             <AlertCircle className="w-10 h-10 text-red-400" />
@@ -67,7 +67,7 @@ function ResetPasswordContent() {
             <h1 className="text-2xl font-bold text-white">
               Invalid Link
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               This password reset link is invalid or has expired.
             </p>
           </div>
@@ -85,7 +85,7 @@ function ResetPasswordContent() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -94,7 +94,7 @@ function ResetPasswordContent() {
             <h1 className="text-2xl font-bold text-white">
               Password Reset!
             </h1>
-            <p className="text-gray-400">
+            <p className="text-(--app-ink-3)">
               Your password has been successfully reset. You can now log in with your new password.
             </p>
           </div>
@@ -111,7 +111,7 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gray-950">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-(--app-page)">
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="text-center space-y-2">
@@ -126,7 +126,7 @@ function ResetPasswordContent() {
           <h1 className="text-2xl font-bold text-white">
             Set new password
           </h1>
-          <p className="text-gray-400">
+          <p className="text-(--app-ink-3)">
             Create a strong password for your account.
           </p>
         </div>
@@ -165,11 +165,11 @@ function ResetPasswordContent() {
         </form>
 
         {/* Login Link */}
-        <p className="text-center text-gray-400">
+        <p className="text-center text-(--app-ink-3)">
           Remember your password?{" "}
           <Link
             href="/login"
-            className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            className="text-(--app-accent-ink) hover:text-(--app-accent-ink) font-medium transition-colors"
           >
             Sign in
           </Link>
@@ -182,8 +182,8 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
-        <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-(--app-page)">
+        <div className="animate-spin w-8 h-8 border-2 border-(--app-accent-edge) border-t-transparent rounded-full" />
       </div>
     }>
       <ResetPasswordContent />

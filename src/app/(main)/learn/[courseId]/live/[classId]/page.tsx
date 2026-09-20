@@ -28,11 +28,11 @@ export default async function LiveClassPage({
   if (!enrollment) {
     return (
       <div className="max-w-lg mx-auto py-16 text-center space-y-3">
-        <Lock className="w-10 h-10 text-gray-600 mx-auto" />
+        <Lock className="w-10 h-10 text-(--app-ink-3) mx-auto" />
         <p className="text-white font-semibold">Enrol to join this live class</p>
         <Link
           href={`/courses`}
-          className="inline-flex text-sm text-indigo-400 hover:text-indigo-300"
+          className="inline-flex text-sm text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           Browse courses
         </Link>
@@ -44,17 +44,17 @@ export default async function LiveClassPage({
     <div className="max-w-4xl mx-auto space-y-4">
       <Link
         href={`/learn/${courseId}`}
-        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to course
       </Link>
       <div className="flex items-center gap-2">
-        <Video className="w-5 h-5 text-indigo-400" />
+        <Video className="w-5 h-5 text-(--app-accent-ink)" />
         <h1 className="text-lg font-bold text-white">{liveClass.title}</h1>
       </div>
       <LiveClassRoom meetingUrl={liveClass.meetingUrl} title={liveClass.title} />
       {liveClass.meetingPassword && (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-(--app-ink-3)">
           Room password: <span className="font-mono text-white">{liveClass.meetingPassword}</span>
         </p>
       )}
@@ -63,7 +63,7 @@ export default async function LiveClassPage({
           href={liveClass.recordingUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex text-sm text-indigo-400 hover:text-indigo-300"
+          className="inline-flex text-sm text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           Watch recording
         </a>

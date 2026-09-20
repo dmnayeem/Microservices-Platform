@@ -50,8 +50,8 @@ const NOTIFICATION_TYPE_CONFIG: Record<
   SYSTEM: {
     label: "System",
     icon: AlertCircle,
-    color: "text-gray-400",
-    bgColor: "bg-gray-500/10",
+    color: "text-(--app-ink-3)",
+    bgColor: "bg-(--app-ink-3)/10",
   },
   TASK: {
     label: "Task",
@@ -92,8 +92,8 @@ const NOTIFICATION_TYPE_CONFIG: Record<
   SOCIAL: {
     label: "Social",
     icon: MessageSquare,
-    color: "text-indigo-400",
-    bgColor: "bg-indigo-500/10",
+    color: "text-(--app-accent-ink)",
+    bgColor: "bg-(--app-cta)/10",
   },
 };
 
@@ -264,7 +264,7 @@ export default function NotificationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Notifications</h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-(--app-ink-3) mt-1">
             {unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
               : "You're all caught up!"}
@@ -276,8 +276,8 @@ export default function NotificationsPage() {
             className={cn(
               "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
               showUnreadOnly
-                ? "bg-indigo-500 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                ? "bg-(--app-cta) text-(--app-on-cta)"
+                : "bg-(--app-surface-2) text-(--app-ink-3) hover:bg-(--app-surface-2)"
             )}
           >
             <Filter className="w-4 h-4" />
@@ -286,7 +286,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-(--app-surface-2) text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2) rounded-lg text-sm font-medium transition-colors"
             >
               <CheckCheck className="w-4 h-4" />
               Mark all read
@@ -307,20 +307,20 @@ export default function NotificationsPage() {
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
-          <span className="text-sm text-indigo-400">
+        <div className="flex items-center gap-3 px-4 py-3 bg-(--app-cta)/10 border border-(--app-accent-edge)/30 rounded-lg">
+          <span className="text-sm text-(--app-accent-ink)">
             {selectedIds.size} selected
           </span>
           <button
             onClick={handleBulkMarkAsRead}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-(--app-cta) text-(--app-on-cta) rounded-lg text-sm font-medium hover:bg-(--app-cta) transition-colors"
           >
             <Check className="w-4 h-4" />
             Mark as read
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-gray-400 hover:text-white"
+            className="text-sm text-(--app-ink-3) hover:text-white"
           >
             Clear selection
           </button>
@@ -354,10 +354,10 @@ export default function NotificationsPage() {
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-4 p-4 transition-all hover:bg-gray-800/50",
+                    "flex items-start gap-4 p-4 transition-all hover:bg-(--app-surface-2)/50",
                     notification.isRead
                       ? "bg-transparent"
-                      : "bg-indigo-500/5",
+                      : "bg-(--app-cta)/5",
                     isSelected && "ring-2 ring-inset ring-(--app-accent-edge)"
                   )}
                 >
@@ -366,7 +366,7 @@ export default function NotificationsPage() {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSelection(notification.id)}
-                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-indigo-500 focus:ring-(--app-accent-edge)"
+                    className="mt-1 w-4 h-4 rounded border-(--app-line) bg-(--app-surface) text-(--app-accent-ink) focus:ring-(--app-accent-edge)"
                   />
 
                   {/* Icon */}
@@ -388,13 +388,13 @@ export default function NotificationsPage() {
                             {notification.title}
                           </h3>
                           {!notification.isRead && (
-                            <span className="w-2 h-2 bg-indigo-500 rounded-full shrink-0" />
+                            <span className="w-2 h-2 bg-(--app-cta) rounded-full shrink-0" />
                           )}
                         </div>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-(--app-ink-3)">
                           {notification.message}
                         </p>
-                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-3 mt-2 text-xs text-(--app-ink-3)">
                           <span className={typeConfig.color}>
                             {typeConfig.label}
                           </span>
@@ -413,7 +413,7 @@ export default function NotificationsPage() {
                         {!notification.isRead && (
                           <button
                             onClick={() => handleMarkAsRead([notification.id])}
-                            className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-gray-800 rounded transition-colors"
+                            className="p-1.5 text-(--app-ink-3) hover:text-(--app-accent-ink) hover:bg-(--app-surface-2) rounded transition-colors"
                             title="Mark as read"
                           >
                             <Check className="w-4 h-4" />
@@ -421,7 +421,7 @@ export default function NotificationsPage() {
                         )}
                         <button
                           onClick={() => handleDelete(notification.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded transition-colors"
+                          className="p-1.5 text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) rounded transition-colors"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -436,8 +436,8 @@ export default function NotificationsPage() {
 
           {/* Pagination */}
           {pagination.total > PAGE_SIZE && (
-            <div className="p-4 border-t border-gray-800 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
+            <div className="p-4 border-t border-(--app-line) flex items-center justify-between">
+              <p className="text-sm text-(--app-ink-3)">
                 Showing {startItem} - {endItem} of {pagination.total}
               </p>
               <div className="flex gap-2">
@@ -447,8 +447,8 @@ export default function NotificationsPage() {
                   className={cn(
                     "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
                     currentPage > 1
-                      ? "bg-gray-800 text-white hover:bg-gray-700"
-                      : "bg-gray-800/50 text-gray-600 cursor-not-allowed"
+                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2)"
+                      : "bg-(--app-surface-2)/50 text-(--app-ink-3) cursor-not-allowed"
                   )}
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -460,8 +460,8 @@ export default function NotificationsPage() {
                   className={cn(
                     "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
                     currentPage < pagination.totalPages
-                      ? "bg-gray-800 text-white hover:bg-gray-700"
-                      : "bg-gray-800/50 text-gray-600 cursor-not-allowed"
+                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2)"
+                      : "bg-(--app-surface-2)/50 text-(--app-ink-3) cursor-not-allowed"
                   )}
                 >
                   Next

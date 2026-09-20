@@ -185,13 +185,13 @@ export function MediaUploader({
   const getStatusIcon = (status: UploadProgress["status"]) => {
     switch (status) {
       case "uploading":
-        return <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />;
+        return <Loader2 className="w-4 h-4 animate-spin text-(--app-accent-ink)" />;
       case "completed":
         return <CheckCircle className="w-4 h-4 text-emerald-400" />;
       case "error":
         return <AlertCircle className="w-4 h-4 text-red-400" />;
       default:
-        return <File className="w-4 h-4 text-gray-400" />;
+        return <File className="w-4 h-4 text-(--app-ink-3)" />;
     }
   };
 
@@ -217,8 +217,8 @@ export function MediaUploader({
         }}
         className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
           isDragging
-            ? "border-indigo-500 bg-indigo-500/10"
-            : "border-gray-700 hover:border-gray-600 bg-gray-800"
+            ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+            : "border-(--app-line) hover:border-(--app-line) bg-(--app-surface-2)"
         }`}
       >
         <input
@@ -243,20 +243,20 @@ export function MediaUploader({
         />
 
         <div className="flex flex-col items-center gap-3">
-          <div className={`p-4 rounded-full ${isDragging ? "bg-indigo-500/20" : "bg-gray-700"}`}>
-            <Upload className={`w-8 h-8 ${isDragging ? "text-indigo-400" : "text-gray-400"}`} />
+          <div className={`p-4 rounded-full ${isDragging ? "bg-(--app-cta)/20" : "bg-(--app-surface-2)"}`}>
+            <Upload className={`w-8 h-8 ${isDragging ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"}`} />
           </div>
 
           <div>
             <p className="text-lg font-medium text-white mb-1">
               {isDragging ? "Drop files here" : "Click to upload or drag and drop"}
             </p>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-(--app-ink-3)">
               {acceptedTypes.includes("image/*") && "Images, "}
               {acceptedTypes.includes("video/*") && "Videos, "}
               up to {Math.round(maxFileSize / (1024 * 1024))}MB each
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-(--app-ink-3) mt-1">
               Maximum {maxFiles} files at once
             </p>
           </div>
@@ -273,7 +273,7 @@ export function MediaUploader({
             {uploads.some(u => u.status === "completed") && (
               <button
                 onClick={clearCompleted}
-                className="text-xs text-gray-400 hover:text-white transition-colors"
+                className="text-xs text-(--app-ink-3) hover:text-white transition-colors"
               >
                 Clear completed
               </button>
@@ -284,15 +284,15 @@ export function MediaUploader({
             {uploads.map((upload) => (
               <div
                 key={upload.id}
-                className="bg-gray-800 border border-gray-700 rounded-lg p-3"
+                className="bg-(--app-surface-2) border border-(--app-line) rounded-lg p-3"
               >
                 <div className="flex items-start gap-3">
                   {/* File Icon */}
                   <div className="shrink-0 mt-1">
                     {upload.file.type.startsWith("image/") ? (
-                      <ImageIcon className="w-5 h-5 text-gray-400" />
+                      <ImageIcon className="w-5 h-5 text-(--app-ink-3)" />
                     ) : (
-                      <File className="w-5 h-5 text-gray-400" />
+                      <File className="w-5 h-5 text-(--app-ink-3)" />
                     )}
                   </div>
 
@@ -307,7 +307,7 @@ export function MediaUploader({
                         {upload.status !== "uploading" && (
                           <button
                             onClick={() => removeUpload(upload.id)}
-                            className="text-gray-400 hover:text-white transition-colors"
+                            className="text-(--app-ink-3) hover:text-white transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -315,7 +315,7 @@ export function MediaUploader({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 text-xs text-gray-400">
+                    <div className="flex items-center justify-between gap-2 text-xs text-(--app-ink-3)">
                       <span>{formatFileSize(upload.file.size)}</span>
                       {upload.status === "uploading" && (
                         <span>{upload.progress}%</span>
@@ -330,9 +330,9 @@ export function MediaUploader({
 
                     {/* Progress Bar */}
                     {upload.status === "uploading" && (
-                      <div className="mt-2 h-1 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="mt-2 h-1 bg-(--app-surface-2) rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-indigo-500 transition-all duration-300"
+                          className="h-full bg-(--app-cta) transition-all duration-300"
                           style={{ width: `${upload.progress}%` }}
                         />
                       </div>

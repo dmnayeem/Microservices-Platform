@@ -34,25 +34,25 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-gray-300">
+          <label className="block text-sm font-medium text-(--app-ink-2)">
             {label}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-(--app-ink-3)">
               {leftIcon}
             </div>
           )}
           <input
             type={isPassword && showPassword ? "text" : type}
             className={cn(
-              "w-full rounded-xl border bg-gray-950/60 px-4 py-3 text-white placeholder:text-gray-500 transition-all duration-200",
-              "focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-(--app-accent-edge)/15",
+              "w-full rounded-xl border bg-(--app-page)/60 px-4 py-3 text-white placeholder:text-(--app-ink-3) transition-all duration-200",
+              "focus:border-(--app-accent-edge) focus:outline-none focus:ring-4 focus:ring-(--app-accent-edge)/15",
               "disabled:cursor-not-allowed disabled:opacity-50",
               error
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500/15"
-                : "border-gray-700 hover:border-gray-600",
+                : "border-(--app-line) hover:border-(--app-line)",
               leftIcon && "pl-10",
               (rightIcon || isPassword) && "pr-10",
               className
@@ -65,7 +65,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-(--app-ink-3) hover:text-(--app-ink-3) transition-colors"
               tabIndex={-1}
             >
               {showPassword ? (
@@ -76,7 +76,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             </button>
           )}
           {!isPassword && rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-(--app-ink-3)">
               {rightIcon}
             </div>
           )}
@@ -88,7 +88,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           </p>
         )}
         {hint && !error && (
-          <p className="text-sm text-gray-500">{hint}</p>
+          <p className="text-sm text-(--app-ink-3)">{hint}</p>
         )}
       </div>
     );

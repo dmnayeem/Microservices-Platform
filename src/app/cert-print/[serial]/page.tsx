@@ -17,6 +17,9 @@ export default async function CertificatePrintPage({
   });
   if (!cert) notFound();
 
+  // This page is paper, not app chrome: it forces a white ground so the print
+  // output is right, and its greys are read against that white in both themes.
+  // They are deliberately not on the theme tokens.
   return (
     <div className="fixed inset-0 z-100 bg-white text-(--app-on-bright) overflow-auto flex items-center justify-center p-6 print:p-0">
       <AutoPrint />

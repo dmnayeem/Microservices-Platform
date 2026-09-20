@@ -59,29 +59,29 @@ export function WelcomeForm({
 
   if (alreadyDone) {
     return (
-      <div className="min-h-screen grid place-items-center bg-gray-950">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+      <div className="min-h-screen grid place-items-center bg-(--app-page)">
+        <Loader2 className="w-6 h-6 animate-spin text-(--app-ink-3)" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-gray-950">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-(--app-page)">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 grid place-items-center mx-auto">
-            <Sparkles className="w-6 h-6 text-indigo-400" />
+          <div className="w-12 h-12 rounded-2xl bg-(--app-cta)/15 grid place-items-center mx-auto">
+            <Sparkles className="w-6 h-6 text-(--app-accent-ink)" />
           </div>
           <h1 className="text-2xl font-bold text-white">
             Welcome{name ? `, ${name.split(" ")[0]}` : ""}!
           </h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-(--app-ink-3)">
             Pick your @handle — it&apos;s your profile link and how people
             mention you.
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 space-y-4">
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4">
           <UsernameField
             value={value}
             onChange={setValue}
@@ -104,14 +104,14 @@ export function WelcomeForm({
             type="button"
             disabled={pending}
             onClick={() => submit(() => skipOnboarding())}
-            className="w-full text-center text-xs text-gray-500 hover:text-gray-300 disabled:opacity-50"
+            className="w-full text-center text-xs text-(--app-ink-3) hover:text-(--app-ink-2) disabled:opacity-50"
           >
             Skip for now — keep{" "}
-            <span className="font-mono text-gray-400">
+            <span className="font-mono text-(--app-ink-3)">
               @{currentUsername ?? "your handle"}
             </span>
           </button>
-          <p className="text-[11px] text-gray-600 text-center">
+          <p className="text-[11px] text-(--app-ink-3) text-center">
             You can change your @handle any time in Profile → Personal.
           </p>
         </div>

@@ -49,14 +49,14 @@ export function AnnouncementComposer({
   };
 
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-3">
+    <div className="bg-(--app-surface) rounded-xl border border-(--app-line) p-4 space-y-3">
       <input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         maxLength={140}
         placeholder="Title"
-        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-(--app-accent-edge)"
       />
       <textarea
         value={body}
@@ -64,17 +64,17 @@ export function AnnouncementComposer({
         rows={3}
         maxLength={2000}
         placeholder="What do you want to tell your students?"
-        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-(--app-ink-3)">
           Will notify {enrolledCount} enrolled student{enrolledCount === 1 ? "" : "s"}.
         </p>
         <button
           type="button"
           onClick={submit}
           disabled={busy}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
         >
           {busy ? (
             <Loader2 className="w-4 h-4 animate-spin" />

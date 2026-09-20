@@ -49,10 +49,10 @@ export default async function CoursesPage() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-            <GraduationCap className="w-6 h-6 text-indigo-300" />
+            <GraduationCap className="w-6 h-6 text-(--app-accent-ink)" />
             Courses
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-(--app-ink-3) mt-1">
             Earn from learning. Hands-on courses by tutors across the platform.
           </p>
         </div>

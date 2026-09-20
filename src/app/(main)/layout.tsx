@@ -65,7 +65,7 @@ export default async function MainLayout({
   const avatar = dbUser?.avatar ?? null;
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-(--app-page)">
       {/* Redirect away from pages an admin has hidden for this user. */}
       <PageAccessGuard hiddenPaths={hiddenPaths} />
 

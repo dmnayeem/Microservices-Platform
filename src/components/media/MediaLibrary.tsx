@@ -159,7 +159,7 @@ export function MediaLibrary() {
       case "DOCUMENT":
         return <FileText className="w-5 h-5 text-amber-400" />;
       default:
-        return <File className="w-5 h-5 text-gray-400" />;
+        return <File className="w-5 h-5 text-(--app-ink-3)" />;
     }
   };
 
@@ -172,17 +172,17 @@ export function MediaLibrary() {
   return (
     <div className="space-y-6">
       {/* Toolbar */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+      <div className="bg-(--app-surface) rounded-xl border border-(--app-line) p-4">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
             <input
               type="text"
               placeholder="Search media..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+              className="w-full pl-10 pr-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
             />
           </div>
 
@@ -190,7 +190,7 @@ export function MediaLibrary() {
           <select
             value={filterType || "all"}
             onChange={(e) => setFilterType(e.target.value as MediaFilter["fileType"])}
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+            className="px-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
           >
             <option value="all">All Types</option>
             <option value="IMAGE">Images</option>
@@ -203,7 +203,7 @@ export function MediaLibrary() {
           <select
             value={folderFilter}
             onChange={(e) => setFolderFilter(e.target.value)}
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+            className="px-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
           >
             <option value="__all__">📁 All Folders</option>
             <option value="">📁 Root</option>
@@ -217,11 +217,11 @@ export function MediaLibrary() {
           </select>
 
           {/* View Mode */}
-          <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-lg p-1">
+          <div className="flex gap-1 bg-(--app-surface-2) border border-(--app-line) rounded-lg p-1">
             <button
               onClick={() => setViewMode("grid")}
               className={`p-2 rounded ${
-                viewMode === "grid" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"
+                viewMode === "grid" ? "bg-(--app-surface-2) text-white" : "text-(--app-ink-3) hover:text-white"
               }`}
             >
               <Grid3x3 className="w-4 h-4" />
@@ -229,7 +229,7 @@ export function MediaLibrary() {
             <button
               onClick={() => setViewMode("list")}
               className={`p-2 rounded ${
-                viewMode === "list" ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"
+                viewMode === "list" ? "bg-(--app-surface-2) text-white" : "text-(--app-ink-3) hover:text-white"
               }`}
             >
               <List className="w-4 h-4" />
@@ -249,19 +249,19 @@ export function MediaLibrary() {
 
       {/* Uploader */}
       {showUploader && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+        <div className="bg-(--app-surface) rounded-xl border border-(--app-line) p-6">
           <MediaUploader onUploadComplete={handleUploadComplete} />
         </div>
       )}
 
       {/* Media Grid/List */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+      <div className="bg-(--app-surface) rounded-xl border border-(--app-line) p-6">
         {loading && media.length === 0 ? (
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-(--app-ink-3)" />
           </div>
         ) : media.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-64 text-(--app-ink-3)">
             <File className="w-12 h-12 mb-4" />
             <p className="text-lg font-medium mb-2">No media found</p>
             <p className="text-sm">Upload your first file to get started</p>
@@ -280,7 +280,7 @@ export function MediaLibrary() {
                   return (
                     <div
                       key={item.id}
-                      className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-(--app-accent-edge) transition-all"
+                      className="group relative aspect-square rounded-lg overflow-hidden bg-(--app-surface-2) hover:ring-2 hover:ring-(--app-accent-edge) transition-all"
                     >
                       {item.fileType === "IMAGE" ? (
                         <SmartImage
@@ -303,7 +303,7 @@ export function MediaLibrary() {
                           <div className="flex gap-1">
                             <button
                               onClick={() => handleEdit(item)}
-                              className="p-1.5 bg-gray-800/80 hover:bg-gray-700 rounded transition-colors"
+                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-(--app-surface-2) rounded transition-colors"
                               title="Edit"
                             >
                               <Edit className="w-3.5 h-3.5 text-white" />
@@ -312,14 +312,14 @@ export function MediaLibrary() {
                               href={item.cloudFrontUrl || item.s3Url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 bg-gray-800/80 hover:bg-gray-700 rounded transition-colors"
+                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-(--app-surface-2) rounded transition-colors"
                               title="View"
                             >
                               <ExternalLink className="w-3.5 h-3.5 text-white" />
                             </a>
                             <button
                               onClick={() => handleDelete(item)}
-                              className="p-1.5 bg-gray-800/80 hover:bg-red-600 rounded transition-colors"
+                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-red-600 rounded transition-colors"
                               title="Delete"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-white" />
@@ -333,7 +333,7 @@ export function MediaLibrary() {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-4 p-4 bg-gray-800 hover:bg-gray-750 rounded-lg transition-colors"
+                      className="flex items-center gap-4 p-4 bg-(--app-surface-2) hover:bg-(--app-line) rounded-lg transition-colors"
                     >
                       <div className="shrink-0">
                         {item.fileType === "IMAGE" ? (
@@ -345,7 +345,7 @@ export function MediaLibrary() {
                             className="w-16 h-16 rounded object-cover"
                           />
                         ) : (
-                          <div className="w-16 h-16 bg-gray-700 rounded flex items-center justify-center">
+                          <div className="w-16 h-16 bg-(--app-surface-2) rounded flex items-center justify-center">
                             {getFileIcon(item)}
                           </div>
                         )}
@@ -353,11 +353,11 @@ export function MediaLibrary() {
 
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{item.originalFilename}</p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-(--app-ink-3) mt-1">
                           {formatFileSize(item.fileSize)} • {item.fileType} • {new Date(item.createdAt).toLocaleDateString()}
                         </p>
                         {item.uploadedBy && (
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-(--app-ink-3) mt-0.5">
                             Uploaded by {item.uploadedBy.name || item.uploadedBy.email}
                           </p>
                         )}
@@ -366,7 +366,7 @@ export function MediaLibrary() {
                       <div className="flex gap-2 shrink-0">
                         <button
                           onClick={() => handleEdit(item)}
-                          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                          className="p-2 text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2) rounded transition-colors"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
@@ -375,14 +375,14 @@ export function MediaLibrary() {
                           href={item.cloudFrontUrl || item.s3Url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                          className="p-2 text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2) rounded transition-colors"
                           title="View"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>
                         <button
                           onClick={() => handleDelete(item)}
-                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
+                          className="p-2 text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) rounded transition-colors"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -412,14 +412,14 @@ export function MediaLibrary() {
       {/* Edit Modal */}
       {showEditModal && selectedMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-2xl mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+          <div className="bg-(--app-surface) rounded-xl border border-(--app-line) w-full max-w-2xl mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-(--app-line)">
               <h2 className="text-lg font-semibold text-white">Edit Media</h2>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-(--app-surface-2) rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-(--app-ink-3)" />
               </button>
             </div>
             <div className="p-6 space-y-4">
@@ -434,16 +434,16 @@ export function MediaLibrary() {
                     className="w-32 h-32 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="w-32 h-32 bg-gray-800 rounded-lg flex items-center justify-center">
+                  <div className="w-32 h-32 bg-(--app-surface-2) rounded-lg flex items-center justify-center">
                     {getFileIcon(selectedMedia)}
                   </div>
                 )}
                 <div className="flex-1">
                   <p className="text-sm font-medium text-white">{selectedMedia.originalFilename}</p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-(--app-ink-3) mt-1">
                     {formatFileSize(selectedMedia.fileSize)} • {selectedMedia.fileType}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-(--app-ink-3) mt-1">
                     Uploaded {new Date(selectedMedia.createdAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -451,7 +451,7 @@ export function MediaLibrary() {
 
               {/* Folder */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-(--app-ink-2) mb-2">
                   Folder
                 </label>
                 <input
@@ -459,7 +459,7 @@ export function MediaLibrary() {
                   value={editData.folder}
                   onChange={(e) => setEditData({ ...editData, folder: e.target.value })}
                   list="media-folder-suggestions"
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) font-mono text-sm"
+                  className="w-full px-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) font-mono text-sm"
                   placeholder='e.g. "banners" or "2026/april" — leave blank for root'
                 />
                 <datalist id="media-folder-suggestions">
@@ -469,54 +469,54 @@ export function MediaLibrary() {
                       <option key={f} value={f} />
                     ))}
                 </datalist>
-                <p className="text-[11px] text-gray-500 mt-1">
+                <p className="text-[11px] text-(--app-ink-3) mt-1">
                   Use slashes for nested paths. Existing folders auto-suggest.
                 </p>
               </div>
 
               {/* Alt Text */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-(--app-ink-2) mb-2">
                   Alt Text
                 </label>
                 <input
                   type="text"
                   value={editData.altText}
                   onChange={(e) => setEditData({ ...editData, altText: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+                  className="w-full px-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   placeholder="Describe the image for accessibility"
                 />
               </div>
 
               {/* Caption */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-(--app-ink-2) mb-2">
                   Caption
                 </label>
                 <input
                   type="text"
                   value={editData.caption}
                   onChange={(e) => setEditData({ ...editData, caption: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
+                  className="w-full px-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   placeholder="Add a caption"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-(--app-ink-2) mb-2">
                   Description
                 </label>
                 <textarea
                   value={editData.description}
                   onChange={(e) => setEditData({ ...editData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none"
+                  className="w-full px-4 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none"
                   placeholder="Add a description"
                 />
               </div>
             </div>
-            <div className="flex gap-3 p-6 border-t border-gray-800">
+            <div className="flex gap-3 p-6 border-t border-(--app-line)">
               <Button
                 variant="secondary"
                 onClick={() => setShowEditModal(false)}
@@ -546,25 +546,25 @@ export function MediaLibrary() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+          <div className="bg-(--app-surface) rounded-xl border border-(--app-line) w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-(--app-line)">
               <h2 className="text-lg font-semibold text-white">Delete Media</h2>
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-(--app-surface-2) rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-(--app-ink-3)" />
               </button>
             </div>
             <div className="p-6">
-              <p className="text-gray-400">
+              <p className="text-(--app-ink-3)">
                 Are you sure you want to delete <span className="text-white font-medium">&quot;{selectedMedia.originalFilename}&quot;</span>?
               </p>
               <p className="text-red-400 text-sm mt-2">
                 This action cannot be undone. The file will be permanently removed from storage.
               </p>
             </div>
-            <div className="flex gap-3 p-6 border-t border-gray-800">
+            <div className="flex gap-3 p-6 border-t border-(--app-line)">
               <Button
                 variant="secondary"
                 onClick={() => setShowDeleteModal(false)}

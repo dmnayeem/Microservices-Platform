@@ -31,13 +31,13 @@ export function YouTubePlayer({ url, className = "" }: YouTubePlayerProps) {
 
   if (!videoId) {
     return (
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 text-center">
-        <p className="text-gray-400">Invalid YouTube URL</p>
+      <div className="bg-(--app-surface) border border-(--app-line) rounded-lg p-6 text-center">
+        <p className="text-(--app-ink-3)">Invalid YouTube URL</p>
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-indigo-400 hover:text-indigo-300 text-sm mt-2 inline-block"
+          className="text-(--app-accent-ink) hover:text-(--app-accent-ink) text-sm mt-2 inline-block"
         >
           Open link in new tab
         </a>
