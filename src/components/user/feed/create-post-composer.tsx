@@ -922,7 +922,7 @@ function PollComposer({
         onChange={(e) => onContentChange(e.target.value)}
         placeholder="Poll question…"
         maxLength={200}
-        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
+        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
       />
       <div className="space-y-1.5">
         {options.map((opt, i) => (
