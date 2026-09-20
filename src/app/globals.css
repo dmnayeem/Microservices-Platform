@@ -1138,6 +1138,32 @@ html[data-theme="light"] .on-media[class*="text-"] {
   color: #ffffff !important;
 }
 
+/* The exception to the exception: an element that paints its OWN light ground.
+ *
+ * The rule above says "you are printed on the gradient, so you are white". A
+ * white pill sitting on that gradient is not printed on it — it has its own
+ * background, and white ink on it is invisible. That is exactly what happened
+ * to the Claim button on the balance card in light mode: a blank white pill
+ * with a label nobody could read.
+ *
+ * It cannot be expressed as `:not([class*="bg-"])` on the rule above, because
+ * the case that rule exists for — a chip carrying its own dark scrim AND its
+ * label, `on-media bg-black/60 text-amber-300` — also has a background class
+ * and does need the white. Light ground and dark ground both carry a `bg-`;
+ * only the author knows which. So the author says so, here.
+ *
+ * Put `app-on-white` on anything with a white or near-white background that
+ * lives inside an accent surface. */
+.app-on-white {
+  color: var(--app-grad-a);
+}
+html[data-theme="light"] .app-accent .app-on-white,
+html[data-theme="light"] .on-media .app-on-white,
+html[data-theme="light"] .app-accent .app-on-white[class*="text-"],
+html[data-theme="light"] .on-media .app-on-white[class*="text-"] {
+  color: var(--app-grad-a) !important;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Card elevation in light mode.
 

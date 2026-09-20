@@ -358,6 +358,67 @@ function main() {
       );
     }
 
+    /* The photo viewer must be escapable. */
+    {
+      const zoom = read("src/components/user/primitives/image-zoom-modal.tsx");
+      // It holds the page still while open, so the two things a reader tries
+      // — scrolling, and tapping the picture — both have to lead somewhere.
+      // Tapping the photo used to be swallowed by `stopPropagation`, which on
+      // a phone means the biggest target on screen did nothing and the app
+      // read as frozen.
+      check(
+        "tapping the photo closes the viewer",
+        /<img[\s\S]{0,300}onClick=\{onClose\}/.test(zoom) &&
+          !/<img[\s\S]{0,300}onClick=\{\(e\) => e\.stopPropagation\(\)\}/.test(zoom),
+        "a photo that swallows the tap is why the app felt stuck"
+      );
+      check(
+        "dragging down dismisses it",
+        /onTouchStart=/.test(zoom) &&
+          /onTouchEnd=\{endDrag\}/.test(zoom) &&
+          /dy > 90/.test(zoom),
+        "the gesture already in the reader's fingers when scrolling fails"
+      );
+      check(
+        "…and a cancelled touch does not leave it half-dragged",
+        /onTouchCancel=\{endDrag\}/.test(zoom)
+      );
+      check(
+        "the close button clears the notch",
+        /env\(safe-area-inset-top\)/.test(zoom)
+      );
+      // Blanking `overflow` hands scrolling back to a page that something
+      // else may still be holding still.
+      check(
+        "closing restores the page's previous scroll state, not a blank one",
+        /const previous = document\.body\.style\.overflow/.test(zoom) &&
+          /document\.body\.style\.overflow = previous/.test(zoom)
+      );
+    }
+
+    /* A white control on an accent surface keeps readable ink. */
+    {
+      const css = read("src/app/globals.css");
+      check(
+        "there is a named exception for a control on its own white ground",
+        /\.app-on-white \{/.test(css) &&
+          /html\[data-theme="light"\] \.app-accent \.app-on-white/.test(css),
+        "the family rule paints every themed descendant white, which is invisible on a white pill"
+      );
+      for (const f of [
+        "src/components/user/feed/mobile-earn-block.tsx",
+        "src/components/user/primitives/balance-card.tsx",
+      ]) {
+        const src = read(f);
+        check(
+          `${f.split("/").pop()} uses it rather than a bare text- class`,
+          /app-on-white bg-white/.test(src) &&
+            !/bg-white text-\(--app-grad-a\)/.test(src),
+          "white-on-white: the Claim button was a blank pill in light mode"
+        );
+      }
+    }
+
     // A bar that is `md:hidden` but polls on `max-width: 1023px` runs a 60s
     // fetch loop for every tablet and desktop user to feed a badge they cannot
     // see. The media query and the class have to name the same edge.

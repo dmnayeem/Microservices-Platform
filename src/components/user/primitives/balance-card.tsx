@@ -172,7 +172,7 @@ export function BalanceCard({
           )}
           <Link
             href={withdrawHref}
-            className="app-press app-tap-row inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-white text-(--app-grad-a) text-sm font-extrabold hover:bg-white/90"
+            className="app-press app-tap-row inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) app-on-white bg-white text-sm font-extrabold hover:bg-white/90"
           >
             Withdraw <ArrowUpRight className="w-4 h-4" />
           </Link>
