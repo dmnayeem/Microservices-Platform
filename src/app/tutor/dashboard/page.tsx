@@ -133,7 +133,7 @@ export default async function TutorDashboardPage() {
           {courses.length === 0 ? (
             <Empty icon={<PlayCircle />} title="No courses yet" cta="Build your first course" href="/tutor/courses/new" />
           ) : (
-            <ul className="divide-y divide-gray-800">
+            <ul className="divide-y divide-(--app-line)">
               {courses.map((c) => (
                 <li key={c.id}>
                   <Link
@@ -173,7 +173,7 @@ export default async function TutorDashboardPage() {
               hint="Once a student enrols in one of your courses they'll show up here."
             />
           ) : (
-            <ul className="divide-y divide-gray-800">
+            <ul className="divide-y divide-(--app-line)">
               {(recentEnrollments as unknown as Array<{
                 id: string;
                 createdAt: Date;
@@ -223,7 +223,7 @@ export default async function TutorDashboardPage() {
               hint="No unanswered student questions right now."
             />
           ) : (
-            <ul className="divide-y divide-gray-800">
+            <ul className="divide-y divide-(--app-line)">
               {(pendingQuestions as unknown as Array<{
                 id: string;
                 question: string;

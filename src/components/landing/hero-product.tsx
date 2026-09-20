@@ -56,7 +56,7 @@ export function HeroProduct() {
         </div>
 
         {/* Balance — white on the brand fill measures 6.29:1. */}
-        <div className="rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-4 text-white shadow-lg shadow-indigo-600/25">
+        <div className="rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-4 text-white shadow-lg shadow-(--app-cta)/25">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[11px] font-medium uppercase tracking-wider text-white/80">

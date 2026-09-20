@@ -139,7 +139,7 @@ export function BannerSlider({
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-linear-to-r from-slate-950/70 to-slate-950/30" />
+                  <div className="absolute inset-0 bg-linear-to-r from-black/70 to-black/30" />
                 </>
               )}
               <div className="relative z-10 text-white max-w-[70%]">

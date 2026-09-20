@@ -117,7 +117,7 @@ export function CourseCurriculum({
                 </span>
               </button>
               {open && (
-                <ul className="border-t border-(--app-line) divide-y divide-gray-800/60">
+                <ul className="border-t border-(--app-line) divide-y divide-(--app-line)/60">
                   {m.lessons.map((l, li) => {
                     const meta = LESSON_ICONS[l.lessonType] ?? LESSON_ICONS.VIDEO;
                     const Icon = meta.icon;

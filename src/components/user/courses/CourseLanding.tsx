@@ -85,7 +85,7 @@ export function CourseLanding({ data, viewerId }: Props) {
       />
 
       {/* Two-column main body */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
         <main className="space-y-8 min-w-0">
           {/* Learning outcomes */}
           {course.learningOutcomes.length > 0 && (

@@ -467,7 +467,7 @@ function HistoryTab({
   }
 
   return (
-    <div className="glass rounded-xl divide-y divide-gray-800">
+    <div className="glass rounded-xl divide-y divide-(--app-line)">
       {subscriptions.map((s) => {
         const tierGradient = TIER_GRADIENT[s.packageTier] ?? TIER_GRADIENT.FREE;
         // `s.isActive` is set server-side via the cancel/expire flow; we trust it

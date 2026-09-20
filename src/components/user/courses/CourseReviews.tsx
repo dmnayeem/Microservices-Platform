@@ -44,7 +44,7 @@ export function CourseReviews({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-4">
         <div className="text-center">
           <p className="text-5xl font-extrabold text-white tabular-nums">
             {avgRating > 0 ? avgRating.toFixed(1) : "—"}

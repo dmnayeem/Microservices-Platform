@@ -347,7 +347,7 @@ export function AdSheet({
                         <SmartImage src={p.image} alt="" fill sizes="36px" className="object-cover" />
                       ) : null}
                     </div>
-                    <span className="text-xs text-(--app-ink) line-clamp-2 flex-1">
+                    <span className="text-xs text-(--app-ink) line-clamp-2 flex-1 min-w-0">
                       {p.content || "(no text)"}
                     </span>
                   </button>

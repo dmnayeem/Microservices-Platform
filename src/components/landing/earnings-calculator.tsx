@@ -541,7 +541,7 @@ export function EarningsCalculator(props: Props) {
                   {/* CTA */}
                   <Link
                     href="/register"
-                    className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-indigo-600/25 active:scale-[0.99]"
+                    className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/25 active:scale-[0.99]"
                   >
                     Start Earning Now
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />

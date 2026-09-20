@@ -73,10 +73,10 @@ export function ScrollFadeRow({
       </div>
 
       {canLeft && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-linear-to-r from-gray-950 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-linear-to-r from-(--app-page) to-transparent" />
       )}
       {canRight && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-gray-950 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-(--app-page) to-transparent" />
       )}
 
       {!hideButtons && canLeft && (

@@ -208,17 +208,17 @@ export function AffiliateDashboardView({
           />
         ) : (
           <div className="glass rounded-xl overflow-hidden">
-            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-(--app-ink-3) border-b border-(--app-line)/60">
+            <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-4 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-(--app-ink-3) border-b border-(--app-line)/60">
               <span>Item</span>
               <span className="text-right w-14">Views</span>
               <span className="text-right w-14">Sales</span>
               <span className="text-right w-20">Earned</span>
             </div>
-            <div className="divide-y divide-gray-800/60">
+            <div className="divide-y divide-(--app-line)/60">
               {s.byItem.map((it) => (
                 <div
                   key={it.key}
-                  className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1 px-4 py-2.5 items-center"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 gap-y-1 px-4 py-2.5 items-center"
                 >
                   <div className="min-w-0 flex items-center gap-2">
                     <span className="text-(--app-ink-3) shrink-0">
@@ -288,7 +288,7 @@ export function AffiliateDashboardView({
       {s.recent.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-bold text-white">Recent commissions</h2>
-          <div className="glass rounded-xl divide-y divide-gray-800/60">
+          <div className="glass rounded-xl divide-y divide-(--app-line)/60">
             {s.recent.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0">

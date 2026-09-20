@@ -514,7 +514,7 @@ export function SettingsView({
                           onClick={() => applyAccent(id)}
                           style={{ background: ACCENT_GRADIENT[id] ?? ACCENT_HEX[id] }}
                           className={cn(
-                            "w-8 h-8 rounded-full ring-2 ring-offset-2 ring-offset-gray-900 transition-all capitalize",
+                            "w-8 h-8 rounded-full ring-2 ring-offset-2 ring-offset-(--app-surface) transition-all capitalize",
                             accent === id && !accentIsDefault
                               ? "ring-white"
                               : "ring-transparent hover:ring-white/40"

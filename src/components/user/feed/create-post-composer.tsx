@@ -728,7 +728,7 @@ export function CreatePostComposer({
                   className={cn(
                     "w-7 h-7 rounded-full",
                     b.className,
-                    bg === b.id && "ring-2 ring-white ring-offset-2 ring-offset-gray-900"
+                    bg === b.id && "ring-2 ring-white ring-offset-2 ring-offset-(--app-surface)"
                   )}
                 />
               ))}

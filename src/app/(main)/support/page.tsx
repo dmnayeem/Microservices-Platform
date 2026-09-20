@@ -159,7 +159,7 @@ export default function HelpPage() {
               {s.title}
             </p>
           </div>
-          <ul className="divide-y divide-gray-800">
+          <ul className="divide-y divide-(--app-line)">
             {s.articles.map((a) => {
               const isOpen = open.has(a.id);
               return (

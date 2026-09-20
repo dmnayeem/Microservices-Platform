@@ -224,7 +224,7 @@ export function BoardTasksView() {
           return (
           <>
             {/* Header */}
-            <div className="rounded-2xl border border-(--app-line) bg-linear-to-br from-orange-500/10 via-pink-500/5 to-gray-900 overflow-hidden">
+            <div className="rounded-2xl border border-(--app-line) bg-linear-to-br from-orange-500/10 via-pink-500/5 to-(--app-surface) overflow-hidden">
               {detail.board.imageUrl && (
                 <div className="relative w-full h-32 bg-(--app-surface-2)">
                   <SmartImage

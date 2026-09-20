@@ -340,7 +340,7 @@ export function PackagesView({
                 type="radio"
                 checked={method === m.value}
                 onChange={() => setMethod(m.value)}
-                className="accent-indigo-500"
+                className="accent-(--app-cta)"
               />
               {m.value !== "CASH" && m.value !== "POINTS" && (
                 <BrandIcon brand={m.value} colored className="w-5 h-5 shrink-0" />

@@ -111,7 +111,7 @@ export function ReportContent({
                   value={r.value}
                   checked={reason === r.value}
                   onChange={() => setReason(r.value)}
-                  className="accent-indigo-500"
+                  className="accent-(--app-cta)"
                 />
                 <span className="text-sm text-white">{r.label}</span>
               </label>

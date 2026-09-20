@@ -222,7 +222,7 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-(--app-line)">
               {data.responses.map((r) => (
                 <tr key={r.respondent} className="align-top text-(--app-ink-2)">
                   <td className="whitespace-nowrap px-3 py-2 font-semibold text-white">

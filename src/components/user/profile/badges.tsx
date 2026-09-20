@@ -126,14 +126,14 @@ export function LevelBadge({
             cx="18"
             cy="18"
             r="15"
-            className="fill-none stroke-indigo-900/40"
+            className="fill-none stroke-(--app-line-strong)"
             strokeWidth="4"
           />
           <circle
             cx="18"
             cy="18"
             r="15"
-            className="fill-none stroke-indigo-400 transition-[stroke-dashoffset]"
+            className="fill-none stroke-(--app-accent-edge) transition-[stroke-dashoffset]"
             strokeWidth="4"
             strokeLinecap="round"
             strokeDasharray={Math.PI * 30}

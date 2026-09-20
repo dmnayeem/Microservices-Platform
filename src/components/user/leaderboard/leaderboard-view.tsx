@@ -205,7 +205,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
           )}
 
           {/* Full ranking — a row list (mobile-first; no horizontal scroll). */}
-          <div className="glass rounded-2xl divide-y divide-gray-800/60 overflow-hidden">
+          <div className="glass rounded-2xl divide-y divide-(--app-line)/60 overflow-hidden">
             {rows.map((row) => {
               const isMe = row.userId === currentUserId;
               return (

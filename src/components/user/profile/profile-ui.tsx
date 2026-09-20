@@ -134,11 +134,11 @@ export function CompletionRing({ percentage }: { percentage: number }) {
       ? "stroke-emerald-400"
       : percentage >= 60
       ? "stroke-amber-400"
-      : "stroke-indigo-400";
+      : "stroke-(--app-accent-edge)";
   return (
     <div className="relative w-16 h-16 shrink-0">
       <svg className="w-16 h-16 -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="42" className="fill-none stroke-gray-800" strokeWidth="10" />
+        <circle cx="50" cy="50" r="42" className="fill-none stroke-(--app-line)" strokeWidth="10" />
         <circle
           cx="50"
           cy="50"

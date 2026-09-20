@@ -304,7 +304,7 @@ export function ProfileView() {
             </Link>
             <button
               onClick={() => openEdit("personal")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold shadow-lg shadow-indigo-900/30"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold shadow-lg shadow-(--app-cta)/30"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit Profile

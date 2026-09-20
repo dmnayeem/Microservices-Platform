@@ -342,7 +342,7 @@ export default function NotificationsPage() {
         />
       ) : (
         <div className="card overflow-hidden">
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-(--app-line)">
             {notifications.map((notification) => {
               const typeConfig =
                 NOTIFICATION_TYPE_CONFIG[notification.type] ||

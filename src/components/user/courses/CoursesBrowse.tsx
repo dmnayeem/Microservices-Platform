@@ -218,7 +218,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-5">
         {/* Filter sidebar */}
         <aside
           className={

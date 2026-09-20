@@ -299,7 +299,7 @@ export function WithdrawalView({
                       name="pm"
                       checked={methodId === m.id}
                       onChange={() => setMethodId(m.id)}
-                      className="accent-indigo-500"
+                      className="accent-(--app-cta)"
                     />
                     <BrandIcon brand={m.type} fallback="💳" colored className="w-4 h-4" />
                     <span className="flex-1 text-sm text-white">{m.label}</span>

@@ -293,6 +293,12 @@ body {
 body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  /* A wallet address, a referral URL or a long email is one unbroken word, and
+     an unbroken word is wider than a phone. `overflow-x: hidden` above keeps
+     the PAGE from scrolling sideways, but it does nothing for the card the
+     word is inside — that still stretches or clips. `break-word` breaks only
+     when the word would otherwise overflow, so ordinary text is untouched. */
+  overflow-wrap: break-word;
 }
 
 /* Chrome (buttons/links/nav) shouldn't be long-press-selectable or show the

@@ -54,7 +54,7 @@ export default async function OfferPage({ params, searchParams }: PageProps) {
     <main
       className={cn(
         "min-h-screen text-(--app-ink) bg-linear-to-br",
-        offer.bgGradient || "from-slate-950 via-slate-900 to-indigo-950"
+        offer.bgGradient || "from-(--app-page) via-(--app-surface) to-(--app-surface-2)"
       )}
     >
       {offer.status !== "PUBLISHED" && (

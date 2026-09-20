@@ -643,7 +643,7 @@ export function ThemeTab({
               onClick={() => applyAccent(id)}
               style={{ background: ACCENT_GRADIENT[id] ?? ACCENT_HEX[id] }}
               className={cn(
-                "w-9 h-9 rounded-full ring-2 ring-offset-2 ring-offset-gray-900 transition-all capitalize",
+                "w-9 h-9 rounded-full ring-2 ring-offset-2 ring-offset-(--app-surface) transition-all capitalize",
                 preferences.themeAccent === id && !accentIsDefault
                   ? "ring-white"
                   : "ring-transparent"

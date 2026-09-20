@@ -13,7 +13,7 @@ export function CTA(props: Props) {
   return (
     <section className="mk-section">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-8 sm:p-12 lg:p-16 text-center shadow-xl shadow-indigo-600/25">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-8 sm:p-12 lg:p-16 text-center shadow-xl shadow-(--app-cta)/25">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute top-0 left-1/4 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-white/10 blur-3xl" />

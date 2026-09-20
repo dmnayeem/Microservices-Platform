@@ -302,7 +302,7 @@ export function SurveyBuilder({
                     type="checkbox"
                     checked={q.required}
                     onChange={(e) => setQ(i, { required: e.target.checked })}
-                    className="h-3.5 w-3.5 accent-indigo-500"
+                    className="h-3.5 w-3.5 accent-(--app-cta)"
                   />
                   Required
                 </label>
@@ -367,7 +367,7 @@ export function SurveyBuilder({
                 type="checkbox"
                 checked={value.randomizeQuestions}
                 onChange={(e) => set({ randomizeQuestions: e.target.checked })}
-                className="h-3.5 w-3.5 accent-indigo-500"
+                className="h-3.5 w-3.5 accent-(--app-cta)"
               />
               Shuffle question order per respondent
             </label>
@@ -376,7 +376,7 @@ export function SurveyBuilder({
                 type="checkbox"
                 checked={value.shuffleOptions}
                 onChange={(e) => set({ shuffleOptions: e.target.checked })}
-                className="h-3.5 w-3.5 accent-indigo-500"
+                className="h-3.5 w-3.5 accent-(--app-cta)"
               />
               Shuffle answer options
             </label>
@@ -441,7 +441,7 @@ function SurveyPreview({ draft }: { draft: SurveyDraft }) {
                 <input
                   disabled
                   type={q.type === "MCQ_MULTI" ? "checkbox" : "radio"}
-                  className="h-3.5 w-3.5 accent-indigo-500"
+                  className="h-3.5 w-3.5 accent-(--app-cta)"
                 />
                 {o}
               </label>

@@ -91,7 +91,7 @@ export function TaskInstructions({
             }}
           />
           {collapsed && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-gray-900 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-(--app-surface) to-transparent" />
           )}
         </div>
       ) : (

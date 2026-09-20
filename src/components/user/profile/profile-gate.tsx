@@ -36,7 +36,7 @@ export function ProfileGate({
               cx="50"
               cy="50"
               r="42"
-              className="fill-none stroke-gray-800"
+              className="fill-none stroke-(--app-line)"
               strokeWidth="9"
             />
             <circle

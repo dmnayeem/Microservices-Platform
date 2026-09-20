@@ -192,7 +192,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
         <ChevronLeft className="w-4 h-4" /> All messages
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-4">
         {/* Chat column */}
         <div className="glass rounded-2xl flex flex-col h-[70vh]">
           {/* Header */}

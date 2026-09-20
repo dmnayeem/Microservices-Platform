@@ -45,7 +45,7 @@ export function Packages(props: Props) {
                 key={i}
                 className={`mk-zoom relative rounded-2xl p-6 lg:p-8 ${
                   pkg.is_popular
-                    ? "bg-linear-to-b from-(--mk-grad-a)/10 to-transparent border-2 border-(--mk-accent)/50 shadow-xl shadow-violet-500/10 xl:scale-105"
+                    ? "bg-linear-to-b from-(--mk-grad-a)/10 to-transparent border-2 border-(--mk-accent)/50 shadow-xl shadow-(--app-cta)/10 xl:scale-105"
                     : "mk-card hover:border-(--mk-border-strong)"
                 }`}
               >

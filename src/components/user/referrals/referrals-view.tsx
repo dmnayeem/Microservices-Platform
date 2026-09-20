@@ -346,7 +346,7 @@ export function ReferralsView({
             }
           />
         ) : (
-          <div className="glass rounded-xl divide-y divide-gray-800 mt-2">
+          <div className="glass rounded-xl divide-y divide-(--app-line) mt-2">
             {filteredTeam.slice(0, 50).map((m) => {
               const tone =
                 m.level === 1

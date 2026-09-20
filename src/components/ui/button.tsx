@@ -11,12 +11,12 @@ import { haptic } from "@/lib/haptics";
 const HAPTIC_VARIANTS = new Set(["primary", "danger", "success", "gold"]);
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-(--app-page) disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) text-white shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/35 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
+          "bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) text-white shadow-lg shadow-(--app-cta)/25 hover:shadow-(--app-cta)/35 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
         secondary:
           "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2) border border-(--app-line) shadow-sm",
         outline:

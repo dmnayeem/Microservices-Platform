@@ -67,7 +67,7 @@ const TONE: Record<
     border: "border-(--app-accent-edge)/25",
     line: "via-(--app-rail-b)/60",
     bar: "bg-(--app-cta)",
-    shadow: "shadow-indigo-500/30",
+    shadow: "shadow-(--app-cta)/30",
   },
 };
 
@@ -210,7 +210,7 @@ function RewardCard({
       role="status"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={onClose}
-      className="relative w-full max-w-xs cursor-pointer overflow-hidden rounded-3xl border border-amber-500/25 bg-linear-to-b from-gray-900 to-gray-950 px-6 pt-8 pb-8 text-center elevate-2 shadow-amber-500/10 animate-pop-in"
+      className="relative w-full max-w-xs cursor-pointer overflow-hidden rounded-3xl border border-amber-500/25 bg-linear-to-b from-(--app-surface) to-(--app-page) px-6 pt-8 pb-8 text-center elevate-2 shadow-amber-500/10 animate-pop-in"
     >
       {/* Sparkle burst */}
       <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">

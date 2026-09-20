@@ -799,7 +799,7 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
           </div>
 
           {/* Full ranking */}
-          <div className="glass rounded-xl divide-y divide-gray-800">
+          <div className="glass rounded-xl divide-y divide-(--app-line)">
             {list.slice(3).map((e) => (
               <div
                 key={e.userId}

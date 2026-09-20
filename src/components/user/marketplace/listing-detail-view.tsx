@@ -289,7 +289,7 @@ export function ListingDetailView({
       </Link>
 
       {/* Hero */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-4">
         {/* Gallery */}
         <div className="space-y-2">
           <div

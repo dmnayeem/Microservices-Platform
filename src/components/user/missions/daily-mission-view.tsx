@@ -157,7 +157,7 @@ export function DailyMissionView() {
       </header>
 
       {/* Mission header card */}
-      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-gray-900 p-5">
+      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-(--app-rail-a)/10 via-(--app-rail-b)/5 to-(--app-surface) p-5">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl bg-(--app-cta)/20 flex items-center justify-center text-2xl shrink-0">
             🎯

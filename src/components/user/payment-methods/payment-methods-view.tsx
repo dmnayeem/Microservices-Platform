@@ -293,7 +293,7 @@ export function PaymentMethodsView() {
             type="checkbox"
             checked={setDefault}
             onChange={(e) => setSetDefault(e.target.checked)}
-            className="accent-indigo-500"
+            className="accent-(--app-cta)"
           />
           Set as default payout method
         </label>

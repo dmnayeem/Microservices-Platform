@@ -137,7 +137,7 @@ export function BidPanel({
   };
 
   return (
-    <section className="rounded-xl border border-purple-500/20 bg-linear-to-br from-(--app-rail-a)/5 via-gray-900 to-gray-900 p-4 sm:p-5 space-y-3">
+    <section className="rounded-xl border border-(--app-accent-edge)/20 bg-linear-to-br from-(--app-rail-a)/5 via-(--app-surface) to-(--app-surface) p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 flex items-center justify-center">

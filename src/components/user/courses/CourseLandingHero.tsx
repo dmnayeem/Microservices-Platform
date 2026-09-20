@@ -46,7 +46,7 @@ export function CourseLandingHero({ course, tutor }: Props) {
             sizes="100vw"
             className="object-cover opacity-30 blur-sm"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-950/40 via-gray-950/60 to-gray-950/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/95" />
         </div>
       )}
       <div className="relative p-6 md:p-10 max-w-3xl">

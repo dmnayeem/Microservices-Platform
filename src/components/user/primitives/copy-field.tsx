@@ -153,7 +153,7 @@ export function CopyField({
           {value}
         </p>
         {long && !open && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-gray-950 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-(--app-page) to-transparent" />
         )}
       </div>
 

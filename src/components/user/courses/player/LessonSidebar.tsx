@@ -77,7 +77,7 @@ export function LessonSidebar({ modules, activeLessonId, onPick }: Props) {
           Curriculum
         </p>
       </div>
-      <ul className="divide-y divide-gray-800">
+      <ul className="divide-y divide-(--app-line)">
         {modules.map((m, mi) => {
           const open = openIds.has(m.id);
           const completed = m.lessons.filter((l) => l.progress?.isCompleted).length;

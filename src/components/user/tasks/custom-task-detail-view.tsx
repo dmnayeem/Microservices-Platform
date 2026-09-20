@@ -362,7 +362,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               type="button"
               onClick={submit}
               disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/30 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -401,7 +401,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               type="button"
               onClick={submit}
               disabled={busy}
-              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-purple-900/30 disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:from-(--app-grad-a) hover:to-(--app-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-(--app-cta)/30 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

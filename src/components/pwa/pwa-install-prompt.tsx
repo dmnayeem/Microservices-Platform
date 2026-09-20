@@ -106,7 +106,7 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-1.5rem)]">
-      <div className="rounded-2xl border border-(--app-accent-edge)/40 bg-linear-to-br from-(--app-rail-a)/15 via-(--app-rail-b)/10 to-gray-900 backdrop-blur-xl p-4 shadow-2xl">
+      <div className="rounded-2xl border border-(--app-accent-edge)/40 bg-linear-to-br from-(--app-rail-a)/15 via-(--app-rail-b)/10 to-(--app-surface) backdrop-blur-xl p-4 shadow-2xl">
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

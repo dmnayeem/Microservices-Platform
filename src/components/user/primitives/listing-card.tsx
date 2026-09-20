@@ -52,7 +52,7 @@ export function ListingCard({
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center text-(--app-glyph) text-sm">
+          <div className="w-full h-full bg-linear-to-br from-(--app-surface-2) to-(--app-surface) flex items-center justify-center text-(--app-glyph) text-sm">
             No image
           </div>
         )}

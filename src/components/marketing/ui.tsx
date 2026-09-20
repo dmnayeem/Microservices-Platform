@@ -214,7 +214,7 @@ export function PrimaryButton({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-6 py-3 text-sm font-bold text-white shadow-sm shadow-indigo-600/20 hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) transition-colors"
+      className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-6 py-3 text-sm font-bold text-white shadow-sm shadow-(--app-cta)/20 hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) transition-colors"
     >
       {children}
     </Link>

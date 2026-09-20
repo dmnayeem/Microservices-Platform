@@ -173,7 +173,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
                     onChange={(e) =>
                       setPrefs({ ...prefs, [row.key]: e.target.checked })
                     }
-                    className="mt-0.5 accent-indigo-500"
+                    className="mt-0.5 accent-(--app-cta)"
                   />
                   <div>
                     <p className="text-sm font-semibold text-white">{row.label}</p>
