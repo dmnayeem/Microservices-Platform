@@ -11,18 +11,18 @@ import { haptic } from "@/lib/haptics";
 const HAPTIC_VARIANTS = new Set(["primary", "danger", "success", "gold"]);
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-(--app-page) disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-(--app-r-control) t-label transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-(--app-page) disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) text-white shadow-lg shadow-(--app-cta)/25 hover:shadow-(--app-cta)/35 hover:brightness-110 hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
+          "bg-(--app-cta) text-(--app-on-cta) font-bold app-cta-glow hover:bg-(--app-cta-hover) hover:-translate-y-0.5 focus-visible:ring-(--app-accent-edge)",
         secondary:
-          "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2) border border-(--app-line) shadow-sm",
+          "bg-(--app-surface-2) text-(--app-ink) hover:bg-(--app-surface-hover) border border-(--app-line) hover:border-(--app-line-strong)",
         outline:
-          "border border-(--app-line) bg-transparent text-white hover:bg-(--app-surface-2) hover:border-(--app-line)",
+          "border border-(--app-line) bg-transparent text-(--app-ink) hover:bg-(--app-surface-2) hover:border-(--app-line-strong)",
         ghost:
-          "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)",
+          "text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)",
         danger:
           "bg-red-500 text-white shadow-lg shadow-red-600/20 hover:bg-red-600 hover:-translate-y-0.5 focus-visible:ring-red-500",
         success:
@@ -31,8 +31,10 @@ const buttonVariants = cva(
         link: "text-(--app-accent-ink) underline-offset-4 hover:underline",
       },
       size: {
-        sm: "h-9 px-3 text-sm",
-        md: "h-10 px-4 text-sm",
+        // 36px is the document's action pill; 44px is its field height, so a
+        // button standing beside an input lines up instead of sitting short.
+        sm: "h-9 px-4 text-sm",
+        md: "h-11 px-4 text-sm",
         lg: "h-12 px-6 text-base",
         xl: "h-14 px-8 text-lg",
         icon: "h-10 w-10",
