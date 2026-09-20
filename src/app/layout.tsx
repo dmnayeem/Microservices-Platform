@@ -8,6 +8,10 @@ import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/500.css";
 import "@fontsource/plus-jakarta-sans/600.css";
 import "@fontsource/plus-jakarta-sans/700.css";
+// 800 — the display tier of the Obsidian Kinetic scale (`display-hero`).
+// Without it the browser synthesises a fake bold from 700, which smears the
+// large balance figures the design leans on.
+import "@fontsource/plus-jakarta-sans/800.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 // Bengali (বাংলা) glyph coverage — the Latin faces above have none.

@@ -209,9 +209,13 @@ async function main() {
   {
     const s = src("app/(main)/layout.tsx");
     check("it is mounted once in the app shell", /<AnchorAdBar \/>/.test(s));
+    // The nav's height is measured now rather than assumed at 6rem — that
+    // constant ignored the device safe area and the tab that floats above the
+    // bar, so the last row of a page sat underneath it. 6rem survives only as
+    // the value used before the observer's first frame.
     check(
       "<main> reserves room for it on top of the nav's own space",
-      /pb-\[calc\(6rem\+var\(--anchor-ad-h,0px\)\)\]/.test(s)
+      /pb-\[calc\(var\(--bottom-nav-h,6rem\)\+1rem\+var\(--anchor-ad-h,0px\)\)\]/.test(s)
     );
   }
 

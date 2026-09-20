@@ -240,7 +240,7 @@ html[data-accent="silver"] {
      at L* 88.2 and a real shadow (white-on-white needs an edge, not a tint).
      Measured on the chrome: gray-400 6.9:1, gray-500 5.2:1 (dark) /
      7.6:1 and 5.8:1 (light) — every shell label clears 4.5:1 in both. */
-  --shell-bg: #15171f;
+  --shell-bg: #0f172a;
   --shell-border: #272b38;
   --shell-hover: #1f2331;
   --shell-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.7);
@@ -739,7 +739,7 @@ html[data-theme="light"] {
      read as chrome rather than as one more card, and a white card laid on the
      bar still separates from it without a shadow.
      chrome #f5f7fc = L* 97.21, border #d6dde9 = L* 87.92 (Δ 9.29). */
-  --shell-bg: #f5f7fc;
+  --shell-bg: #f5f7fa;
   /* 97%, not 88% — see `.app-chrome`. Dark text under a pale bar reads
      through anything looser, and the blur does not hide it. */
   --shell-veil: 97%;
@@ -1756,8 +1756,8 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      has never opened the theme picker and one who explicitly picks indigo see
      the same measured surface. The accent picker recolours all of this through
      the generated block at the end of this file. */
-  --app-grad-a: #4f39f6;
-  --app-grad-b: #7f22fe;
+  --app-grad-a: #047857;
+  --app-grad-b: #065f46;
   --app-grad: linear-gradient(135deg, var(--app-grad-a) 0%, var(--app-grad-b) 100%);
   --app-grad-glow: 0 10px 30px -12px color-mix(in oklab, var(--app-grad-a) 70%, transparent);
 
@@ -1780,9 +1780,9 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      opposite directions. One value could not have served both. Every accent's
      pair is in src/lib/accent-palette.ts and re-measured by the verify script
      on every run. */
-  --app-accent-edge: #7c86ff;
-  --app-rail-a: #7c86ff;
-  --app-rail-b: #a684ff;
+  --app-accent-edge: #34d399;
+  --app-rail-a: #34d399;
+  --app-rail-b: #10b981;
   --app-rail: linear-gradient(180deg, var(--app-rail-a), var(--app-rail-b));
 
   /* ── Semantic colour — four meanings, nothing decorative ─────────────────
@@ -1793,9 +1793,9 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      Measured against the card surface each sits on; see the table in
      scripts/verify-app-shell.ts, which recomputes these on every run. */
   --app-in: #34d399;
-  --app-out: #f87171;
-  --app-warn: #fbbf24;
-  --app-info: #a5b4fc;
+  --app-out: #ffb4ab;
+  --app-warn: #f59e0b;
+  --app-info: #a78bfa;
   /* Soft fills for the same four. Non-text, so the 3:1 floor applies to the
      border, not the fill. */
   --app-in-soft: #0d2a22;
@@ -1843,11 +1843,11 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
     0 8px 20px -10px rgba(6, 8, 20, 0.36), 0 28px 60px -30px rgba(6, 8, 20, 0.5);
 
   /* Card chrome, so `.app-card` never has to guess. */
-  --app-page: var(--color-gray-950);
-  --app-surface: var(--color-gray-900);
-  --app-surface-2: var(--color-gray-800);
-  --app-line: #262a38;
-  --app-line-strong: #333849;
+  --app-page: #0b0f17;
+  --app-surface: #141d31;
+  --app-surface-2: #1c273e;
+  --app-line: rgba(255, 255, 255, 0.08);
+  --app-line-strong: rgba(255, 255, 255, 0.16);
 
   /* ── Ink, named by JOB rather than by ramp step ──────────────────────────
      The audit that produced these found 164 places where a ramp step had been
@@ -1884,10 +1884,10 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      one clears every floor at once: white on it 5.36:1, and the chip itself
      3.33:1 on the dark bar and 5.01:1 on the light one. */
   --app-badge: #d70410;
-  --app-ink: #f6f7fa;
-  --app-ink-2: #c7ccdb;
-  --app-ink-3: #99a0b6;
-  --app-glyph: #5f687e;
+  --app-ink: #f8fafc;
+  --app-ink-2: #94a3b8;
+  --app-ink-3: #8b9ab0;
+  --app-glyph: #64748b;
   --app-on-bright: #0a0b11;
   --app-on-accent: #ffffff;
   --app-bright: #ffffff;
@@ -1908,9 +1908,9 @@ html[data-theme="light"] {
      one lighter than the fill, which reads as a highlight along the top of the
      control instead of a second outline. The rail takes the same step: on
      white, 500 is the most saturated point that still clears 3:1. */
-  --app-accent-edge: #615fff;
-  --app-rail-a: #615fff;
-  --app-rail-b: #8e51ff;
+  --app-accent-edge: #059669;
+  --app-rail-a: #059669;
+  --app-rail-b: #047857;
 
   /* The same four meanings, and — deliberately — the same four inks the
      `[class*="text-<hue>-"]` family rules paint. One light accent ink per hue
@@ -1918,10 +1918,10 @@ html[data-theme="light"] {
      `text-amber-400` label beside it are the same colour instead of two
      near-misses. These replace #047857 / #b45309, which measured 4.51 and 4.13
      against the new page — one of them under the floor. */
-  --app-in: #006045;
-  --app-out: #9f0712;
-  --app-warn: #973c00;
-  --app-info: #4338ca;
+  --app-in: #065f46;
+  --app-out: #b91c1c;
+  --app-warn: #92400e;
+  --app-info: #6d28d9;
   /* The soft chip fills, deepened. They were #e7f6ef / #fdeceb / #fdf2e3 /
      #eef0fe — 0.00 to 0.95 CIE L* away from the raised tile, i.e. a status chip
      laid on a nested panel had no edge at all and was doing nothing but holding
@@ -1946,18 +1946,18 @@ html[data-theme="light"] {
 
   /* The four planes, same values as the ramp flip at the top of the file so
      there is exactly one light palette and not two. */
-  --app-page: #e5e9f2;
+  --app-page: #e2e8f0;
   --app-surface: #ffffff;
-  --app-surface-2: #ecf0f7;
-  --app-line: #dde3ee;
-  --app-line-strong: #c6cfdd;
+  --app-surface-2: #eaeff5;
+  --app-line: #e2e8f0;
+  --app-line-strong: #cbd5e1;
 
   --app-ink: #0f172a;
   --app-ink-2: #334155;
   --app-ink-3: #5b6675;
   /* 3.65:1 on the white card, 3.00 on the page — over the 3:1 non-text floor
      everywhere, and still clearly subordinate to body text. It was 1.08:1. */
-  --app-glyph: #7a8799;
+  --app-glyph: #6b7b91;
   --app-on-bright: #0a0b11;
   --app-on-accent: #ffffff;
   --app-bright: #ffffff;
@@ -2389,16 +2389,16 @@ html[data-theme="light"][data-accent="green"] {
   --app-rail-b: #009966;
 }
 html[data-accent="emerald"] {
-  --app-grad-a: #007a55;
-  --app-grad-b: #00786f;
-  --app-accent-edge: #00d492;
-  --app-rail-a: #00d492;
-  --app-rail-b: #00d5be;
+  --app-grad-a: #047857;
+  --app-grad-b: #065f46;
+  --app-accent-edge: #34d399;
+  --app-rail-a: #34d399;
+  --app-rail-b: #10b981;
 }
 html[data-theme="light"][data-accent="emerald"] {
-  --app-accent-edge: #009966;
-  --app-rail-a: #009966;
-  --app-rail-b: #009689;
+  --app-accent-edge: #059669;
+  --app-rail-a: #059669;
+  --app-rail-b: #047857;
 }
 html[data-accent="teal"] {
   --app-grad-a: #00786f;

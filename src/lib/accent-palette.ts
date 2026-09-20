@@ -64,7 +64,12 @@ export const ACCENT_SURFACE: Record<string, AccentSurface> = {
   yellow: { gradA: "#a65f00", gradB: "#bb4d00", railADark: "#fdc700", railBDark: "#ffb900", railALight: "#a65f00", railBLight: "#bb4d00" },
   lime: { gradA: "#497d00", gradB: "#008236", railADark: "#9ae600", railBDark: "#05df72", railALight: "#497d00", railBLight: "#008236" },
   green: { gradA: "#008236", gradB: "#007a55", railADark: "#05df72", railBDark: "#00d492", railALight: "#00a63e", railBLight: "#009966" },
-  emerald: { gradA: "#007a55", gradB: "#00786f", railADark: "#00d492", railBDark: "#00d5be", railALight: "#009966", railBLight: "#009689" },
+  // Retuned to the launch design (Emerald Freelance Nexus / Obsidian Kinetic).
+  // Its own #059669 carries white at 3.77:1, under the floor, so the fill steps
+  // one deeper: #047857 is 5.48 and #065f46 is 7.68. The light rail keeps
+  // #059669 (3.77 on the white bar, and a rail carries no text); #10b981 is
+  // 2.54 there and cannot be a light-theme mark.
+  emerald: { gradA: "#047857", gradB: "#065f46", railADark: "#34d399", railBDark: "#10b981", railALight: "#059669", railBLight: "#047857" },
   teal: { gradA: "#00786f", gradB: "#007595", railADark: "#00d5be", railBDark: "#00d3f2", railALight: "#009689", railBLight: "#0092b8" },
   cyan: { gradA: "#007595", gradB: "#0069a8", railADark: "#00d3f2", railBDark: "#00bcff", railALight: "#0092b8", railBLight: "#0084d1" },
   sky: { gradA: "#0069a8", gradB: "#1447e6", railADark: "#00bcff", railBDark: "#51a2ff", railALight: "#0084d1", railBLight: "#155dfc" },
@@ -80,7 +85,7 @@ export const ACCENT_SURFACE: Record<string, AccentSurface> = {
 };
 
 /** The accent that ships when nobody has chosen one. */
-export const DEFAULT_ACCENT = "indigo";
+export const DEFAULT_ACCENT = "emerald";
 
 /**
  * The generated stylesheet block.
