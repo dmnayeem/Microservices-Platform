@@ -289,6 +289,62 @@ function main() {
         "…and gives the space back when it unmounts",
         /setProperty\(NAV_HEIGHT_VAR, "0px"\)/.test(bar)
       );
+
+      // The primary tab is pulled up out of the bar with `-mt-5`, so it floats
+      // above it — and `offsetHeight` cannot see a child that overflows
+      // upward. Anything clearing the nav by that number still sat under the
+      // raised button: on the feed it covered the like row of whichever post
+      // landed at the bottom of the screen.
+      check(
+        "the measurement includes the tab that floats above the bar",
+        /getBoundingClientRect\(\)/.test(bar) &&
+          /window\.innerHeight - top/.test(bar),
+        "offsetHeight misses the raised primary tab by its whole overhang"
+      );
+      check(
+        "…and is redone when the viewport moves",
+        /addEventListener\("resize", sync\)/.test(bar) &&
+          /orientationchange/.test(bar),
+        "a viewport-relative measurement goes stale on rotation and on a toolbar sliding away"
+      );
+
+      // Every page under (main) sits above that nav, so the shell reserves the
+      // measured height rather than a constant. The old 6rem ignored the
+      // device safe area and the raised tab, which is why the last row of a
+      // page was cut off.
+      const layout = read("src/app/(main)/layout.tsx");
+      check(
+        "the shell reserves the nav's measured height, not a guess",
+        /pb-\[calc\(var\(--bottom-nav-h,6rem\)\+1rem\+var\(--anchor-ad-h,0px\)\)\]/.test(
+          layout
+        ),
+        "a flat 6rem leaves the last thing on the page under the nav"
+      );
+    }
+
+    /* A single photo does not get to own the screen. */
+    {
+      const card = read("src/components/user/feed/feed-post-card.tsx");
+      check(
+        "a lone photo is capped by ratio, not by 70vh",
+        /max-h-\[min\(70vh,125vw\)\]/.test(card),
+        "a 645x1159 post filled seven tenths of a phone and pushed the like row off"
+      );
+      check(
+        "…and is still shown whole rather than cropped",
+        /object-contain/.test(card),
+        "cropping somebody's screenshot to tidy the feed is not ours to decide"
+      );
+      // The header rows are squeezed from both sides; without these a two-word
+      // name wrapped mid-name and "2 months ago" broke across two lines.
+      check(
+        "the author name truncates instead of wrapping",
+        /t-card-title truncate/.test(card) && /flex min-w-0 items-center gap-1\.5/.test(card)
+      );
+      check(
+        "the post age stays on one line",
+        /shrink-0 whitespace-nowrap/.test(card)
+      );
     }
 
     // A bar that is `md:hidden` but polls on `max-width: 1023px` runs a 60s

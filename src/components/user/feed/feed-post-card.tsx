@@ -517,10 +517,15 @@ export const FeedPostCard = memo(function FeedPostCard({
             />
           </Link>
           <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-1.5">
+            {/* `min-w-0` and `truncate`, because this row is squeezed from
+              * both sides — a level chip and a Follow button — and without
+              * them a two-word name wrapped mid-name on a phone: "Super" on
+              * one line, "Admin" on the next. A name that is too long is
+              * shortened with an ellipsis; it never becomes two lines. */}
+            <div className="flex min-w-0 items-center gap-1.5">
               <Link
                 href={post.user ? profileHref(post.user) : "#"}
-                className="t-card-title text-white hover:text-(--app-info) transition-colors"
+                className="t-card-title truncate text-white hover:text-(--app-info) transition-colors"
               >
                 {post.user?.name ?? "Anonymous"}
               </Link>
@@ -539,10 +544,16 @@ export const FeedPostCard = memo(function FeedPostCard({
                 </span>
               )}
             </div>
-            <p className="t-meta mt-0.5 text-gray-500 flex items-center gap-1.5">
-              {formatDistanceToNow(new Date(post.createdAt), {
-                addSuffix: true,
-              })}
+            <p className="t-meta mt-0.5 flex min-w-0 items-center gap-1.5 text-gray-500">
+              {/* The age is short and fixed; it is the audience label beside it
+                * that varies. Keeping the age on one line and letting the
+                * label shrink is the right way round — "2 months ago" broke
+                * across two lines otherwise. */}
+              <span className="shrink-0 whitespace-nowrap">
+                {formatDistanceToNow(new Date(post.createdAt), {
+                  addSuffix: true,
+                })}
+              </span>
               {/* The author's own posts say who they went out to. An author who
                   cannot see what they published cannot correct it. */}
               {post.isOwner && post.audience && (
@@ -739,7 +750,21 @@ export const FeedPostCard = memo(function FeedPostCard({
                   // Hide broken images so a bad URL doesn't leave a giant empty box.
                   e.currentTarget.style.display = "none";
                 }}
-                className="w-full bg-gray-950 max-h-[70vh] object-contain cursor-zoom-in select-none"
+                /* A tall photo does not get to own the screen.
+                 *
+                 * The cap was 70vh, so a portrait shot — measured on a real
+                 * post, 645x1159 — filled seven tenths of a phone and pushed
+                 * the like row off the bottom, with one post per screenful.
+                 * Capped by RATIO instead: 5/4 portrait is the tallest a photo
+                 * renders at, which is what a feed of photos wants and roughly
+                 * where Facebook lands.
+                 *
+                 * `object-contain` stays. Cover would fill the box, but it
+                 * crops — and cropping the top of somebody's screenshot to
+                 * make the feed tidier is not a trade this makes on their
+                 * behalf. A photo taller than 5/4 is shown whole, smaller; a
+                 * tap still opens it full-size. */
+                className="mx-auto block max-h-[min(70vh,125vw)] w-full bg-gray-950 object-contain cursor-zoom-in select-none"
               />
             ) : (
               <div

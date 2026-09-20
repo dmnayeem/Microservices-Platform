@@ -111,13 +111,35 @@ export function BottomTabBar({
     const el = navRef.current;
     if (!el) return;
     const sync = () => {
-      root.style.setProperty(NAV_HEIGHT_VAR, `${Math.round(el.offsetHeight)}px`);
+      // Measured from the highest point the bar actually occupies, not from
+      // its own box.
+      //
+      // The primary tab is pulled up out of the bar with `-mt-5`, so it floats
+      // above it — and `offsetHeight` does not know about a child that
+      // overflows upward. Anything clearing the nav by that number was still
+      // sitting under the raised button: on the feed it covered the like and
+      // comment row of whichever post landed at the bottom of the screen.
+      const rect = el.getBoundingClientRect();
+      let top = rect.top;
+      for (const child of el.querySelectorAll("*")) {
+        const r = (child as HTMLElement).getBoundingClientRect();
+        if (r.height > 0 && r.top < top) top = r.top;
+      }
+      const height = Math.max(0, Math.round(window.innerHeight - top));
+      root.style.setProperty(NAV_HEIGHT_VAR, `${height}px`);
     };
     sync();
     const obs = new ResizeObserver(sync);
     obs.observe(el);
+    // The measurement is relative to the viewport now, so it has to be redone
+    // when the viewport moves — a rotation, or a mobile browser's toolbar
+    // sliding away, changes `innerHeight` without resizing the bar.
+    window.addEventListener("resize", sync);
+    window.addEventListener("orientationchange", sync);
     return () => {
       obs.disconnect();
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
       root.style.setProperty(NAV_HEIGHT_VAR, "0px");
     };
   }, []);
