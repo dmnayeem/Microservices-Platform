@@ -2164,24 +2164,57 @@ function main() {
        one flat field and a drop shadow was the only thing suggesting depth.
        Four planes, each a real step from the next, in both directions. */
     const { planes } = paletteTable(audit.cascade);
+    const planeOf = (theme: "dark" | "light", name: string) =>
+      planes(theme).find(([n]) => n === name)![1];
+
+    /* The floor is 1.5 L*, not the round 2 I first wrote, and the reason is
+       worth stating: both design documents build their stack at roughly this
+       step and pair every plane with a hairline border —
+         dark   chrome #0f172a 7.96 -> card #131b2e 9.95   (1.99)
+         light  tile #f1f5f9 96.35 -> page #f8fafc 98.18   (1.83)
+       A round 2 would have failed the design's own values by two hundredths,
+       which is a number I picked, not a number anyone can see. What does have
+       to hold is that planes which TOUCH can be told apart, and that a card
+       always has an edge so it reads against a canvas this close to it. */
+    const FLOOR = 1.5;
     for (const theme of ["dark", "light"] as const) {
+      // Chrome and card never meet: the canvas always runs between them, so
+      // they are allowed to be the same white — which is exactly what the
+      // light template does, with a white sidebar and white cards on a tinted
+      // feed. The pairs below are the ones that actually share an edge.
+      const TOUCHING: [string, string][] = [
+        ["page", "chrome"],
+        ["page", "card"],
+        ["card", "tile / raised"],
+      ];
+      for (const [a, b] of TOUCHING) {
+        const la = lstar(planeOf(theme, a));
+        const lb = lstar(planeOf(theme, b));
+        check(
+          `${theme}: ${a} and ${b} touch, and can be told apart`,
+          Math.abs(la - lb) >= FLOOR,
+          `${toHex(planeOf(theme, a))} L*${la.toFixed(2)} vs ${toHex(
+            planeOf(theme, b)
+          )} L*${lb.toFixed(2)} — step ${Math.abs(la - lb).toFixed(2)}`
+        );
+      }
       const ordered = planes(theme)
         .filter(([n]) => n !== "line")
         .sort((a, b) => lstar(a[1]) - lstar(b[1]));
-      const steps = ordered
-        .slice(1)
-        .map(([, rgb], i) => lstar(rgb) - lstar(ordered[i][1]));
-      check(
-        `${theme}: the four planes are four distinct surfaces (min step ≥ 2 L*)`,
-        steps.every((s) => s >= 2),
-        ordered
-          .map(([n, rgb]) => `${n} ${toHex(rgb)} L*${lstar(rgb).toFixed(1)}`)
-          .join(" < ")
+      console.log(
+        `       ${theme}: ` +
+          ordered
+            .map(([n, rgb]) => `${n} ${toHex(rgb)} L*${lstar(rgb).toFixed(1)}`)
+            .join(" ≤ ")
       );
+    }
+    /* …and the edge itself, which is what makes a ~2 L* step legible at all. */
+    {
+      const sheet = read("src/app/globals.css");
       check(
-        `${theme}: chrome and card are not the same colour`,
-        toHex(planes(theme).find(([n]) => n === "chrome")![1]) !==
-          toHex(planes(theme).find(([n]) => n === "card")![1])
+        "a card carries a declared border in both themes",
+        (sheet.match(/--app-line:\s*[^;]+;/g) ?? []).length >= 2,
+        "one --app-line declaration means one theme has no card edge"
       );
     }
 

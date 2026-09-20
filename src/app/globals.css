@@ -752,7 +752,7 @@ html[data-theme="light"] {
      read as chrome rather than as one more card, and a white card laid on the
      bar still separates from it without a shadow.
      chrome #f5f7fc = L* 97.21, border #d6dde9 = L* 87.92 (Δ 9.29). */
-  --shell-bg: #f5f7fa;
+  --shell-bg: #ffffff;
   /* 97%, not 88% — see `.app-chrome`. Dark text under a pale bar reads
      through anything looser, and the blur does not hide it. */
   --shell-veil: 97%;
@@ -1839,6 +1839,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      dark plane, and light needs the deeper #065f46 because #059669 is 3.06:1
      on the page. */
   --app-cta: #10b981;
+  --app-cta-hover: #34d399;
   --app-on-cta: #0b0f17;
   --app-accent-ink: #34d399;
   --app-rail: linear-gradient(180deg, var(--app-rail-a), var(--app-rail-b));
@@ -1901,11 +1902,18 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
     0 8px 20px -10px rgba(6, 8, 20, 0.36), 0 28px 60px -30px rgba(6, 8, 20, 0.5);
 
   /* Card chrome, so `.app-card` never has to guess. */
+  /* Obsidian Kinetic's luminance stack, verbatim. Elevation in this design is
+     not a shadow — a black shadow is invisible on slate — it is a brighter
+     tint per layer, so these four values ARE the depth model:
+       canvas #0b0f17 -> card #131b2e -> elevated #161f33 -> overlay #1c273e */
   --app-page: #0b0f17;
-  --app-surface: #141d31;
+  --app-surface: #131b2e;
+  --app-surface-hover: #161f33;
   --app-surface-2: #1c273e;
+  --app-line-subtle: rgba(255, 255, 255, 0.06);
   --app-line: rgba(255, 255, 255, 0.08);
   --app-line-strong: rgba(255, 255, 255, 0.16);
+  --app-line-glow: rgba(16, 185, 129, 0.4);
 
   /* ── Ink, named by JOB rather than by ramp step ──────────────────────────
      The audit that produced these found 164 places where a ramp step had been
@@ -1942,6 +1950,12 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      one clears every floor at once: white on it 5.36:1, and the chip itself
      3.33:1 on the dark bar and 5.01:1 on the light one. */
   --app-badge: #d70410;
+  /* The design names three tiers — primary, secondary, muted #64748b — and
+     puts muted on timestamps and captions. Measured on the design's own card
+     that is 3.6:1, under the 4.5 floor for text. So muted keeps the value the
+     design gives it but only where it is NOT text (decorative glyphs, 3:1),
+     and captions get a step chosen by measurement. This is the one place the
+     palette deliberately departs from the document, and it departs upward. */
   --app-ink: #f8fafc;
   --app-ink-2: #94a3b8;
   --app-ink-3: #8b9ab0;
@@ -1973,9 +1987,15 @@ html[data-theme="light"] {
      own "deep emerald" is what carries it. */
   --app-nav-on: #047857;
   --app-nav-wash: #ecfdf5;
+  /* The document specifies #059669 filled with white text. Measured, that is
+     3.77:1 — a 14px semibold label under the floor. The design's own hover
+     step (#047857) is 5.36:1, so the two swap: #047857 fills the button and
+     #059669 stays on edges, rails and gradient starts, where nothing is read
+     on top of it. */
   --app-cta: #047857;
+  --app-cta-hover: #065f46;
   --app-on-cta: #ffffff;
-  --app-accent-ink: #065f46;
+  --app-accent-ink: #047857;
 
   /* The same four meanings, and — deliberately — the same four inks the
      `[class*="text-<hue>-"]` family rules paint. One light accent ink per hue
@@ -2011,14 +2031,21 @@ html[data-theme="light"] {
 
   /* The four planes, same values as the ramp flip at the top of the file so
      there is exactly one light palette and not two. */
-  --app-page: #e2e8f0;
+  /* The design's canvas is #f8fafc — an ultra-clean cool white, NOT a grey.
+     I had this at #e2e8f0, two whole steps darker, and that single value is
+     most of why light mode did not look like the template: white cards barely
+     separated from a grey page instead of sitting crisply on near-white. */
+  --app-page: #f8fafc;
   --app-surface: #ffffff;
-  --app-surface-2: #eaeff5;
+  --app-surface-hover: #f8fafc;
+  --app-surface-2: #f1f5f9;
+  --app-line-subtle: rgba(226, 232, 240, 0.6);
   --app-line: #e2e8f0;
   --app-line-strong: #cbd5e1;
+  --app-line-glow: rgba(16, 185, 129, 0.35);
 
   --app-ink: #0f172a;
-  --app-ink-2: #334155;
+  --app-ink-2: #475569;
   --app-ink-3: #5b6675;
   /* 3.65:1 on the white card, 3.00 on the page — over the 3:1 non-text floor
      everywhere, and still clearly subordinate to body text. It was 1.08:1. */
