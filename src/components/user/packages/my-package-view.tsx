@@ -122,7 +122,7 @@ export function MyPackageView({
           <Crown className="w-6 h-6 text-amber-400" />
           My Package
         </h1>
-        <p className="text-gray-400 text-sm mt-0.5">
+        <p className="text-(--app-ink-3) text-sm mt-0.5">
           Your current plan, benefits, and billing history.
         </p>
       </header>
@@ -132,7 +132,7 @@ export function MyPackageView({
         className={cn(
           "relative overflow-hidden rounded-2xl border p-5 shadow-2xl",
           isFree
-            ? "border-gray-700 bg-gray-900"
+            ? "border-(--app-line) bg-(--app-surface)"
             : `border-amber-500/40 bg-linear-to-br ${tierGradient} bg-opacity-20`
         )}
       >
@@ -144,19 +144,19 @@ export function MyPackageView({
             <Crown className="w-7 h-7" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-gray-300">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-(--app-ink-2)">
               Current Plan
             </p>
             <p className="text-3xl font-extrabold text-white">
               {currentPackage?.name ?? "Free"}
             </p>
             {currentPackage?.description && (
-              <p className="text-xs text-gray-300/90 mt-0.5">
+              <p className="text-xs text-(--app-ink-2)/90 mt-0.5">
                 {currentPackage.description}
               </p>
             )}
             {packageExpiresAt && !isFree && (
-              <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-gray-200">
+              <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-(--app-ink)">
                 <Calendar className="w-3.5 h-3.5 text-amber-300" />
                 Expires {format(new Date(packageExpiresAt), "PP")}
               </div>
@@ -166,7 +166,7 @@ export function MyPackageView({
       </div>
 
       {/* Tabs */}
-      <nav className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none">
+      <nav className="flex gap-1 border-b border-(--app-line) overflow-x-auto scrollbar-none">
         {(
           [
             { key: "overview", label: "Overview", icon: TrendingUp },
@@ -181,14 +181,14 @@ export function MyPackageView({
               className={cn(
                 "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
                 isActive
-                  ? "text-white border-indigo-500"
-                  : "text-gray-500 border-transparent hover:text-white"
+                  ? "text-white border-(--app-accent-edge)"
+                  : "text-(--app-ink-3) border-transparent hover:text-white"
               )}
             >
               <t.icon className="w-4 h-4" />
               {t.label}
               {t.key === "history" && subscriptions.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-300 tabular-nums">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-(--app-surface-2) text-(--app-ink-2) tabular-nums">
                   {subscriptions.length}
                 </span>
               )}
@@ -223,7 +223,7 @@ export function MyPackageView({
                 <p className="text-base font-bold text-white">
                   Cancel subscription?
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-(--app-ink-3) mt-1">
                   Your plan stays active until {packageExpiresAt
                     ? format(new Date(packageExpiresAt), "PP")
                     : "the end of the period"}, then drops to FREE. No refund
@@ -235,7 +235,7 @@ export function MyPackageView({
               <button
                 onClick={() => setShowCancelModal(false)}
                 disabled={busy}
-                className="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-bold disabled:opacity-50"
               >
                 Keep plan
               </button>
@@ -281,7 +281,7 @@ function OverviewTab({
       {/* Benefits checklist */}
       {currentPackage && (
         <section className="glass rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider font-bold text-gray-500 mb-3 flex items-center gap-1.5">
+          <p className="text-xs uppercase tracking-wider font-bold text-(--app-ink-3) mb-3 flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5" />
             Your Benefits
           </p>
@@ -292,7 +292,7 @@ function OverviewTab({
             ).map((f) => (
               <li
                 key={f}
-                className="flex items-start gap-2 text-sm text-gray-200"
+                className="flex items-start gap-2 text-sm text-(--app-ink)"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <span>{f}</span>
@@ -305,7 +305,7 @@ function OverviewTab({
       {/* Earning power table */}
       {currentPackage && (
         <section className="glass rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider font-bold text-gray-500 mb-3 flex items-center gap-1.5">
+          <p className="text-xs uppercase tracking-wider font-bold text-(--app-ink-3) mb-3 flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5" />
             Earning Power
           </p>
@@ -376,7 +376,7 @@ function OverviewTab({
         {hasActivePaidSubscription && !isFree && (
           <button
             onClick={onCancelClick}
-            className="w-full py-2.5 rounded-xl bg-gray-800 hover:bg-red-500/15 hover:text-red-400 text-gray-400 text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors"
+            className="w-full py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-red-500/15 hover:text-red-400 text-(--app-ink-3) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors"
           >
             <XCircle className="w-4 h-4" />
             Cancel subscription
@@ -385,8 +385,8 @@ function OverviewTab({
       </div>
 
       {/* Tier ladder */}
-      <section className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-        <p className="text-xs uppercase tracking-wider font-bold text-gray-500 mb-3">
+      <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4">
+        <p className="text-xs uppercase tracking-wider font-bold text-(--app-ink-3) mb-3">
           Plan Ladder
         </p>
         <div className="space-y-1.5">
@@ -401,10 +401,10 @@ function OverviewTab({
                 className={cn(
                   "flex items-center gap-2 px-2.5 py-2 rounded-lg border",
                   isCurrent
-                    ? "border-indigo-500/50 bg-indigo-500/10"
+                    ? "border-(--app-accent-edge)/50 bg-(--app-cta)/10"
                     : isPast
-                      ? "border-emerald-500/20 bg-gray-950"
-                      : "border-gray-800 bg-gray-950/50 opacity-70"
+                      ? "border-emerald-500/20 bg-(--app-page)"
+                      : "border-(--app-line) bg-(--app-page)/50 opacity-70"
                 )}
               >
                 <div
@@ -422,13 +422,13 @@ function OverviewTab({
                       ? "text-white"
                       : isPast
                         ? "text-emerald-300"
-                        : "text-gray-400"
+                        : "text-(--app-ink-3)"
                   )}
                 >
                   {t}
                 </span>
                 {isCurrent && (
-                  <span className="ml-auto px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-indigo-500 text-white font-bold">
+                  <span className="ml-auto px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider bg-(--app-cta) text-(--app-on-cta) font-bold">
                     Current
                   </span>
                 )}
@@ -456,9 +456,9 @@ function HistoryTab({
   if (subscriptions.length === 0) {
     return (
       <div className="glass rounded-xl p-8 text-center">
-        <Receipt className="w-10 h-10 text-gray-600 mx-auto mb-2" />
+        <Receipt className="w-10 h-10 text-(--app-glyph) mx-auto mb-2" />
         <p className="text-sm font-bold text-white">No billing history yet</p>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-(--app-ink-3) mt-1">
           Once you upgrade to a paid plan, your subscription history will
           appear here.
         </p>
@@ -491,12 +491,12 @@ function HistoryTab({
                   </span>
                 )}
                 {s.autoRenew && (
-                  <span className="text-[10px] text-indigo-400">
+                  <span className="text-[10px] text-(--app-accent-ink)">
                     · auto-renew
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-(--app-ink-3)">
                 {format(new Date(s.startDate), "PP")} →{" "}
                 {format(new Date(s.endDate), "PP")}
                 {s.paymentMethod && ` · ${s.paymentMethod}`}
@@ -528,16 +528,16 @@ function PowerCell({
   tone: "indigo" | "purple" | "amber" | "emerald";
 }) {
   const tones = {
-    indigo: "text-indigo-400",
+    indigo: "text-(--app-accent-ink)",
     purple: "text-purple-400",
     amber: "text-amber-400",
     emerald: "text-emerald-400",
   } as const;
   return (
-    <div className="rounded-lg bg-gray-950 border border-gray-800 p-3">
+    <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
       <div className="flex items-center gap-1.5">
         <Icon className={cn("w-3.5 h-3.5", tones[tone])} />
-        <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+        <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
           {label}
         </p>
       </div>

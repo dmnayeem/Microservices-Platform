@@ -162,12 +162,12 @@ export function PackagesView({
             key={s}
             className={cn(
               "h-1.5 flex-1 rounded-full transition-colors",
-              step >= s ? "bg-indigo-500" : "bg-gray-800"
+              step >= s ? "bg-(--app-cta)" : "bg-(--app-surface-2)"
             )}
           />
         ))}
       </div>
-      <p className="text-xs text-gray-400 text-center">
+      <p className="text-xs text-(--app-ink-3) text-center">
         Step {step} of 5:{" "}
         {step === 1
           ? "Choose plan"
@@ -195,7 +195,7 @@ export function PackagesView({
                 className={cn(
                   "w-full text-left rounded-2xl p-4 border transition-all",
                   selected
-                    ? "border-indigo-500 bg-indigo-500/5 scale-[1.01]"
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/5 scale-[1.01]"
                     : "glass glass-hover border-transparent",
                   isCurrent && "opacity-60"
                 )}
@@ -219,13 +219,13 @@ export function PackagesView({
                       )}
                     </div>
                     {p.description && (
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-(--app-ink-3) mt-0.5">
                         {p.description}
                       </p>
                     )}
                     <p className="text-xl font-extrabold text-white mt-2 tabular-nums">
                       {usd(p.priceMonthly)}
-                      <span className="text-xs text-gray-400 font-normal">
+                      <span className="text-xs text-(--app-ink-3) font-normal">
                         /mo
                       </span>
                     </p>
@@ -235,7 +235,7 @@ export function PackagesView({
                   {FEATURES[tierVisualKey(p.tier)].map((f: string) => (
                     <li
                       key={f}
-                      className="inline-flex items-start gap-1 text-gray-300"
+                      className="inline-flex items-start gap-1 text-(--app-ink-2)"
                     >
                       <Check className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
                       <span>{f}</span>
@@ -248,7 +248,7 @@ export function PackagesView({
           <button
             disabled={!selectedTier || busy}
             onClick={() => (selectedIsFree ? purchase() : setStep(2))}
-            className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {busy && selectedIsFree ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -278,8 +278,8 @@ export function PackagesView({
                   className={cn(
                     "p-3 rounded-xl border text-left transition-colors",
                     duration === d
-                      ? "border-indigo-500 bg-indigo-500/5"
-                      : "border-gray-800 bg-gray-900"
+                      ? "border-(--app-accent-edge) bg-(--app-cta)/5"
+                      : "border-(--app-line) bg-(--app-surface)"
                   )}
                 >
                   <p className="text-sm font-bold text-white capitalize">
@@ -300,13 +300,13 @@ export function PackagesView({
           <div className="flex gap-2">
             <button
               onClick={() => setStep(1)}
-              className="flex-1 py-3 rounded-xl bg-gray-800 text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-white font-bold"
             >
               Back
             </button>
             <button
               onClick={() => setStep(3)}
-              className="flex-1 py-3 rounded-xl bg-indigo-500 text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-cta) text-(--app-on-cta) font-bold"
             >
               Continue
             </button>
@@ -332,8 +332,8 @@ export function PackagesView({
               className={cn(
                 "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
                 method === m.value
-                  ? "border-indigo-500 bg-indigo-500/5"
-                  : "border-gray-800 bg-gray-900"
+                  ? "border-(--app-accent-edge) bg-(--app-cta)/5"
+                  : "border-(--app-line) bg-(--app-surface)"
               )}
             >
               <input
@@ -347,7 +347,7 @@ export function PackagesView({
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white">{m.label}</p>
-                <p className="text-[11px] text-gray-500">{m.info}</p>
+                <p className="text-[11px] text-(--app-ink-3)">{m.info}</p>
               </div>
             </label>
           ))}
@@ -361,13 +361,13 @@ export function PackagesView({
           <div className="flex gap-2">
             <button
               onClick={() => setStep(2)}
-              className="flex-1 py-3 rounded-xl bg-gray-800 text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-white font-bold"
             >
               Back
             </button>
             <button
               onClick={() => setStep(4)}
-              className="flex-1 py-3 rounded-xl bg-indigo-500 text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-cta) text-(--app-on-cta) font-bold"
             >
               Continue
             </button>
@@ -379,21 +379,21 @@ export function PackagesView({
         <div className="space-y-3">
           <div className="glass rounded-2xl p-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Plan</span>
+              <span className="text-(--app-ink-3)">Plan</span>
               <span className="font-bold text-white">{selectedPkg.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Duration</span>
+              <span className="text-(--app-ink-3)">Duration</span>
               <span className="font-bold text-white capitalize">
                 {duration.toLowerCase()}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">Payment Method</span>
+              <span className="text-(--app-ink-3)">Payment Method</span>
               <span className="font-bold text-white">{method}</span>
             </div>
-            <div className="flex justify-between pt-2 border-t border-gray-800">
-              <span className="text-gray-300 font-semibold">Total</span>
+            <div className="flex justify-between pt-2 border-t border-(--app-line)">
+              <span className="text-(--app-ink-2) font-semibold">Total</span>
               <span className="font-extrabold text-emerald-400 text-lg tabular-nums">
                 {method === "POINTS"
                   ? `${ptCost.toLocaleString()} pts`
@@ -412,7 +412,7 @@ export function PackagesView({
           <div className="flex gap-2">
             <button
               onClick={() => setStep(3)}
-              className="flex-1 py-3 rounded-xl bg-gray-800 text-white font-bold"
+              className="flex-1 py-3 rounded-xl bg-(--app-surface-2) text-white font-bold"
             >
               Back
             </button>
@@ -439,12 +439,12 @@ export function PackagesView({
           <h2 className="text-2xl font-bold text-white mb-1">
             Welcome to {selectedPkg?.name}!
           </h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-(--app-ink-3) mb-6">
             Your upgrade is active. Enjoy your new benefits.
           </p>
           <button
             onClick={() => router.push("/my-package")}
-            className="px-5 py-2.5 rounded-lg bg-indigo-500 text-white font-bold"
+            className="px-5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) font-bold"
           >
             View My Package
           </button>

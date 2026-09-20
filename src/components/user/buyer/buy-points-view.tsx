@@ -76,7 +76,7 @@ export function BuyPointsView({
           <Sparkles className={cn("h-6 w-6", TASK_CREDIT.text)} />
           Buy {TASK_CREDIT.label}
         </h1>
-        <p className="mt-0.5 text-sm text-gray-400">
+        <p className="mt-0.5 text-sm text-(--app-ink-3)">
           What you spend to run tasks. Separate from the points you earn.
         </p>
       </header>
@@ -99,9 +99,9 @@ export function BuyPointsView({
           <p className="mt-1 text-lg font-bold tabular-nums text-white">
             {pts(taskCredit)}
           </p>
-          <p className="text-[10px] text-gray-500">{TASK_CREDIT.blurb}</p>
+          <p className="text-[10px] text-(--app-ink-3)">{TASK_CREDIT.blurb}</p>
         </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-3">
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface)/60 p-3">
           <div className="flex items-center gap-1.5 text-emerald-400">
             <Wallet className="h-3.5 w-3.5" />
             <span className="text-[10px] font-bold uppercase tracking-wider">
@@ -111,7 +111,7 @@ export function BuyPointsView({
           <p className="mt-1 text-lg font-bold tabular-nums text-white">
             {usd(cashBalance)}
           </p>
-          <p className="text-[10px] text-gray-500">
+          <p className="text-[10px] text-(--app-ink-3)">
             buys {pts(affordablePoints)} pts
           </p>
         </div>
@@ -119,7 +119,7 @@ export function BuyPointsView({
 
       <div className="glass space-y-4 rounded-xl p-4">
         <div>
-          <label className="mb-2 block text-xs font-medium text-gray-400">
+          <label className="mb-2 block text-xs font-medium text-(--app-ink-3)">
             How many points?
           </label>
           <div className="mb-2 flex flex-wrap gap-2">
@@ -132,7 +132,7 @@ export function BuyPointsView({
                   "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                   points === v
                     ? cn(TASK_CREDIT.border, TASK_CREDIT.bgStrong, TASK_CREDIT.textStrong)
-                    : "border-gray-700 text-gray-400 hover:text-white"
+                    : "border-(--app-line) text-(--app-ink-3) hover:text-white"
                 )}
               >
                 {pts(v)}
@@ -146,22 +146,22 @@ export function BuyPointsView({
             step={100}
             value={points}
             onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
-            className="w-full rounded-lg border border-gray-700 bg-gray-950 px-4 py-2.5 text-white focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-4 py-2.5 text-white focus:border-violet-500 focus:outline-none"
           />
         </div>
 
         <div className="space-y-1.5 border-t border-white/10 pt-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-400">
+            <span className="text-(--app-ink-3)">
               {pts(points)} points at {pts(rate)} per $1
             </span>
-            <span className="tabular-nums text-gray-200">{usd(costUsd)}</span>
+            <span className="tabular-nums text-(--app-ink)">{usd(costUsd)}</span>
           </div>
           <div className="flex justify-between font-bold">
             <span className="text-white">Charged to your wallet</span>
             <span className="tabular-nums text-white">{usd(costUsd)}</span>
           </div>
-          <p className="pt-1 text-[11px] leading-relaxed text-gray-500">
+          <p className="pt-1 text-[11px] leading-relaxed text-(--app-ink-3)">
             No fee to buy. The platform fee, if any, is charged per completion
             and is shown on the task page before you publish.
           </p>
@@ -192,7 +192,7 @@ export function BuyPointsView({
         {costUsd > cashBalance && (
           <Link
             href="/deposit"
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-700 py-2.5 text-sm font-semibold text-white hover:border-emerald-500/40"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-(--app-line) py-2.5 text-sm font-semibold text-white hover:border-emerald-500/40"
           >
             <Plus className="h-4 w-4" /> Add funds to your wallet
           </Link>
@@ -203,9 +203,9 @@ export function BuyPointsView({
         Said plainly, because it is the thing people get wrong: this balance is
         not the balance they earn from, and it does not come back out as money.
       */}
-      <div className="flex gap-2 rounded-xl border border-gray-800 bg-gray-950/50 p-3">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />
-        <div className="space-y-1 text-[11px] leading-relaxed text-gray-500">
+      <div className="flex gap-2 rounded-xl border border-(--app-line) bg-(--app-page)/50 p-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-(--app-ink-3)" />
+        <div className="space-y-1 text-[11px] leading-relaxed text-(--app-ink-3)">
           <p>
             <span className={TASK_CREDIT.textStrong}>{TASK_CREDIT.label}</span>{" "}
             is only for funding tasks. It cannot be converted to cash or
@@ -223,7 +223,7 @@ export function BuyPointsView({
 
       <Link
         href="/buyer"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-(--app-ink-3) hover:text-white"
       >
         Back to Buyer Hub <ArrowRight className="h-4 w-4" />
       </Link>

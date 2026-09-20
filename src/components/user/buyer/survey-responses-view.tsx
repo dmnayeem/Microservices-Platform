@@ -74,13 +74,13 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
   };
 
   if (loading) {
-    return <p className="p-6 text-sm text-gray-400">Loading responses…</p>;
+    return <p className="p-6 text-sm text-(--app-ink-3)">Loading responses…</p>;
   }
   if (error || !data) {
     return (
       <div className="space-y-3 p-6">
         <p className="text-sm text-red-300">{error ?? "Not found."}</p>
-        <Link href="/buyer" className="text-xs font-bold text-indigo-400">
+        <Link href="/buyer" className="text-xs font-bold text-(--app-accent-ink)">
           Back to your tasks
         </Link>
       </div>
@@ -91,14 +91,14 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <Link
         href="/buyer"
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Your tasks
       </Link>
 
       <div>
         <h1 className="text-lg font-bold text-white">{data.task.title}</h1>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-(--app-ink-3)">
           {data.total.toLocaleString()} response
           {data.total === 1 ? "" : "s"}
           {data.task.target
@@ -124,8 +124,8 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
             onClick={() => setTab(t)}
             className={`rounded-lg border px-3 py-1.5 text-xs font-bold capitalize ${
               tab === t
-                ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
-                : "border-gray-700 text-gray-400 hover:border-gray-600"
+                ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
+                : "border-(--app-line) text-(--app-ink-3) hover:border-(--app-line)"
             }`}
           >
             {t}
@@ -135,14 +135,14 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
           <button
             type="button"
             onClick={() => download("csv")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-bold text-gray-300 hover:border-gray-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-bold text-(--app-ink-2) hover:border-(--app-line)"
           >
             <Download className="h-3.5 w-3.5" /> CSV
           </button>
           <button
             type="button"
             onClick={() => download("json")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-bold text-gray-300 hover:border-gray-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-bold text-(--app-ink-2) hover:border-(--app-line)"
           >
             <Download className="h-3.5 w-3.5" /> JSON
           </button>
@@ -150,7 +150,7 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
       </div>
 
       {data.total === 0 && (
-        <p className="rounded-xl border border-dashed border-gray-700 p-6 text-center text-sm text-gray-500">
+        <p className="rounded-xl border border-dashed border-(--app-line) p-6 text-center text-sm text-(--app-ink-3)">
           Nobody has answered yet.
         </p>
       )}
@@ -160,7 +160,7 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
           {data.stats.map((s) => (
             <div key={s.questionId} className="glass space-y-2 rounded-xl p-4">
               <p className="text-sm font-semibold text-white">{s.prompt}</p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-(--app-ink-3)">
                 {s.answeredCount.toLocaleString()} answered
                 {s.ratingAverage != null && s.answeredCount > 0
                   ? ` · average ${s.ratingAverage}`
@@ -168,15 +168,15 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
               </p>
               {s.options?.map((o) => (
                 <div key={o.label} className="space-y-1">
-                  <div className="flex justify-between text-xs text-gray-300">
+                  <div className="flex justify-between text-xs text-(--app-ink-2)">
                     <span className="truncate">{o.label}</span>
-                    <span className="tabular-nums text-gray-500">
+                    <span className="tabular-nums text-(--app-ink-3)">
                       {o.count} · {o.pct}%
                     </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-gray-800">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-(--app-surface-2)">
                     <div
-                      className="h-full rounded-full bg-indigo-500"
+                      className="h-full rounded-full bg-(--app-cta)"
                       style={{ width: `${Math.min(100, o.pct)}%` }}
                     />
                   </div>
@@ -185,14 +185,14 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
               {s.ratingHistogram?.map((h) => (
                 <div
                   key={h.value}
-                  className="flex justify-between text-xs text-gray-300"
+                  className="flex justify-between text-xs text-(--app-ink-2)"
                 >
                   <span>{h.value}</span>
-                  <span className="tabular-nums text-gray-500">{h.count}</span>
+                  <span className="tabular-nums text-(--app-ink-3)">{h.count}</span>
                 </div>
               ))}
               {!s.options && !s.ratingHistogram && (
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-(--app-ink-3)">
                   Free text — read them under Responses or in the export.
                 </p>
               )}
@@ -202,9 +202,9 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
       )}
 
       {tab === "responses" && data.total > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-800">
+        <div className="overflow-x-auto rounded-xl border border-(--app-line)">
           <table className="min-w-full text-left text-xs">
-            <thead className="bg-gray-900 text-gray-400">
+            <thead className="bg-(--app-surface) text-(--app-ink-3)">
               <tr>
                 <th className="whitespace-nowrap px-3 py-2 font-semibold">
                   Respondent
@@ -224,17 +224,17 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
             </thead>
             <tbody className="divide-y divide-gray-800">
               {data.responses.map((r) => (
-                <tr key={r.respondent} className="align-top text-gray-300">
+                <tr key={r.respondent} className="align-top text-(--app-ink-2)">
                   <td className="whitespace-nowrap px-3 py-2 font-semibold text-white">
                     {r.respondent}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-gray-500">
+                  <td className="whitespace-nowrap px-3 py-2 text-(--app-ink-3)">
                     {r.date}
                   </td>
                   {data.questions.map((q) => (
                     <td key={q.id} className="px-3 py-2">
                       {r.answers[q.id] || (
-                        <span className="text-gray-600">—</span>
+                        <span className="text-(--app-glyph)">—</span>
                       )}
                     </td>
                   ))}

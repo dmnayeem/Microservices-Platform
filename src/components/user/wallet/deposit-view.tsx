@@ -163,16 +163,16 @@ export function DepositView({ from }: { from?: string } = {}) {
   };
 
   const inputCls =
-    "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500";
+    "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)";
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-indigo-400" />
+          <Wallet className="w-5 h-5 text-(--app-accent-ink)" />
           Add Funds
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           Top up your balance manually (admin-verified) or via online gateway.
         </p>
       </div>
@@ -184,7 +184,7 @@ export function DepositView({ from }: { from?: string } = {}) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-white">Funding your ad credit</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               This adds money to your wallet first. Once an admin approves it, head back to{" "}
               <Link href="/advertiser" className="text-sky-300 font-semibold hover:underline">
                 Run Ads → Top up
@@ -197,7 +197,7 @@ export function DepositView({ from }: { from?: string } = {}) {
 
       <div className="glass rounded-xl p-4 sm:p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1.5">
+          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
             Amount (USD)
           </label>
           <input
@@ -216,13 +216,13 @@ export function DepositView({ from }: { from?: string } = {}) {
                 onClick={() => setAmount(String(a))}
                 className={`px-3 py-1 rounded-lg text-xs font-bold border ${
                   Number(amount) === a
-                    ? "border-indigo-500 bg-indigo-500/15 text-white"
-                    : "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600"
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-white"
+                    : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2) hover:border-(--app-line)"
                 }`}
               >
                 ${a}
                 {currency && (
-                  <span className="text-gray-500 font-normal">
+                  <span className="text-(--app-ink-3) font-normal">
                     {" "}
                     · {formatLocal(a * currency.usdRate, currency)}
                   </span>
@@ -234,15 +234,15 @@ export function DepositView({ from }: { from?: string } = {}) {
 
         {/* Live local-currency + charge + VAT breakdown */}
         {hasLocal && (
-          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3.5 space-y-2">
+          <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3.5 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-300">
+              <span className="text-(--app-ink-2)">
                 You add{" "}
                 <span className="font-bold text-white">
                   {usd(breakdown.amountUsd)}
                 </span>
               </span>
-              <span className="text-gray-300 tabular-nums">
+              <span className="text-(--app-ink-2) tabular-nums">
                 ≈ {formatLocal(breakdown.localBase, currency)}
               </span>
             </div>
@@ -252,13 +252,13 @@ export function DepositView({ from }: { from?: string } = {}) {
                   * with no percentage would otherwise read "charge (0%)" while
                   * a real amount was added on the right, which looks like a
                   * bug and invites a support ticket every time. */}
-                <span className="text-gray-400">
+                <span className="text-(--app-ink-3)">
                   {selected?.label} charge
                   {chargePct > 0 && ` (${chargePct}%)`}
                   {(selected?.feeFlatUsd ?? 0) > 0 &&
                     ` ${chargePct > 0 ? "+" : ""} $${selected?.feeFlatUsd} network fee`}
                   {chargePct > 0 && (
-                    <span className="block text-[10px] text-gray-500">
+                    <span className="block text-[10px] text-(--app-ink-3)">
                       {currency?.symbol ?? ""}{(chargePct * 10).toFixed(1)} per{" "}
                       {currency?.symbol ?? ""}1,000
                     </span>
@@ -276,19 +276,19 @@ export function DepositView({ from }: { from?: string } = {}) {
             )}
             {breakdown.vat > 0 && (
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400">VAT ({vat.pct}%)</span>
+                <span className="text-(--app-ink-3)">VAT ({vat.pct}%)</span>
                 <span className="text-orange-300 tabular-nums">
                   + {formatLocal(breakdown.vat, currency)}
                 </span>
               </div>
             )}
-            <div className="flex items-center justify-between border-t border-indigo-500/20 pt-2 text-sm">
+            <div className="flex items-center justify-between border-t border-(--app-accent-edge)/20 pt-2 text-sm">
               <span className="font-semibold text-white">Total to pay</span>
-              <span className="font-bold text-indigo-300 tabular-nums">
+              <span className="font-bold text-(--app-accent-ink) tabular-nums">
                 {formatLocal(breakdown.totalLocal, currency)}
               </span>
             </div>
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-(--app-ink-3)">
               Your wallet is credited {usd(breakdown.amountUsd)} on
               approval. The {currency?.code} total includes the method charge
               {vat.enabled ? " + VAT" : ""}.
@@ -297,11 +297,11 @@ export function DepositView({ from }: { from?: string } = {}) {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1.5">
+          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
             Payment method
           </label>
           {methods.length === 0 ? (
-            <p className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-xs text-gray-400">
+            <p className="rounded-lg border border-(--app-line) bg-(--app-surface)/50 p-3 text-xs text-(--app-ink-3)">
               No payment methods are available right now. Please check back soon or contact support.
             </p>
           ) : (
@@ -318,8 +318,8 @@ export function DepositView({ from }: { from?: string } = {}) {
                     onClick={() => setMethod(m.key)}
                     className={`p-2.5 rounded-lg border text-sm font-semibold flex flex-col items-center justify-center gap-0.5 ${
                       method === m.key
-                        ? "border-indigo-500 bg-indigo-500/10 text-white"
-                        : "border-gray-700 bg-gray-800 text-gray-300"
+                        ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-white"
+                        : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2)"
                     }`}
                   >
                     <span className="inline-flex items-center gap-1.5 max-w-full">
@@ -339,7 +339,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             </div>
           )}
           {methods.length > 0 && (
-            <p className="mt-2 text-[11px] text-gray-500">
+            <p className="mt-2 text-[11px] text-(--app-ink-3)">
               The fee shown is charged on top of what you add — your wallet is
               credited the full USD amount.
               {vat.enabled && vat.pct > 0
@@ -350,23 +350,23 @@ export function DepositView({ from }: { from?: string } = {}) {
         </div>
 
         {selected && (
-          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-3">
-            <p className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold">
+          <div className="rounded-lg border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3 space-y-3">
+            <p className="text-[11px] uppercase tracking-wider text-(--app-accent-ink) font-bold">
               Send payment to {selected.label}
             </p>
 
             <div>
-              <p className="text-[11px] text-gray-400 mb-1">
+              <p className="text-[11px] text-(--app-ink-3) mb-1">
                 {selected.accountLabel || "Receiving account"}
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-sm text-white break-all bg-gray-900/60 rounded px-2 py-1.5">
+                <code className="flex-1 text-sm text-white break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
                   {selected.account}
                 </code>
                 <button
                   type="button"
                   onClick={copyAccount}
-                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
+                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold hover:bg-(--app-cta)/25"
                 >
                   {copiedField === "account" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedField === "account" ? "Copied" : "Copy"}
@@ -410,15 +410,15 @@ export function DepositView({ from }: { from?: string } = {}) {
               * one — the transfer arrives unattributed without it. */}
             {selected.memo && (
               <div>
-                <p className="text-[11px] text-gray-400 mb-1">Memo / Tag (required)</p>
+                <p className="text-[11px] text-(--app-ink-3) mb-1">Memo / Tag (required)</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm text-white break-all bg-gray-900/60 rounded px-2 py-1.5">
+                  <code className="flex-1 text-sm text-white break-all bg-(--app-surface)/60 rounded px-2 py-1.5">
                     {selected.memo}
                   </code>
                   <button
                     type="button"
                     onClick={() => copy(selected.memo ?? "", "memo")}
-                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-bold hover:bg-indigo-500/25"
+                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold hover:bg-(--app-cta)/25"
                   >
                     {copiedField === "memo" ? (
                       <Check className="w-3.5 h-3.5" />
@@ -458,7 +458,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                     />
                   )}
                 </div>
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[10px] text-(--app-ink-3)">
                   Scan to pay{selected.network ? ` — ${selected.network} only` : ""}
                 </p>
               </div>
@@ -469,23 +469,23 @@ export function DepositView({ from }: { from?: string } = {}) {
                 href={selected.payLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-500/15 text-indigo-200 text-xs font-bold px-3 py-2 hover:bg-indigo-500/25"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-bold px-3 py-2 hover:bg-(--app-cta)/25"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Open payment link
               </a>
             )}
 
             {selected.instructions && (
-              <p className="text-xs text-gray-300 whitespace-pre-wrap">{selected.instructions}</p>
+              <p className="text-xs text-(--app-ink-2) whitespace-pre-wrap">{selected.instructions}</p>
             )}
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-(--app-ink-3)">
               Limits: ${selected.minAmount} – ${selected.maxAmount}. After paying, enter your transaction id below.
             </p>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1.5">
+          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
             Transaction ID <span className="text-red-400">*</span>
           </label>
           <input
@@ -497,7 +497,7 @@ export function DepositView({ from }: { from?: string } = {}) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1.5">
+          <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
             Payment screenshot (optional)
           </label>
           <ProofImageUpload value={proofUrl} onChange={setProofUrl} />
@@ -507,7 +507,7 @@ export function DepositView({ from }: { from?: string } = {}) {
           <button
             onClick={submitManual}
             disabled={busy}
-            className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
+            className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Submit manual deposit
@@ -516,7 +516,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             <button
               onClick={() => payOnline()}
               disabled={busy}
-              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
             >
               <ExternalLink className="w-4 h-4" />
               Pay online
@@ -527,7 +527,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 key={g.key}
                 onClick={() => payOnline(g.key)}
                 disabled={busy}
-                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
               >
                 <ExternalLink className="w-4 h-4" />
                 {g.label}
@@ -538,30 +538,30 @@ export function DepositView({ from }: { from?: string } = {}) {
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold text-gray-400 mb-2">Recent deposits</h2>
+        <h2 className="text-sm font-semibold text-(--app-ink-3) mb-2">Recent deposits</h2>
         <div className="space-y-2">
           {deposits.length === 0 && (
-            <p className="text-sm text-gray-500">No deposits yet.</p>
+            <p className="text-sm text-(--app-ink-3)">No deposits yet.</p>
           )}
           {deposits.map((d) => (
             <div
               key={d.id}
-              className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 p-3"
+              className="flex items-center justify-between rounded-lg border border-(--app-line) bg-(--app-surface) p-3"
             >
               <div>
                 <p className="text-sm font-semibold text-white">
                   {usd(Number(d.amount ?? 0))}{" "}
-                  <span className="text-gray-500 font-normal">
+                  <span className="text-(--app-ink-3) font-normal">
                     · {methods.find((m) => m.key === d.method)?.label ?? d.method.replace("MANUAL_", "")}
                   </span>
                 </p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-(--app-ink-3)">
                   {new Date(d.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <span
                 className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  STATUS_TONE[d.status] ?? "bg-gray-700 text-gray-300"
+                  STATUS_TONE[d.status] ?? "bg-(--app-surface-2) text-(--app-ink-2)"
                 }`}
               >
                 {d.status}

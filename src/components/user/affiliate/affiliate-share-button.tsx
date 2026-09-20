@@ -46,7 +46,7 @@ export function AffiliateShareButton({
       <Link
         href="/affiliate"
         className={
-          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 text-xs font-bold hover:bg-indigo-500/25 " +
+          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/40 text-xs font-bold hover:bg-(--app-cta)/25 " +
           (className ?? "")
         }
       >
@@ -77,7 +77,7 @@ export function AffiliateShareButton({
       type="button"
       onClick={copy}
       className={
-        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 text-xs font-bold hover:bg-indigo-500/25 " +
+        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/40 text-xs font-bold hover:bg-(--app-cta)/25 " +
         (className ?? "")
       }
     >

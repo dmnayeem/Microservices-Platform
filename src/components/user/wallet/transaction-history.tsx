@@ -138,7 +138,7 @@ export function TransactionHistory({
         <select
           value={range}
           onChange={(e) => changeRange(e.target.value as RangePreset)}
-          className="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-sm text-white focus:outline-none focus:border-indigo-500"
+          className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
         >
           {(Object.keys(RANGE_LABELS) as RangePreset[]).map((r) => (
             <option key={r} value={r}>
@@ -151,13 +151,13 @@ export function TransactionHistory({
             type="date"
             value={day}
             onChange={(v) => changeDay(v)}
-            className="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-sm text-white focus:outline-none focus:border-indigo-500"
+            className="px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
           />
         )}
       </div>
 
       {showKindToggle && (
-        <div className="inline-flex overflow-hidden rounded-lg border border-gray-800">
+        <div className="inline-flex overflow-hidden rounded-lg border border-(--app-line)">
           {(
             [
               ["money", "Money"],
@@ -179,8 +179,8 @@ export function TransactionHistory({
               className={cn(
                 "px-3 py-1.5 text-xs font-semibold transition-colors",
                 kind === k
-                  ? "bg-indigo-500/15 text-indigo-300"
-                  : "text-gray-500 hover:text-white"
+                  ? "bg-(--app-cta)/15 text-(--app-accent-ink)"
+                  : "text-(--app-ink-3) hover:text-white"
               )}
             >
               {label}
@@ -196,8 +196,8 @@ export function TransactionHistory({
           className={cn(
             "px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-colors",
             source === "all"
-              ? "bg-indigo-500 text-white border-indigo-500"
-              : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
+              ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
+              : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white"
           )}
         >
           All
@@ -209,8 +209,8 @@ export function TransactionHistory({
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-colors",
               source === s
-                ? "bg-indigo-500 text-white border-indigo-500"
-                : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white"
+                ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
+                : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white"
             )}
           >
             <span className={cn("w-2 h-2 rounded-full", SOURCE_META[s].swatch)} />
@@ -233,11 +233,11 @@ export function TransactionHistory({
                 const meta = SOURCE_META[key as SourceKey] ?? SOURCE_META.other;
                 return (
                   <div key={key} className="flex items-center justify-between gap-2 text-xs min-w-0">
-                    <div className="flex items-center gap-1.5 min-w-0 text-gray-300">
+                    <div className="flex items-center gap-1.5 min-w-0 text-(--app-ink-2)">
                       <span className={cn("w-2 h-2 rounded-full shrink-0", meta.swatch)} />
                       <span className="truncate">{meta.label}</span>
                     </div>
-                    <span className="tabular-nums text-gray-400 shrink-0">
+                    <span className="tabular-nums text-(--app-ink-3) shrink-0">
                       {v.points > 0 && `${v.points.toLocaleString()} pts`}
                       {v.points > 0 && v.amount > 0.005 && " · "}
                       {v.amount > 0.005 && `${usd(v.amount)}`}
@@ -253,7 +253,7 @@ export function TransactionHistory({
       {/* List */}
       {loading ? (
         <div className="grid place-items-center py-10">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-(--app-accent-ink)" />
         </div>
       ) : items.length === 0 ? (
         <EmptyState icon={History} title="No transactions" description="Nothing matches these filters." />
@@ -284,17 +284,17 @@ export function TransactionHistory({
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-white disabled:opacity-40"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-white disabled:opacity-40"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Prev
           </button>
-          <span className="text-xs text-gray-500 tabular-nums">
+          <span className="text-xs text-(--app-ink-3) tabular-nums">
             Page {page} / {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-white disabled:opacity-40"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface) border border-(--app-line) text-xs text-white disabled:opacity-40"
           >
             Next <ChevronRight className="w-3.5 h-3.5" />
           </button>

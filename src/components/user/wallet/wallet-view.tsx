@@ -121,10 +121,10 @@ export function WalletView(props: WalletViewProps) {
     <div className="space-y-(--app-gap)">
       <header>
         <h1 className="t-title text-white inline-flex items-center gap-2.5">
-          <Wallet className="w-6 h-6 text-gray-400" />
+          <Wallet className="w-6 h-6 text-(--app-ink-3)" />
           Wallet
         </h1>
-        <p className="t-body text-gray-400 mt-1">
+        <p className="t-body text-(--app-ink-3) mt-1">
           Your earnings, referral commission, and payouts.
         </p>
       </header>
@@ -163,7 +163,7 @@ export function WalletView(props: WalletViewProps) {
           href="/withdrawal"
           className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-white text-sm font-extrabold"
         >
-          <ArrowUpRight className="w-4 h-4 text-gray-400" />
+          <ArrowUpRight className="w-4 h-4 text-(--app-ink-3)" />
           Withdraw
         </Link>
       </div>
@@ -189,7 +189,7 @@ export function WalletView(props: WalletViewProps) {
                 "app-tap-row app-press shrink-0 inline-flex items-center gap-1.5 px-4 text-sm font-bold border-b-2 -mb-px",
                 isActive
                   ? "text-white border-(--app-rail-a)"
-                  : "text-gray-500 border-transparent hover:text-white"
+                  : "text-(--app-ink-3) border-transparent hover:text-white"
               )}
             >
               <t.icon className="w-4 h-4" />
@@ -298,10 +298,10 @@ function ConvertCard({
     <div className="app-card">
       <div className="min-w-0">
         <p className="t-section text-white flex items-center gap-2">
-          <ArrowRightLeft className="w-4 h-4 text-gray-400 shrink-0" />
+          <ArrowRightLeft className="w-4 h-4 text-(--app-ink-3) shrink-0" />
           Convert points to cash
         </p>
-        <p className="t-meta text-gray-400 mt-1">
+        <p className="t-meta text-(--app-ink-3) mt-1">
           {canConvert
             ? "Choose how many points to move into withdrawable cash."
             : `Earn ${remaining.toLocaleString()} more points to unlock — converting opens at ${threshold.toLocaleString()} pts.`}
@@ -323,7 +323,7 @@ function ConvertCard({
               <button
                 type="button"
                 onClick={() => setAmountStr(String(points))}
-                className="app-press absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-(--app-r-chip) bg-(--app-surface) border border-(--app-line) text-[10px] font-extrabold text-gray-300 hover:text-white"
+                className="app-press absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-(--app-r-chip) bg-(--app-surface) border border-(--app-line) text-[10px] font-extrabold text-(--app-ink-2) hover:text-white"
               >
                 MAX
               </button>
@@ -338,7 +338,7 @@ function ConvertCard({
             </button>
           </div>
           <div className="flex items-center justify-between t-meta mt-2">
-            <span className="text-gray-500">
+            <span className="text-(--app-ink-3)">
               Balance {points.toLocaleString()} pts · min {minConvert.toLocaleString()}
             </span>
             <span className="t-in font-bold tabular-nums">≈ {usd(previewUsd)}</span>
@@ -349,7 +349,7 @@ function ConvertCard({
           <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
             <div className="h-full bg-(image:--app-rail)" style={{ width: `${pct}%` }} />
           </div>
-          <div className="flex justify-between text-[10px] text-gray-500 mt-1 tabular-nums">
+          <div className="flex justify-between text-[10px] text-(--app-ink-3) mt-1 tabular-nums">
             <span>{points.toLocaleString()} pts</span>
             <span>{threshold.toLocaleString()} pts</span>
           </div>
@@ -389,7 +389,7 @@ function BalanceTab({
     // Display order + styling for each earning source. `OTHER` is a forward-safe
     // catch-all so any future credit type still shows up (never silently lost).
     const META: { key: string; label: string; color: string }[] = [
-      { key: "TASK", label: "Task Earnings", color: "bg-indigo-500" },
+      { key: "TASK", label: "Task Earnings", color: "bg-(--app-cta)" },
       { key: "SOCIAL", label: "Social Earnings", color: "bg-rose-500" },
       { key: "REFERRAL", label: "Referral Earnings", color: "bg-purple-500" },
       { key: "BONUS", label: "Bonuses", color: "bg-amber-500" },
@@ -457,11 +457,11 @@ function BalanceTab({
       </div>
 
       {/* Clarifier — answers "where do converted points show in Total Earn?" */}
-      <p className="text-[11px] leading-relaxed text-gray-400 -mt-1">
-        <span className="font-semibold text-gray-300">Total Earn</span> is the $
+      <p className="text-[11px] leading-relaxed text-(--app-ink-3) -mt-1">
+        <span className="font-semibold text-(--app-ink-2)">Total Earn</span> is the $
         value of everything you&apos;ve earned — points count the moment you earn
         them, so converting points to cash doesn&apos;t change it.{" "}
-        <span className="font-semibold text-gray-300">Total Income</span> is what
+        <span className="font-semibold text-(--app-ink-2)">Total Income</span> is what
         you&apos;ve withdrawn.
       </p>
 
@@ -473,7 +473,7 @@ function BalanceTab({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-white">Points Breakdown</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               No points earned yet — complete tasks or post to start earning.
             </p>
           </div>
@@ -482,12 +482,12 @@ function BalanceTab({
         <div className="glass rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-white">Earnings Breakdown</p>
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+            <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider">
               From {transactions.filter((t) => t.points > 0).length} tx
             </p>
           </div>
           {/* Segmented bar */}
-          <div className="h-2.5 rounded-full overflow-hidden flex bg-gray-800">
+          <div className="h-2.5 rounded-full overflow-hidden flex bg-(--app-surface-2)">
             {breakdown.map((b) => (
               <div
                 key={b.key}
@@ -501,11 +501,11 @@ function BalanceTab({
           <div className="grid grid-cols-2 gap-1.5">
             {breakdown.map((b) => (
               <div key={b.key} className="flex items-center justify-between gap-1.5 text-xs min-w-0">
-                <div className="flex items-center gap-1.5 text-gray-300 min-w-0">
+                <div className="flex items-center gap-1.5 text-(--app-ink-2) min-w-0">
                   <span className={cn("w-2 h-2 rounded-full shrink-0", b.color)} />
                   <span className="truncate">{b.label}</span>
                 </div>
-                <span className="text-gray-500 tabular-nums shrink-0">
+                <span className="text-(--app-ink-3) tabular-nums shrink-0">
                   {b.pct.toFixed(0)}% · {b.value.toLocaleString()}
                 </span>
               </div>
@@ -519,7 +519,7 @@ function BalanceTab({
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-bold text-white">Recent Transactions</p>
           {transactions.length > 10 && (
-            <span className="text-[11px] text-gray-500">
+            <span className="text-[11px] text-(--app-ink-3)">
               Showing latest 10
             </span>
           )}
@@ -584,7 +584,7 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
       <div className="glass rounded-xl p-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-white">Add money to your wallet</p>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-(--app-ink-3) mt-0.5">
             Deposit via bKash, Nagad, Binance or PayPal — an admin verifies it, then your cash
             balance is credited.
           </p>
@@ -611,7 +611,7 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
             return (
               <div
                 key={d.id}
-                className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-950 p-3"
+                className="flex items-center gap-3 rounded-xl border border-(--app-line) bg-(--app-page) p-3"
               >
                 <div className={cn("w-9 h-9 rounded-lg grid place-items-center border shrink-0", meta.tone)}>
                   <meta.icon className="w-4 h-4" />
@@ -619,11 +619,11 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">
                     {usd(d.amount)}
-                    <span className="ml-2 text-xs font-medium text-gray-500">
+                    <span className="ml-2 text-xs font-medium text-(--app-ink-3)">
                       {d.method.replace("MANUAL_", "")}
                     </span>
                   </p>
-                  <p className="text-[11px] text-gray-500 truncate">
+                  <p className="text-[11px] text-(--app-ink-3) truncate">
                     {new Date(d.createdAt).toLocaleDateString()}
                     {d.txnId ? ` · TXN ${d.txnId}` : ""}
                   </p>
@@ -675,7 +675,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
 
       {/* L1 / L2 / L3 cards */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
           Commission By Level
         </p>
         {(
@@ -734,7 +734,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white">{row.label}</p>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-(--app-ink-3)">
                   {row.pct}% commission · {row.count}{" "}
                   {row.count === 1 ? "user" : "users"}
                 </p>
@@ -743,7 +743,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
                 <p className="text-base font-extrabold text-white tabular-nums">
                   {usd(row.earned)}
                 </p>
-                <p className="text-[10px] text-gray-500">earned</p>
+                <p className="text-[10px] text-(--app-ink-3)">earned</p>
               </div>
             </div>
           );
@@ -807,19 +807,19 @@ function WithdrawTab({
       )}
 
       <div className="glass rounded-2xl p-5">
-        <p className="text-xs uppercase tracking-wider text-gray-500 font-bold">
+        <p className="text-xs uppercase tracking-wider text-(--app-ink-3) font-bold">
           Withdrawable cash
         </p>
         <p className="text-4xl font-extrabold text-white tabular-nums mt-1">
           {usd(cashBalance)}
         </p>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="text-sm text-(--app-ink-3) mt-0.5">
           From course/marketplace/affiliate sales, deposits &amp; converted points
         </p>
 
         <div className="mt-4 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Your points</span>
+            <span className="text-(--app-ink-3)">Your points</span>
             <span className="text-white tabular-nums font-semibold">
               {points.toLocaleString()} pts
               {canConvertPoints && (
@@ -828,24 +828,24 @@ function WithdrawTab({
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Pending requests</span>
+            <span className="text-(--app-ink-3)">Pending requests</span>
             <span className="text-white tabular-nums font-semibold">
               {pendingWithdrawals}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Withdrawal fee</span>
+            <span className="text-(--app-ink-3)">Withdrawal fee</span>
             <span className="text-white tabular-nums font-semibold">
               {feePct > 0 ? `${feePct.toFixed(1)}%` : "No fee"}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Your tier</span>
+            <span className="text-(--app-ink-3)">Your tier</span>
             <span className="text-white font-semibold">{packageTier}</span>
           </div>
         </div>
         {feePct > 0 && cashBalance > 0 && (
-          <p className="mt-2 text-[11px] text-gray-500">
+          <p className="mt-2 text-[11px] text-(--app-ink-3)">
             On {usd(cashBalance)} you&apos;d receive ~
             {usd(cashBalance * (1 - feePct / 100))} after the {feePct.toFixed(1)}% fee.
           </p>
@@ -862,7 +862,7 @@ function WithdrawTab({
           className={cn(
             "mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all",
             isFreeTier || !hasCash
-              ? "bg-gray-800 text-gray-500 cursor-not-allowed pointer-events-none"
+              ? "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed pointer-events-none"
               : "bg-linear-to-r from-indigo-500 to-purple-600 text-white hover:scale-[1.02]"
           )}
         >
@@ -876,23 +876,23 @@ function WithdrawTab({
       </div>
 
       {/* Withdrawal info */}
-      <div className="glass rounded-xl p-4 space-y-2 text-xs text-gray-400">
+      <div className="glass rounded-xl p-4 space-y-2 text-xs text-(--app-ink-3)">
         <p className="font-semibold text-white text-sm flex items-center gap-1.5">
           <Gift className="w-4 h-4 text-amber-400" />
           How withdrawals work
         </p>
-        <ul className="space-y-1 list-disc list-inside marker:text-gray-600">
+        <ul className="space-y-1 list-disc list-inside marker:text-(--app-glyph)">
           <li>
             Most withdrawals are processed within 24–48 hours after admin
             approval.
           </li>
           <li>
             Supported methods: bKash, Nagad, Rocket, Binance, PayPal — manage
-            them in <Link href="/profile" className="text-indigo-400 hover:underline">Profile</Link>.
+            them in <Link href="/profile" className="text-(--app-accent-ink) hover:underline">Profile</Link>.
           </li>
           <li>
             Higher tiers get reduced fees and lower minimums (see{" "}
-            <Link href="/packages" className="text-indigo-400 hover:underline">
+            <Link href="/packages" className="text-(--app-accent-ink) hover:underline">
               Packages
             </Link>).
           </li>

@@ -163,7 +163,7 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   },
   COMPLETED: {
     label: "Finished",
-    tone: "bg-indigo-500/10 text-indigo-300 ring-indigo-500/20",
+    tone: "bg-(--app-cta)/10 text-(--app-accent-ink) ring-indigo-500/20",
   },
   EXPIRED: {
     label: "Expired",
@@ -391,7 +391,7 @@ export function BuyerHubView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Buyer Hub</h1>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-(--app-ink-3)">
             Your tasks, what they cost, and who has completed them.
           </p>
         </div>
@@ -409,7 +409,7 @@ export function BuyerHubView({
         {canCreate && (
           <Link
             href="/create-task"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-600"
+            className="inline-flex items-center gap-2 rounded-xl bg-(--app-cta) px-4 py-2.5 text-sm font-bold text-(--app-on-cta) hover:bg-(--app-cta)"
           >
             <Plus className="h-4 w-4" />
             New task
@@ -508,9 +508,9 @@ export function BuyerHubView({
         </div>
       )}
 
-      <div className="flex gap-2 rounded-xl border border-gray-800 bg-gray-950/50 p-3">
+      <div className="flex gap-2 rounded-xl border border-(--app-line) bg-(--app-page)/50 p-3">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-        <p className="text-[11px] leading-relaxed text-gray-500">
+        <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
           Submissions are checked automatically and reviewed by our team — you
           are not asked to approve them. That is deliberate: it means nobody can
           refuse work that was done properly, and it means you are never the one
@@ -533,7 +533,7 @@ export function BuyerHubView({
           <h2 className="text-sm font-bold text-white">
             Getting your first task live
           </h2>
-          <p className="mt-0.5 text-[11px] text-gray-500">
+          <p className="mt-0.5 text-[11px] text-(--app-ink-3)">
             Three steps. You are only ever charged as people complete the work.
           </p>
           <ol className="mt-3 space-y-2">
@@ -568,7 +568,7 @@ export function BuyerHubView({
                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
                     step.done
                       ? "bg-emerald-500/15 text-emerald-400"
-                      : "bg-gray-800 text-gray-400"
+                      : "bg-(--app-surface-2) text-(--app-ink-3)"
                   )}
                 >
                   {step.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
@@ -577,14 +577,14 @@ export function BuyerHubView({
                   <p className="text-xs font-semibold text-white">
                     {step.title}
                   </p>
-                  <p className="text-[11px] leading-relaxed text-gray-500">
+                  <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
                     {step.body}
                   </p>
                 </div>
                 {!step.done && (
                   <Link
                     href={step.href}
-                    className="h-fit shrink-0 rounded-lg border border-gray-700 px-2.5 py-1 text-[11px] font-bold text-gray-200 hover:text-white"
+                    className="h-fit shrink-0 rounded-lg border border-(--app-line) px-2.5 py-1 text-[11px] font-bold text-(--app-ink) hover:text-white"
                   >
                     {step.cta}
                   </Link>
@@ -595,7 +595,7 @@ export function BuyerHubView({
         </div>
       )}
 
-      <div className="flex gap-1 border-b border-gray-800">
+      <div className="flex gap-1 border-b border-(--app-line)">
         {(
           [
             ["tasks", `My tasks (${tasks.length})`],
@@ -609,8 +609,8 @@ export function BuyerHubView({
             className={cn(
               "-mb-px rounded-t-lg px-4 py-2.5 text-sm font-semibold",
               tab === id
-                ? "border-b-2 border-indigo-500 text-white"
-                : "text-gray-500 hover:text-gray-300"
+                ? "border-b-2 border-(--app-accent-edge) text-white"
+                : "text-(--app-ink-3) hover:text-(--app-ink-2)"
             )}
           >
             {label}
@@ -646,7 +646,7 @@ export function BuyerHubView({
                     <p className="truncate font-semibold text-white">
                       {t.title}
                     </p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-(--app-ink-3)">
                       {t.type} · {t.pointsReward.toLocaleString()} pts each ·{" "}
                       {new Date(t.createdAt).toLocaleDateString()}
                     </p>
@@ -655,7 +655,7 @@ export function BuyerHubView({
                     {t.type === "SURVEY" && (
                       <Link
                         href={`/buyer/surveys/${t.id}`}
-                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-400 hover:text-indigo-300"
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                       >
                         View responses
                       </Link>
@@ -698,37 +698,37 @@ export function BuyerHubView({
                   <>
                     <div>
                       <div className="mb-1 flex items-baseline justify-between text-xs">
-                        <span className="text-gray-400">
+                        <span className="text-(--app-ink-3)">
                           {t.approvedCount.toLocaleString()} of{" "}
                           {t.targetCount.toLocaleString()} completed
                         </span>
-                        <span className="tabular-nums text-gray-500">
+                        <span className="tabular-nums text-(--app-ink-3)">
                           {pct}%
                         </span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-gray-800">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-(--app-surface-2)">
                         <div
-                          className="h-full rounded-full bg-indigo-500"
+                          className="h-full rounded-full bg-(--app-cta)"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-(--app-ink-3)">
                       {/* "Still advertised", not "budget left": nothing is
                           reserved against this task, so calling the remainder
                           a budget would suggest the credit is already spoken
                           for when it is free to use anywhere. */}
                       <span>
                         Still advertised{" "}
-                        <span className="tabular-nums text-gray-300">
+                        <span className="tabular-nums text-(--app-ink-2)">
                           {pts(t.remainingBudget)}
                         </span>{" "}
                         of {pts(t.budgetPoints)} pts
                       </span>
                       <span>
                         Paid out{" "}
-                        <span className="tabular-nums text-gray-300">
+                        <span className="tabular-nums text-(--app-ink-2)">
                           {pts(spentPoints)}
                         </span>{" "}
                         pts
@@ -754,7 +754,7 @@ export function BuyerHubView({
                             t.status === "ACTIVE" ? "pause" : "resume"
                           )
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-white disabled:opacity-50"
                       >
                         {busyId === t.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -773,7 +773,7 @@ export function BuyerHubView({
                           type="button"
                           disabled={busyId === t.id}
                           onClick={() => setEditingTask(t)}
-                          className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:text-white disabled:opacity-50"
+                          className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-white disabled:opacity-50"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit
@@ -794,7 +794,7 @@ export function BuyerHubView({
                       <button
                         type="button"
                         onClick={() => openProof(t.id)}
-                        className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:text-white"
+                        className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-white"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         {proofFor === t.id
@@ -804,9 +804,9 @@ export function BuyerHubView({
                     )}
 
                     {proofFor === t.id && (
-                      <div className="mt-2 space-y-2 rounded-lg border border-gray-800 bg-gray-950/60 p-3">
+                      <div className="mt-2 space-y-2 rounded-lg border border-(--app-line) bg-(--app-page)/60 p-3">
                         {proofLoading && (
-                          <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                          <p className="inline-flex items-center gap-1.5 text-xs text-(--app-ink-3)">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             Loading…
                           </p>
@@ -815,7 +815,7 @@ export function BuyerHubView({
                           <ResultsStrip stats={stats} />
                         )}
                         {!proofLoading && proof && proof.length === 0 && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-(--app-ink-3)">
                             Nothing approved yet.
                           </p>
                         )}
@@ -823,22 +823,22 @@ export function BuyerHubView({
                           proof?.map((r) => (
                             <div
                               key={r.id}
-                              className="rounded-md border border-gray-800 bg-gray-900/60 p-2.5"
+                              className="rounded-md border border-(--app-line) bg-(--app-surface)/60 p-2.5"
                             >
-                              <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500">
+                              <div className="flex items-center justify-between gap-2 text-[11px] text-(--app-ink-3)">
                                 <span>{new Date(r.at).toLocaleString()}</span>
                                 <span className={TASK_CREDIT.textStrong}>
                                   −{pts(r.pointsPaid)} pts
                                 </span>
                               </div>
                               {r.proof && (
-                                <p className="mt-1 wrap-break-word text-xs text-gray-300">
+                                <p className="mt-1 wrap-break-word text-xs text-(--app-ink-2)">
                                   {/^https?:\/\//.test(r.proof.trim()) ? (
                                     <a
                                       href={r.proof.trim()}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
+                                      className="inline-flex items-center gap-1 text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                                     >
                                       {r.proof.trim()}
                                       <ExternalLink className="h-3 w-3 shrink-0" />
@@ -856,7 +856,7 @@ export function BuyerHubView({
                                       href={src}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-[11px] text-indigo-400 hover:text-indigo-300"
+                                      className="text-[11px] text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                                     >
                                       View screenshot
                                     </a>
@@ -885,9 +885,9 @@ export function BuyerHubView({
                                     value={reportText}
                                     onChange={(e) => setReportText(e.target.value)}
                                     placeholder="What is wrong with this one? An admin reads this."
-                                    className="w-full resize-none rounded-md border border-gray-700 bg-gray-950 px-2 py-1.5 text-xs text-white focus:border-amber-500 focus:outline-none"
+                                    className="w-full resize-none rounded-md border border-(--app-line) bg-(--app-page) px-2 py-1.5 text-xs text-white focus:border-amber-500 focus:outline-none"
                                   />
-                                  <p className="text-[10px] leading-relaxed text-gray-500">
+                                  <p className="text-[10px] leading-relaxed text-(--app-ink-3)">
                                     This does not undo the payment and does not
                                     reject the work — the worker keeps their
                                     points either way. An admin looks at it, and
@@ -901,7 +901,7 @@ export function BuyerHubView({
                                         setReportFor(null);
                                         setReportText("");
                                       }}
-                                      className="rounded-md border border-gray-700 px-2 py-1 text-[11px] font-semibold text-gray-400 hover:text-white disabled:opacity-50"
+                                      className="rounded-md border border-(--app-line) px-2 py-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-white disabled:opacity-50"
                                     >
                                       Never mind
                                     </button>
@@ -928,7 +928,7 @@ export function BuyerHubView({
                                       setReportFor(r.id);
                                       setReportText("");
                                     }}
-                                    className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-amber-400"
+                                    className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-amber-400"
                                   >
                                     <Flag className="h-3 w-3" />
                                     Something wrong with this one?
@@ -937,7 +937,7 @@ export function BuyerHubView({
                               )}
                             </div>
                           ))}
-                        <p className="text-[11px] leading-relaxed text-gray-600">
+                        <p className="text-[11px] leading-relaxed text-(--app-glyph)">
                           Approved work only, and without names — you are seeing
                           what was delivered, not who delivered it.
                           {stats && stats.reportsAllowed > 0 && (
@@ -985,13 +985,13 @@ export function BuyerHubView({
             return (
               <div
                 key={r.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2.5"
+                className="flex items-center justify-between gap-3 rounded-lg border border-(--app-line) bg-(--app-page)/50 px-3 py-2.5"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-gray-200">
+                  <p className="truncate text-sm text-(--app-ink)">
                     {r.description || r.reference}
                   </p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-(--app-ink-3)">
                     {new Date(r.createdAt).toLocaleString()}
                     {isFee && " · platform fee"}
                     {isPurchase && ` · +${pts(r.points)} credit`}
@@ -1003,7 +1003,7 @@ export function BuyerHubView({
                     incoming
                       ? "text-emerald-400"
                       : isFee
-                        ? "text-gray-400"
+                        ? "text-(--app-ink-3)"
                         : TASK_CREDIT.textStrong
                   )}
                 >
@@ -1012,7 +1012,7 @@ export function BuyerHubView({
                       −{usd(Math.abs(r.amountUsd))}
                     </>
                   ) : r.points === 0 ? (
-                    <span className="text-[11px] font-medium text-gray-600">
+                    <span className="text-[11px] font-medium text-(--app-glyph)">
                       no charge
                     </span>
                   ) : (
@@ -1202,26 +1202,26 @@ function EditTaskModal({
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
             Title *
           </label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
-            className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
             Description *
           </label>
           <textarea
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full resize-none rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
           />
         </div>
 
@@ -1229,13 +1229,13 @@ function EditTaskModal({
           <>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-400">
+                <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
                   Platform *
                 </label>
                 <select
                   value={socialPlatform}
                   onChange={(e) => pickPlatform(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
                 >
                   <option value="">Choose…</option>
                   {platformOptions.map((p) => (
@@ -1246,14 +1246,14 @@ function EditTaskModal({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-400">
+                <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
                   Action *
                 </label>
                 <select
                   value={socialAction}
                   onChange={(e) => setSocialAction(e.target.value)}
                   disabled={!platformDef}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+                  className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
                 >
                   <option value="">
                     {platformDef ? "Choose…" : "Pick a platform first"}
@@ -1267,28 +1267,28 @@ function EditTaskModal({
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">
+              <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
                 Target URL *
               </label>
               <input
                 value={socialUrl}
                 onChange={(e) => setSocialUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
               />
             </div>
           </>
         )}
 
         {task.type === "VIDEO" && (
-          <p className="text-[11px] leading-relaxed text-gray-500">
+          <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
             The video link and watch time can&rsquo;t be changed here — pause
             this task and create a new one to change either.
           </p>
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
             Additional instructions
           </label>
           <textarea
@@ -1296,13 +1296,13 @@ function EditTaskModal({
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             placeholder="Optional — extra detail shown alongside the task"
-            className="w-full resize-none rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
           />
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">
+            <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
               Points reward
             </label>
             <input
@@ -1311,11 +1311,11 @@ function EditTaskModal({
               value={pointsReward}
               disabled={!notYetLive}
               onChange={(e) => setPointsReward(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">
+            <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
               Completions
             </label>
             <input
@@ -1324,11 +1324,11 @@ function EditTaskModal({
               value={targetCount}
               disabled={!notYetLive}
               onChange={(e) => setTargetCount(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none disabled:opacity-50"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-400">
+            <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
               Min level
             </label>
             <input
@@ -1336,17 +1336,17 @@ function EditTaskModal({
               min={1}
               value={minLevel}
               onChange={(e) => setMinLevel(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
             />
           </div>
         </div>
         {notYetLive ? (
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-(--app-ink-3)">
             Reward: {minPoints.toLocaleString()}–{maxPoints.toLocaleString()}{" "}
             pts · up to {maxCompletions.toLocaleString()} completions
           </p>
         ) : (
-          <p className="text-[11px] leading-relaxed text-gray-500">
+          <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
             Reward and completions are locked once a task is live — people
             picked it up on those terms. Pause it and create a new one to
             change either.
@@ -1354,9 +1354,9 @@ function EditTaskModal({
         )}
 
         {canTarget && (
-          <div className="space-y-2 border-t border-gray-800 pt-3">
+          <div className="space-y-2 border-t border-(--app-line) pt-3">
             <h3 className="inline-flex items-center gap-1.5 text-xs font-bold text-white">
-              <Target className="h-3.5 w-3.5 text-indigo-400" /> Audience
+              <Target className="h-3.5 w-3.5 text-(--app-accent-ink)" /> Audience
               targeting
             </h3>
             <TaskAudienceTargeting
@@ -1371,7 +1371,7 @@ function EditTaskModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold text-gray-300 hover:text-white disabled:opacity-50"
+            className="rounded-lg border border-(--app-line) px-3 py-2 text-xs font-semibold text-(--app-ink-2) hover:text-white disabled:opacity-50"
           >
             Cancel
           </button>
@@ -1379,7 +1379,7 @@ function EditTaskModal({
             type="button"
             onClick={save}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-600 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-(--app-cta) px-4 py-2 text-xs font-bold text-(--app-on-cta) hover:bg-(--app-cta) disabled:opacity-50"
           >
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Save
@@ -1450,18 +1450,18 @@ function ResultsStrip({ stats }: { stats: TaskStats }) {
     },
   ];
   return (
-    <div className="space-y-2 rounded-lg border border-gray-800 bg-gray-900/40 p-2.5">
+    <div className="space-y-2 rounded-lg border border-(--app-line) bg-(--app-surface)/40 p-2.5">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {cells.map((c) => (
           <div key={c.label}>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500">
+            <p className="text-[10px] uppercase tracking-wide text-(--app-ink-3)">
               {c.label}
             </p>
             <p className="text-sm font-bold tabular-nums text-white">
               {c.value}
             </p>
             {c.sub && (
-              <p className="text-[10px] leading-tight text-gray-500">{c.sub}</p>
+              <p className="text-[10px] leading-tight text-(--app-ink-3)">{c.sub}</p>
             )}
           </div>
         ))}
@@ -1470,12 +1470,12 @@ function ResultsStrip({ stats }: { stats: TaskStats }) {
           targeting five countries has no other way to learn that one of them
           did all the work. */}
       {stats.countries.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-800 pt-2">
-          <Globe className="h-3 w-3 shrink-0 text-gray-500" />
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-(--app-line) pt-2">
+          <Globe className="h-3 w-3 shrink-0 text-(--app-ink-3)" />
           {stats.countries.map((c) => (
             <span
               key={c.country}
-              className="rounded-full bg-gray-800/80 px-2 py-0.5 text-[10px] font-semibold text-gray-300"
+              className="rounded-full bg-(--app-surface-2)/80 px-2 py-0.5 text-[10px] font-semibold text-(--app-ink-2)"
             >
               {c.country} {c.count}
             </span>
@@ -1497,7 +1497,7 @@ function Stat({
   label,
   value,
   sub,
-  tone = "text-indigo-400",
+  tone = "text-(--app-accent-ink)",
 }: {
   icon: typeof Wallet;
   label: string;
@@ -1509,21 +1509,21 @@ function Stat({
     <div className="glass rounded-xl p-3">
       <div className="flex items-center gap-2">
         <Icon className={cn("h-4 w-4", tone)} />
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-(--app-ink-3)">
           {label}
         </p>
       </div>
       <p className="mt-1.5 text-lg font-bold tabular-nums text-white">{value}</p>
-      <p className="text-[11px] text-gray-500">{sub}</p>
+      <p className="text-[11px] text-(--app-ink-3)">{sub}</p>
     </div>
   );
 }
 
 function Empty({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-800 p-8 text-center">
-      <p className="text-sm font-semibold text-gray-300">{title}</p>
-      <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-gray-500">
+    <div className="rounded-xl border border-dashed border-(--app-line) p-8 text-center">
+      <p className="text-sm font-semibold text-(--app-ink-2)">{title}</p>
+      <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-(--app-ink-3)">
         {body}
       </p>
     </div>

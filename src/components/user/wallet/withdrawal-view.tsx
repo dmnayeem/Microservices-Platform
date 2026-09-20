@@ -179,14 +179,14 @@ export function WithdrawalView({
       )}
 
       {withdrawalsEnabled && kycLocked && (
-        <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/30 p-4">
+        <div className="rounded-xl bg-(--app-cta)/10 border border-(--app-accent-edge)/30 p-4">
           <div className="flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-(--app-accent-ink) shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-bold text-indigo-300">
+              <p className="text-sm font-bold text-(--app-accent-ink)">
                 {kycPending ? "KYC under review" : "Verify your identity to withdraw"}
               </p>
-              <p className="text-xs text-indigo-200/80 mt-0.5">
+              <p className="text-xs text-(--app-accent-ink)/80 mt-0.5">
                 {kycPending
                   ? "Your KYC is being reviewed. Withdrawals unlock once it's approved."
                   : "Complete identity verification (KYC) to unlock withdrawals. Earning tasks are unaffected."}
@@ -194,7 +194,7 @@ export function WithdrawalView({
               {!kycPending && (
                 <Link
                   href="/kyc"
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   Verify identity
@@ -209,11 +209,11 @@ export function WithdrawalView({
         <>
           <div className="glass rounded-xl p-4 space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                 Amount (USD)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-(--app-ink-3)">
                   $
                 </span>
                 <input
@@ -222,36 +222,36 @@ export function WithdrawalView({
                   value={amountStr}
                   onChange={(e) => onAmountChange(e.target.value)}
                   placeholder={String(min)}
-                  className="w-full pl-7 pr-3 py-2.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-base font-bold tabular-nums focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-7 pr-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-base font-bold tabular-nums focus:outline-none focus:border-(--app-accent-edge)"
                 />
               </div>
               <div className="flex items-center justify-between text-[11px] mt-1.5">
-                <span className="text-gray-500">
+                <span className="text-(--app-ink-3)">
                   Min: ${min.toLocaleString()} · Max: ${max.toLocaleString()}
                 </span>
                 <button
                   onClick={() =>
                     setAmountStr(String(Math.floor(Math.min(cashBalance, max) * 100) / 100))
                   }
-                  className="text-indigo-400 font-semibold hover:text-indigo-300"
+                  className="text-(--app-accent-ink) font-semibold hover:text-(--app-accent-ink)"
                 >
                   Max
                 </button>
               </div>
             </div>
 
-            <div className="rounded-lg bg-gray-950 border border-gray-800 p-3 text-xs space-y-1">
-              <div className="flex justify-between text-gray-400">
+            <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3 text-xs space-y-1">
+              <div className="flex justify-between text-(--app-ink-3)">
                 <span>Withdraw amount</span>
                 <span className="tabular-nums">{usd(amount)}</span>
               </div>
-              <div className="flex justify-between text-gray-400">
+              <div className="flex justify-between text-(--app-ink-3)">
                 <span>Fee ({feePct.toFixed(1)}%)</span>
                 <span className="tabular-nums text-red-400">
                   −{usd(fee)}
                 </span>
               </div>
-              <div className="flex justify-between font-bold text-white pt-1 border-t border-gray-800">
+              <div className="flex justify-between font-bold text-white pt-1 border-t border-(--app-line)">
                 <span>You receive</span>
                 <span className="tabular-nums text-emerald-400">
                   {usd(youReceive)}
@@ -259,10 +259,10 @@ export function WithdrawalView({
               </div>
             </div>
 
-            <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+            <p className="text-[11px] text-(--app-ink-3) flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-(--app-ink-3) shrink-0" />
               Funds arrive within{" "}
-              <span className="text-gray-300 font-medium">{payoutMessage}</span>{" "}
+              <span className="text-(--app-ink-2) font-medium">{payoutMessage}</span>{" "}
               after approval.
             </p>
           </div>
@@ -272,14 +272,14 @@ export function WithdrawalView({
               <p className="text-sm font-semibold text-white">Payment Method</p>
               <Link
                 href="/payment-methods"
-                className="inline-flex items-center gap-1 text-xs text-indigo-400"
+                className="inline-flex items-center gap-1 text-xs text-(--app-accent-ink)"
               >
                 <Plus className="w-3 h-3" />
                 Add
               </Link>
             </div>
             {methods.length === 0 ? (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 Add a payment method first.
               </p>
             ) : (
@@ -290,8 +290,8 @@ export function WithdrawalView({
                     className={cn(
                       "flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors",
                       methodId === m.id
-                        ? "border-indigo-500 bg-indigo-500/5"
-                        : "border-gray-700 hover:border-gray-600"
+                        ? "border-(--app-accent-edge) bg-(--app-cta)/5"
+                        : "border-(--app-line) hover:border-(--app-line)"
                     )}
                   >
                     <input
