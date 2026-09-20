@@ -114,7 +114,7 @@ export function SocialTasksView({
               "shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors",
               platformFilter === "ALL"
                 ? "bg-(--app-cta) text-(--app-on-cta)"
-                : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
+                : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
             )}
           >
             All
@@ -127,7 +127,7 @@ export function SocialTasksView({
                 "shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors",
                 platformFilter === p.key
                   ? cn(p.brandColor, "text-white ring-2 ring-white/20")
-                  : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
+                  : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
               )}
             >
               <BrandIcon brand={p.key} fallback={p.emoji} className="w-3.5 h-3.5" />

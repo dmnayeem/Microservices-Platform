@@ -565,7 +565,7 @@ export function AdRenderer({
           >
             {lead}
             {accent ? (
-              <span className="text-(--app-info)">
+              <span className="text-(--app-accent-ink)">
                 {lead ? " " : ""}
                 {accent}
               </span>

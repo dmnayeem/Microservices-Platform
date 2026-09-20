@@ -348,7 +348,7 @@ export function Header({ user, avatar }: HeaderProps) {
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="app-press app-tap-row inline-flex items-center gap-1.5 px-2.5 rounded-(--app-r-chip) t-meta font-semibold text-(--app-info) hover:bg-(--app-info-soft)"
+                          className="app-press app-tap-row inline-flex items-center gap-1.5 px-2.5 rounded-(--app-r-chip) t-meta font-semibold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
                         >
                           <Check className="w-3.5 h-3.5" />
                           Mark all read
@@ -369,12 +369,12 @@ export function Header({ user, avatar }: HeaderProps) {
                             onClick={() => setIsNotificationOpen(false)}
                             className={cn(
                               "app-tap-row block px-4 py-3 border-b border-(--app-line) transition-colors hover:bg-(--app-surface-2)",
-                              !notif.isRead && "bg-(--app-info-soft)"
+                              !notif.isRead && "bg-(--app-nav-wash)"
                             )}
                           >
                             <div className="flex items-start gap-3">
                               {!notif.isRead && (
-                                <span className="w-2 h-2 mt-2 rounded-full shrink-0 bg-(--app-info)" />
+                                <span className="w-2 h-2 mt-2 rounded-full shrink-0 bg-(--app-cta)" />
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="t-card-title text-(--app-ink) truncate">
@@ -395,7 +395,7 @@ export function Header({ user, avatar }: HeaderProps) {
                     <Link
                       href="/notifications"
                       onClick={() => setIsNotificationOpen(false)}
-                      className="app-tap-row flex items-center justify-center px-4 t-body font-semibold text-(--app-info) hover:bg-(--app-info-soft) border-t border-(--app-line)"
+                      className="app-tap-row flex items-center justify-center px-4 t-body font-semibold text-(--app-accent-ink) hover:bg-(--app-nav-wash) border-t border-(--app-line)"
                     >
                       View all notifications
                     </Link>

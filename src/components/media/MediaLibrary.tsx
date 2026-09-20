@@ -303,7 +303,7 @@ export function MediaLibrary() {
                           <div className="flex gap-1">
                             <button
                               onClick={() => handleEdit(item)}
-                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-(--app-surface-2) rounded transition-colors"
+                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-(--app-surface-hover) rounded transition-colors"
                               title="Edit"
                             >
                               <Edit className="w-3.5 h-3.5 text-white" />
@@ -312,7 +312,7 @@ export function MediaLibrary() {
                               href={item.cloudFrontUrl || item.s3Url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-(--app-surface-2) rounded transition-colors"
+                              className="p-1.5 bg-(--app-surface-2)/80 hover:bg-(--app-surface-hover) rounded transition-colors"
                               title="View"
                             >
                               <ExternalLink className="w-3.5 h-3.5 text-white" />

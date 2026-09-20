@@ -229,7 +229,7 @@ export function PhotoModal({
           <button
             onClick={saveUrl}
             disabled={busy || !urlInput.trim()}
-            className="px-4 py-2 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
+            className="px-4 py-2 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
           >
             Use URL
           </button>

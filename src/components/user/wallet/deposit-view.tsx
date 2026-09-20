@@ -516,7 +516,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             <button
               onClick={() => payOnline()}
               disabled={busy}
-              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
             >
               <ExternalLink className="w-4 h-4" />
               Pay online
@@ -527,7 +527,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 key={g.key}
                 onClick={() => payOnline(g.key)}
                 disabled={busy}
-                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
               >
                 <ExternalLink className="w-4 h-4" />
                 {g.label}

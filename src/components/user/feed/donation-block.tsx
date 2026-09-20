@@ -103,7 +103,7 @@ export function DonationBlock({
                 <button
                   key={v}
                   onClick={() => setAmount(v)}
-                  className="flex-1 py-1.5 rounded bg-(--app-surface-2) hover:bg-(--app-surface-2) text-xs text-(--app-ink-2) tabular-nums"
+                  className="flex-1 py-1.5 rounded bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-xs text-(--app-ink-2) tabular-nums"
                 >
                   {v}
                 </button>

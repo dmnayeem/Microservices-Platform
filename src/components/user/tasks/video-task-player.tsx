@@ -921,7 +921,7 @@ export function VideoTaskPlayer({
                               <button
                                 type="button"
                                 onClick={skipStep}
-                                className="px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+                                className="px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) text-sm font-semibold inline-flex items-center justify-center gap-1.5"
                               >
                                 <SkipForward className="w-4 h-4" />
                                 Skip

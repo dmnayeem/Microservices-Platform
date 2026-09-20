@@ -749,7 +749,7 @@ export function CreatePostComposer({
             <button
               onClick={addImage}
               disabled={busy || !imageInput.trim()}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
             >
               <Plus className="w-3.5 h-3.5" />
               Add
@@ -951,7 +951,7 @@ function PollComposer({
         {options.length < 6 && (
           <button
             onClick={() => onChange([...options, ""])}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) text-xs font-medium rounded-lg"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) text-xs font-medium rounded-lg"
           >
             <Plus className="w-3.5 h-3.5" />
             Add option

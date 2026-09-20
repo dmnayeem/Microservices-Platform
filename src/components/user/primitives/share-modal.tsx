@@ -114,7 +114,7 @@ export function ShareModal({
         {canNative && (
           <button
             onClick={native}
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
           >
             <Share2 className="w-4 h-4" />
             Share via device

@@ -224,7 +224,7 @@ export function SocialFeedView({
                     "app-press inline-flex h-10 items-center gap-1.5 rounded-[calc(var(--app-r-chip)-2px)] px-3 text-xs font-bold",
                     sort === s
                       ? "app-accent shadow-(--app-e1)"
-                      : "text-(--app-ink) hover:bg-(--app-surface)"
+                      : "text-(--app-ink) hover:bg-(--app-surface-2)"
                   )}
                 >
                   {s === "recent" ? (

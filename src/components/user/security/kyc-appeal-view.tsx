@@ -138,7 +138,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
       <header className="flex items-center gap-3">
         <Link
           href="/profile"
-          className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
+          className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2)"
           aria-label="Back to profile"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -307,7 +307,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
               <button
                 onClick={addEvidence}
                 disabled={busy || !evidenceInput.trim() || evidence.length >= 10}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold rounded-lg disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add

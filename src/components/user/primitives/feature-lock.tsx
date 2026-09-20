@@ -49,7 +49,7 @@ export function FeatureLock({
           {!message && (
           <Link
             href="/packages"
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold active:scale-[0.97] transition-transform"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold active:scale-[0.97] transition-transform"
           >
             View plans
             <ArrowUpRight className="w-4 h-4" />

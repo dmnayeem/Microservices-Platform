@@ -138,7 +138,7 @@ export function SplashScreen() {
           ) : (
             <button
               onClick={() => setActive((p) => Math.min(p + 1, cfg.slides.length - 1))}
-              className="w-full py-3 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) font-semibold inline-flex items-center justify-center gap-1"
+              className="w-full py-3 rounded-xl bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) font-semibold inline-flex items-center justify-center gap-1"
             >
               Next <ChevronRight className="w-4 h-4" />
             </button>

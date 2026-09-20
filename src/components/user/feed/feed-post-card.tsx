@@ -525,13 +525,13 @@ export const FeedPostCard = memo(function FeedPostCard({
             <div className="flex min-w-0 items-center gap-1.5">
               <Link
                 href={post.user ? profileHref(post.user) : "#"}
-                className="t-card-title truncate text-white hover:text-(--app-info) transition-colors"
+                className="t-card-title truncate text-white hover:text-(--app-accent-ink) transition-colors"
               >
                 {post.user?.name ?? "Anonymous"}
               </Link>
               {post.user?.isBlueVerified && (
                 <CheckCircle
-                  className="w-4 h-4 shrink-0 text-(--app-info)"
+                  className="w-4 h-4 shrink-0 text-(--app-accent-ink)"
                   aria-label="Verified"
                 />
               )}
@@ -590,7 +590,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                 "app-press app-tap-row shrink-0 px-3.5 rounded-(--app-r-chip) text-xs font-extrabold border disabled:opacity-50",
                 post.isFollowingAuthor
                   ? "bg-(--app-surface-2) text-(--app-ink-2) border-(--app-line)"
-                  : "bg-transparent text-(--app-info) border-(--app-info-line) hover:bg-(--app-info-soft)"
+                  : "bg-transparent text-(--app-accent-ink) border-(--app-accent-edge) hover:bg-(--app-nav-wash)"
               )}
             >
               {followBusy ? (
@@ -863,7 +863,7 @@ export const FeedPostCard = memo(function FeedPostCard({
           className={cn(
             "app-tap app-press inline-flex items-center justify-center px-3 rounded-(--app-r-chip) text-sm hover:bg-(--app-surface-2)",
             post.isSaved
-              ? "text-(--app-info)"
+              ? "text-(--app-accent-ink)"
               : "text-(--app-ink-3) hover:text-white"
           )}
         >

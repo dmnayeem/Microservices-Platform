@@ -255,7 +255,7 @@ export function MarketplaceView() {
         </h1>
         <Link
           href="/marketplace/cart"
-          className="relative p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
+          className="relative p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
           aria-label="Cart"
         >
           <ShoppingCart className="w-4 h-4" />
@@ -267,21 +267,21 @@ export function MarketplaceView() {
         </Link>
         <Link
           href="/marketplace/my"
-          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
+          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
           aria-label="My listings"
         >
           <Package className="w-4 h-4" />
         </Link>
         <Link
           href="/marketplace/orders"
-          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
+          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
           aria-label="Orders"
         >
           <ListChecks className="w-4 h-4" />
         </Link>
         <Link
           href="/marketplace/messages"
-          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
+          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-hover)"
           aria-label="Messages"
         >
           <MessagesSquare className="w-4 h-4" />

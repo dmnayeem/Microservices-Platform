@@ -148,7 +148,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                 "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap",
                 tab === t
                   ? "bg-(--app-cta) text-(--app-on-cta)"
-                  : "bg-(--app-surface-2) text-(--app-ink-3) hover:bg-(--app-surface-2)"
+                  : "bg-(--app-surface-2) text-(--app-ink-3) hover:bg-(--app-surface-hover)"
               )}
             >
               {t}

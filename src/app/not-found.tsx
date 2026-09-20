@@ -18,7 +18,7 @@ export default function NotFound() {
           </Link>
           <Link
             href="/"
-            className="px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+            className="px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
           >
             Home
           </Link>

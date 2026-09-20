@@ -252,7 +252,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
               <span className="on-media line-clamp-2 min-w-0 flex-1 text-base font-extrabold leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
                 {lead}
                 {accent ? (
-                  <span className="text-(--app-info)">
+                  <span className="text-(--app-accent-ink)">
                     {lead ? " " : ""}
                     {accent}
                   </span>

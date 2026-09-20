@@ -156,7 +156,7 @@ export function ActiveEventsCard({ className }: { className?: string }) {
         </h3>
         <Link
           href="/events"
-          className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-info) hover:bg-(--app-info-soft)"
+          className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
         >
           See all <ChevronRight className="w-3.5 h-3.5" />
         </Link>

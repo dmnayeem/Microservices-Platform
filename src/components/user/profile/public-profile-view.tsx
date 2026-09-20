@@ -286,7 +286,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             {viewer.isMe ? (
               <Link
                 href="/profile"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
               >
                 Edit Profile
               </Link>

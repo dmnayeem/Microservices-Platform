@@ -148,7 +148,7 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
           <div className="flex gap-2 mt-3">
             <button
               onClick={snoozeAndClose}
-              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold hover:bg-(--app-surface-2)"
+              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold hover:bg-(--app-surface-hover)"
             >
               Not now
             </button>

@@ -176,7 +176,7 @@ export function BottomTabBar({
                 // add up to — a tab bar row is the most-tapped target in the
                 // app and it must not depend on the label's line height.
                 "app-press relative flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-bold tracking-tight",
-                activeTab ? "text-(--app-info)" : "text-(--app-ink-3)"
+                activeTab ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"
               )}
             >
               {/* Which tab you are on was carried by colour alone (indigo

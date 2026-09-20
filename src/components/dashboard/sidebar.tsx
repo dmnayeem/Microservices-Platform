@@ -260,7 +260,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           className={cn(
             "app-press flex items-center gap-3 p-2 rounded-(--app-r-control) transition-colors",
             pathname.startsWith("/profile")
-              ? "bg-(--app-info-soft)"
+              ? "bg-(--app-nav-wash)"
               : "hover:bg-(--shell-hover)"
           )}
         >
@@ -275,7 +275,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
               className={cn(
                 "t-card-title truncate",
                 pathname.startsWith("/profile")
-                  ? "text-(--app-info)"
+                  ? "text-(--app-accent-ink)"
                   : "text-(--app-ink)"
               )}
             >
@@ -465,7 +465,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
           which is what a tablet app does — and the bottom bar and hamburger turn
           off at the same breakpoint so there is exactly one navigation model at
           every width. */}
-      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-[260px] md:flex-col pl-[env(safe-area-inset-left)]">
+      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-[280px] md:flex-col pl-[env(safe-area-inset-left)]">
         <div className="app-sidebar app-chrome flex flex-col h-full rounded-none border-0 border-r border-(--shell-border)">
           <SidebarContent
             user={user}

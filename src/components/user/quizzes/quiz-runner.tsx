@@ -164,7 +164,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         </p>
         <Link
           href="/quizzes"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
         >
           <ArrowLeft className="w-4 h-4" /> Back to quizzes
         </Link>
@@ -403,7 +403,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         {idx > 0 && (
           <button
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
-            className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+            className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
           >
             Back
           </button>

@@ -489,15 +489,17 @@ function main() {
       bar.match(/max-width: \d+px/)?.[0]
     );
 
-    // Rail width and content offset are two numbers that must agree at BOTH
-    // tiers; if either drifts the content sits under the rail or leaves a gap.
-    // One width now, not two: the launch design fixes the rail at 260px, which
-    // also hands the centre column the 28px the lg tier used to spend on a
-    // wider rail. Still two numbers that must agree.
+    // Rail width and content offset are two numbers that must agree; if either
+    // drifts the content sits under the rail or leaves a gap. What matters is
+    // that they MATCH, not what the number is — the design document says 260
+    // and at 260 the label, its icon and a badge crowd one another, which the
+    // owner read as squeezed. So the check reads the width the sidebar
+    // declares and holds the layout to the same figure.
+    const railPx = sb.match(/md:w-\[(\d+)px\]/)?.[1];
     check(
       "content is offset by the rail width",
-      /md:w-\[260px\]/.test(sb) && /md:pl-\[260px\]/.test(layout),
-      layout.match(/md:pl-\[\d+px\]/)?.[0]
+      Boolean(railPx) && new RegExp(`md:pl-\\[${railPx}px\\]`).test(layout),
+      `rail ${railPx ?? "?"}px vs ${layout.match(/md:pl-\[\d+px\]/)?.[0] ?? "no offset"}`
     );
     check(
       "the page's bottom reserve drops where the tab bar does",

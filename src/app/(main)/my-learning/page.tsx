@@ -479,7 +479,7 @@ function CertificateList({
                 </Link>
                 <Link
                   href={`/courses/${c.course.slug ?? c.course.id}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-bold"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-bold"
                 >
                   Back to course
                 </Link>

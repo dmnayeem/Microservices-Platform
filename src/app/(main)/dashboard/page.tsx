@@ -240,7 +240,7 @@ export default async function DashboardPage() {
               You have enough points to convert into withdrawable cash.
             </p>
           </div>
-          <span className="t-meta font-extrabold text-(--app-info) shrink-0">
+          <span className="t-meta font-extrabold text-(--app-accent-ink) shrink-0">
             Convert →
           </span>
         </Link>
@@ -303,7 +303,7 @@ export default async function DashboardPage() {
           <h2 className="t-section text-white">Recent Activity</h2>
           <Link
             href="/wallet"
-            className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-info) hover:bg-(--app-info-soft)"
+            className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
           >
             View all
           </Link>
@@ -349,7 +349,7 @@ export default async function DashboardPage() {
           <h2 className="t-section text-white">Available Tasks</h2>
           <Link
             href="/tasks"
-            className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-info) hover:bg-(--app-info-soft)"
+            className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
           >
             View all
           </Link>

@@ -173,7 +173,7 @@ function FollowButton({ userId }: { userId: string }) {
         "app-press app-tap-row inline-flex items-center gap-1.5 px-3.5 rounded-full text-xs font-extrabold shrink-0 border disabled:opacity-50",
         following
           ? "bg-(--app-surface-2) text-(--app-ink-2) border-(--app-line)"
-          : "bg-transparent text-(--app-info) border-(--app-info-line) hover:bg-(--app-info-soft)"
+          : "bg-transparent text-(--app-accent-ink) border-(--app-accent-edge) hover:bg-(--app-nav-wash)"
       )}
     >
       {following ? (
@@ -291,7 +291,7 @@ function ReferralCard({ referral }: { referral: RailWidgets["referral"] }) {
       action={
         <Link
           href="/referrals"
-          className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-info) hover:bg-(--app-info-soft)"
+          className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
         >
           Details
         </Link>
@@ -372,7 +372,7 @@ export function FeedRightRail({
           action={
             <Link
               href="/daily-mission"
-              className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-info) hover:bg-(--app-info-soft)"
+              className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
             >
               Continue <ChevronRight className="w-3.5 h-3.5" />
             </Link>
@@ -449,7 +449,7 @@ export function FeedRightRail({
                     <Link
                       href={TYPE_TO_ROUTE[it.taskType] ?? "/daily-mission"}
                       aria-label={`Start: ${missionItemLabel(it.taskType, it.description)}`}
-                      className="app-press w-14 shrink-0 inline-flex h-7 items-center justify-center rounded-(--app-r-chip) border border-(--app-line) t-meta font-extrabold text-(--app-info) hover:bg-(--app-info-soft)"
+                      className="app-press w-14 shrink-0 inline-flex h-7 items-center justify-center rounded-(--app-r-chip) border border-(--app-line) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
                     >
                       Start
                     </Link>

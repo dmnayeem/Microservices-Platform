@@ -103,7 +103,7 @@ export default function TwoFactorSetupPage() {
                 </p>
                 <button
                   onClick={copySecret}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) text-xs font-mono hover:bg-(--app-surface-2)"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) text-xs font-mono hover:bg-(--app-surface-hover)"
                 >
                   {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                   {secret.match(/.{1,4}/g)?.join("-") ?? secret}

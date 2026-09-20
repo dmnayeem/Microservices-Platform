@@ -286,7 +286,7 @@ export function ProfileView() {
               />
               <button
                 onClick={() => setPhotoTarget("avatar")}
-                className="absolute bottom-1 right-1 p-2 bg-(--app-surface-2) hover:bg-(--app-surface-2) rounded-full border-2 border-(--app-surface) shadow-lg"
+                className="absolute bottom-1 right-1 p-2 bg-(--app-surface-2) hover:bg-(--app-surface-hover) rounded-full border-2 border-(--app-surface) shadow-lg"
                 aria-label="Change profile photo"
               >
                 <Camera className="w-3.5 h-3.5 text-white" />
@@ -297,7 +297,7 @@ export function ProfileView() {
           <div className="flex justify-end mb-2 gap-2">
             <Link
               href={profileHref(profile)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
             >
               <EyeIcon className="w-3.5 h-3.5" />
               View as public
@@ -382,7 +382,7 @@ export function ProfileView() {
             })}
             <button
               onClick={() => setTagModalOpen(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) text-[11px] font-medium border border-(--app-line)"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) text-[11px] font-medium border border-(--app-line)"
             >
               <Tag className="w-3 h-3" />
               {profile.tags.length === 0 ? "Add tags" : "Edit tags"}

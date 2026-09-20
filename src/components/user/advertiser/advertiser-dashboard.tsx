@@ -247,7 +247,7 @@ export function AdvertiserDashboard() {
           </Link>
           <button
             onClick={() => setBuying(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-[11px] font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-[11px] font-semibold"
           >
             From wallet
           </button>

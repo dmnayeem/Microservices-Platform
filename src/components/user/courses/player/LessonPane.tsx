@@ -170,7 +170,7 @@ export function LessonPane({
             type="button"
             onClick={onPrev}
             disabled={!hasPrev}
-            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-bold disabled:opacity-30"
+            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-bold disabled:opacity-30"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Prev
           </button>

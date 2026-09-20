@@ -211,7 +211,7 @@ export function InvoicesCard() {
                 </span>
                 <a
                   href={inv.pdfUrl}
-                  className="p-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
+                  className="p-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2)"
                   title="Download PDF"
                 >
                   <Download className="w-3.5 h-3.5" />

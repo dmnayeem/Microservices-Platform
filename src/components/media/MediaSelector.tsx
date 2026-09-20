@@ -387,7 +387,7 @@ export function MediaSelector({
                             key={item.id}
                             onClick={() => handleSelectMedia(item)}
                             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
-                              isSelected ? "bg-(--app-cta)/20 border-2 border-(--app-accent-edge)" : "bg-(--app-surface-2) hover:bg-(--app-surface-2)"
+                              isSelected ? "bg-(--app-cta)/20 border-2 border-(--app-accent-edge)" : "bg-(--app-surface-2) hover:bg-(--app-surface-hover)"
                             }`}
                           >
                             <div className="shrink-0">

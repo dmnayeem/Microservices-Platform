@@ -95,7 +95,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
             </button>
             <button
               onClick={rejectAll}
-              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
+              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
             >
               Reject All
             </button>

@@ -157,7 +157,7 @@ export default function ArticleTaskCompleteClient() {
                 </code>
                 <button
                   onClick={copyKey}
-                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) rounded-md"
+                  className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) rounded-md"
                 >
                   {copied ? (
                     <Check className="w-3 h-3 text-emerald-400" />
@@ -174,7 +174,7 @@ export default function ArticleTaskCompleteClient() {
             <div className="flex gap-2">
               <Link
                 href="/article-tasks"
-                className="flex-1 py-2.5 text-center text-sm font-semibold rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink)"
+                className="flex-1 py-2.5 text-center text-sm font-semibold rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink)"
               >
                 More tasks
               </Link>
@@ -212,7 +212,7 @@ export default function ArticleTaskCompleteClient() {
                   </code>
                   <button
                     onClick={copyKey}
-                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) rounded-md"
+                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2) rounded-md"
                   >
                     {copied ? (
                       <Check className="w-3 h-3 text-emerald-400" />
@@ -232,7 +232,7 @@ export default function ArticleTaskCompleteClient() {
             <div className="flex gap-2">
               <button
                 onClick={() => router.refresh()}
-                className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink)"
+                className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink)"
               >
                 Retry
               </button>

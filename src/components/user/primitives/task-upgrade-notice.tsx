@@ -75,7 +75,7 @@ export function TaskLockedNotice({
         </p>
         <Link
           href="/tasks"
-          className="mt-4 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold transition-colors"
+          className="mt-4 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-bold transition-colors"
         >
           Back to tasks
         </Link>

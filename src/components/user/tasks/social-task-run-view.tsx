@@ -721,7 +721,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           </Link>
           <Link
             href="/social-tasks?tab=submitted"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
           >
             View my submissions
           </Link>

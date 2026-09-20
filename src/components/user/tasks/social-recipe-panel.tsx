@@ -319,7 +319,7 @@ function ImageStep({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-[11px] font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-[11px] font-bold"
           >
             <ExternalLink className="w-3.5 h-3.5" /> Open image to save
           </a>

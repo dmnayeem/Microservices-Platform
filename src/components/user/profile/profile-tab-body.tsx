@@ -124,7 +124,7 @@ export function ProfileTabBody({
             </div>
             <button
               onClick={() => openEdit("personal")}
-              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
+              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-semibold"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit Details
@@ -625,7 +625,7 @@ export function ProfileTabBody({
                     "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
                     editTab === t.key
                       ? "bg-(--app-cta)/15 text-(--app-on-cta) border border-(--app-accent-edge)/40"
-                      : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface)"
+                      : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
                   )}
                 >
                   <t.icon className="w-4 h-4" />

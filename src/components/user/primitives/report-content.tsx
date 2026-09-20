@@ -75,7 +75,7 @@ export function ReportContent({
           <button
             disabled={busy}
             onClick={() => onOpenChange(false)}
-            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>

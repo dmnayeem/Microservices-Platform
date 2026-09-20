@@ -131,7 +131,7 @@ export function TwoFactorSetup() {
                 </code>
                 <button
                   onClick={copy}
-                  className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-blue-400"
+                  className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-blue-400"
                 >
                   {copied ? (
                     <Check className="w-4 h-4" />

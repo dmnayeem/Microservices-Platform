@@ -415,7 +415,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                       type="button"
                       disabled={busy === `${o.id}:withdraw`}
                       onClick={() => action(o.id, { action: "withdraw" })}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-(--app-surface-2)/50 hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-bold disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-(--app-surface-2)/50 hover:bg-(--app-surface-hover) text-(--app-ink) text-xs font-bold disabled:opacity-50"
                     >
                       {busy === `${o.id}:withdraw` ? (
                         <Loader2 className="w-3 h-3 animate-spin" />

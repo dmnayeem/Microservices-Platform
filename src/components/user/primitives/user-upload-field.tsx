@@ -98,7 +98,7 @@ export function UserUploadField({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-(--app-surface-2) text-(--app-ink) rounded-lg hover:bg-(--app-surface-2) border border-(--app-line) disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-(--app-surface-2) text-(--app-ink) rounded-lg hover:bg-(--app-surface-hover) border border-(--app-line) disabled:opacity-50"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
           {busy ? "Uploading…" : value ? "Change" : `Upload ${isVideo ? "video" : "image"}`}

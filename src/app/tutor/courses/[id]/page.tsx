@@ -56,14 +56,14 @@ export default async function TutorEditCoursePage({
         <div className="flex items-center gap-2">
           <Link
             href={`/tutor/courses/${id}/students`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-bold"
           >
             <Users className="w-4 h-4" />
             Students
           </Link>
           <Link
             href={`/tutor/courses/${id}/announcements`}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-bold"
           >
             <Megaphone className="w-4 h-4" />
             Announcements

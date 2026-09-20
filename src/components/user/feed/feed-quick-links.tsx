@@ -99,7 +99,7 @@ export function FeedQuickLinks({
             // the panel handle, and six bordered chips beside those pushed the
             // row past its width. So the chrome drops away and it goes back to
             // plain text buttons, which is what fits.
-            className="app-tap app-press inline-flex max-sm:flex-1 sm:shrink-0 items-center justify-center gap-1.5 rounded-(--app-r-chip) border border-(--app-line) bg-(--app-surface-2) px-0 text-xs font-bold text-(--app-ink) hover:border-(--app-accent-edge) hover:text-white sm:border-transparent sm:bg-transparent sm:px-2.5 sm:text-(--app-ink-2) sm:hover:border-transparent sm:hover:bg-(--app-surface-2) sm:hover:text-white"
+            className="app-tap app-press inline-flex max-sm:flex-1 sm:shrink-0 items-center justify-center gap-1.5 rounded-(--app-r-chip) border border-(--app-line) bg-(--app-surface-2) px-0 text-xs font-bold text-(--app-ink) hover:border-(--app-accent-edge) hover:text-white sm:border-transparent sm:bg-transparent sm:px-2.5 sm:text-(--app-ink-2) sm:hover:border-transparent sm:hover:bg-(--app-surface-hover) sm:hover:text-white"
           >
             <l.icon className="h-4.5 w-4.5 shrink-0" />
             <span className="hidden sm:inline">{l.short}</span>

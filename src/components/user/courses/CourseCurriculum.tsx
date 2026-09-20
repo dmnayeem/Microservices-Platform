@@ -125,7 +125,7 @@ export function CourseCurriculum({
                     return (
                       <li
                         key={l.id}
-                        className="flex items-center gap-3 p-3 hover:bg-(--app-surface)/60"
+                        className="flex items-center gap-3 p-3 hover:bg-(--app-surface-2)/60"
                       >
                         <Icon className={`w-4 h-4 shrink-0 ${meta.tone}`} />
                         <div className="flex-1 min-w-0">

@@ -61,7 +61,7 @@ export function FilterChips<T extends string>({
                 "shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
                 active
                   ? "bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white shadow-md shadow-(--app-cta)/25"
-                  : "bg-(--app-surface-2) text-(--app-ink-2) border border-(--app-line)/60 hover:bg-(--app-surface-2) hover:text-white"
+                  : "bg-(--app-surface-2) text-(--app-ink-2) border border-(--app-line)/60 hover:bg-(--app-surface-hover) hover:text-white"
               )}
             >
               {opt.label}

@@ -117,7 +117,7 @@ export function AchievementsView() {
       </p>
 
       {summary && summary.pointsClaimable > 0 && (
-        <div className="rounded-(--app-r-control) border border-(--app-info-line) bg-(--app-info-soft) px-3 py-2.5 t-body text-(--app-info)">
+        <div className="rounded-(--app-r-control) border border-(--app-accent-edge) bg-(--app-nav-wash) px-3 py-2.5 t-body text-(--app-accent-ink)">
           You have <strong>{pts(summary.pointsClaimable)} points</strong> waiting.
           Tap a claimable badge above to collect it.
         </div>
@@ -140,7 +140,7 @@ export function AchievementsView() {
               className={cn(
                 "app-tap app-press app-lift relative aspect-square rounded-(--app-r-control) border flex flex-col items-center justify-center gap-0.5 p-1.5 text-center",
                 a.canClaim
-                  ? "bg-(--app-info-soft) border-(--app-info-line)"
+                  ? "bg-(--app-nav-wash) border-(--app-accent-edge)"
                   : a.isUnlocked
                     ? "bg-(--app-surface-2) border-(--app-line) opacity-80"
                     : "bg-(--app-surface-2) border-(--app-line) opacity-60"
@@ -157,7 +157,7 @@ export function AchievementsView() {
                 className={cn(
                   "t-meta font-bold text-center line-clamp-2",
                   a.canClaim
-                    ? "text-(--app-info)"
+                    ? "text-(--app-accent-ink)"
                     : a.isUnlocked
                       ? "text-(--app-ink-2)"
                       : "text-(--app-ink-3)"
@@ -205,7 +205,7 @@ export function AchievementsView() {
             <div className="mb-4">
               <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
                 <div
-                  className="h-full bg-(--app-info)"
+                  className="h-full bg-(--app-cta)"
                   style={{ width: `${active.progress.percentage}%` }}
                 />
               </div>
@@ -216,7 +216,7 @@ export function AchievementsView() {
             </div>
 
             {(active.pointsReward > 0 || active.xpReward > 0) && (
-              <p className="t-body font-bold text-(--app-info)">
+              <p className="t-body font-bold text-(--app-accent-ink)">
                 Reward: {active.pointsReward > 0 && `+${pts(active.pointsReward)} pts`}
                 {active.pointsReward > 0 && active.xpReward > 0 && " · "}
                 {active.xpReward > 0 && `+${active.xpReward} XP`}

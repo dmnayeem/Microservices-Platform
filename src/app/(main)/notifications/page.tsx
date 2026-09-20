@@ -277,7 +277,7 @@ export default function NotificationsPage() {
               "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
               showUnreadOnly
                 ? "bg-(--app-cta) text-(--app-on-cta)"
-                : "bg-(--app-surface-2) text-(--app-ink-3) hover:bg-(--app-surface-2)"
+                : "bg-(--app-surface-2) text-(--app-ink-3) hover:bg-(--app-surface-hover)"
             )}
           >
             <Filter className="w-4 h-4" />
@@ -286,7 +286,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-(--app-surface-2) text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2) rounded-lg text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-(--app-surface-2) text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-hover) rounded-lg text-sm font-medium transition-colors"
             >
               <CheckCheck className="w-4 h-4" />
               Mark all read
@@ -447,7 +447,7 @@ export default function NotificationsPage() {
                   className={cn(
                     "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
                     currentPage > 1
-                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2)"
+                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-hover)"
                       : "bg-(--app-surface-2)/50 text-(--app-ink-3) cursor-not-allowed"
                   )}
                 >
@@ -460,7 +460,7 @@ export default function NotificationsPage() {
                   className={cn(
                     "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
                     currentPage < pagination.totalPages
-                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-2)"
+                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-hover)"
                       : "bg-(--app-surface-2)/50 text-(--app-ink-3) cursor-not-allowed"
                   )}
                 >

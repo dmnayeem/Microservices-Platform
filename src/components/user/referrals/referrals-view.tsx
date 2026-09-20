@@ -267,7 +267,7 @@ export function ReferralsView({
             </code>
             <button
               onClick={() => copyText(referralCode, "Code")}
-              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
+              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2)"
               aria-label="Copy code"
             >
               <Copy className="w-4 h-4" />
@@ -288,7 +288,7 @@ export function ReferralsView({
             />
             <button
               onClick={() => copyText(shareUrl, "Link")}
-              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
+              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2)"
               aria-label="Copy link"
             >
               <Copy className="w-4 h-4" />
@@ -299,7 +299,7 @@ export function ReferralsView({
         <div className="flex gap-2">
           <button
             onClick={() => setShowQr((v) => !v)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
           >
             <QrCode className="w-4 h-4" />
             {showQr ? "Hide QR" : "Show QR"}

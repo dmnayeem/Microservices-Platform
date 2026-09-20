@@ -1854,7 +1854,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      "success" and a balance would be saying "you are here". Measured on the
      chrome each theme actually paints: dark ink 7.96:1, light ink 5.21:1. */
   --app-nav-on: #34d399;
-  --app-nav-wash: #0e2a22;
+  --app-nav-wash: #14392e;
 
   /* The filled primary button, and accent-coloured text.
      Two jobs the gradient cannot do. The gradient is a large surface; a button
@@ -2040,7 +2040,7 @@ html[data-theme="light"] {
   /* #059669 is 3.58:1 on this wash — under the floor for a label. The design's
      own "deep emerald" is what carries it. */
   --app-nav-on: #047857;
-  --app-nav-wash: #ecfdf5;
+  --app-nav-wash: #d5f5e5;
   /* The document specifies #059669 filled with white text. Measured, that is
      3.77:1 — a 14px semibold label under the floor. The design's own hover
      step (#047857) is 5.36:1, so the two swap: #047857 fills the button and
