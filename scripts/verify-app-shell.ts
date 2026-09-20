@@ -491,10 +491,13 @@ function main() {
 
     // Rail width and content offset are two numbers that must agree at BOTH
     // tiers; if either drifts the content sits under the rail or leaves a gap.
+    // One width now, not two: the launch design fixes the rail at 260px, which
+    // also hands the centre column the 28px the lg tier used to spend on a
+    // wider rail. Still two numbers that must agree.
     check(
-      "content is offset by the rail width at md and at lg",
-      /md:w-64 lg:w-72/.test(sb) && /md:pl-64 lg:pl-72/.test(layout),
-      layout.match(/md:pl-\d+ lg:pl-\d+/)?.[0]
+      "content is offset by the rail width",
+      /md:w-\[260px\]/.test(sb) && /md:pl-\[260px\]/.test(layout),
+      layout.match(/md:pl-\[\d+px\]/)?.[0]
     );
     check(
       "the page's bottom reserve drops where the tab bar does",

@@ -176,7 +176,7 @@ export function BottomTabBar({
                 // add up to — a tab bar row is the most-tapped target in the
                 // app and it must not depend on the label's line height.
                 "app-press relative flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-bold tracking-tight",
-                activeTab ? "text-(--app-info)" : "text-gray-400"
+                activeTab ? "text-(--app-info)" : "text-(--app-ink-3)"
               )}
             >
               {/* Which tab you are on was carried by colour alone (indigo
@@ -201,7 +201,7 @@ export function BottomTabBar({
                     "flex items-center justify-center w-14 h-14 rounded-(--app-r-panel) transition-all -mt-5",
                     activeTab
                       ? "app-accent app-accent-glow"
-                      : "bg-(--app-surface-2) text-gray-300 border border-(--app-line)"
+                      : "bg-(--app-surface-2) text-(--app-ink-2) border border-(--app-line)"
                   )}
                 >
                   <tab.icon className="w-6 h-6" />
@@ -221,7 +221,7 @@ export function BottomTabBar({
             setMenuOpen(true);
           }}
           aria-label={unread > 0 ? `Open menu, ${unread} unread` : "Open menu"}
-          className="app-press flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-bold tracking-tight text-gray-400"
+          className="app-press flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-bold tracking-tight text-(--app-ink-3)"
         >
           <span className="relative">
             <Menu className="w-5.5 h-5.5" />

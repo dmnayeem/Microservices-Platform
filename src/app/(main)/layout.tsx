@@ -79,7 +79,7 @@ export default async function MainLayout({
 
       {/* Main Content */}
       {/* Rail width at each tier: 0 (phone) → 256px (md) → 288px (lg). */}
-      <div className="md:pl-64 lg:pl-72">
+      <div className="md:pl-[260px]">
         {/* Header */}
         <Header user={session.user} avatar={avatar} />
 

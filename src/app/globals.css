@@ -1783,6 +1783,15 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
   --app-accent-edge: #34d399;
   --app-rail-a: #34d399;
   --app-rail-b: #10b981;
+
+  /* The active navigation row — its own pair, not `--app-in`.
+     The design gives the active item an accent wash and accent ink, and the
+     accent here is the same emerald as "money arrived". Borrowing `--app-in`
+     would make the two mean one thing, so a sidebar row would be saying
+     "success" and a balance would be saying "you are here". Measured on the
+     chrome each theme actually paints: dark ink 7.96:1, light ink 5.21:1. */
+  --app-nav-on: #34d399;
+  --app-nav-wash: #0e2a22;
   --app-rail: linear-gradient(180deg, var(--app-rail-a), var(--app-rail-b));
 
   /* ── Semantic colour — four meanings, nothing decorative ─────────────────
@@ -1911,6 +1920,10 @@ html[data-theme="light"] {
   --app-accent-edge: #059669;
   --app-rail-a: #059669;
   --app-rail-b: #047857;
+  /* #059669 is 3.58:1 on this wash — under the floor for a label. The design's
+     own "deep emerald" is what carries it. */
+  --app-nav-on: #047857;
+  --app-nav-wash: #ecfdf5;
 
   /* The same four meanings, and — deliberately — the same four inks the
      `[class*="text-<hue>-"]` family rules paint. One light accent ink per hue
@@ -2105,7 +2118,7 @@ html[data-theme="light"] {
     border-radius: 9999px;
     border: 1px solid var(--app-line);
     background-color: var(--app-surface-2);
-    color: var(--color-gray-400);
+    color: var(--app-ink-3);
     font-size: 0.6875rem;
     font-weight: 700;
     line-height: 1.3;
@@ -2197,11 +2210,11 @@ html[data-theme="light"] {
   }
   .app-nav-item:hover {
     background-color: var(--shell-hover);
-    color: var(--color-gray-100);
+    color: var(--app-ink);
   }
   .app-nav-item[aria-current="page"] {
-    background-color: var(--app-info-soft);
-    color: var(--app-info);
+    background-color: var(--app-nav-wash);
+    color: var(--app-nav-on);
     font-weight: 700;
   }
   .app-nav-item[aria-current="page"]::before {

@@ -97,7 +97,7 @@ const navigationGroups: Group[] = [
     ],
   },
   {
-    section: "Earn",
+    section: "Earn & Work",
     items: [
       { name: "Daily Mission", href: "/daily-mission", icon: Target, feature: "dailyMission", keywords: "today checklist streak" },
       // Distinct from Daily Mission on purpose: daily = today's checklist,
@@ -121,7 +121,7 @@ const navigationGroups: Group[] = [
     ],
   },
   {
-    section: "Grow",
+    section: "Network & Grow",
     items: [
       { name: "My Team", href: "/referrals", icon: Users, feature: "referrals", keywords: "referral refer invite downline" },
       { name: "Affiliate", href: "/affiliate", icon: Handshake, keywords: "commission partner links" },
@@ -141,7 +141,7 @@ const navigationGroups: Group[] = [
     ],
   },
   {
-    section: "Account",
+    section: "Account & Admin",
     items: [
       { name: "Add Funds", href: "/deposit", icon: CreditCard, keywords: "deposit top up recharge pay" },
       { name: "Withdrawal", href: "/withdrawal", icon: ArrowUpRight, feature: "withdrawals", keywords: "cash out payout redeem" },
@@ -281,7 +281,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
             >
               {user.name || "User"}
             </p>
-            <p className="t-meta text-gray-500 truncate">{user.email}</p>
+            <p className="t-meta text-(--app-ink-3) truncate">{user.email}</p>
           </div>
         </Link>
       </div>
@@ -289,21 +289,21 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
       {/* Filter — the shell's "find a page" affordance. */}
       <div className="px-3 pt-3 pb-1">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
           <input
             type="search"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter menu…"
             aria-label="Filter navigation"
-            className="app-tap-row w-full pl-10 pr-10 py-2 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-(--app-accent-edge) focus:ring-1 focus:ring-(--app-accent-edge)"
+            className="app-tap-row w-full pl-10 pr-10 py-2 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) focus:ring-1 focus:ring-(--app-accent-edge)"
           />
           {filter && (
             <button
               type="button"
               onClick={() => setFilter("")}
               aria-label="Clear filter"
-              className="app-press absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-(--app-r-chip) text-gray-400 hover:text-white hover:bg-(--shell-hover)"
+              className="app-press absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-(--app-r-chip) text-(--app-ink-3) hover:text-white hover:bg-(--shell-hover)"
             >
               <X className="w-4 h-4" />
             </button>
@@ -321,13 +321,13 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           different hues. */}
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
         {noResults && (
-          <p className="px-3 py-6 t-body text-gray-400 text-center">
+          <p className="px-3 py-6 t-body text-(--app-ink-3) text-center">
             Nothing matches “{filter}”.
           </p>
         )}
         {groups.map((group) => (
           <div key={group.section}>
-            <p className="t-eyebrow px-3 mb-2 text-gray-500">{group.section}</p>
+            <p className="t-eyebrow px-3 mb-2 text-(--app-ink-3)">{group.section}</p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive =
@@ -359,7 +359,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
             key={mode.section}
             className="border-t border-(--shell-border) px-3 py-3"
           >
-            <p className="t-eyebrow px-3 mb-2 text-gray-500">{mode.section}</p>
+            <p className="t-eyebrow px-3 mb-2 text-(--app-ink-3)">{mode.section}</p>
             <ul className="space-y-0.5">
               {mode.items.map((item) => {
                 const isActive =
@@ -440,7 +440,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
         <button
           onClick={() => setMobileOpen(false)}
           aria-label="Close menu"
-          className="app-tap app-press absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-(--app-r-control) text-gray-300 hover:text-white hover:bg-(--shell-hover)"
+          className="app-tap app-press absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
         >
           <X className="w-5 h-5" />
         </button>
@@ -465,7 +465,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
           which is what a tablet app does — and the bottom bar and hamburger turn
           off at the same breakpoint so there is exactly one navigation model at
           every width. */}
-      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-64 lg:w-72 md:flex-col pl-[env(safe-area-inset-left)]">
+      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-[260px] md:flex-col pl-[env(safe-area-inset-left)]">
         <div className="app-chrome flex flex-col h-full rounded-none border-0 border-r border-(--shell-border)">
           <SidebarContent
             user={user}

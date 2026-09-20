@@ -189,7 +189,7 @@ export function Header({ user, avatar }: HeaderProps) {
               <button
                 onClick={() => router.back()}
                 aria-label="Go back"
-                className="app-tap app-press -ml-1.5 inline-flex items-center justify-center rounded-(--app-r-control) text-gray-300 hover:text-white hover:bg-(--shell-hover)"
+                className="app-tap app-press -ml-1.5 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -198,7 +198,7 @@ export function Header({ user, avatar }: HeaderProps) {
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open menu"
               className={cn(
-                "app-tap app-press inline-flex items-center justify-center rounded-(--app-r-control) text-gray-300 hover:text-white hover:bg-(--shell-hover)",
+                "app-tap app-press inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)",
                 !showBack && "-ml-1.5"
               )}
             >
@@ -224,11 +224,11 @@ export function Header({ user, avatar }: HeaderProps) {
               onClick={() => setIsSearchOpen(true)}
               className="app-press app-tap-row group w-full flex items-center gap-3 pl-3.5 pr-2 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-(--app-r-control) text-left hover:border-(--app-line-strong)"
             >
-              <Search className="w-5 h-5 shrink-0 text-gray-500 group-hover:text-gray-400" />
-              <span className="t-body flex-1 min-w-0 truncate text-gray-500">
+              <Search className="w-5 h-5 shrink-0 text-(--app-ink-3) group-hover:text-(--app-ink-3)" />
+              <span className="t-body flex-1 min-w-0 truncate text-(--app-ink-3)">
                 Search tasks, people, courses…
               </span>
-              <kbd className="hidden xl:inline-block shrink-0 px-1.5 py-0.5 rounded-md border border-(--app-line) bg-(--app-surface) text-[10px] font-semibold text-gray-500">
+              <kbd className="hidden xl:inline-block shrink-0 px-1.5 py-0.5 rounded-md border border-(--app-line) bg-(--app-surface) text-[10px] font-semibold text-(--app-ink-3)">
                 {shortcutHint}
               </kbd>
             </button>
@@ -249,7 +249,7 @@ export function Header({ user, avatar }: HeaderProps) {
               type="button"
               onClick={() => setIsSearchOpen(true)}
               aria-label="Search"
-              className="app-tap app-press md:hidden inline-flex items-center justify-center rounded-(--app-r-control) text-gray-300 hover:text-white hover:bg-(--shell-hover)"
+              className="app-tap app-press md:hidden inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -265,7 +265,7 @@ export function Header({ user, avatar }: HeaderProps) {
               aria-label={`Wallet balance: ${walletBalance.toLocaleString()} points`}
               className="app-press app-tap-row hidden sm:flex items-center gap-2 px-3 rounded-(--app-r-control) bg-(--app-surface-2) border border-(--app-line) hover:border-(--app-line-strong)"
             >
-              <Wallet className="w-4 h-4 shrink-0 text-gray-400" />
+              <Wallet className="w-4 h-4 shrink-0 text-(--app-ink-3)" />
               <span className="flex items-baseline gap-1">
                 <span
                   key={tick}
@@ -276,7 +276,7 @@ export function Header({ user, avatar }: HeaderProps) {
                 >
                   {walletBalance.toLocaleString()}
                 </span>
-                <span className="t-eyebrow text-gray-400">PTS</span>
+                <span className="t-eyebrow text-(--app-ink-3)">PTS</span>
               </span>
             </Link>
 
@@ -302,7 +302,7 @@ export function Header({ user, avatar }: HeaderProps) {
                     ? `Notifications, ${unreadCount} unread`
                     : "Notifications"
                 }
-                className="app-tap app-press relative inline-flex items-center justify-center rounded-(--app-r-control) text-gray-300 hover:text-white hover:bg-(--shell-hover)"
+                className="app-tap app-press relative inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -336,7 +336,7 @@ export function Header({ user, avatar }: HeaderProps) {
                     </div>
                     <div className="max-h-88 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="px-4 py-10 text-center text-gray-500">
+                        <div className="px-4 py-10 text-center text-(--app-ink-3)">
                           <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                           <p className="t-body">No notifications</p>
                         </div>
@@ -359,10 +359,10 @@ export function Header({ user, avatar }: HeaderProps) {
                                 <p className="t-card-title text-white truncate">
                                   {notif.title}
                                 </p>
-                                <p className="t-meta text-gray-400 mt-0.5 line-clamp-2">
+                                <p className="t-meta text-(--app-ink-3) mt-0.5 line-clamp-2">
                                   {notif.message}
                                 </p>
-                                <p className="t-meta text-gray-500 mt-1">
+                                <p className="t-meta text-(--app-ink-3) mt-1">
                                   {formatTimeAgo(notif.createdAt)}
                                 </p>
                               </div>
@@ -398,7 +398,7 @@ export function Header({ user, avatar }: HeaderProps) {
                   name={user.name || user.email}
                   size={32}
                 />
-                <ChevronDown className="hidden sm:block w-4 h-4 text-gray-400" />
+                <ChevronDown className="hidden sm:block w-4 h-4 text-(--app-ink-3)" />
               </button>
 
               {/* Dropdown Menu */}
@@ -415,7 +415,7 @@ export function Header({ user, avatar }: HeaderProps) {
                         <p className="t-card-title text-white truncate">
                           {user.name || "User"}
                         </p>
-                        <p className="t-meta text-gray-500 truncate">
+                        <p className="t-meta text-(--app-ink-3) truncate">
                           {user.email}
                         </p>
                       </div>
