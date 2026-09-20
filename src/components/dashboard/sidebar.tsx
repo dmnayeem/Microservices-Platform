@@ -466,7 +466,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
           off at the same breakpoint so there is exactly one navigation model at
           every width. */}
       <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:flex md:w-[260px] md:flex-col pl-[env(safe-area-inset-left)]">
-        <div className="app-chrome flex flex-col h-full rounded-none border-0 border-r border-(--shell-border)">
+        <div className="app-sidebar app-chrome flex flex-col h-full rounded-none border-0 border-r border-(--shell-border)">
           <SidebarContent
             user={user}
             pathname={pathname}

@@ -112,7 +112,7 @@ export function EarningHub({ user }: EarningHubProps) {
         </div>
         <button
           onClick={() => setSearchOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-(--app-surface) border border-(--app-line) hover:border-(--app-line) text-(--app-ink-3) hover:text-white text-sm transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-(--app-surface) border border-(--app-line) hover:border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink) text-sm transition-colors"
         >
           <Search className="w-4 h-4" />
           Search…
@@ -136,7 +136,7 @@ export function EarningHub({ user }: EarningHubProps) {
               >
                 <item.icon className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium text-(--app-ink-2) group-hover:text-white text-center leading-tight">
+              <span className="text-[11px] font-medium text-(--app-ink-2) group-hover:text-(--app-ink) text-center leading-tight">
                 {item.name}
               </span>
             </Link>
@@ -160,7 +160,7 @@ export function EarningHub({ user }: EarningHubProps) {
                 "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors border",
                 isActive
                   ? "bg-(--app-cta)/15 text-(--app-on-cta) border-(--app-accent-edge)/40"
-                  : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white hover:bg-(--app-surface-2)"
+                  : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
               )}
             >
               <t.icon className="w-4 h-4" />
@@ -389,7 +389,7 @@ export function LearnTab() {
                     )}
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-white shrink-0 self-center" />
+                <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-(--app-ink) shrink-0 self-center" />
               </div>
             </Link>
           ))}
@@ -979,7 +979,7 @@ export function OfferwallTab() {
                         </p>
                       )}
                     </div>
-                    <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-white shrink-0 self-center" />
+                    <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-(--app-ink) shrink-0 self-center" />
                   </div>
                 </a>
               ))}

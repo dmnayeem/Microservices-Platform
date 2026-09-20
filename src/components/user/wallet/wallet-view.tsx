@@ -189,7 +189,7 @@ export function WalletView(props: WalletViewProps) {
                 "app-tap-row app-press shrink-0 inline-flex items-center gap-1.5 px-4 text-sm font-bold border-b-2 -mb-px",
                 isActive
                   ? "text-white border-(--app-rail-a)"
-                  : "text-(--app-ink-3) border-transparent hover:text-white"
+                  : "text-(--app-ink-3) border-transparent hover:text-(--app-ink)"
               )}
             >
               <t.icon className="w-4 h-4" />
@@ -323,7 +323,7 @@ function ConvertCard({
               <button
                 type="button"
                 onClick={() => setAmountStr(String(points))}
-                className="app-press absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-(--app-r-chip) bg-(--app-surface) border border-(--app-line) text-[10px] font-extrabold text-(--app-ink-2) hover:text-white"
+                className="app-press absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-(--app-r-chip) bg-(--app-surface) border border-(--app-line) text-[10px] font-extrabold text-(--app-ink-2) hover:text-(--app-ink)"
               >
                 MAX
               </button>

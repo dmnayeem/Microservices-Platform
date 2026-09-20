@@ -85,7 +85,7 @@ export function SplashScreen() {
       {/* Skip */}
       <button
         onClick={dismiss}
-        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-(--app-surface)/70 text-(--app-ink-2) text-xs font-semibold hover:text-white"
+        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-(--app-surface)/70 text-(--app-ink-2) text-xs font-semibold hover:text-(--app-ink)"
       >
         Skip <X className="w-3.5 h-3.5" />
       </button>

@@ -84,7 +84,7 @@ export function ScrollFadeRow({
           type="button"
           onClick={() => scrollBy(-1)}
           aria-label="Scroll left"
-          className="hidden sm:flex absolute left-0.5 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-(--app-surface)/90 border border-(--app-line)/60 text-(--app-ink-2) shadow-md hover:text-white hover:bg-(--app-surface-2) z-10"
+          className="hidden sm:flex absolute left-0.5 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-(--app-surface)/90 border border-(--app-line)/60 text-(--app-ink-2) shadow-md hover:text-(--app-ink) hover:bg-(--app-surface-2) z-10"
         >
           <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden="true">
             <path d="M12.5 5l-5 5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -96,7 +96,7 @@ export function ScrollFadeRow({
           type="button"
           onClick={() => scrollBy(1)}
           aria-label="Scroll right"
-          className="hidden sm:flex absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-(--app-surface)/90 border border-(--app-line)/60 text-(--app-ink-2) shadow-md hover:text-white hover:bg-(--app-surface-2) z-10"
+          className="hidden sm:flex absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-(--app-surface)/90 border border-(--app-line)/60 text-(--app-ink-2) shadow-md hover:text-(--app-ink) hover:bg-(--app-surface-2) z-10"
         >
           <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden="true">
             <path d="M7.5 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

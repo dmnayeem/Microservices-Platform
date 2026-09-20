@@ -2460,6 +2460,18 @@ html[data-theme="light"] {
     transition: background-color var(--app-fast) ease,
       color var(--app-fast) ease;
   }
+  /* The desktop sidebar is the one place these rows are never touched: it is
+     `hidden md:flex` and driven by a pointer. There the document's 10px row
+     applies, and it matters — at the 44px finger floor a twenty-item menu runs
+     past the fold, which is what made the column read crowded. Everywhere else
+     this class builds the account menu and the post menu, both of which ARE
+     thumbed, so the floor stays. */
+  @media (min-width: 768px) and (pointer: fine) {
+    .app-sidebar .app-nav-item {
+      min-height: 2.5rem;
+      padding: 0.625rem 0.75rem;
+    }
+  }
   .app-nav-item:hover {
     background-color: var(--shell-hover);
     color: var(--app-ink);

@@ -109,14 +109,14 @@ export function CoursePlayerShell({
         <button
           type="button"
           onClick={() => setSidebarOpen((s) => !s)}
-          className="p-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink-2) hover:text-white"
+          className="p-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink-2) hover:text-(--app-ink)"
           aria-label="Toggle curriculum"
         >
           {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
         </button>
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
+          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-(--app-ink)"
         >
           <ChevronLeft className="w-3.5 h-3.5" /> Course page
         </Link>
