@@ -87,7 +87,7 @@ export function LocationsManagerView({ canEdit }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)] gap-6">
         {/* Country list */}
         <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
           <div className="p-3 border-b border-gray-800">

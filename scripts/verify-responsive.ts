@@ -29,8 +29,18 @@ function check(label: string, ok: boolean, detail = "") {
   }
 }
 
-/** Every user-facing .tsx. The admin panel is out of scope by instruction. */
-function userFacing(): string[] {
+/**
+ * Every .tsx, admin included.
+ *
+ * The redesign left the admin panel's PALETTE alone on purpose — it is its own
+ * visual identity and repainting 6,349 classes was not the job. None of that
+ * applies here. A grid column that cannot give way is wrong on any screen, and
+ * the admin panel is opened from a phone like everything else; excluding it
+ * from a structural check would only mean the owner finds those breaks by
+ * photograph instead. Colour stays out of this file entirely — verify-light-
+ * theme measures that, for admin too.
+ */
+function allTsx(): string[] {
   const out: string[] = [];
   const walk = (dir: string) => {
     let entries: fs.Dirent[];
@@ -41,10 +51,8 @@ function userFacing(): string[] {
     }
     for (const e of entries) {
       const rel = `${dir}/${e.name}`;
-      if (e.isDirectory()) {
-        if (e.name === "admin") continue;
-        walk(rel);
-      } else if (e.name.endsWith(".tsx")) out.push(rel);
+      if (e.isDirectory()) walk(rel);
+      else if (e.name.endsWith(".tsx")) out.push(rel);
     }
   };
   walk("src/app");
@@ -52,24 +60,40 @@ function userFacing(): string[] {
   return out.sort();
 }
 
-const FILES = userFacing();
+const FILES = allTsx();
 
-/** Every class list in a file, with its line number. */
-function classLists(file: string): { line: number; cls: string }[] {
-  const out: { line: number; cls: string }[] = [];
-  const src = read(file);
-  src.split("\n").forEach((line, i) => {
+/**
+ * Every class list in a file, with its line number and the few lines above it.
+ *
+ * Comments are blanked first: a class list quoted in a doc block is an example,
+ * not markup, and flagging one sends the reader to a file where nothing is
+ * wrong. The preceding lines come along because some rules cannot be judged
+ * from the element alone — a wide table is correct precisely when something
+ * above it scrolls.
+ */
+function classLists(file: string): { line: number; cls: string; above: string }[] {
+  const out: { line: number; cls: string; above: string }[] = [];
+  const src = read(file).replace(/\/\*[\s\S]*?\*\//g, (m) =>
+    m.replace(/[^\n]/g, " ")
+  );
+  const lines = src.split("\n");
+  lines.forEach((line, i) => {
+    if (/^\s*\/\//.test(line)) return;
     for (const m of line.matchAll(/class(?:Name)?="([^"]*)"/g)) {
-      out.push({ line: i + 1, cls: m[1] });
+      out.push({
+        line: i + 1,
+        cls: m[1],
+        above: lines.slice(Math.max(0, i - 4), i).join(" "),
+      });
     }
   });
   return out;
 }
 
-const ALL: { file: string; line: number; cls: string }[] = [];
+const ALL: { file: string; line: number; cls: string; above: string }[] = [];
 for (const f of FILES) for (const c of classLists(f)) ALL.push({ file: f, ...c });
 
-console.log(`\nverify-responsive — ${FILES.length} user-facing files, ${ALL.length} class lists\n`);
+console.log(`\nverify-responsive — ${FILES.length} files (admin included), ${ALL.length} class lists\n`);
 
 /* ══════════════════════════════════════════════════════════════════════════
    1. Shrinkable flex and grid children
@@ -118,14 +142,18 @@ console.log(`\nverify-responsive — ${FILES.length} user-facing files, ${ALL.le
 {
   const NARROWEST = 320;
   const offenders: string[] = [];
-  for (const { file, line, cls } of ALL) {
+  for (const { file, line, cls, above } of ALL) {
     for (const m of cls.matchAll(/(?<![-\w:])(?:(\w+):)?(?:min-)?w-\[(\d+)px\]/g)) {
       const breakpoint = m[1];
       const px = Number(m[2]);
       if (breakpoint) continue; // only applies above that breakpoint
-      if (px >= NARROWEST && !cls.includes("max-w-")) {
-        offenders.push(`${file}:${line} (w-[${px}px])`);
-      }
+      if (px < NARROWEST || cls.includes("max-w-")) continue;
+      // A wide table is the one case where a fixed width is the RIGHT answer:
+      // the columns keep their meaning and the row scrolls sideways instead of
+      // squashing every cell to nothing. That only holds when something above
+      // it actually scrolls, so this looks rather than assumes.
+      if (/overflow-x-(auto|scroll)/.test(above) || /overflow-x-(auto|scroll)/.test(cls)) continue;
+      offenders.push(`${file}:${line} (w-[${px}px])`);
     }
   }
   check(

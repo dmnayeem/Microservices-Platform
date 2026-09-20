@@ -147,7 +147,7 @@ export function CustomRolesManager({
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4" onClick={() => setOpen(false)}>
           <div className="mx-auto my-6 w-full max-w-2xl rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white">{editing ? "Edit role" : "New role"}</h3>
-            <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Name *</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} className={inp} placeholder="e.g. Support Level 2" />

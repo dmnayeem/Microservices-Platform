@@ -198,7 +198,7 @@ export function OfferwallOffersManager({
           <div className="mx-auto my-6 w-full max-w-2xl rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white">{form.id ? "Edit offer" : "New offer"}</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-4">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Image</label>
                 <ImageUploadField value={form.imageUrl ?? ""} onChange={(u) => set("imageUrl", u || null)} previewSize="square" title="Offer image" />

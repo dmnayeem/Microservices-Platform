@@ -166,7 +166,7 @@ export function AppInstallTaskBuilder({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-4 items-start">
         <div>
           <label className="block text-xs text-gray-400 mb-1.5">App icon</label>
           <ImageUploadField

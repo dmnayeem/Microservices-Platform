@@ -433,7 +433,7 @@ export function BoostFollowersView({
       </div>
 
       {/* Two-column layout — sticky preview on the right at lg+ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-6">
         {/* ── Left: Audience filters ─────────────────────────────────── */}
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 space-y-5">
           <div className="flex items-center justify-between">

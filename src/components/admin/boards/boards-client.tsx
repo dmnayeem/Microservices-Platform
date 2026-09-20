@@ -564,7 +564,7 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
             </p>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-[80px_1fr] gap-3">
+              <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3">
                 <Field label="Icon">
                   <input
                     value={modal.iconEmoji}

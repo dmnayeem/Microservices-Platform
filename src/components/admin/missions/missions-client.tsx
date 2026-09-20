@@ -467,7 +467,7 @@ function MissionModal({
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-[80px_1fr] gap-3">
+          <div className="grid grid-cols-[80px_minmax(0,1fr)] gap-3">
             <Field label="Icon">
               <input
                 value={form.iconEmoji}
@@ -591,7 +591,7 @@ function MissionModal({
                 </p>
               ) : (
                 form.tiers.map((t, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                  <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
                     <input
                       type="number"
                       min={1}

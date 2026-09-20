@@ -101,7 +101,7 @@ export function LandingEditor({ initial, canEdit }: Props) {
   const activeMeta = LANDING_SECTIONS.find((s) => s.key === active)!;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+    <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
       {/* Section rail */}
       <aside className="lg:sticky lg:top-4 self-start rounded-xl border border-slate-800 bg-slate-900 p-2 max-h-[calc(100vh-2rem)] overflow-y-auto">
         <ul className="space-y-0.5">
