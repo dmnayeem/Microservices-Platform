@@ -910,6 +910,78 @@ function main() {
       }
     }
 
+    /* 6c-ii. The brand pair is two pairs, and swapping them is invisible until
+       someone opens the other theme.
+
+       `--mk-grad-*` is the SOLID pair: it fills buttons and bands, and white
+       ink sits ON it, so both stops have to stay dark enough for that ink in
+       either theme. `--mk-rail-*` is the BRIGHT pair: it paints ON the page —
+       clipped headlines, progress bars, small tiles — so it has to flip per
+       theme or it vanishes into one of the two grounds.
+
+       A clipped headline written with grad-* renders dark green on a near-black
+       page. That is the specific mistake these two checks exist to catch, and
+       it is not visible in the theme the author happened to be looking at. */
+    for (const theme of ["light", "dark"]) {
+      for (const stop of ["mk-grad-a", "mk-grad-b"]) {
+        const f = hexOf(theme, stop);
+        const r = f ? ratio("#ffffff", f) : 0;
+        check(
+          `${theme}: white ink on ${stop} clears 4.5:1`,
+          r >= 4.5,
+          `#ffffff on ${f || "?"} = ${r.toFixed(2)}`
+        );
+      }
+      for (const stop of ["mk-rail-a", "mk-rail-b"]) {
+        const f = hexOf(theme, stop);
+        const b = hexOf(theme, "mk-bg");
+        const r = f && b ? ratio(f, b) : 0;
+        check(
+          `${theme}: ${stop} clears 4.5:1 on the page it is painted on`,
+          r >= 4.5,
+          `${f || "?"} on ${b || "?"} = ${r.toFixed(2)}`
+        );
+      }
+      const cta = hexOf(theme, "mk-cta");
+      const onCta = hexOf(theme, "mk-on-cta");
+      const r = cta && onCta ? ratio(onCta, cta) : 0;
+      check(
+        `${theme}: mk-on-cta on mk-cta clears 4.5:1`,
+        r >= 4.5,
+        `${onCta || "?"} on ${cta || "?"} = ${r.toFixed(2)}`
+      );
+    }
+
+    /* And the rule itself: no clipped-text gradient may use the solid pair. */
+    {
+      const offenders: string[] = [];
+      const under = (dir: string): string[] => {
+        const out: string[] = [];
+        const walk = (d: string) => {
+          for (const e of fs.readdirSync(path.join(root, d), { withFileTypes: true })) {
+            const rel = `${d}/${e.name}`;
+            if (e.isDirectory()) walk(rel);
+            else if (e.name.endsWith(".tsx")) out.push(rel);
+          }
+        };
+        walk(dir);
+        return out;
+      };
+      for (const f of under("src/components/landing")
+        .concat(under("src/components/marketing"))
+        .concat(under("src/app/(marketing)"))) {
+        const body = read(f);
+        for (const m of body.match(/class(?:Name)?="[^"]*bg-clip-text[^"]*"/g) ?? []) {
+          if (/-\(--mk-grad-[ab]\)/.test(m)) offenders.push(f);
+        }
+      }
+      check(
+        "clipped headlines use the bright pair, never the solid one",
+        offenders.length === 0,
+        offenders.join(", ")
+      );
+    }
+
     /* 6d. The scale exists and is used, rather than being retyped. Six
        sections each had their own copy of the heading markup, in four
        different accent hues — two of which failed contrast on the dark band. */

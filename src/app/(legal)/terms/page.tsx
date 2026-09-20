@@ -80,7 +80,7 @@ export default function TermsPage() {
           auto-renewal is enabled, your plan renews automatically for the same
           period and price until you cancel. You can cancel auto-renewal at any
           time from your account before the next renewal date. See our{" "}
-          <Link className="text-indigo-400" href="/refund">
+          <Link className="text-(--mk-accent)" href="/refund">
             Refund &amp; Cancellation Policy
           </Link>{" "}
           for details.
@@ -108,7 +108,7 @@ export default function TermsPage() {
           grant EarnGPT a licence to host and display your content within the
           Platform.
         </p>
-        <p className="font-semibold text-white">
+        <p className="font-semibold text-(--mk-text)">
           There is zero tolerance for objectionable content or abusive behaviour.
         </p>
         <p>The following are strictly prohibited:</p>
@@ -186,11 +186,11 @@ export default function TermsPage() {
       <LegalSection id="contact" title="13. Contact">
         <p>
           Questions? Email{" "}
-          <a className="text-indigo-400" href={`mailto:${LEGAL_CONTACT}`}>
+          <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
             {LEGAL_CONTACT}
           </a>
           . See also our{" "}
-          <Link className="text-indigo-400" href="/privacy">
+          <Link className="text-(--mk-accent)" href="/privacy">
             Privacy Policy
           </Link>
           .

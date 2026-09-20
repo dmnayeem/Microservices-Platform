@@ -62,7 +62,7 @@ export default function AffiliateFeaturePage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-fuchsia-500/10 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-accent)/10 to-transparent"
         />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="mb-5">
@@ -70,7 +70,7 @@ export default function AffiliateFeaturePage() {
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             Promote great products,{" "}
-            <span className="bg-linear-to-r from-fuchsia-600 to-pink-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               earn on every sale
             </span>
           </h1>
@@ -102,11 +102,11 @@ export default function AffiliateFeaturePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
             <GlassCard key={s.title} className="relative pt-8">
-              <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-fuchsia-600 to-pink-600 text-sm font-extrabold text-white shadow-sm">
+              <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-sm font-extrabold text-white shadow-sm">
                 {i + 1}
               </span>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20">
-                <s.icon className="h-5 w-5 text-fuchsia-600" />
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
+                <s.icon className="h-5 w-5 text-(--mk-accent)" />
               </div>
               <h3 className="font-bold text-(--mk-text)">{s.title}</h3>
               <p className="mt-1.5 text-sm text-(--mk-muted) leading-relaxed">{s.body}</p>
@@ -126,12 +126,12 @@ export default function AffiliateFeaturePage() {
           {PROMOTE.map((p) => (
             <Link key={p.title} href={p.href} className="group block">
               <GlassCard className="h-full transition-all group-hover:shadow-md group-hover:border-(--mk-border-strong)">
-                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-fuchsia-500 to-pink-600 shadow-sm">
+                <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) shadow-sm">
                   <p.icon className="h-5 w-5 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-(--mk-text) flex items-center gap-1.5">
                   {p.title}
-                  <ArrowRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-fuchsia-600 transition-colors" />
+                  <ArrowRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-(--mk-accent) transition-colors" />
                 </h3>
                 <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{p.body}</p>
               </GlassCard>
@@ -146,7 +146,7 @@ export default function AffiliateFeaturePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {WHY.map((b) => (
             <GlassCard key={b.title}>
-              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 shadow-sm">
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) shadow-sm">
                 <b.icon className="h-5 w-5 text-white" />
               </div>
               <h3 className="text-lg font-bold text-(--mk-text)">{b.title}</h3>
@@ -159,7 +159,7 @@ export default function AffiliateFeaturePage() {
       {/* Affiliate vs referrals */}
       <Section width="narrow">
         <GlassCard className="sm:p-10">
-          <div className="mb-3 inline-flex items-center gap-2 text-indigo-600">
+          <div className="mb-3 inline-flex items-center gap-2 text-(--mk-accent)">
             <Users className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Affiliate vs referrals</span>
           </div>
@@ -190,18 +190,18 @@ export default function AffiliateFeaturePage() {
 
       {/* Final CTA */}
       <Section>
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-fuchsia-600 to-pink-600 p-8 sm:p-12 text-center shadow-xl shadow-fuchsia-600/20">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-8 sm:p-12 text-center shadow-xl shadow-fuchsia-600/20">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
             Ready to earn from what you share?
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-fuchsia-50">
+          <p className="mx-auto mt-3 max-w-xl text-white/85">
             Apply to join the affiliate program and start turning your audience
             into commission today.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
               href="/profile/become-creator"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-fuchsia-700 hover:bg-fuchsia-50 transition-colors shadow-sm"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-(--mk-accent) hover:bg-(--mk-accent-soft) transition-colors shadow-sm"
             >
               <Handshake className="h-4 w-4" /> Apply to become an affiliate
             </Link>

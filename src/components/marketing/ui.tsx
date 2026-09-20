@@ -10,12 +10,17 @@ import type { ReactNode } from "react";
 // the single source of the marketing palette so every page reads consistently.
 //
 // Palette cheat-sheet (reuse verbatim across marketing pages):
-//   heading      text-slate-900         body        text-slate-600
-//   muted        text-slate-500         card        bg-white border-slate-200 shadow-sm
-//   eyebrow pill  bg-indigo-50 text-indigo-700 border-indigo-100
-//   primary btn   bg-linear-to-r from-indigo-600 to-violet-600 text-white
-//   accent text   from-indigo-600 to-violet-600 bg-clip-text
-//   money/success text-emerald-600
+//   heading      text-(--mk-text)         body        text-(--mk-muted)
+//   muted        text-(--mk-subtle)         card        bg-white border-(--mk-border) shadow-sm
+//   eyebrow pill  bg-(--mk-accent-soft) text-(--mk-accent) border-(--mk-accent-soft-border)
+//   primary btn   bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white
+//   accent text   from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text
+//   money/success text-(--mk-success)
+//
+// grad-* is the SOLID pair: dark enough in both themes that white ink on it
+// clears AA, so it is what fills buttons and bands. rail-* is the BRIGHT pair
+// and flips per theme, so it is what paints on the page — clipped headlines,
+// bars, small tiles. Using grad-* for text is the mistake this split prevents.
 
 export function BadgePill({
   children,
@@ -24,11 +29,17 @@ export function BadgePill({
   children: ReactNode;
   tone?: "blue" | "purple" | "cyan" | "emerald";
 }) {
+  // Four hues collapsed to two. The blue/purple/cyan variants were literal
+  // 600-level text, which is readable on the light band and fails on the dark
+  // one — so each page picked a badge that was legible in exactly one theme.
+  // The brand is a single green now; `emerald` stays distinct because it means
+  // money, not decoration. The prop is kept so call sites do not have to change.
+  const brand = "bg-(--mk-accent)/10 border-(--mk-accent)/20 text-(--mk-accent)";
   const tones: Record<string, string> = {
-    blue: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600",
-    purple: "bg-violet-500/10 border-violet-500/20 text-violet-600",
-    cyan: "bg-sky-500/10 border-sky-500/20 text-sky-600",
-    emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600",
+    blue: brand,
+    purple: brand,
+    cyan: brand,
+    emerald: "bg-(--mk-success)/10 border-(--mk-success)/25 text-(--mk-success)",
   };
   return (
     <span
@@ -55,7 +66,7 @@ export function MarketingHero({
     <section className="relative overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-indigo-500/10 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-grad-a)/10 to-transparent"
       />
       <div className="relative pt-16 pb-10 sm:pt-24 sm:pb-14">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -69,7 +80,7 @@ export function MarketingHero({
             {highlight && (
               <>
                 {" "}
-                <span className="bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
                   {highlight}
                 </span>
               </>
@@ -162,7 +173,7 @@ export function StatGrid({
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((s) => (
         <GlassCard key={s.label} className="text-center">
-          <p className="text-3xl sm:text-4xl font-extrabold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+          <p className="text-3xl sm:text-4xl font-extrabold bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
             {s.value}
           </p>
           <p className="mt-1 text-sm text-(--mk-subtle)">{s.label}</p>
@@ -203,7 +214,7 @@ export function PrimaryButton({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-sm shadow-indigo-600/20 hover:from-indigo-500 hover:to-violet-500 transition-colors"
+      className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-6 py-3 text-sm font-bold text-white shadow-sm shadow-indigo-600/20 hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) transition-colors"
     >
       {children}
     </Link>

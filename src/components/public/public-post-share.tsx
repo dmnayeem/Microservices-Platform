@@ -47,21 +47,21 @@ export function PublicPostShare({
   };
 
   return (
-    <section className="mt-4 rounded-2xl border border-gray-800 bg-gray-900 p-4">
-      <h2 className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-        <Link2 className="h-4 w-4 text-indigo-400" aria-hidden />
+    <section className="mt-4 rounded-2xl border border-(--app-line) bg-(--app-surface) p-4">
+      <h2 className="inline-flex items-center gap-1.5 text-sm font-bold text-(--app-ink)">
+        <Link2 className="h-4 w-4 text-(--app-accent-ink)" aria-hidden />
         Share this post
       </h2>
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs text-gray-300">
+        <span className="min-w-0 flex-1 truncate rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-xs text-(--app-ink-2)">
           {url}
         </span>
         <button
           type="button"
           onClick={copy}
           aria-label="Copy link"
-          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-indigo-500 px-4 text-sm font-semibold text-white hover:bg-indigo-600"
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-(--app-cta) px-4 text-sm font-semibold text-(--app-on-cta) hover:opacity-90"
         >
           {copied ? (
             <Check className="h-4 w-4" aria-hidden />
@@ -84,7 +84,7 @@ export function PublicPostShare({
               href={platformShareUrl(p.key, url, `${title} — ${text}`)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-11 items-center rounded-full border border-gray-700 bg-gray-950 px-4 text-sm font-semibold text-gray-200 hover:border-indigo-500 hover:text-white"
+              className="inline-flex h-11 items-center rounded-full border border-(--app-line) bg-(--app-page) px-4 text-sm font-semibold text-(--app-ink) hover:border-(--app-accent-edge) hover:text-(--app-ink)"
             >
               {p.label}
             </a>

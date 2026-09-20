@@ -61,7 +61,7 @@ export default function ContactPage() {
         <div className="rounded-2xl mk-card backdrop-blur-xl p-6 sm:p-8">
           {sent ? (
             <div className="text-center py-8">
-              <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-600" />
+              <CheckCircle2 className="mx-auto h-14 w-14 text-(--mk-success)" />
               <h2 className="mt-4 text-2xl font-extrabold text-(--mk-text)">Message sent</h2>
               <p className="mt-2 text-(--mk-muted)">Thanks for reaching out — the {COMPANY_NAME} team will get back to you at {form.email}.</p>
             </div>

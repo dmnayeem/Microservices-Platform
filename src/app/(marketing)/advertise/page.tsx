@@ -145,7 +145,7 @@ export default function AdvertisePage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-sky-500/10 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-accent)/10 to-transparent"
         />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="mb-5">
@@ -153,7 +153,7 @@ export default function AdvertisePage() {
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             Put your brand{" "}
-            <span className="bg-linear-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               where people are already looking
             </span>
           </h1>
@@ -193,8 +193,8 @@ export default function AdvertisePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {BENEFITS.map((b) => (
             <GlassCard key={b.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/20">
-                <b.icon className="h-5 w-5 text-sky-600" />
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
+                <b.icon className="h-5 w-5 text-(--mk-accent)" />
               </div>
               <h3 className="text-base font-bold text-(--mk-text)">{b.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">
@@ -216,7 +216,7 @@ export default function AdvertisePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {BUY_MODES.map((m) => (
             <GlassCard key={m.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
                 <m.icon className="h-5 w-5 text-(--mk-accent)" />
               </div>
               <h3 className="text-base font-bold text-(--mk-text)">{m.title}</h3>
@@ -271,8 +271,8 @@ export default function AdvertisePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {RULES.map((r) => (
             <GlassCard key={r.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <r.icon className="h-5 w-5 text-emerald-600" />
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-success)/10 border border-emerald-500/20">
+                <r.icon className="h-5 w-5 text-(--mk-success)" />
               </div>
               <h3 className="text-base font-bold text-(--mk-text)">{r.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">

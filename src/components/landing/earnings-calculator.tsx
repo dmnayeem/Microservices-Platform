@@ -152,7 +152,7 @@ export function EarningsCalculator(props: Props) {
         </div>
 
         <div className="relative">
-          <div className="absolute -inset-px rounded-[1.75rem] bg-linear-to-br from-indigo-500/20 via-violet-500/20 to-emerald-500/20" />
+          <div className="absolute -inset-px rounded-[1.75rem] bg-linear-to-br from-(--mk-grad-a)/20 via-(--mk-grad-b)/20 to-emerald-500/20" />
 
           <div className="relative rounded-3xl border border-(--mk-border) bg-(--mk-surface) overflow-hidden shadow-xl shadow-black/5">
             <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0">
@@ -225,7 +225,7 @@ export function EarningsCalculator(props: Props) {
 
                   <p className="text-[11px] text-(--mk-subtle) mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-indigo-500" />
+                      <span className="w-1 h-1 rounded-full bg-(--mk-cta)" />
                       Rate{" "}
                       <span className="text-(--mk-text) tabular-nums">
                         ${activePlan?.per_task ?? 0}
@@ -233,7 +233,7 @@ export function EarningsCalculator(props: Props) {
                       /task
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-violet-500" />
+                      <span className="w-1 h-1 rounded-full bg-(--mk-info)" />
                       Multiplier{" "}
                       <span className="text-(--mk-text) tabular-nums">
                         {activePlan?.multiplier ?? 1}×
@@ -258,7 +258,7 @@ export function EarningsCalculator(props: Props) {
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="min-w-[3.5rem] text-center text-base sm:text-lg font-extrabold text-indigo-600 tabular-nums">
+                      <span className="min-w-[3.5rem] text-center text-base sm:text-lg font-extrabold text-(--mk-accent) tabular-nums">
                         {dailyTasks}
                       </span>
                       <button
@@ -297,7 +297,7 @@ export function EarningsCalculator(props: Props) {
                           onClick={() => setDailyTasks(preset)}
                           className={`px-2.5 py-1 rounded-md text-[11px] font-semibold tabular-nums transition-colors ${
                             active
-                              ? "bg-indigo-500/10 text-indigo-600 border border-indigo-500/30"
+                              ? "bg-(--mk-accent)/10 text-(--mk-accent) border border-(--mk-accent)/30"
                               : "bg-(--mk-surface) text-(--mk-subtle) border border-(--mk-border) hover:bg-(--mk-surface-2) hover:text-(--mk-text)"
                           }`}
                         >
@@ -352,8 +352,8 @@ export function EarningsCalculator(props: Props) {
                             color: "emerald",
                             dot: "bg-emerald-500",
                             badge:
-                              "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-                            valueText: "text-emerald-600",
+                              "bg-(--mk-success)/10 text-(--mk-success) border-(--mk-success)/30",
+                            valueText: "text-(--mk-success)",
                             rangeClass: "ec-range-emerald",
                           },
                           {
@@ -364,10 +364,10 @@ export function EarningsCalculator(props: Props) {
                             value: l2,
                             set: setL2,
                             color: "purple",
-                            dot: "bg-violet-500",
+                            dot: "bg-(--mk-info)",
                             badge:
-                              "bg-violet-500/10 text-violet-600 border-violet-500/30",
-                            valueText: "text-violet-600",
+                              "bg-(--mk-info)/10 text-(--mk-info) border-(--mk-info)/30",
+                            valueText: "text-(--mk-info)",
                             rangeClass: "ec-range-purple",
                           },
                           {
@@ -435,7 +435,7 @@ export function EarningsCalculator(props: Props) {
               </div>
 
               {/* RIGHT — Results */}
-              <div className="relative p-5 sm:p-7 lg:p-8 bg-linear-to-br from-indigo-500/[0.07] via-transparent to-transparent">
+              <div className="relative p-5 sm:p-7 lg:p-8 bg-linear-to-br from-(--mk-grad-a)/[0.07] via-transparent to-transparent">
                 <div
                   aria-hidden
                   className={`absolute -top-20 -right-20 w-64 h-64 rounded-full bg-linear-to-br ${activeGradient} opacity-10 blur-3xl pointer-events-none transition-all duration-500`}
@@ -447,7 +447,7 @@ export function EarningsCalculator(props: Props) {
                       <TrendingUp className="w-3.5 h-3.5" />
                       Monthly Potential
                     </p>
-                    <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent tabular-nums leading-none">
+                    <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-(--mk-rail-a) via-(--mk-rail-b) to-(--mk-rail-b) bg-clip-text text-transparent tabular-nums leading-none">
                       ${formatCurrency(animatedMonthly)}
                     </p>
                     <p className="text-xs sm:text-sm text-(--mk-subtle) mt-2 tabular-nums">
@@ -463,7 +463,7 @@ export function EarningsCalculator(props: Props) {
                   <div className="mt-6">
                     <div className="flex items-center justify-between text-[11px] mb-2">
                       <span className="inline-flex items-center gap-1.5 text-(--mk-subtle)">
-                        <span className="w-2 h-2 rounded-sm bg-indigo-500" />
+                        <span className="w-2 h-2 rounded-sm bg-(--mk-cta)" />
                         Tasks{" "}
                         <span className="text-(--mk-text) font-bold tabular-nums">
                           {directShare}%
@@ -474,16 +474,16 @@ export function EarningsCalculator(props: Props) {
                           {teamShare}%
                         </span>{" "}
                         Team
-                        <span className="w-2 h-2 rounded-sm bg-violet-500" />
+                        <span className="w-2 h-2 rounded-sm bg-(--mk-info)" />
                       </span>
                     </div>
                     <div className="h-2 w-full rounded-full overflow-hidden bg-(--mk-surface-2) border border-(--mk-border) flex">
                       <div
-                        className="h-full bg-linear-to-r from-indigo-500 to-cyan-400 transition-all duration-500"
+                        className="h-full bg-linear-to-r from-(--mk-grad-a) to-cyan-400 transition-all duration-500"
                         style={{ width: `${directShare}%` }}
                       />
                       <div
-                        className="h-full bg-linear-to-r from-violet-500 to-fuchsia-400 transition-all duration-500"
+                        className="h-full bg-linear-to-r from-(--mk-grad-a) to-(--mk-info) transition-all duration-500"
                         style={{ width: `${teamShare}%` }}
                       />
                     </div>
@@ -492,7 +492,7 @@ export function EarningsCalculator(props: Props) {
                   {/* Stat cards */}
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-5">
                     <div className="min-w-0 rounded-xl mk-card p-2.5 sm:p-3 text-center">
-                      <ListChecks className="w-4 h-4 text-indigo-600 mx-auto mb-1" />
+                      <ListChecks className="w-4 h-4 text-(--mk-accent) mx-auto mb-1" />
                       <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
                         From Tasks
                       </p>
@@ -502,7 +502,7 @@ export function EarningsCalculator(props: Props) {
                       <p className="text-[9px] text-(--mk-subtle) mt-0.5">/mo</p>
                     </div>
                     <div className="min-w-0 rounded-xl mk-card p-2.5 sm:p-3 text-center">
-                      <Users className="w-4 h-4 text-violet-600 mx-auto mb-1" />
+                      <Users className="w-4 h-4 text-(--mk-info) mx-auto mb-1" />
                       <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
                         From Team
                       </p>
@@ -541,7 +541,7 @@ export function EarningsCalculator(props: Props) {
                   {/* CTA */}
                   <Link
                     href="/register"
-                    className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm sm:text-base font-bold shadow-lg shadow-indigo-600/25 active:scale-[0.99]"
+                    className="mk-press group mt-5 w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) text-white text-sm sm:text-base font-bold shadow-lg shadow-indigo-600/25 active:scale-[0.99]"
                   >
                     Start Earning Now
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />

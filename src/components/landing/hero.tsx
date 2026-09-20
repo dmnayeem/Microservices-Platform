@@ -78,7 +78,7 @@ export function Hero(props: Props) {
 
             <h1 className="mk-h1 mb-5 break-words">
               <span className="block text-(--mk-text)">{v.title_line1}</span>
-              <span className="block bg-linear-to-r from-indigo-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+              <span className="block bg-linear-to-r from-(--mk-rail-a) via-(--mk-rail-b) to-(--mk-rail-b) bg-clip-text text-transparent">
                 {v.title_line2}
               </span>
             </h1>
@@ -93,7 +93,7 @@ export function Hero(props: Props) {
             <div className="flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-3 mb-4">
               <Link
                 href={v.cta_primary_href}
-                className="mk-press w-full sm:w-auto min-h-14 px-8 py-4 bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold rounded-xl hover:from-indigo-500 hover:to-violet-500 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25"
+                className="mk-press w-full sm:w-auto min-h-14 px-8 py-4 bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white font-semibold rounded-xl hover:from-(--mk-grad-a) hover:to-(--mk-grad-b) flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25"
               >
                 {v.cta_primary_label}
                 <ArrowRight className="w-5 h-5 shrink-0" />

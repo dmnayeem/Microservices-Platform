@@ -72,7 +72,7 @@ export default function CoursesFeaturePage() {
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             Learn new skills, or{" "}
-            <span className="bg-linear-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               teach and earn
             </span>
           </h1>
@@ -164,7 +164,7 @@ export default function CoursesFeaturePage() {
         <div className="mt-6 text-center">
           <Link
             href="/features/affiliate"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-fuchsia-600 hover:text-fuchsia-700"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-(--mk-accent) hover:text-(--mk-accent)"
           >
             See how affiliates can promote your course <ArrowRight className="w-4 h-4" />
           </Link>

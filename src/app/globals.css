@@ -1304,8 +1304,9 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
    Marketing surface theme (isolated from the app's data-theme).
    Driven by `data-mk-theme` on the marketing root (#mk-root). Landing/marketing
    components use bg/text/border-[var(--mk-*)] so a visitor's landing toggle flips
-   the whole surface WITHOUT touching their in-app dashboard theme. Colored brand
-   accents (indigo/violet gradients, emerald money, colored chips) stay literal.
+   the whole surface WITHOUT touching their in-app dashboard theme. The brand
+   gradients and accents are tokens too, so the marketing side carries the same
+   green as the app instead of the old indigo/violet it was drawn in.
    ──────────────────────────────────────────────────────────────────────────── */
 [data-mk-theme="light"] {
   /* The page was #ffffff with #ffffff cards on a #f8fafc band: three surfaces
@@ -1325,20 +1326,31 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      FAILED body-text contrast the moment the page stopped being pure white.
      Darkened one notch: 4.86:1 on the page, 5.41:1 on a card. */
   --mk-subtle: #5d6b80;
-  /* Accent text. The literal brand indigo (#4f46e5) is a fine FILL but only
-     2.87:1 as TEXT on the dark marketing surface, so any sentence painted with
-     it failed in one of the two themes. This token is the readable half of the
-     brand in each theme and is what prose, links and inline figures use;
-     gradients and icon fills keep the literal brand colours.
-     light #4338ca = 7.90:1 on a card, 7.10:1 on the page. */
-  --mk-accent: #4338ca;
+  /* Accent text: the readable half of the brand in each theme, used by prose,
+     links and inline figures. A brand colour bright enough to be a good FILL is
+     never bright enough to be TEXT on white, which is why this is a separate
+     token from the gradient pair below.
+     light #047857 = 5.48:1 on a card, 4.93:1 on the page. */
+  --mk-accent: #047857;
+  /* Solid brand fill. Dark enough that white ink clears AA at both stops, so a
+     gradient button reads the same on either end of its sweep — the same pair
+     in both themes for that reason. */
+  --mk-grad-a: #047857;
+  --mk-grad-b: #065f46;
+  /* The bright pair, for anything painted ON the page rather than under white
+     ink: clipped headline text, progress bars, small brand tiles. This one has
+     to flip per theme or it disappears into one of the two grounds. */
+  --mk-rail-a: #047857;
+  --mk-rail-b: #065f46;
+  --mk-cta: #047857;
+  --mk-on-cta: #ffffff;
   --mk-nav: rgba(255, 255, 255, 0.72);
   --mk-nav-scrolled: rgba(255, 255, 255, 0.95);
   --mk-quote: #e2e8f0;        /* faint quote glyph */
   --mk-grid: rgba(15, 23, 42, 0.05);
-  --mk-blob-a: rgba(99, 102, 241, 0.14);
-  --mk-blob-b: rgba(139, 92, 246, 0.12);
-  --mk-blob-c: rgba(56, 189, 248, 0.10);
+  --mk-blob-a: rgba(16, 185, 129, 0.14);
+  --mk-blob-b: rgba(5, 150, 105, 0.12);
+  --mk-blob-c: rgba(45, 212, 191, 0.10);
   /* Elevation. On a light surface depth comes from shadow; borders alone give
      a "drawn on paper" look, which is most of why this read as unfinished. */
   --mk-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05),
@@ -1357,14 +1369,20 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
   --mk-muted: #94a3b8;
   --mk-subtle: #7c8699;
   /* dark #a5b4fc = 9.05:1 on a card, 9.86:1 on the page. */
-  --mk-accent: #a5b4fc;
+  --mk-accent: #34d399;
+  --mk-grad-a: #047857;
+  --mk-grad-b: #065f46;
+  --mk-rail-a: #34d399;
+  --mk-rail-b: #10b981;
+  --mk-cta: #10b981;
+  --mk-on-cta: #0b0f17;
   --mk-nav: rgba(10, 11, 17, 0.72);
   --mk-nav-scrolled: rgba(10, 11, 17, 0.92);
   --mk-quote: #232734;
   --mk-grid: rgba(255, 255, 255, 0.045);
-  --mk-blob-a: rgba(99, 102, 241, 0.22);
-  --mk-blob-b: rgba(139, 92, 246, 0.20);
-  --mk-blob-c: rgba(56, 189, 248, 0.16);
+  --mk-blob-a: rgba(16, 185, 129, 0.22);
+  --mk-blob-b: rgba(5, 150, 105, 0.20);
+  --mk-blob-c: rgba(45, 212, 191, 0.16);
   /* Same tokens, dark values — on a dark surface depth is a dark drop plus a
      1px top highlight, never a grey glow. */
   --mk-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
@@ -1450,23 +1468,28 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
 /* Extra marketing tokens. Both themes, always — a token that exists in only
    one theme is a hole that shows up as invisible text the first time someone
    flips the toggle. Measured (WCAG 2.1 relative luminance):
-     light  accent #4338ca on accent-soft #eef0fe = 6.97:1
-     dark   accent #a5b4fc on accent-soft #1b1e33 = 8.23:1
+     light  accent #047857 on accent-soft #ecfdf5 = 5.15:1
+     dark   accent #34d399 on accent-soft #0e2a22 = 8.44:1
      light  success #047857 on surface #ffffff 5.48:1, on page #eff3fa 4.93:1
      dark   success #34d399 on surface #14161f 9.38:1, on page #0a0b11 10.22:1 */
 [data-mk-theme="light"] {
-  --mk-accent-soft: #eef0fe;
-  --mk-accent-soft-border: #dcdffb;
+  --mk-accent-soft: #ecfdf5;
+  --mk-accent-soft-border: #c8ead9;
+  /* The one secondary hue, kept because a two-series chart needs two colours.
+     No single literal violet clears 4.5:1 on BOTH the light band and the dark
+     one -- 500 fails light, 600 fails dark -- so it has to be a pair. */
+  --mk-info: #6d28d9;
   --mk-success: #047857;
   --mk-success-soft: #e7f6ef;
-  --mk-ring: rgba(67, 56, 202, 0.28);
+  --mk-ring: rgba(4, 120, 87, 0.28);
 }
 [data-mk-theme="dark"] {
-  --mk-accent-soft: #1b1e33;
-  --mk-accent-soft-border: #2b3052;
+  --mk-accent-soft: #0e2a22;
+  --mk-accent-soft-border: #1d4c3c;
+  --mk-info: #a78bfa;
   --mk-success: #34d399;
   --mk-success-soft: #10241d;
-  --mk-ring: rgba(165, 180, 252, 0.32);
+  --mk-ring: rgba(52, 211, 153, 0.32);
 }
 
 @layer components {

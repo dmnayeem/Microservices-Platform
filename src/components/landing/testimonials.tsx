@@ -41,11 +41,11 @@ export function Testimonials(props: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
                     <h4 className="font-semibold text-(--mk-text)">{t.name}</h4>
-                    <BadgeCheck className="w-4 h-4 text-indigo-600" />
+                    <BadgeCheck className="w-4 h-4 text-(--mk-accent)" />
                   </div>
                   <p className="text-xs text-(--mk-subtle)">
                     {t.country} ·{" "}
-                    <span className="text-emerald-600 font-bold">
+                    <span className="text-(--mk-success) font-bold">
                       {t.earned} earned
                     </span>
                   </p>

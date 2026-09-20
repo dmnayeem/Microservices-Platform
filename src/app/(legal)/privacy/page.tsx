@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
           EarnGPT is intended only for users who are <strong>18 years or older</strong>.
           We do not knowingly collect information from anyone under 18. If you
           believe a minor has provided us information, contact us at{" "}
-          <a className="text-indigo-400" href={`mailto:${LEGAL_CONTACT}`}>
+          <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
             {LEGAL_CONTACT}
           </a>{" "}
           and we will remove it.
@@ -137,7 +137,7 @@ export default function PrivacyPolicyPage() {
           <li>
             <strong>Access &amp; correction</strong> — view and edit most profile
             data from your{" "}
-            <Link className="text-indigo-400" href="/settings">
+            <Link className="text-(--mk-accent)" href="/settings">
               account settings
             </Link>
             .
@@ -153,7 +153,7 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>Requests</strong> — email{" "}
-            <a className="text-indigo-400" href={`mailto:${LEGAL_CONTACT}`}>
+            <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
               {LEGAL_CONTACT}
             </a>{" "}
             to exercise any privacy right.
@@ -187,15 +187,15 @@ export default function PrivacyPolicyPage() {
       <LegalSection id="contact" title="11. Contact us">
         <p>
           Questions about privacy? Email{" "}
-          <a className="text-indigo-400" href={`mailto:${LEGAL_CONTACT}`}>
+          <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
             {LEGAL_CONTACT}
           </a>
           . See also our{" "}
-          <Link className="text-indigo-400" href="/terms">
+          <Link className="text-(--mk-accent)" href="/terms">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link className="text-indigo-400" href="/refund">
+          <Link className="text-(--mk-accent)" href="/refund">
             Refund Policy
           </Link>
           .

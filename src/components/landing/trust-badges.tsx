@@ -41,7 +41,7 @@ export function TrustBadges(props: Props) {
                   key={i}
                   className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-center sm:text-left"
                 >
-                  <Icon className="w-7 h-7 text-indigo-600 shrink-0" />
+                  <Icon className="w-7 h-7 text-(--mk-accent) shrink-0" />
                   <span className="text-(--mk-text) text-sm font-semibold">
                     {b.label}
                   </span>

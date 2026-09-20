@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
  * rhythm changed every time you scrolled past a divider.
  *
  * The eyebrow hues are also the reason the badges were unreadable in dark
- * mode: `text-indigo-600` measures 3.00:1 on the dark marketing band. The
+ * mode: `text-(--mk-accent)` measures 3.00:1 on the dark marketing band. The
  * `mk-eyebrow` class uses the measured accent pair instead (6.97:1 light,
  * 8.23:1 dark).
  */
@@ -44,7 +44,7 @@ export function SectionHeading({
         {line2 ? (
           <>
             {" "}
-            <span className="bg-linear-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               {line2}
             </span>
           </>

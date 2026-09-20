@@ -30,7 +30,7 @@ export function FAQ(props: Props) {
                 key={i}
                 className={`rounded-2xl border bg-(--mk-surface) shadow-sm transition-colors ${
                   isOpen
-                    ? "border-indigo-500/50"
+                    ? "border-(--mk-accent)/50"
                     : "border-(--mk-border) hover:border-(--mk-border-strong)"
                 }`}
               >
@@ -49,7 +49,7 @@ export function FAQ(props: Props) {
                   <span
                     className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                       isOpen
-                        ? "bg-indigo-500/15 text-indigo-600"
+                        ? "bg-(--mk-accent)/15 text-(--mk-accent)"
                         : "bg-(--mk-surface-2) text-(--mk-subtle)"
                     }`}
                   >
@@ -74,7 +74,7 @@ export function FAQ(props: Props) {
           <p className="text-(--mk-subtle) mb-1">{v.contact_prompt}</p>
           <a
             href={`mailto:${v.contact_email}`}
-            className="text-indigo-600 hover:text-indigo-700 font-semibold transition-colors"
+            className="text-(--mk-accent) hover:text-(--mk-accent) font-semibold transition-colors"
           >
             {v.contact_label}
           </a>

@@ -33,10 +33,10 @@ export function Navbar(props: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-600/20">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center shadow-sm shadow-indigo-600/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               EarnGPT
             </span>
           </Link>
@@ -65,7 +65,7 @@ export function Navbar(props: Props) {
             </Link>
             <Link
               href={v.cta_signup_href}
-              className="mk-press px-5 py-2.5 bg-linear-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 hover:from-indigo-500 hover:to-violet-500"
+              className="mk-press px-5 py-2.5 bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 hover:from-(--mk-grad-a) hover:to-(--mk-grad-b)"
             >
               {v.cta_signup_label}
             </Link>
@@ -78,7 +78,7 @@ export function Navbar(props: Props) {
           <div className="lg:hidden flex items-center gap-1">
             <Link
               href={v.cta_signup_href}
-              className="hidden min-[400px]:inline-flex items-center min-h-11 px-4 bg-linear-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20"
+              className="hidden min-[400px]:inline-flex items-center min-h-11 px-4 bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20"
             >
               {v.cta_signup_label}
             </Link>
@@ -106,7 +106,7 @@ export function Navbar(props: Props) {
                 key={`${link.href}-${i}`}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="mk-press flex items-center min-h-11 px-2 -mx-2 rounded-xl font-medium text-(--mk-text) hover:bg-(--mk-surface-2) hover:text-indigo-600"
+                className="mk-press flex items-center min-h-11 px-2 -mx-2 rounded-xl font-medium text-(--mk-text) hover:bg-(--mk-surface-2) hover:text-(--mk-accent)"
               >
                 {link.label}
               </MarketingNavLink>
@@ -122,7 +122,7 @@ export function Navbar(props: Props) {
               <Link
                 href={v.cta_signup_href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="mk-press flex items-center justify-center w-full min-h-12 text-center bg-linear-to-r from-indigo-600 to-violet-600 text-white font-semibold rounded-xl hover:from-indigo-500 hover:to-violet-500"
+                className="mk-press flex items-center justify-center w-full min-h-12 text-center bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white font-semibold rounded-xl hover:from-(--mk-grad-a) hover:to-(--mk-grad-b)"
               >
                 {v.cta_signup_label}
               </Link>

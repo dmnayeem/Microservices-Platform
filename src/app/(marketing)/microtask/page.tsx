@@ -195,7 +195,7 @@ export default function MicroTaskPage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-indigo-500/10 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-grad-a)/10 to-transparent"
         />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
           <div className="mb-5">
@@ -208,7 +208,7 @@ export default function MicroTaskPage() {
                 IS true of every task is that the reward is stated before you
                 start, so that is what the headline says. */}
             Small jobs,{" "}
-            <span className="bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               and you know the pay before you start
             </span>
           </h1>
@@ -250,7 +250,7 @@ export default function MicroTaskPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TASK_TYPES.map((t) => (
             <GlassCard key={t.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
                 <t.icon className="h-5 w-5 text-(--mk-accent)" />
               </div>
               <h3 className="text-base font-bold text-(--mk-text)">{t.title}</h3>
@@ -302,7 +302,7 @@ export default function MicroTaskPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {HOW.map((s) => (
             <GlassCard key={s.n} className="relative pt-8">
-              <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-indigo-600 to-violet-600 text-sm font-extrabold text-white shadow-sm">
+              <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-sm font-extrabold text-white shadow-sm">
                 {s.n}
               </span>
               <h3 className="text-base font-bold text-(--mk-text)">{s.title}</h3>
@@ -326,8 +326,8 @@ export default function MicroTaskPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {MORE_WAYS.map((m) => (
             <GlassCard key={m.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <m.icon className="h-5 w-5 text-emerald-600" />
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-success)/10 border border-emerald-500/20">
+                <m.icon className="h-5 w-5 text-(--mk-success)" />
               </div>
               <h3 className="text-base font-bold text-(--mk-text)">{m.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-(--mk-muted)">
@@ -349,7 +349,7 @@ export default function MicroTaskPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {FAIRNESS.map((f) => (
             <GlassCard key={f.title}>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent)/10 border border-(--mk-accent)/20">
                 <f.icon className="h-5 w-5 text-(--mk-accent)" />
               </div>
               <h3 className="text-base font-bold text-(--mk-text)">{f.title}</h3>
@@ -373,14 +373,14 @@ export default function MicroTaskPage() {
         <GlassCard>
           <ul className="space-y-3 text-sm leading-relaxed text-(--mk-muted)">
             <li className="flex gap-3">
-              <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
               <span>
                 One wallet holds both balances. You convert points to cash
                 yourself, at the rate shown in the app at the time you convert.
               </span>
             </li>
             <li className="flex gap-3">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
               <span>
                 Withdrawal methods, minimums, maximums and any fee are set by
                 the administrator and shown to you on the withdrawal screen
@@ -389,7 +389,7 @@ export default function MicroTaskPage() {
               </span>
             </li>
             <li className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
               <span>
                 Identity verification is required before a payout. One verified
                 identity belongs to one account.

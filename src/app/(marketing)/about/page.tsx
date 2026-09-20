@@ -54,7 +54,7 @@ export default function AboutPage() {
 
       <Section width="narrow">
         <GlassCard className="sm:p-10">
-          <div className="mb-4 inline-flex items-center gap-2 text-indigo-600">
+          <div className="mb-4 inline-flex items-center gap-2 text-(--mk-accent)">
             <Target className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Our mission</span>
           </div>
@@ -108,7 +108,7 @@ export default function AboutPage() {
 
       <Section>
         <GlassCard className="text-center sm:p-12">
-          <div className="mb-3 inline-flex items-center gap-2 text-emerald-600">
+          <div className="mb-3 inline-flex items-center gap-2 text-(--mk-success)">
             <TrendingUp className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Join us</span>
           </div>

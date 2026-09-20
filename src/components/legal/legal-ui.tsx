@@ -28,12 +28,12 @@ export function LegalHeader({
 }) {
   return (
     <div className="mb-10">
-      <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-(--mk-text) tracking-tight">
         {title}
       </h1>
-      <p className="text-xs text-slate-500 mt-2">Last updated: {LEGAL_UPDATED}</p>
+      <p className="text-xs text-(--mk-subtle) mt-2">Last updated: {LEGAL_UPDATED}</p>
       {intro && (
-        <p className="text-sm sm:text-base text-slate-400 mt-4 leading-relaxed">
+        <p className="text-sm sm:text-base text-(--mk-muted) mt-4 leading-relaxed">
           {intro}
         </p>
       )}
@@ -53,8 +53,8 @@ export function LegalSection({
 }) {
   return (
     <section id={id} className="mb-8 scroll-mt-20">
-      <h2 className="text-lg sm:text-xl font-bold text-white mb-3">{title}</h2>
-      <div className="space-y-3 text-sm sm:text-[15px] leading-relaxed text-slate-300/90">
+      <h2 className="text-lg sm:text-xl font-bold text-(--mk-text) mb-3">{title}</h2>
+      <div className="space-y-3 text-sm sm:text-[15px] leading-relaxed text-(--mk-muted)">
         {children}
       </div>
     </section>

@@ -40,7 +40,7 @@ export default async function BlogArticlePage({
       </div>
 
       <div className="mt-6 flex items-center gap-3 text-xs text-(--mk-muted)">
-        <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-indigo-600 px-2.5 py-1 font-semibold uppercase tracking-wider">{post.category}</span>
+        <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-(--mk-accent) px-2.5 py-1 font-semibold uppercase tracking-wider">{post.category}</span>
         <span>{formatBlogDate(post.date)}</span>
         <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{post.readMinutes} min read</span>
       </div>

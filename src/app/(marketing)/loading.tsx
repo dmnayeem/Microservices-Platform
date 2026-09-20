@@ -4,7 +4,7 @@
 // the database, so a slow read meant a blank page with no indication anything
 // was happening.
 //
-// It used to paint `bg-gray-200 dark:bg-gray-800`. Nothing in this app sets
+// It used to paint `bg-(--mk-surface-2) dark:bg-(--mk-surface-2)`. Nothing in this app sets
 // Tailwind's `dark:` condition — the marketing surface is driven by
 // `data-mk-theme` on #mk-root and the app by `html[data-theme]` — so on a
 // machine whose OS is in light mode the skeleton drew light-grey blocks over

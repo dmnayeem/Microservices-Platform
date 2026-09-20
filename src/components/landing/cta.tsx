@@ -13,7 +13,7 @@ export function CTA(props: Props) {
   return (
     <section className="mk-section">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-indigo-600 to-violet-600 p-8 sm:p-12 lg:p-16 text-center shadow-xl shadow-indigo-600/25">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-8 sm:p-12 lg:p-16 text-center shadow-xl shadow-indigo-600/25">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute top-0 left-1/4 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
@@ -26,24 +26,24 @@ export function CTA(props: Props) {
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-4">
               {v.heading_line1}{" "}
-              <span className="bg-linear-to-r from-amber-200 to-white bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-(--mk-rail-a) to-white bg-clip-text text-transparent">
                 {v.heading_line2}
               </span>
             </h2>
 
-            <p className="text-lg text-indigo-100 mb-8 max-w-xl mx-auto">
+            <p className="text-lg text-(--mk-accent) mb-8 max-w-xl mx-auto">
               {v.subheading}
             </p>
 
             <Link
               href={v.cta_href}
-              className="mk-press inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 shadow-lg"
+              className="mk-press inline-flex items-center gap-2 px-8 py-4 bg-white text-(--mk-accent) font-bold rounded-xl hover:bg-(--mk-accent-soft) shadow-lg"
             >
               {v.cta_label}
               <ArrowRight className="w-5 h-5" />
             </Link>
 
-            <p className="text-sm text-indigo-200 mt-4">{v.disclaimer}</p>
+            <p className="text-sm text-(--mk-accent) mt-4">{v.disclaimer}</p>
           </div>
         </div>
       </div>

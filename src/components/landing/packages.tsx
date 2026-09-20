@@ -45,7 +45,7 @@ export function Packages(props: Props) {
                 key={i}
                 className={`mk-zoom relative rounded-2xl p-6 lg:p-8 ${
                   pkg.is_popular
-                    ? "bg-linear-to-b from-violet-500/10 to-transparent border-2 border-violet-500/50 shadow-xl shadow-violet-500/10 xl:scale-105"
+                    ? "bg-linear-to-b from-(--mk-grad-a)/10 to-transparent border-2 border-(--mk-accent)/50 shadow-xl shadow-violet-500/10 xl:scale-105"
                     : "mk-card hover:border-(--mk-border-strong)"
                 }`}
               >
@@ -76,7 +76,7 @@ export function Packages(props: Props) {
                       key={j}
                       className="flex items-start gap-3 text-sm text-(--mk-muted)"
                     >
-                      <Check className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                      <Check className="w-5 h-5 text-(--mk-success) shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -86,7 +86,7 @@ export function Packages(props: Props) {
                   href="/register"
                   className={`block w-full py-3 text-center font-semibold rounded-xl transition-all ${
                     pkg.is_popular
-                      ? "bg-linear-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-500 hover:to-fuchsia-500"
+                      ? "bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) text-white hover:from-(--mk-grad-a) hover:to-(--mk-grad-b)"
                       : "bg-(--mk-surface) text-(--mk-text) hover:bg-(--mk-surface-2) border border-(--mk-border-strong)"
                   }`}
                 >

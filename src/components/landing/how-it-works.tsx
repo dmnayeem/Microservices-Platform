@@ -43,7 +43,7 @@ export function HowItWorks(props: Props) {
         />
 
         <div className="relative">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-linear-to-r from-indigo-500/30 via-violet-500/30 to-fuchsia-500/30 hidden lg:block -translate-y-1/2 pointer-events-none" />
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-linear-to-r from-(--mk-grad-a)/30 via-(--mk-grad-b)/30 to-(--mk-grad-b)/30 hidden lg:block -translate-y-1/2 pointer-events-none" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 relative">
             {v.steps.map((step, i) => {

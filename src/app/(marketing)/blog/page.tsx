@@ -33,13 +33,13 @@ export default function BlogIndexPage() {
             </div>
             <div className="p-6 sm:p-10">
               <div className="flex items-center gap-3 text-xs text-(--mk-muted)">
-                <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-indigo-600 px-2.5 py-1 font-semibold uppercase tracking-wider">{featured.category}</span>
+                <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-(--mk-accent) px-2.5 py-1 font-semibold uppercase tracking-wider">{featured.category}</span>
                 <span>{formatBlogDate(featured.date)}</span>
                 <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{featured.readMinutes} min</span>
               </div>
               <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-(--mk-text)">{featured.title}</h2>
               <p className="mt-3 text-(--mk-muted) leading-relaxed">{featured.excerpt}</p>
-              <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600">
+              <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-(--mk-accent)">
                 Read article <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
               </span>
             </div>

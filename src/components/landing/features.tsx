@@ -85,14 +85,14 @@ export function Features(props: Props) {
                 <h3 className="text-lg font-bold text-(--mk-text) mb-2 flex items-center gap-1.5">
                   {feature.title}
                   {href && (
-                    <ArrowUpRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-indigo-600 transition-colors" />
+                    <ArrowUpRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-(--mk-accent) transition-colors" />
                   )}
                 </h3>
                 <p className="text-sm text-(--mk-muted) leading-relaxed">
                   {feature.description}
                 </p>
                 {href && (
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600">
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-(--mk-accent)">
                     Learn more
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </span>

@@ -68,7 +68,7 @@ export default function RefundPolicyPage() {
       <LegalSection id="how" title="5. How to request a refund or report an issue">
         <p>
           Email{" "}
-          <a className="text-indigo-400" href={`mailto:${LEGAL_CONTACT}`}>
+          <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
             {LEGAL_CONTACT}
           </a>{" "}
           with your account email, the transaction reference, the date, and a
@@ -88,15 +88,15 @@ export default function RefundPolicyPage() {
       <LegalSection id="contact" title="7. Contact">
         <p>
           Need help? Email{" "}
-          <a className="text-indigo-400" href={`mailto:${LEGAL_CONTACT}`}>
+          <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
             {LEGAL_CONTACT}
           </a>
           . See also our{" "}
-          <Link className="text-indigo-400" href="/terms">
+          <Link className="text-(--mk-accent)" href="/terms">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link className="text-indigo-400" href="/privacy">
+          <Link className="text-(--mk-accent)" href="/privacy">
             Privacy Policy
           </Link>
           .

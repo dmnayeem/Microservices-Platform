@@ -33,17 +33,17 @@ export default function StatusPage() {
   return (
     <Section width="narrow">
       <div className="text-center">
-        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30">
-          <Activity className="h-7 w-7 text-emerald-600" />
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/15 border border-(--mk-success)/30">
+          <Activity className="h-7 w-7 text-(--mk-success)" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-(--mk-text) tracking-tight">System status</h1>
       </div>
 
-      <div className="mt-8 flex items-center gap-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-5">
-        <CheckCircle2 className="h-7 w-7 text-emerald-600 shrink-0" />
+      <div className="mt-8 flex items-center gap-3 rounded-2xl bg-(--mk-success)/10 border border-(--mk-success)/30 p-5">
+        <CheckCircle2 className="h-7 w-7 text-(--mk-success) shrink-0" />
         <div>
           <p className="text-lg font-bold text-(--mk-text)">All systems operational</p>
-          <p className="text-sm text-emerald-600">Everything is running smoothly.</p>
+          <p className="text-sm text-(--mk-success)">Everything is running smoothly.</p>
         </div>
       </div>
 
@@ -52,7 +52,7 @@ export default function StatusPage() {
           <div key={c.name} className="rounded-2xl mk-card p-5">
             <div className="flex items-center justify-between">
               <p className="font-semibold text-(--mk-text)">{c.name}</p>
-              <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600">
+              <span className="inline-flex items-center gap-1.5 text-sm text-(--mk-success)">
                 <CheckCircle2 className="h-4 w-4" /> Operational
               </span>
             </div>

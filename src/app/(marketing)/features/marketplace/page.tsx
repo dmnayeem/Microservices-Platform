@@ -77,7 +77,7 @@ export default function MarketplaceFeaturePage() {
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
             Sell your digital products to{" "}
-            <span className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
               buyers worldwide
             </span>
           </h1>
@@ -132,8 +132,8 @@ export default function MarketplaceFeaturePage() {
               <span className="absolute -top-3 left-6 inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-teal-600 text-sm font-extrabold text-white shadow-sm">
                 {i + 1}
               </span>
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <s.icon className="h-5 w-5 text-emerald-600" />
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-success)/10 border border-emerald-500/20">
+                <s.icon className="h-5 w-5 text-(--mk-success)" />
               </div>
               <h3 className="font-bold text-(--mk-text)">{s.title}</h3>
               <p className="mt-1.5 text-sm text-(--mk-muted) leading-relaxed">{s.body}</p>
@@ -152,7 +152,7 @@ export default function MarketplaceFeaturePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {BUYER.map((b) => (
             <GlassCard key={b.title}>
-              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-sky-500 to-blue-600 shadow-sm">
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) shadow-sm">
                 <b.icon className="h-5 w-5 text-white" />
               </div>
               <h3 className="text-lg font-bold text-(--mk-text)">{b.title}</h3>
@@ -165,7 +165,7 @@ export default function MarketplaceFeaturePage() {
       {/* Affiliate tie-in */}
       <Section width="narrow">
         <GlassCard className="sm:p-10">
-          <div className="mb-3 inline-flex items-center gap-2 text-fuchsia-600">
+          <div className="mb-3 inline-flex items-center gap-2 text-(--mk-accent)">
             <Handshake className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Sell more, effortlessly</span>
           </div>
@@ -179,7 +179,7 @@ export default function MarketplaceFeaturePage() {
           </p>
           <Link
             href="/features/affiliate"
-            className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-fuchsia-600 hover:text-fuchsia-700"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-(--mk-accent) hover:text-(--mk-accent)"
           >
             Learn about the affiliate program <ArrowRight className="w-4 h-4" />
           </Link>

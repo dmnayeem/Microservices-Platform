@@ -32,13 +32,13 @@ export function HeroProduct() {
           than floating on the page. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-6 -z-10 rounded-[3rem] bg-linear-to-br from-indigo-500/20 via-violet-500/15 to-sky-400/10 blur-2xl"
+        className="pointer-events-none absolute -inset-6 -z-10 rounded-[3rem] bg-linear-to-br from-(--mk-grad-a)/20 via-(--mk-grad-b)/15 to-(--mk-info)/10 blur-2xl"
       />
 
       <div className="mk-panel overflow-hidden p-3 sm:p-4">
         {/* App header */}
         <div className="flex items-center gap-3 px-1 pb-3">
-          <span className="w-9 h-9 shrink-0 rounded-full bg-linear-to-br from-indigo-500 to-violet-600 text-white text-sm font-bold flex items-center justify-center">
+          <span className="w-9 h-9 shrink-0 rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-white text-sm font-bold flex items-center justify-center">
             M
           </span>
           <span className="min-w-0 flex-1">
@@ -56,7 +56,7 @@ export function HeroProduct() {
         </div>
 
         {/* Balance — white on the brand fill measures 6.29:1. */}
-        <div className="rounded-2xl bg-linear-to-br from-indigo-600 to-violet-700 p-4 text-white shadow-lg shadow-indigo-600/25">
+        <div className="rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-4 text-white shadow-lg shadow-indigo-600/25">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[11px] font-medium uppercase tracking-wider text-white/80">
@@ -70,7 +70,7 @@ export function HeroProduct() {
             </span>
           </div>
           <div className="mt-4 flex items-center gap-2">
-            <span className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-bold text-indigo-700">
+            <span className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-bold text-(--mk-accent)">
               <Wallet className="w-3.5 h-3.5" />
               Withdraw
             </span>
@@ -87,7 +87,7 @@ export function HeroProduct() {
             <span className="mk-figure text-(--mk-success) text-xs">7 / 10 tasks</span>
           </div>
           <div className="mt-2 h-2 rounded-full bg-(--mk-border) overflow-hidden">
-            <div className="mk-bar h-full w-[70%] rounded-full bg-linear-to-r from-indigo-500 to-violet-500" />
+            <div className="mk-bar h-full w-[70%] rounded-full bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b)" />
           </div>
         </div>
 
