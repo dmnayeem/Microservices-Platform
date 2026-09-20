@@ -1901,6 +1901,28 @@ function main() {
         ([token, want, theme]) =>
           (theme === "light" ? lightDecls : rootDecls).get(token) !== want
       );
+      /* Nobody may hard-code an accent outside the table.
+         The pre-paint script stamped `data-accent="indigo"` on every visitor —
+         including one who had never opened the picker — so the per-accent rule
+         always won and the :root default was unreachable. Changing
+         DEFAULT_ACCENT did nothing at all on screen, which is exactly how it
+         was reported: "everything looks the same". */
+      {
+        const boot = read("src/app/layout.tsx");
+        check(
+          "the pre-paint script only sets data-accent when the user chose one",
+          /getItem\('earngpt-accent'\);if\(a\)\{/.test(boot) &&
+            !/earngpt-accent'\)\|\|'/.test(boot),
+          "a literal fallback here overrides the default for everyone, forever"
+        );
+        const provider = read("src/components/providers/theme-provider.tsx");
+        check(
+          "the provider's fallback comes from the table",
+          /useState<Accent>\(DEFAULT_ACCENT as Accent\)/.test(provider),
+          "a second copy of the default is how the two drift apart"
+        );
+      }
+
       check(
         "the no-accent default matches the default accent's row exactly",
         wrong.length === 0,

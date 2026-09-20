@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_ACCENT } from "@/lib/accent-palette";
+
 import {
   createContext,
   useContext,
@@ -76,7 +78,9 @@ export function ThemeProvider({
   // applied to <html> by the inline script in layout.tsx before first paint, so
   // there's no flash while the context catches up.
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [accent, setAccentState] = useState<Accent>("indigo");
+  // From the table, not a literal: DEFAULT_ACCENT is where the launch accent
+  // is decided, and a second copy here is how the two drift apart.
+  const [accent, setAccentState] = useState<Accent>(DEFAULT_ACCENT as Accent);
 
   // Hydrate persisted preferences once, after mount. Reading localStorage here
   // (not in the useState initializer) is deliberate: it keeps the server and

@@ -167,7 +167,7 @@ export default async function RootLayout({
             scheme. Runs synchronously before the body content paints. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var d=document.documentElement;var t=localStorage.getItem('earngpt-theme')||'dark';var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var a=localStorage.getItem('earngpt-accent')||'indigo';d.setAttribute('data-accent',a);}catch(e){}`,
+            __html: `try{var d=document.documentElement;var t=localStorage.getItem('earngpt-theme')||'dark';var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var a=localStorage.getItem('earngpt-accent');if(a){d.setAttribute('data-accent',a);}}catch(e){}`,
           }}
         />
         {/* Google's ad tags — one per page, and only when a publisher id is
