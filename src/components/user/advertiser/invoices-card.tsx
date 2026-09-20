@@ -102,7 +102,7 @@ export function InvoicesCard() {
       <div className="glass rounded-2xl p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-white flex items-center gap-1.5">
-            <Receipt className="w-4 h-4 text-gray-400" /> Invoices
+            <Receipt className="w-4 h-4 text-(--app-ink-3)" /> Invoices
           </p>
           <button
             onClick={() => setEditing(true)}
@@ -111,7 +111,7 @@ export function InvoicesCard() {
             Add billing details
           </button>
         </div>
-        <p className="text-[11px] text-gray-500 mt-1">
+        <p className="text-[11px] text-(--app-ink-3) mt-1">
           Invoices and receipts appear here. Add your company name and address so
           they are addressed correctly.
         </p>
@@ -125,12 +125,12 @@ export function InvoicesCard() {
     placeholder = ""
   ) => (
     <div>
-      <label className="block text-[11px] text-gray-400 mb-1">{label}</label>
+      <label className="block text-[11px] text-(--app-ink-3) mb-1">{label}</label>
       <input
         value={(draft[key] as string) ?? ""}
         placeholder={placeholder}
         onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
-        className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm placeholder:text-gray-600"
+        className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder:text-(--app-glyph)"
       />
     </div>
   );
@@ -139,7 +139,7 @@ export function InvoicesCard() {
     <div className="glass rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm font-bold text-white flex items-center gap-1.5">
-          <Receipt className="w-4 h-4 text-gray-400" /> Invoices
+          <Receipt className="w-4 h-4 text-(--app-ink-3)" /> Invoices
         </p>
         <button
           onClick={() => setEditing((v) => !v)}
@@ -151,7 +151,7 @@ export function InvoicesCard() {
 
       {editing && (
         <div className="space-y-2 rounded-xl bg-black/20 p-3">
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-(--app-ink-3)">
             These go on future invoices. Documents already issued keep the details
             they were issued with.
           </p>
@@ -177,7 +177,7 @@ export function InvoicesCard() {
       )}
 
       {rows.length === 0 ? (
-        <p className="text-[11px] text-gray-500">No invoices yet.</p>
+        <p className="text-[11px] text-(--app-ink-3)">No invoices yet.</p>
       ) : (
         <ul className="divide-y divide-white/5 rounded-xl bg-black/20">
           {rows.map((inv) => (
@@ -186,14 +186,14 @@ export function InvoicesCard() {
               className="flex items-center justify-between gap-3 px-3 py-2"
             >
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-gray-200 truncate">
+                <p className="text-[11px] font-semibold text-(--app-ink) truncate">
                   {inv.number}
-                  <span className="text-gray-500">
+                  <span className="text-(--app-ink-3)">
                     {" "}
                     · {inv.kind === "RECEIPT" ? "Receipt" : "Bill"}
                   </span>
                 </p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-(--app-ink-3)">
                   {inv.issuedAt?.slice(0, 10) ?? "—"}
                   {inv.status !== "PAID" && inv.dueAt
                     ? ` · due ${inv.dueAt.slice(0, 10)}`
@@ -205,13 +205,13 @@ export function InvoicesCard() {
                   {usd(inv.totalUsd)}
                 </span>
                 <span
-                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${STATUS_TONE[inv.status] ?? "bg-gray-800 text-gray-300"}`}
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${STATUS_TONE[inv.status] ?? "bg-(--app-surface-2) text-(--app-ink-2)"}`}
                 >
                   {inv.status}
                 </span>
                 <a
                   href={inv.pdfUrl}
-                  className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300"
+                  className="p-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
                   title="Download PDF"
                 >
                   <Download className="w-3.5 h-3.5" />

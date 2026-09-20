@@ -210,14 +210,14 @@ export function ProfileView() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-(--app-accent-ink)" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
+      <div className="flex items-center justify-center min-h-[60vh] text-(--app-ink-3)">
         Couldn&apos;t load your profile. Try refreshing.
       </div>
     );
@@ -231,22 +231,22 @@ export function ProfileView() {
     <div className="space-y-5 pb-12">
       {/* Auto-country banner */}
       {autoCountry?.country && !autoCountry.dismissed && !profile.country && (
-        <div className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 p-3 flex items-center gap-3">
-          <Globe className="w-4 h-4 text-indigo-400 shrink-0" />
-          <p className="text-sm text-indigo-200 flex-1">
+        <div className="rounded-xl border border-(--app-accent-edge)/40 bg-(--app-cta)/10 p-3 flex items-center gap-3">
+          <Globe className="w-4 h-4 text-(--app-accent-ink) shrink-0" />
+          <p className="text-sm text-(--app-accent-ink) flex-1">
             We detected you&apos;re in{" "}
             <strong>{countryList.find((c) => c.code === autoCountry.country)?.name ?? autoCountry.country}</strong>.
             Auto-fill your profile?
           </p>
           <button
             onClick={acceptAutoCountry}
-            className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+            className="px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
           >
             Yes, use it
           </button>
           <button
             onClick={() => setAutoCountry({ ...autoCountry, dismissed: true })}
-            className="p-1.5 text-indigo-300 hover:text-white"
+            className="p-1.5 text-(--app-accent-ink) hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
@@ -274,7 +274,7 @@ export function ProfileView() {
             <span className="xs:hidden">Cover</span>
           </button>
         </div>
-        <div className="bg-gray-900 px-4 sm:px-6 pt-14 sm:pt-16 pb-5 relative">
+        <div className="bg-(--app-surface) px-4 sm:px-6 pt-14 sm:pt-16 pb-5 relative">
           <div className="absolute -top-14 sm:-top-16 left-4 sm:left-6">
             <div className="relative">
               <Avatar
@@ -282,11 +282,11 @@ export function ProfileView() {
                 size="w-28 h-28 sm:w-32 sm:h-32"
                 shape="rounded"
                 fallbackText={initial}
-                className="border-4 border-gray-900 shadow-xl"
+                className="border-4 border-(--app-surface) shadow-xl"
               />
               <button
                 onClick={() => setPhotoTarget("avatar")}
-                className="absolute bottom-1 right-1 p-2 bg-gray-800 hover:bg-gray-700 rounded-full border-2 border-gray-900 shadow-lg"
+                className="absolute bottom-1 right-1 p-2 bg-(--app-surface-2) hover:bg-(--app-surface-2) rounded-full border-2 border-(--app-surface) shadow-lg"
                 aria-label="Change profile photo"
               >
                 <Camera className="w-3.5 h-3.5 text-white" />
@@ -297,14 +297,14 @@ export function ProfileView() {
           <div className="flex justify-end mb-2 gap-2">
             <Link
               href={profileHref(profile)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
             >
               <EyeIcon className="w-3.5 h-3.5" />
               View as public
             </Link>
             <button
               onClick={() => openEdit("personal")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold shadow-lg shadow-indigo-900/30"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold shadow-lg shadow-indigo-900/30"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit Profile
@@ -324,7 +324,7 @@ export function ProfileView() {
                   />
                 )}
               </div>
-              <p className="text-gray-500 text-sm mt-0.5">
+              <p className="text-(--app-ink-3) text-sm mt-0.5">
                 @{profile.username ?? profile.email?.split("@")[0] ?? "user"}
               </p>
             </div>
@@ -338,12 +338,12 @@ export function ProfileView() {
           </div>
 
           {profile.bio && (
-            <p className="text-sm text-gray-300 mt-3 whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm text-(--app-ink-2) mt-3 whitespace-pre-wrap leading-relaxed">
               {profile.bio}
             </p>
           )}
 
-          <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs text-gray-400">
+          <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs text-(--app-ink-3)">
             {profile.country && (
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-rose-400" />
@@ -357,7 +357,7 @@ export function ProfileView() {
               </span>
             )}
             <span className="inline-flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+              <Calendar className="w-3.5 h-3.5 text-(--app-accent-ink)" />
               Joined{" "}
               {new Date(profile.createdAt).toLocaleDateString("en-US", {
                 month: "short",
@@ -373,7 +373,7 @@ export function ProfileView() {
               return (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300 text-[11px] font-medium border border-indigo-500/30"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-(--app-cta)/10 text-(--app-accent-ink) text-[11px] font-medium border border-(--app-accent-edge)/30"
                 >
                   <span>{meta?.emoji ?? "★"}</span>
                   {meta?.label ?? t}
@@ -382,7 +382,7 @@ export function ProfileView() {
             })}
             <button
               onClick={() => setTagModalOpen(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) text-[11px] font-medium border border-(--app-line)"
             >
               <Tag className="w-3 h-3" />
               {profile.tags.length === 0 ? "Add tags" : "Edit tags"}
@@ -390,33 +390,33 @@ export function ProfileView() {
           </div>
 
           {/* Inline social stats — compact Facebook-style counter row */}
-          <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-gray-800">
+          <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-(--app-line)">
             <button
               onClick={() => setPrimaryTab("posts")}
-              className="flex items-baseline justify-center gap-1.5 hover:bg-gray-800/50 rounded-lg py-1.5 transition-colors"
+              className="flex items-baseline justify-center gap-1.5 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
             >
               <span className="text-base font-bold text-white tabular-nums">
                 {stats.postsCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-gray-400 font-medium">Posts</span>
+              <span className="text-[11px] text-(--app-ink-3) font-medium">Posts</span>
             </button>
             <button
               onClick={() => setPrimaryTab("followers")}
-              className="flex items-baseline justify-center gap-1.5 hover:bg-gray-800/50 rounded-lg py-1.5 transition-colors border-x border-gray-800"
+              className="flex items-baseline justify-center gap-1.5 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors border-x border-(--app-line)"
             >
               <span className="text-base font-bold text-white tabular-nums">
                 {stats.followersCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-gray-400 font-medium">Followers</span>
+              <span className="text-[11px] text-(--app-ink-3) font-medium">Followers</span>
             </button>
             <button
               onClick={() => setPrimaryTab("following")}
-              className="flex items-baseline justify-center gap-1.5 hover:bg-gray-800/50 rounded-lg py-1.5 transition-colors"
+              className="flex items-baseline justify-center gap-1.5 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
             >
               <span className="text-base font-bold text-white tabular-nums">
                 {stats.followingCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-gray-400 font-medium">Following</span>
+              <span className="text-[11px] text-(--app-ink-3) font-medium">Following</span>
             </button>
           </div>
 
@@ -432,14 +432,14 @@ export function ProfileView() {
               <p className="text-[10px] uppercase tracking-wider font-bold text-amber-400/90">
                 Social Earnings
               </p>
-              <p className="text-xs text-gray-400 -mt-0.5">From posts &amp; engagement</p>
+              <p className="text-xs text-(--app-ink-3) -mt-0.5">From posts &amp; engagement</p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-sm font-extrabold text-white tabular-nums leading-tight">
                 {stats.socialEarningsPoints.toLocaleString()}{" "}
-                <span className="text-[11px] font-semibold text-gray-400">pts</span>
+                <span className="text-[11px] font-semibold text-(--app-ink-3)">pts</span>
               </p>
-              <p className="text-[11px] text-gray-500 tabular-nums leading-tight">
+              <p className="text-[11px] text-(--app-ink-3) tabular-nums leading-tight">
                 ≈ {usd(stats.socialEarningsUsd)}
               </p>
             </div>
@@ -451,7 +451,7 @@ export function ProfileView() {
       <LifetimeStatsGroup stats={stats.lifetime} />
 
       {/* Sticky Facebook-style primary tabs */}
-      <nav className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 glass-strong rounded-none border-0 border-y border-gray-800/60">
+      <nav className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 glass-strong rounded-none border-0 border-y border-(--app-line)/60">
         <ScrollFadeRow innerClassName="flex gap-1 py-1" ariaLabel="Profile tabs">
           {(
             [
@@ -468,14 +468,14 @@ export function ProfileView() {
               className={cn(
                 "shrink-0 inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors relative",
                 primaryTab === t.key
-                  ? "text-indigo-400"
-                  : "text-gray-400 hover:text-white"
+                  ? "text-(--app-accent-ink)"
+                  : "text-(--app-ink-3) hover:text-white"
               )}
             >
               <t.icon className="w-4 h-4" />
               {t.label}
               {primaryTab === t.key && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-500 rounded-full" />
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-(--app-cta) rounded-full" />
               )}
             </button>
           ))}

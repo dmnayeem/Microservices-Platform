@@ -97,7 +97,7 @@ export function SoloRewardWidget({
     <>
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl border border-gray-800 bg-gray-900",
+          "relative overflow-hidden rounded-2xl border border-(--app-line) bg-(--app-surface)",
           className
         )}
       >
@@ -115,7 +115,7 @@ export function SoloRewardWidget({
         <div className={cn("p-4 space-y-3", compact && "p-3 space-y-2")}>
           {status === "LOCKED" && criteria.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 Complete these to unlock today&apos;s reward.
               </p>
               {criteria.map((c) => {
@@ -123,14 +123,14 @@ export function SoloRewardWidget({
                 return (
                   <div key={c.label}>
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-300">{c.label}</span>
-                      <span className="text-gray-500 tabular-nums">
+                      <span className="text-(--app-ink-2)">{c.label}</span>
+                      <span className="text-(--app-ink-3) tabular-nums">
                         {c.current}
                         {c.unit ?? ""}/{c.target}
                         {c.unit ?? ""}
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
                       <div
                         className="h-full bg-linear-to-r from-indigo-500 to-purple-500"
                         style={{ width: `${pct}%` }}
@@ -144,7 +144,7 @@ export function SoloRewardWidget({
 
           {status === "ELIGIBLE" && (
             <>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 All criteria met! Claim your reward now.
               </p>
               {reward && (
@@ -181,12 +181,12 @@ export function SoloRewardWidget({
           )}
 
           {status === "CLAIMED" && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-(--app-ink-3)">
               Reward successfully claimed! Resets at midnight.
               {resetAt && (
                 <>
                   {" · "}
-                  <span className="text-gray-500">
+                  <span className="text-(--app-ink-3)">
                     {new Date(resetAt).toLocaleString()}
                   </span>
                 </>
@@ -195,7 +195,7 @@ export function SoloRewardWidget({
           )}
 
           {status === "EXPIRED" && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-(--app-ink-3)">
               Reward window passed. New reward unlocks soon.
             </p>
           )}
@@ -204,19 +204,19 @@ export function SoloRewardWidget({
 
       {showModal && (
         <div className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6 text-center">
+          <div className="bg-(--app-surface) rounded-2xl border border-(--app-line) w-full max-w-sm p-6 text-center">
             <div className="w-16 h-16 mx-auto rounded-full bg-linear-to-br from-amber-500 to-yellow-600 flex items-center justify-center mb-3">
               <Gift className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-lg font-bold text-white mb-1">Claim Reward</h2>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-xs text-(--app-ink-3) mb-4">
               You&apos;re about to claim your daily Solo Reward.
             </p>
             <div className="flex gap-2">
               <button
                 disabled={claiming}
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
               >
                 Not Now
               </button>

@@ -198,8 +198,8 @@ export function MarketplaceView() {
         onClick={() => setAuctionOnly((v) => !v)}
         tone="purple"
       />
-      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-800 bg-gray-900">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-(--app-line) bg-(--app-surface)">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
           $
         </span>
         <input
@@ -209,7 +209,7 @@ export function MarketplaceView() {
           placeholder="min"
           className="w-16 bg-transparent text-white text-xs focus:outline-none tabular-nums"
         />
-        <span className="text-gray-600">–</span>
+        <span className="text-(--app-glyph)">–</span>
         <input
           type="number"
           value={maxPrice}
@@ -221,7 +221,7 @@ export function MarketplaceView() {
       <select
         value={ageBucket}
         onChange={(e) => setAgeBucket(e.target.value)}
-        className="px-2.5 py-1 rounded-full border border-gray-800 bg-gray-900 text-white text-xs focus:outline-none focus:border-indigo-500"
+        className="px-2.5 py-1 rounded-full border border-(--app-line) bg-(--app-surface) text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
         aria-label="Asset age"
       >
         <option value="">Any age</option>
@@ -248,40 +248,40 @@ export function MarketplaceView() {
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         <h1 className="text-xl sm:text-2xl font-bold text-white flex-1 inline-flex items-center gap-2">
-          <ShoppingBag className="w-6 h-6 text-indigo-400" /> Marketplace
-          <span className="text-xs font-mono uppercase tracking-wider text-slate-500">
+          <ShoppingBag className="w-6 h-6 text-(--app-accent-ink)" /> Marketplace
+          <span className="text-xs font-mono uppercase tracking-wider text-(--app-ink-3)">
             digital assets
           </span>
         </h1>
         <Link
           href="/marketplace/cart"
-          className="relative p-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
+          className="relative p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
           aria-label="Cart"
         >
           <ShoppingCart className="w-4 h-4" />
           {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-(--app-cta) text-(--app-on-cta) text-[10px] font-bold flex items-center justify-center tabular-nums">
               {cartCount > 99 ? "99+" : cartCount}
             </span>
           )}
         </Link>
         <Link
           href="/marketplace/my"
-          className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
+          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
           aria-label="My listings"
         >
           <Package className="w-4 h-4" />
         </Link>
         <Link
           href="/marketplace/orders"
-          className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
+          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
           aria-label="Orders"
         >
           <ListChecks className="w-4 h-4" />
         </Link>
         <Link
           href="/marketplace/messages"
-          className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
+          className="p-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
           aria-label="Messages"
         >
           <MessagesSquare className="w-4 h-4" />
@@ -291,18 +291,18 @@ export function MarketplaceView() {
       {/* Search + Sell */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search marketplace (title, description, niche)…"
-            className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            className="w-full pl-9 pr-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+          className="px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
         >
           {SORT_OPTIONS.map((s) => (
             <option key={s.value} value={s.value}>
@@ -312,7 +312,7 @@ export function MarketplaceView() {
         </select>
         <Link
           href="/marketplace/create"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           Sell
@@ -351,12 +351,12 @@ export function MarketplaceView() {
       </div>
       <button
         onClick={() => setFiltersOpen(true)}
-        className="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-200 text-xs font-semibold"
+        className="lg:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink) text-xs font-semibold"
       >
         <SlidersHorizontal className="w-3.5 h-3.5" />
         Filters
         {refineCount > 0 && (
-          <span className="min-w-4 h-4 px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+          <span className="min-w-4 h-4 px-1 rounded-full bg-(--app-cta) text-(--app-on-cta) text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
             {refineCount}
           </span>
         )}
@@ -370,7 +370,7 @@ export function MarketplaceView() {
         footer={
           <button
             onClick={() => setFiltersOpen(false)}
-            className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+            className="w-full py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             Show results
           </button>
@@ -418,8 +418,8 @@ function chipClass(active: boolean) {
   return cn(
     "inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-colors whitespace-nowrap",
     active
-      ? "bg-indigo-500/15 text-indigo-200 border-indigo-500/40"
-      : "bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-700"
+      ? "bg-(--app-cta)/15 text-(--app-accent-ink) border-(--app-accent-edge)/40"
+      : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:border-(--app-line)"
   );
 }
 
@@ -448,7 +448,7 @@ function ToggleChip({
         "inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-colors",
         active
           ? tones[tone]
-          : "bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-700"
+          : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:border-(--app-line)"
       )}
     >
       {icon}
@@ -480,9 +480,9 @@ function ListingCardV2({ listing }: { listing: Listing }) {
   return (
     <Link
       href={`/marketplace/${listing.id}`}
-      className="group block glass rounded-xl overflow-hidden hover:border-indigo-500/40 transition-colors"
+      className="group block glass rounded-xl overflow-hidden hover:border-(--app-accent-edge)/40 transition-colors"
     >
-      <div className="relative aspect-video bg-gray-950 overflow-hidden">
+      <div className="relative aspect-video bg-(--app-page) overflow-hidden">
         {cover ? (
           <SmartImage
             src={cover}
@@ -538,11 +538,11 @@ function ListingCardV2({ listing }: { listing: Listing }) {
 
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/30">
             {ASSET_TYPE_LABEL[listing.assetType] ?? listing.assetType}
           </span>
           {listing.niche && (
-            <span className="text-[10px] text-gray-500 truncate min-w-0">
+            <span className="text-[10px] text-(--app-ink-3) truncate min-w-0">
               {listing.niche}
             </span>
           )}
@@ -560,7 +560,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
               <span className="font-bold tabular-nums">
                 {compactMoney(listing.monthlyRevenue)}
               </span>
-              <span className="text-gray-500">/mo rev</span>
+              <span className="text-(--app-ink-3)">/mo rev</span>
             </span>
           ) : null}
           {listing.monthlyTraffic && listing.monthlyTraffic > 0 ? (
@@ -568,7 +568,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
               <span className="font-bold tabular-nums">
                 {compactNumber(listing.monthlyTraffic)}
               </span>
-              <span className="text-gray-500">/mo visits</span>
+              <span className="text-(--app-ink-3)">/mo visits</span>
             </span>
           ) : null}
           {listing.assetAgeMonths ? (
@@ -576,14 +576,14 @@ function ListingCardV2({ listing }: { listing: Listing }) {
               <span className="font-bold tabular-nums">
                 {formatAge(listing.assetAgeMonths)}
               </span>
-              <span className="text-gray-500">old</span>
+              <span className="text-(--app-ink-3)">old</span>
             </span>
           ) : null}
         </div>
 
-        <div className="flex items-end justify-between pt-2 border-t border-gray-800">
+        <div className="flex items-end justify-between pt-2 border-t border-(--app-line)">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               {listing.auctionMode ? "Current price" : "Asking"}
             </p>
             <p className="text-base font-extrabold text-white tabular-nums">
@@ -591,7 +591,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
             </p>
             <AffiliateRewardBadge reward={listing.affiliateReward} className="mt-1" />
           </div>
-          <div className="text-right text-[10px] text-gray-500">
+          <div className="text-right text-[10px] text-(--app-ink-3)">
             <p className="inline-flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {compactNumber(listing.views)}

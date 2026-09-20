@@ -138,7 +138,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
       <header className="flex items-center gap-3">
         <Link
           href="/profile"
-          className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300"
+          className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
           aria-label="Back to profile"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -148,7 +148,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
             <ShieldAlert className="w-6 h-6 text-amber-400" />
             Appeal KYC Decision
           </h1>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="text-(--app-ink-3) text-sm mt-0.5">
             Disagree with a rejection? Submit additional context for re-review.
           </p>
         </div>
@@ -174,23 +174,23 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
 
       {/* Submit new appeal */}
       {appealableDocs.length > 0 && (
-        <section className="rounded-xl border border-gray-800 bg-gray-900 p-5 space-y-4">
+        <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4">
           <p className="text-sm font-bold text-white inline-flex items-center gap-1.5">
-            <Send className="w-4 h-4 text-indigo-400" />
+            <Send className="w-4 h-4 text-(--app-accent-ink)" />
             Submit a new appeal
           </p>
 
           {/* Doc picker (only if more than 1) */}
           {appealableDocs.length > 1 ? (
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                 Which rejection do you want to appeal?
               </label>
               <select
                 value={selectedDocId}
                 onChange={(e) => setSelectedDocId(e.target.value)}
                 disabled={busy}
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
               >
                 {appealableDocs.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -204,8 +204,8 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
             </div>
           ) : (
             selectedDoc && (
-              <div className="rounded-lg bg-gray-950/60 border border-gray-800 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">
+              <div className="rounded-lg bg-(--app-page)/60 border border-(--app-line) p-3">
+                <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-0.5">
                   Document
                 </p>
                 <p className="text-sm font-bold text-white">
@@ -221,7 +221,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Why should this be re-reviewed?{" "}
               <span className="text-red-400">*</span>
             </label>
@@ -232,18 +232,18 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
               disabled={busy}
               placeholder="Explain what was incorrect about the rejection — e.g. the document was clear, the address matches, the photo wasn't blurry…"
               maxLength={2000}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
-            <p className="text-[10px] text-gray-500 mt-1 tabular-nums">
+            <p className="text-[10px] text-(--app-ink-3) mt-1 tabular-nums">
               {reason.length}/2000 · minimum 20 characters
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Additional evidence (optional)
             </label>
-            <p className="text-[11px] text-gray-500 mb-2">
+            <p className="text-[11px] text-(--app-ink-3) mb-2">
               Upload screenshots that support your appeal, or paste a URL. Up to
               10 items.
             </p>
@@ -267,7 +267,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
                 {evidence.map((url, i) => (
                   <div
                     key={i}
-                    className="relative aspect-square rounded-lg bg-gray-950 border border-gray-800 overflow-hidden"
+                    className="relative aspect-square rounded-lg bg-(--app-page) border border-(--app-line) overflow-hidden"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -302,12 +302,12 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
                 }
                 disabled={busy || evidence.length >= 10}
                 placeholder="https://…"
-                className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="flex-1 px-3 py-1.5 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
               />
               <button
                 onClick={addEvidence}
                 disabled={busy || !evidenceInput.trim() || evidence.length >= 10}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold rounded-lg disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add
@@ -337,7 +337,7 @@ export function KycAppealView({ rejectedDocs, initialAppeals }: Props) {
       {/* History */}
       {appeals.length > 0 && (
         <section>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2">
             Appeal History
           </p>
           <div className="space-y-2">
@@ -387,23 +387,23 @@ function AppealHistoryRow({ appeal }: { appeal: AppealHistoryItem }) {
           {appeal.status}
         </span>
       </div>
-      <p className="text-xs text-gray-300 line-clamp-3 whitespace-pre-wrap">
+      <p className="text-xs text-(--app-ink-2) line-clamp-3 whitespace-pre-wrap">
         {appeal.reason}
       </p>
       {appeal.adminNote && appeal.status !== "PENDING" && (
-        <div className="mt-2 rounded-lg bg-gray-950/60 border border-gray-800 p-2 flex items-start gap-2">
+        <div className="mt-2 rounded-lg bg-(--app-page)/60 border border-(--app-line) p-2 flex items-start gap-2">
           {appeal.status === "REJECTED" && (
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
           )}
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               Admin response
             </p>
-            <p className="text-xs text-gray-200 mt-0.5">{appeal.adminNote}</p>
+            <p className="text-xs text-(--app-ink) mt-0.5">{appeal.adminNote}</p>
           </div>
         </div>
       )}
-      <p className="text-[10px] text-gray-500 mt-2">
+      <p className="text-[10px] text-(--app-ink-3) mt-2">
         Submitted{" "}
         {formatDistanceToNow(new Date(appeal.createdAt), {
           addSuffix: true,

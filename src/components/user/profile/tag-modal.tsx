@@ -40,19 +40,19 @@ export function TagModal({
               className={cn(
                 "flex items-center gap-2 p-3 rounded-lg border text-left",
                 isOn
-                  ? "border-indigo-500 bg-indigo-500/10"
-                  : "border-gray-800 bg-gray-950 hover:border-gray-700"
+                  ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                  : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
               )}
             >
               <span className="text-lg">{t.emoji}</span>
               <span className="text-sm text-white flex-1">{t.label}</span>
-              {isOn && <CheckCircle2 className="w-4 h-4 text-indigo-400" />}
+              {isOn && <CheckCircle2 className="w-4 h-4 text-(--app-accent-ink)" />}
             </button>
           );
         })}
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-gray-400 hover:text-white">
+        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-white">
           Cancel
         </button>
         <button
@@ -62,7 +62,7 @@ export function TagModal({
             setBusy(false);
           }}
           disabled={busy}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
         >
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           Save

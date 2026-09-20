@@ -40,8 +40,8 @@ interface AvatarProps {
 
 const FALLBACK_BG: Record<AvatarFallbackStyle, string> = {
   gradient: "bg-linear-to-br from-indigo-500 to-purple-600",
-  "solid-gray": "bg-gray-700",
-  "solid-slate": "bg-slate-800",
+  "solid-gray": "bg-(--app-surface-2)",
+  "solid-slate": "bg-(--app-surface-2)",
 };
 
 /** Map a numeric px size to a proportional fallback text-size class. */

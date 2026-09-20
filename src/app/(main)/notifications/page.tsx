@@ -358,7 +358,7 @@ export default function NotificationsPage() {
                     notification.isRead
                       ? "bg-transparent"
                       : "bg-indigo-500/5",
-                    isSelected && "ring-2 ring-inset ring-indigo-500"
+                    isSelected && "ring-2 ring-inset ring-(--app-accent-edge)"
                   )}
                 >
                   {/* Checkbox */}
@@ -366,7 +366,7 @@ export default function NotificationsPage() {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSelection(notification.id)}
-                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-indigo-500 focus:ring-indigo-500"
+                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-indigo-500 focus:ring-(--app-accent-edge)"
                   />
 
                   {/* Icon */}

@@ -84,8 +84,8 @@ export function MilestonesView() {
                 m.status === "COMPLETED"
                   ? "border-emerald-500/30 bg-emerald-500/5"
                   : m.status === "LOCKED"
-                    ? "border-gray-800 bg-gray-900 opacity-60"
-                    : "border-gray-800 bg-gray-900"
+                    ? "border-(--app-line) bg-(--app-surface) opacity-60"
+                    : "border-(--app-line) bg-(--app-surface)"
               )}
             >
               <div className="flex items-start gap-3">
@@ -95,8 +95,8 @@ export function MilestonesView() {
                     m.status === "COMPLETED"
                       ? "bg-emerald-500/20 text-emerald-400"
                       : m.status === "LOCKED"
-                        ? "bg-gray-800 text-gray-500"
-                        : "bg-indigo-500/15 text-indigo-400"
+                        ? "bg-(--app-surface-2) text-(--app-ink-3)"
+                        : "bg-(--app-cta)/15 text-(--app-accent-ink)"
                   )}
                 >
                   {m.status === "COMPLETED" ? (
@@ -110,12 +110,12 @@ export function MilestonesView() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">{m.title}</p>
                   {m.description && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-(--app-ink-3) mt-0.5">
                       {m.description}
                     </p>
                   )}
                   <div className="flex items-center gap-2 mt-2">
-                    <div className="h-1 flex-1 rounded-full bg-gray-800 overflow-hidden">
+                    <div className="h-1 flex-1 rounded-full bg-(--app-surface-2) overflow-hidden">
                       <div
                         className={cn(
                           "h-full",
@@ -126,7 +126,7 @@ export function MilestonesView() {
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="text-[11px] text-gray-400 tabular-nums shrink-0">
+                    <span className="text-[11px] text-(--app-ink-3) tabular-nums shrink-0">
                       {m.current}
                       {m.unit ?? ""}/{m.target}
                       {m.unit ?? ""}

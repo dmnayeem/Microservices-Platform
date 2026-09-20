@@ -89,7 +89,7 @@ export function TransactionRow({
         <p className="t-body font-medium text-white truncate">{description}</p>
         <div className="flex items-center gap-1.5 mt-1 min-w-0">
           <span className="app-chip uppercase shrink-0">{meta.label}</span>
-          <span className="t-meta text-gray-500 truncate" title={format(dt, "PPp")}>
+          <span className="t-meta text-(--app-ink-3) truncate" title={format(dt, "PPp")}>
             {formatDistanceToNow(dt, { addSuffix: true })}
           </span>
           {status && status !== "COMPLETED" && (

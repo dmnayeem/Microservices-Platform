@@ -93,7 +93,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Design: "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300",
   Sales: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
   Learning: "bg-sky-500/10 border-sky-500/30 text-sky-300",
-  Other: "bg-gray-500/10 border-gray-500/30 text-(--app-ink-2)",
+  Other: "bg-(--app-ink-3)/10 border-(--app-line)/30 text-(--app-ink-2)",
 };
 
 function formatCountdown(expiresAt: string): {

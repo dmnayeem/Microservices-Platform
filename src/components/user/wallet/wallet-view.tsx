@@ -397,7 +397,7 @@ function BalanceTab({
       { key: "CHECKIN", label: "Check-ins", color: "bg-emerald-500" },
       { key: "GIFT", label: "Gifts", color: "bg-teal-500" },
       { key: "COURSE_TUTOR_EARNING", label: "Course Earnings", color: "bg-sky-500" },
-      { key: "OTHER", label: "Other", color: "bg-gray-500" },
+      { key: "OTHER", label: "Other", color: "bg-(--app-glyph)" },
     ];
     const buckets: Record<string, number> = Object.fromEntries(
       META.map((m) => [m.key, 0])

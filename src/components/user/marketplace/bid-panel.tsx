@@ -146,7 +146,7 @@ export function BidPanel({
           <div>
             <h3 className="text-base font-bold text-white">Live auction</h3>
             {auctionEndsAt && (
-              <p className="text-[11px] text-gray-400 inline-flex items-center gap-1">
+              <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {ended ? (
                   <span className="text-amber-400 font-bold">Auction ended</span>
@@ -164,7 +164,7 @@ export function BidPanel({
         </div>
         {high && (
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
               Current high bid
             </p>
             <p className="text-xl font-extrabold text-amber-300 tabular-nums">
@@ -175,7 +175,7 @@ export function BidPanel({
       </div>
 
       {!high && (
-        <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950 p-3 text-center text-xs text-gray-400">
+        <div className="rounded-lg border border-dashed border-(--app-line) bg-(--app-page) p-3 text-center text-xs text-(--app-ink-3)">
           {isSold
             ? "No bids were placed before the auction closed."
             : "No bids yet — be the first."}
@@ -200,7 +200,7 @@ export function BidPanel({
                 </span>
               )}
             </p>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-(--app-ink-3)">
               {formatDistanceToNow(new Date(high.createdAt), {
                 addSuffix: true,
               })}
@@ -227,7 +227,7 @@ export function BidPanel({
       {!isOwner && !isSold && !ended && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">$</span>
+            <span className="text-(--app-ink-3)">$</span>
             <input
               type="number"
               value={amount}
@@ -235,7 +235,7 @@ export function BidPanel({
               min={minNextBid}
               step="0.01"
               placeholder={`Min ${minNextBid.toLocaleString()}`}
-              className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 tabular-nums"
+              className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 tabular-nums"
             />
             <button
               type="button"
@@ -259,10 +259,10 @@ export function BidPanel({
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Optional message to seller…"
             maxLength={500}
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
           />
           {buyNowPrice != null && (
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-(--app-ink-3)">
               Skip the wait — buy now for{" "}
               <strong className="text-amber-300 tabular-nums">
                 ${buyNowPrice.toLocaleString()}
@@ -286,7 +286,7 @@ export function BidPanel({
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
-            className="text-[11px] text-gray-400 hover:text-white underline"
+            className="text-[11px] text-(--app-ink-3) hover:text-white underline"
           >
             {showHistory ? "Hide" : "Show"} bid history ({totalBids})
           </button>
@@ -299,10 +299,10 @@ export function BidPanel({
                     "flex items-center gap-2 text-xs p-2 rounded-lg",
                     b.status === "ACTIVE"
                       ? "bg-amber-500/5 border border-amber-500/30"
-                      : "bg-gray-950 border border-gray-800"
+                      : "bg-(--app-page) border border-(--app-line)"
                   )}
                 >
-                  <span className="text-gray-300 truncate min-w-0 flex-1">
+                  <span className="text-(--app-ink-2) truncate min-w-0 flex-1">
                     {b.bidder.name}
                   </span>
                   <span className="text-white font-bold tabular-nums">
@@ -315,7 +315,7 @@ export function BidPanel({
                         ? "bg-amber-500/15 text-amber-300"
                         : b.status === "WON"
                         ? "bg-emerald-500/15 text-emerald-300"
-                        : "bg-slate-700/50 text-slate-300"
+                        : "bg-(--app-surface-2)/50 text-(--app-ink-2)"
                     )}
                   >
                     {b.status}
@@ -328,7 +328,7 @@ export function BidPanel({
       )}
 
       {loading && bids.length === 0 && (
-        <p className="text-xs text-gray-500 inline-flex items-center gap-2">
+        <p className="text-xs text-(--app-ink-3) inline-flex items-center gap-2">
           <Loader2 className="w-3 h-3 animate-spin" />
           Loading bids…
         </p>

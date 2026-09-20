@@ -20,7 +20,7 @@ export function InlineVideoEmbed({ url, title = "Video", className = "" }: Props
   if (r.kind === "youtube" || r.kind === "vimeo" || r.kind === "iframe") {
     return (
       <div
-        className={`relative w-full overflow-hidden rounded-xl bg-black border border-gray-800 ${className}`}
+        className={`relative w-full overflow-hidden rounded-xl bg-black border border-(--app-line) ${className}`}
         style={{ paddingBottom: "56.25%" }}
       >
         <iframe
@@ -42,7 +42,7 @@ export function InlineVideoEmbed({ url, title = "Video", className = "" }: Props
         controls
         playsInline
         preload="metadata"
-        className={`w-full rounded-xl bg-black border border-gray-800 ${className}`}
+        className={`w-full rounded-xl bg-black border border-(--app-line) ${className}`}
       />
     );
   }
@@ -50,14 +50,14 @@ export function InlineVideoEmbed({ url, title = "Video", className = "" }: Props
   // Fallback for unrecognised URLs — keep the link so users can still open it
   return (
     <div
-      className={`rounded-xl border border-gray-800 bg-gray-900 p-4 ${className}`}
+      className={`rounded-xl border border-(--app-line) bg-(--app-surface) p-4 ${className}`}
     >
-      <p className="text-sm text-gray-300 mb-2">{title}</p>
+      <p className="text-sm text-(--app-ink-2) mb-2">{title}</p>
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm text-indigo-400 hover:text-indigo-300"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-accent-ink) hover:text-(--app-accent-ink)"
       >
         <ExternalLink className="w-4 h-4" />
         Open video

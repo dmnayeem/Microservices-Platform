@@ -108,11 +108,11 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-90 bg-gray-950 flex flex-col">
-      <div className="sticky top-0 bg-gray-900/95 backdrop-blur-lg border-b border-gray-800 px-4 py-3">
+    <div className="fixed inset-0 z-90 bg-(--app-page) flex flex-col">
+      <div className="sticky top-0 bg-(--app-surface)/95 backdrop-blur-lg border-b border-(--app-line) px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
             <input
               autoFocus
               value={query}
@@ -121,12 +121,12 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                 if (e.key === "Enter") pushRecent(query);
               }}
               placeholder="Search tasks, users, courses, listings…"
-              className="w-full pl-9 pr-9 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="w-full pl-9 pr-9 py-2.5 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
             />
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-(--app-ink-3) hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -134,7 +134,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
           </div>
           <button
             onClick={onClose}
-            className="px-3 py-2 text-gray-400 hover:text-white text-sm font-medium"
+            className="px-3 py-2 text-(--app-ink-3) hover:text-white text-sm font-medium"
           >
             Cancel
           </button>
@@ -147,8 +147,8 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               className={cn(
                 "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap",
                 tab === t
-                  ? "bg-indigo-500 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                  ? "bg-(--app-cta) text-(--app-on-cta)"
+                  : "bg-(--app-surface-2) text-(--app-ink-3) hover:bg-(--app-surface-2)"
               )}
             >
               {t}
@@ -160,7 +160,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
       <div className="flex-1 overflow-y-auto max-w-3xl mx-auto w-full px-4 py-4">
         {!query && recent.length > 0 && (
           <div>
-            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-2">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) mb-2">
               Recent
             </p>
             <ul className="space-y-1">
@@ -168,9 +168,9 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                 <li key={r}>
                   <button
                     onClick={() => setQuery(r)}
-                    className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-800 text-sm text-gray-300"
+                    className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-(--app-surface-2) text-sm text-(--app-ink-2)"
                   >
-                    <Clock className="w-3.5 h-3.5 text-gray-500" />
+                    <Clock className="w-3.5 h-3.5 text-(--app-ink-3)" />
                     {r}
                   </button>
                 </li>
@@ -181,13 +181,13 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
 
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+            <Loader2 className="w-5 h-5 animate-spin text-(--app-accent-ink)" />
           </div>
         )}
 
         {!loading && query && results.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-sm text-gray-500">No results for &quot;{query}&quot;</p>
+            <p className="text-sm text-(--app-ink-3)">No results for &quot;{query}&quot;</p>
           </div>
         )}
 
@@ -201,7 +201,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                     pushRecent(query);
                     onClose();
                   }}
-                  className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800"
+                  className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-(--app-surface-2)"
                 >
                   {r.imageUrl ? (
                     <SmartImage
@@ -209,22 +209,22 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                       alt=""
                       width={40}
                       height={40}
-                      className="w-10 h-10 rounded-lg object-cover bg-gray-800"
+                      className="w-10 h-10 rounded-lg object-cover bg-(--app-surface-2)"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xs font-bold uppercase">
+                    <div className="w-10 h-10 rounded-lg bg-(--app-cta)/10 text-(--app-accent-ink) flex items-center justify-center text-xs font-bold uppercase">
                       {r.type[0]}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{r.title}</p>
                     {r.subtitle && (
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-(--app-ink-3) truncate">
                         {r.subtitle}
                       </p>
                     )}
                   </div>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-800 text-gray-400">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-(--app-surface-2) text-(--app-ink-3)">
                     {r.type}
                   </span>
                 </Link>

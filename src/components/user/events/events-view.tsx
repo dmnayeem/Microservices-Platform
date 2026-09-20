@@ -102,7 +102,7 @@ export function EventsView() {
       <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
         <Sparkles className="w-6 h-6 text-amber-400" /> Events
       </h1>
-      <p className="text-sm text-gray-400 -mt-1">
+      <p className="text-sm text-(--app-ink-3) -mt-1">
         Limited-time challenges. Hit the target before the timer runs out and
         claim your reward.
       </p>
@@ -136,7 +136,7 @@ export function EventsView() {
             return (
               <div
                 key={ev.id}
-                className="rounded-2xl border border-gray-800 bg-gray-900 p-4 flex flex-col"
+                className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 flex flex-col"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-11 h-11 rounded-xl bg-linear-to-br from-amber-500 to-pink-500 grid place-items-center text-xl shrink-0">
@@ -146,14 +146,14 @@ export function EventsView() {
                     <p className="text-sm font-semibold text-white line-clamp-2">
                       {ev.title}
                     </p>
-                    <p className="text-[11px] text-gray-500 inline-flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
                       <Clock className="w-3 h-3" /> {timeLeft(ev.endAt)}
                     </p>
                   </div>
                 </div>
 
                 {ev.description && (
-                  <p className="text-xs text-gray-400 mt-2 line-clamp-2">
+                  <p className="text-xs text-(--app-ink-3) mt-2 line-clamp-2">
                     {ev.description}
                   </p>
                 )}
@@ -161,7 +161,7 @@ export function EventsView() {
                 {/* Progress */}
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-[11px] mb-1">
-                    <span className="text-gray-400">{meta.label}</span>
+                    <span className="text-(--app-ink-3)">{meta.label}</span>
                     <span className="text-white font-bold tabular-nums">
                       {isUpload
                         ? uploaded
@@ -171,7 +171,7 @@ export function EventsView() {
                     </span>
                   </div>
                   {!isUpload && (
-                    <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                    <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
                       <div
                         className="h-full bg-linear-to-r from-amber-500 to-pink-500 transition-[width]"
                         style={{ width: `${pct}%` }}
@@ -201,9 +201,9 @@ export function EventsView() {
                       return (
                         <div
                           key={t.threshold}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-gray-950/60 border border-gray-800 px-2.5 py-1.5"
+                          className="flex items-center justify-between gap-2 rounded-lg bg-(--app-page)/60 border border-(--app-line) px-2.5 py-1.5"
                         >
-                          <span className="text-xs text-gray-300">
+                          <span className="text-xs text-(--app-ink-2)">
                             {t.threshold} {meta.unit} →{" "}
                             <span className="text-amber-400 font-bold">
                               +{t.rewardPoints}
@@ -224,7 +224,7 @@ export function EventsView() {
                                 "inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold",
                                 t.reached
                                   ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                                  : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                                  : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
                               )}
                             >
                               {busy ? (
@@ -261,7 +261,7 @@ export function EventsView() {
                           "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold",
                           canClaim
                             ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                            : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                            : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
                         )}
                       >
                         {claiming === ev.id ? (

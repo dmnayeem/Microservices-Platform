@@ -183,7 +183,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
   if (loading || !data) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-(--app-accent-ink)" />
       </div>
     );
   }
@@ -271,14 +271,14 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             />
           )}
         </div>
-        <div className="bg-gray-900 px-4 sm:px-6 pt-12 pb-5 relative">
+        <div className="bg-(--app-surface) px-4 sm:px-6 pt-12 pb-5 relative">
           <div className="absolute -top-12 left-4 sm:left-6">
             <Avatar
               src={user.avatar}
               size="w-24 h-24 sm:w-28 sm:h-28"
               shape="rounded"
               fallbackText={initial}
-              className="border-4 border-gray-900"
+              className="border-4 border-(--app-surface)"
             />
           </div>
 
@@ -286,7 +286,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             {viewer.isMe ? (
               <Link
                 href="/profile"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
               >
                 Edit Profile
               </Link>
@@ -297,8 +297,8 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                 className={cn(
                   "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50",
                   viewer.isFollowing
-                    ? "bg-gray-800 text-white border border-gray-700 hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30"
-                    : "bg-indigo-500 hover:bg-indigo-600 text-white"
+                    ? "bg-(--app-surface-2) text-white border border-(--app-line) hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30"
+                    : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
                 {followBusy ? (
@@ -334,17 +334,17 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             </span>
           </div>
           {user.username && (
-            <p className="text-gray-500 text-sm">@{user.username}</p>
+            <p className="text-(--app-ink-3) text-sm">@{user.username}</p>
           )}
           {viewer.isFollowedBy && !viewer.isMe && (
-            <span className="inline-block mt-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-800 text-gray-300 font-bold">
+            <span className="inline-block mt-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink-2) font-bold">
               Follows you
             </span>
           )}
           {user.bio && (
-            <p className="text-sm text-gray-300 mt-2 whitespace-pre-wrap">{user.bio}</p>
+            <p className="text-sm text-(--app-ink-2) mt-2 whitespace-pre-wrap">{user.bio}</p>
           )}
-          <div className="flex items-center flex-wrap gap-3 mt-3 text-xs text-gray-400">
+          <div className="flex items-center flex-wrap gap-3 mt-3 text-xs text-(--app-ink-3)">
             {user.country && (
               <span className="inline-flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
@@ -365,7 +365,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
               {user.tags.map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 text-[11px] font-medium border border-indigo-500/30"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-(--app-cta)/10 text-(--app-accent-ink) text-[11px] font-medium border border-(--app-accent-edge)/30"
                 >
                   {TAG_LABEL[t] ?? t}
                 </span>
@@ -377,7 +377,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
 
       {/* Stats — Social group + Lifetime panel, both privacy-gated */}
       {statsHidden ? (
-        <div className="glass p-4 text-center text-xs text-gray-500 inline-flex items-center justify-center gap-2 w-full">
+        <div className="glass p-4 text-center text-xs text-(--app-ink-3) inline-flex items-center justify-center gap-2 w-full">
           <Lock className="w-4 h-4" />
           This user&apos;s stats are private.
         </div>
@@ -426,7 +426,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             <div
               className={cn(
                 "grid grid-cols-2 gap-2.5",
-                aboutFacts.length > 0 && "mt-4 pt-4 border-t border-gray-800"
+                aboutFacts.length > 0 && "mt-4 pt-4 border-t border-(--app-line)"
               )}
             >
               {user.creations.coursesCreated > 0 && (
@@ -440,7 +440,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                   <p className="text-xl font-extrabold text-white tabular-nums mt-1">
                     {user.creations.coursesCreated}
                   </p>
-                  <p className="text-[11px] text-gray-500">published</p>
+                  <p className="text-[11px] text-(--app-ink-3)">published</p>
                 </div>
               )}
               {user.creations.marketplaceListings > 0 && (
@@ -454,25 +454,25 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                   <p className="text-xl font-extrabold text-white tabular-nums mt-1">
                     {user.creations.marketplaceListings}
                   </p>
-                  <p className="text-[11px] text-gray-500">listings</p>
+                  <p className="text-[11px] text-(--app-ink-3)">listings</p>
                 </div>
               )}
             </div>
           )}
 
           {user.socialAccounts.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-800">
-              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2.5">
+            <div className="mt-4 pt-4 border-t border-(--app-line)">
+              <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2.5">
                 Connected accounts
               </p>
               <div className="flex flex-wrap gap-2">
                 {user.socialAccounts.map((a) => {
                   const chip = (
                     <>
-                      <span className="text-xs font-semibold text-gray-200">
+                      <span className="text-xs font-semibold text-(--app-ink)">
                         {a.platform.charAt(0) + a.platform.slice(1).toLowerCase()}
                       </span>
-                      <span className="text-xs text-gray-500 truncate min-w-0 max-w-32">
+                      <span className="text-xs text-(--app-ink-3) truncate min-w-0 max-w-32">
                         @{a.username}
                       </span>
                       {a.verified && (
@@ -489,14 +489,14 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                       href={a.url}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 hover:border-indigo-500/40 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors"
                     >
                       {chip}
                     </a>
                   ) : (
                     <span
                       key={a.id}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-(--app-page) border border-(--app-line)"
                     >
                       {chip}
                     </span>
@@ -508,7 +508,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
         </section>
       ) : null}
       {/* Tab nav */}
-      <ScrollFadeRow innerClassName="flex gap-1 border-b border-gray-800" ariaLabel="Profile tabs">
+      <ScrollFadeRow innerClassName="flex gap-1 border-b border-(--app-line)" ariaLabel="Profile tabs">
         {(
           [
             { key: "posts", label: "Posts" },
@@ -522,8 +522,8 @@ export function PublicProfileView({ userId, viewerId }: Props) {
             className={cn(
               "shrink-0 px-4 py-2 text-sm font-medium transition-colors",
               tab === t.key
-                ? "text-white border-b-2 border-indigo-500"
-                : "text-gray-400 hover:text-white"
+                ? "text-white border-b-2 border-(--app-accent-edge)"
+                : "text-(--app-ink-3) hover:text-white"
             )}
           >
             {t.label}
@@ -602,7 +602,7 @@ function PostsTab({ userId }: { userId: string }) {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="aspect-square rounded-xl border border-gray-800 bg-gray-900/40 animate-pulse"
+            className="aspect-square rounded-xl border border-(--app-line) bg-(--app-surface)/40 animate-pulse"
           />
         ))}
       </div>
@@ -610,9 +610,9 @@ function PostsTab({ userId }: { userId: string }) {
   }
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
-        <p className="text-sm text-gray-400 font-semibold">No posts yet</p>
-        <p className="text-xs text-gray-600 mt-1">
+      <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
+        <p className="text-sm text-(--app-ink-3) font-semibold">No posts yet</p>
+        <p className="text-xs text-(--app-glyph) mt-1">
           Anything they share publicly will show up here.
         </p>
       </div>
@@ -630,7 +630,7 @@ function PostsTab({ userId }: { userId: string }) {
               key={p.id}
               type="button"
               onClick={() => setOpen(p)}
-              className="group relative aspect-square overflow-hidden rounded-xl border border-gray-800 bg-gray-950 text-left transition-colors hover:border-indigo-500/40 focus:outline-none focus-visible:border-indigo-500"
+              className="group relative aspect-square overflow-hidden rounded-xl border border-(--app-line) bg-(--app-page) text-left transition-colors hover:border-(--app-accent-edge)/40 focus:outline-none focus-visible:border-(--app-accent-edge)"
             >
               {image ? (
                 <SmartImage
@@ -644,13 +644,13 @@ function PostsTab({ userId }: { userId: string }) {
                 <div
                   className={cn(
                     "absolute inset-0 flex items-center justify-center p-3",
-                    bg ? bg.className : "bg-gray-900"
+                    bg ? bg.className : "bg-(--app-surface)"
                   )}
                 >
                   <p
                     className={cn(
                       "text-center text-xs sm:text-sm font-semibold line-clamp-6",
-                      bg ? bg.textClass : "text-gray-300"
+                      bg ? bg.textClass : "text-(--app-ink-2)"
                     )}
                   >
                     {p.content || "—"}
@@ -709,11 +709,11 @@ function PostsTab({ userId }: { userId: string }) {
           onClick={() => setOpen(null)}
         >
           <div
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5"
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 mb-3">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-(--app-ink-3)">
                 {new Date(open.createdAt).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
@@ -724,14 +724,14 @@ function PostsTab({ userId }: { userId: string }) {
                 type="button"
                 onClick={() => setOpen(null)}
                 aria-label="Close"
-                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
+                className="p-1 rounded-lg text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {open.content && (
-              <div className="text-sm text-gray-200 whitespace-pre-wrap break-words">
+              <div className="text-sm text-(--app-ink) whitespace-pre-wrap break-words">
                 <RenderedContent content={open.content} postId={open.id} />
               </div>
             )}
@@ -741,7 +741,7 @@ function PostsTab({ userId }: { userId: string }) {
                 {open.images.map((src, i) => (
                   <div
                     key={i}
-                    className="relative w-full overflow-hidden rounded-xl bg-gray-950"
+                    className="relative w-full overflow-hidden rounded-xl bg-(--app-page)"
                   >
                     <SmartImage
                       src={src}
@@ -755,7 +755,7 @@ function PostsTab({ userId }: { userId: string }) {
               </div>
             )}
 
-            <div className="mt-4 pt-3 border-t border-gray-800 flex items-center gap-4 text-xs text-gray-400">
+            <div className="mt-4 pt-3 border-t border-(--app-line) flex items-center gap-4 text-xs text-(--app-ink-3)">
               <span className="inline-flex items-center gap-1.5">
                 <Heart
                   className={cn(
@@ -849,11 +849,11 @@ function UserListTab({
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500 text-sm">Loading…</div>;
+    return <div className="text-center py-8 text-(--app-ink-3) text-sm">Loading…</div>;
   }
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-800 p-8 text-center text-sm text-gray-500">
+      <div className="rounded-xl border border-dashed border-(--app-line) p-8 text-center text-sm text-(--app-ink-3)">
         No users yet.
       </div>
     );
@@ -880,9 +880,9 @@ function UserListTab({
                 </p>
               </Link>
               {u.username && (
-                <p className="text-[11px] text-gray-500">@{u.username}</p>
+                <p className="text-[11px] text-(--app-ink-3)">@{u.username}</p>
               )}
-              <p className="text-[11px] text-gray-400 inline-flex items-center gap-1 mt-0.5">
+              <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
                 <Coins className="w-3 h-3 text-amber-400" />
                 {u.followersCount.toLocaleString()} followers
               </p>
@@ -894,8 +894,8 @@ function UserListTab({
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50",
                   u.isFollowing
-                    ? "bg-gray-800 text-white border border-gray-700"
-                    : "bg-indigo-500 hover:bg-indigo-600 text-white"
+                    ? "bg-(--app-surface-2) text-white border border-(--app-line)"
+                    : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
                 {busyId === u.id ? (
@@ -926,12 +926,12 @@ function PublicFact({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <span className="mt-0.5 text-gray-500 shrink-0">{icon}</span>
+      <span className="mt-0.5 text-(--app-ink-3) shrink-0">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+        <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold">
           {label}
         </p>
-        <p className="text-sm text-gray-200 break-words">{value}</p>
+        <p className="text-sm text-(--app-ink) break-words">{value}</p>
       </div>
     </div>
   );

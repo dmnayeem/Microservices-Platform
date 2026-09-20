@@ -37,10 +37,10 @@ interface NotificationItemProps {
 }
 
 const TYPE_META: Record<NotificationType, { icon: LucideIcon; tone: string }> = {
-  TASK: { icon: Bell, tone: "bg-indigo-500/10 text-indigo-400" },
+  TASK: { icon: Bell, tone: "bg-(--app-cta)/10 text-(--app-accent-ink)" },
   REWARD: { icon: Coins, tone: "bg-amber-500/10 text-amber-400" },
   REFERRAL: { icon: Users, tone: "bg-purple-500/10 text-purple-400" },
-  SYSTEM: { icon: AlertCircle, tone: "bg-gray-700 text-gray-300" },
+  SYSTEM: { icon: AlertCircle, tone: "bg-(--app-surface-2) text-(--app-ink-2)" },
   PROMOTION: { icon: Sparkles, tone: "bg-pink-500/10 text-pink-400" },
   FINANCE: { icon: ShoppingBag, tone: "bg-emerald-500/10 text-emerald-400" },
   SOCIAL: { icon: Users, tone: "bg-cyan-500/10 text-cyan-400" },
@@ -66,8 +66,8 @@ export function NotificationItem({
       className={cn(
         "w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-colors",
         isRead
-          ? "border-gray-800 bg-gray-900 hover:bg-gray-800/60"
-          : "border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10",
+          ? "border-(--app-line) bg-(--app-surface) hover:bg-(--app-surface-2)/60"
+          : "border-(--app-accent-edge)/30 bg-(--app-cta)/5 hover:bg-(--app-cta)/10",
         className
       )}
     >
@@ -87,15 +87,15 @@ export function NotificationItem({
           {!isRead && (
             <span
               aria-hidden
-              className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-1"
+              className="w-2 h-2 rounded-full bg-(--app-cta) shrink-0 mt-1"
             />
           )}
         </div>
         {body && (
-          <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{body}</p>
+          <p className="text-xs text-(--app-ink-3) mt-0.5 line-clamp-2">{body}</p>
         )}
         <div className="flex items-center justify-between mt-1.5 gap-2">
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-(--app-ink-3)">
             {formatDistanceToNow(dt, { addSuffix: true })}
           </span>
           {amount && (

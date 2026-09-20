@@ -137,7 +137,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
   );
 
   return (
-    <section className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 space-y-3">
+    <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center justify-center">
@@ -151,7 +151,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
             <h3 className="text-base font-bold text-white">
               {isOwner ? "Offers received" : "Make an offer"}
             </h3>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-(--app-ink-3)">
               {isOwner
                 ? "Accept, reject, or counter incoming offers."
                 : "Submit your best price — seller can accept or counter."}
@@ -174,7 +174,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
       {!isOwner && showForm && !isSold && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">$</span>
+            <span className="text-(--app-ink-3)">$</span>
             <input
               type="number"
               value={amount}
@@ -182,7 +182,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
               min={1}
               step="0.01"
               placeholder={`Offer (asking $${askingPrice.toLocaleString()})`}
-              className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 tabular-nums"
+              className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 tabular-nums"
             />
             <button
               type="button"
@@ -203,12 +203,12 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Optional message — give context for your offer…"
             maxLength={500}
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
           />
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="text-[11px] text-gray-500 hover:text-white"
+            className="text-[11px] text-(--app-ink-3) hover:text-white"
           >
             Cancel
           </button>
@@ -217,12 +217,12 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
 
       {/* Offer list */}
       {loading ? (
-        <p className="text-xs text-gray-500 inline-flex items-center gap-2">
+        <p className="text-xs text-(--app-ink-3) inline-flex items-center gap-2">
           <Loader2 className="w-3 h-3 animate-spin" />
           Loading offers…
         </p>
       ) : visibleOffers.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">
+        <p className="text-xs text-(--app-ink-3) italic">
           {isOwner ? "No offers yet." : "You haven't made any offers yet."}
         </p>
       ) : (
@@ -238,7 +238,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                   ? "border-red-500/30 bg-red-500/5"
                   : o.status === "COUNTERED"
                   ? "border-amber-500/30 bg-amber-500/5"
-                  : "border-gray-800 bg-gray-950"
+                  : "border-(--app-line) bg-(--app-page)"
               )}
             >
               <div className="flex items-start gap-3">
@@ -252,7 +252,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                   <p className="text-sm font-bold text-white">
                     {o.buyer.name}
                     {o.isOwnOffer && (
-                      <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-200 font-bold">
+                      <span className="ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-(--app-cta)/20 text-(--app-accent-ink) font-bold">
                         You
                       </span>
                     )}
@@ -268,13 +268,13 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                         o.status === "COUNTERED" &&
                           "bg-amber-500/15 text-amber-300",
                         o.status === "WITHDRAWN" &&
-                          "bg-slate-700/50 text-slate-300"
+                          "bg-(--app-surface-2)/50 text-(--app-ink-2)"
                       )}
                     >
                       {o.status}
                     </span>
                   </p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-(--app-ink-3)">
                     {formatDistanceToNow(new Date(o.createdAt), {
                       addSuffix: true,
                     })}
@@ -286,7 +286,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
               </div>
 
               {o.message && (
-                <p className="text-xs text-gray-300 whitespace-pre-wrap pl-11">
+                <p className="text-xs text-(--app-ink-2) whitespace-pre-wrap pl-11">
                   &ldquo;{o.message}&rdquo;
                 </p>
               )}
@@ -300,7 +300,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                     </span>
                   </p>
                   {o.counterMessage && (
-                    <p className="text-xs text-gray-300 mt-1">
+                    <p className="text-xs text-(--app-ink-2) mt-1">
                       &ldquo;{o.counterMessage}&rdquo;
                     </p>
                   )}
@@ -311,7 +311,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
               {counterDraft?.offerId === o.id && (
                 <div className="pl-11 space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-gray-500">$</span>
+                    <span className="text-(--app-ink-3)">$</span>
                     <input
                       type="number"
                       value={counterDraft.amount}
@@ -319,7 +319,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                         setCounterDraft({ ...counterDraft, amount: e.target.value })
                       }
                       placeholder="Counter amount"
-                      className="flex-1 px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 tabular-nums"
+                      className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 tabular-nums"
                     />
                     <button
                       type="button"
@@ -352,12 +352,12 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                       setCounterDraft({ ...counterDraft, message: e.target.value })
                     }
                     placeholder="Optional counter message…"
-                    className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+                    className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
                   />
                   <button
                     type="button"
                     onClick={() => setCounterDraft(null)}
-                    className="text-[11px] text-gray-500 hover:text-white"
+                    className="text-[11px] text-(--app-ink-3) hover:text-white"
                   >
                     Cancel
                   </button>
@@ -415,7 +415,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                       type="button"
                       disabled={busy === `${o.id}:withdraw`}
                       onClick={() => action(o.id, { action: "withdraw" })}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-700/50 hover:bg-slate-700 text-slate-200 text-xs font-bold disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-(--app-surface-2)/50 hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-bold disabled:opacity-50"
                     >
                       {busy === `${o.id}:withdraw` ? (
                         <Loader2 className="w-3 h-3 animate-spin" />

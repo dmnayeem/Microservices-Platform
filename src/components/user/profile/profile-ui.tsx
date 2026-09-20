@@ -19,7 +19,7 @@ export function StatTile({
   tone: "indigo" | "amber" | "emerald" | "purple";
 }) {
   const tones = {
-    indigo: "text-indigo-400 bg-indigo-500/10",
+    indigo: "text-(--app-accent-ink) bg-(--app-cta)/10",
     amber: "text-amber-400 bg-amber-500/10",
     emerald: "text-emerald-400 bg-emerald-500/10",
     purple: "text-purple-400 bg-purple-500/10",
@@ -28,7 +28,7 @@ export function StatTile({
     <div className="glass p-3 flex items-center gap-3">
       <div className={cn("p-2 rounded-lg", tones[tone])}>{icon}</div>
       <div>
-        <p className="text-xs text-gray-500">{label}</p>
+        <p className="text-xs text-(--app-ink-3)">{label}</p>
         <p className="text-base font-bold text-white tabular-nums">{value}</p>
       </div>
     </div>
@@ -46,10 +46,10 @@ export function InfoRow({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="text-gray-500 mt-0.5">{icon}</span>
+      <span className="text-(--app-ink-3) mt-0.5">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white truncate">{label}</p>
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+        <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider font-bold">
           {sub}
         </p>
       </div>
@@ -68,12 +68,12 @@ export function DataLine({
 }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
         {label}
       </p>
       <p className="text-sm text-white mt-0.5 inline-flex items-center gap-1.5">
         {icon}
-        {value || <span className="text-gray-600 italic">—</span>}
+        {value || <span className="text-(--app-glyph) italic">—</span>}
       </p>
     </div>
   );
@@ -100,7 +100,7 @@ export function VerifTile({
     ? { tone: "border-amber-500/30 bg-amber-500/10", color: "text-amber-400", text: "Pending" }
     : rejected
     ? { tone: "border-red-500/30 bg-red-500/10", color: "text-red-400", text: "Rejected" }
-    : { tone: "border-gray-700 bg-gray-950", color: "text-gray-400", text: "Not set" };
+    : { tone: "border-(--app-line) bg-(--app-page)", color: "text-(--app-ink-3)", text: "Not set" };
 
   return (
     <div
@@ -119,7 +119,7 @@ export function VerifTile({
       {action && (
         <Link
           href={action.href}
-          className="text-[11px] font-bold text-indigo-300 hover:text-indigo-200 px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 whitespace-nowrap"
+          className="text-[11px] font-bold text-(--app-accent-ink) hover:text-(--app-accent-ink) px-2 py-1 rounded bg-(--app-cta)/10 border border-(--app-accent-edge)/30 hover:bg-(--app-cta)/20 whitespace-nowrap"
         >
           {action.label} →
         </Link>
@@ -176,7 +176,7 @@ export function Field({
       id={anchor ? `pf-${anchor}` : undefined}
       className={anchor ? "scroll-mt-24 rounded-lg transition-shadow" : undefined}
     >
-      <label className="block text-[11px] font-medium text-gray-400 mb-1">{label}</label>
+      <label className="block text-[11px] font-medium text-(--app-ink-3) mb-1">{label}</label>
       {children}
     </div>
   );
@@ -245,7 +245,7 @@ export function UsernameField({
   return (
     <Field label="Username">
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--app-ink-3)">
           @
         </span>
         <input
@@ -262,7 +262,7 @@ export function UsernameField({
         />
         <span className="absolute right-3 top-1/2 -translate-y-1/2">
           {status === "checking" && (
-            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+            <Loader2 className="w-4 h-4 animate-spin text-(--app-ink-3)" />
           )}
           {(status === "available" || status === "current") && (
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -281,12 +281,12 @@ export function UsernameField({
           This username is already taken.
         </p>
       ) : clean.trim() ? (
-        <p className="mt-1 text-[11px] text-gray-400">
+        <p className="mt-1 text-[11px] text-(--app-ink-3)">
           {status === "available" ? "Available — " : ""}Profile link:{" "}
-          <span className="text-indigo-300">/u/{clean.trim()}</span>
+          <span className="text-(--app-accent-ink)">/u/{clean.trim()}</span>
         </p>
       ) : (
-        <p className="mt-1 text-[11px] text-gray-500">
+        <p className="mt-1 text-[11px] text-(--app-ink-3)">
           Pick a public @handle — this becomes your profile link (/u/yourname).
         </p>
       )}
@@ -308,7 +308,7 @@ export function Card({
   children: React.ReactNode;
 }) {
   const tones: Record<NonNullable<typeof tone>, string> = {
-    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30",
+    indigo: "bg-(--app-cta)/10 text-(--app-accent-ink) border-(--app-accent-edge)/30",
     purple: "bg-purple-500/10 text-purple-400 border-purple-500/30",
     amber: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -323,7 +323,7 @@ export function Card({
             <div
               className={cn(
                 "w-7 h-7 rounded-lg flex items-center justify-center border shrink-0",
-                tone ? tones[tone] : "bg-gray-800 text-gray-400 border-gray-700"
+                tone ? tones[tone] : "bg-(--app-surface-2) text-(--app-ink-3) border-(--app-line)"
               )}
             >
               {icon}
@@ -350,16 +350,16 @@ export function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 p-3 rounded-lg bg-gray-950 border border-gray-800 cursor-pointer">
+    <label className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line) cursor-pointer">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="rounded bg-gray-800 border-gray-600 text-indigo-500"
+        className="rounded bg-(--app-surface-2) border-(--app-line) text-(--app-accent-ink)"
       />
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white">{label}</p>
-        {hint && <p className="text-xs text-gray-500">{hint}</p>}
+        {hint && <p className="text-xs text-(--app-ink-3)">{hint}</p>}
       </div>
     </label>
   );
@@ -383,15 +383,15 @@ export function Modal({
         onClick={onClose}
       />
       <div className="relative glass-strong rounded-xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col">
-        <div className="flex items-start justify-between px-5 py-3 border-b border-gray-800">
+        <div className="flex items-start justify-between px-5 py-3 border-b border-(--app-line)">
           <div>
             <h2 className="text-base font-semibold text-white">{title}</h2>
-            {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-(--app-ink-3) mt-0.5">{subtitle}</p>}
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800"
+              className="p-1 text-(--app-ink-3) hover:text-white rounded-lg hover:bg-(--app-surface-2)"
             >
               <X className="w-5 h-5" />
             </button>

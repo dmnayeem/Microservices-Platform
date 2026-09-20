@@ -122,24 +122,24 @@ export function HelpCenter() {
       <h1 className="text-xl font-bold text-white">📖 Help Center</h1>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search help articles..."
-          className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          className="w-full pl-9 pr-3 py-2.5 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500"
         />
       </div>
 
       {visible.map((sec) => (
         <div
           key={sec.title}
-          className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden"
+          className="rounded-xl border border-(--app-line) bg-(--app-surface) overflow-hidden"
         >
-          <div className="px-4 py-2.5 border-b border-slate-800 flex items-center gap-2">
+          <div className="px-4 py-2.5 border-b border-(--app-line) flex items-center gap-2">
             <span className="text-lg">{sec.icon}</span>
             <p className="text-sm font-bold text-white">{sec.title}</p>
-            <span className="ml-auto text-[10px] text-slate-500 tabular-nums">
+            <span className="ml-auto text-[10px] text-(--app-ink-3) tabular-nums">
               {sec.articles.length}
             </span>
           </div>
@@ -147,7 +147,7 @@ export function HelpCenter() {
             const key = `${sec.title}:${a.q}`;
             const isOpen = open.has(key);
             return (
-              <div key={key} className="border-b border-slate-800 last:border-b-0">
+              <div key={key} className="border-b border-(--app-line) last:border-b-0">
                 <button
                   onClick={() => toggle(key)}
                   className="w-full text-left flex items-center gap-2 px-4 py-3"
@@ -157,13 +157,13 @@ export function HelpCenter() {
                   </span>
                   <ChevronDown
                     className={cn(
-                      "w-4 h-4 text-slate-500 transition-transform",
+                      "w-4 h-4 text-(--app-ink-3) transition-transform",
                       isOpen && "rotate-180"
                     )}
                   />
                 </button>
                 {isOpen && (
-                  <p className="px-4 pb-3 text-xs text-slate-300 leading-relaxed">
+                  <p className="px-4 pb-3 text-xs text-(--app-ink-2) leading-relaxed">
                     {a.a}
                   </p>
                 )}

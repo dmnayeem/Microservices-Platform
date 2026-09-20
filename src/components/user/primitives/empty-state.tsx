@@ -34,21 +34,21 @@ export function EmptyState({
       <div className="relative mb-5 flex items-center justify-center">
         <span
           aria-hidden
-          className="absolute w-24 h-24 rounded-full border border-gray-800"
+          className="absolute w-24 h-24 rounded-full border border-(--app-line)"
         />
         <span
           aria-hidden
-          className="absolute w-[4.5rem] h-[4.5rem] rounded-full border border-gray-800/70"
+          className="absolute w-[4.5rem] h-[4.5rem] rounded-full border border-(--app-line)/70"
         />
-        <span className="relative w-14 h-14 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center">
-          <Icon className="w-7 h-7 text-gray-400" />
+        <span className="relative w-14 h-14 rounded-2xl bg-(--app-surface-2) border border-(--app-line) flex items-center justify-center">
+          <Icon className="w-7 h-7 text-(--app-ink-3)" />
         </span>
       </div>
       <h3 className="text-[0.9375rem] font-semibold text-white tracking-tight mb-1.5">
         {title}
       </h3>
       {description && (
-        <p className="text-sm leading-relaxed text-gray-500 max-w-[28ch] mb-5">
+        <p className="text-sm leading-relaxed text-(--app-ink-3) max-w-[28ch] mb-5">
           {description}
         </p>
       )}
@@ -56,14 +56,14 @@ export function EmptyState({
         (action.href ? (
           <a
             href={action.href}
-            className="press inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+            className="press inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold transition-colors"
           >
             {action.label}
           </a>
         ) : (
           <button
             onClick={action.onClick}
-            className="press inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+            className="press inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold transition-colors"
           >
             {action.label}
           </button>

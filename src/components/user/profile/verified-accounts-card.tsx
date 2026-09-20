@@ -75,14 +75,14 @@ export function VerifiedAccountsCard() {
 
   return (
     <Card title="Verified Accounts">
-      <p className="text-xs text-gray-400 mb-3 inline-flex items-center gap-1.5">
+      <p className="text-xs text-(--app-ink-3) mb-3 inline-flex items-center gap-1.5">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
         Link your real accounts so JOIN tasks can be auto-verified — no
         screenshots needed.
       </p>
       <div className="space-y-3">
         {config.telegramBotUsername && (
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-3 flex items-center justify-between gap-3">
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 flex items-center justify-between gap-3">
             <span className="text-sm font-medium text-white">📱 Telegram</span>
             {tgLinked ? (
               <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
@@ -95,7 +95,7 @@ export function VerifiedAccountsCard() {
           </div>
         )}
         {config.discordEnabled && (
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-3 flex items-center justify-between gap-3">
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 flex items-center justify-between gap-3">
             <span className="text-sm font-medium text-white">🎮 Discord</span>
             {dcLinked ? (
               <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">

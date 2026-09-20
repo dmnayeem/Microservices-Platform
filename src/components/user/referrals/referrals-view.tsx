@@ -149,7 +149,7 @@ export function ReferralsView({
           <Users className="w-6 h-6 text-purple-400" />
           My Team
         </h1>
-        <p className="text-gray-400 text-sm mt-0.5">
+        <p className="text-(--app-ink-3) text-sm mt-0.5">
           Invite friends, build a team, earn passive commission for life.
         </p>
       </header>
@@ -186,7 +186,7 @@ export function ReferralsView({
                   ? "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-400 text-sm font-bold cursor-default"
                   : dailyClaim.canClaim
                   ? "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) text-sm font-bold disabled:opacity-50"
-                  : "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-700 text-slate-300 text-sm font-bold cursor-not-allowed"
+                  : "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-(--app-surface-2) text-(--app-ink-2) text-sm font-bold cursor-not-allowed"
               }
               title={
                 dailyClaim.claimed
@@ -227,7 +227,7 @@ export function ReferralsView({
 
       {/* 3-level commission cards */}
       <section>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">
+        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2">
           Commission Structure
         </p>
         <div className="grid grid-cols-3 gap-2">
@@ -258,16 +258,16 @@ export function ReferralsView({
       {/* Referral link & code */}
       <section className="glass rounded-xl p-4 space-y-3">
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
             Your Code
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 text-amber-400 font-mono font-bold tracking-widest text-center">
+            <code className="flex-1 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-amber-400 font-mono font-bold tracking-widest text-center">
               {referralCode}
             </code>
             <button
               onClick={() => copyText(referralCode, "Code")}
-              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300"
+              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
               aria-label="Copy code"
             >
               <Copy className="w-4 h-4" />
@@ -276,7 +276,7 @@ export function ReferralsView({
         </div>
 
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
             Share Link
           </p>
           <div className="flex items-center gap-2">
@@ -284,11 +284,11 @@ export function ReferralsView({
               type="text"
               value={shareUrl}
               readOnly
-              className="flex-1 px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 text-white text-sm focus:outline-none"
+              className="flex-1 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-white text-sm focus:outline-none"
             />
             <button
               onClick={() => copyText(shareUrl, "Link")}
-              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300"
+              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2)"
               aria-label="Copy link"
             >
               <Copy className="w-4 h-4" />
@@ -299,7 +299,7 @@ export function ReferralsView({
         <div className="flex gap-2">
           <button
             onClick={() => setShowQr((v) => !v)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
           >
             <QrCode className="w-4 h-4" />
             {showQr ? "Hide QR" : "Show QR"}
@@ -320,7 +320,7 @@ export function ReferralsView({
       <section>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-bold text-white">Your Team</h2>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
             {filteredTeam.length} of {team.length}
           </p>
         </div>
@@ -370,7 +370,7 @@ export function ReferralsView({
                     <p className="text-sm font-semibold text-white truncate">
                       {m.name ?? "Anonymous"}
                     </p>
-                    <p className="text-[10px] text-gray-500">
+                    <p className="text-[10px] text-(--app-ink-3)">
                       Joined {format(new Date(m.joinedAt), "MMM d, yyyy")}
                     </p>
                   </div>
@@ -439,7 +439,7 @@ function CommissionCard({
       {/* min-w-0 + shrink-0: a 4-figure earnings figure used to collide with
           the user count in this justify-between row. */}
       <div className="mt-1.5 flex items-center justify-between gap-1.5 text-[10px]">
-        <span className="text-gray-400 truncate min-w-0">{count} users</span>
+        <span className="text-(--app-ink-3) truncate min-w-0">{count} users</span>
         <span className="font-bold tabular-nums shrink-0">{usd(earned)}</span>
       </div>
     </div>
@@ -489,7 +489,7 @@ function QrPanel({ url }: { url: string }) {
   };
 
   return (
-    <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 flex flex-col items-center gap-3">
+    <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-4 flex flex-col items-center gap-3">
       {loading ? (
         <div className="w-48 h-48 rounded-xl bg-white/5 animate-pulse" />
       ) : dataUrl ? (
@@ -500,17 +500,17 @@ function QrPanel({ url }: { url: string }) {
           className="w-48 h-48 rounded-xl bg-white"
         />
       ) : (
-        <div className="w-48 h-48 rounded-xl bg-gray-800 flex items-center justify-center text-gray-500 text-xs">
+        <div className="w-48 h-48 rounded-xl bg-(--app-surface-2) flex items-center justify-center text-(--app-ink-3) text-xs">
           QR generation failed
         </div>
       )}
-      <p className="text-xs text-indigo-200/80 text-center">
+      <p className="text-xs text-(--app-accent-ink)/80 text-center">
         Scan to open the referral link
       </p>
       <button
         onClick={download}
         disabled={!dataUrl}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold disabled:opacity-50"
       >
         <Download className="w-3.5 h-3.5" />
         Download QR

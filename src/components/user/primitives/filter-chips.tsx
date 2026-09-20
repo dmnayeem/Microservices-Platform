@@ -40,13 +40,13 @@ export function FilterChips<T extends string>({
                 className={cn(
                   "shrink-0 px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                   active
-                    ? "border-indigo-500 text-indigo-400"
-                    : "border-transparent text-gray-400 hover:text-gray-200"
+                    ? "border-(--app-accent-edge) text-(--app-accent-ink)"
+                    : "border-transparent text-(--app-ink-3) hover:text-(--app-ink)"
                 )}
               >
                 {opt.label}
                 {opt.count !== undefined && (
-                  <span className="ml-1.5 text-xs text-gray-500">
+                  <span className="ml-1.5 text-xs text-(--app-ink-3)">
                     {opt.count}
                   </span>
                 )}
@@ -61,7 +61,7 @@ export function FilterChips<T extends string>({
                 "shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
                 active
                   ? "bg-linear-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-500/25"
-                  : "bg-gray-800 text-gray-300 border border-gray-700/60 hover:bg-gray-700 hover:text-white"
+                  : "bg-(--app-surface-2) text-(--app-ink-2) border border-(--app-line)/60 hover:bg-(--app-surface-2) hover:text-white"
               )}
             >
               {opt.label}
@@ -69,7 +69,7 @@ export function FilterChips<T extends string>({
                 <span
                   className={cn(
                     "px-1.5 rounded-full text-[10px] tabular-nums",
-                    active ? "bg-white/20 text-white" : "bg-gray-900 text-gray-400"
+                    active ? "bg-white/20 text-white" : "bg-(--app-surface) text-(--app-ink-3)"
                   )}
                 >
                   {opt.count}

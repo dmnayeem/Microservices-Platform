@@ -38,7 +38,7 @@ export function SandboxedAdFrame({
   return (
     <div
       className={cn(
-        "relative rounded-xl overflow-hidden border border-white/10 bg-gray-900 mx-auto",
+        "relative rounded-xl overflow-hidden border border-white/10 bg-(--app-surface) mx-auto",
         className
       )}
     >

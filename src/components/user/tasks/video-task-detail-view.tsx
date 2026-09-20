@@ -497,7 +497,7 @@ function RewardBadge({
     amber: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     violet: "bg-violet-500/10 text-violet-400 border-violet-500/30",
     emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-    slate: "bg-slate-500/10 text-slate-300 border-slate-500/30",
+    slate: "bg-(--app-ink-3)/10 text-(--app-ink-2) border-(--app-line)/30",
   } as const;
   return (
     <span

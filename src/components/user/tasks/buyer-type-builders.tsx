@@ -266,7 +266,7 @@ export function ArticleBuilder({
           type="checkbox"
           checked={value.requireUrl}
           onChange={(e) => set({ requireUrl: e.target.checked })}
-          className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
+          className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-(--app-accent-edge)"
         />
         Also require a link to where they published it
       </label>
@@ -275,7 +275,7 @@ export function ArticleBuilder({
           type="checkbox"
           checked={value.requireScreenshot}
           onChange={(e) => set({ requireScreenshot: e.target.checked })}
-          className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
+          className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-(--app-accent-edge)"
         />
         Also require a screenshot
       </label>
@@ -497,7 +497,7 @@ export function AppInstallBuilder({
                   type="checkbox"
                   checked={p.screenshot}
                   onChange={(e) => setItem(i, { screenshot: e.target.checked })}
-                  className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
+                  className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-(--app-accent-edge)"
                 />
                 Require a screenshot for this
               </label>

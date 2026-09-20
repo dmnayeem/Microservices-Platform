@@ -27,7 +27,7 @@ const PLATFORMS: Array<{
   {
     key: "x",
     name: "X (Twitter)",
-    color: "bg-gray-900 text-white",
+    color: "bg-(--app-surface) text-white",
     build: (u, t) =>
       `https://twitter.com/intent/tweet?url=${encodeURIComponent(
         u
@@ -100,11 +100,11 @@ export function ShareModal({
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title={title}>
       <div className="space-y-4">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700">
-          <span className="flex-1 min-w-0 text-xs text-gray-300 break-all">{url}</span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--app-surface-2) border border-(--app-line)">
+          <span className="flex-1 min-w-0 text-xs text-(--app-ink-2) break-all">{url}</span>
           <button
             onClick={copyLink}
-            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-semibold"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             {copied ? "Copied" : "Copy"}
@@ -114,7 +114,7 @@ export function ShareModal({
         {canNative && (
           <button
             onClick={native}
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold"
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
           >
             <Share2 className="w-4 h-4" />
             Share via device
@@ -122,7 +122,7 @@ export function ShareModal({
         )}
 
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2">
             Or share to
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">

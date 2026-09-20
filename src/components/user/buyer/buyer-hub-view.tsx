@@ -155,7 +155,7 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   },
   PAUSED: {
     label: "Paused",
-    tone: "bg-slate-500/10 text-slate-300 ring-slate-500/20",
+    tone: "bg-(--app-ink-3)/10 text-(--app-ink-2) ring-(--app-ink-3)/20",
   },
   REJECTED: {
     label: "Rejected",
@@ -163,19 +163,19 @@ const STATUS: Record<string, { label: string; tone: string }> = {
   },
   COMPLETED: {
     label: "Finished",
-    tone: "bg-(--app-cta)/10 text-(--app-accent-ink) ring-indigo-500/20",
+    tone: "bg-(--app-cta)/10 text-(--app-accent-ink) ring-(--app-accent-edge)/20",
   },
   EXPIRED: {
     label: "Expired",
-    tone: "bg-slate-500/10 text-slate-400 ring-slate-500/20",
+    tone: "bg-(--app-ink-3)/10 text-(--app-ink-3) ring-(--app-ink-3)/20",
   },
   ARCHIVED: {
     label: "Archived",
-    tone: "bg-slate-500/10 text-slate-400 ring-slate-500/20",
+    tone: "bg-(--app-ink-3)/10 text-(--app-ink-3) ring-(--app-ink-3)/20",
   },
   DRAFT: {
     label: "Draft",
-    tone: "bg-slate-500/10 text-slate-400 ring-slate-500/20",
+    tone: "bg-(--app-ink-3)/10 text-(--app-ink-3) ring-(--app-ink-3)/20",
   },
 };
 
@@ -629,7 +629,7 @@ export function BuyerHubView({
           {tasks.map((t) => {
             const st = STATUS[t.status] ?? {
               label: t.status,
-              tone: "bg-slate-500/10 text-slate-300 ring-slate-500/20",
+              tone: "bg-(--app-ink-3)/10 text-(--app-ink-2) ring-(--app-ink-3)/20",
             };
             const pct =
               t.targetCount > 0

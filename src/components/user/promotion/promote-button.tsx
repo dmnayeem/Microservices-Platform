@@ -99,7 +99,7 @@ export function PromoteButton({
           "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors",
           activeUntil
             ? "bg-amber-500/15 text-amber-300 border border-amber-500/40"
-            : "bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/25",
+            : "bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/40 hover:bg-(--app-cta)/25",
           className
         )}
       >
@@ -116,7 +116,7 @@ export function PromoteButton({
           <button
             onClick={submit}
             disabled={busy || !pkgId}
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}
             {sel
@@ -127,7 +127,7 @@ export function PromoteButton({
       >
         {loading ? (
           <div className="py-8 flex justify-center">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+            <Loader2 className="w-5 h-5 animate-spin text-(--app-ink-3)" />
           </div>
         ) : (
           <div className="space-y-3">
@@ -146,12 +146,12 @@ export function PromoteButton({
                   className={cn(
                     "w-full text-left px-3 py-2.5 rounded-lg border transition-colors",
                     pkgId === p.id
-                      ? "border-indigo-500 bg-indigo-500/10"
-                      : "border-gray-800 bg-gray-950 hover:border-gray-600"
+                      ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                      : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
                   )}
                 >
                   <p className="text-sm font-semibold text-white">{p.label}</p>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[11px] text-(--app-ink-3)">
                     {usd(p.priceCash)} or {p.pricePoints} pts · {p.days} days
                   </p>
                 </button>
@@ -166,8 +166,8 @@ export function PromoteButton({
                   className={cn(
                     "flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition-colors",
                     currency === c
-                      ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
-                      : "border-gray-800 bg-gray-950 text-gray-400 hover:text-white"
+                      ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
+                      : "border-(--app-line) bg-(--app-page) text-(--app-ink-3) hover:text-white"
                   )}
                 >
                   {c === "cash" ? (

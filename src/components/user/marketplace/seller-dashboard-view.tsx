@@ -79,16 +79,16 @@ export function SellerDashboardView({ listings }: Props) {
       <header className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold text-white inline-flex items-center gap-2">
-            <Package className="w-5 h-5 text-indigo-400" />
+            <Package className="w-5 h-5 text-(--app-accent-ink)" />
             Seller Dashboard
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-(--app-ink-3) mt-0.5">
             Manage your listings and track sales.
           </p>
         </div>
         <Link
           href="/marketplace/create"
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold"
         >
           <Plus className="w-4 h-4" />
           New
@@ -188,7 +188,7 @@ export function SellerDashboardView({ listings }: Props) {
                   {l.rejectionReason ? ` — ${l.rejectionReason}` : ""}
                 </p>
               )}
-              <div className="px-1 flex items-center justify-between text-[10px] text-gray-500">
+              <div className="px-1 flex items-center justify-between text-[10px] text-(--app-ink-3)">
                 <span className="inline-flex items-center gap-0.5">
                   <Eye className="w-2.5 h-2.5" />
                   {l.views.toLocaleString()}
@@ -196,7 +196,7 @@ export function SellerDashboardView({ listings }: Props) {
                 <span
                   className={cn(
                     "inline-flex items-center gap-0.5 font-bold",
-                    l.salesCount > 0 ? "text-emerald-400" : "text-gray-600"
+                    l.salesCount > 0 ? "text-emerald-400" : "text-(--app-glyph)"
                   )}
                 >
                   {l.salesCount > 0 ? (
@@ -242,7 +242,7 @@ function StatCard({
 }) {
   const tones = {
     emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-    indigo: "border-indigo-500/30 bg-indigo-500/10 text-indigo-400",
+    indigo: "border-(--app-accent-edge)/30 bg-(--app-cta)/10 text-(--app-accent-ink)",
     blue: "border-blue-500/30 bg-blue-500/10 text-blue-400",
     amber: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   } as const;

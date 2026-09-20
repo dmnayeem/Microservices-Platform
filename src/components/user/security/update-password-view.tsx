@@ -50,9 +50,9 @@ export function UpdatePasswordView() {
     <div className="space-y-4 max-w-md mx-auto">
       <h1 className="text-xl font-bold text-white">Update Password</h1>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 space-y-3">
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Current Password
           </label>
           <div className="relative">
@@ -60,11 +60,11 @@ export function UpdatePasswordView() {
               type={showCur ? "text" : "password"}
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
-              className="w-full px-3 py-2.5 pr-10 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2.5 pr-10 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={() => setShowCur((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-(--app-ink-3)"
               type="button"
             >
               {showCur ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -73,7 +73,7 @@ export function UpdatePasswordView() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             New Password
           </label>
           <div className="relative">
@@ -82,30 +82,30 @@ export function UpdatePasswordView() {
               value={next}
               onChange={(e) => setNext(e.target.value)}
               minLength={8}
-              className="w-full px-3 py-2.5 pr-10 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2.5 pr-10 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={() => setShowNew((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-(--app-ink-3)"
               type="button"
             >
               {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] text-slate-500 mt-1">
+          <p className="text-[10px] text-(--app-ink-3) mt-1">
             At least 8 characters with letters and numbers.
           </p>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Confirm New Password
           </label>
           <input
             type={showNew ? "text" : "password"}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>

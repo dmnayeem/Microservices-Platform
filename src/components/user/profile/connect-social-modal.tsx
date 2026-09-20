@@ -104,13 +104,13 @@ export function ConnectSocialModal({
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-gray-400 hover:text-white">
+        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-white">
           Cancel
         </button>
         <button
           onClick={save}
           disabled={busy}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
         >
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           {existing ? "Save" : "Connect"}

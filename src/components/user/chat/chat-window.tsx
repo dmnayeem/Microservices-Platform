@@ -156,7 +156,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
   return (
     <div className="flex flex-col -mx-4 -mt-4" style={{ height: "calc(100vh - 56px - 64px)" }}>
       {other && (
-        <div className="px-4 py-3 border-b border-gray-800 bg-gray-900/70 backdrop-blur sticky top-14 z-10 flex items-center gap-3">
+        <div className="px-4 py-3 border-b border-(--app-line) bg-(--app-surface)/70 backdrop-blur sticky top-14 z-10 flex items-center gap-3">
           <Avatar
             src={other.avatar}
             size={36}
@@ -179,7 +179,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+            <Loader2 className="w-5 h-5 animate-spin text-(--app-ink-3)" />
           </div>
         )}
         {!loading &&
@@ -192,7 +192,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
               <div key={m.id}>
                 {showDate && (
                   <div className="text-center my-2">
-                    <span className="px-2 py-0.5 rounded-full bg-gray-800 text-[10px] font-bold text-gray-400 uppercase">
+                    <span className="px-2 py-0.5 rounded-full bg-(--app-surface-2) text-[10px] font-bold text-(--app-ink-3) uppercase">
                       {dateLabel(cur)}
                     </span>
                   </div>
@@ -207,8 +207,8 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
                     className={cn(
                       "max-w-[75%] rounded-2xl px-3 py-1.5 text-sm",
                       isOwn
-                        ? "bg-indigo-500 text-white rounded-br-md"
-                        : "bg-gray-800 text-white rounded-bl-md"
+                        ? "bg-(--app-cta) text-(--app-on-cta) rounded-br-md"
+                        : "bg-(--app-surface-2) text-white rounded-bl-md"
                     )}
                   >
                     <p className="whitespace-pre-wrap wrap-break-word">{m.content}</p>
@@ -216,7 +216,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
                       <span
                         className={cn(
                           "text-[10px]",
-                          isOwn ? "text-indigo-100" : "text-gray-400"
+                          isOwn ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"
                         )}
                       >
                         {format(cur, "HH:mm")}
@@ -225,7 +225,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
                         <CheckCheck
                           className={cn(
                             "w-3 h-3",
-                            m.read ? "text-indigo-100" : "text-indigo-300/50"
+                            m.read ? "text-(--app-accent-ink)" : "text-(--app-accent-ink)/50"
                           )}
                         />
                       )}
@@ -238,7 +238,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
         <div ref={bottomRef} />
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-800 bg-gray-900">
+      <div className="px-4 py-3 border-t border-(--app-line) bg-(--app-surface)">
         <div className="flex items-end gap-2">
           <textarea
             rows={1}
@@ -251,12 +251,12 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
               }
             }}
             placeholder="Type a message..."
-            className="flex-1 max-h-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+            className="flex-1 max-h-24 px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
           />
           <button
             disabled={!input.trim() || sending}
             onClick={send}
-            className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center disabled:opacity-50"
+            className="w-10 h-10 rounded-full bg-(--app-cta) text-(--app-on-cta) flex items-center justify-center disabled:opacity-50"
             aria-label="Send"
           >
             {sending ? (

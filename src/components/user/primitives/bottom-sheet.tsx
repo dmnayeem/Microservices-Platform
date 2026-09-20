@@ -29,20 +29,20 @@ export function BottomSheet({
         <Drawer.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" />
         <Drawer.Content
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-3xl flex flex-col rounded-t-2xl bg-gray-900 border-t border-gray-800 outline-none",
+            "fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-3xl flex flex-col rounded-t-2xl bg-(--app-surface) border-t border-(--app-line) outline-none",
             className
           )}
         >
-          <div className="mx-auto mt-2 mb-1 h-1.5 w-12 rounded-full bg-gray-700" />
+          <div className="mx-auto mt-2 mb-1 h-1.5 w-12 rounded-full bg-(--app-surface-2)" />
           {(title || description) && (
-            <div className="px-5 pt-2 pb-3 border-b border-gray-800">
+            <div className="px-5 pt-2 pb-3 border-b border-(--app-line)">
               {title && (
                 <Drawer.Title className="text-base font-semibold text-white">
                   {title}
                 </Drawer.Title>
               )}
               {description && (
-                <Drawer.Description className="text-xs text-gray-400 mt-0.5">
+                <Drawer.Description className="text-xs text-(--app-ink-3) mt-0.5">
                   {description}
                 </Drawer.Description>
               )}
@@ -52,7 +52,7 @@ export function BottomSheet({
             {children}
           </div>
           {footer && (
-            <div className="px-5 py-3 border-t border-gray-800 bg-gray-900/95">
+            <div className="px-5 py-3 border-t border-(--app-line) bg-(--app-surface)/95">
               {footer}
             </div>
           )}

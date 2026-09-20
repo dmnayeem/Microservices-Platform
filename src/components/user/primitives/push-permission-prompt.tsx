@@ -59,20 +59,20 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)]">
-      <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10 backdrop-blur-xl p-3 shadow-xl">
+      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-(--app-cta)/10 backdrop-blur-xl p-3 shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white shrink-0">
+          <div className="w-10 h-10 rounded-full bg-(--app-cta) flex items-center justify-center text-(--app-on-cta) shrink-0">
             <Bell className="w-5 h-5" />
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-white">Enable Notifications</p>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-(--app-ink-2)">
               Stay updated on rewards, tasks, and chat.
             </p>
           </div>
           <button
             onClick={dismiss}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-white hover:bg-white/10"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />
@@ -81,13 +81,13 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
         <div className="flex gap-2 mt-3">
           <button
             onClick={dismiss}
-            className="flex-1 py-1.5 rounded-lg bg-gray-800 text-white text-xs font-semibold"
+            className="flex-1 py-1.5 rounded-lg bg-(--app-surface-2) text-white text-xs font-semibold"
           >
             Not Now
           </button>
           <button
             onClick={enable}
-            className="flex-1 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-bold"
+            className="flex-1 py-1.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
           >
             Enable
           </button>

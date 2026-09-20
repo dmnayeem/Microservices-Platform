@@ -73,14 +73,14 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
   return (
     <>
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-2rem)]">
-        <div className="rounded-2xl border border-gray-700 bg-gray-900/95 backdrop-blur-xl p-4 shadow-2xl">
+        <div className="rounded-2xl border border-(--app-line) bg-(--app-surface)/95 backdrop-blur-xl p-4 shadow-2xl">
           <div className="flex items-start gap-3">
             <div className="text-2xl shrink-0">🍪</div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white mb-1">
                 We use cookies
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 We use cookies to improve your experience, analyze traffic, and
                 personalize content. You can customize your preferences anytime.
               </p>
@@ -89,19 +89,19 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <button
               onClick={acceptAll}
-              className="flex-1 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+              className="flex-1 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
             >
               Accept All
             </button>
             <button
               onClick={rejectAll}
-              className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold"
+              className="flex-1 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
             >
               Reject All
             </button>
             <button
               onClick={() => setShowModal(true)}
-              className="w-full sm:w-auto py-2 px-3 rounded-lg text-indigo-400 hover:text-indigo-300 text-xs font-semibold"
+              className="w-full sm:w-auto py-2 px-3 rounded-lg text-(--app-accent-ink) hover:text-(--app-accent-ink) text-xs font-semibold"
             >
               Customize →
             </button>
@@ -116,7 +116,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="rounded-2xl bg-gray-900 border border-gray-800 p-5 max-w-md w-full"
+            className="rounded-2xl bg-(--app-surface) border border-(--app-line) p-5 max-w-md w-full"
           >
             <div className="flex items-center gap-2 mb-4">
               <Cookie className="w-5 h-5 text-amber-400" />
@@ -125,7 +125,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
               </p>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-1 text-gray-500 hover:text-white"
+                className="p-1 text-(--app-ink-3) hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -162,7 +162,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
                 <label
                   key={row.key}
                   className={cn(
-                    "flex items-start gap-3 p-3 rounded-lg border border-gray-800 bg-gray-950 cursor-pointer",
+                    "flex items-start gap-3 p-3 rounded-lg border border-(--app-line) bg-(--app-page) cursor-pointer",
                     row.disabled && "opacity-70 cursor-not-allowed"
                   )}
                 >
@@ -177,7 +177,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
                   />
                   <div>
                     <p className="text-sm font-semibold text-white">{row.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{row.desc}</p>
+                    <p className="text-xs text-(--app-ink-3) mt-0.5">{row.desc}</p>
                   </div>
                 </label>
               ))}
@@ -185,13 +185,13 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => persist(prefs)}
-                className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
               >
                 Save Preferences
               </button>
               <button
                 onClick={acceptAll}
-                className="flex-1 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
               >
                 Accept All
               </button>

@@ -143,7 +143,7 @@ export function WatchAdsView() {
   if (loading) {
     return (
       <div className="flex justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-(--app-accent-ink)" />
       </div>
     );
   }
@@ -152,9 +152,9 @@ export function WatchAdsView() {
     return (
       <div className="max-w-lg mx-auto py-10 text-center">
         <div className="glass rounded-2xl p-6">
-          <Sparkles className="w-8 h-8 mx-auto text-gray-600" />
+          <Sparkles className="w-8 h-8 mx-auto text-(--app-glyph)" />
           <h1 className="text-lg font-bold text-white mt-3">Browse &amp; Earn</h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-(--app-ink-3) mt-1">
             This is currently unavailable. Please check back later.
           </p>
         </div>
@@ -176,7 +176,7 @@ export function WatchAdsView() {
           <Coins className="w-5 h-5 text-amber-400" />
           Browse &amp; Earn
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           Keep this page open and earn <b className="text-amber-400">+{cfg.pointsPerTick} pts</b>{" "}
           every {cfg.tickSeconds}s while the ads are showing — up to {cfg.dailyCap} pts a day.
         </p>
@@ -193,14 +193,14 @@ export function WatchAdsView() {
               <ShieldAlert className="w-6 h-6 text-red-400" />
             </div>
             <p className="text-sm font-bold text-white mt-3">Ad blocker detected</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-(--app-ink-3) mt-1">
               Rewards need the ads to load. Turn off your ad blocker for this site,
               then re-check.
             </p>
             <button
               onClick={recheck}
               disabled={checking}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-60"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-60"
             >
               {checking ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -218,7 +218,7 @@ export function WatchAdsView() {
             <p className="text-sm font-bold text-white mt-3">
               You&apos;ve earned today&apos;s maximum 🎉
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-(--app-ink-3) mt-1">
               You collected {todayEarned} / {cfg.dailyCap} pts. Come back tomorrow
               for more.
             </p>
@@ -226,8 +226,8 @@ export function WatchAdsView() {
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-300 inline-flex items-center gap-1.5">
-                <Eye className="w-4 h-4 text-indigo-400" />
+              <span className="text-sm text-(--app-ink-2) inline-flex items-center gap-1.5">
+                <Eye className="w-4 h-4 text-(--app-accent-ink)" />
                 Earning while you view…
               </span>
               <span className="relative text-sm font-bold text-white tabular-nums">
@@ -240,7 +240,7 @@ export function WatchAdsView() {
               </span>
             </div>
             {/* Interval progress */}
-            <div className="mt-2 h-2.5 rounded-full bg-gray-800 overflow-hidden">
+            <div className="mt-2 h-2.5 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
                 className="h-full bg-linear-to-r from-indigo-500 to-violet-500 transition-[width] duration-500 ease-linear"
                 style={{ width: `${pct}%` }}
@@ -250,14 +250,14 @@ export function WatchAdsView() {
         )}
 
         {/* Daily total */}
-        <div className="mt-5 pt-4 border-t border-gray-800/60">
+        <div className="mt-5 pt-4 border-t border-(--app-line)/60">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Today</span>
+            <span className="text-(--app-ink-3)">Today</span>
             <span className="text-white font-bold tabular-nums">
               {todayEarned} / {cfg.dailyCap} pts
             </span>
           </div>
-          <div className="mt-1.5 h-2 rounded-full bg-gray-800 overflow-hidden">
+          <div className="mt-1.5 h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
             <div
               className="h-full bg-linear-to-r from-amber-500 to-emerald-500 transition-[width] duration-500"
               style={{ width: `${capPct}%` }}
@@ -274,7 +274,7 @@ export function WatchAdsView() {
       {/* Second ad slot — more of the page is ad-supported = more impressions */}
       <AdRenderer placement="EARN_BROWSE" />
 
-      <p className="text-[11px] text-gray-500 text-center">
+      <p className="text-[11px] text-(--app-ink-3) text-center">
         Points are credited automatically while this tab stays open and active.
         Switching away or closing the page pauses earning.
       </p>

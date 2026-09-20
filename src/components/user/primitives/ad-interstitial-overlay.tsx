@@ -165,7 +165,7 @@ export function AdInterstitialOverlay({
               target="_blank"
               rel="noopener sponsored noreferrer"
               onClick={trackClick}
-              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-500 text-white text-sm font-bold"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
             >
               {ad.ctaLabel || "Learn More"}
               <ExternalLink className="w-3.5 h-3.5" />
@@ -188,7 +188,7 @@ export function AdInterstitialOverlay({
           target="_blank"
           rel="noopener sponsored noreferrer"
           onClick={trackClick}
-          className="max-w-md w-full rounded-2xl overflow-hidden border border-white/10 bg-gray-900 block"
+          className="max-w-md w-full rounded-2xl overflow-hidden border border-white/10 bg-(--app-surface) block"
         >
           {ad.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -196,8 +196,8 @@ export function AdInterstitialOverlay({
           )}
           <div className="p-4">
             {ad.title && <p className="text-base font-bold text-white">{ad.title}</p>}
-            {ad.body && <p className="text-sm text-gray-400 mt-1">{ad.body}</p>}
-            <span className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-sm font-bold">
+            {ad.body && <p className="text-sm text-(--app-ink-3) mt-1">{ad.body}</p>}
+            <span className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold">
               {ad.ctaLabel || "Learn More"}
               <ExternalLink className="w-3.5 h-3.5" />
             </span>
@@ -212,7 +212,7 @@ export function AdInterstitialOverlay({
           <>
             <div className="w-full max-w-md h-1.5 rounded-full bg-white/15 overflow-hidden">
               <div
-                className="h-full bg-indigo-500 transition-[width] duration-1000 ease-linear"
+                className="h-full bg-(--app-cta) transition-[width] duration-1000 ease-linear"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -223,7 +223,7 @@ export function AdInterstitialOverlay({
         ) : (
           <button
             onClick={onDone}
-            className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+            className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             <X className="w-4 h-4" />
             Close &amp; claim reward

@@ -144,8 +144,8 @@ export function QuizRunner({ quizId }: { quizId: string }) {
   if (state === "loading") {
     return (
       <div className="max-w-3xl mx-auto flex flex-col items-center justify-center py-24 text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-3" />
-        <p className="text-sm text-gray-400">Loading quiz…</p>
+        <Loader2 className="w-8 h-8 animate-spin text-(--app-accent-ink) mb-3" />
+        <p className="text-sm text-(--app-ink-3)">Loading quiz…</p>
       </div>
     );
   }
@@ -159,12 +159,12 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         <h1 className="text-lg font-bold text-white">
           {state === "error" ? "Couldn't load quiz" : "Not available"}
         </h1>
-        <p className="text-sm text-gray-400 mt-1 mb-5">
+        <p className="text-sm text-(--app-ink-3) mt-1 mb-5">
           {state === "blocked" ? reason : "Something went wrong. Try again."}
         </p>
         <Link
           href="/quizzes"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
         >
           <ArrowLeft className="w-4 h-4" /> Back to quizzes
         </Link>
@@ -189,27 +189,27 @@ export function QuizRunner({ quizId }: { quizId: string }) {
           <h1 className="text-2xl font-bold text-white">
             {result.passed ? "Quiz passed!" : "Not passed"}
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-(--app-ink-3) mt-1">
             You scored {result.score}/{result.scoreMax} ({result.percent}%)
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-2 max-w-sm mx-auto mt-6">
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-3 text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-500">Time</p>
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 text-center">
+            <p className="text-[10px] uppercase font-bold text-(--app-ink-3)">Time</p>
             <p className="text-base font-bold text-white tabular-nums">
               {Math.floor(result.timeTakenSec / 60)}:
               {String(result.timeTakenSec % 60).padStart(2, "0")}
             </p>
           </div>
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-3 text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-500">Points</p>
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 text-center">
+            <p className="text-[10px] uppercase font-bold text-(--app-ink-3)">Points</p>
             <p className="text-base font-bold text-amber-400 tabular-nums inline-flex items-center gap-0.5 justify-center">
               <Coins className="w-3.5 h-3.5" />+{result.pointsAwarded}
             </p>
           </div>
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-3 text-center">
-            <p className="text-[10px] uppercase font-bold text-gray-500">XP</p>
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 text-center">
+            <p className="text-[10px] uppercase font-bold text-(--app-ink-3)">XP</p>
             <p className="text-base font-bold text-purple-400 tabular-nums inline-flex items-center gap-0.5 justify-center">
               <Sparkles className="w-3.5 h-3.5" />+{result.xpAwarded}
             </p>
@@ -217,14 +217,14 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         </div>
 
         {result.pointsAwarded === 0 && result.passed && (
-          <p className="text-center text-[11px] text-gray-500 mt-2">
+          <p className="text-center text-[11px] text-(--app-ink-3) mt-2">
             Reward already claimed on a previous pass.
           </p>
         )}
 
         {/* Review */}
         <div className="mt-6 space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
             Review
           </p>
           {questions.map((q, i) => {
@@ -233,7 +233,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
             return (
               <div
                 key={q.id}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-3"
+                className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3"
               >
                 <div className="flex items-start gap-2">
                   {ok ? (
@@ -243,7 +243,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white">
-                      <span className="text-gray-500">Q{i + 1}.</span>{" "}
+                      <span className="text-(--app-ink-3)">Q{i + 1}.</span>{" "}
                       {q.question || "(image question)"}
                     </p>
                     <p className="text-xs mt-1 text-emerald-400">
@@ -255,7 +255,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
                       </p>
                     )}
                     {r?.explanation && (
-                      <p className="text-xs text-gray-400 mt-1">{r.explanation}</p>
+                      <p className="text-xs text-(--app-ink-3) mt-1">{r.explanation}</p>
                     )}
                   </div>
                 </div>
@@ -267,7 +267,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         <div className="mt-6 text-center">
           <Link
             href="/quizzes"
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             <ArrowLeft className="w-4 h-4" /> Back to quizzes
           </Link>
@@ -285,7 +285,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-400 truncate">{quiz?.title ?? "Quiz"}</p>
+          <p className="text-xs text-(--app-ink-3) truncate">{quiz?.title ?? "Quiz"}</p>
           <p className="text-sm font-bold text-white">
             Question {idx + 1} of {questions.length}
           </p>
@@ -293,14 +293,14 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         <div
           className={cn(
             "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-sm tabular-nums",
-            lowTime ? "bg-red-500/15 text-red-400" : "bg-gray-800 text-white"
+            lowTime ? "bg-red-500/15 text-red-400" : "bg-(--app-surface-2) text-white"
           )}
         >
           <Clock className="w-3.5 h-3.5" />
           {mm}:{ss}
         </div>
       </div>
-      <div className="mt-2 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+      <div className="mt-2 h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
         <div
           className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width]"
           style={{ width: `${((idx + 1) / questions.length) * 100}%` }}
@@ -308,14 +308,14 @@ export function QuizRunner({ quizId }: { quizId: string }) {
       </div>
 
       {/* Question card */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5 mt-4">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5 mt-4">
         {cur.questionImageUrl && (
-          <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-950 mb-4">
+          <div className="rounded-xl overflow-hidden border border-(--app-line) bg-(--app-page) mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={cur.questionImageUrl}
               alt=""
-              className="w-full max-h-72 object-contain bg-gray-950"
+              className="w-full max-h-72 object-contain bg-(--app-page)"
             />
           </div>
         )}
@@ -335,12 +335,12 @@ export function QuizRunner({ quizId }: { quizId: string }) {
                   className={cn(
                     "text-left rounded-xl border overflow-hidden transition-colors",
                     active
-                      ? "border-indigo-500 ring-2 ring-indigo-500/40"
-                      : "border-gray-700 hover:border-gray-600"
+                      ? "border-(--app-accent-edge) ring-2 ring-(--app-accent-edge)/40"
+                      : "border-(--app-line) hover:border-(--app-line)"
                   )}
                 >
                   {img ? (
-                    <div className="relative aspect-video bg-gray-950">
+                    <div className="relative aspect-video bg-(--app-page)">
                       <SmartImage
                         src={img}
                         alt=""
@@ -350,11 +350,11 @@ export function QuizRunner({ quizId }: { quizId: string }) {
                       />
                     </div>
                   ) : null}
-                  <div className="flex items-center gap-2 p-2.5 bg-gray-950">
+                  <div className="flex items-center gap-2 p-2.5 bg-(--app-page)">
                     <div
                       className={cn(
                         "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                        active ? "border-indigo-500 bg-indigo-500" : "border-gray-600"
+                        active ? "border-(--app-accent-edge) bg-(--app-cta)" : "border-(--app-line)"
                       )}
                     >
                       {active && <Check className="w-3 h-3 text-white" />}
@@ -378,14 +378,14 @@ export function QuizRunner({ quizId }: { quizId: string }) {
                   className={cn(
                     "w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors",
                     active
-                      ? "border-indigo-500 bg-indigo-500/10"
-                      : "border-gray-700 bg-gray-950 hover:border-gray-600"
+                      ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                      : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
                   )}
                 >
                   <div
                     className={cn(
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                      active ? "border-indigo-500 bg-indigo-500" : "border-gray-600"
+                      active ? "border-(--app-accent-edge) bg-(--app-cta)" : "border-(--app-line)"
                     )}
                   >
                     {active && <Check className="w-3 h-3 text-white" />}
@@ -403,7 +403,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         {idx > 0 && (
           <button
             onClick={() => setIdx((i) => Math.max(0, i - 1))}
-            className="px-4 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold"
+            className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
           >
             Back
           </button>
@@ -411,7 +411,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
         {idx < questions.length - 1 ? (
           <button
             onClick={() => setIdx((i) => i + 1)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             Next <ArrowRight className="w-4 h-4" />
           </button>
@@ -426,7 +426,7 @@ export function QuizRunner({ quizId }: { quizId: string }) {
           </button>
         )}
       </div>
-      <p className="text-center text-[11px] text-gray-500 mt-2">
+      <p className="text-center text-[11px] text-(--app-ink-3) mt-2">
         {answeredCount}/{questions.length} answered
       </p>
     </div>

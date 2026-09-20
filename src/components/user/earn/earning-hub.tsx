@@ -61,7 +61,7 @@ const TABS: { key: TabKey; label: string; icon: typeof ListTodo }[] = [
 // Cohesive tinted chips (not saturated rainbow gradients) — matches the
 // tasks-hub Quick Access for a consistent, professional look.
 const QA_CHIP: Record<string, string> = {
-  indigo: "bg-(--app-cta)/10 text-(--app-accent-ink) ring-1 ring-indigo-500/20",
+  indigo: "bg-(--app-cta)/10 text-(--app-accent-ink) ring-1 ring-(--app-accent-edge)/20",
   violet: "bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20",
   emerald: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20",
   cyan: "bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20",
@@ -159,7 +159,7 @@ export function EarningHub({ user }: EarningHubProps) {
               className={cn(
                 "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors border",
                 isActive
-                  ? "bg-(--app-cta)/15 text-white border-(--app-accent-edge)/40"
+                  ? "bg-(--app-cta)/15 text-(--app-on-cta) border-(--app-accent-edge)/40"
                   : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white hover:bg-(--app-surface-2)"
               )}
             >

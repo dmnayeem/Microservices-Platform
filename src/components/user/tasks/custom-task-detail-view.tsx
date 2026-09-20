@@ -282,7 +282,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               </span>
             )}
             {task.duration ? (
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-700/50 text-slate-300 text-xs font-bold border border-slate-600/50">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-(--app-surface-2)/50 text-(--app-ink-2) text-xs font-bold border border-(--app-line)/50">
                 <Clock className="w-3.5 h-3.5" />
                 {task.duration} min
               </span>

@@ -44,7 +44,7 @@ export function TaskSubmissionRow({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">{title}</p>
-          <p className="text-[11px] text-gray-500">{format(d, "PP p")}</p>
+          <p className="text-[11px] text-(--app-ink-3)">{format(d, "PP p")}</p>
         </div>
         <span
           className={cn(
@@ -65,7 +65,7 @@ export function TaskSubmissionRow({
       {(score != null || (penaltyPoints ?? 0) > 0) && (
         <div className="flex items-center gap-2 mt-1.5">
           {score != null && (
-            <span className="text-[11px] font-bold text-indigo-300 bg-indigo-500/10 rounded px-1.5 py-0.5">
+            <span className="text-[11px] font-bold text-(--app-accent-ink) bg-(--app-cta)/10 rounded px-1.5 py-0.5">
               Marks: {score}/100
             </span>
           )}
@@ -77,7 +77,7 @@ export function TaskSubmissionRow({
         </div>
       )}
       {(rejectionReason || adminNote) && (
-        <p className="text-xs text-gray-400 mt-1.5 px-2 py-1.5 rounded bg-gray-950 whitespace-pre-line">
+        <p className="text-xs text-(--app-ink-3) mt-1.5 px-2 py-1.5 rounded bg-(--app-page) whitespace-pre-line">
           {rejectionReason && <strong>{rejectionReason}: </strong>}
           {adminNote}
         </p>

@@ -216,7 +216,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 onClick={() => setAmount(String(a))}
                 className={`px-3 py-1 rounded-lg text-xs font-bold border ${
                   Number(amount) === a
-                    ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-white"
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-(--app-on-cta)"
                     : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2) hover:border-(--app-line)"
                 }`}
               >
@@ -318,7 +318,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                     onClick={() => setMethod(m.key)}
                     className={`p-2.5 rounded-lg border text-sm font-semibold flex flex-col items-center justify-center gap-0.5 ${
                       method === m.key
-                        ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-white"
+                        ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-on-cta)"
                         : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2)"
                     }`}
                   >

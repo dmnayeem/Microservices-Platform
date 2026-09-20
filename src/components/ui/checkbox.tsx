@@ -31,7 +31,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             <div
               className={cn(
                 "h-5 w-5 rounded border-2 transition-all duration-200",
-                "peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500/20 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-gray-950",
+                "peer-focus-visible:ring-2 peer-focus-visible:ring-(--app-accent-edge)/20 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-gray-950",
                 "peer-checked:border-indigo-500 peer-checked:bg-indigo-500",
                 error
                   ? "border-red-500"

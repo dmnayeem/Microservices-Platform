@@ -36,13 +36,13 @@ export function ListingCard({
   className,
 }: ListingCardProps) {
   const cls = cn(
-    "block group rounded-xl overflow-hidden border border-gray-800 bg-gray-900 hover:border-gray-700 transition-colors",
+    "block group rounded-xl overflow-hidden border border-(--app-line) bg-(--app-surface) hover:border-(--app-line) transition-colors",
     className
   );
 
   const inner: ReactNode = (
     <>
-      <div className="relative aspect-square bg-gray-800">
+      <div className="relative aspect-square bg-(--app-surface-2)">
         {image ? (
           <SmartImage
             src={image}
@@ -52,12 +52,12 @@ export function ListingCard({
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center text-gray-600 text-sm">
+          <div className="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center text-(--app-glyph) text-sm">
             No image
           </div>
         )}
         {badge && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold uppercase">
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-(--app-cta) text-(--app-on-cta) text-[10px] font-bold uppercase">
             {badge}
           </span>
         )}
@@ -72,7 +72,7 @@ export function ListingCard({
           {title}
         </h3>
         {sellerName && (
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+          <div className="flex items-center gap-1.5 text-[11px] text-(--app-ink-3)">
             <Avatar
               src={sellerAvatar}
               alt={sellerName}
@@ -94,11 +94,11 @@ export function ListingCard({
             )}
           </span>
           {rating !== undefined && (
-            <span className="inline-flex items-center gap-0.5 text-[11px] text-gray-400">
+            <span className="inline-flex items-center gap-0.5 text-[11px] text-(--app-ink-3)">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               {rating.toFixed(1)}
               {reviewCount !== undefined && (
-                <span className="text-gray-500">({reviewCount})</span>
+                <span className="text-(--app-ink-3)">({reviewCount})</span>
               )}
             </span>
           )}

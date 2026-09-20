@@ -29,7 +29,7 @@ const TONE: Record<
   info: {
     icon: Info,
     accent: "text-indigo-400",
-    ring: "bg-indigo-500/10 ring-1 ring-indigo-500/20",
+    ring: "bg-indigo-500/10 ring-1 ring-(--app-accent-edge)/20",
     confirmBtn: "bg-indigo-500 hover:bg-indigo-600 text-white",
   },
   success: {

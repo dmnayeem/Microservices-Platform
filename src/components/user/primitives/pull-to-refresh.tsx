@@ -71,12 +71,12 @@ export function PullToRefresh({ onRefresh, children, disabled }: Props) {
         className="pointer-events-none flex items-end justify-center overflow-hidden"
         style={{ height: pull, opacity: Math.min(1, pull / THRESHOLD) }}
       >
-        <div className="mb-2 w-9 h-9 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center shadow-lg">
+        <div className="mb-2 w-9 h-9 rounded-full bg-(--app-surface) border border-(--app-line) flex items-center justify-center shadow-lg">
           {refreshing ? (
-            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+            <Loader2 className="w-4 h-4 text-(--app-accent-ink) animate-spin" />
           ) : (
             <ArrowDown
-              className={`w-4 h-4 text-indigo-400 transition-transform ${ready ? "rotate-180" : ""}`}
+              className={`w-4 h-4 text-(--app-accent-ink) transition-transform ${ready ? "rotate-180" : ""}`}
             />
           )}
         </div>

@@ -75,7 +75,7 @@ export function ReportContent({
           <button
             disabled={busy}
             onClick={() => onOpenChange(false)}
-            className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>
@@ -96,14 +96,14 @@ export function ReportContent({
     >
       <div className="space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Reason
           </label>
           <div className="space-y-1">
             {REASONS.map((r) => (
               <label
                 key={r.value}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-800 hover:border-gray-700 cursor-pointer"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-(--app-line) hover:border-(--app-line) cursor-pointer"
               >
                 <input
                   type="radio"
@@ -119,7 +119,7 @@ export function ReportContent({
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Additional details (optional)
           </label>
           <textarea
@@ -127,7 +127,7 @@ export function ReportContent({
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             placeholder="Anything else we should know?"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+            className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
           />
         </div>
       </div>

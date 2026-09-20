@@ -714,7 +714,7 @@ export function CreateTaskView({
       {/* Invoice — what this task costs, itemised before you commit to it. */}
       <div className="glass rounded-xl p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-(--app-cta)/10 ring-1 ring-indigo-500/20 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-(--app-cta)/10 ring-1 ring-(--app-accent-edge)/20 flex items-center justify-center shrink-0">
             <Wallet className="w-5 h-5 text-(--app-accent-ink)" />
           </div>
           <div>

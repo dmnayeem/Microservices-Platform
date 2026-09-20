@@ -430,7 +430,7 @@ function FilterRow({
         className={
           "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors " +
           (active
-            ? "bg-(--app-cta)/15 text-white"
+            ? "bg-(--app-cta)/15 text-(--app-on-cta)"
             : "text-(--app-ink-2) hover:bg-(--app-surface-2)")
         }
       >
@@ -470,7 +470,7 @@ function SegmentedThree<T extends string>({
           className={
             "px-2 py-1.5 rounded-md text-xs font-bold border " +
             (value === o.value
-              ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-white"
+              ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-(--app-on-cta)"
               : "border-(--app-line) bg-(--app-surface) text-(--app-ink-2) hover:bg-(--app-surface-2)")
           }
         >

@@ -99,7 +99,7 @@ export function WithdrawalTicker({
           {doubled.map((it, i) => (
             <span
               key={`${it.id}-${i}`}
-              className="text-xs text-gray-200 inline-flex items-center gap-1"
+              className="text-xs text-(--app-ink) inline-flex items-center gap-1"
             >
               <span className="text-emerald-400 font-semibold">
                 @{it.username}
@@ -113,10 +113,10 @@ export function WithdrawalTicker({
                 </span>
               )}
               {showMethod && it.method && (
-                <span className="text-gray-400">via {it.method}</span>
+                <span className="text-(--app-ink-3)">via {it.method}</span>
               )}
               {showCountry && it.country && (
-                <span className="text-gray-400">· {it.country}</span>
+                <span className="text-(--app-ink-3)">· {it.country}</span>
               )}
             </span>
           ))}

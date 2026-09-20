@@ -115,7 +115,7 @@ export function AffiliateDashboardView({
     return (
       <div className="max-w-lg mx-auto py-10">
         <div className="glass rounded-2xl p-6 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-(--app-cta)/10 ring-1 ring-indigo-500/20 flex items-center justify-center mb-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-(--app-cta)/10 ring-1 ring-(--app-accent-edge)/20 flex items-center justify-center mb-4">
             <Handshake className="w-7 h-7 text-(--app-accent-ink)" />
           </div>
           <h1 className="text-xl font-bold text-white">Affiliate program</h1>

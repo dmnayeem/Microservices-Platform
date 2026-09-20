@@ -47,7 +47,7 @@ export function CopyButton({
       ? "text-emerald-400 hover:text-emerald-300"
       : tone === "purple"
         ? "text-purple-400 hover:text-purple-300"
-        : "text-indigo-400 hover:text-indigo-300";
+        : "text-(--app-accent-ink) hover:text-(--app-accent-ink)";
 
   async function handle() {
     const ok = await copyText(value);
@@ -126,15 +126,15 @@ export function CopyField({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+    <div className="rounded-lg border border-(--app-line) bg-(--app-page) p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {index != null && (
-            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-indigo-500/40 bg-indigo-500/15 text-[10px] font-bold text-indigo-300">
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-(--app-accent-edge)/40 bg-(--app-cta)/15 text-[10px] font-bold text-(--app-accent-ink)">
               {index}
             </span>
           )}
-          <p className="truncate text-[10px] font-bold uppercase tracking-wider text-gray-500">
+          <p className="truncate text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
             {label}
           </p>
           {badge}
@@ -146,7 +146,7 @@ export function CopyField({
 
       <div className="relative mt-1.5">
         <p
-          className={`whitespace-pre-wrap wrap-break-word text-xs text-gray-200 ${
+          className={`whitespace-pre-wrap wrap-break-word text-xs text-(--app-ink) ${
             long && !open ? "max-h-24 overflow-hidden" : ""
           }`}
         >
@@ -161,7 +161,7 @@ export function CopyField({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-white"
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-white"
         >
           <ChevronDown
             className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}

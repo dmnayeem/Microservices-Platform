@@ -53,8 +53,8 @@ const STATUS_TONE: Record<TaskStatus, string> = {
   AVAILABLE: "app-accent",
   IN_PROGRESS: "app-accent",
   REVISION: "app-accent",
-  LOCKED: "bg-(--app-surface-2) border border-(--app-line) text-gray-500 cursor-not-allowed",
-  COOLDOWN: "bg-(--app-surface-2) border border-(--app-line) text-gray-500 cursor-not-allowed",
+  LOCKED: "bg-(--app-surface-2) border border-(--app-line) text-(--app-ink-3) cursor-not-allowed",
+  COOLDOWN: "bg-(--app-surface-2) border border-(--app-line) text-(--app-ink-3) cursor-not-allowed",
   COMPLETED:
     "bg-(--app-in-soft) border border-(--app-in-line) text-(--app-in) cursor-default",
   PENDING:
@@ -147,7 +147,7 @@ export function TaskCard({
             )}
           </div>
           {description && (
-            <p className="t-meta text-gray-400 line-clamp-2 mt-1">
+            <p className="t-meta text-(--app-ink-3) line-clamp-2 mt-1">
               {description}
             </p>
           )}
@@ -159,7 +159,7 @@ export function TaskCard({
               </span>
             )}
             {durationMin !== undefined && (
-              <span className="inline-flex items-center gap-1 t-meta text-gray-400">
+              <span className="inline-flex items-center gap-1 t-meta text-(--app-ink-3)">
                 <Clock className="w-3.5 h-3.5" />
                 {durationMin}m
               </span>
@@ -175,10 +175,10 @@ export function TaskCard({
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-(--app-line)">
         <div className="flex items-baseline gap-2">
           <span className="t-figure-sm inline-flex items-baseline gap-1 text-white">
-            <Coins className="w-4 h-4 self-center text-gray-400" />+{reward}
+            <Coins className="w-4 h-4 self-center text-(--app-ink-3)" />+{reward}
           </span>
           {xpReward !== undefined && xpReward > 0 && (
-            <span className="t-meta font-bold text-gray-400 tabular-nums">
+            <span className="t-meta font-bold text-(--app-ink-3) tabular-nums">
               +{xpReward} XP
             </span>
           )}

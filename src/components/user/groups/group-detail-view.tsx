@@ -181,14 +181,14 @@ export function GroupDetailView({ groupId }: Props) {
     <div className="space-y-4">
       <Link
         href="/social"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to community
       </Link>
 
       {/* Banner / header */}
-      <div className="relative rounded-2xl overflow-hidden border border-gray-800">
+      <div className="relative rounded-2xl overflow-hidden border border-(--app-line)">
         <div className="relative h-28 bg-linear-to-br from-indigo-500 to-purple-600">
           {group.bannerUrl && (
             <SmartImage
@@ -200,7 +200,7 @@ export function GroupDetailView({ groupId }: Props) {
             />
           )}
         </div>
-        <div className="bg-gray-900 p-4 -mt-8 relative">
+        <div className="bg-(--app-surface) p-4 -mt-8 relative">
           <div className="flex items-end gap-3">
             <Avatar
               src={group.avatarUrl}
@@ -208,7 +208,7 @@ export function GroupDetailView({ groupId }: Props) {
               shape="rounded"
               fallbackStyle="solid-gray"
               fallbackIcon={<Users className="w-7 h-7" />}
-              className="border-4 border-gray-900 shrink-0"
+              className="border-4 border-(--app-surface) shrink-0"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export function GroupDetailView({ groupId }: Props) {
                 )}
                 {isOwner && <Crown className="w-4 h-4 text-amber-400" />}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-(--app-ink-3)">
                 {group.memberCount.toLocaleString()} member
                 {group.memberCount === 1 ? "" : "s"} · created{" "}
                 {format(new Date(group.createdAt), "MMM d, yyyy")}
@@ -228,14 +228,14 @@ export function GroupDetailView({ groupId }: Props) {
             </div>
           </div>
           {group.description && (
-            <p className="text-sm text-gray-300 mt-3">{group.description}</p>
+            <p className="text-sm text-(--app-ink-2) mt-3">{group.description}</p>
           )}
           <div className="mt-3 flex gap-2">
             {!isMember && !hasPendingRequest && (
               <button
                 onClick={join}
                 disabled={busy}
-                className="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-4 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                 {group.type === "PRIVATE" ? "Request to join" : "Join group"}
@@ -250,13 +250,13 @@ export function GroupDetailView({ groupId }: Props) {
               <button
                 onClick={leave}
                 disabled={busy}
-                className="px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
               >
                 <LogOut className="w-4 h-4" />
                 Leave group
               </button>
             )}
-            <span className="ml-auto text-xs text-gray-500 self-center">
+            <span className="ml-auto text-xs text-(--app-ink-3) self-center">
               {myRole === "OWNER"
                 ? "You own this group"
                 : myRole === "ADMIN"
@@ -279,7 +279,7 @@ export function GroupDetailView({ groupId }: Props) {
             {pendingRequests.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-950 border border-gray-800"
+                className="flex items-center gap-3 p-2.5 rounded-lg bg-(--app-page) border border-(--app-line)"
               >
                 <Avatar
                   src={r.userAvatar}
@@ -292,7 +292,7 @@ export function GroupDetailView({ groupId }: Props) {
                   <p className="text-sm text-white truncate">
                     {r.userName ?? "Unknown"}
                   </p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-(--app-ink-3)">
                     {format(new Date(r.createdAt), "PP p")}
                   </p>
                 </div>
@@ -318,16 +318,16 @@ export function GroupDetailView({ groupId }: Props) {
 
       {/* Group-filtered feed */}
       {!isMember ? (
-        <div className="rounded-xl border border-dashed border-gray-800 p-8 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="rounded-xl border border-dashed border-(--app-line) p-8 text-center">
+          <p className="text-sm text-(--app-ink-3)">
             Join this group to see posts and contribute.
           </p>
         </div>
       ) : groupPosts.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-800 p-8 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="rounded-xl border border-dashed border-(--app-line) p-8 text-center">
+          <p className="text-sm text-(--app-ink-3)">
             No posts in this group yet. Create a post in the{" "}
-            <Link href="/social" className="text-indigo-400 hover:text-indigo-300">
+            <Link href="/social" className="text-(--app-accent-ink) hover:text-(--app-accent-ink)">
               feed
             </Link>{" "}
             and tag this group.
@@ -338,7 +338,7 @@ export function GroupDetailView({ groupId }: Props) {
           {groupPosts.map((p) => (
             <div
               key={p.id}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-3"
+              className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3"
             >
               <div className="flex items-center gap-2">
                 <Avatar
@@ -351,13 +351,13 @@ export function GroupDetailView({ groupId }: Props) {
                   <p className="text-sm font-semibold text-white truncate">
                     {p.user?.name || p.user?.username || "User"}
                   </p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-(--app-ink-3)">
                     {format(new Date(p.createdAt), "MMM d, h:mm a")}
                   </p>
                 </div>
               </div>
               {p.content && (
-                <p className="mt-2 text-sm text-gray-200 whitespace-pre-wrap wrap-break-word">
+                <p className="mt-2 text-sm text-(--app-ink) whitespace-pre-wrap wrap-break-word">
                   <RenderedContent content={p.content} />
                 </p>
               )}
@@ -366,13 +366,13 @@ export function GroupDetailView({ groupId }: Props) {
                 <img
                   src={p.images[0]}
                   alt=""
-                  className="mt-2 w-full max-h-80 object-cover rounded-lg border border-gray-800"
+                  className="mt-2 w-full max-h-80 object-cover rounded-lg border border-(--app-line)"
                 />
               )}
-              <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+              <div className="mt-2 flex items-center gap-4 text-xs text-(--app-ink-3)">
                 <span>❤ {p.likesCount}</span>
                 <span>💬 {p.commentsCount}</span>
-                <Link href="/social" className="ml-auto text-indigo-400 hover:text-indigo-300">
+                <Link href="/social" className="ml-auto text-(--app-accent-ink) hover:text-(--app-accent-ink)">
                   Open in feed
                 </Link>
               </div>

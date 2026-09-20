@@ -148,18 +148,18 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
     <div className="max-w-xl mx-auto space-y-5">
       <Link
         href="/profile"
-        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to profile
       </Link>
 
       <div className="flex items-center gap-2">
-        <ShieldCheck className="w-6 h-6 text-indigo-400" />
+        <ShieldCheck className="w-6 h-6 text-(--app-accent-ink)" />
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-white">
             Identity Verification (KYC)
           </h1>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-(--app-ink-3)">
             Verify your identity to unlock higher withdrawal limits and the blue
             verified badge.
           </p>
@@ -174,7 +174,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
             <p className="text-sm font-semibold text-emerald-400">
               Your identity is verified
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               You have full withdrawal access and the verified badge.
             </p>
           </div>
@@ -188,7 +188,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
             <p className="text-sm font-semibold text-amber-400">
               Submission under review
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               We&apos;re reviewing your documents. You&apos;ll be notified once a
               decision is made.
             </p>
@@ -205,15 +205,15 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 Your previous submission was rejected
               </p>
               {document?.rejectionReason && (
-                <p className="text-xs text-gray-300 mt-0.5">
+                <p className="text-xs text-(--app-ink-2) mt-0.5">
                   Reason: {document.rejectionReason}
                 </p>
               )}
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-(--app-ink-3) mt-1">
                 You can resubmit below, or{" "}
                 <Link
                   href="/kyc/appeal"
-                  className="text-indigo-400 hover:text-indigo-300 underline"
+                  className="text-(--app-accent-ink) hover:text-(--app-accent-ink) underline"
                 >
                   appeal this decision
                 </Link>
@@ -227,7 +227,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
       {/* Previously submitted images (pending/approved) */}
       {!canSubmit && document && document.images.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-gray-400 mb-2">
+          <p className="text-xs font-semibold text-(--app-ink-3) mb-2">
             Submitted documents · {document.documentType}
           </p>
           <div className="grid grid-cols-3 gap-2">
@@ -237,7 +237,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 key={i}
                 src={url}
                 alt={`KYC document ${i + 1}`}
-                className="aspect-square w-full rounded-lg border border-gray-800 object-cover bg-gray-950"
+                className="aspect-square w-full rounded-lg border border-(--app-line) object-cover bg-(--app-page)"
               />
             ))}
           </div>
@@ -248,7 +248,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
       {canSubmit && (
         <div className="space-y-4">
           {autoEnabled && (
-            <div className="inline-flex w-full rounded-lg border border-gray-800 overflow-hidden text-xs">
+            <div className="inline-flex w-full rounded-lg border border-(--app-line) overflow-hidden text-xs">
               {([
                 ["auto", "Instant verify"],
                 ["manual", "Upload manually"],
@@ -258,7 +258,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                   onClick={() => setMode(m)}
                   className={cn(
                     "flex-1 px-3 py-2 font-semibold inline-flex items-center justify-center gap-1",
-                    mode === m ? "bg-indigo-500 text-white" : "bg-gray-900 text-gray-400"
+                    mode === m ? "bg-(--app-cta) text-(--app-on-cta)" : "bg-(--app-surface) text-(--app-ink-3)"
                   )}
                 >
                   {m === "auto" && <Zap className="w-3.5 h-3.5" />}
@@ -271,13 +271,13 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
           {/* Document type — shared */}
           <div className="card p-4 sm:p-5 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">
+              <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
                 Document type
               </label>
               <select
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
               >
                 {DOC_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -292,7 +292,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 other account, so neither is a way around the other. */}
             {mode === "manual" && (
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">
+                <label className="block text-sm font-medium text-(--app-ink-3) mb-1.5">
                   Document number
                 </label>
                 <input
@@ -301,9 +301,9 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                   placeholder="As printed on the document"
                   inputMode="text"
                   autoComplete="off"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
                 />
-                <p className="text-[11px] text-gray-500 mt-1.5">
+                <p className="text-[11px] text-(--app-ink-3) mt-1.5">
                   Each document can verify one account only.
                 </p>
               </div>
@@ -311,9 +311,9 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
 
             {mode === "auto" && autoEnabled ? (
               <>
-                <div className="flex items-start gap-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-3">
-                  <Zap className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-gray-300">
+                <div className="flex items-start gap-3 rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/20 p-3">
+                  <Zap className="w-5 h-5 text-(--app-accent-ink) shrink-0 mt-0.5" />
+                  <p className="text-xs text-(--app-ink-2)">
                     Scan your ID and take a selfie — our AI reads the ID and matches
                     your face to verify instantly. Anything unclear goes to a quick
                     manual check.
@@ -321,31 +321,31 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="flex items-center gap-1 text-xs font-medium text-gray-400 mb-1.5">
-                      <IdCard className="w-3.5 h-3.5 text-indigo-400" /> ID front{" "}
+                    <label className="flex items-center gap-1 text-xs font-medium text-(--app-ink-3) mb-1.5">
+                      <IdCard className="w-3.5 h-3.5 text-(--app-accent-ink)" /> ID front{" "}
                       <span className="text-red-400">*</span>
                     </label>
                     <ProofImageUpload value={front} onChange={setFront} />
                   </div>
                   <div>
-                    <label className="flex items-center gap-1 text-xs font-medium text-gray-400 mb-1.5">
-                      <IdCard className="w-3.5 h-3.5 text-gray-500" /> ID back
-                      <span className="text-gray-600">(NID)</span>
+                    <label className="flex items-center gap-1 text-xs font-medium text-(--app-ink-3) mb-1.5">
+                      <IdCard className="w-3.5 h-3.5 text-(--app-ink-3)" /> ID back
+                      <span className="text-(--app-glyph)">(NID)</span>
                     </label>
                     <ProofImageUpload value={back} onChange={setBack} />
                   </div>
                   <div>
-                    <label className="flex items-center gap-1 text-xs font-medium text-gray-400 mb-1.5">
-                      <Camera className="w-3.5 h-3.5 text-indigo-400" /> Selfie{" "}
+                    <label className="flex items-center gap-1 text-xs font-medium text-(--app-ink-3) mb-1.5">
+                      <Camera className="w-3.5 h-3.5 text-(--app-accent-ink)" /> Selfie{" "}
                       <span className="text-red-400">*</span>
                     </label>
                     <ProofImageUpload value={selfie} onChange={setSelfie} />
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2 rounded-lg bg-gray-800/50 border border-gray-800 p-2.5">
+                <div className="flex items-start gap-2 rounded-lg bg-(--app-surface-2)/50 border border-(--app-line) p-2.5">
                   <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                  <p className="text-[11px] text-(--app-ink-3) leading-relaxed">
                     Tips: capture the full ID with all four corners visible, avoid
                     glare and blur, and make sure the text is readable. For a National
                     ID, add the back too. Max 5&nbsp;MB per image.
@@ -359,7 +359,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                       <p className="text-sm font-semibold text-red-400">
                         We couldn&apos;t verify this image
                       </p>
-                      <p className="text-xs text-gray-300 mt-0.5">{autoError}</p>
+                      <p className="text-xs text-(--app-ink-2) mt-0.5">{autoError}</p>
                     </div>
                   </div>
                 )}
@@ -384,25 +384,25 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
               <>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                       ID front <span className="text-red-400">*</span>
                     </label>
                     <ProofImageUpload value={front} onChange={setFront} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                       ID back
                     </label>
                     <ProofImageUpload value={back} onChange={setBack} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                       Selfie with ID
                     </label>
                     <ProofImageUpload value={selfie} onChange={setSelfie} />
                   </div>
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-(--app-ink-3)">
                   Upload a clear photo of your government-issued ID (front required).
                   Adding the back and a selfie holding your ID speeds up approval.
                   Max 5&nbsp;MB per image.
@@ -410,7 +410,7 @@ export function KycSubmitView({ kycStatus, document, autoEnabled = true }: Props
                 <button
                   onClick={submit}
                   disabled={busy}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
                 >
                   {busy ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

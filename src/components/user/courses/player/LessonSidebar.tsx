@@ -117,7 +117,7 @@ export function LessonSidebar({ modules, activeLessonId, onPick }: Props) {
                           className={
                             "w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors " +
                             (active
-                              ? "bg-(--app-cta)/15 text-white"
+                              ? "bg-(--app-cta)/15 text-(--app-on-cta)"
                               : "text-(--app-ink-2) hover:bg-(--app-surface-2)/40")
                           }
                         >

@@ -125,14 +125,14 @@ export function CartView() {
     <div className="space-y-3">
       <Link
         href="/marketplace"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to marketplace
       </Link>
 
       <h1 className="text-xl font-bold text-white inline-flex items-center gap-2">
-        <ShoppingCart className="w-5 h-5 text-indigo-400" />
+        <ShoppingCart className="w-5 h-5 text-(--app-accent-ink)" />
         Your Cart
       </h1>
 
@@ -155,11 +155,11 @@ export function CartView() {
                 key={i.id}
                 className={`flex items-center gap-3 p-3 rounded-xl border ${
                   i.available
-                    ? "bg-gray-900 border-gray-800"
+                    ? "bg-(--app-surface) border-(--app-line)"
                     : "bg-red-500/5 border-red-500/30"
                 }`}
               >
-                <div className="w-14 h-14 rounded-lg bg-gray-800 overflow-hidden shrink-0">
+                <div className="w-14 h-14 rounded-lg bg-(--app-surface-2) overflow-hidden shrink-0">
                   {i.thumbnail && (
                     <SmartImage
                       src={i.thumbnail}
@@ -177,7 +177,7 @@ export function CartView() {
                   >
                     {i.title}
                   </Link>
-                  <p className="text-xs text-gray-500 tabular-nums">
+                  <p className="text-xs text-(--app-ink-3) tabular-nums">
                     {usd(i.price)}
                   </p>
                   {!i.available && (
@@ -189,7 +189,7 @@ export function CartView() {
                 <button
                   disabled={busyId === i.id}
                   onClick={() => remove(i)}
-                  className="p-1.5 rounded text-gray-400 hover:text-red-400 hover:bg-gray-800 disabled:opacity-50"
+                  className="p-1.5 rounded text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) disabled:opacity-50"
                   title="Remove from cart"
                 >
                   {busyId === i.id ? (
@@ -203,17 +203,17 @@ export function CartView() {
           </div>
 
           <div className="glass rounded-xl p-4 space-y-2">
-            <div className="flex justify-between text-sm text-gray-400">
+            <div className="flex justify-between text-sm text-(--app-ink-3)">
               <span>
                 {items.length} listing{items.length === 1 ? "" : "s"}
               </span>
               <span className="tabular-nums">{usd(total)}</span>
             </div>
-            <div className="border-t border-gray-800 pt-2 flex justify-between text-base font-bold text-white">
+            <div className="border-t border-(--app-line) pt-2 flex justify-between text-base font-bold text-white">
               <span>You pay</span>
               <span className="tabular-nums">{usd(total)}</span>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-(--app-ink-3)">
               Charged from your wallet. The platform commission is deducted
               from each seller&apos;s payout.
             </p>

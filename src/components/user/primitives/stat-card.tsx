@@ -51,7 +51,7 @@ export const STAT_VALUE_CLASS_SM =
   "font-bold text-white tabular-nums tracking-tight leading-tight whitespace-nowrap text-[clamp(0.9rem,4.2vw,1.125rem)]";
 
 /** Labels wrap to two lines rather than clipping — "Tasks Com…" reads as broken. */
-export const STAT_LABEL_CLASS = "t-meta text-gray-400 line-clamp-2";
+export const STAT_LABEL_CLASS = "t-meta text-(--app-ink-3) line-clamp-2";
 
 /**
  * The one stat tile for user surfaces.
@@ -91,10 +91,10 @@ export function StatCard({
           >
             {shown}
             {sub && (
-              <span className="text-[0.7em] font-bold text-gray-400">{sub}</span>
+              <span className="text-[0.7em] font-bold text-(--app-ink-3)">{sub}</span>
             )}
             {unit && (
-              <span className="text-[0.7em] font-bold text-gray-400 ml-0.5">
+              <span className="text-[0.7em] font-bold text-(--app-ink-3) ml-0.5">
                 {unit}
               </span>
             )}
@@ -103,7 +103,7 @@ export function StatCard({
               two-line one is merely taller. */}
           <p className={STAT_LABEL_CLASS}>{label}</p>
           {hint && (
-            <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{hint}</p>
+            <p className="text-[11px] text-(--app-ink-3) mt-0.5 line-clamp-1">{hint}</p>
           )}
         </div>
       </div>

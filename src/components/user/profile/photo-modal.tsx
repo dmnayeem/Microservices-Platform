@@ -138,7 +138,7 @@ export function PhotoModal({
         {previewUrl && (
           <div
             className={cn(
-              "rounded-lg overflow-hidden border border-gray-800 bg-gray-950",
+              "rounded-lg overflow-hidden border border-(--app-line) bg-(--app-page)",
               target === "avatar"
                 ? "w-32 h-32 mx-auto rounded-full"
                 : "w-full aspect-[5/2]"
@@ -165,8 +165,8 @@ export function PhotoModal({
           className={cn(
             "relative rounded-xl border-2 border-dashed p-5 cursor-pointer text-center transition-colors",
             dragOver
-              ? "border-indigo-500 bg-indigo-500/5"
-              : "border-gray-700 hover:border-indigo-500/50 hover:bg-gray-950"
+              ? "border-(--app-accent-edge) bg-(--app-cta)/5"
+              : "border-(--app-line) hover:border-(--app-accent-edge)/50 hover:bg-(--app-page)"
           )}
         >
           <input
@@ -179,11 +179,11 @@ export function PhotoModal({
               if (f) handleFileSelect(f);
             }}
           />
-          <Upload className="w-7 h-7 text-gray-500 mx-auto mb-2" />
+          <Upload className="w-7 h-7 text-(--app-ink-3) mx-auto mb-2" />
           <p className="text-sm text-white font-semibold">
             {file ? file.name : "Click or drag image here"}
           </p>
-          <p className="text-[11px] text-gray-500 mt-1">
+          <p className="text-[11px] text-(--app-ink-3) mt-1">
             JPG, PNG, WebP, GIF · Up to 8 MB
           </p>
         </div>
@@ -192,7 +192,7 @@ export function PhotoModal({
           <button
             onClick={uploadFile}
             disabled={busy}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold rounded-lg disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -205,11 +205,11 @@ export function PhotoModal({
 
         {/* OR divider */}
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+          <div className="flex-1 h-px bg-(--app-surface-2)" />
+          <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
             or paste URL
           </span>
-          <div className="flex-1 h-px bg-gray-800" />
+          <div className="flex-1 h-px bg-(--app-surface-2)" />
         </div>
 
         <div className="flex gap-2">
@@ -229,7 +229,7 @@ export function PhotoModal({
           <button
             onClick={saveUrl}
             disabled={busy || !urlInput.trim()}
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
+            className="px-4 py-2 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold rounded-lg disabled:opacity-50 whitespace-nowrap"
           >
             Use URL
           </button>
@@ -247,11 +247,11 @@ export function PhotoModal({
         )}
       </div>
 
-      <div className="flex justify-end mt-5 pt-4 border-t border-gray-800">
+      <div className="flex justify-end mt-5 pt-4 border-t border-(--app-line)">
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+          className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-white"
         >
           Close
         </button>

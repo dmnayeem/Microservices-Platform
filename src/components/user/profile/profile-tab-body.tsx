@@ -84,14 +84,14 @@ export function ProfileTabBody({
             icon={<Sparkles className="w-3.5 h-3.5" />}
             tone="indigo"
           >
-            <p className="text-sm text-gray-300 whitespace-pre-wrap">
+            <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
               {profile.bio || (
-                <span className="text-gray-500 italic">
+                <span className="text-(--app-ink-3) italic">
                   No bio yet. Click Edit Profile to add one.
                 </span>
               )}
             </p>
-            <div className="space-y-2 mt-3 pt-3 border-t border-gray-800">
+            <div className="space-y-2 mt-3 pt-3 border-t border-(--app-line)">
               <InfoRow icon={<Mail className="w-3.5 h-3.5" />} label={profile.email} sub="Email" />
               {profile.phone && (
                 <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={profile.phone} sub="Phone" />
@@ -124,7 +124,7 @@ export function ProfileTabBody({
             </div>
             <button
               onClick={() => openEdit("personal")}
-              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold"
+              className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
             >
               <Edit3 className="w-3.5 h-3.5" />
               Edit Details
@@ -139,12 +139,12 @@ export function ProfileTabBody({
             <div className="flex items-center gap-3">
               <CompletionRing percentage={completion.percentage} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-(--app-ink-3)">
                   {completion.percentage === 100
                     ? "All set!"
                     : `${completion.missing.length} item${completion.missing.length === 1 ? "" : "s"} left`}
                 </p>
-                <p className="text-[11px] text-indigo-400 mt-0.5">
+                <p className="text-[11px] text-(--app-accent-ink) mt-0.5">
                   Higher % = better task acceptance
                 </p>
               </div>
@@ -162,11 +162,11 @@ export function ProfileTabBody({
                   <button
                     key={it.key}
                     onClick={() => onJumpCompletion(it.href)}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-gray-950 border border-gray-800 hover:border-indigo-500/40 text-left transition-colors"
+                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 text-left transition-colors"
                   >
-                    <Circle className="w-3.5 h-3.5 text-gray-600 shrink-0" />
-                    <span className="text-xs text-gray-300 flex-1 min-w-0 truncate">{it.label}</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                    <Circle className="w-3.5 h-3.5 text-(--app-glyph) shrink-0" />
+                    <span className="text-xs text-(--app-ink-2) flex-1 min-w-0 truncate">{it.label}</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-(--app-glyph)" />
                   </button>
                 ))}
               </div>
@@ -212,10 +212,10 @@ export function ProfileTabBody({
               <DataLine label="Secondary email" value={profile.secondaryEmail} />
               <DataLine label="Secondary phone" value={profile.secondaryPhone} />
             </div>
-            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
+            <div className="flex justify-end pt-3 mt-3 border-t border-(--app-line)">
               <button
                 onClick={() => openEdit("personal")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-xs font-bold"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Edit Personal Info
@@ -245,20 +245,20 @@ export function ProfileTabBody({
                 <DataLine label="Country" value={address.country} />
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950 p-4 text-center">
-                <MapPin className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                <p className="text-sm text-gray-400 font-semibold">
+              <div className="rounded-lg border border-dashed border-(--app-line) bg-(--app-page) p-4 text-center">
+                <MapPin className="w-6 h-6 text-(--app-glyph) mx-auto mb-1" />
+                <p className="text-sm text-(--app-ink-3) font-semibold">
                   No address set yet
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-(--app-ink-3) mt-0.5">
                   Add one to boost your profile completion.
                 </p>
               </div>
             )}
-            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
+            <div className="flex justify-end pt-3 mt-3 border-t border-(--app-line)">
               <button
                 onClick={() => openEdit("address")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-xs font-bold"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Edit Address
@@ -281,7 +281,7 @@ export function ProfileTabBody({
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-white">Sell, advertise or buy tasks</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-(--app-ink-3) mt-0.5">
                     Apply to sell on the marketplace, run ads, become an affiliate, start a
                     promotion agency, or buy tasks — pay people here to do a job you set.
                     Admin reviews each request.
@@ -300,12 +300,12 @@ export function ProfileTabBody({
             tone="amber"
           >
             {socialAccounts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-950 p-4 text-center">
-                <Globe className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                <p className="text-sm text-gray-400 font-semibold">
+              <div className="rounded-lg border border-dashed border-(--app-line) bg-(--app-page) p-4 text-center">
+                <Globe className="w-6 h-6 text-(--app-glyph) mx-auto mb-1" />
+                <p className="text-sm text-(--app-ink-3) font-semibold">
                   No social accounts connected
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-(--app-ink-3) mt-0.5">
                   Connect them to show your reach.
                 </p>
               </div>
@@ -316,7 +316,7 @@ export function ProfileTabBody({
                   return (
                     <div
                       key={acc.id}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-gray-950 border border-gray-800"
+                      className="flex items-center gap-2 p-2 rounded-lg bg-(--app-page) border border-(--app-line)"
                     >
                       <div
                         className={cn(
@@ -330,7 +330,7 @@ export function ProfileTabBody({
                         <p className="text-xs font-bold text-white truncate">
                           @{acc.username}
                         </p>
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-(--app-ink-3)">
                           {acc.followers.toLocaleString()} {meta.countLabel.toLowerCase()}
                         </p>
                       </div>
@@ -339,10 +339,10 @@ export function ProfileTabBody({
                 })}
               </div>
             )}
-            <div className="flex justify-end pt-3 mt-3 border-t border-gray-800">
+            <div className="flex justify-end pt-3 mt-3 border-t border-(--app-line)">
               <button
                 onClick={() => openEdit("social")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta)/10 hover:bg-(--app-cta)/20 border border-(--app-accent-edge)/30 text-(--app-accent-ink) text-xs font-bold"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Manage Social Accounts
@@ -367,7 +367,7 @@ export function ProfileTabBody({
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Courses */}
-              <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
+              <div className="rounded-xl border border-(--app-line) bg-(--app-page) p-3">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
                     <GraduationCap className="w-4 h-4" />
@@ -377,9 +377,9 @@ export function ProfileTabBody({
                 <div className="grid grid-cols-2 gap-2">
                   <Link
                     href="/courses?filter=enrolled"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-emerald-500/40 transition-colors"
+                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-emerald-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                       Enrolled
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -388,9 +388,9 @@ export function ProfileTabBody({
                   </Link>
                   <Link
                     href="/courses?filter=created"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-emerald-500/40 transition-colors"
+                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-emerald-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                       Created
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -408,7 +408,7 @@ export function ProfileTabBody({
               </div>
 
               {/* Marketplace */}
-              <div className="rounded-xl border border-gray-800 bg-gray-950 p-3">
+              <div className="rounded-xl border border-(--app-line) bg-(--app-page) p-3">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
                     <ShoppingBag className="w-4 h-4" />
@@ -418,9 +418,9 @@ export function ProfileTabBody({
                 <div className="grid grid-cols-3 gap-2">
                   <Link
                     href="/marketplace?tab=listings"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
+                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-amber-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                       Listings
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -429,9 +429,9 @@ export function ProfileTabBody({
                   </Link>
                   <Link
                     href="/marketplace?tab=sales"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
+                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-amber-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                       Sales
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -440,9 +440,9 @@ export function ProfileTabBody({
                   </Link>
                   <Link
                     href="/marketplace?tab=purchases"
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2 hover:border-amber-500/40 transition-colors"
+                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2 hover:border-amber-500/40 transition-colors"
                   >
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                    <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                       Bought
                     </p>
                     <p className="text-lg font-extrabold text-white tabular-nums">
@@ -534,12 +534,12 @@ export function ProfileTabBody({
           className="w-full flex items-center justify-between gap-3 p-4 glass glass-hover"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center">
-              <Edit3 className="w-4 h-4 text-indigo-400" />
+            <div className="w-10 h-10 rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/30 flex items-center justify-center">
+              <Edit3 className="w-4 h-4 text-(--app-accent-ink)" />
             </div>
             <div className="text-left min-w-0">
               <p className="text-sm font-bold text-white">Edit Profile &amp; Settings</p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-(--app-ink-3)">
                 Personal info, address, KYC, privacy, theme, security
               </p>
             </div>
@@ -549,7 +549,7 @@ export function ProfileTabBody({
               open on a phone that card is far off-screen, so while you were
               doing the work there was nothing telling you how much was left. */}
           <div className="hidden sm:flex items-center gap-2 ml-auto mr-2 shrink-0">
-            <div className="w-28 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div className="w-28 h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
                 className={cn(
                   "h-full rounded-full transition-[width] duration-500",
@@ -557,18 +557,18 @@ export function ProfileTabBody({
                     ? "bg-emerald-400"
                     : completion.percentage >= 60
                       ? "bg-amber-400"
-                      : "bg-indigo-400"
+                      : "bg-(--app-cta)"
                 )}
                 style={{ width: `${completion.percentage}%` }}
               />
             </div>
-            <span className="text-[11px] font-bold text-gray-300 tabular-nums">
+            <span className="text-[11px] font-bold text-(--app-ink-2) tabular-nums">
               {completion.percentage}%
             </span>
           </div>
           <ChevronRight
             className={cn(
-              "w-5 h-5 text-gray-500 transition-transform",
+              "w-5 h-5 text-(--app-ink-3) transition-transform",
               editOpen && "rotate-90"
             )}
           />
@@ -577,17 +577,17 @@ export function ProfileTabBody({
         {editOpen && (
           <div className="mt-3 space-y-3">
             {completion.missing.length > 0 && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-950 border border-gray-800">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-(--app-page) border border-(--app-line)">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <p className="text-[11px] font-bold text-gray-300">
+                    <p className="text-[11px] font-bold text-(--app-ink-2)">
                       Profile {completion.percentage}% complete
                     </p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-(--app-ink-3)">
                       {completion.missing.length} left
                     </p>
                   </div>
-                  <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
                     <div
                       className={cn(
                         "h-full rounded-full transition-[width] duration-500",
@@ -595,18 +595,18 @@ export function ProfileTabBody({
                           ? "bg-emerald-400"
                           : completion.percentage >= 60
                             ? "bg-amber-400"
-                            : "bg-indigo-400"
+                            : "bg-(--app-cta)"
                       )}
                       style={{ width: `${completion.percentage}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1.5 truncate">
+                  <p className="text-[11px] text-(--app-ink-3) mt-1.5 truncate">
                     Next: {completion.missing.slice(0, 3).map((m) => m.label).join(", ")}
                   </p>
                 </div>
               </div>
             )}
-            <ScrollFadeRow className="-mx-2" innerClassName="flex gap-1 px-2 pb-1 border-b border-gray-800" ariaLabel="Settings tabs">
+            <ScrollFadeRow className="-mx-2" innerClassName="flex gap-1 px-2 pb-1 border-b border-(--app-line)" ariaLabel="Settings tabs">
               {(
                 [
                   { key: "personal", label: "Personal", icon: User },
@@ -624,8 +624,8 @@ export function ProfileTabBody({
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
                     editTab === t.key
-                      ? "bg-indigo-500/15 text-white border border-indigo-500/40"
-                      : "text-gray-400 hover:text-white hover:bg-gray-900"
+                      ? "bg-(--app-cta)/15 text-(--app-on-cta) border border-(--app-accent-edge)/40"
+                      : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface)"
                   )}
                 >
                   <t.icon className="w-4 h-4" />

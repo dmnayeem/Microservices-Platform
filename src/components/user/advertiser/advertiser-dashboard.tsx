@@ -207,18 +207,18 @@ export function AdvertiserDashboard() {
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent p-4">
+      <div className="relative overflow-hidden rounded-2xl border border-(--app-accent-edge)/20 bg-linear-to-br from-indigo-600/20 via-purple-600/10 to-transparent p-4">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-indigo-500/20 grid place-items-center text-indigo-300 shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-(--app-cta)/20 grid place-items-center text-(--app-accent-ink) shrink-0">
             <Target className="w-6 h-6" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-white">Create Ad</h1>
-            <p className="text-xs text-gray-400">Promote your posts &amp; run native feed ads.</p>
+            <p className="text-xs text-(--app-ink-3)">Promote your posts &amp; run native feed ads.</p>
           </div>
           <button
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold shrink-0"
           >
             <Plus className="w-4 h-4" />
             New Campaign
@@ -233,9 +233,9 @@ export function AdvertiserDashboard() {
           <Wallet className="w-6 h-6" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-400">Ad Credit balance</p>
+          <p className="text-xs text-(--app-ink-3)">Ad Credit balance</p>
           <p className="text-xl font-extrabold text-white tabular-nums whitespace-nowrap">{usd(credit)}</p>
-          <p className="text-[10px] text-gray-500">Non-withdrawable — used to fund campaigns.</p>
+          <p className="text-[10px] text-(--app-ink-3)">Non-withdrawable — used to fund campaigns.</p>
         </div>
         <div className="flex flex-col gap-1.5 shrink-0">
           <Link
@@ -247,7 +247,7 @@ export function AdvertiserDashboard() {
           </Link>
           <button
             onClick={() => setBuying(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-[11px] font-semibold"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-[11px] font-semibold"
           >
             From wallet
           </button>
@@ -269,16 +269,16 @@ export function AdvertiserDashboard() {
                 {ledger.map((l) => (
                   <li key={l.id} className="flex items-center justify-between gap-3 px-3 py-2">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold text-gray-200 truncate">
+                      <p className="text-[11px] font-semibold text-(--app-ink) truncate">
                         {LEDGER_LABEL[l.kind] ?? l.kind}
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-(--app-ink-3)">
                         {new Date(l.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <span
                       className={`text-xs font-bold tabular-nums shrink-0 ${
-                        l.delta >= 0 ? "text-emerald-400" : "text-gray-300"
+                        l.delta >= 0 ? "text-emerald-400" : "text-(--app-ink-2)"
                       }`}
                     >
                       {l.delta >= 0 ? "+" : "−"}{usd(Math.abs(l.delta))}
@@ -353,14 +353,14 @@ export function AdvertiserDashboard() {
                         ? "bg-emerald-500/10 text-emerald-400"
                         : c.status === "PAUSED"
                           ? "bg-amber-500/10 text-amber-400"
-                          : "bg-gray-700 text-gray-400"
+                          : "bg-(--app-surface-2) text-(--app-ink-3)"
                     }`}
                   >
                     {c.status}
                   </span>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="text-xs text-gray-400 tabular-nums">
+                  <span className="text-xs text-(--app-ink-3) tabular-nums">
                     {usd(c.spent)} / {usd(c.budget)}
                   </span>
                   {c.status !== "ENDED" && (
@@ -370,7 +370,7 @@ export function AdvertiserDashboard() {
                         e.stopPropagation();
                         fundCampaign(c.id, c.title);
                       }}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 text-[10px] font-bold hover:bg-indigo-500/25"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-(--app-cta)/15 text-(--app-accent-ink) text-[10px] font-bold hover:bg-(--app-cta)/25"
                     >
                       <Plus className="w-3 h-3" />
                       Fund
@@ -378,7 +378,7 @@ export function AdvertiserDashboard() {
                   )}
                 </div>
               </div>
-              <div className="mt-2 h-1 rounded-full bg-gray-800 overflow-hidden">
+              <div className="mt-2 h-1 rounded-full bg-(--app-surface-2) overflow-hidden">
                 <div
                   className="h-full bg-linear-to-r from-indigo-500 to-purple-500"
                   style={{ width: `${Math.min(100, pct)}%` }}
@@ -386,19 +386,19 @@ export function AdvertiserDashboard() {
               </div>
               <div className="grid grid-cols-3 gap-2 mt-2 text-[11px]">
                 <div>
-                  <p className="text-gray-500">Impressions</p>
+                  <p className="text-(--app-ink-3)">Impressions</p>
                   <p className="font-bold text-white tabular-nums">
                     {c.impressions.toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Clicks</p>
+                  <p className="text-(--app-ink-3)">Clicks</p>
                   <p className="font-bold text-white tabular-nums">
                     {c.clicks.toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-500">CTR</p>
+                  <p className="text-(--app-ink-3)">CTR</p>
                   <p className="font-bold text-white tabular-nums">
                     {c.ctr.toFixed(2)}%
                   </p>
@@ -417,14 +417,14 @@ export function AdvertiserDashboard() {
             <button
               disabled={busy}
               onClick={() => setCreating(false)}
-              className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               disabled={busy}
               onClick={create}
-              className="flex-1 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create"}
             </button>
@@ -433,26 +433,26 @@ export function AdvertiserDashboard() {
       >
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Title *</label>
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">Title *</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">
               Description
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm resize-none focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">
               Budget ($)
             </label>
             <input
@@ -461,30 +461,30 @@ export function AdvertiserDashboard() {
               step={5}
               value={budget}
               onChange={(e) => setBudget(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">
                 Start date (optional)
               </label>
               <DateField
                 type="date"
                 value={startAt}
                 onChange={(v) => setStartAt(v)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">
                 End date (optional)
               </label>
               <DateField
                 type="date"
                 value={endAt}
                 onChange={(v) => setEndAt(v)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           </div>
@@ -500,7 +500,7 @@ export function AdvertiserDashboard() {
             <button
               disabled={buyBusy}
               onClick={() => setBuying(false)}
-              className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
             >
               Cancel
             </button>
@@ -515,26 +515,26 @@ export function AdvertiserDashboard() {
         }
       >
         <div className="space-y-3">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-(--app-ink-3)">
             Convert your existing wallet balance into ad credit (non-withdrawable, funds campaigns).
             To add new money by bKash / Binance / PayPal, use <b>Add funds</b> instead.
           </p>
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Amount ($)</label>
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">Amount ($)</label>
             <input
               type="number"
               min={5}
               step={5}
               value={buyAmount}
               onChange={(e) => setBuyAmount(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
             />
             <div className="flex gap-2 mt-2">
               {[10, 20, 50, 100].map((a) => (
                 <button
                   key={a}
                   onClick={() => setBuyAmount(a)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold ${buyAmount === a ? "bg-emerald-500 text-white" : "bg-gray-800 text-gray-300"}`}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold ${buyAmount === a ? "bg-emerald-500 text-white" : "bg-(--app-surface-2) text-(--app-ink-2)"}`}
                 >
                   ${a}
                 </button>
@@ -542,13 +542,13 @@ export function AdvertiserDashboard() {
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Pay with</label>
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">Pay with</label>
             <div className="flex gap-2">
               {(["cash", "points"] as const).map((c) => (
                 <button
                   key={c}
                   onClick={() => setBuyCurrency(c)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold ${buyCurrency === c ? "bg-emerald-500 text-white" : "bg-gray-800 text-gray-300"}`}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold ${buyCurrency === c ? "bg-emerald-500 text-white" : "bg-(--app-surface-2) text-(--app-ink-2)"}`}
                 >
                   {c === "cash" ? "Wallet cash" : "Points"}
                 </button>
@@ -557,7 +557,7 @@ export function AdvertiserDashboard() {
           </div>
           <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
             <p className="text-xs font-semibold text-white">Out of wallet balance?</p>
-            <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
+            <p className="text-[11px] text-(--app-ink-3) mt-0.5 leading-relaxed">
               Add money via bKash, Nagad, Binance or PayPal — it lands in your wallet, then you
               top up ad credit here.
             </p>

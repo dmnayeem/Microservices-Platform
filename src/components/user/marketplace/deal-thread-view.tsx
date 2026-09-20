@@ -69,11 +69,11 @@ interface ThreadData {
 const TERMINAL: DealStatus[] = ["RELEASED", "REFUNDED", "CANCELLED"];
 const STATUS_STYLE: Record<DealStatus, string> = {
   PROPOSED: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  FUNDED: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+  FUNDED: "bg-(--app-cta)/15 text-(--app-accent-ink) border-(--app-accent-edge)/30",
   DELIVERED: "bg-blue-500/15 text-blue-300 border-blue-500/30",
   RELEASED: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  REFUNDED: "bg-slate-500/15 text-slate-300 border-slate-500/30",
-  CANCELLED: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  REFUNDED: "bg-(--app-ink-3)/15 text-(--app-ink-2) border-(--app-line)/30",
+  CANCELLED: "bg-(--app-ink-3)/15 text-(--app-ink-3) border-(--app-line)/30",
   DISPUTED: "bg-red-500/15 text-red-300 border-red-500/30",
 };
 
@@ -172,7 +172,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
   if (loading || !data) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-(--app-ink-3)" />
       </div>
     );
   }
@@ -187,7 +187,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
     <div className="space-y-4">
       <Link
         href="/marketplace/messages"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ChevronLeft className="w-4 h-4" /> All messages
       </Link>
@@ -210,7 +210,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               {thread.listing && (
                 <Link
                   href={`/marketplace/${thread.listing.id}`}
-                  className="text-xs text-gray-400 hover:text-white truncate block"
+                  className="text-xs text-(--app-ink-3) hover:text-white truncate block"
                 >
                   {thread.listing.title}
                 </Link>
@@ -224,7 +224,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               if (m.senderType === "SYSTEM") {
                 return (
                   <div key={m.id} className="text-center my-2">
-                    <span className="inline-block text-[11px] text-gray-400 bg-white/5 border border-white/10 rounded-full px-3 py-1">
+                    <span className="inline-block text-[11px] text-(--app-ink-3) bg-white/5 border border-white/10 rounded-full px-3 py-1">
                       {m.body}
                     </span>
                   </div>
@@ -240,8 +240,8 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
                       isAdmin
                         ? "bg-amber-500/15 text-amber-100 border border-amber-500/30"
                         : mine
-                        ? "bg-indigo-600 text-white"
-                        : "bg-white/10 text-gray-100"
+                        ? "bg-(--app-cta) text-(--app-on-cta)"
+                        : "bg-white/10 text-(--app-ink)"
                     )}
                   >
                     {isAdmin && (
@@ -258,7 +258,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               );
             })}
             {messages.length === 0 && (
-              <p className="text-center text-sm text-gray-500 py-8">
+              <p className="text-center text-sm text-(--app-ink-3) py-8">
                 No messages yet — say hello 👋
               </p>
             )}
@@ -277,12 +277,12 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               }}
               rows={1}
               placeholder="Type a message…"
-              className="flex-1 resize-none bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 max-h-32"
+              className="flex-1 resize-none bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) max-h-32"
             />
             <button
               onClick={send}
               disabled={sending || !text.trim()}
-              className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="p-2.5 rounded-xl bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta) disabled:opacity-50"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -292,7 +292,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
         {/* Deal panel */}
         <div className="glass rounded-2xl p-4 space-y-3 h-max">
           <div className="flex items-center gap-2">
-            <Handshake className="w-4 h-4 text-indigo-300" />
+            <Handshake className="w-4 h-4 text-(--app-accent-ink)" />
             <h3 className="text-sm font-bold text-white">Escrow deal</h3>
           </div>
 
@@ -308,7 +308,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
           ) : (
             <>
               {lastTerminal && (
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-(--app-ink-3)">
                   Last deal:{" "}
                   <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-bold", STATUS_STYLE[lastTerminal.status])}>
                     {lastTerminal.status}
@@ -323,7 +323,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
                   onDone={() => load(true)}
                 />
               ) : (
-                <p className="text-xs text-gray-500">No active deal to mediate.</p>
+                <p className="text-xs text-(--app-ink-3)">No active deal to mediate.</p>
               )}
             </>
           )}
@@ -368,12 +368,12 @@ function DealActions({
         </p>
       )}
       {deal.status === "FUNDED" && (
-        <p className="text-[11px] text-gray-400 inline-flex items-center gap-1">
+        <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1">
           <Lock className="w-3.5 h-3.5" /> {usd(deal.heldAmount)} held in escrow
         </p>
       )}
       {deal.status === "DELIVERED" && deal.autoReleaseAt && (
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-(--app-ink-3)">
           Auto-releases {formatDistanceToNow(new Date(deal.autoReleaseAt), { addSuffix: true })}
         </p>
       )}
@@ -382,32 +382,32 @@ function DealActions({
       {deal.status === "PROPOSED" && (
         <div className="space-y-2">
           {isBuyer && (
-            <button disabled={busy} onClick={() => onAction(deal.id, "fund")} className={cn(btn, "bg-indigo-600 text-white hover:bg-indigo-700")}>
+            <button disabled={busy} onClick={() => onAction(deal.id, "fund")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
               Fund escrow {usd((deal.amount + deal.adminFee))}
             </button>
           )}
           {(isBuyer || isSeller) && (
-            <button disabled={busy} onClick={() => onAction(deal.id, "cancel")} className={cn(btn, "bg-white/10 text-gray-200 hover:bg-white/20")}>
+            <button disabled={busy} onClick={() => onAction(deal.id, "cancel")} className={cn(btn, "bg-white/10 text-(--app-ink) hover:bg-white/20")}>
               Cancel
             </button>
           )}
-          {isSeller && <p className="text-[11px] text-gray-500">Waiting for the buyer to fund.</p>}
+          {isSeller && <p className="text-[11px] text-(--app-ink-3)">Waiting for the buyer to fund.</p>}
         </div>
       )}
 
       {deal.status === "FUNDED" && (
         <div className="space-y-2">
           {isSeller && (
-            <button disabled={busy} onClick={() => onAction(deal.id, "deliver")} className={cn(btn, "bg-indigo-600 text-white hover:bg-indigo-700")}>
+            <button disabled={busy} onClick={() => onAction(deal.id, "deliver")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
               <CheckCircle2 className="w-4 h-4" /> Mark delivered
             </button>
           )}
           {isSeller && (
-            <button disabled={busy} onClick={() => onAction(deal.id, "refund")} className={cn(btn, "bg-white/10 text-gray-200 hover:bg-white/20")}>
+            <button disabled={busy} onClick={() => onAction(deal.id, "refund")} className={cn(btn, "bg-white/10 text-(--app-ink) hover:bg-white/20")}>
               Refund buyer
             </button>
           )}
-          {isBuyer && <p className="text-[11px] text-gray-500">Funds are held — waiting for delivery.</p>}
+          {isBuyer && <p className="text-[11px] text-(--app-ink-3)">Funds are held — waiting for delivery.</p>}
           {(isBuyer || isSeller) && (
             <button disabled={busy} onClick={() => onAction(deal.id, "escalate")} className={cn(btn, "bg-red-500/15 text-red-300 hover:bg-red-500/25")}>
               <AlertTriangle className="w-4 h-4" /> Escalate to admin
@@ -423,7 +423,7 @@ function DealActions({
               <CheckCircle2 className="w-4 h-4" /> Confirm & release
             </button>
           )}
-          {isSeller && <p className="text-[11px] text-gray-500">Delivered — waiting for the buyer to confirm.</p>}
+          {isSeller && <p className="text-[11px] text-(--app-ink-3)">Delivered — waiting for the buyer to confirm.</p>}
           {(isBuyer || isSeller) && (
             <button disabled={busy} onClick={() => onAction(deal.id, "escalate")} className={cn(btn, "bg-red-500/15 text-red-300 hover:bg-red-500/25")}>
               <AlertTriangle className="w-4 h-4" /> Escalate to admin
@@ -444,7 +444,7 @@ function DealActions({
           <p className="text-[10px] uppercase tracking-wider text-amber-300 font-bold">
             Admin mediation
           </p>
-          <button disabled={busy} onClick={() => onAdminAction(deal.id, "assign")} className={cn(btn, "bg-white/10 text-gray-200 hover:bg-white/20")}>
+          <button disabled={busy} onClick={() => onAdminAction(deal.id, "assign")} className={cn(btn, "bg-white/10 text-(--app-ink) hover:bg-white/20")}>
             Assign to me
           </button>
           <button disabled={busy} onClick={() => onAdminAction(deal.id, "release")} className={cn(btn, "bg-emerald-600 text-white hover:bg-emerald-700")}>
@@ -456,7 +456,7 @@ function DealActions({
         </div>
       )}
       {viewerId === deal.proposedById && deal.status === "PROPOSED" && (
-        <p className="text-[10px] text-gray-500">You proposed this deal.</p>
+        <p className="text-[10px] text-(--app-ink-3)">You proposed this deal.</p>
       )}
     </div>
   );
@@ -501,22 +501,22 @@ function ProposeForm({
 
   return (
     <div className="space-y-2.5">
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-(--app-ink-3)">
         Agree a price, then the buyer funds escrow. Funds release to the seller once delivery is confirmed.
       </p>
       <div>
-        <label className="block text-[11px] text-gray-400 mb-1">Amount ($)</label>
+        <label className="block text-[11px] text-(--app-ink-3) mb-1">Amount ($)</label>
         <input
           type="number"
           min={0}
           step={0.01}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
         />
       </div>
       {mediation.enabled && (
-        <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer">
+        <label className="flex items-start gap-2 text-xs text-(--app-ink-2) cursor-pointer">
           <input
             type="checkbox"
             checked={mediated}
@@ -525,7 +525,7 @@ function ProposeForm({
           />
           <span>
             Admin-mediated deal
-            <span className="block text-[10px] text-gray-500">
+            <span className="block text-[10px] text-(--app-ink-3)">
               A platform admin oversees the deal. Buyer pays a {(mediation.feeBps / 100).toFixed(2)}% fee
               {fee > 0 && ` (+${usd(fee)})`}.
             </span>
@@ -535,7 +535,7 @@ function ProposeForm({
       <button
         onClick={submit}
         disabled={busy || amt <= 0}
-        className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50"
+        className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold hover:bg-(--app-cta) disabled:opacity-50"
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Handshake className="w-4 h-4" />}
         Propose deal

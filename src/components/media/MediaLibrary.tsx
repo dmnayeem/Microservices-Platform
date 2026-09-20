@@ -182,7 +182,7 @@ export function MediaLibrary() {
               placeholder="Search media..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
             />
           </div>
 
@@ -190,7 +190,7 @@ export function MediaLibrary() {
           <select
             value={filterType || "all"}
             onChange={(e) => setFilterType(e.target.value as MediaFilter["fileType"])}
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
           >
             <option value="all">All Types</option>
             <option value="IMAGE">Images</option>
@@ -203,7 +203,7 @@ export function MediaLibrary() {
           <select
             value={folderFilter}
             onChange={(e) => setFolderFilter(e.target.value)}
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
           >
             <option value="__all__">📁 All Folders</option>
             <option value="">📁 Root</option>
@@ -280,7 +280,7 @@ export function MediaLibrary() {
                   return (
                     <div
                       key={item.id}
-                      className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-indigo-500 transition-all"
+                      className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800 hover:ring-2 hover:ring-(--app-accent-edge) transition-all"
                     >
                       {item.fileType === "IMAGE" ? (
                         <SmartImage
@@ -459,7 +459,7 @@ export function MediaLibrary() {
                   value={editData.folder}
                   onChange={(e) => setEditData({ ...editData, folder: e.target.value })}
                   list="media-folder-suggestions"
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) font-mono text-sm"
                   placeholder='e.g. "banners" or "2026/april" — leave blank for root'
                 />
                 <datalist id="media-folder-suggestions">
@@ -483,7 +483,7 @@ export function MediaLibrary() {
                   type="text"
                   value={editData.altText}
                   onChange={(e) => setEditData({ ...editData, altText: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   placeholder="Describe the image for accessibility"
                 />
               </div>
@@ -497,7 +497,7 @@ export function MediaLibrary() {
                   type="text"
                   value={editData.caption}
                   onChange={(e) => setEditData({ ...editData, caption: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   placeholder="Add a caption"
                 />
               </div>
@@ -511,7 +511,7 @@ export function MediaLibrary() {
                   value={editData.description}
                   onChange={(e) => setEditData({ ...editData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge) resize-none"
                   placeholder="Add a description"
                 />
               </div>

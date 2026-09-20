@@ -64,10 +64,10 @@ export function UserUploadField({
               src={value}
               muted
               playsInline
-              className={`${sizeCls} rounded-lg object-cover bg-gray-950 border border-gray-700`}
+              className={`${sizeCls} rounded-lg object-cover bg-(--app-page) border border-(--app-line)`}
             />
           ) : (
-            <div className={`${sizeCls} relative rounded-lg overflow-hidden bg-gray-950 border border-gray-700`}>
+            <div className={`${sizeCls} relative rounded-lg overflow-hidden bg-(--app-page) border border-(--app-line)`}>
               <SmartImage src={value} alt="" fill sizes="200px" className="object-cover" />
             </div>
           )}
@@ -81,8 +81,8 @@ export function UserUploadField({
           </button>
         </div>
       ) : (
-        <div className={`${sizeCls} bg-gray-950 border border-gray-700 border-dashed rounded-lg flex items-center justify-center shrink-0`}>
-          <Icon className="w-7 h-7 text-gray-600" />
+        <div className={`${sizeCls} bg-(--app-page) border border-(--app-line) border-dashed rounded-lg flex items-center justify-center shrink-0`}>
+          <Icon className="w-7 h-7 text-(--app-glyph)" />
         </div>
       )}
 
@@ -98,7 +98,7 @@ export function UserUploadField({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-700 border border-gray-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-(--app-surface-2) text-white rounded-lg hover:bg-(--app-surface-2) border border-(--app-line) disabled:opacity-50"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
           {busy ? "Uploading…" : value ? "Change" : `Upload ${isVideo ? "video" : "image"}`}
@@ -108,7 +108,7 @@ export function UserUploadField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={urlPlaceholder}
-          className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
         />
       </div>
     </div>

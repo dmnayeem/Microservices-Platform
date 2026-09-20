@@ -43,7 +43,7 @@ export class ErrorBoundary extends React.Component<
           <h3 className="text-base font-semibold text-white mb-1">
             Something went wrong
           </h3>
-          <p className="text-sm text-gray-400 max-w-xs mb-4">
+          <p className="text-sm text-(--app-ink-3) max-w-xs mb-4">
             {this.state.error.message || "An unexpected error occurred."}
           </p>
           <button
@@ -51,7 +51,7 @@ export class ErrorBoundary extends React.Component<
               this.reset();
               if (typeof window !== "undefined") window.location.reload();
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold"
           >
             <RotateCcw className="w-4 h-4" />
             Reload Page

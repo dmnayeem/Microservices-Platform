@@ -105,11 +105,11 @@ export function AchievementsView() {
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-bold text-white">🏅 Achievements</h1>
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-(--app-ink-3)">
         Unlocked: <strong className="text-white">{summary?.unlocked ?? 0}</strong> /{" "}
         {summary?.total ?? items.length}
         {summary && summary.pointsEarned > 0 && (
-          <span className="text-gray-500">
+          <span className="text-(--app-ink-3)">
             {" "}
             · {pts(summary.pointsEarned)} pts collected
           </span>
@@ -126,7 +126,7 @@ export function AchievementsView() {
       {loading && <ListSkeleton rows={3} />}
 
       {!loading && items.length === 0 && (
-        <p className="text-sm text-gray-500 py-10 text-center">
+        <p className="text-sm text-(--app-ink-3) py-10 text-center">
           No achievements are set up yet.
         </p>
       )}
@@ -150,7 +150,7 @@ export function AchievementsView() {
                 {a.isUnlocked ? (
                   "🏆"
                 ) : (
-                  <Lock className="w-4 h-4 text-gray-500" />
+                  <Lock className="w-4 h-4 text-(--app-ink-3)" />
                 )}
               </div>
               <p
@@ -159,8 +159,8 @@ export function AchievementsView() {
                   a.canClaim
                     ? "text-(--app-info)"
                     : a.isUnlocked
-                      ? "text-gray-300"
-                      : "text-gray-500"
+                      ? "text-(--app-ink-2)"
+                      : "text-(--app-ink-3)"
                 )}
               >
                 {a.name}
@@ -168,7 +168,7 @@ export function AchievementsView() {
               {/* Locked badges show how far along you are, so the grid says what
                   to do next instead of only what you have not got. */}
               {!a.isUnlocked && (
-                <span className="text-[10px] text-gray-500 tabular-nums">
+                <span className="text-[10px] text-(--app-ink-3) tabular-nums">
                   {a.progress.current}/{a.progress.target}
                 </span>
               )}
@@ -197,7 +197,7 @@ export function AchievementsView() {
             <div className="text-6xl mb-3">{active.isUnlocked ? "🏆" : "🔒"}</div>
             <h2 className="t-section text-white">{active.name}</h2>
             {active.description && (
-              <p className="t-body text-gray-400 mt-1 mb-3">
+              <p className="t-body text-(--app-ink-3) mt-1 mb-3">
                 {active.description}
               </p>
             )}
@@ -209,7 +209,7 @@ export function AchievementsView() {
                   style={{ width: `${active.progress.percentage}%` }}
                 />
               </div>
-              <p className="t-meta text-gray-500 mt-1.5 tabular-nums">
+              <p className="t-meta text-(--app-ink-3) mt-1.5 tabular-nums">
                 {active.progress.current.toLocaleString()} /{" "}
                 {active.progress.target.toLocaleString()} {active.typeLabel}
               </p>
@@ -228,7 +228,7 @@ export function AchievementsView() {
               </p>
             )}
             {active.isClaimed && (
-              <p className="t-meta text-gray-500 mt-1">Reward collected.</p>
+              <p className="t-meta text-(--app-ink-3) mt-1">Reward collected.</p>
             )}
 
             {active.canClaim && (
@@ -248,7 +248,7 @@ export function AchievementsView() {
               className={cn(
                 "app-press app-tap w-full rounded-(--app-r-control) text-sm font-bold",
                 active.canClaim
-                  ? "mt-2 bg-(--app-surface-2) border border-(--app-line) text-gray-300"
+                  ? "mt-2 bg-(--app-surface-2) border border-(--app-line) text-(--app-ink-2)"
                   : "mt-4 app-accent"
               )}
             >

@@ -19,7 +19,7 @@ import { cn, usd } from "@/lib/utils";
 type Tone = "indigo" | "amber" | "emerald" | "purple" | "rose" | "sky" | "violet";
 
 const TONES: Record<Tone, string> = {
-  indigo: "text-indigo-400 bg-indigo-500/10",
+  indigo: "text-(--app-accent-ink) bg-(--app-cta)/10",
   amber: "text-amber-400 bg-amber-500/10",
   emerald: "text-emerald-400 bg-emerald-500/10",
   purple: "text-purple-400 bg-purple-500/10",
@@ -64,7 +64,7 @@ export function SocialStatsGroup({
 }) {
   return (
     <section>
-      <h2 className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2 px-1">
+      <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 px-1">
         Profile
       </h2>
       <div className="grid grid-cols-3 gap-3">
@@ -116,13 +116,13 @@ export function LifetimeStatsGroup({ stats }: { stats: LifetimeStats }) {
   return (
     <section>
       <div className="flex items-baseline justify-between mb-2 px-1">
-        <h2 className="text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+        <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold">
           Lifetime Stats
         </h2>
         {canToggle && (
           <button
             onClick={() => setUnit((p) => (p === "points" ? "usd" : "points"))}
-            className="text-[10px] uppercase tracking-wider text-indigo-400 hover:text-indigo-300 font-bold"
+            className="text-[10px] uppercase tracking-wider text-(--app-accent-ink) hover:text-(--app-accent-ink) font-bold"
           >
             Show in {unit === "points" ? "USD" : "points"}
           </button>

@@ -282,7 +282,7 @@ export function ListingDetailView({
       )}
       <Link
         href="/marketplace"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to marketplace
@@ -293,7 +293,7 @@ export function ListingDetailView({
         {/* Gallery */}
         <div className="space-y-2">
           <div
-            className="relative aspect-video bg-gray-950 rounded-xl overflow-hidden cursor-zoom-in"
+            className="relative aspect-video bg-(--app-page) rounded-xl overflow-hidden cursor-zoom-in"
             onClick={() =>
               listing.images.length > 0 &&
               setZoom({ list: listing.images, idx: 0 })
@@ -342,7 +342,7 @@ export function ListingDetailView({
                   key={i}
                   type="button"
                   onClick={() => setZoom({ list: listing.images, idx: i })}
-                  className="relative aspect-square bg-gray-950 rounded-lg overflow-hidden border border-gray-800 hover:border-indigo-500/50"
+                  className="relative aspect-square bg-(--app-page) rounded-lg overflow-hidden border border-(--app-line) hover:border-(--app-accent-edge)/50"
                 >
                   <SmartImage
                     src={url}
@@ -360,16 +360,16 @@ export function ListingDetailView({
         {/* Right rail */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-(--app-cta)/15 text-(--app-accent-ink) border border-(--app-accent-edge)/30">
               {ASSET_TYPE_LABEL[listing.assetType] ?? listing.assetType}
             </span>
             {listing.subType && (
-              <span className="text-[10px] text-gray-500 font-mono uppercase">
+              <span className="text-[10px] text-(--app-ink-3) font-mono uppercase">
                 {listing.subType}
               </span>
             )}
             {listing.niche && (
-              <span className="text-xs text-gray-400">· {listing.niche}</span>
+              <span className="text-xs text-(--app-ink-3)">· {listing.niche}</span>
             )}
           </div>
 
@@ -377,20 +377,20 @@ export function ListingDetailView({
             {listing.title}
           </h1>
 
-          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap leading-relaxed">
             {listing.description}
           </p>
 
           {/* Price block */}
           <div className="glass rounded-xl p-4 space-y-2">
-            <p className="text-[11px] uppercase tracking-wider font-bold text-gray-500">
+            <p className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3)">
               {listing.auctionMode ? "Current price" : "Asking price"}
             </p>
             <p className="text-3xl font-extrabold text-white tabular-nums">
               ${listing.price.toLocaleString()}
             </p>
             {listing.auctionMode && (
-              <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+              <div className="flex flex-wrap gap-3 text-xs text-(--app-ink-3)">
                 {listing.startingBid != null && (
                   <span>
                     Starting bid:{" "}
@@ -423,7 +423,7 @@ export function ListingDetailView({
                 <button
                   onClick={addToCart}
                   disabled={addingToCart}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-bold disabled:opacity-50"
                 >
                   {addingToCart ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -457,7 +457,7 @@ export function ListingDetailView({
                   "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-bold transition-colors",
                   watched
                     ? "bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25"
-                    : "bg-gray-900 text-gray-300 border-gray-800 hover:border-gray-700"
+                    : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:border-(--app-line)"
                 )}
               >
                 <Heart
@@ -476,7 +476,7 @@ export function ListingDetailView({
               <button
                 onClick={messageSeller}
                 disabled={msgBusy}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-500/40 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25 text-sm font-bold disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-(--app-accent-edge)/40 bg-(--app-cta)/15 text-(--app-accent-ink) hover:bg-(--app-cta)/25 text-sm font-bold disabled:opacity-50"
               >
                 {msgBusy ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -488,7 +488,7 @@ export function ListingDetailView({
             )}
             <button
               onClick={() => setShowShare(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-800 bg-gray-900 hover:border-gray-700 text-sm text-gray-300"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-(--app-line) bg-(--app-surface) hover:border-(--app-line) text-sm text-(--app-ink-2)"
             >
               <Share2 className="w-4 h-4" />
               Share
@@ -496,13 +496,13 @@ export function ListingDetailView({
             {!isOwner && (
               <button
                 onClick={() => setShowReport(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-800 bg-gray-900 hover:border-gray-700 text-sm text-gray-300"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-(--app-line) bg-(--app-surface) hover:border-(--app-line) text-sm text-(--app-ink-2)"
                 title="Report"
               >
                 <Flag className="w-4 h-4" />
               </button>
             )}
-            <div className="ml-auto text-right text-[10px] text-gray-500">
+            <div className="ml-auto text-right text-[10px] text-(--app-ink-3)">
               <p className="inline-flex items-center gap-1">
                 <Eye className="w-3 h-3" />
                 {listing.views.toLocaleString()} views
@@ -606,7 +606,7 @@ export function ListingDetailView({
       {listing.richDescription && (
         <section className="glass rounded-xl p-4 sm:p-5">
           <h3 className="text-base font-bold text-white mb-2">About this asset</h3>
-          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap leading-relaxed">
             {listing.richDescription}
           </p>
         </section>
@@ -642,7 +642,7 @@ export function ListingDetailView({
           <div className="space-y-4">
             {groupedFields.map((g) => (
               <div key={g.group}>
-                <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) mb-1.5">
                   {g.group}
                 </p>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
@@ -674,7 +674,7 @@ export function ListingDetailView({
                 key={i}
                 type="button"
                 onClick={() => setZoom({ list: listing.screenshots, idx: i })}
-                className="relative aspect-video rounded-lg overflow-hidden bg-gray-950 border border-gray-800 hover:border-emerald-500/40"
+                className="relative aspect-video rounded-lg overflow-hidden bg-(--app-page) border border-(--app-line) hover:border-emerald-500/40"
               >
                 <SmartImage
                   src={url}
@@ -693,7 +693,7 @@ export function ListingDetailView({
       {listing.attachments.length > 0 && (
         <section className="glass rounded-xl p-4 sm:p-5">
           <h3 className="text-base font-bold text-white mb-3 inline-flex items-center gap-2">
-            <Paperclip className="w-4 h-4 text-indigo-400" />
+            <Paperclip className="w-4 h-4 text-(--app-accent-ink)" />
             Attachments
           </h3>
           <ul className="space-y-1">
@@ -703,7 +703,7 @@ export function ListingDetailView({
                   href={url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="inline-flex items-center gap-2 text-xs font-mono text-indigo-300 hover:text-indigo-200 break-all"
+                  className="inline-flex items-center gap-2 text-xs font-mono text-(--app-accent-ink) hover:text-(--app-accent-ink) break-all"
                 >
                   <FileText className="w-3.5 h-3.5 shrink-0" />
                   {url}
@@ -727,16 +727,16 @@ export function ListingDetailView({
           <div className="flex-1 min-w-0">
             <Link
               href={profileHref(listing.seller)}
-              className="text-sm font-bold text-white hover:text-indigo-400"
+              className="text-sm font-bold text-white hover:text-(--app-accent-ink)"
             >
               {listing.seller.name ?? "Seller"}
             </Link>
             {listing.seller.username && (
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-(--app-ink-3)">
                 @{listing.seller.username}
               </p>
             )}
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-(--app-ink-3) mt-0.5">
               Joined {format(new Date(listing.seller.memberSince), "MMM yyyy")}{" "}
               · {listing.seller.totalListings} listings
             </p>
@@ -795,7 +795,7 @@ function MetricCard({
     <div className="glass rounded-xl p-3">
       <div className="flex items-center gap-2 mb-1">
         <span className={cn("p-1.5 rounded-md border", tones[tone])}>{icon}</span>
-        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+        <span className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
           {label}
         </span>
       </div>
@@ -814,16 +814,16 @@ function TermBlock({
   tone?: "indigo" | "emerald" | "rose";
 }) {
   const tones = {
-    indigo: "border-indigo-500/20",
+    indigo: "border-(--app-accent-edge)/20",
     emerald: "border-emerald-500/30",
     rose: "border-rose-500/30",
   };
   return (
-    <div className={cn("rounded-xl border bg-gray-900 p-4", tones[tone])}>
-      <h4 className="text-[11px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
+    <div className={cn("rounded-xl border bg-(--app-surface) p-4", tones[tone])}>
+      <h4 className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3) mb-1.5">
         {title}
       </h4>
-      <p className="text-xs text-gray-200 whitespace-pre-wrap leading-relaxed">
+      <p className="text-xs text-(--app-ink) whitespace-pre-wrap leading-relaxed">
         {body}
       </p>
     </div>
@@ -841,7 +841,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <dt className="text-gray-500 min-w-0 flex-1">{field.label}</dt>
+      <dt className="text-(--app-ink-3) min-w-0 flex-1">{field.label}</dt>
       <dd className="text-right shrink-0 max-w-[60%]">
         <DetailValue field={field} value={value} onZoomImage={onZoomImage} />
       </dd>
@@ -861,7 +861,7 @@ function DetailValue({
   switch (field.type) {
     case "BOOLEAN":
       return (
-        <span className={value ? "text-emerald-300 font-bold" : "text-gray-400"}>
+        <span className={value ? "text-emerald-300 font-bold" : "text-(--app-ink-3)"}>
           {value ? "Yes" : "No"}
         </span>
       );
@@ -887,7 +887,7 @@ function DetailValue({
           href={String(value)}
           target="_blank"
           rel="noreferrer noopener"
-          className="text-indigo-300 hover:text-indigo-200 underline break-all font-mono text-[11px]"
+          className="text-(--app-accent-ink) hover:text-(--app-accent-ink) underline break-all font-mono text-[11px]"
         >
           {String(value)}
         </a>
@@ -903,7 +903,7 @@ function DetailValue({
           <img
             src={value}
             alt=""
-            className="max-h-24 rounded border border-gray-800 hover:border-indigo-500/40"
+            className="max-h-24 rounded border border-(--app-line) hover:border-(--app-accent-edge)/40"
           />
         </button>
       ) : null;
@@ -931,7 +931,7 @@ function Pill({
     amber: "bg-amber-500 text-white",
     emerald: "bg-emerald-500 text-white",
     purple: "bg-purple-500/90 text-white",
-    slate: "bg-slate-700/90 text-white",
+    slate: "bg-(--app-surface-2)/90 text-white",
   };
   return (
     <span

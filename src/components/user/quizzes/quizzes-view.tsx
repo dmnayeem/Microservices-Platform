@@ -77,10 +77,10 @@ export function QuizzesView() {
     <div className="max-w-5xl mx-auto space-y-4">
       <header>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Brain className="w-6 h-6 text-indigo-400" />
+          <Brain className="w-6 h-6 text-(--app-accent-ink)" />
           Quiz Games
         </h1>
-        <p className="text-gray-400 text-sm mt-0.5">
+        <p className="text-(--app-ink-3) text-sm mt-0.5">
           Standalone knowledge games — separate from quiz <em>tasks</em>. Earn
           points &amp; XP.
         </p>
@@ -105,7 +105,7 @@ export function QuizzesView() {
             return (
               <div
                 key={q.id}
-                className="rounded-2xl border border-gray-800 bg-gray-900 p-4 flex flex-col hover:border-indigo-500/40 transition-colors"
+                className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 flex flex-col hover:border-(--app-accent-edge)/40 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shrink-0">
@@ -124,7 +124,7 @@ export function QuizzesView() {
                       >
                         {q.difficulty}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-400">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-(--app-surface-2) text-(--app-ink-3)">
                         {q.category}
                       </span>
                       {q.everPassed && (
@@ -137,17 +137,17 @@ export function QuizzesView() {
                 </div>
 
                 {q.description && (
-                  <p className="text-xs text-gray-400 line-clamp-2 mt-2">
+                  <p className="text-xs text-(--app-ink-3) line-clamp-2 mt-2">
                     {q.description}
                   </p>
                 )}
 
                 <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
-                  <span className="inline-flex items-center gap-1 text-gray-400">
+                  <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                     <ListChecks className="w-3 h-3" />
                     {q.questionCount} Qs
                   </span>
-                  <span className="inline-flex items-center gap-1 text-gray-400">
+                  <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                     <Clock className="w-3 h-3" />
                     {Math.round(q.timeLimitSec / 60)}m
                   </span>
@@ -157,18 +157,18 @@ export function QuizzesView() {
                   <span className="inline-flex items-center gap-1 text-purple-400">
                     <Sparkles className="w-3 h-3" />+{q.xpReward} XP
                   </span>
-                  <span className="inline-flex items-center gap-1 text-gray-400">
+                  <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                     <Trophy className="w-3 h-3" />
                     Pass {q.passingScore}%
                   </span>
-                  <span className="inline-flex items-center gap-1 text-gray-500">
+                  <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                     {q.bestScore != null ? `Best ${q.bestScore}%` : `${q.attemptsLeft}/${q.maxAttempts} left`}
                   </span>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-gray-800">
+                <div className="mt-3 pt-3 border-t border-(--app-line)">
                   {locked ? (
-                    <div className="w-full py-2 rounded-lg bg-gray-800 text-gray-500 text-xs font-bold text-center inline-flex items-center justify-center gap-1.5">
+                    <div className="w-full py-2 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) text-xs font-bold text-center inline-flex items-center justify-center gap-1.5">
                       <Lock className="w-3.5 h-3.5" />
                       {onCooldown
                         ? `Cooldown ${cooldownLabel(q.cooldownUntil!)}`
@@ -177,7 +177,7 @@ export function QuizzesView() {
                   ) : (
                     <Link
                       href={`/quizzes/${q.id}`}
-                      className="block w-full py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold text-center"
+                      className="block w-full py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold text-center"
                     >
                       {q.everPassed ? "Play again" : "Start quiz →"}
                     </Link>

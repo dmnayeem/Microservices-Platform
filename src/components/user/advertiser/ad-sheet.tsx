@@ -37,7 +37,7 @@ export interface EditableAd {
 }
 
 const inp =
-  "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500";
+  "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)";
 
 /**
  * Create or edit one ad. Editing exists because there was previously no way for
@@ -216,14 +216,14 @@ export function AdSheet({
           <button
             disabled={busy}
             onClick={() => onOpenChange(false)}
-            className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             disabled={busy}
             onClick={submit}
-            className="flex-1 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : editing ? "Save & resubmit" : "Create Ad"}
           </button>
@@ -240,14 +240,14 @@ export function AdSheet({
         )}
 
         {!editing && (
-          <div className="inline-flex rounded-lg border border-gray-700 overflow-hidden text-xs w-full">
+          <div className="inline-flex rounded-lg border border-(--app-line) overflow-hidden text-xs w-full">
             {(["custom", "post"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
                 className={cn(
                   "flex-1 px-3 py-2 font-semibold capitalize",
-                  mode === m ? "bg-indigo-500 text-white" : "bg-gray-800 text-gray-400"
+                  mode === m ? "bg-(--app-cta) text-(--app-on-cta)" : "bg-(--app-surface-2) text-(--app-ink-3)"
                 )}
               >
                 {m === "custom" ? "Custom ad" : "Promote a post"}
@@ -261,8 +261,8 @@ export function AdSheet({
             {/* Feed-native vs banner — BANNER was unreachable before (the sheet
                 hardcoded NATIVE), so half the inventory couldn't be bought. */}
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Ad type</label>
-              <div className="inline-flex rounded-lg border border-gray-700 overflow-hidden text-xs w-full">
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">Ad type</label>
+              <div className="inline-flex rounded-lg border border-(--app-line) overflow-hidden text-xs w-full">
                 {(
                   [
                     { id: "NATIVE", label: "Feed post style" },
@@ -274,7 +274,7 @@ export function AdSheet({
                     onClick={() => setFormat(f.id)}
                     className={cn(
                       "flex-1 px-3 py-2 font-semibold",
-                      format === f.id ? "bg-indigo-500 text-white" : "bg-gray-800 text-gray-400"
+                      format === f.id ? "bg-(--app-cta) text-(--app-on-cta)" : "bg-(--app-surface-2) text-(--app-ink-3)"
                     )}
                   >
                     {f.label}
@@ -284,28 +284,28 @@ export function AdSheet({
             </div>
 
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Brand name</label>
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">Brand name</label>
               <input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="e.g. NordVPN" className={inp} />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Brand logo</label>
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">Brand logo</label>
               <UserUploadField value={brandLogo} onChange={setBrandLogo} previewSize="square" />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Headline / ad copy</label>
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">Headline / ad copy</label>
               <textarea rows={3} value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="What are you promoting?" className={cn(inp, "resize-none")} />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Image</label>
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">Image</label>
               <UserUploadField value={image} onChange={setImage} previewSize="lg" />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Video (optional)</label>
+              <label className="block text-xs text-(--app-ink-3) mb-1.5">Video (optional)</label>
               <UserUploadField value={video} onChange={setVideo} kind="VIDEO" previewSize="lg" />
             </div>
             {format === "BANNER" && (
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Banner size</label>
+                <label className="block text-xs text-(--app-ink-3) mb-1.5">Banner size</label>
                 {/* Only sizes that fit every selected space. One creative is
                     written to all of them, and the server refuses a size a
                     space can't hold. */}
@@ -316,7 +316,7 @@ export function AdSheet({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-[11px] text-gray-500">
+                <p className="mt-1 text-[11px] text-(--app-ink-3)">
                   {placements.length > 1
                     ? `Fits all ${placements.length} selected spaces.`
                     : "Sizes this space accepts."}
@@ -326,9 +326,9 @@ export function AdSheet({
           </>
         ) : (
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Pick one of your posts</label>
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">Pick one of your posts</label>
             {posts.length === 0 ? (
-              <p className="text-xs text-gray-600 py-3">No posts to promote yet.</p>
+              <p className="text-xs text-(--app-glyph) py-3">No posts to promote yet.</p>
             ) : (
               <div className="space-y-1.5 max-h-56 overflow-y-auto">
                 {posts.map((p) => (
@@ -338,16 +338,16 @@ export function AdSheet({
                     className={cn(
                       "w-full flex items-center gap-2 p-2 rounded-lg border text-left",
                       postId === p.id
-                        ? "border-indigo-500 bg-indigo-500/10"
-                        : "border-gray-800 bg-gray-800/50"
+                        ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                        : "border-(--app-line) bg-(--app-surface-2)/50"
                     )}
                   >
-                    <div className="relative w-9 h-9 rounded bg-gray-800 overflow-hidden shrink-0 flex items-center justify-center">
+                    <div className="relative w-9 h-9 rounded bg-(--app-surface-2) overflow-hidden shrink-0 flex items-center justify-center">
                       {p.image ? (
                         <SmartImage src={p.image} alt="" fill sizes="36px" className="object-cover" />
                       ) : null}
                     </div>
-                    <span className="text-xs text-gray-200 line-clamp-2 flex-1">
+                    <span className="text-xs text-(--app-ink) line-clamp-2 flex-1">
                       {p.content || "(no text)"}
                     </span>
                   </button>
@@ -359,18 +359,18 @@ export function AdSheet({
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">CTA label</label>
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">CTA label</label>
             <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} className={inp} />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Destination URL *</label>
+            <label className="block text-xs text-(--app-ink-3) mb-1.5">Destination URL *</label>
             <input value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} placeholder="https://…" className={inp} />
           </div>
         </div>
 
         {!editing && (
-          <div className="rounded-lg border border-gray-800 p-3 space-y-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+          <div className="rounded-lg border border-(--app-line) p-3 space-y-2.5">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               Ad spaces ({placements.length} selected)
             </p>
             <div className="grid grid-cols-2 gap-1.5">
@@ -387,23 +387,23 @@ export function AdSheet({
                     }
                     className={cn(
                       "text-left rounded-lg border p-2",
-                      on ? "border-indigo-500 bg-indigo-500/10" : "border-gray-800 bg-gray-800/50"
+                      on ? "border-(--app-accent-edge) bg-(--app-cta)/10" : "border-(--app-line) bg-(--app-surface-2)/50"
                     )}
                   >
                     <div className="flex items-center gap-1.5">
                       <span
                         className={cn(
                           "w-3.5 h-3.5 rounded-sm grid place-items-center shrink-0 text-[9px] font-bold",
-                          on ? "bg-indigo-500 text-white" : "border border-gray-600"
+                          on ? "bg-(--app-cta) text-(--app-on-cta)" : "border border-(--app-line)"
                         )}
                       >
                         {on ? "✓" : ""}
                       </span>
-                      <span className="text-[11px] font-semibold text-gray-200 truncate min-w-0">
+                      <span className="text-[11px] font-semibold text-(--app-ink) truncate min-w-0">
                         {p.label}
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{p.where}</p>
+                    <p className="text-[10px] text-(--app-ink-3) mt-0.5 line-clamp-1">{p.where}</p>
                   </button>
                 );
               })}
@@ -411,8 +411,8 @@ export function AdSheet({
           </div>
         )}
 
-        <div className="rounded-lg border border-gray-800 p-3 space-y-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+        <div className="rounded-lg border border-(--app-line) p-3 space-y-2.5">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
             Targeting (optional)
           </p>
           <AudienceBuilder value={targeting} onChange={setTargeting} />

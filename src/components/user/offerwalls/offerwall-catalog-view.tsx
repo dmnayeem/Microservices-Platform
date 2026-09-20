@@ -277,7 +277,7 @@ export function OfferwallCatalogView() {
             ) : (
               <div className="space-y-3">
                 <a href={start.trackingUrl || "#"} target="_blank" rel="noopener noreferrer"
-                  className={`w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-semibold ${!start.trackingUrl && "pointer-events-none opacity-50"}`}>
+                  className={`w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-(--app-surface-2) text-white text-sm font-semibold ${!start.trackingUrl && "pointer-events-none opacity-50"}`}>
                   Reopen the offer <ExternalLink className="w-4 h-4" />
                 </a>
                 {start.completionMode === "PROOF" ? (

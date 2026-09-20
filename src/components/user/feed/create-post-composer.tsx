@@ -585,7 +585,7 @@ export function CreatePostComposer({
                         ? "placeholder:text-white/70"
                         : "placeholder:text-gray-900/60"
                     )
-                  : "text-sm text-white placeholder:text-(--app-ink-3)"
+                  : "text-sm text-(--app-ink) placeholder:text-(--app-ink-3)"
               )}
             />
           </div>
@@ -714,7 +714,7 @@ export function CreatePostComposer({
                 title="No background"
                 className={cn(
                   "w-7 h-7 rounded-full border border-(--app-line) bg-(--app-page) inline-flex items-center justify-center text-(--app-ink-3)",
-                  !bg && "ring-2 ring-indigo-400"
+                  !bg && "ring-2 ring-(--app-accent-edge)"
                 )}
               >
                 <X className="w-3.5 h-3.5" />
@@ -839,7 +839,7 @@ export function CreatePostComposer({
                   checked={on}
                   onChange={() => setAudience(key)}
                   disabled={busy}
-                  className="mt-0.5 border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
+                  className="mt-0.5 border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-(--app-accent-edge)"
                 />
                 <Icon
                   className={cn(

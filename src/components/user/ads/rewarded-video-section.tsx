@@ -82,13 +82,13 @@ export function RewardedVideoSection() {
             <PlayCircle className="w-4.5 h-4.5 text-emerald-400" />
             Watch &amp; Earn
           </h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-(--app-ink-3) mt-0.5">
             Watch a short video all the way through to earn points.
           </p>
         </div>
         {cap > 0 && (
           <div className="text-right">
-            <p className="text-[11px] text-gray-500">Today</p>
+            <p className="text-[11px] text-(--app-ink-3)">Today</p>
             <p className="text-sm font-bold text-white tabular-nums">
               {pts(earned)} / {pts(cap)} pts
             </p>
@@ -97,7 +97,7 @@ export function RewardedVideoSection() {
       </div>
 
       {cap > 0 && (
-        <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+        <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
           <div
             className="h-full bg-linear-to-r from-emerald-500 to-teal-400 transition-[width] duration-500"
             style={{ width: `${capPct}%` }}
@@ -137,17 +137,17 @@ function RewardedCard({ ad, onWatch }: { ad: RewardedAd; onWatch: () => void }) 
   const ready = left <= 0;
   return (
     <div className="glass rounded-xl p-3 flex items-center gap-3">
-      <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-800 overflow-hidden grid place-items-center">
+      <div className="w-14 h-14 shrink-0 rounded-lg bg-(--app-surface-2) overflow-hidden grid place-items-center">
         {ad.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={ad.imageUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          <PlayCircle className="w-6 h-6 text-gray-600" />
+          <PlayCircle className="w-6 h-6 text-(--app-glyph)" />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-white truncate">{ad.title}</p>
-        <p className="text-[11px] text-gray-500 truncate">
+        <p className="text-[11px] text-(--app-ink-3) truncate">
           {ad.watchSeconds}s · <b className="text-amber-400">+{pts(ad.rewardPoints)} pts</b>
         </p>
       </div>
@@ -277,7 +277,7 @@ function RewardedPlayer({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-1.5 rounded-lg bg-gray-800 text-gray-400 hover:text-white"
+            className="p-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
@@ -307,9 +307,9 @@ function RewardedPlayer({
           <img src={ad.imageUrl} alt="" className="w-full rounded-xl" />
         ) : null}
 
-        {ad.headline && <p className="text-sm text-gray-300">{ad.headline}</p>}
+        {ad.headline && <p className="text-sm text-(--app-ink-2)">{ad.headline}</p>}
 
-        <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+        <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
           <div
             className="h-full bg-linear-to-r from-emerald-500 to-teal-400 transition-[width] duration-300"
             style={{ width: `${pct}%` }}

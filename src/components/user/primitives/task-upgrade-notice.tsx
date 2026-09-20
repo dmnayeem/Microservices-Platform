@@ -25,7 +25,7 @@ export function TaskUpgradeNotice({
           <Lock className="w-7 h-7 text-amber-400" />
         </div>
         <h1 className="text-lg font-bold text-white">Daily limit reached</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           {message ||
             "You've done all your daily-mission tasks for today. Upgrade your plan to do more."}
         </p>
@@ -64,18 +64,18 @@ export function TaskLockedNotice({
 }) {
   return (
     <div className={`max-w-md mx-auto px-4 py-10 ${className}`}>
-      <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/5 p-6 text-center">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/10 ring-1 ring-indigo-500/20 flex items-center justify-center mb-4">
-          <Lock className="w-7 h-7 text-indigo-400" />
+      <div className="rounded-2xl border border-(--app-accent-edge)/25 bg-(--app-cta)/5 p-6 text-center">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-(--app-cta)/10 ring-1 ring-(--app-accent-edge)/20 flex items-center justify-center mb-4">
+          <Lock className="w-7 h-7 text-(--app-accent-ink)" />
         </div>
         <h1 className="text-lg font-bold text-white">Task locked</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           {message ||
             "Complete the previous task first to unlock this one."}
         </p>
         <Link
           href="/tasks"
-          className="mt-4 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold transition-colors"
+          className="mt-4 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-bold transition-colors"
         >
           Back to tasks
         </Link>
@@ -121,7 +121,7 @@ export function AdblockNotice({ className = "" }: { className?: string }) {
           <ShieldAlert className="w-7 h-7 text-amber-400" />
         </div>
         <h1 className="text-lg font-bold text-white">Ad blocker detected</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           Please turn off your ad blocker (or anti-adblock extension) to open
           this task, then re-check.
         </p>

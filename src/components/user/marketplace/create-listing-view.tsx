@@ -189,7 +189,7 @@ export function CreateListingView() {
     <div className="space-y-4 max-w-3xl mx-auto pb-24">
       <div>
         <h1 className="text-xl font-bold text-white">Sell a digital asset</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <p className="text-sm text-(--app-ink-3) mt-0.5">
           Digital goods only — accounts, domains, websites, platforms, stock
           photos/videos/music and more. New listings are reviewed before going
           live.
@@ -198,7 +198,7 @@ export function CreateListingView() {
 
       {/* Step 1 — category */}
       <section className="glass rounded-xl p-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">
           1 · Category
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -212,17 +212,17 @@ export function CreateListingView() {
                 onClick={() => pickType(c.assetType)}
                 className={`text-left rounded-xl border p-3 transition-colors ${
                   active
-                    ? "border-indigo-500 bg-indigo-500/10"
-                    : "border-gray-800 bg-gray-950 hover:border-gray-600"
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                    : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 mb-1.5 ${active ? "text-indigo-300" : "text-gray-400"}`}
+                  className={`w-5 h-5 mb-1.5 ${active ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"}`}
                 />
                 <p className="text-sm font-semibold text-white leading-tight">
                   {c.label}
                 </p>
-                <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
+                <p className="text-[11px] text-(--app-ink-3) mt-0.5 line-clamp-2">
                   {c.description}
                 </p>
               </button>
@@ -236,7 +236,7 @@ export function CreateListingView() {
           {/* Sub-type */}
           {cat?.subTypes && cat.subTypes.length > 0 && (
             <section className="glass rounded-xl p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">
                 Type
               </p>
               <div className="flex flex-wrap gap-2">
@@ -247,8 +247,8 @@ export function CreateListingView() {
                     onClick={() => setSubType(s.slug)}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                       subType === s.slug
-                        ? "bg-indigo-500 text-white"
-                        : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                        ? "bg-(--app-cta) text-(--app-on-cta)"
+                        : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
                     }`}
                   >
                     {s.label}
@@ -260,11 +260,11 @@ export function CreateListingView() {
 
           {/* Step 2 — basics */}
           <section className="glass rounded-xl p-4 space-y-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+            <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
               2 · Basics
             </p>
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                 Title *
               </label>
               <input
@@ -272,11 +272,11 @@ export function CreateListingView() {
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={100}
                 placeholder="What are you selling?"
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                 Description *
               </label>
               <textarea
@@ -285,11 +285,11 @@ export function CreateListingView() {
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={1000}
                 placeholder="Tell buyers what they're getting…"
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
               />
             </div>
             <div className="w-40">
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                 Price (USD) *
               </label>
               <input
@@ -298,7 +298,7 @@ export function CreateListingView() {
                 min={0.5}
                 value={price}
                 onChange={(e) => setPrice(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           </section>
@@ -306,7 +306,7 @@ export function CreateListingView() {
           {/* Step 3 — category-specific fields */}
           {fields.length > 0 && (
             <section className="glass rounded-xl p-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
                 3 · Details
               </p>
               {fields.map((f) => (
@@ -324,30 +324,30 @@ export function CreateListingView() {
           {/* Deliverable file (stock media) */}
           {needsDeliverable && (
             <section className="glass rounded-xl p-4 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
                 The file you&apos;re selling *
               </p>
-              <p className="text-[11px] text-gray-500 inline-flex items-center gap-1">
+              <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-400" />
                 We read the file&apos;s metadata (camera/EXIF, codec, hash) so
                 reviewers can confirm it&apos;s your original — not a download.
               </p>
               {files.length > 0 ? (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-950 border border-gray-800 text-xs">
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-(--app-page) border border-(--app-line) text-xs">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="text-gray-300 truncate min-w-0 flex-1">
+                  <span className="text-(--app-ink-2) truncate min-w-0 flex-1">
                     {files[0].split("/").pop()}
                   </span>
                   <button
                     type="button"
                     onClick={() => setFiles([])}
-                    className="text-gray-500 hover:text-rose-300"
+                    className="text-(--app-ink-3) hover:text-rose-300"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
-                <label className="flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-700 hover:border-indigo-500/50 cursor-pointer text-sm text-gray-300">
+                <label className="flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-(--app-line) hover:border-(--app-accent-edge)/50 cursor-pointer text-sm text-(--app-ink-2)">
                   {uploadingFile ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
@@ -371,10 +371,10 @@ export function CreateListingView() {
 
           {/* Affiliate reward — sellers can let others promote for a cut */}
           <section className="glass rounded-xl p-4 space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+            <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
               Affiliate reward (optional)
             </p>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-(--app-ink-3)">
               Let others promote this and earn a reward on each sale they drive —
               paid from your cut. Leave off to disable.
             </p>
@@ -384,7 +384,7 @@ export function CreateListingView() {
                 onChange={(e) =>
                   setAffType(e.target.value as "" | "PERCENT" | "FIXED")
                 }
-                className="px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
               >
                 <option value="">No affiliate</option>
                 <option value="PERCENT">% of sale</option>
@@ -399,9 +399,9 @@ export function CreateListingView() {
                     value={affValue || ""}
                     onChange={(e) => setAffValue(Number(e.target.value))}
                     placeholder={affType === "PERCENT" ? "e.g. 20" : "e.g. 5.00"}
-                    className="w-32 pl-7 pr-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-32 pl-7 pr-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
                   />
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-(--app-ink-3) text-sm">
                     {affType === "PERCENT" ? "%" : "$"}
                   </span>
                 </div>
@@ -411,7 +411,7 @@ export function CreateListingView() {
 
           {/* Gallery images */}
           <section className="glass rounded-xl p-4 space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+            <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3)">
               Gallery images
             </p>
             {images.length > 0 && (
@@ -419,7 +419,7 @@ export function CreateListingView() {
                 {images.map((img, i) => (
                   <div
                     key={i}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-800"
+                    className="relative aspect-square rounded-lg overflow-hidden bg-(--app-surface-2)"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img} alt="" className="w-full h-full object-cover" />
@@ -435,7 +435,7 @@ export function CreateListingView() {
               </div>
             )}
             {images.length < 8 && (
-              <label className="flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-700 hover:border-indigo-500/50 cursor-pointer text-sm text-gray-300">
+              <label className="flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-(--app-line) hover:border-(--app-accent-edge)/50 cursor-pointer text-sm text-(--app-ink-2)">
                 {uploadingGallery ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -459,7 +459,7 @@ export function CreateListingView() {
           <button
             onClick={submit}
             disabled={busy || uploadingFile || uploadingGallery}
-            className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />

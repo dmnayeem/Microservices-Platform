@@ -311,7 +311,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
     <div className="space-y-4">
       <Link
         href="/advertiser"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ChevronLeft className="w-4 h-4" />
         All campaigns
@@ -323,7 +323,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-white truncate">{campaign.title}</h1>
             {campaign.description && (
-              <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{campaign.description}</p>
+              <p className="text-xs text-(--app-ink-3) mt-0.5 line-clamp-2">{campaign.description}</p>
             )}
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               <span
@@ -332,13 +332,13 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                     ? "bg-emerald-500/10 text-emerald-400"
                     : campaign.status === "PAUSED"
                       ? "bg-amber-500/10 text-amber-400"
-                      : "bg-gray-700 text-gray-400"
+                      : "bg-(--app-surface-2) text-(--app-ink-3)"
                 }`}
               >
                 {campaign.status}
               </span>
               {(campaign.startAt || campaign.endAt) && (
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-(--app-ink-3)">
                   {campaign.startAt ? new Date(campaign.startAt).toLocaleDateString() : "now"} →{" "}
                   {campaign.endAt ? new Date(campaign.endAt).toLocaleDateString() : "no end date"}
                 </span>
@@ -346,10 +346,10 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className="text-sm text-gray-300 tabular-nums">
+            <span className="text-sm text-(--app-ink-2) tabular-nums">
               {usd(campaign.spent)} / {usd(campaign.budget)}
             </span>
-            <span className="text-[10px] text-gray-500 tabular-nums">
+            <span className="text-[10px] text-(--app-ink-3) tabular-nums">
               {usd(campaign.remaining)} left
             </span>
           </div>
@@ -361,7 +361,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           <div className="flex flex-wrap gap-1.5 mt-3">
             <button
               onClick={fund}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-indigo-500/15 text-indigo-300 text-[11px] font-bold hover:bg-indigo-500/25"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-(--app-cta)/15 text-(--app-accent-ink) text-[11px] font-bold hover:bg-(--app-cta)/25"
             >
               <Plus className="w-3 h-3" /> Fund
             </button>
@@ -372,7 +372,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                   campaign.status === "ACTIVE" ? "Campaign paused" : "Campaign resumed"
                 )
               }
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-800 text-gray-200 text-[11px] font-bold hover:bg-gray-700"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-(--app-surface-2) text-(--app-ink) text-[11px] font-bold hover:bg-(--app-surface-2)"
             >
               {campaign.status === "ACTIVE" ? (
                 <>
@@ -386,7 +386,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             </button>
             <button
               onClick={editSchedule}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-gray-800 text-gray-200 text-[11px] font-bold hover:bg-gray-700"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-(--app-surface-2) text-(--app-ink) text-[11px] font-bold hover:bg-(--app-surface-2)"
             >
               <CalendarClock className="w-3 h-3" /> End date
             </button>
@@ -412,7 +412,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           to throw both away and hardcode 14 days. */}
       <div className="card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div className="inline-flex rounded-lg border border-gray-700 overflow-hidden text-[10px]">
+          <div className="inline-flex rounded-lg border border-(--app-line) overflow-hidden text-[10px]">
             {(
               [
                 { id: "impressions", label: "Impressions" },
@@ -424,20 +424,20 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                 key={m.id}
                 onClick={() => setMetric(m.id)}
                 className={`px-2.5 py-1 font-bold ${
-                  metric === m.id ? "bg-indigo-500 text-white" : "bg-gray-800 text-gray-400"
+                  metric === m.id ? "bg-(--app-cta) text-(--app-on-cta)" : "bg-(--app-surface-2) text-(--app-ink-3)"
                 }`}
               >
                 {m.label}
               </button>
             ))}
           </div>
-          <div className="inline-flex rounded-lg border border-gray-700 overflow-hidden text-[10px]">
+          <div className="inline-flex rounded-lg border border-(--app-line) overflow-hidden text-[10px]">
             {RANGES.map((r) => (
               <button
                 key={r}
                 onClick={() => setDays(r)}
                 className={`px-2.5 py-1 font-bold ${
-                  days === r ? "bg-indigo-500 text-white" : "bg-gray-800 text-gray-400"
+                  days === r ? "bg-(--app-cta) text-(--app-on-cta)" : "bg-(--app-surface-2) text-(--app-ink-3)"
                 }`}
               >
                 {r}d
@@ -446,7 +446,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
           </div>
         </div>
         {series.every((s) => (Number(s[metric]) || 0) === 0) ? (
-          <p className="text-xs text-gray-600 py-4 text-center">No data yet.</p>
+          <p className="text-xs text-(--app-glyph) py-4 text-center">No data yet.</p>
         ) : (
           <div className="flex items-end gap-1 h-24">
             {series.map((s) => (
@@ -467,7 +467,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
 
       {/* Ads */}
       <div className="flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
           Ads ({ads.length}) · last {days} days
         </p>
         <button
@@ -475,7 +475,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             setSheetAd(null);
             setCreating(true);
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-semibold"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-xs font-semibold"
         >
           <Plus className="w-4 h-4" />
           Create Ad
@@ -504,30 +504,30 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
             return (
               <div key={ad.id} className="card p-3 space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="relative w-12 h-12 rounded-lg bg-gray-800 overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="relative w-12 h-12 rounded-lg bg-(--app-surface-2) overflow-hidden shrink-0 flex items-center justify-center">
                     {thumb ? (
                       <SmartImage src={thumb} alt="" fill sizes="48px" className="object-cover" />
                     ) : (
-                      <Target className="w-5 h-5 text-gray-600" />
+                      <Target className="w-5 h-5 text-(--app-glyph)" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">{title}</p>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-gray-800 text-gray-400 font-bold uppercase">
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-(--app-surface-2) text-(--app-ink-3) font-bold uppercase">
                         {ad.format === "NATIVE" ? "Feed" : "Banner"}
                       </span>
                       {ad.placementLabel && (
-                        <span className="text-[10px] text-gray-500">{ad.placementLabel}</span>
+                        <span className="text-[10px] text-(--app-ink-3)">{ad.placementLabel}</span>
                       )}
                       {ad.promotedPost && (
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-500/15 text-indigo-300 font-bold uppercase">
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-(--app-cta)/15 text-(--app-accent-ink) font-bold uppercase">
                           Promoted post
                         </span>
                       )}
                       <AdStatusBadge status={ad.status} />
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5 tabular-nums">
+                    <p className="text-[11px] text-(--app-ink-3) mt-0.5 tabular-nums">
                       {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} clicks ·{" "}
                       {ad.ctr.toFixed(2)}% CTR · {usd(ad.spend ?? 0)}
                     </p>
@@ -536,7 +536,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                     {(ad.status === "ACTIVE" || ad.status === "PAUSED") && (
                       <button
                         onClick={() => toggleAd(ad)}
-                        className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800"
+                        className="p-1.5 rounded-md text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
                         title={ad.status === "ACTIVE" ? "Pause" : "Resume"}
                       >
                         {ad.status === "ACTIVE" ? (
@@ -551,14 +551,14 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                         setSheetAd(ad);
                         setCreating(true);
                       }}
-                      className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-800"
+                      className="p-1.5 rounded-md text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
                       title="Edit"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => removeAd(ad)}
-                      className="p-1.5 rounded-md text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                      className="p-1.5 rounded-md text-(--app-ink-3) hover:text-red-400 hover:bg-red-500/10"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -586,13 +586,13 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                           setSheetAd(ad);
                           setCreating(true);
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500 text-white text-[11px] font-bold"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-(--app-cta) text-(--app-on-cta) text-[11px] font-bold"
                       >
                         <Pencil className="w-3 h-3" /> Fix &amp; resubmit
                       </button>
                       <button
                         onClick={() => resubmit(ad)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-800 text-gray-200 text-[11px] font-bold"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-(--app-surface-2) text-(--app-ink) text-[11px] font-bold"
                       >
                         <RotateCw className="w-3 h-3" /> Resubmit as-is
                       </button>
@@ -631,9 +631,9 @@ function AdStatusBadge({ status }: { status: string }) {
     REJECTED: { label: "Rejected", cls: "bg-red-500/10 text-red-400" },
     ACTIVE: { label: "Active", cls: "bg-emerald-500/10 text-emerald-400" },
     PAUSED: { label: "Paused", cls: "bg-amber-500/10 text-amber-400" },
-    INACTIVE: { label: "Off", cls: "bg-gray-700 text-gray-400" },
+    INACTIVE: { label: "Off", cls: "bg-(--app-surface-2) text-(--app-ink-3)" },
   };
-  const m = map[s] ?? { label: s, cls: "bg-gray-700 text-gray-400" };
+  const m = map[s] ?? { label: s, cls: "bg-(--app-surface-2) text-(--app-ink-3)" };
   return (
     <span className={`text-[10px] px-1 py-0.5 rounded font-bold uppercase ${m.cls}`}>
       {m.label}

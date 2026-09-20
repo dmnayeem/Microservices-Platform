@@ -285,7 +285,7 @@ export function MediaSelector({
                     placeholder="Search media..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                   />
                 </div>
 
@@ -293,7 +293,7 @@ export function MediaSelector({
                 <select
                   value={filterType || "all"}
                   onChange={(e) => setFilterType(e.target.value as MediaFilter["fileType"])}
-                  className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-(--app-accent-edge)"
                 >
                   <option value="all">All Types</option>
                   <option value="IMAGE">Images</option>
@@ -351,7 +351,7 @@ export function MediaSelector({
                             key={item.id}
                             onClick={() => handleSelectMedia(item)}
                             className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer group ${
-                              isSelected ? "ring-2 ring-indigo-500" : "hover:ring-2 hover:ring-gray-600"
+                              isSelected ? "ring-2 ring-(--app-accent-edge)" : "hover:ring-2 hover:ring-(--app-line-strong)"
                             }`}
                           >
                             {item.fileType === "IMAGE" ? (

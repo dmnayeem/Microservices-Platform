@@ -84,7 +84,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
   // Podium display order: 2nd, 1st, 3rd (1st raised in the middle).
   const podium = [rows[1], rows[0], rows[2]];
   const podiumMeta = [
-    { ring: "ring-gray-300/60", badge: "bg-[#c7ccdb] text-(--app-on-bright)", icon: Medal, rank: 2 },
+    { ring: "ring-(--app-ink-3)/60", badge: "bg-[#c7ccdb] text-(--app-on-bright)", icon: Medal, rank: 2 },
     { ring: "ring-amber-400/70", badge: "bg-amber-400 text-(--app-on-bright)", icon: Crown, rank: 1 },
     { ring: "ring-orange-500/60", badge: "bg-orange-500 text-(--app-on-bright)", icon: Medal, rank: 3 },
   ];
@@ -94,10 +94,10 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
     rank === 1
       ? "bg-amber-400/15 text-amber-300 ring-amber-400/30"
       : rank === 2
-        ? "bg-gray-300/15 text-gray-200 ring-gray-300/30"
+        ? "bg-(--app-ink-3)/15 text-(--app-ink) ring-(--app-ink-3)/30"
         : rank === 3
           ? "bg-orange-500/15 text-orange-300 ring-orange-500/30"
-          : "bg-gray-800 text-gray-400 ring-gray-700/60";
+          : "bg-(--app-surface-2) text-(--app-ink-3) ring-(--app-line-strong)/60";
 
   return (
     <div className="space-y-5">
@@ -106,7 +106,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
           <Trophy className="w-6 h-6 text-amber-400" />
           Leaderboard
         </h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <p className="text-sm text-(--app-ink-3) mt-0.5">
           See where you rank against other earners.
         </p>
       </div>
@@ -157,17 +157,17 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                     ) : (
                       <div
                         className={cn(
-                          "rounded-full bg-gray-800 flex items-center justify-center ring-2",
+                          "rounded-full bg-(--app-surface-2) flex items-center justify-center ring-2",
                           meta.ring
                         )}
                         style={{ width: raised ? 64 : 52, height: raised ? 64 : 52 }}
                       >
-                        <Icon className="w-6 h-6 text-gray-600" />
+                        <Icon className="w-6 h-6 text-(--app-glyph)" />
                       </div>
                     )}
                     <span
                       className={cn(
-                        "absolute -bottom-1 left-1/2 -translate-x-1/2 min-w-5 h-5 px-1 rounded-full text-[11px] font-extrabold inline-flex items-center justify-center ring-2 ring-gray-950 tabular-nums",
+                        "absolute -bottom-1 left-1/2 -translate-x-1/2 min-w-5 h-5 px-1 rounded-full text-[11px] font-extrabold inline-flex items-center justify-center ring-2 ring-(--app-page) tabular-nums",
                         meta.badge
                       )}
                     >
@@ -177,7 +177,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                   <p
                     className={cn(
                       "text-xs sm:text-sm font-semibold truncate mt-2.5",
-                      row ? "text-white" : "text-gray-500"
+                      row ? "text-white" : "text-(--app-ink-3)"
                     )}
                   >
                     {row ? row.name : "No one yet"}
@@ -194,8 +194,8 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
 
           {/* Current user (if outside the top list) */}
           {me && !me.isInTop && (
-            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-indigo-300 font-medium">
+            <div className="bg-(--app-cta)/10 border border-(--app-accent-edge)/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-(--app-accent-ink) font-medium">
                 Your rank: <span className="font-bold">#{me.rank}</span>
               </span>
               <span className="text-sm text-white font-semibold tabular-nums">
@@ -213,7 +213,7 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                   key={row.userId}
                   className={cn(
                     "flex items-center gap-3 px-3 sm:px-4 py-2.5",
-                    isMe && "bg-indigo-500/10"
+                    isMe && "bg-(--app-cta)/10"
                   )}
                 >
                   <span
@@ -234,12 +234,12 @@ export function LeaderboardView({ currentUserId }: { currentUserId: string }) {
                     <p className="text-sm font-semibold text-white truncate">
                       {row.name ?? "User"}
                       {isMe && (
-                        <span className="ml-1.5 text-[10px] font-bold text-indigo-400">
+                        <span className="ml-1.5 text-[10px] font-bold text-(--app-accent-ink)">
                           You
                         </span>
                       )}
                     </p>
-                    <p className="text-[11px] text-gray-500 tabular-nums">
+                    <p className="text-[11px] text-(--app-ink-3) tabular-nums">
                       Level {row.level}
                     </p>
                   </div>

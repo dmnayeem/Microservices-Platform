@@ -34,7 +34,7 @@ export function PostsListTab({ userId }: { userId: string }) {
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 text-sm inline-flex items-center justify-center gap-2 w-full">
+      <div className="text-center py-12 text-(--app-ink-3) text-sm inline-flex items-center justify-center gap-2 w-full">
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading posts…
       </div>
@@ -42,10 +42,10 @@ export function PostsListTab({ userId }: { userId: string }) {
   }
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
+      <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
         <ImageIcon className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
-        <p className="text-sm text-gray-400 font-semibold">No posts yet</p>
-        <p className="text-xs text-gray-600 mt-1">
+        <p className="text-sm text-(--app-ink-3) font-semibold">No posts yet</p>
+        <p className="text-xs text-(--app-glyph) mt-1">
           Your published posts will appear here.
         </p>
       </div>
@@ -64,7 +64,7 @@ export function PostsListTab({ userId }: { userId: string }) {
             </span>
           )}
           {p.content && (
-            <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+            <p className="text-sm text-(--app-ink) whitespace-pre-wrap leading-relaxed">
               <RenderedContent content={p.content} />
             </p>
           )}
@@ -73,10 +73,10 @@ export function PostsListTab({ userId }: { userId: string }) {
             <img
               src={p.images[0]}
               alt=""
-              className="mt-3 w-full max-h-96 rounded-lg object-cover bg-gray-950"
+              className="mt-3 w-full max-h-96 rounded-lg object-cover bg-(--app-page)"
             />
           )}
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-800 text-xs text-gray-500">
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-(--app-line) text-xs text-(--app-ink-3)">
             <span className="inline-flex items-center gap-1">
               <EyeIcon className="w-3.5 h-3.5" />
               <span className="tabular-nums">{p.viewsCount.toLocaleString()}</span>

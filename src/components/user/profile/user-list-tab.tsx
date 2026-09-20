@@ -68,7 +68,7 @@ export function UserListTab({
 
   if (loading) {
     return (
-      <div className="text-center py-12 text-gray-500 text-sm inline-flex items-center justify-center gap-2 w-full">
+      <div className="text-center py-12 text-(--app-ink-3) text-sm inline-flex items-center justify-center gap-2 w-full">
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading…
       </div>
@@ -76,9 +76,9 @@ export function UserListTab({
   }
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
+      <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
         <Users className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
-        <p className="text-sm text-gray-400 font-semibold">No users yet</p>
+        <p className="text-sm text-(--app-ink-3) font-semibold">No users yet</p>
       </div>
     );
   }
@@ -106,8 +106,8 @@ export function UserListTab({
                   )}
                 </p>
               </Link>
-              {u.username && <p className="text-[11px] text-gray-500">@{u.username}</p>}
-              <p className="text-[11px] text-gray-400 inline-flex items-center gap-1 mt-0.5">
+              {u.username && <p className="text-[11px] text-(--app-ink-3)">@{u.username}</p>}
+              <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
                 <Coins className="w-3 h-3 text-amber-400" />
                 {u.followersCount.toLocaleString()} followers
               </p>
@@ -119,8 +119,8 @@ export function UserListTab({
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 inline-flex items-center gap-1",
                   u.isFollowing
-                    ? "bg-gray-800 text-white border border-gray-700"
-                    : "bg-indigo-500 hover:bg-indigo-600 text-white"
+                    ? "bg-(--app-surface-2) text-white border border-(--app-line)"
+                    : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
                 {busyId === u.id ? (
