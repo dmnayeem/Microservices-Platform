@@ -127,7 +127,14 @@ html[data-theme="light"] ::-webkit-calendar-picker-indicator:hover {
    Accent color (profile → Theme). The app's brand is the indigo→violet/purple
    ramp; re-mapping those ramp variables under `html[data-accent="…"]` recolors
    every brand button, tab, gradient, ring and tint at once (Tailwind v4
-   utilities read `var(--color-indigo-500)` etc.). `indigo` is the default.
+   utilities read `var(--color-indigo-500)` etc.).
+
+   The brand ramp is still indigo by default, and that is on purpose FOR NOW.
+   Flipping it to emerald here recolours `bg-indigo-500` everywhere at once —
+   and 145 primary buttons in this app are written `bg-indigo-500 text-white`,
+   which measures 2.54:1 once that fill turns emerald. The ramp moves in the
+   phase that converts those call sites to `--app-cta`, not before, so the two
+   land together instead of leaving every button unreadable in between.
    ───────────────────────────────────────────────────────────────────────── */
 html[data-accent="red"] {
   --color-indigo-300: #fca5a5; --color-indigo-400: #f87171; --color-indigo-500: #ef4444;
@@ -1792,6 +1799,19 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
      chrome each theme actually paints: dark ink 7.96:1, light ink 5.21:1. */
   --app-nav-on: #34d399;
   --app-nav-wash: #0e2a22;
+
+  /* The filled primary button, and accent-coloured text.
+     Two jobs the gradient cannot do. The gradient is a large surface; a button
+     is a small one, and the design gives it a flat fill with its own ink —
+     obsidian on neon emerald in the dark, white on deep emerald in the light,
+     which is the pair that measures 7.56:1 and 5.48:1.
+     `--app-accent-ink` is the SAME accent used as text on an ordinary card,
+     where the ground is different again: #34d399 is 7.75:1 on the darkest
+     dark plane, and light needs the deeper #065f46 because #059669 is 3.06:1
+     on the page. */
+  --app-cta: #10b981;
+  --app-on-cta: #0b0f17;
+  --app-accent-ink: #34d399;
   --app-rail: linear-gradient(180deg, var(--app-rail-a), var(--app-rail-b));
 
   /* ── Semantic colour — four meanings, nothing decorative ─────────────────
@@ -1924,6 +1944,9 @@ html[data-theme="light"] {
      own "deep emerald" is what carries it. */
   --app-nav-on: #047857;
   --app-nav-wash: #ecfdf5;
+  --app-cta: #047857;
+  --app-on-cta: #ffffff;
+  --app-accent-ink: #065f46;
 
   /* The same four meanings, and — deliberately — the same four inks the
      `[class*="text-<hue>-"]` family rules paint. One light accent ink per hue

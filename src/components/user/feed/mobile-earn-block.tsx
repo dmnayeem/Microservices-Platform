@@ -151,7 +151,7 @@ export function MobileEarnBlock({
       {tiles.length > 0 && (
         <section className="app-card">
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-gray-400" />
+            <Zap className="w-4 h-4 text-(--app-ink-3)" />
             <h2 className="t-section text-white">Quick Earn</h2>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 [&>*:last-child:nth-child(3n+1)]:col-span-3 sm:[&>*:last-child:nth-child(3n+1)]:col-span-1">
@@ -163,10 +163,10 @@ export function MobileEarnBlock({
                   href={q.href}
                   className={cn(
                     "app-tile app-press app-lift flex flex-col items-center justify-center gap-1.5",
-                    "min-h-20 px-2 py-3 text-center font-bold text-gray-200"
+                    "min-h-20 px-2 py-3 text-center font-bold text-(--app-ink)"
                   )}
                 >
-                  <Icon className="w-5 h-5 shrink-0 text-gray-400" />
+                  <Icon className="w-5 h-5 shrink-0 text-(--app-ink-3)" />
                   <span className="w-full truncate text-xs leading-tight">
                     {q.label}
                   </span>

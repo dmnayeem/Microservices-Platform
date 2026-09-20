@@ -51,22 +51,22 @@ export function CreateGroupModal({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={busy ? undefined : onClose}
       />
-      <div className="relative bg-gray-900 border border-gray-800 rounded-xl shadow-2xl max-w-md w-full p-5">
+      <div className="relative bg-(--app-surface) border border-(--app-line) rounded-xl shadow-2xl max-w-md w-full p-5">
         <h3 className="text-base font-bold text-white mb-3">Create Group</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Name
             </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Crypto Earners"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Description (optional)
             </label>
             <textarea
@@ -74,11 +74,11 @@ export function CreateGroupModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this group about?"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Visibility
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -89,8 +89,8 @@ export function CreateGroupModal({
                   className={cn(
                     "py-2 rounded-lg text-xs font-bold border transition-colors",
                     type === t
-                      ? "bg-indigo-500 text-white border-indigo-500"
-                      : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600"
+                      ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
+                      : "bg-(--app-surface-2) text-(--app-ink-3) border-(--app-line) hover:border-(--app-line)"
                   )}
                 >
                   {t === "PUBLIC" ? "Public · anyone joins" : "Private · approve members"}
@@ -103,14 +103,14 @@ export function CreateGroupModal({
           <button
             onClick={onClose}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={submit}
             disabled={busy}
-            className="flex-1 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create"}
           </button>

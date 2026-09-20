@@ -140,18 +140,18 @@ export function CommentsSection({
           className={cn(
             "flex-1 min-w-0 rounded-lg px-2.5 py-1.5 max-w-[85%]",
             c.user?.id === currentUserId && depth === 0
-              ? "bg-indigo-500/15"
-              : "bg-gray-900"
+              ? "bg-(--app-cta)/15"
+              : "bg-(--app-surface)"
           )}
         >
           <p className="text-xs font-semibold text-white">
             {c.user?.name ?? "Anonymous"}
           </p>
-          <p className="text-sm text-gray-200 mt-0.5 break-words">
+          <p className="text-sm text-(--app-ink) mt-0.5 break-words">
             <RenderedContent content={c.content} />
           </p>
           <div className="flex items-center gap-3 mt-1">
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-(--app-ink-3)">
               {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
             </p>
             {/* Allow replies up to depth 2 — produces a tree of root → reply → reply-to-reply.
@@ -162,7 +162,7 @@ export function CommentsSection({
                   setReplyTo(c);
                   inputRef.current?.focus();
                 }}
-                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold"
+                className="text-[10px] text-(--app-accent-ink) hover:text-(--app-accent-ink) font-semibold"
               >
                 Reply
               </button>
@@ -170,7 +170,7 @@ export function CommentsSection({
           </div>
 
           {replies.length > 0 && (
-            <ul className="mt-2 space-y-1.5 pl-2 border-l border-gray-800">
+            <ul className="mt-2 space-y-1.5 pl-2 border-l border-(--app-line)">
               {replies.map((r) => renderComment(r, depth + 1))}
             </ul>
           )}
@@ -180,16 +180,16 @@ export function CommentsSection({
   };
 
   return (
-    <div className="border-t border-gray-800 px-4 py-3 space-y-3 bg-gray-950/40">
+    <div className="border-t border-(--app-line) px-4 py-3 space-y-3 bg-(--app-page)/40">
       {/* Input */}
       {replyTo && (
-        <div className="flex items-center justify-between text-[11px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1.5 rounded-lg">
+        <div className="flex items-center justify-between text-[11px] text-(--app-accent-ink) bg-(--app-cta)/10 border border-(--app-accent-edge)/20 px-2.5 py-1.5 rounded-lg">
           <span className="truncate min-w-0">
             Replying to <strong>{replyTo.user?.name ?? "Anonymous"}</strong>
           </span>
           <button
             onClick={() => setReplyTo(null)}
-            className="ml-2 text-indigo-400 hover:text-white"
+            className="ml-2 text-(--app-accent-ink) hover:text-white"
           >
             <X className="w-3 h-3" />
           </button>
@@ -223,12 +223,12 @@ export function CommentsSection({
           placeholder={replyTo ? `Reply to ${replyTo.user?.name ?? "comment"}…` : "Add a comment…"}
           maxLength={500}
           disabled={busy}
-          className="flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+          className="flex-1 bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
         />
         <button
           onClick={submit}
           disabled={busy || !text.trim()}
-          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+          className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold rounded-lg disabled:opacity-50"
         >
           {busy ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -240,13 +240,13 @@ export function CommentsSection({
       </div>
 
       {loading && (
-        <p className="text-xs text-gray-500 text-center py-2">
+        <p className="text-xs text-(--app-ink-3) text-center py-2">
           Loading comments…
         </p>
       )}
 
       {!loading && comments.length === 0 && (
-        <p className="text-xs text-gray-500 text-center py-2">
+        <p className="text-xs text-(--app-ink-3) text-center py-2">
           No comments yet — start the conversation.
         </p>
       )}
@@ -268,7 +268,7 @@ export function CommentsSection({
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+              className="text-xs font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
             >
               View all {topLevel.length} comments
             </button>
@@ -279,7 +279,7 @@ export function CommentsSection({
             <button
               type="button"
               onClick={onHide}
-              className="text-xs text-gray-500 hover:text-gray-300"
+              className="text-xs text-(--app-ink-3) hover:text-(--app-ink-2)"
             >
               Hide comments
             </button>

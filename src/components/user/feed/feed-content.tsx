@@ -159,7 +159,7 @@ export function RenderedContent({
           target="_blank"
           rel="noopener noreferrer nofollow"
           onClick={() => trackLinkClick(postId)}
-          className="text-indigo-400 hover:text-indigo-300 hover:underline break-all"
+          className="text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:underline break-all"
         >
           {urlLabel(shown)}
         </a>
@@ -182,7 +182,7 @@ export function RenderedContent({
           <Link
             key={key++}
             href={`/u/${encodeURIComponent(handle)}`}
-            className="text-indigo-400 hover:text-indigo-300 hover:underline font-semibold"
+            className="text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:underline font-semibold"
           >
             @{handle}
           </Link>
@@ -197,7 +197,7 @@ export function RenderedContent({
         <Link
           key={key++}
           href={`/hashtag/${encodeURIComponent(tag)}`}
-          className="text-indigo-400 hover:text-indigo-300 hover:underline"
+          className="text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:underline"
         >
           #{tag}
         </Link>

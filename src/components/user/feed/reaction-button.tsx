@@ -53,7 +53,7 @@ export function ReactionButton({
         // a heart that turns grey when you press it is not a heart. Everything
         // else in this row is neutral so that this is the only thing that
         // changes colour when you act.
-        reacted ? "text-rose-400" : "text-gray-400 hover:text-rose-400"
+        reacted ? "text-rose-400" : "text-(--app-ink-3) hover:text-rose-400"
       )}
     >
       <span

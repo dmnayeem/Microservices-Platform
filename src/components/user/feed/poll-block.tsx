@@ -48,8 +48,8 @@ export function PollBlock({
   };
 
   return (
-    <div className="px-4 py-3 border-t border-gray-800 space-y-2">
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-gray-500">
+    <div className="px-4 py-3 border-t border-(--app-line) space-y-2">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
         <span>Poll</span>
         <span>
           {total} vote{total === 1 ? "" : "s"}
@@ -68,20 +68,20 @@ export function PollBlock({
               className={cn(
                 "relative w-full text-left p-2.5 rounded-lg overflow-hidden border transition-colors disabled:cursor-default",
                 isMine
-                  ? "border-indigo-500 bg-indigo-500/5"
-                  : "border-gray-800 bg-gray-950 hover:border-gray-700"
+                  ? "border-(--app-accent-edge) bg-(--app-cta)/5"
+                  : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
               )}
             >
               <div
                 className={cn(
                   "absolute inset-0 transition-[width]",
-                  isMine ? "bg-indigo-500/15" : "bg-gray-800/40"
+                  isMine ? "bg-(--app-cta)/15" : "bg-(--app-surface-2)/40"
                 )}
                 style={{ width: `${pct}%` }}
               />
               <div className="relative flex items-center justify-between gap-3">
                 <span className="text-sm text-white truncate min-w-0">{o.label}</span>
-                <span className="text-xs tabular-nums text-gray-300 shrink-0">
+                <span className="text-xs tabular-nums text-(--app-ink-2) shrink-0">
                   {pct.toFixed(0)}% · {o.voteCount}
                 </span>
               </div>

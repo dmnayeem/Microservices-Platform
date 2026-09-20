@@ -24,10 +24,10 @@ function Card({
         target="_blank"
         rel="noopener noreferrer nofollow"
         onClick={() => trackLinkClick(postId)}
-        className="block overflow-hidden rounded-xl border border-gray-800 bg-gray-900/60 hover:border-gray-700 transition-colors"
+        className="block overflow-hidden rounded-xl border border-(--app-line) bg-(--app-surface)/60 hover:border-(--app-line) transition-colors"
       >
         {preview.image && (
-          <div className="relative w-full aspect-[1.91/1] bg-gray-950">
+          <div className="relative w-full aspect-[1.91/1] bg-(--app-page)">
             <SmartImage
               src={preview.image}
               alt=""
@@ -39,18 +39,18 @@ function Card({
         )}
         <div className="p-3">
           {preview.siteName && (
-            <p className="text-[11px] uppercase tracking-wide text-gray-500 truncate flex items-center gap-1">
+            <p className="text-[11px] uppercase tracking-wide text-(--app-ink-3) truncate flex items-center gap-1">
               <Link2 className="w-3 h-3 shrink-0" />
               {preview.siteName}
             </p>
           )}
           {preview.title && (
-            <p className="mt-0.5 text-sm font-semibold text-gray-100 line-clamp-2">
+            <p className="mt-0.5 text-sm font-semibold text-(--app-ink) line-clamp-2">
               {preview.title}
             </p>
           )}
           {preview.description && (
-            <p className="mt-1 text-xs text-gray-400 line-clamp-2">
+            <p className="mt-1 text-xs text-(--app-ink-3) line-clamp-2">
               {preview.description}
             </p>
           )}
@@ -133,10 +133,10 @@ export function LinkPreviewCard({
     return (
       <div className="mt-3 rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) p-3">
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded bg-gray-800 shrink-0" />
+          <div className="h-9 w-9 rounded bg-(--app-surface-2) shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-3 w-3/4 rounded bg-gray-800" />
-            <div className="h-2.5 w-1/2 rounded bg-gray-800" />
+            <div className="h-3 w-3/4 rounded bg-(--app-surface-2)" />
+            <div className="h-2.5 w-1/2 rounded bg-(--app-surface-2)" />
           </div>
         </div>
       </div>

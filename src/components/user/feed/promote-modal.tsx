@@ -69,7 +69,7 @@ export function PromoteModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-gray-950 shadow-2xl p-5 space-y-4"
+        className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-(--app-page) shadow-2xl p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
           <div>
@@ -77,25 +77,25 @@ export function PromoteModal({
               <Sparkles className="w-4 h-4 text-amber-400" />
               Promote Post
             </p>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-(--app-ink-3) mt-0.5">
               Promoted posts get a PROMOTED badge and are interleaved through the feed.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-white"
+            className="p-1 text-(--app-ink-3) hover:text-white"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-800 bg-gray-900 px-3 py-2">
+        <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-(--app-line) bg-(--app-surface) px-3 py-2">
           <input
             type="checkbox"
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
-            className="rounded bg-gray-800 border-gray-600 text-amber-500 focus:ring-amber-500"
+            className="rounded bg-(--app-surface-2) border-(--app-line) text-amber-500 focus:ring-amber-500"
           />
           <span className="text-sm font-semibold text-white">
             Show PROMOTED badge
@@ -105,7 +105,7 @@ export function PromoteModal({
         {enabled && (
           <>
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-1.5">
+              <p className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
                 Duration
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -118,7 +118,7 @@ export function PromoteModal({
                       "px-2 py-1.5 rounded-md text-xs font-bold border",
                       duration === d
                         ? "bg-amber-500 border-amber-500 text-(--app-on-bright)"
-                        : "bg-gray-900 border-gray-800 text-gray-400 hover:text-white"
+                        : "bg-(--app-surface) border-(--app-line) text-(--app-ink-3) hover:text-white"
                     )}
                   >
                     {d === "forever" ? "Forever" : d.toUpperCase()}
@@ -128,7 +128,7 @@ export function PromoteModal({
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-gray-500 font-bold block mb-1.5">
+              <label className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold block mb-1.5">
                 Sponsor / Note (optional)
               </label>
               <input
@@ -136,9 +136,9 @@ export function PromoteModal({
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={120}
                 placeholder='e.g. "NordVPN", "Coinbase"'
-                className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-500"
+                className="w-full bg-(--app-surface) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-amber-500"
               />
-              <p className="text-[10px] text-gray-500 mt-1">
+              <p className="text-[10px] text-(--app-ink-3) mt-1">
                 Shown as a tooltip on the PROMOTED badge.
               </p>
             </div>
@@ -150,7 +150,7 @@ export function PromoteModal({
             onClick={onClose}
             disabled={busy}
             type="button"
-            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-semibold disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
           >
             Cancel
           </button>

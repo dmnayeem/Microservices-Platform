@@ -61,7 +61,7 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
 
   if (loading) {
     return (
-      <div className="border-t border-gray-800 px-4 py-3 flex items-center gap-2 text-xs text-gray-500">
+      <div className="border-t border-(--app-line) px-4 py-3 flex items-center gap-2 text-xs text-(--app-ink-3)">
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
         Loading analytics…
       </div>
@@ -69,7 +69,7 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
   }
   if (error || !data) {
     return (
-      <div className="border-t border-gray-800 px-4 py-3 text-xs text-red-400">
+      <div className="border-t border-(--app-line) px-4 py-3 text-xs text-red-400">
         Couldn&apos;t load analytics: {error ?? "unknown"}
       </div>
     );
@@ -79,15 +79,15 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
   const max = Math.max(1, ...sparkline.map((s) => s.count));
 
   return (
-    <div className="border-t border-gray-800 px-4 py-3 bg-gray-950/40 space-y-3">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold text-gray-500">
-        <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
+    <div className="border-t border-(--app-line) px-4 py-3 bg-(--app-page)/40 space-y-3">
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3)">
+        <BarChart3 className="w-3.5 h-3.5 text-(--app-accent-ink)" />
         Post Analytics
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Stat
-          icon={<Eye className="w-3.5 h-3.5 text-indigo-400" />}
+          icon={<Eye className="w-3.5 h-3.5 text-(--app-accent-ink)" />}
           label="Views (unique)"
           value={post.viewsCount}
         />
@@ -141,7 +141,7 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
       {/* Sparkline */}
       {sparkline.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) mb-1.5">
             Last 7 days · views
           </p>
           <div className="flex items-end gap-1 h-12">
@@ -150,14 +150,14 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
               return (
                 <div
                   key={s.date}
-                  className="flex-1 bg-indigo-500/30 hover:bg-indigo-500/60 rounded-t transition-colors"
+                  className="flex-1 bg-(--app-cta)/30 hover:bg-(--app-cta)/60 rounded-t transition-colors"
                   style={{ height: `${h}%` }}
                   title={`${s.date}: ${s.count}`}
                 />
               );
             })}
           </div>
-          <div className="flex justify-between mt-1 text-[9px] text-gray-600 tabular-nums">
+          <div className="flex justify-between mt-1 text-[9px] text-(--app-glyph) tabular-nums">
             <span>{sparkline[0]?.date.slice(5)}</span>
             <span>{sparkline[sparkline.length - 1]?.date.slice(5)}</span>
           </div>
@@ -177,8 +177,8 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="rounded-lg bg-gray-900 border border-gray-800 p-2.5">
-      <div className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+    <div className="rounded-lg bg-(--app-surface) border border-(--app-line) p-2.5">
+      <div className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
         {icon}
         {label}
       </div>

@@ -312,7 +312,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
               {initial}
             </span>
           )}
-          <p className="t-body line-clamp-2 min-w-0 flex-1 text-gray-300">
+          <p className="t-body line-clamp-2 min-w-0 flex-1 text-(--app-ink-2)">
             {description}
           </p>
           <div className="relative shrink-0">
@@ -321,7 +321,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
               aria-label="Ad options"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
-              className="app-tap app-press -mr-2 -mt-2 grid place-items-center rounded-full text-gray-400 hover:text-gray-100"
+              className="app-tap app-press -mr-2 -mt-2 grid place-items-center rounded-full text-(--app-ink-3) hover:text-(--app-ink)"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -338,7 +338,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
                       setMenuOpen(false);
                       setDismissed(true);
                     }}
-                    className="app-tap-row w-full px-3 text-left text-xs text-gray-300 hover:bg-(--app-surface-2)"
+                    className="app-tap-row w-full px-3 text-left text-xs text-(--app-ink-2) hover:bg-(--app-surface-2)"
                   >
                     Hide this ad
                   </button>
@@ -348,7 +348,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
                       setMenuOpen(false);
                       setShowWhy(true);
                     }}
-                    className="app-tap-row w-full px-3 text-left text-xs text-gray-300 hover:bg-(--app-surface-2)"
+                    className="app-tap-row w-full px-3 text-left text-xs text-(--app-ink-2) hover:bg-(--app-surface-2)"
                   >
                     Why this ad?
                   </button>
@@ -358,7 +358,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           </div>
         </div>
 
-        <p className="t-meta mt-2 inline-flex items-center gap-1 text-gray-400">
+        <p className="t-meta mt-2 inline-flex items-center gap-1 text-(--app-ink-3)">
           <span>Sponsored ·</span>
           <span className="truncate">{brand}</span>
           {ad.author.isBlueVerified && (
@@ -366,7 +366,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           )}
         </p>
         {showWhy && (
-          <p className="t-meta mt-1 text-gray-400">
+          <p className="t-meta mt-1 text-(--app-ink-3)">
             Ads like this keep the platform free to use.
           </p>
         )}
@@ -376,7 +376,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           <div className="mt-3.5 grid grid-cols-2 gap-2.5">
             <a
               {...linkProps}
-              className="app-tap-row app-press flex items-center justify-center rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) px-3 text-center text-sm font-bold text-gray-100"
+              className="app-tap-row app-press flex items-center justify-center rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) px-3 text-center text-sm font-bold text-(--app-ink)"
             >
               {ad.ctaLabel || "Learn More"}
             </a>

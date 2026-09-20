@@ -73,14 +73,14 @@ export function GroupsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <div className="flex bg-gray-900 border border-gray-800 rounded-lg p-1 flex-1">
+        <div className="flex bg-(--app-surface) border border-(--app-line) rounded-lg p-1 flex-1">
           {(["mine", "discover"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setScope(s)}
               className={cn(
                 "flex-1 py-1.5 text-xs font-semibold rounded transition-colors",
-                scope === s ? "bg-indigo-500 text-white" : "text-gray-400"
+                scope === s ? "bg-(--app-cta) text-(--app-on-cta)" : "text-(--app-ink-3)"
               )}
             >
               {s === "mine"
@@ -91,7 +91,7 @@ export function GroupsTab() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg"
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold rounded-lg"
         >
           <Plus className="w-4 h-4" />
           New
@@ -121,7 +121,7 @@ export function GroupsTab() {
           {list.map((g) => (
             <div
               key={g.id}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-4 flex items-start gap-3"
+              className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 flex items-start gap-3"
             >
               <Avatar
                 src={g.avatarUrl}
@@ -145,18 +145,18 @@ export function GroupsTab() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-(--app-ink-3)">
                   {g.memberCount.toLocaleString()} member{g.memberCount === 1 ? "" : "s"}
                 </p>
                 {g.description && (
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                  <p className="text-xs text-(--app-ink-3) mt-1 line-clamp-2">
                     {g.description}
                   </p>
                 )}
                 <div className="mt-2.5 flex items-center gap-2">
                   <Link
                     href={`/groups/${g.id}`}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                    className="text-xs text-(--app-accent-ink) hover:text-(--app-accent-ink) font-semibold"
                   >
                     Open →
                   </Link>
@@ -164,7 +164,7 @@ export function GroupsTab() {
                     <button
                       onClick={() => join(g)}
                       disabled={busyId === g.id}
-                      className="ml-auto px-3 py-1 rounded bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 text-xs font-bold disabled:opacity-50"
+                      className="ml-auto px-3 py-1 rounded bg-(--app-cta)/10 text-(--app-accent-ink) hover:bg-(--app-cta)/20 text-xs font-bold disabled:opacity-50"
                     >
                       {busyId === g.id
                         ? "…"

@@ -191,7 +191,7 @@ export function SocialProofPanel({ submission, task }: Props) {
                     href={proof.proofUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-indigo-400 hover:text-indigo-300 break-all max-w-full"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-indigo-300 hover:text-indigo-300 break-all max-w-full"
                   >
                     <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                     <span className="break-all min-w-0">{proof.proofUrl}</span>
@@ -329,7 +329,7 @@ function LegacyProof({
             href={submission.proof}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-indigo-400 hover:text-indigo-300 break-all max-w-full"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm text-indigo-300 hover:text-indigo-300 break-all max-w-full"
           >
             <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             <span className="break-all min-w-0">{submission.proof}</span>

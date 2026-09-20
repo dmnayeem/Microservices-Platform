@@ -172,7 +172,7 @@ function FollowButton({ userId }: { userId: string }) {
       className={cn(
         "app-press app-tap-row inline-flex items-center gap-1.5 px-3.5 rounded-full text-xs font-extrabold shrink-0 border disabled:opacity-50",
         following
-          ? "bg-(--app-surface-2) text-gray-300 border-(--app-line)"
+          ? "bg-(--app-surface-2) text-(--app-ink-2) border-(--app-line)"
           : "bg-transparent text-(--app-info) border-(--app-info-line) hover:bg-(--app-info-soft)"
       )}
     >
@@ -287,7 +287,7 @@ function ReferralCard({ referral }: { referral: RailWidgets["referral"] }) {
   return (
     <Card
       title="Refer & Earn"
-      icon={<Users className="w-4 h-4 text-gray-400" />}
+      icon={<Users className="w-4 h-4 text-(--app-ink-3)" />}
       action={
         <Link
           href="/referrals"
@@ -297,7 +297,7 @@ function ReferralCard({ referral }: { referral: RailWidgets["referral"] }) {
         </Link>
       }
     >
-      <p className="t-meta text-gray-400">
+      <p className="t-meta text-(--app-ink-3)">
         Invite friends — earn commission on their activity.
       </p>
       <div className="mt-3 flex items-center gap-2">
@@ -312,7 +312,7 @@ function ReferralCard({ referral }: { referral: RailWidgets["referral"] }) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <p className="mt-2.5 t-meta text-gray-500">
+      <p className="mt-2.5 t-meta text-(--app-ink-3)">
         {referral.totalReferrals} referral
         {referral.totalReferrals === 1 ? "" : "s"} joined
       </p>
@@ -331,7 +331,7 @@ export function FeedRightRail({
   showHeadings = true,
   showFooter = true,
 }: Props) {
-  const rankTone = ["text-amber-400", "text-gray-300", "text-orange-400"];
+  const rankTone = ["text-amber-400", "text-(--app-ink-2)", "text-orange-400"];
   const [widgets, setWidgets] = useState<RailWidgets | null>(null);
   const quickTiles = quickEarn.filter((t) => t.enabled);
 
@@ -368,7 +368,7 @@ export function FeedRightRail({
       widgets?.mission && widgets.mission.total > 0 ? (
         <Card
           title="Daily Mission"
-          icon={<Target className="w-4 h-4 text-gray-400" />}
+          icon={<Target className="w-4 h-4 text-(--app-ink-3)" />}
           action={
             <Link
               href="/daily-mission"
@@ -379,7 +379,7 @@ export function FeedRightRail({
           }
         >
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-gray-400">
+            <span className="text-(--app-ink-3)">
               {widgets.mission.done}/{widgets.mission.total} done
             </span>
             {widgets.mission.claimedToday && (
@@ -416,20 +416,20 @@ export function FeedRightRail({
                   {it.done ? (
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-(--app-in)" />
                   ) : (
-                    <Circle className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+                    <Circle className="w-3.5 h-3.5 text-(--app-glyph) shrink-0" />
                   )}
                   <span
                     className={cn(
                       "flex-1 min-w-0 truncate",
-                      it.done ? "text-gray-500 line-through" : "text-gray-300"
+                      it.done ? "text-(--app-ink-3) line-through" : "text-(--app-ink-2)"
                     )}
                   >
                     {missionItemLabel(it.taskType, it.description)}
                   </span>
-                  <span className="w-9 text-right text-gray-500 tabular-nums shrink-0">
+                  <span className="w-9 text-right text-(--app-ink-3) tabular-nums shrink-0">
                     {it.completedToday}/{it.target}
                   </span>
-                  <span className="w-12 inline-flex items-center justify-end gap-0.5 text-gray-300 font-bold tabular-nums shrink-0">
+                  <span className="w-12 inline-flex items-center justify-end gap-0.5 text-(--app-ink-2) font-bold tabular-nums shrink-0">
                     <Coins className="w-3 h-3 shrink-0" />+{it.points}
                   </span>
                   {/* Start — beside the points, because that is where someone
@@ -460,7 +460,7 @@ export function FeedRightRail({
           )}
 
           {widgets.mission.rewardPoints > 0 && (
-            <p className="mt-2.5 pt-2.5 border-t border-(--app-line) t-meta text-gray-400">
+            <p className="mt-2.5 pt-2.5 border-t border-(--app-line) t-meta text-(--app-ink-3)">
               Complete all →{" "}
               <span className="font-extrabold text-white">
                 +{widgets.mission.rewardPoints} pts
@@ -477,7 +477,7 @@ export function FeedRightRail({
       ) : null,
     quickEarn:
       quickTiles.length > 0 ? (
-        <Card title="Quick Earn" icon={<Zap className="w-4 h-4 text-gray-400" />}>
+        <Card title="Quick Earn" icon={<Zap className="w-4 h-4 text-(--app-ink-3)" />}>
           <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2">
             {quickTiles.map((q) => {
               const Icon = QUICK_EARN_ICONS[q.icon] ?? Zap;
@@ -485,9 +485,9 @@ export function FeedRightRail({
                 <Link
                   key={q.id}
                   href={q.href}
-                  className="app-tile app-press app-lift app-tap-row flex items-center gap-2.5 text-sm font-bold text-gray-200"
+                  className="app-tile app-press app-lift app-tap-row flex items-center gap-2.5 text-sm font-bold text-(--app-ink)"
                 >
-                  <Icon className="w-4 h-4 shrink-0 text-gray-400" />
+                  <Icon className="w-4 h-4 shrink-0 text-(--app-ink-3)" />
                   <span className="truncate min-w-0">{q.label}</span>
                 </Link>
               );
@@ -502,7 +502,7 @@ export function FeedRightRail({
           title="Top Earners"
           icon={<Trophy className="w-4 h-4 text-amber-400" />}
           action={
-            <Link href="/leaderboard" className="text-xs text-indigo-400 hover:text-indigo-300">
+            <Link href="/leaderboard" className="text-xs text-(--app-accent-ink) hover:text-(--app-accent-ink)">
               See all
             </Link>
           }
@@ -514,17 +514,17 @@ export function FeedRightRail({
                   <span
                     className={cn(
                       "w-4 text-center text-xs font-bold tabular-nums",
-                      rankTone[i] ?? "text-gray-600"
+                      rankTone[i] ?? "text-(--app-glyph)"
                     )}
                   >
                     {i < 3 ? <Crown className="w-3.5 h-3.5 inline" /> : i + 1}
                   </span>
                   <Avatar size={36} src={u.avatar} name={u.name} className="shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate group-hover:text-indigo-300">
+                    <p className="text-sm font-semibold text-white truncate group-hover:text-(--app-accent-ink)">
                       {u.name ?? "Anonymous"}
                     </p>
-                    <p className="text-[11px] text-gray-500">Level {u.level}</p>
+                    <p className="text-[11px] text-(--app-ink-3)">Level {u.level}</p>
                   </div>
                 </Link>
               </li>
@@ -534,7 +534,7 @@ export function FeedRightRail({
       ) : null,
     whoToFollow:
       whoToFollow.length > 0 ? (
-        <Card title="Who to Follow" icon={<UserPlus className="w-4 h-4 text-indigo-400" />}>
+        <Card title="Who to Follow" icon={<UserPlus className="w-4 h-4 text-(--app-accent-ink)" />}>
           <ul className="space-y-3">
             {whoToFollow.map((u) => (
               <li key={u.id} className="flex items-center gap-2.5">
@@ -544,14 +544,14 @@ export function FeedRightRail({
                 <div className="flex-1 min-w-0">
                   <Link
                     href={profileHref(u)}
-                    className="text-sm font-semibold text-white truncate inline-flex items-center gap-1 hover:text-indigo-300"
+                    className="text-sm font-semibold text-white truncate inline-flex items-center gap-1 hover:text-(--app-accent-ink)"
                   >
                     <span className="truncate min-w-0">{u.name ?? "Anonymous"}</span>
                     {u.isBlueVerified && (
                       <BadgeCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                     )}
                   </Link>
-                  <p className="text-[11px] text-gray-500 truncate">
+                  <p className="text-[11px] text-(--app-ink-3) truncate">
                     {u.username ? `@${u.username}` : `Level ${u.level}`} ·{" "}
                     {u.followersCount} followers
                   </p>
@@ -570,12 +570,12 @@ export function FeedRightRail({
               <li key={h.tag} className="flex items-center justify-between">
                 <Link
                   href={`/hashtag/${encodeURIComponent(h.tag.replace(/^#/, ""))}`}
-                  className="text-sm font-semibold text-indigo-300 hover:text-indigo-200 hover:underline truncate min-w-0"
+                  className="text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink) hover:underline truncate min-w-0"
                 >
                   {h.tag}
                 </Link>
                 {h.count > 0 && (
-                  <span className="text-[11px] text-gray-500 tabular-nums shrink-0">
+                  <span className="text-[11px] text-(--app-ink-3) tabular-nums shrink-0">
                     {h.count} posts
                   </span>
                 )}
@@ -624,7 +624,7 @@ export function FeedRightRail({
               <li key={i}>
                 <Link
                   href={l.href}
-                  className="block truncate text-sm font-semibold text-indigo-300 hover:text-indigo-200"
+                  className="block truncate text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                 >
                   {l.label}
                 </Link>
@@ -691,10 +691,10 @@ export function FeedRightRail({
 
       {/* Footer links (always shown) */}
       {showFooter && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 pt-1 text-[11px] text-gray-500">
-          <Link href="/privacy" className="hover:text-gray-300">Privacy</Link>
-          <Link href="/terms" className="hover:text-gray-300">Terms</Link>
-          <Link href="/refund" className="hover:text-gray-300">Refunds</Link>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 pt-1 text-[11px] text-(--app-ink-3)">
+          <Link href="/privacy" className="hover:text-(--app-ink-2)">Privacy</Link>
+          <Link href="/terms" className="hover:text-(--app-ink-2)">Terms</Link>
+          <Link href="/refund" className="hover:text-(--app-ink-2)">Refunds</Link>
           <span>© {new Date().getFullYear()} EarnGPT</span>
         </div>
       )}
@@ -777,7 +777,7 @@ function RailGroup({
           type="button"
           onClick={() => writeBandCollapsed(storageKey, !collapsed)}
           aria-expanded={!collapsed}
-          className="flex h-10 w-full items-center justify-between rounded-lg px-1 text-left text-[11px] font-bold uppercase tracking-wider text-gray-400 hover:text-gray-200"
+          className="flex h-10 w-full items-center justify-between rounded-lg px-1 text-left text-[11px] font-bold uppercase tracking-wider text-(--app-ink-3) hover:text-(--app-ink)"
         >
           {group.label}
           <ChevronDown
@@ -789,7 +789,7 @@ function RailGroup({
           />
         </button>
       ) : (
-        <p className="flex h-10 items-center px-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+        <p className="flex h-10 items-center px-1 text-[11px] font-bold uppercase tracking-wider text-(--app-ink-3)">
           {group.label}
         </p>
       )}

@@ -63,7 +63,7 @@ export function SavedPostsView({
           <Bookmark className="w-5 h-5 text-amber-400" />
           Saved
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-(--app-ink-3) mt-1">
           Posts you kept for later. Only you can see this.
         </p>
       </div>

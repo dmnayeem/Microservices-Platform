@@ -85,7 +85,7 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-gray-500">
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-(--app-ink-3)">
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading posts…
       </div>
@@ -94,12 +94,12 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
+      <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
         <Hash className="w-10 h-10 text-(--app-glyph) mx-auto mb-2" />
-        <p className="text-sm text-gray-400 font-semibold">
+        <p className="text-sm text-(--app-ink-3) font-semibold">
           No posts with #{tag} yet
         </p>
-        <p className="text-xs text-gray-600 mt-1">
+        <p className="text-xs text-(--app-glyph) mt-1">
           Be the first to post with this hashtag.
         </p>
       </div>
@@ -130,13 +130,13 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
               >
                 {p.user?.name || p.user?.username || "User"}
               </Link>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-(--app-ink-3)">
                 {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
               </p>
             </div>
           </div>
           {p.content && (
-            <p className="mt-2 text-sm text-gray-200 whitespace-pre-wrap wrap-break-word">
+            <p className="mt-2 text-sm text-(--app-ink) whitespace-pre-wrap wrap-break-word">
               <RenderedContent content={p.content} />
             </p>
           )}
@@ -146,7 +146,7 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
               alt=""
               width={800}
               height={600}
-              className="mt-2 w-full h-auto rounded-lg border border-gray-800 bg-gray-950"
+              className="mt-2 w-full h-auto rounded-lg border border-(--app-line) bg-(--app-page)"
             />
           ) : (
             (() => {
@@ -164,13 +164,13 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
               return null;
             })()
           )}
-          <div className="mt-3 flex items-center gap-4 text-xs text-gray-500 border-t border-gray-800 pt-2.5">
+          <div className="mt-3 flex items-center gap-4 text-xs text-(--app-ink-3) border-t border-(--app-line) pt-2.5">
             <span>👁 {p.viewsCount}</span>
             <span>❤ {p.likesCount}</span>
             <span>💬 {p.commentsCount}</span>
             <Link
               href="/social"
-              className="ml-auto text-indigo-400 hover:text-indigo-300 font-semibold"
+              className="ml-auto text-(--app-accent-ink) hover:text-(--app-accent-ink) font-semibold"
             >
               Open in feed →
             </Link>
@@ -182,7 +182,7 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
         <button
           onClick={() => void load(page + 1)}
           disabled={loadingMore}
-          className="w-full py-2.5 text-sm font-semibold text-indigo-400 hover:text-indigo-300 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+          className="w-full py-2.5 text-sm font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink) disabled:opacity-50 inline-flex items-center justify-center gap-2"
         >
           {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
           {loadingMore ? "Loading…" : "Load more"}

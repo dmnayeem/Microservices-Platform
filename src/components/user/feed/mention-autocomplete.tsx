@@ -175,7 +175,7 @@ export function MentionSuggestions({
   return (
     <div
       className={cn(
-        "absolute z-50 w-64 max-w-[calc(100vw-2rem)] p-1 rounded-xl bg-gray-900 border border-gray-800 shadow-xl",
+        "absolute z-50 w-64 max-w-[calc(100vw-2rem)] p-1 rounded-xl bg-(--app-surface) border border-(--app-line) shadow-xl",
         className
       )}
       role="listbox"
@@ -195,7 +195,7 @@ export function MentionSuggestions({
           onPointerEnter={() => onHover(i)}
           className={cn(
             "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors",
-            i === active ? "bg-gray-800" : "hover:bg-gray-800/60"
+            i === active ? "bg-(--app-surface-2)" : "hover:bg-(--app-surface-2)/60"
           )}
         >
           <Avatar src={u.avatar} size={26} name={u.name} />
@@ -203,7 +203,7 @@ export function MentionSuggestions({
             <span className="block text-xs font-semibold text-white truncate">
               {u.name || u.username}
             </span>
-            <span className="block text-[11px] text-gray-500 truncate">
+            <span className="block text-[11px] text-(--app-ink-3) truncate">
               @{u.username}
             </span>
           </span>

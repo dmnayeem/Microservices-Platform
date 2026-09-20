@@ -63,7 +63,7 @@ export function ExpandableContent({
             expandedRef.current = !expanded;
             setExpanded((v) => !v);
           }}
-          className="mt-0.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+          className="mt-0.5 text-xs font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           {expanded ? "See less" : "See more"}
         </button>

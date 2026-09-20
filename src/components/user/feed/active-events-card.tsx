@@ -151,7 +151,7 @@ export function ActiveEventsCard({ className }: { className?: string }) {
     <section className={cn("app-card", className)}>
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="t-section text-white inline-flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-gray-400" />
+          <Sparkles className="w-4 h-4 text-(--app-ink-3)" />
           Active Events
         </h3>
         <Link
@@ -189,7 +189,7 @@ export function ActiveEventsCard({ className }: { className?: string }) {
                 <p className="t-card-title text-white truncate min-w-0 flex-1">
                   {ev.title}
                 </p>
-                <span className="t-meta text-gray-500 inline-flex items-center gap-1 shrink-0">
+                <span className="t-meta text-(--app-ink-3) inline-flex items-center gap-1 shrink-0">
                   <Clock className="w-3 h-3" /> {timeLeft(ev.endAt)}
                 </span>
               </div>
@@ -197,7 +197,7 @@ export function ActiveEventsCard({ className }: { className?: string }) {
               {/* Progress toward the (next tier's) target */}
               <div className="mt-2">
                 <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-gray-400 truncate min-w-0">{meta.label}</span>
+                  <span className="text-(--app-ink-3) truncate min-w-0">{meta.label}</span>
                   <span className="text-white font-bold tabular-nums shrink-0">
                     {isUpload
                       ? ev.claimed
@@ -219,9 +219,9 @@ export function ActiveEventsCard({ className }: { className?: string }) {
               {/* Reward + action */}
               <div className="mt-2.5 flex items-center justify-between gap-2">
                 <span className="t-figure-sm inline-flex items-baseline gap-1 text-white">
-                  <Coins className="w-4 h-4 self-center text-gray-400" />+{rewardPoints}
+                  <Coins className="w-4 h-4 self-center text-(--app-ink-3)" />+{rewardPoints}
                   {rewardXp ? (
-                    <span className="t-meta font-bold text-gray-400 ml-1">
+                    <span className="t-meta font-bold text-(--app-ink-3) ml-1">
                       +{rewardXp} XP
                     </span>
                   ) : null}
@@ -246,7 +246,7 @@ export function ActiveEventsCard({ className }: { className?: string }) {
                       "app-press app-tap-row inline-flex items-center gap-1.5 px-3.5 rounded-(--app-r-control) text-xs font-extrabold",
                       canClaim
                         ? "app-accent"
-                        : "bg-(--app-surface) border border-(--app-line) text-gray-500 cursor-not-allowed"
+                        : "bg-(--app-surface) border border-(--app-line) text-(--app-ink-3) cursor-not-allowed"
                     )}
                   >
                     {busy ? (

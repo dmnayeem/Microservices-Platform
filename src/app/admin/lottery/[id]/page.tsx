@@ -372,7 +372,7 @@ export default async function LotteryDetailPage({ params }: PageProps) {
                     className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
                   >
                     <div className="flex items-center gap-3">
-                      <code className="px-2 py-1 bg-gray-700 rounded text-xs text-indigo-400">
+                      <code className="px-2 py-1 bg-gray-700 rounded text-xs text-indigo-300">
                         {ticket.ticketNumber}
                       </code>
                       <Link

@@ -407,7 +407,7 @@ export function CreatePostComposer({
             size={44}
             className="shrink-0"
           />
-          <span className="app-tap-row flex-1 min-w-0 flex items-center text-left rounded-full bg-(--app-surface-2) border border-(--app-line) group-hover:border-(--app-line-strong) px-4 text-sm text-gray-400 transition-colors truncate">
+          <span className="app-tap-row flex-1 min-w-0 flex items-center text-left rounded-full bg-(--app-surface-2) border border-(--app-line) group-hover:border-(--app-line-strong) px-4 text-sm text-(--app-ink-3) transition-colors truncate">
             What&apos;s on your mind, {firstName}?
           </span>
           <span className="app-accent app-tap-row hidden sm:inline-flex items-center gap-1.5 px-4 rounded-full text-sm font-extrabold shrink-0">
@@ -423,9 +423,9 @@ export function CreatePostComposer({
             <button
               key={a.label}
               onClick={a.onClick}
-              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-xs font-bold text-gray-300 hover:bg-(--app-surface-2) hover:text-white"
+              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-xs font-bold text-(--app-ink-2) hover:bg-(--app-surface-2) hover:text-white"
             >
-              <a.icon className="w-4 h-4 text-gray-400" />
+              <a.icon className="w-4 h-4 text-(--app-ink-3)" />
               {a.label}
             </button>
           ))}
@@ -447,12 +447,12 @@ export function CreatePostComposer({
           <p className="text-sm font-semibold text-white">
             {user.name ?? "You"}
           </p>
-          <p className="text-[11px] text-gray-500">Posting publicly</p>
+          <p className="text-[11px] text-(--app-ink-3)">Posting publicly</p>
         </div>
         <button
           onClick={reset}
           disabled={busy}
-          className="p-1.5 text-gray-500 hover:text-red-400 disabled:opacity-50"
+          className="p-1.5 text-(--app-ink-3) hover:text-red-400 disabled:opacity-50"
           aria-label="Cancel"
         >
           <X className="w-4 h-4" />
@@ -481,8 +481,8 @@ export function CreatePostComposer({
               className={cn(
                 "flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border",
                 isActive
-                  ? "bg-indigo-500/15 text-white border-indigo-500/40"
-                  : "bg-gray-950 text-gray-400 border-gray-800 hover:text-white"
+                  ? "bg-(--app-cta)/15 text-(--app-on-cta) border-(--app-accent-edge)/40"
+                  : "bg-(--app-page) text-(--app-ink-3) border-(--app-line) hover:text-white"
               )}
             >
               <m.icon className="w-3.5 h-3.5" />
@@ -500,7 +500,7 @@ export function CreatePostComposer({
               "relative rounded-xl border transition-colors",
               activeBg
                 ? cn("border-transparent", activeBg.className)
-                : "border-gray-800 bg-gray-950"
+                : "border-(--app-line) bg-(--app-page)"
             )}
           >
             {/* Opens DOWNWARD: the composer sits at the top of the feed, so
@@ -525,7 +525,7 @@ export function CreatePostComposer({
                 place appears on selection just the same and cannot land in the
                 wrong spot. */}
             {hasSelection && (
-              <div className="absolute -top-3 left-3 z-20 flex items-center gap-0.5 rounded-lg border border-gray-700 bg-gray-900/95 backdrop-blur px-1 py-0.5 shadow-xl animate-pop-in">
+              <div className="absolute -top-3 left-3 z-20 flex items-center gap-0.5 rounded-lg border border-(--app-line) bg-(--app-surface)/95 backdrop-blur px-1 py-0.5 shadow-xl animate-pop-in">
                 <SelectionFormatBtn
                   title="Bold"
                   onClick={() => wrapSelection("**")}
@@ -585,7 +585,7 @@ export function CreatePostComposer({
                         ? "placeholder:text-white/70"
                         : "placeholder:text-gray-900/60"
                     )
-                  : "text-sm text-white placeholder:text-gray-500"
+                  : "text-sm text-white placeholder:text-(--app-ink-3)"
               )}
             />
           </div>
@@ -595,7 +595,7 @@ export function CreatePostComposer({
               {images.map((url, i) => (
                 <div
                   key={i}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-gray-950 border border-gray-800"
+                  className="relative aspect-square rounded-lg overflow-hidden bg-(--app-page) border border-(--app-line)"
                 >
                   {/* `mediaSrc` for the same reason as the post card: these are
                       the uploaded S3 URLs, and the bucket is private, so the raw
@@ -650,7 +650,7 @@ export function CreatePostComposer({
             ) : linkPreview ? (
               <LinkPreviewCard preview={linkPreview} onRemove={dismissPreview} />
             ) : previewLoading ? (
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900/60 p-3 text-xs text-gray-500">
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-(--app-line) bg-(--app-surface)/60 p-3 text-xs text-(--app-ink-3)">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading preview…
               </div>
@@ -713,7 +713,7 @@ export function CreatePostComposer({
                 onClick={() => setBg("")}
                 title="No background"
                 className={cn(
-                  "w-7 h-7 rounded-full border border-gray-700 bg-gray-950 inline-flex items-center justify-center text-gray-500",
+                  "w-7 h-7 rounded-full border border-(--app-line) bg-(--app-page) inline-flex items-center justify-center text-(--app-ink-3)",
                   !bg && "ring-2 ring-indigo-400"
                 )}
               >
@@ -744,12 +744,12 @@ export function CreatePostComposer({
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
               placeholder="…or paste an image URL"
               disabled={busy}
-              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             <button
               onClick={addImage}
               disabled={busy || !imageInput.trim()}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold rounded-lg disabled:opacity-50"
             >
               <Plus className="w-3.5 h-3.5" />
               Add
@@ -785,7 +785,7 @@ export function CreatePostComposer({
             checked={postAsAnnouncement}
             onChange={(e) => setPostAsAnnouncement(e.target.checked)}
             disabled={busy}
-            className="rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-500"
+            className="rounded bg-(--app-surface-2) border-(--app-line) text-cyan-500 focus:ring-cyan-500"
           />
           <Megaphone className="w-3.5 h-3.5 text-cyan-300" />
           <span className="text-xs font-semibold text-cyan-200">
@@ -800,8 +800,8 @@ export function CreatePostComposer({
       {/* Who can read this. Shown before posting, never behind a menu, and the
           consequence is written into the option itself rather than implied by a
           globe icon. Members only is pre-selected. */}
-      <fieldset className="rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-2.5">
-        <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+      <fieldset className="rounded-lg border border-(--app-line) bg-(--app-surface)/40 px-3 py-2.5">
+        <legend className="px-1 text-[11px] font-semibold uppercase tracking-wide text-(--app-ink-3)">
           Who can read this
         </legend>
         <div className="mt-1 space-y-1.5">
@@ -829,8 +829,8 @@ export function CreatePostComposer({
                 className={cn(
                   "flex cursor-pointer items-start gap-2.5 rounded-lg border px-2.5 py-2 transition-colors",
                   on
-                    ? "border-indigo-500/60 bg-indigo-500/10"
-                    : "border-transparent hover:bg-gray-800/50"
+                    ? "border-(--app-accent-edge)/60 bg-(--app-cta)/10"
+                    : "border-transparent hover:bg-(--app-surface-2)/50"
                 )}
               >
                 <input
@@ -839,24 +839,24 @@ export function CreatePostComposer({
                   checked={on}
                   onChange={() => setAudience(key)}
                   disabled={busy}
-                  className="mt-0.5 border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="mt-0.5 border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
                 />
                 <Icon
                   className={cn(
                     "mt-0.5 h-3.5 w-3.5 shrink-0",
-                    on ? "text-indigo-300" : "text-gray-500"
+                    on ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"
                   )}
                 />
                 <span className="min-w-0">
                   <span
                     className={cn(
                       "block text-xs font-semibold",
-                      on ? "text-indigo-100" : "text-gray-300"
+                      on ? "text-(--app-accent-ink)" : "text-(--app-ink-2)"
                     )}
                   >
                     {title}
                   </span>
-                  <span className="block text-[11px] leading-snug text-gray-400">
+                  <span className="block text-[11px] leading-snug text-(--app-ink-3)">
                     {detail}
                   </span>
                 </span>
@@ -866,8 +866,8 @@ export function CreatePostComposer({
         </div>
       </fieldset>
 
-      <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-        <span className="text-[11px] text-gray-500 tabular-nums">
+      <div className="flex items-center justify-between pt-2 border-t border-(--app-line)">
+        <span className="text-[11px] text-(--app-ink-3) tabular-nums">
           {content.length}/2000
         </span>
         <button
@@ -922,7 +922,7 @@ function PollComposer({
         onChange={(e) => onContentChange(e.target.value)}
         placeholder="Poll question…"
         maxLength={200}
-        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
       />
       <div className="space-y-1.5">
         {options.map((opt, i) => (
@@ -936,12 +936,12 @@ function PollComposer({
               }}
               placeholder={`Option ${i + 1}`}
               maxLength={120}
-              className="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)"
             />
             {options.length > 2 && (
               <button
                 onClick={() => onChange(options.filter((_, j) => j !== i))}
-                className="p-1.5 text-gray-500 hover:text-red-400"
+                className="p-1.5 text-(--app-ink-3) hover:text-red-400"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -951,7 +951,7 @@ function PollComposer({
         {options.length < 6 && (
           <button
             onClick={() => onChange([...options, ""])}
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium rounded-lg"
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) text-xs font-medium rounded-lg"
           >
             <Plus className="w-3.5 h-3.5" />
             Add option
@@ -959,7 +959,7 @@ function PollComposer({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Duration:</span>
+        <span className="text-xs text-(--app-ink-3)">Duration:</span>
         {([24, 48, 72] as const).map((d) => (
           <button
             key={d}
@@ -967,8 +967,8 @@ function PollComposer({
             className={cn(
               "px-2.5 py-1 rounded-md text-xs font-bold",
               duration === d
-                ? "bg-indigo-500 text-white"
-                : "bg-gray-800 text-gray-400 hover:text-white"
+                ? "bg-(--app-cta) text-(--app-on-cta)"
+                : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
             )}
           >
             {d}h
@@ -998,17 +998,17 @@ function DonationComposer({
         placeholder="What's your donation cause?"
         rows={3}
         maxLength={2000}
-        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+        className="w-full bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Goal (pts):</span>
+        <span className="text-xs text-(--app-ink-3)">Goal (pts):</span>
         <input
           type="number"
           min={100}
           step={100}
           value={goal}
           onChange={(e) => onGoalChange(parseInt(e.target.value) || 0)}
-          className="w-32 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+          className="w-32 bg-(--app-page) border border-(--app-line) rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
         />
       </div>
     </div>
