@@ -607,7 +607,7 @@ export function BoardTasksView() {
             className={cn(
               "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors shrink-0",
               !categoryFilter
-                ? "bg-(--app-bright) text-(--app-on-bright) border-(--app-bright)"
+                ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-cta)"
                 : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:border-(--app-line)"
             )}
           >
@@ -621,7 +621,7 @@ export function BoardTasksView() {
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors shrink-0",
                   categoryFilter === c
-                    ? "bg-(--app-bright) text-(--app-on-bright) border-(--app-bright)"
+                    ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-cta)"
                     : cn(CATEGORY_COLORS[c], "hover:opacity-80")
                 )}
               >

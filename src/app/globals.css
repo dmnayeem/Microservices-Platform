@@ -290,6 +290,21 @@ html,
 body {
   overscroll-behavior: none;
 }
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for],
+select {
+  cursor: pointer;
+}
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+input:where([type="checkbox"], [type="radio"]) {
+  cursor: pointer;
+}
+
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
@@ -764,7 +779,7 @@ html[data-theme="light"] {
      read as chrome rather than as one more card, and a white card laid on the
      bar still separates from it without a shadow.
      chrome #f5f7fc = L* 97.21, border #d6dde9 = L* 87.92 (Δ 9.29). */
-  --shell-bg: #ffffff;
+  --shell-bg: #f7f9fc;
   /* 97%, not 88% — see `.app-chrome`. Dark text under a pale bar reads
      through anything looser, and the blur does not hide it. */
   --shell-veil: 97%;
@@ -1936,6 +1951,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93a0b5; 
   --app-glow-cta: 0 0 16px rgba(16, 185, 129, 0.35);
   --app-ring-focus: 0 0 0 3px rgba(16, 185, 129, 0.15);
   /* Frosted layers: modals, command bars, sticky earning headers. */
+  --app-field-bg: #0f172a;
   --app-glass: rgba(19, 27, 46, 0.75);
   --app-glass-blur: 16px;
 
@@ -2073,9 +2089,17 @@ html[data-theme="light"] {
      I had this at #e2e8f0, two whole steps darker, and that single value is
      most of why light mode did not look like the template: white cards barely
      separated from a grey page instead of sitting crisply on near-white. */
-  --app-page: #f8fafc;
+  /* The document says #f8fafc. Rendered, that is 1.8 L* from a white card —
+     no separation at all, and the whole app read as one white sheet. The
+     template's own screenshot shows a canvas you can plainly see against the
+     cards, so the canvas is tinted to match what the picture shows rather than
+     what the frontmatter says:
+       canvas #eef1f6 94.3  <  chrome #f7f9fc 97.7  <  card #ffffff 100
+     Hover goes DOWN from white, never up: on a white card, lightening is
+     invisible, which is why hovering read as "turns white". */
+  --app-page: #eef1f6;
   --app-surface: #ffffff;
-  --app-surface-hover: #f8fafc;
+  --app-surface-hover: #eef2f7;
   --app-surface-2: #f1f5f9;
   --app-line-subtle: rgba(226, 232, 240, 0.6);
   --app-line: #e2e8f0;
@@ -2087,6 +2111,7 @@ html[data-theme="light"] {
     0 0 0 1px rgba(139, 92, 246, 0.3);
   --app-glow-cta: 0 2px 8px rgba(5, 150, 105, 0.25);
   --app-ring-focus: 0 0 0 3px rgba(5, 150, 105, 0.15);
+  --app-field-bg: #f1f5f9;
   --app-glass: rgba(255, 255, 255, 0.82);
 
   --app-ink: #0f172a;
@@ -2264,9 +2289,9 @@ html[data-theme="light"] {
   /* The soft version, for an active nav row or a selected chip: the brand at
      low opacity with a real border, never a second hue. */
   .app-accent-soft {
-    background-color: var(--app-info-soft);
-    border: 1px solid var(--app-info-line);
-    color: var(--app-info);
+    background-color: var(--app-nav-wash);
+    border: 1px solid var(--app-accent-edge);
+    color: var(--app-accent-ink);
   }
 
   /* ── Chips ───────────────────────────────────────────────────────────────
@@ -2321,7 +2346,7 @@ html[data-theme="light"] {
     padding: 0.75rem 1rem;
     border-radius: var(--app-r-control);
     border: 1px solid var(--app-line);
-    background-color: var(--shell-bg);
+    background-color: var(--app-field-bg);
     color: var(--app-ink);
     font-size: 0.875rem;
     line-height: 1.429;

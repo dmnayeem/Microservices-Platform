@@ -143,7 +143,7 @@ export function SocialFeedView({
     // genuinely spare.
     <div className="mx-auto w-full max-w-5xl xl:max-w-6xl flex justify-center gap-6">
       {/* Center feed column (FB/Twitter-width) */}
-      <div className="w-full max-w-[40rem] 2xl:max-w-[46.25rem] min-w-0 space-y-4">
+      <div className="w-full max-w-[36rem] 2xl:max-w-[40rem] min-w-0 space-y-4">
         {/* ONE toolbar for everything that steers the feed.
             It replaces a tab strip at the top of the column and a sort toggle
             floating on its own line further down — two rows, in two places, each

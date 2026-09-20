@@ -903,7 +903,7 @@ export function AdRenderer({
             </a>
             <a
               {...linkProps}
-              className="app-tap-row app-press flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-bright) px-3 text-sm font-bold text-(--app-on-bright)"
+              className="app-tap-row app-press flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-cta) px-3 text-sm font-bold text-(--app-on-cta)"
             >
               Visit site
               <ExternalLink className="h-3.5 w-3.5" />

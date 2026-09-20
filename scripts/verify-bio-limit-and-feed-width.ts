@@ -134,16 +134,16 @@ const REM = 16;
 // content row is 920px, so a 340px rail would leave a 556px centre, under the
 // document's own minimum. So xl keeps the narrower rail that does fit, and the
 // document's figures take over at 2xl where they were meant to apply.
-const feedBase = 40 * REM; // max-w-[40rem] — the document's 640 minimum
-const feed2xl = 46.25 * REM; // 2xl:max-w-[46.25rem] — its 740 maximum
+const feedBase = 36 * REM; // max-w-[36rem] — a reading measure, ~Facebook's
+const feed2xl = 40 * REM; // 2xl:max-w-[40rem] — the document's 640 floor
 const railXl = 20 * REM; // w-80
 const rail2xl = 23.75 * REM; // 2xl:w-[23.75rem] — its 380
 const GAP = 24; // gap-6
 
 check(
   "the centre column holds the document's measure",
-  /max-w-\[40rem\] 2xl:max-w-\[46\.25rem\]/.test(view),
-  "640 is its minimum reading measure, 740 its maximum"
+  /max-w-\[36rem\] 2xl:max-w-\[40rem\]/.test(view),
+  "a broad feed reads worse, not richer — the document's 740 was too wide in practice"
 );
 check("the rail takes its full width only at 2xl", /w-80 2xl:w-\[23\.75rem\]/.test(view));
 check("the row cap grows with it", /max-w-5xl xl:max-w-6xl/.test(view));
@@ -174,7 +174,7 @@ check(
   `needs ${feed2xl + GAP + rail2xl}px, max-w-6xl is ${72 * REM}px`
 );
 check(
-  "the centre never falls under the document's 640 minimum at 2xl",
+  "the centre reaches the document's 640 measure on a wide screen",
   CONTENT_AT_2XL - GAP - rail2xl >= feedBase,
   `${CONTENT_AT_2XL - GAP - rail2xl}px available for a ${feedBase}px minimum`
 );
