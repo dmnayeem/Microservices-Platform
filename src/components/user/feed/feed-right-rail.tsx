@@ -256,7 +256,7 @@ function EarnStreakCard({
           <button
             onClick={claim}
             disabled={claiming}
-            className="app-press app-tap-row inline-flex items-center gap-1.5 px-4 rounded-full bg-(--app-bright) text-(--app-on-bright) text-xs font-extrabold disabled:opacity-60"
+            className="app-press app-tap-row inline-flex items-center gap-1.5 px-4 rounded-full app-on-white [--app-on-white-ink:var(--app-on-bright)] bg-(--app-bright) text-xs font-extrabold disabled:opacity-60"
           >
             {claiming ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

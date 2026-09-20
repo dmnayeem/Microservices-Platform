@@ -218,7 +218,10 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           className="on-media pointer-events-none absolute left-2 top-2 z-20 inline-flex max-w-[75%] items-center gap-1.5 rounded-full px-2 py-1 backdrop-blur-sm"
           style={{ backgroundColor: CHIP_BG }}
         >
-          <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-[9px] font-black text-black">
+          {/* A white disc inside `on-media`: the family rule would paint this
+              monogram white too, leaving a blank circle — the same failure as
+              the Claim button, in the place the owner first reported it. */}
+          <span className="app-on-white [--app-on-white-ink:#000] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-[9px] font-black">
             {initial}
           </span>
           <span className="truncate text-[11px] font-semibold text-white">

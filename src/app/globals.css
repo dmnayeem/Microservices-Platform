@@ -1153,15 +1153,19 @@ html[data-theme="light"] .on-media[class*="text-"] {
  * only the author knows which. So the author says so, here.
  *
  * Put `app-on-white` on anything with a white or near-white background that
- * lives inside an accent surface. */
+ * lives inside an accent surface. Its ink defaults to the accent colour; a
+ * control whose ink is something else says so with
+ * `[--app-on-white-ink:var(--whatever)]`, because the exemption must not
+ * impose one colour on every control it rescues — the rail's Claim button is
+ * near-black on white, the balance card's is indigo, and both are correct. */
 .app-on-white {
-  color: var(--app-grad-a);
+  color: var(--app-on-white-ink, var(--app-grad-a));
 }
 html[data-theme="light"] .app-accent .app-on-white,
 html[data-theme="light"] .on-media .app-on-white,
 html[data-theme="light"] .app-accent .app-on-white[class*="text-"],
 html[data-theme="light"] .on-media .app-on-white[class*="text-"] {
-  color: var(--app-grad-a) !important;
+  color: var(--app-on-white-ink, var(--app-grad-a)) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

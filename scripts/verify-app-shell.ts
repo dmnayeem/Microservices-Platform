@@ -66,6 +66,21 @@ const code = (p: string) =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
+/** Every user-facing .tsx, for scans that must not miss a component. */
+function mainTsx(): string[] {
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(rel);
+      else if (e.name.endsWith(".tsx")) out.push(rel);
+    }
+  };
+  walk("src/components/user");
+  walk("src/components/dashboard");
+  return out;
+}
+
 function main() {
   console.log("\n=== App shell ===\n");
 
@@ -405,16 +420,62 @@ function main() {
           /html\[data-theme="light"\] \.app-accent \.app-on-white/.test(css),
         "the family rule paints every themed descendant white, which is invisible on a white pill"
       );
+      // The ink is per-control, not one colour for everything the exemption
+      // rescues: the rail's Claim button is near-black on white, the balance
+      // card's is indigo, the ad's brand monogram is black. Imposing one would
+      // have traded an invisible control for a wrong-coloured one.
+      check(
+        "the exemption lets each control keep its own ink",
+        /var\(--app-on-white-ink, var\(--app-grad-a\)\)/.test(css),
+        "one hard-coded colour would repaint every control it rescues"
+      );
+
+      /* Every control that sits on a SOLID light ground inside an accent or
+         on-media surface. The first pass looked for `bg-white` only and missed
+         the desktop rail, whose button is `bg-(--app-bright)` — the same
+         white, named by a token. That is why the owner still saw a blank pill
+         after the "fix". */
+      const LIGHT_GROUND = /(bg-white(?![/\w])|bg-\(--app-bright\))/;
+      const offenders: string[] = [];
+      for (const f of mainTsx()) {
+        const src = read(f);
+        // Only a file that RENDERS an accent or on-media surface can hold the
+        // defect. Without this the scan flagged filter chips in the task
+        // lists, which sit on an ordinary card and are correct — and a check
+        // that cries wolf is one people learn to skip past.
+        if (!/on-media|app-accent/.test(src)) continue;
+        const lines = src.split(/\r?\n/);
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (!LIGHT_GROUND.test(line)) continue;
+          // A `text-` colour class on the same element is what the family rule
+          // catches. `text-white` is already white and wants to be.
+          if (!/text-\(--|text-black|text-\[#/.test(line)) continue;
+          if (/app-on-white/.test(line)) continue;
+          // Inside the surface, not merely in the same file: the ad card's
+          // buttons sit below its creative and are unaffected, while the brand
+          // monogram a few lines above them is not.
+          const near = lines.slice(Math.max(0, i - 6), i).join(" ");
+          if (!/on-media|app-accent/.test(near)) continue;
+          offenders.push(`${f.split("/").pop()}:${i + 1}`);
+        }
+      }
+      check(
+        "no control on a light ground is left to the family rule",
+        offenders.length === 0,
+        offenders.join(" | ")
+      );
+
       for (const f of [
         "src/components/user/feed/mobile-earn-block.tsx",
         "src/components/user/primitives/balance-card.tsx",
+        "src/components/user/feed/feed-right-rail.tsx",
+        "src/components/user/feed/feed-ad-card.tsx",
       ]) {
-        const src = read(f);
         check(
-          `${f.split("/").pop()} uses it rather than a bare text- class`,
-          /app-on-white bg-white/.test(src) &&
-            !/bg-white text-\(--app-grad-a\)/.test(src),
-          "white-on-white: the Claim button was a blank pill in light mode"
+          `${f.split("/").pop()} carries the exemption`,
+          /app-on-white/.test(read(f)),
+          "white-on-white: the control renders as a blank shape in light mode"
         );
       }
     }

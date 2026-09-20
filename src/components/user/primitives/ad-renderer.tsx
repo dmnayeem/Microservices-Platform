@@ -540,7 +540,9 @@ export function AdRenderer({
         className="on-media pointer-events-none absolute left-2 top-2 z-20 inline-flex max-w-[75%] items-center gap-1.5 rounded-full px-2 py-1 backdrop-blur-sm"
         style={{ backgroundColor: CHIP_BG }}
       >
-        <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-[9px] font-black text-black">
+        {/* Inside the `on-media` chip above, so the light-mode family rule
+            would paint this monogram white on its white disc. */}
+        <span className="app-on-white [--app-on-white-ink:#000] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-[9px] font-black">
           {monogram}
         </span>
         <span className="truncate text-[11px] font-semibold text-white">
