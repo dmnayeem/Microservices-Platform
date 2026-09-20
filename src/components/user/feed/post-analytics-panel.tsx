@@ -157,7 +157,7 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
               );
             })}
           </div>
-          <div className="flex justify-between mt-1 text-[9px] text-(--app-glyph) tabular-nums">
+          <div className="flex justify-between mt-1 text-[9px] text-(--app-ink-3) tabular-nums">
             <span>{sparkline[0]?.date.slice(5)}</span>
             <span>{sparkline[sparkline.length - 1]?.date.slice(5)}</span>
           </div>

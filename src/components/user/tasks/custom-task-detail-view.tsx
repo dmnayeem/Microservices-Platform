@@ -194,8 +194,8 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
-        <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
-        <p className="text-sm text-gray-500">Loading task…</p>
+        <Loader2 className="w-7 h-7 animate-spin text-(--app-accent-ink)" />
+        <p className="text-sm text-(--app-ink-3)">Loading task…</p>
       </div>
     );
   }
@@ -213,7 +213,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
       <div className="space-y-4">
         <Link
           href="/tasks"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to tasks
@@ -234,14 +234,14 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
     <div className="space-y-5">
       <Link
         href="/tasks"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to tasks
       </Link>
 
       {/* Hero */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) overflow-hidden">
         {task.thumbnailUrl && (
           <div className="relative w-full h-40 sm:h-52">
             <SmartImage
@@ -255,10 +255,10 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
         )}
         <div className="p-4 sm:p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+            <div className="p-2 rounded-lg bg-(--app-cta)/10 text-(--app-accent-ink)">
               <Sparkles className="w-5 h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               Custom Task
             </span>
           </div>
@@ -266,7 +266,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
             {task.title}
           </h1>
           {task.description && (
-            <p className="text-sm text-gray-300 whitespace-pre-wrap">
+            <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
               {task.description}
             </p>
           )}
@@ -297,7 +297,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
       <AdRenderer placement="TASK_START" />
 
       {cfg?.introMessage && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-200 whitespace-pre-wrap">
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 text-sm text-(--app-ink) whitespace-pre-wrap">
           {cfg.introMessage}
         </div>
       )}
@@ -343,7 +343,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
             {orderedFields.map((field) => (
               <div
                 key={field.id}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5"
+                className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5"
               >
                 <CustomFieldInput
                   field={field}
@@ -381,9 +381,9 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
           note, so the task isn't a dead-end without a submit button. */}
       {submitState.kind === "ready" && orderedFields.length === 0 && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Notes <span className="text-gray-500 font-normal">(optional)</span>
+          <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5">
+            <label className="block text-sm font-medium text-(--app-ink-2) mb-2">
+              Notes <span className="text-(--app-ink-3) font-normal">(optional)</span>
             </label>
             <textarea
               rows={3}
@@ -393,7 +393,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
               }
               disabled={busy}
               placeholder="Add any note for the reviewer…"
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
           </div>
           <div className="sticky bottom-4 z-10 mt-6">

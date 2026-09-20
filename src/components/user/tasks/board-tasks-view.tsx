@@ -89,11 +89,11 @@ const BOARD_CATEGORIES = [
 
 const CATEGORY_COLORS: Record<string, string> = {
   Marketing: "bg-pink-500/10 border-pink-500/30 text-pink-300",
-  Development: "bg-indigo-500/10 border-indigo-500/30 text-indigo-300",
+  Development: "bg-(--app-cta)/10 border-(--app-accent-edge)/30 text-(--app-accent-ink)",
   Design: "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300",
   Sales: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
   Learning: "bg-sky-500/10 border-sky-500/30 text-sky-300",
-  Other: "bg-gray-500/10 border-gray-500/30 text-gray-300",
+  Other: "bg-gray-500/10 border-gray-500/30 text-(--app-ink-2)",
 };
 
 function formatCountdown(expiresAt: string): {
@@ -204,7 +204,7 @@ export function BoardTasksView() {
             setSelectedBoardId(null);
             setDetail(null);
           }}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to boards
@@ -224,9 +224,9 @@ export function BoardTasksView() {
           return (
           <>
             {/* Header */}
-            <div className="rounded-2xl border border-gray-800 bg-linear-to-br from-orange-500/10 via-pink-500/5 to-gray-900 overflow-hidden">
+            <div className="rounded-2xl border border-(--app-line) bg-linear-to-br from-orange-500/10 via-pink-500/5 to-gray-900 overflow-hidden">
               {detail.board.imageUrl && (
-                <div className="relative w-full h-32 bg-gray-800">
+                <div className="relative w-full h-32 bg-(--app-surface-2)">
                   <SmartImage
                     src={detail.board.imageUrl}
                     alt=""
@@ -246,7 +246,7 @@ export function BoardTasksView() {
                       {detail.board.title}
                     </h1>
                     {detail.board.description && (
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-(--app-ink-3) mt-1">
                         {detail.board.description}
                       </p>
                     )}
@@ -273,7 +273,7 @@ export function BoardTasksView() {
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
                             detailCountdown.expired
-                              ? "border-gray-700 text-gray-400 bg-gray-950"
+                              ? "border-(--app-line) text-(--app-ink-3) bg-(--app-page)"
                               : detailCountdown.urgent
                               ? "border-red-500/40 text-red-300 bg-red-500/10"
                               : "border-amber-500/40 text-amber-300 bg-amber-500/10"
@@ -294,10 +294,10 @@ export function BoardTasksView() {
 
                 {/* Reward summary */}
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <div className="rounded-lg bg-gray-950 border border-gray-800 p-2.5 flex items-center gap-2">
+                  <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5 flex items-center gap-2">
                     <Coins className="w-4 h-4 text-amber-400" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                         Board Reward
                       </p>
                       <p className="text-sm font-bold text-white tabular-nums">
@@ -305,10 +305,10 @@ export function BoardTasksView() {
                       </p>
                     </div>
                   </div>
-                  <div className="rounded-lg bg-gray-950 border border-gray-800 p-2.5 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-indigo-400" />
+                  <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-(--app-accent-ink)" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                         XP
                       </p>
                       <p className="text-sm font-bold text-white tabular-nums">
@@ -321,16 +321,16 @@ export function BoardTasksView() {
             </div>
 
             {/* Progress bar */}
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-3">
+            <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-gray-300">
+                <p className="text-xs font-semibold text-(--app-ink-2)">
                   Progress
                 </p>
-                <p className="text-xs tabular-nums text-gray-400">
+                <p className="text-xs tabular-nums text-(--app-ink-3)">
                   {detail.progress.done} / {detail.progress.total} complete
                 </p>
               </div>
-              <div className="h-2 rounded-full bg-gray-950 overflow-hidden">
+              <div className="h-2 rounded-full bg-(--app-page) overflow-hidden">
                 <div
                   className="h-full bg-linear-to-r from-orange-500 to-emerald-500 transition-[width]"
                   style={{
@@ -369,8 +369,8 @@ export function BoardTasksView() {
                           : t.userStatus === "PENDING"
                           ? "bg-amber-500/5 border-amber-500/30"
                           : isLocked
-                          ? "bg-gray-950 border-gray-800 opacity-60"
-                          : "bg-gray-900 border-gray-800 hover:border-orange-500/40"
+                          ? "bg-(--app-page) border-(--app-line) opacity-60"
+                          : "bg-(--app-surface) border-(--app-line) hover:border-orange-500/40"
                       )}
                     >
                       {/* Status icon */}
@@ -380,9 +380,9 @@ export function BoardTasksView() {
                         ) : t.userStatus === "PENDING" ? (
                           <Circle className="w-5 h-5 text-amber-400 fill-amber-400/30" />
                         ) : isLocked ? (
-                          <Lock className="w-5 h-5 text-gray-600" />
+                          <Lock className="w-5 h-5 text-(--app-ink-3)" />
                         ) : (
-                          <Circle className="w-5 h-5 text-gray-500" />
+                          <Circle className="w-5 h-5 text-(--app-ink-3)" />
                         )}
                       </div>
 
@@ -390,7 +390,7 @@ export function BoardTasksView() {
                         <p className="text-sm font-semibold text-white truncate">
                           {t.title}
                         </p>
-                        <p className="text-[11px] text-gray-500">
+                        <p className="text-[11px] text-(--app-ink-3)">
                           {t.type.toLowerCase()}
                           {t.duration ? ` · ${t.duration} min` : ""}
                         </p>
@@ -409,13 +409,13 @@ export function BoardTasksView() {
                           Review
                         </span>
                       ) : isLocked ? (
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 shrink-0">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) shrink-0">
                           Locked
                         </span>
                       ) : (
                         <Link
                           href={route}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold shrink-0"
+                          className="px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold shrink-0"
                         >
                           Start →
                         </Link>
@@ -448,10 +448,10 @@ export function BoardTasksView() {
               className={cn(
                 "w-full py-3.5 rounded-xl font-bold text-sm inline-flex items-center justify-center gap-2 transition-colors",
                 detail.claimedAt || isExpired || isLocked
-                  ? "bg-gray-800 text-gray-500 cursor-default"
+                  ? "bg-(--app-surface-2) text-(--app-ink-3) cursor-default"
                   : detail.progress.allDone
                   ? "bg-linear-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white"
-                  : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                  : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
               )}
             >
               {claiming ? (
@@ -491,17 +491,17 @@ export function BoardTasksView() {
                 onClick={() => !claiming && setShowConfirm(false)}
               >
                 <div
-                  className="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-950 shadow-2xl"
+                  className="w-full max-w-sm rounded-2xl border border-(--app-line) bg-(--app-page) shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex items-center justify-between p-4 border-b border-gray-800">
+                  <div className="flex items-center justify-between p-4 border-b border-(--app-line)">
                     <h3 className="text-base font-bold text-white inline-flex items-center gap-2">
                       <Trophy className="w-5 h-5 text-amber-400" />
                       Confirm Board Claim
                     </h3>
                     <button
                       onClick={() => !claiming && setShowConfirm(false)}
-                      className="p-1 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white"
+                      className="p-1 rounded-md hover:bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
                       disabled={claiming}
                     >
                       <X className="w-4 h-4" />
@@ -509,7 +509,7 @@ export function BoardTasksView() {
                   </div>
 
                   <div className="p-4 space-y-3">
-                    <p className="text-sm text-gray-300">
+                    <p className="text-sm text-(--app-ink-2)">
                       Confirm completion of{" "}
                       <span className="font-semibold text-white">
                         {detail.board.title}
@@ -528,10 +528,10 @@ export function BoardTasksView() {
                           </p>
                         </div>
                       </div>
-                      <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/30 p-3 flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-indigo-400 shrink-0" />
+                      <div className="rounded-lg bg-(--app-cta)/10 border border-(--app-accent-edge)/30 p-3 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-(--app-accent-ink) shrink-0" />
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-indigo-400/80 font-bold">
+                          <p className="text-[10px] uppercase tracking-wider text-(--app-accent-ink)/80 font-bold">
                             XP
                           </p>
                           <p className="text-base font-bold text-white tabular-nums">
@@ -540,17 +540,17 @@ export function BoardTasksView() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-(--app-ink-3)">
                       This action cannot be undone — the board will be marked
                       as claimed.
                     </p>
                   </div>
 
-                  <div className="flex gap-2 p-4 border-t border-gray-800">
+                  <div className="flex gap-2 p-4 border-t border-(--app-line)">
                     <button
                       onClick={() => setShowConfirm(false)}
                       disabled={claiming}
-                      className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-semibold disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -594,7 +594,7 @@ export function BoardTasksView() {
           <Pin className="w-6 h-6 text-amber-400" />
           Board Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Themed challenges that bundle high-reward tasks — complete the board to
           claim the full reward.
         </p>
@@ -608,7 +608,7 @@ export function BoardTasksView() {
               "px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors shrink-0",
               !categoryFilter
                 ? "bg-(--app-bright) text-(--app-on-bright) border-(--app-bright)"
-                : "bg-gray-900 text-gray-300 border-gray-800 hover:border-gray-700"
+                : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:border-(--app-line)"
             )}
           >
             All
@@ -677,12 +677,12 @@ export function BoardTasksView() {
                   isLocked
                     ? "opacity-70 hover:border-amber-500/40 cursor-not-allowed"
                     : isExpired
-                    ? "opacity-60 hover:border-gray-700"
+                    ? "opacity-60 hover:border-(--app-line)"
                     : "hover:border-orange-500/40"
                 )}
               >
                 {b.thumbnailUrl ? (
-                  <div className="relative w-full h-24 bg-gray-800">
+                  <div className="relative w-full h-24 bg-(--app-surface-2)">
                     <SmartImage
                       src={b.thumbnailUrl}
                       alt=""
@@ -697,13 +697,13 @@ export function BoardTasksView() {
                   </div>
                 )}
                 {isLocked && (
-                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-gray-950/80 text-amber-300 border border-amber-500/40">
+                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-(--app-page)/80 text-amber-300 border border-amber-500/40">
                     <Lock className="w-3 h-3" />
                     Locked
                   </span>
                 )}
                 {!isLocked && isExpired && (
-                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-gray-950/80 text-gray-300 border border-gray-700">
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold bg-(--app-page)/80 text-(--app-ink-2) border border-(--app-line)">
                     Expired
                   </span>
                 )}
@@ -728,31 +728,31 @@ export function BoardTasksView() {
                     {b.name}
                   </p>
                   {b.description && (
-                    <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">
+                    <p className="text-xs text-(--app-ink-3) line-clamp-2 mt-0.5">
                       {b.description}
                     </p>
                   )}
                   <div className="grid grid-cols-3 gap-1.5 mt-3 text-[11px]">
-                    <div className="flex flex-col items-center p-1.5 rounded bg-gray-800">
+                    <div className="flex flex-col items-center p-1.5 rounded bg-(--app-surface-2)">
                       <Pin className="w-3 h-3 text-orange-400 mb-0.5" />
                       <span className="font-bold text-white tabular-nums">
                         {b.taskCount}
                       </span>
-                      <span className="text-gray-500">tasks</span>
+                      <span className="text-(--app-ink-3)">tasks</span>
                     </div>
-                    <div className="flex flex-col items-center p-1.5 rounded bg-gray-800">
+                    <div className="flex flex-col items-center p-1.5 rounded bg-(--app-surface-2)">
                       <Coins className="w-3 h-3 text-amber-400 mb-0.5" />
                       <span className="font-bold text-white tabular-nums">
                         {b.totalRewardPts}
                       </span>
-                      <span className="text-gray-500">pts</span>
+                      <span className="text-(--app-ink-3)">pts</span>
                     </div>
-                    <div className="flex flex-col items-center p-1.5 rounded bg-gray-800">
-                      <Users className="w-3 h-3 text-indigo-400 mb-0.5" />
+                    <div className="flex flex-col items-center p-1.5 rounded bg-(--app-surface-2)">
+                      <Users className="w-3 h-3 text-(--app-accent-ink) mb-0.5" />
                       <span className="font-bold text-white tabular-nums">
                         {b.participants}
                       </span>
-                      <span className="text-gray-500">claimed</span>
+                      <span className="text-(--app-ink-3)">claimed</span>
                     </div>
                   </div>
                   {isLocked && b.lockedBy && (
@@ -766,7 +766,7 @@ export function BoardTasksView() {
                       className={cn(
                         "mt-2 inline-flex items-center gap-1 text-[10px] font-semibold",
                         countdown.expired
-                          ? "text-gray-500"
+                          ? "text-(--app-ink-3)"
                           : countdown.urgent
                           ? "text-red-400"
                           : "text-amber-400"

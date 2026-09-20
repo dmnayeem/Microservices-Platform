@@ -137,7 +137,7 @@ export function OfferwallCatalogView() {
   if (locked) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-8 text-center text-sm text-gray-400">{locked}</div>
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-8 text-center text-sm text-(--app-ink-3)">{locked}</div>
       </div>
     );
   }
@@ -154,12 +154,12 @@ export function OfferwallCatalogView() {
         <Gift className="w-6 h-6 text-emerald-400" />
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-white">Offerwall</h1>
-          <p className="text-xs sm:text-sm text-gray-400">Complete offers step-by-step to earn points.</p>
+          <p className="text-xs sm:text-sm text-(--app-ink-3)">Complete offers step-by-step to earn points.</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <ScrollFadeRow innerClassName="flex gap-1.5 border-b border-gray-800 pb-px" ariaLabel="Offerwall tabs">
+      <ScrollFadeRow innerClassName="flex gap-1.5 border-b border-(--app-line) pb-px" ariaLabel="Offerwall tabs">
         {offerWalls.length > 0 && (
           <TabBtn active={tab === "featured"} onClick={() => setTab("featured")}>⭐ Featured walls</TabBtn>
         )}
@@ -181,10 +181,10 @@ export function OfferwallCatalogView() {
         <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {wallsForTab.map((w) => (
             <a key={w.id} href={w.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900 p-4 hover:border-emerald-600/50">
+              className="flex items-center justify-between rounded-xl border border-(--app-line) bg-(--app-surface) p-4 hover:border-emerald-600/50">
               <div>
                 <p className="font-semibold text-white">{w.provider.replace(/_/g, " ")}</p>
-                <p className="text-xs text-gray-500">{w.kind === "SURVEY" ? "Surveys" : "Offers"} · opens the partner wall</p>
+                <p className="text-xs text-(--app-ink-3)">{w.kind === "SURVEY" ? "Surveys" : "Offers"} · opens the partner wall</p>
               </div>
               <ExternalLink className="w-4 h-4 text-emerald-400" />
             </a>
@@ -198,16 +198,16 @@ export function OfferwallCatalogView() {
           {history === null ? (
             <div className="grid place-items-center py-8"><Loader2 className="w-5 h-5 animate-spin text-emerald-400" /></div>
           ) : history.length === 0 ? (
-            <p className="text-sm text-gray-500">No completions yet.</p>
+            <p className="text-sm text-(--app-ink-3)">No completions yet.</p>
           ) : history.map((h) => (
-            <div key={String(h.id)} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 p-3">
+            <div key={String(h.id)} className="flex items-center justify-between rounded-lg border border-(--app-line) bg-(--app-surface) p-3">
               <div>
                 <p className="text-sm font-medium text-white">{String(h.title)}</p>
-                <p className="text-[11px] text-gray-500">{new Date(String(h.createdAt)).toLocaleDateString()}</p>
+                <p className="text-[11px] text-(--app-ink-3)">{new Date(String(h.createdAt)).toLocaleDateString()}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-bold text-emerald-400">+{Number(h.points)} pts</p>
-                <p className="text-[11px] text-gray-500">{String(h.status)}</p>
+                <p className="text-[11px] text-(--app-ink-3)">{String(h.status)}</p>
               </div>
             </div>
           ))}
@@ -217,14 +217,14 @@ export function OfferwallCatalogView() {
       {/* Offer cards for a category */}
       {tab !== "featured" && tab !== "surveys" && tab !== "history" && (
         <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {catOffers.length === 0 && <p className="text-sm text-gray-500">No offers here yet.</p>}
+          {catOffers.length === 0 && <p className="text-sm text-(--app-ink-3)">No offers here yet.</p>}
           {catOffers.map((o) => (
             <button key={o.id} onClick={() => openDetail(o)} disabled={o.locked || o.done}
               className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
                 o.done ? "border-emerald-600/40 bg-emerald-500/5" :
-                o.locked ? "border-gray-800 bg-gray-900/50 opacity-70 cursor-not-allowed" :
-                "border-gray-800 bg-gray-900 hover:border-emerald-600/50"}`}>
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-gray-800 overflow-hidden">
+                o.locked ? "border-(--app-line) bg-(--app-surface)/50 opacity-70 cursor-not-allowed" :
+                "border-(--app-line) bg-(--app-surface) hover:border-emerald-600/50"}`}>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-(--app-surface-2) overflow-hidden">
                 {o.imageUrl ? <SmartImage src={o.imageUrl} alt={o.title} width={48} height={48} className="h-12 w-12 object-cover" /> : <Gift className="w-5 h-5 text-emerald-400" />}
               </span>
               <div className="min-w-0 flex-1">
@@ -233,7 +233,7 @@ export function OfferwallCatalogView() {
               </div>
               {o.done ? <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" /> :
                o.pending ? <Clock className="w-5 h-5 text-amber-400 shrink-0" /> :
-               o.locked ? <Lock className="w-4 h-4 text-gray-600 shrink-0" /> : null}
+               o.locked ? <Lock className="w-4 h-4 text-(--app-ink-3) shrink-0" /> : null}
             </button>
           ))}
         </div>
@@ -242,10 +242,10 @@ export function OfferwallCatalogView() {
       {/* Offer detail */}
       {detail && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4" onClick={() => setDetail(null)}>
-          <div className="mx-auto my-6 w-full max-w-lg rounded-xl border border-gray-800 bg-gray-900 p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setDetail(null)} className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"><ArrowLeft className="w-4 h-4" /> Back</button>
+          <div className="mx-auto my-6 w-full max-w-lg rounded-xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setDetail(null)} className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"><ArrowLeft className="w-4 h-4" /> Back</button>
             <div className="flex items-center gap-3">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gray-800 overflow-hidden">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-(--app-surface-2) overflow-hidden">
                 {detail.imageUrl ? <SmartImage src={detail.imageUrl} alt={detail.title} width={56} height={56} className="h-14 w-14 object-cover" /> : <Gift className="w-6 h-6 text-emerald-400" />}
               </span>
               <div>
@@ -253,14 +253,14 @@ export function OfferwallCatalogView() {
                 <p className="text-sm font-bold text-emerald-400 inline-flex items-center gap-1"><Coins className="w-3.5 h-3.5" /> {detail.points} pts</p>
               </div>
             </div>
-            {detail.description && <p className="text-sm text-gray-400">{detail.description}</p>}
+            {detail.description && <p className="text-sm text-(--app-ink-3)">{detail.description}</p>}
 
             {detail.instructions.length > 0 && (
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">How it works</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">How it works</p>
                 <ol className="space-y-1.5">
                   {detail.instructions.map((s, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-gray-300">
+                    <li key={i} className="flex gap-2 text-sm text-(--app-ink-2)">
                       <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-500/15 text-[11px] font-bold text-emerald-400">{i + 1}</span>
                       {s}
                     </li>
@@ -282,7 +282,7 @@ export function OfferwallCatalogView() {
                 </a>
                 {start.completionMode === "PROOF" ? (
                   <>
-                    <p className="text-xs text-gray-400">Finished? Upload a screenshot as proof.</p>
+                    <p className="text-xs text-(--app-ink-3)">Finished? Upload a screenshot as proof.</p>
                     <ProofImageUpload value={screenshot} onChange={setScreenshot} />
                     <button onClick={submitProof} disabled={busy || !screenshot}
                       className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50">
@@ -309,7 +309,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   return (
     <button onClick={onClick}
       className={`shrink-0 whitespace-nowrap px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
-        active ? "border-emerald-500 text-white" : "border-transparent text-gray-400 hover:text-white"}`}>
+        active ? "border-emerald-500 text-white" : "border-transparent text-(--app-ink-3) hover:text-white"}`}>
       {children}
     </button>
   );

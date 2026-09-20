@@ -90,7 +90,7 @@ export function SocialTasksView({
           {icon ?? <Share2 className="w-6 h-6 text-cyan-400" />}
           {heading}
         </h1>
-        <p className="text-gray-400 text-sm mt-1">{subheading}</p>
+        <p className="text-(--app-ink-3) text-sm mt-1">{subheading}</p>
       </div>
 
       <FilterChips
@@ -114,7 +114,7 @@ export function SocialTasksView({
               "shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors",
               platformFilter === "ALL"
                 ? "bg-(--app-bright) text-(--app-on-bright)"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
             )}
           >
             All
@@ -127,7 +127,7 @@ export function SocialTasksView({
                 "shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors",
                 platformFilter === p.key
                   ? cn(p.brandColor, "text-white ring-2 ring-white/20")
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
               )}
             >
               <BrandIcon brand={p.key} fallback={p.emoji} className="w-3.5 h-3.5" />
@@ -173,7 +173,7 @@ export function SocialTasksView({
                     {t.title}
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/15 text-indigo-300">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-(--app-cta)/15 text-(--app-accent-ink)">
                       {t.items.length} action{t.items.length > 1 ? "s" : ""}
                     </span>
                     {t.items.slice(0, 3).map((it, i) => {
@@ -181,14 +181,14 @@ export function SocialTasksView({
                       return (
                         <span
                           key={i}
-                          className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-800 text-gray-300"
+                          className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-(--app-surface-2) text-(--app-ink-2)"
                         >
                           {def ? `${def.emoji} ${def.label}` : it.action}
                         </span>
                       );
                     })}
                     {t.items.length > 3 && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-(--app-surface-2) text-(--app-ink-3)">
                         +{t.items.length - 3}
                       </span>
                     )}
@@ -206,13 +206,13 @@ export function SocialTasksView({
               </div>
               <div className="mt-auto pt-3">
                 {t.locked ? (
-                  <span className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-gray-800 text-gray-500 text-xs font-bold cursor-not-allowed">
+                  <span className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) text-xs font-bold cursor-not-allowed">
                     🔒 Locked
                   </span>
                 ) : (
                   <Link
                     href={`/social-tasks/${t.id}`}
-                    className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+                    className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
                   >
                     {status === "available" ? "Start task" : "View task"}
                     <ArrowRight className="w-3.5 h-3.5" />

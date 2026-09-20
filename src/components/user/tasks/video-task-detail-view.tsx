@@ -205,7 +205,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
         <Loader2 className="w-7 h-7 animate-spin text-rose-400" />
-        <p className="text-sm text-gray-500">Loading video task…</p>
+        <p className="text-sm text-(--app-ink-3)">Loading video task…</p>
       </div>
     );
   }
@@ -215,7 +215,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
       <div className="space-y-4">
         <Link
           href="/video-tasks"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to video tasks
@@ -242,14 +242,14 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
     <div className="space-y-5">
       <Link
         href="/video-tasks"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to video tasks
       </Link>
 
       {/* Hero */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) overflow-hidden">
         {task.thumbnailUrl && (
           <div className="relative w-full h-40 sm:h-52">
             <SmartImage
@@ -266,7 +266,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
             <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400">
               <VideoIcon className="w-5 h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               Video Task
             </span>
           </div>
@@ -274,7 +274,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
             {task.title}
           </h1>
           {task.description && (
-            <p className="text-sm text-gray-300 whitespace-pre-wrap">
+            <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
               {task.description}
             </p>
           )}
@@ -309,11 +309,11 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
       {/* YouTube-style engagement requirements — shown upfront so the user
           knows what's needed before starting. */}
       {engagementSteps(cfg).length > 0 && (
-        <section className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4">
-          <h2 className="text-[11px] uppercase tracking-wider text-indigo-300 font-bold mb-2">
+        <section className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-4">
+          <h2 className="text-[11px] uppercase tracking-wider text-(--app-accent-ink) font-bold mb-2">
             This task requires
           </h2>
-          <ul className="space-y-1.5 text-sm text-gray-200">
+          <ul className="space-y-1.5 text-sm text-(--app-ink)">
             {watchSeconds > 0 && (
               <li>▶️ Watch {formatDuration(watchSeconds)}</li>
             )}
@@ -331,7 +331,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
       {/* Instruction video (separate from the task's main video) */}
       {task.instructionVideoUrl && (
         <section className="space-y-2">
-          <h2 className="text-[11px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1.5">
+          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
             <VideoIcon className="w-3.5 h-3.5" />
             Instruction video
           </h2>
@@ -439,7 +439,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
               </div>
             )}
 
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-(--app-ink-3) mt-3">
               {watchSeconds > 0 ? (
                 <>
                   Stay on the player until the timer finishes. The video
@@ -456,7 +456,7 @@ export function VideoTaskDetailView({ taskId }: { taskId: string }) {
           <div className="flex flex-col sm:flex-row gap-2">
             <Link
               href="/video-tasks"
-              className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold text-center transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold text-center transition-colors"
             >
               Cancel
             </Link>

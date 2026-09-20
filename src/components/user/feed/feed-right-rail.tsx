@@ -416,7 +416,7 @@ export function FeedRightRail({
                   {it.done ? (
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-(--app-in)" />
                   ) : (
-                    <Circle className="w-3.5 h-3.5 text-(--app-glyph) shrink-0" />
+                    <Circle className="w-3.5 h-3.5 text-(--app-ink-3) shrink-0" />
                   )}
                   <span
                     className={cn(
@@ -514,7 +514,7 @@ export function FeedRightRail({
                   <span
                     className={cn(
                       "w-4 text-center text-xs font-bold tabular-nums",
-                      rankTone[i] ?? "text-(--app-glyph)"
+                      rankTone[i] ?? "text-(--app-ink-3)"
                     )}
                   >
                     {i < 3 ? <Crown className="w-3.5 h-3.5 inline" /> : i + 1}

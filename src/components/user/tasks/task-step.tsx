@@ -54,8 +54,8 @@ export function TaskStep({
             done
               ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
               : locked
-                ? "border-gray-800 bg-gray-900 text-gray-600"
-                : "border-indigo-500/40 bg-indigo-500/15 text-indigo-300"
+                ? "border-(--app-line) bg-(--app-surface) text-(--app-ink-3)"
+                : "border-(--app-accent-edge)/40 bg-(--app-cta)/15 text-(--app-accent-ink)"
           )}
         >
           {done ? (
@@ -70,7 +70,7 @@ export function TaskStep({
           <span
             className={cn(
               "mt-1 w-px flex-1",
-              done ? "bg-emerald-500/25" : "bg-gray-800"
+              done ? "bg-emerald-500/25" : "bg-(--app-surface-2)"
             )}
           />
         )}
@@ -84,13 +84,13 @@ export function TaskStep({
             <h3
               className={cn(
                 "text-sm font-bold leading-tight",
-                locked ? "text-gray-500" : "text-white"
+                locked ? "text-(--app-ink-3)" : "text-white"
               )}
             >
               {title}
             </h3>
             {hint && (
-              <p className="mt-0.5 text-xs leading-relaxed text-gray-400">
+              <p className="mt-0.5 text-xs leading-relaxed text-(--app-ink-3)">
                 {hint}
               </p>
             )}
@@ -100,7 +100,7 @@ export function TaskStep({
 
         {locked ? (
           lockedNote && (
-            <p className="mt-2 text-xs text-gray-500">{lockedNote}</p>
+            <p className="mt-2 text-xs text-(--app-ink-3)">{lockedNote}</p>
           )
         ) : (
           children && <div className="mt-2.5 space-y-2.5">{children}</div>
@@ -136,18 +136,18 @@ export function TaskAside({
   return (
     <details
       open={defaultOpen}
-      className="group rounded-xl border border-gray-800 bg-gray-900/60"
+      className="group rounded-xl border border-(--app-line) bg-(--app-surface)/60"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-white [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-(--app-ink-3) hover:text-white [&::-webkit-details-marker]:hidden">
         {title}
-        <span className="text-[10px] font-semibold normal-case tracking-normal text-gray-500 group-open:hidden">
+        <span className="text-[10px] font-semibold normal-case tracking-normal text-(--app-ink-3) group-open:hidden">
           Show
         </span>
-        <span className="hidden text-[10px] font-semibold normal-case tracking-normal text-gray-500 group-open:inline">
+        <span className="hidden text-[10px] font-semibold normal-case tracking-normal text-(--app-ink-3) group-open:inline">
           Hide
         </span>
       </summary>
-      <div className="border-t border-gray-800 px-4 py-3">{children}</div>
+      <div className="border-t border-(--app-line) px-4 py-3">{children}</div>
     </details>
   );
 }

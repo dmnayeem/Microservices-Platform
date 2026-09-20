@@ -59,7 +59,7 @@ export function QuizTasksView() {
           <Brain className="w-6 h-6 text-purple-400" />
           Quiz Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Answer quiz questions against the clock — hit the minimum score to earn
           your reward.
         </p>
@@ -111,18 +111,18 @@ export function QuizTasksView() {
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-1.5 text-[11px]">
-                <span className="inline-flex items-center gap-1 text-gray-400">
+                <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                   <ListChecks className="w-3 h-3" />
                   {q.questionCount} Qs
                 </span>
-                <span className="inline-flex items-center gap-1 text-gray-400">
+                <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                   <Clock className="w-3 h-3" />
                   {q.timeLimit}m
                 </span>
                 <span className="inline-flex items-center gap-1 text-amber-400 font-bold">
                   <Coins className="w-3 h-3" />+{q.pointsReward}
                 </span>
-                <span className="inline-flex items-center gap-1 text-gray-400">
+                <span className="inline-flex items-center gap-1 text-(--app-ink-3)">
                   <Trophy className="w-3 h-3" />
                   Min {q.minScore}%
                 </span>
@@ -131,8 +131,8 @@ export function QuizTasksView() {
                 className={cn(
                   "mt-3 w-full py-2 rounded-lg text-xs font-bold text-center",
                   q.locked
-                    ? "bg-gray-800 text-gray-500"
-                    : "bg-indigo-500 text-white"
+                    ? "bg-(--app-surface-2) text-(--app-ink-3)"
+                    : "bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
                 {q.locked ? "🔒 Locked" : "Start Quiz →"}

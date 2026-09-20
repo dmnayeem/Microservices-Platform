@@ -30,17 +30,17 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
+      <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3 space-y-2">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={2}
           maxLength={2000}
           placeholder="Take a note. Markdown is fine."
-          className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
         />
         <div className="flex items-center gap-2">
-          <label className="text-[11px] text-gray-500 uppercase font-bold">
+          <label className="text-[11px] text-(--app-ink-3) uppercase font-bold">
             At
           </label>
           <input
@@ -48,14 +48,14 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
             min={0}
             value={position}
             onChange={(e) => setPosition(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1 bg-gray-950 border border-gray-700 rounded text-xs text-white tabular-nums"
+            className="w-20 px-2 py-1 bg-(--app-page) border border-(--app-line) rounded text-xs text-white tabular-nums"
           />
-          <span className="text-[11px] text-gray-500">seconds</span>
+          <span className="text-[11px] text-(--app-ink-3)">seconds</span>
           <button
             type="button"
             onClick={add}
             disabled={!draft.trim()}
-            className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-30"
+            className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold disabled:opacity-30"
           >
             <Plus className="w-3.5 h-3.5" />
             Add note
@@ -75,10 +75,10 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
           {notes.map((n) => (
             <li
               key={n.id}
-              className="rounded-lg border border-gray-800 bg-gray-950 p-3"
+              className="rounded-lg border border-(--app-line) bg-(--app-page) p-3"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">
+                <span className="text-[10px] text-(--app-accent-ink) font-bold uppercase tracking-wider">
                   @ {formatSeconds(n.position)}
                 </span>
                 <button
@@ -89,7 +89,7 @@ export function LessonNotesPanel({ notes, onChange }: Props) {
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-              <p className="text-sm text-gray-200 mt-1 whitespace-pre-wrap">
+              <p className="text-sm text-(--app-ink) mt-1 whitespace-pre-wrap">
                 {n.body}
               </p>
             </li>

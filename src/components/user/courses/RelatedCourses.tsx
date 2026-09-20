@@ -31,7 +31,7 @@ export function RelatedCourses({ related }: { related: Related[] }) {
               href={href}
               className="card card-interactive overflow-hidden group"
             >
-              <div className="aspect-video bg-gray-950 relative">
+              <div className="aspect-video bg-(--app-page) relative">
                 {r.thumbnail ? (
                   <Image
                     src={r.thumbnail}
@@ -41,16 +41,16 @@ export function RelatedCourses({ related }: { related: Related[] }) {
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-(--app-glyph)">
+                  <div className="w-full h-full flex items-center justify-center text-(--app-ink-3)">
                     <GraduationCap className="w-10 h-10" />
                   </div>
                 )}
               </div>
               <div className="p-3">
-                <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-indigo-200">
+                <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-(--app-accent-ink)">
                   {r.title}
                 </p>
-                <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
+                <div className="mt-2 flex items-center gap-3 text-xs text-(--app-ink-3)">
                   {r.avgRating > 0 && (
                     <span className="inline-flex items-center gap-0.5">
                       <Star className="w-3 h-3 fill-amber-300 text-amber-300" />

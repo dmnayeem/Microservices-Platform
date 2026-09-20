@@ -55,7 +55,7 @@ export function AnalyticsPanel({
   if (!data || data.totals.posts === 0) {
     return (
       <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
-        <BarChart3 className="w-10 h-10 text-(--app-glyph) mx-auto mb-2" />
+        <BarChart3 className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
         <p className="text-sm text-gray-400 font-semibold">No analytics yet</p>
         <p className="text-xs text-gray-600 mt-1">
           Once posts are published, view + engagement insights will appear here.

@@ -81,18 +81,18 @@ function CopyField({ label, value }: { label: string; value: string }) {
   };
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">
+      <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
         {label}
       </p>
       <button
         onClick={copy}
-        className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 hover:border-indigo-500/40 transition-colors flex items-center gap-2 text-left"
+        className="w-full px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 transition-colors flex items-center gap-2 text-left"
       >
         <span className="flex-1 min-w-0 text-sm text-white font-mono truncate">{value}</span>
         {copied ? (
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
         ) : (
-          <Copy className="w-4 h-4 text-gray-500 shrink-0" />
+          <Copy className="w-4 h-4 text-(--app-ink-3) shrink-0" />
         )}
       </button>
     </div>
@@ -291,15 +291,15 @@ export function ProxyTasksView() {
           <Globe className="w-6 h-6 text-violet-400" />
           Proxy Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Stay connected to a geo-targeted proxy session to earn — rewards credit
           once you complete the target duration.
         </p>
       </div>
 
-      <div className="rounded-xl bg-indigo-500/5 border border-indigo-500/20 p-3 flex items-start gap-2">
-        <ShieldCheck className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
-        <p className="text-xs text-indigo-300">
+      <div className="rounded-xl bg-(--app-cta)/5 border border-(--app-accent-edge)/20 p-3 flex items-start gap-2">
+        <ShieldCheck className="w-4 h-4 text-(--app-accent-ink) mt-0.5 shrink-0" />
+        <p className="text-xs text-(--app-accent-ink)">
           Connect to a proxy server for the listed duration to earn rewards.
           Credentials expire after 3 minutes — reconnect to refresh. Submit only
           becomes available once you&apos;ve stayed connected for at least 80% of
@@ -331,7 +331,7 @@ export function ProxyTasksView() {
                   <p className="text-sm font-semibold text-white truncate">
                     {t.title}
                   </p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-(--app-ink-3)">
                     {t.country} · {t.duration} min session
                   </p>
                 </div>
@@ -342,7 +342,7 @@ export function ProxyTasksView() {
               <button
                 onClick={() => !t.locked && startTask(t)}
                 disabled={starting || t.locked}
-                className="mt-3 w-full py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+                className="mt-3 w-full py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
               >
                 {t.locked ? (
                   <>🔒 Locked</>
@@ -382,14 +382,14 @@ export function ProxyTasksView() {
                     reset();
                   }
                 }}
-                className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
               >
                 {connectedAt ? "Disconnect" : "Cancel"}
               </button>
               <button
                 disabled={submitting || !minTimeMet || !connectedAt}
                 onClick={submit}
-                className="flex-1 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -407,12 +407,12 @@ export function ProxyTasksView() {
             {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
             <TaskInstructions
               value={active.instructions}
-              className="rounded-lg bg-gray-950 border border-gray-800 p-3"
+              className="rounded-lg bg-(--app-page) border border-(--app-line) p-3"
             />
 
             {active.instructionVideoUrl && (
               <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1.5">
+                <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
                   <VideoIcon className="w-3 h-3" />
                   Instruction video
                 </p>
@@ -426,17 +426,17 @@ export function ProxyTasksView() {
             )}
 
             {/* Session timer */}
-            <div className="rounded-2xl bg-gray-800 p-4">
+            <div className="rounded-2xl bg-(--app-surface-2) p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 inline-flex items-center gap-1">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) inline-flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Session Time
                 </p>
-                <p className="text-[10px] text-gray-500 tabular-nums">
+                <p className="text-[10px] text-(--app-ink-3) tabular-nums">
                   {fmt(elapsedSec)} / {fmt(targetSec)}
                 </p>
               </div>
-              <div className="relative h-2 rounded-full bg-gray-900 overflow-hidden">
+              <div className="relative h-2 rounded-full bg-(--app-surface) overflow-hidden">
                 <div
                   className="absolute top-0 left-0 h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-[width]"
                   style={{ width: `${sessionPct}%` }}
@@ -472,9 +472,9 @@ export function ProxyTasksView() {
             )}
 
             {creds && (
-              <div className="space-y-3 rounded-xl bg-gray-950 border border-gray-800 p-3">
+              <div className="space-y-3 rounded-xl bg-(--app-page) border border-(--app-line) p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 inline-flex items-center gap-1">
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-(--app-ink-3) inline-flex items-center gap-1">
                     <KeyRound className="w-3 h-3" />
                     Proxy Credentials
                   </p>
@@ -493,8 +493,8 @@ export function ProxyTasksView() {
                   <CopyField label="Username" value={creds.username} />
                   <CopyField label="Password" value={creds.password} />
                 </div>
-                <p className="text-[10px] text-gray-500">
-                  Protocol: <span className="font-mono text-gray-300">{creds.protocol}</span> · Region: <span className="font-mono text-gray-300">{active.country}</span>
+                <p className="text-[10px] text-(--app-ink-3)">
+                  Protocol: <span className="font-mono text-(--app-ink-2)">{creds.protocol}</span> · Region: <span className="font-mono text-(--app-ink-2)">{active.country}</span>
                 </p>
               </div>
             )}
@@ -508,12 +508,12 @@ export function ProxyTasksView() {
             )}
 
             {/* Proof submission */}
-            <div className="space-y-3 pt-3 border-t border-gray-800">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <div className="space-y-3 pt-3 border-t border-(--app-line)">
+              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                 Submit your proof
               </p>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                   Proof URL <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -521,12 +521,12 @@ export function ProxyTasksView() {
                   value={proofUrl}
                   onChange={(e) => setProofUrl(e.target.value)}
                   placeholder="https://ipinfo.io/json or session log URL"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                  Screenshot <span className="text-gray-500">(optional)</span>
+                <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
+                  Screenshot <span className="text-(--app-ink-3)">(optional)</span>
                 </label>
                 <ProofImageUpload
                   value={screenshotUrl}

@@ -141,20 +141,20 @@ export function LessonVideoPlayer({
   );
 
   return (
-    <div className="relative bg-black rounded-2xl border border-gray-800 overflow-hidden">
+    <div className="relative bg-black rounded-2xl border border-(--app-line) overflow-hidden">
       <div
         ref={containerRef}
         className="relative pt-[56.25%]"
         onContextMenu={(e) => e.preventDefault()}
       >
         {error ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400 p-4 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-(--app-ink-3) p-4 text-center">
             <AlertCircle className="w-6 h-6 text-rose-400" />
             <p className="text-sm">Couldn&apos;t load this video. Refresh, or make sure you&apos;re enrolled.</p>
           </div>
         ) : !src ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
+            <Loader2 className="w-6 h-6 text-(--app-ink-3) animate-spin" />
           </div>
         ) : (
           <ReactPlayer
@@ -183,9 +183,9 @@ export function LessonVideoPlayer({
           </ReactPlayer>
         )}
       </div>
-      <div className="flex items-center justify-end gap-2 p-2 border-t border-gray-800 bg-gray-950">
-        <Gauge className="w-3.5 h-3.5 text-gray-500" />
-        <span className="text-[10px] text-gray-500 uppercase font-bold mr-1">
+      <div className="flex items-center justify-end gap-2 p-2 border-t border-(--app-line) bg-(--app-page)">
+        <Gauge className="w-3.5 h-3.5 text-(--app-ink-3)" />
+        <span className="text-[10px] text-(--app-ink-3) uppercase font-bold mr-1">
           Speed
         </span>
         {SPEEDS.map((s) => (
@@ -196,8 +196,8 @@ export function LessonVideoPlayer({
             className={
               "px-2 py-0.5 rounded text-[11px] font-bold tabular-nums " +
               (speed === s
-                ? "bg-indigo-500 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-800")
+                ? "bg-(--app-cta) text-(--app-on-cta)"
+                : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)")
             }
           >
             {s}x

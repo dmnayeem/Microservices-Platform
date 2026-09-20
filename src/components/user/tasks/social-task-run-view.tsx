@@ -618,7 +618,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
+        <Loader2 className="w-6 h-6 text-(--app-ink-3) animate-spin" />
       </div>
     );
   }
@@ -641,7 +641,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         <p className="text-white font-semibold">This social task isn&apos;t available.</p>
         <Link
           href="/social-tasks"
-          className="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
+          className="inline-flex items-center gap-1 text-sm text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           <ArrowLeft className="w-4 h-4" /> Back to social tasks
         </Link>
@@ -679,7 +679,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           {verifyState === "approved" ? (
             <>
               <h1 className="text-xl font-bold text-emerald-400">Approved!</h1>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-(--app-ink-3) mt-1">
                 Your link was checked automatically.{" "}
                 <span className="text-emerald-400 font-semibold">
                   +{task.pointsReward.toLocaleString()} pts
@@ -690,7 +690,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           ) : verifyState === "checking" ? (
             <>
               <h1 className="text-xl font-bold text-white">Submitted!</h1>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-(--app-ink-3) mt-1">
                 Checking your link now — this takes up to a minute or two.{" "}
                 <span className="text-amber-400 font-semibold">
                   +{task.pointsReward.toLocaleString()} pts
@@ -701,7 +701,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           ) : (
             <>
               <h1 className="text-xl font-bold text-white">Submitted!</h1>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-(--app-ink-3) mt-1">
                 Your proof is awaiting verification.{" "}
                 <span className="text-amber-400 font-semibold">
                   +{task.pointsReward.toLocaleString()} pts
@@ -715,13 +715,13 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
           <Link
             href="/social-tasks"
-            className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+            className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             <ArrowLeft className="w-4 h-4" /> Back to social tasks
           </Link>
           <Link
             href="/social-tasks?tab=submitted"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold"
           >
             View my submissions
           </Link>
@@ -769,13 +769,13 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     <div className="max-w-2xl mx-auto space-y-4 pb-[calc(7rem+var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:pb-[calc(7rem+var(--anchor-ad-h,0px))]">
       <Link
         href="/social-tasks"
-        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to social tasks
       </Link>
 
       {/* Header */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <div
             className={cn(
@@ -786,21 +786,21 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             <BrandIcon brand={platform.key} fallback={platform.emoji} className="w-6 h-6" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               {platform.label} · Social Task
             </p>
             <h1 className="text-lg sm:text-xl font-bold text-white mt-0.5">
               {task.title}
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/15 text-indigo-300">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-(--app-cta)/15 text-(--app-accent-ink)">
                 {total} action{total > 1 ? "s" : ""}
               </span>
               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400">
                 +{task.pointsReward.toLocaleString()} pts
               </span>
               {task.difficulty && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-800 text-gray-300 capitalize">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-(--app-surface-2) text-(--app-ink-2) capitalize">
                   {task.difficulty.toLowerCase()}
                 </span>
               )}
@@ -811,12 +811,12 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         {/* Progress */}
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-gray-400 font-medium">Your progress</span>
+            <span className="text-(--app-ink-3) font-medium">Your progress</span>
             <span className="text-white font-bold tabular-nums">
               {readyCount} / {total} ready
             </span>
           </div>
-          <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+          <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
             <div
               className="h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-[width] duration-300"
               style={{ width: `${pct}%` }}
@@ -838,7 +838,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
         <div className="space-y-2">
           {task.description && (
             <TaskAside title="About this task">
-              <p className="whitespace-pre-wrap text-sm text-gray-300">
+              <p className="whitespace-pre-wrap text-sm text-(--app-ink-2)">
                 {task.description}
               </p>
             </TaskAside>
@@ -889,20 +889,20 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             <ChevronDown className="w-4 h-4 text-emerald-300 shrink-0" />
           </button>
         ) : (
-          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 flex flex-col items-center text-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-indigo-500/20 grid place-items-center">
-              <PlayCircle className="w-8 h-8 text-indigo-300" />
+          <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-4 flex flex-col items-center text-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-(--app-cta)/20 grid place-items-center">
+              <PlayCircle className="w-8 h-8 text-(--app-accent-ink)" />
             </div>
             <div>
               <p className="text-sm font-bold text-white">Watch the video first</p>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-(--app-ink-3) mt-0.5">
                 Watch {primaryVideo.watchSeconds}s to unlock the steps below.
               </p>
             </div>
             <button
               type="button"
               onClick={openPrimaryVideo}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
             >
               <Play className="w-4 h-4" />
               Play video
@@ -958,13 +958,13 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           return (
             <div
               key={idx}
-              className="flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900/60 px-3 py-2.5 opacity-60"
+              className="flex items-center gap-2 rounded-xl border border-(--app-line) bg-(--app-surface)/60 px-3 py-2.5 opacity-60"
             >
-              <Lock className="w-4 h-4 text-gray-500 shrink-0" />
-              <span className="text-sm text-gray-400 truncate min-w-0">
+              <Lock className="w-4 h-4 text-(--app-ink-3) shrink-0" />
+              <span className="text-sm text-(--app-ink-3) truncate min-w-0">
                 {def ? `${def.emoji} ${def.label}` : item.action}
               </span>
-              <span className="ml-auto text-[10px] font-semibold uppercase text-gray-600 shrink-0">
+              <span className="ml-auto text-[10px] font-semibold uppercase text-(--app-ink-3) shrink-0">
                 Locked
               </span>
             </div>
@@ -974,12 +974,12 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
           <div
             key={idx}
             className={cn(
-              "rounded-xl border bg-gray-900 p-4 space-y-3 transition-colors",
+              "rounded-xl border bg-(--app-surface) p-4 space-y-3 transition-colors",
               !unlocked
-                ? "border-gray-800 opacity-60"
+                ? "border-(--app-line) opacity-60"
                 : ready
                   ? "border-emerald-500/40"
-                  : "border-gray-800"
+                  : "border-(--app-line)"
             )}
           >
             <div className="flex items-center gap-2">
@@ -987,10 +987,10 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                 className={cn(
                   "w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0",
                   !unlocked
-                    ? "bg-gray-800 text-gray-500"
+                    ? "bg-(--app-surface-2) text-(--app-ink-3)"
                     : ready
                       ? "bg-emerald-500 text-white"
-                      : "bg-indigo-500/20 text-indigo-300"
+                      : "bg-(--app-cta)/20 text-(--app-accent-ink)"
                 )}
               >
                 {!unlocked ? (
@@ -1010,7 +1010,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             </div>
 
             {!unlocked ? (
-              <p className="text-xs text-gray-500 flex items-center gap-1.5">
+              <p className="text-xs text-(--app-ink-3) flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 shrink-0" />
                 Complete step {idx} first to unlock this action.
               </p>
@@ -1033,7 +1033,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                       title: def?.label ?? "Watch",
                     })
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
                 >
                   <PlayCircle className="w-3.5 h-3.5" />
                   Watch {item.watchSeconds}s to unlock
@@ -1045,7 +1045,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   href={item.targetUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                  className="inline-flex items-center gap-1 text-xs text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                 >
                   <ExternalLink className="w-3 h-3" />
                   Open target
@@ -1063,7 +1063,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   {def?.label?.toLowerCase() ?? "post"}
                 </p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-emerald-500/40 text-emerald-300 font-mono text-sm tracking-widest text-center select-all">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-(--app-surface) border border-emerald-500/40 text-emerald-300 font-mono text-sm tracking-widest text-center select-all">
                     {verifyCodes[idx]}
                   </code>
                   <span className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 shrink-0">
@@ -1148,7 +1148,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                 reviewer something to compare the live post against. */}
             {(item.aiMode === "diy" || item.aiMode === "both") && (
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                <label className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                   What you posted (optional)
                 </label>
                 <textarea
@@ -1161,7 +1161,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                   }
                   rows={3}
                   placeholder="Paste the text you published — it helps us approve you faster."
-                  className="w-full px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 text-xs text-white placeholder-gray-600 resize-y"
+                  className="w-full px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-xs text-white placeholder-gray-600 resize-y"
                 />
               </div>
             )}
@@ -1190,14 +1190,14 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             )}
 
             {/* Proof inputs */}
-            <div className="space-y-3 pt-1 border-t border-gray-800">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <div className="space-y-3 pt-1 border-t border-(--app-line)">
+              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
                 Submit your proof
               </p>
 
               {req.url && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                     Proof URL <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -1205,9 +1205,9 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                     value={proof.url}
                     onChange={(e) => setProof(idx, { url: e.target.value })}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
                   />
-                  <p className="text-[10px] text-gray-500 mt-1">
+                  <p className="text-[10px] text-(--app-ink-3) mt-1">
                     URL of your post / comment / share / profile.
                   </p>
                 </div>
@@ -1215,7 +1215,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
               {req.screenshot && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                     Screenshot <span className="text-red-400">*</span>
                   </label>
                   <ProofImageUpload
@@ -1227,7 +1227,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
 
               {req.username && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                     Your {platform.label} username{" "}
                     <span className="text-red-400">*</span>
                   </label>
@@ -1235,7 +1235,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                     value={proof.username}
                     onChange={(e) => setProof(idx, { username: e.target.value })}
                     placeholder="@yourhandle"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
                   />
                 </div>
               )}
@@ -1264,10 +1264,10 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
        * before the nav's observer has run; `md:` still pins the desktop case,
        * where the nav is display:none and measures 0 anyway. */}
       {total > 0 && (
-        <div className="fixed inset-x-0 z-30 border-t border-gray-800 bg-gray-950/95 backdrop-blur px-4 py-3 bottom-[calc(var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:bottom-[var(--anchor-ad-h,0px)]">
+        <div className="fixed inset-x-0 z-30 border-t border-(--app-line) bg-(--app-page)/95 backdrop-blur px-4 py-3 bottom-[calc(var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:bottom-[var(--anchor-ad-h,0px)]">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 {readyCount}/{total} ready ·{" "}
                 <span className="text-amber-400 font-bold">
                   +{task.pointsReward.toLocaleString()} pts
@@ -1277,7 +1277,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
             <button
               onClick={submit}
               disabled={busy}
-              className="inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

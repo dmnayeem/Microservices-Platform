@@ -127,7 +127,7 @@ export function DailyMissionView() {
       <div className="space-y-4">
         <header>
           <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-            <Target className="w-6 h-6 text-indigo-400" />
+            <Target className="w-6 h-6 text-(--app-accent-ink)" />
             Daily Task Mission
           </h1>
         </header>
@@ -148,18 +148,18 @@ export function DailyMissionView() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Target className="w-6 h-6 text-indigo-400" />
+          <Target className="w-6 h-6 text-(--app-accent-ink)" />
           Daily Task Mission
         </h1>
-        <p className="text-gray-400 text-sm mt-0.5">
+        <p className="text-(--app-ink-3) text-sm mt-0.5">
           Complete every task below to claim today&apos;s bonus.
         </p>
       </header>
 
       {/* Mission header card */}
-      <div className="rounded-2xl border border-indigo-500/30 bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-gray-900 p-5">
+      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-gray-900 p-5">
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-2xl shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-(--app-cta)/20 flex items-center justify-center text-2xl shrink-0">
             🎯
           </div>
           <div className="flex-1 min-w-0">
@@ -167,20 +167,20 @@ export function DailyMissionView() {
               <h2 className="text-lg font-bold text-white truncate">
                 {mission.name}
               </h2>
-              <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-indigo-500/15 text-indigo-300">
+              <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-(--app-cta)/15 text-(--app-accent-ink)">
                 {mission.packageTier}
               </span>
             </div>
             {mission.description && (
-              <p className="text-xs text-gray-400 mt-1">{mission.description}</p>
+              <p className="text-xs text-(--app-ink-3) mt-1">{mission.description}</p>
             )}
           </div>
         </div>
 
         {/* Reward + streak */}
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="rounded-lg bg-gray-950 border border-gray-800 p-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1">
+          <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1">
               <Coins className="w-3 h-3 text-amber-400" />
               Reward
             </p>
@@ -188,8 +188,8 @@ export function DailyMissionView() {
               {mission.completionPointsReward} pts
             </p>
           </div>
-          <div className="rounded-lg bg-gray-950 border border-gray-800 p-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1">
+          <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1">
               <Zap className="w-3 h-3 text-purple-400" />
               XP
             </p>
@@ -197,8 +197,8 @@ export function DailyMissionView() {
               +{mission.completionXpReward}
             </p>
           </div>
-          <div className="rounded-lg bg-gray-950 border border-gray-800 p-2.5">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1">
+          <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-2.5">
+            <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1">
               <Flame className="w-3 h-3 text-orange-400" />
               Streak
             </p>
@@ -210,13 +210,13 @@ export function DailyMissionView() {
 
         {/* Progress bar */}
         <div className="mt-4">
-          <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+          <div className="flex items-center justify-between text-xs text-(--app-ink-3) mb-1.5">
             <span className="font-semibold">Progress</span>
             <span className="tabular-nums">
               {progress.done} / {progress.total}
             </span>
           </div>
-          <div className="h-2 rounded-full bg-gray-950 overflow-hidden">
+          <div className="h-2 rounded-full bg-(--app-page) overflow-hidden">
             <div
               className="h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-[width]"
               style={{ width: `${pct}%` }}
@@ -253,37 +253,37 @@ export function DailyMissionView() {
                 it.done
                   ? "bg-emerald-500/5 border-emerald-500/30"
                   : isLocked
-                  ? "bg-gray-950 border-gray-800 opacity-60"
-                  : "bg-gray-900 border-gray-800"
+                  ? "bg-(--app-page) border-(--app-line) opacity-60"
+                  : "bg-(--app-surface) border-(--app-line)"
               )}
             >
               <div className="shrink-0 mt-0.5">
                 {it.done ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                 ) : isLocked ? (
-                  <Lock className="w-5 h-5 text-gray-600" />
+                  <Lock className="w-5 h-5 text-(--app-ink-3)" />
                 ) : (
-                  <Circle className="w-5 h-5 text-gray-500" />
+                  <Circle className="w-5 h-5 text-(--app-ink-3)" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-gray-800 text-gray-300">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-(--app-surface-2) text-(--app-ink-2)">
                     {it.taskType}
                   </span>
                   <p className="text-sm font-semibold text-white">
                     {TYPE_LABEL[it.taskType] ?? it.taskType} ×{it.targetCount}
                   </p>
-                  <span className="ml-auto text-xs tabular-nums text-gray-400">
+                  <span className="ml-auto text-xs tabular-nums text-(--app-ink-3)">
                     {it.completedToday} / {it.targetCount}
                   </span>
                 </div>
                 {it.description && (
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-(--app-ink-3) mt-0.5">
                     {it.description}
                   </p>
                 )}
-                <div className="mt-2 h-1.5 rounded-full bg-gray-950 overflow-hidden">
+                <div className="mt-2 h-1.5 rounded-full bg-(--app-page) overflow-hidden">
                   <div
                     className={cn(
                       "h-full transition-[width]",
@@ -302,14 +302,14 @@ export function DailyMissionView() {
                     <Zap className="w-3 h-3" />+{it.xpPerComplete}/task
                   </span>
                   {it.duration && (
-                    <span className="text-gray-500">{it.duration} min</span>
+                    <span className="text-(--app-ink-3)">{it.duration} min</span>
                   )}
                 </div>
               </div>
               {!it.done && !isLocked && (
                 <Link
                   href={route}
-                  className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold self-center"
+                  className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold self-center"
                 >
                   Start <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -326,10 +326,10 @@ export function DailyMissionView() {
         className={cn(
           "w-full py-3.5 rounded-xl font-bold text-sm inline-flex items-center justify-center gap-2 transition-colors",
           claimedToday
-            ? "bg-gray-800 text-gray-500 cursor-default"
+            ? "bg-(--app-surface-2) text-(--app-ink-3) cursor-default"
             : progress.allDone
             ? "bg-linear-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
-            : "bg-gray-800 text-gray-500 cursor-not-allowed"
+            : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
         )}
       >
         {claiming ? (

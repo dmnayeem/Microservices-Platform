@@ -249,7 +249,7 @@ export function GamePlayer({
 
   return (
     <div className="fixed inset-0 z-10000 bg-black flex flex-col">
-      <div className="flex items-center gap-3 px-3 h-12 bg-gray-950 border-b border-gray-800 shrink-0">
+      <div className="flex items-center gap-3 px-3 h-12 bg-(--app-page) border-b border-(--app-line) shrink-0">
         <p className="text-sm font-bold text-white truncate min-w-0 flex-1">{game.title}</p>
 
         {reward?.enabled && (
@@ -266,7 +266,7 @@ export function GamePlayer({
 
         <button
           onClick={quit}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
         >
           <X className="w-4 h-4" /> Quit
         </button>
@@ -295,7 +295,7 @@ export function GamePlayer({
             />
             {!loaded && !loadFailed && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <Loader2 className="w-7 h-7 animate-spin text-gray-600" />
+                <Loader2 className="w-7 h-7 animate-spin text-(--app-ink-3)" />
               </div>
             )}
             {loadFailed && (
@@ -304,7 +304,7 @@ export function GamePlayer({
                 <p className="text-sm text-white font-semibold">
                   This game didn&apos;t load
                 </p>
-                <p className="text-xs text-gray-400 max-w-sm">
+                <p className="text-xs text-(--app-ink-3) max-w-sm">
                   It may block being shown inside another site. You can open it in
                   a new tab instead — you won&apos;t earn points there.
                 </p>
@@ -312,7 +312,7 @@ export function GamePlayer({
                   href={game.embedUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-xs font-semibold"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Open in a new tab
                 </a>
@@ -321,7 +321,7 @@ export function GamePlayer({
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="w-7 h-7 animate-spin text-gray-600" />
+            <Loader2 className="w-7 h-7 animate-spin text-(--app-ink-3)" />
           </div>
         )}
       </div>

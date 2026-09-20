@@ -14,7 +14,7 @@ interface Props {
 }
 
 const inp =
-  "w-full px-3 py-2.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 disabled:opacity-50";
+  "w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50";
 
 export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
   const labelEl = (
@@ -24,7 +24,7 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
         {field.required && <span className="text-red-400 text-base">*</span>}
       </span>
       {field.hint && (
-        <span className="block text-xs text-gray-500 mt-0.5">{field.hint}</span>
+        <span className="block text-xs text-(--app-ink-3) mt-0.5">{field.hint}</span>
       )}
     </label>
   );
@@ -44,7 +44,7 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
             className={inp}
           />
           {field.maxLength && (
-            <p className="text-[10px] text-gray-600 text-right tabular-nums">
+            <p className="text-[10px] text-(--app-ink-3) text-right tabular-nums">
               {(typeof value === "string" ? value : "").length} / {field.maxLength}
             </p>
           )}
@@ -65,7 +65,7 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
             className={inp}
           />
           {field.maxLength && (
-            <p className="text-[10px] text-gray-600 text-right tabular-nums">
+            <p className="text-[10px] text-(--app-ink-3) text-right tabular-nums">
               {(typeof value === "string" ? value : "").length} / {field.maxLength}
             </p>
           )}
@@ -146,8 +146,8 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
                 key={opt}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                   value === opt
-                    ? "border-indigo-500 bg-indigo-500/10"
-                    : "border-gray-800 bg-gray-950 hover:border-gray-700"
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                    : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
                 }`}
               >
                 <input
@@ -156,7 +156,7 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
                   checked={value === opt}
                   onChange={() => onChange(opt)}
                   disabled={disabled}
-                  className="text-indigo-500"
+                  className="text-(--app-accent-ink)"
                 />
                 <span className="text-sm text-white">{opt}</span>
               </label>
@@ -181,7 +181,7 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                   arr.includes(opt)
                     ? "border-emerald-500/50 bg-emerald-500/10"
-                    : "border-gray-800 bg-gray-950 hover:border-gray-700"
+                    : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
                 }`}
               >
                 <input
@@ -294,12 +294,12 @@ function SingleFileField({
         <img
           src={value}
           alt=""
-          className="w-full max-h-64 rounded-lg object-cover bg-gray-950 border border-gray-800"
+          className="w-full max-h-64 rounded-lg object-cover bg-(--app-page) border border-(--app-line)"
         />
       )}
       {value && !isImage && (
-        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-800 bg-gray-950">
-          <span className="text-xs text-gray-300 truncate flex-1 min-w-0 font-mono">
+        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-(--app-line) bg-(--app-page)">
+          <span className="text-xs text-(--app-ink-2) truncate flex-1 min-w-0 font-mono">
             {value}
           </span>
           <button
@@ -328,8 +328,8 @@ function SingleFileField({
         onClick={() => !busy && !disabled && inputRef.current?.click()}
         className={`relative rounded-xl border-2 border-dashed p-5 cursor-pointer text-center transition-colors ${
           dragOver
-            ? "border-indigo-500 bg-indigo-500/5"
-            : "border-gray-700 hover:border-indigo-500/50 hover:bg-gray-950"
+            ? "border-(--app-accent-edge) bg-(--app-cta)/5"
+            : "border-(--app-line) hover:border-(--app-accent-edge)/50 hover:bg-(--app-page)"
         } ${disabled || busy ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         <input
@@ -343,17 +343,17 @@ function SingleFileField({
           }}
         />
         {busy ? (
-          <div className="inline-flex items-center gap-2 text-gray-300">
+          <div className="inline-flex items-center gap-2 text-(--app-ink-2)">
             <Loader2 className="w-4 h-4 animate-spin" />
             Uploading…
           </div>
         ) : (
           <>
-            <Upload className="w-7 h-7 text-gray-500 mx-auto mb-2" />
+            <Upload className="w-7 h-7 text-(--app-ink-3) mx-auto mb-2" />
             <p className="text-sm text-white font-semibold">
               {value ? "Replace" : "Click or drag to upload"}
             </p>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-(--app-ink-3) mt-0.5">
               Max {maxMb} MB
             </p>
           </>
@@ -414,7 +414,7 @@ function MultiImageField({
   return (
     <div className="space-y-1.5">
       {labelEl}
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-(--app-ink-3)">
         {value.length} / {maxImages} images
       </p>
       {value.length > 0 && (
@@ -422,7 +422,7 @@ function MultiImageField({
           {value.map((url, i) => (
             <div
               key={i}
-              className="relative aspect-square rounded-lg overflow-hidden bg-gray-950 border border-gray-800 group"
+              className="relative aspect-square rounded-lg overflow-hidden bg-(--app-page) border border-(--app-line) group"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" className="w-full h-full object-cover" />
@@ -443,7 +443,7 @@ function MultiImageField({
           type="button"
           onClick={() => !busy && !disabled && inputRef.current?.click()}
           disabled={disabled || busy}
-          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-700 hover:border-indigo-500/50 hover:bg-gray-950 text-sm font-semibold text-gray-300 disabled:opacity-50 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-(--app-line) hover:border-(--app-accent-edge)/50 hover:bg-(--app-page) text-sm font-semibold text-(--app-ink-2) disabled:opacity-50 transition-colors"
         >
           {busy ? (
             <>

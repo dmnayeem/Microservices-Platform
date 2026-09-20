@@ -186,7 +186,7 @@ export function CourseEnrollCta({
 
   return (
     <div className="card overflow-hidden">
-      <div className="aspect-video bg-gray-950 relative">
+      <div className="aspect-video bg-(--app-page) relative">
         {promoVideoUrl ? (
           <video
             src={promoVideoUrl}
@@ -203,7 +203,7 @@ export function CourseEnrollCta({
             className="object-cover"
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center text-(--app-glyph)">
+          <div className="absolute inset-0 grid place-items-center text-(--app-ink-3)">
             <PlayCircle className="w-12 h-12" />
           </div>
         )}
@@ -218,7 +218,7 @@ export function CourseEnrollCta({
                 {usd(finalPrice)}
               </p>
               {(originalPrice ?? livePrice) > finalPrice && (
-                <p className="text-sm text-gray-500 line-through tabular-nums">
+                <p className="text-sm text-(--app-ink-3) line-through tabular-nums">
                   {usd((originalPrice ?? livePrice))}
                 </p>
               )}
@@ -233,27 +233,27 @@ export function CourseEnrollCta({
 
         {/* Coupon — paid only, not-yet-enrolled */}
         {!isFree && !isEnrolled && (
-          <div className="rounded-xl border border-gray-800 bg-gray-950 p-2.5 space-y-1.5">
+          <div className="rounded-xl border border-(--app-line) bg-(--app-page) p-2.5 space-y-1.5">
             {applied ? (
               <div className="flex items-center gap-2 text-xs">
                 <Check className="w-3.5 h-3.5 text-emerald-300" />
                 <span className="text-emerald-200 font-mono font-bold">
                   {applied.code}
                 </span>
-                <span className="text-gray-500 ml-auto tabular-nums">
+                <span className="text-(--app-ink-3) ml-auto tabular-nums">
                   -{usd(applied.discount)}
                 </span>
                 <button
                   type="button"
                   onClick={clearCoupon}
-                  className="text-gray-500 hover:text-rose-300"
+                  className="text-(--app-ink-3) hover:text-rose-300"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Tag className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <Tag className="w-3.5 h-3.5 text-(--app-ink-3) shrink-0" />
                 <input
                   type="text"
                   value={couponCode}
@@ -268,13 +268,13 @@ export function CourseEnrollCta({
                   }}
                   maxLength={60}
                   placeholder="Have a code?"
-                  className="flex-1 px-2 py-1 bg-gray-900 border border-gray-800 rounded text-xs text-white placeholder-gray-500 font-mono uppercase focus:outline-none focus:border-indigo-500"
+                  className="flex-1 px-2 py-1 bg-(--app-surface) border border-(--app-line) rounded text-xs text-white placeholder-gray-500 font-mono uppercase focus:outline-none focus:border-(--app-accent-edge)"
                 />
                 <button
                   type="button"
                   onClick={applyCoupon}
                   disabled={couponBusy || !couponCode.trim()}
-                  className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-30"
+                  className="px-2 py-1 rounded bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold disabled:opacity-30"
                 >
                   {couponBusy ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -290,7 +290,7 @@ export function CourseEnrollCta({
         {isEnrolled ? (
           <Link
             href={`/learn/${courseId}`}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold"
           >
             <PlayCircle className="w-5 h-5" />
             Continue learning
@@ -325,7 +325,7 @@ export function CourseEnrollCta({
             "w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-colors " +
             (bookmarked
               ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
-              : "border-gray-800 bg-gray-950 text-gray-300 hover:bg-gray-800")
+              : "border-(--app-line) bg-(--app-page) text-(--app-ink-2) hover:bg-(--app-surface-2)")
           }
         >
           {bookmarking ? (
@@ -343,7 +343,7 @@ export function CourseEnrollCta({
             type="button"
             onClick={requestRefund}
             disabled={refunding}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-800 bg-gray-950 text-gray-400 hover:text-rose-300 hover:border-rose-500/40 text-xs font-bold disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-(--app-line) bg-(--app-page) text-(--app-ink-3) hover:text-rose-300 hover:border-rose-500/40 text-xs font-bold disabled:opacity-50"
           >
             {refunding ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -354,7 +354,7 @@ export function CourseEnrollCta({
           </button>
         )}
 
-        <ul className="text-xs text-gray-400 space-y-1.5 pt-2 border-t border-gray-800">
+        <ul className="text-xs text-(--app-ink-3) space-y-1.5 pt-2 border-t border-(--app-line)">
           <li className="inline-flex items-center gap-2">
             <ListChecks className="w-3.5 h-3.5" /> {totalLessons} lessons
           </li>

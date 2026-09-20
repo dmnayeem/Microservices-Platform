@@ -276,8 +276,8 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
-        <Loader2 className="w-7 h-7 animate-spin text-indigo-400" />
-        <p className="text-sm text-gray-500">Loading article task…</p>
+        <Loader2 className="w-7 h-7 animate-spin text-(--app-accent-ink)" />
+        <p className="text-sm text-(--app-ink-3)">Loading article task…</p>
       </div>
     );
   }
@@ -299,7 +299,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       <div className="space-y-4">
         <Link
           href="/article-tasks"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to article tasks
@@ -324,14 +324,14 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* Back link — compact on mobile */}
       <Link
         href="/article-tasks"
-        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-(--app-ink-3) hover:text-white transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         Back to article tasks
       </Link>
 
       {/* Hero */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) overflow-hidden">
         {task.thumbnailUrl && (
           <div className="relative w-full h-36 sm:h-52">
             <SmartImage
@@ -348,7 +348,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
             <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10 text-blue-400">
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               Article Task
             </span>
           </div>
@@ -356,7 +356,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
             {task.title}
           </h1>
           {task.description && (
-            <p className="text-sm text-gray-300 whitespace-pre-wrap wrap-break-word">
+            <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap wrap-break-word">
               {task.description}
             </p>
           )}
@@ -393,12 +393,12 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
       <TaskInstructions
         value={task.instructions}
-        className="rounded-xl border border-gray-800 bg-gray-900 p-3 sm:p-5"
+        className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 sm:p-5"
       />
 
       {task.instructionVideoUrl && (
         <section className="space-y-2">
-          <h2 className="text-[11px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1.5">
+          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
             <VideoIcon className="w-3.5 h-3.5" />
             Instruction video
           </h2>
@@ -415,8 +415,8 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           the user must go through the embed flow which inserts the session
           token into each URL; bypassing the embed wouldn't earn the key. */}
       {cfg && !cfg.useKeyPool && cfg.links.length > 0 && (
-        <section className="rounded-xl border border-gray-800 bg-gray-900 p-3 sm:p-5">
-          <h2 className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2 sm:mb-3">
+        <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 sm:p-5">
+          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 sm:mb-3">
             Article Links
           </h2>
           <div className="space-y-2">
@@ -426,18 +426,18 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-950 border border-gray-800 hover:border-indigo-500/40 hover:bg-gray-950/70 transition-colors group min-w-0"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-(--app-page) border border-(--app-line) hover:border-(--app-accent-edge)/40 hover:bg-(--app-page)/70 transition-colors group min-w-0"
               >
-                <ExternalLink className="w-4 h-4 text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
+                <ExternalLink className="w-4 h-4 text-(--app-accent-ink) shrink-0 group-hover:scale-110 transition-transform" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate font-medium">
                     {link.label || `Link ${i + 1}`}
                   </p>
-                  <p className="text-[10px] text-gray-500 font-mono truncate">
+                  <p className="text-[10px] text-(--app-ink-3) font-mono truncate">
                     {link.url}
                   </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-indigo-400 shrink-0 transition-colors" />
+                <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-(--app-accent-ink) shrink-0 transition-colors" />
               </a>
             ))}
           </div>
@@ -447,26 +447,26 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* Pool-mode page list (read-only preview). The user clicks "Start"
           below to begin the embed-driven journey. */}
       {cfg?.useKeyPool && (cfg.pages?.length ?? 0) > 0 && (
-        <section className="rounded-xl border border-gray-800 bg-gray-900 p-3 sm:p-5">
-          <h2 className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2 sm:mb-3">
+        <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 sm:p-5">
+          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 sm:mb-3">
             Article Journey ({cfg.pages?.length ?? 0} pages)
           </h2>
-          <ol className="space-y-2 text-sm text-gray-300">
+          <ol className="space-y-2 text-sm text-(--app-ink-2)">
             {(cfg.pages ?? []).map((p, i) => {
               const isFinal = i === (cfg.pages?.length ?? 0) - 1;
               return (
                 <li
                   key={i}
-                  className="flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 rounded-lg bg-gray-950 border border-gray-800 min-w-0"
+                  className="flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) min-w-0"
                 >
-                  <span className="text-xs font-mono text-gray-500 shrink-0">
+                  <span className="text-xs font-mono text-(--app-ink-3) shrink-0">
                     {i + 1}.
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate font-medium">
                       {p.label || `Page ${i + 1}`}
                     </p>
-                    <p className="text-[10px] text-gray-500 truncate">
+                    <p className="text-[10px] text-(--app-ink-3) truncate">
                       {p.popupCount} popup{p.popupCount === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -615,10 +615,10 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       )}
 
       {submitState.kind === "ready" && !cfg?.useKeyPool && (
-        <section className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 sm:p-5 space-y-4">
+        <section className="rounded-xl border border-(--app-accent-edge)/20 bg-(--app-cta)/5 p-3 sm:p-5 space-y-4">
           <div>
             <h2 className="text-base font-bold text-white">Submit your proof</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               Once you&apos;ve read the article(s) above, fill in what&apos;s
               required and submit for admin review.
             </p>
@@ -626,7 +626,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
 
           {req?.url && (
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-2) mb-1.5">
                 Proof URL <span className="text-red-400">*</span>
               </label>
               <input
@@ -634,14 +634,14 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
                 value={proofUrl}
                 onChange={(e) => setProofUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           )}
 
           {req?.screenshot && (
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-2) mb-1.5">
                 Screenshot <span className="text-red-400">*</span>
               </label>
               <ProofImageUpload
@@ -653,7 +653,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
 
           {req?.uniqueKey && (
             <div>
-              <label className="flex text-xs font-medium text-gray-300 mb-1.5 items-center gap-1">
+              <label className="flex text-xs font-medium text-(--app-ink-2) mb-1.5 items-center gap-1">
                 <KeyRound className="w-3.5 h-3.5" />
                 Unique Key <span className="text-red-400">*</span>
               </label>
@@ -661,7 +661,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
                 value={uniqueKey}
                 onChange={(e) => setUniqueKey(e.target.value)}
                 placeholder="Enter the key you found"
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
               />
               {cfg?.uniqueKeyHint && (
                 <p className="text-[11px] text-amber-400/80 mt-1">
@@ -672,7 +672,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           )}
 
           {!req?.url && !req?.screenshot && !req?.uniqueKey && (
-            <div className="rounded-lg bg-gray-950 border border-gray-800 p-3 text-xs text-gray-400">
+            <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3 text-xs text-(--app-ink-3)">
               No proof fields are required for this task. Click submit when
               you&apos;ve finished reading.
             </div>
@@ -681,14 +681,14 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <Link
               href="/article-tasks"
-              className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold text-center transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold text-center transition-colors"
             >
               Cancel
             </Link>
             <button
               disabled={busy}
               onClick={submit}
-              className="flex-1 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -806,13 +806,13 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
   };
 
   return (
-    <section className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 sm:p-5 space-y-3 sm:space-y-4">
+    <section className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3 sm:p-5 space-y-3 sm:space-y-4">
       <div>
         <h2 className="text-sm sm:text-base font-bold text-white inline-flex items-center gap-2">
-          <ExternalLink className="w-4 h-4 text-indigo-400 shrink-0" />
+          <ExternalLink className="w-4 h-4 text-(--app-accent-ink) shrink-0" />
           Start the article journey
         </h2>
-        <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+        <p className="text-xs text-(--app-ink-3) mt-1.5 leading-relaxed">
           Visit each article page in order. Popups appear on each page —
           click them to advance. On the final page you&apos;ll receive a
           unique key to copy back to this task.
@@ -952,14 +952,14 @@ function ManualKeySubmitCard({
       ? "border-emerald-500/60 bg-emerald-500/5"
       : matchState === "fail"
       ? "border-red-500/60 bg-red-500/5"
-      : "border-gray-800 bg-gray-900";
+      : "border-(--app-line) bg-(--app-surface)";
 
   const inputTone =
     matchState === "match"
       ? "border-emerald-500/60 focus:border-emerald-400"
       : matchState === "fail"
       ? "border-red-500/60 focus:border-red-400"
-      : "border-gray-700 focus:border-amber-500";
+      : "border-(--app-line) focus:border-amber-500";
 
   return (
     <section
@@ -989,7 +989,7 @@ function ManualKeySubmitCard({
                 : "Already have your unique key?"}
             </span>
           </h3>
-          <p className="text-[11px] text-gray-500 mt-0.5 wrap-break-word">
+          <p className="text-[11px] text-(--app-ink-3) mt-0.5 wrap-break-word">
             {matchState === "match"
               ? resultMsg
               : matchState === "fail"
@@ -999,7 +999,7 @@ function ManualKeySubmitCard({
               : "Paste it here once you've generated it on the final article page."}
           </p>
         </div>
-        <span className="text-gray-500 text-xs shrink-0 ml-2">
+        <span className="text-(--app-ink-3) text-xs shrink-0 ml-2">
           {open ? "Close" : "Open"}
         </span>
       </button>
@@ -1016,7 +1016,7 @@ function ManualKeySubmitCard({
               }
             }}
             placeholder="Paste the key you received on the final article page"
-            className={`w-full px-3 py-2 bg-gray-950 border rounded-lg text-sm font-mono text-white placeholder-gray-500 focus:outline-none transition-colors ${inputTone}`}
+            className={`w-full px-3 py-2 bg-(--app-page) border rounded-lg text-sm font-mono text-white placeholder-gray-500 focus:outline-none transition-colors ${inputTone}`}
           />
           {matchState === "fail" && resultMsg && (
             <p className="text-xs text-red-400 inline-flex items-center gap-1.5">

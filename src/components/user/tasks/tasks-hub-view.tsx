@@ -221,7 +221,7 @@ export function TasksHubView({
     <div className="space-y-6">
       <div>
         <h1 className="t-title text-white">Tasks</h1>
-        <p className="t-body text-gray-400 mt-1">
+        <p className="t-body text-(--app-ink-3) mt-1">
           Pick a task type to start earning points and XP
         </p>
       </div>
@@ -267,7 +267,7 @@ export function TasksHubView({
                 "app-tap-row app-press shrink-0 inline-flex items-center gap-1.5 px-3.5 rounded-full text-sm font-bold whitespace-nowrap border",
                 isActive
                   ? "app-accent-soft"
-                  : "bg-(--app-surface) text-gray-400 border-(--app-line) hover:text-white"
+                  : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white"
               )}
             >
               <t.icon className="w-4 h-4" />
@@ -306,7 +306,7 @@ export function TasksHubView({
                     </div>
                     <div className="min-w-0">
                       <h3 className="t-section text-white">{cat.label}</h3>
-                      <p className="t-meta text-gray-500 mt-1">
+                      <p className="t-meta text-(--app-ink-3) mt-1">
                         {cat.description}
                       </p>
                     </div>
@@ -315,7 +315,7 @@ export function TasksHubView({
                   {hasProgress ? (
                     <div className="mt-auto pt-4">
                       <div className="flex items-center justify-between t-meta mb-1.5">
-                        <span className="text-gray-400">
+                        <span className="text-(--app-ink-3)">
                           {row!.completedToday}/{row!.available} done today
                         </span>
                         {/* XP available is a genuine "there is something here
@@ -334,7 +334,7 @@ export function TasksHubView({
                       </div>
                     </div>
                   ) : (
-                    <span className="mt-auto pt-4 inline-flex items-center gap-1 text-xs font-bold text-gray-400">
+                    <span className="mt-auto pt-4 inline-flex items-center gap-1 text-xs font-bold text-(--app-ink-3)">
                       Explore <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   )}

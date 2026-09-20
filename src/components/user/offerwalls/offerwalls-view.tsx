@@ -23,7 +23,7 @@ export function OfferwallsView({ walls }: { walls: Wall[] }) {
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 i === active
                   ? "bg-emerald-500 text-white"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  : "bg-(--app-surface-2) text-(--app-ink-2) hover:bg-(--app-surface-2)"
               }`}
             >
               {w.provider.replace(/_/g, " ")}
@@ -32,7 +32,7 @@ export function OfferwallsView({ walls }: { walls: Wall[] }) {
         </ScrollFadeRow>
       )}
 
-      <div className="w-full h-[75vh] rounded-xl overflow-hidden border border-gray-800 bg-black">
+      <div className="w-full h-[75vh] rounded-xl overflow-hidden border border-(--app-line) bg-black">
         <iframe
           key={current.provider}
           src={current.url}

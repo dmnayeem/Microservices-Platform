@@ -69,11 +69,11 @@ export function TaskInstructions({
   return (
     <div
       className={
-        className || "rounded-xl border border-gray-800 bg-gray-900 p-4"
+        className || "rounded-xl border border-(--app-line) bg-(--app-surface) p-4"
       }
     >
       {title && (
-        <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+        <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
           {title}
         </p>
       )}
@@ -98,10 +98,10 @@ export function TaskInstructions({
         <ol className="space-y-2.5">
           {shown.map((line, i) => (
             <li key={i} className="flex gap-2.5">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 text-[10px] font-bold tabular-nums text-indigo-300">
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-(--app-accent-edge)/30 bg-(--app-cta)/10 text-[10px] font-bold tabular-nums text-(--app-accent-ink)">
                 {i + 1}
               </span>
-              <span className="min-w-0 flex-1 text-sm leading-relaxed text-gray-300 wrap-break-word">
+              <span className="min-w-0 flex-1 text-sm leading-relaxed text-(--app-ink-2) wrap-break-word">
                 {line}
               </span>
             </li>
@@ -113,7 +113,7 @@ export function TaskInstructions({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-white"
+          className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-white"
         >
           <ChevronDown
             className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}

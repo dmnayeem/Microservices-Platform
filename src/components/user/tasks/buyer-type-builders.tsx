@@ -22,14 +22,14 @@ import type { ProofItemKind } from "@/lib/app-install-tasks";
  */
 
 const inputCls =
-  "w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500";
-const labelCls = "block text-xs font-medium text-gray-400 mb-1.5";
+  "w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)";
+const labelCls = "block text-xs font-medium text-(--app-ink-3) mb-1.5";
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2">
-      <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-300" />
-      <p className="text-[11px] leading-snug text-indigo-100/80">{children}</p>
+    <div className="flex gap-2 rounded-lg border border-(--app-accent-edge)/30 bg-(--app-cta)/5 px-3 py-2">
+      <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--app-accent-ink)" />
+      <p className="text-[11px] leading-snug text-(--app-accent-ink)/80">{children}</p>
     </div>
   );
 }
@@ -94,10 +94,10 @@ export function QuizBuilder({
       {value.questions.map((q, i) => (
         <div
           key={i}
-          className="space-y-2 rounded-xl border border-gray-800 bg-gray-900/40 p-3"
+          className="space-y-2 rounded-xl border border-(--app-line) bg-(--app-surface)/40 p-3"
         >
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-500">Q{i + 1}</span>
+            <span className="text-xs font-bold text-(--app-ink-3)">Q{i + 1}</span>
             <button
               type="button"
               onClick={() =>
@@ -105,7 +105,7 @@ export function QuizBuilder({
                   questions: value.questions.filter((_, n) => n !== i),
                 })
               }
-              className="ml-auto rounded p-1 text-gray-500 hover:bg-gray-800 hover:text-red-400"
+              className="ml-auto rounded p-1 text-(--app-ink-3) hover:bg-(--app-surface-2) hover:text-red-400"
               aria-label={`Remove question ${i + 1}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -125,7 +125,7 @@ export function QuizBuilder({
                   name={`correct-${i}`}
                   checked={q.correctIndex === oi}
                   onChange={() => set(i, { correctIndex: oi })}
-                  className="border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                  className="border-(--app-line) bg-(--app-surface-2) text-emerald-500 focus:ring-emerald-500"
                   aria-label={`Option ${oi + 1} is correct`}
                 />
                 <input
@@ -152,7 +152,7 @@ export function QuizBuilder({
                             : q.correctIndex,
                       })
                     }
-                    className="rounded p-1 text-gray-500 hover:text-red-400"
+                    className="rounded p-1 text-(--app-ink-3) hover:text-red-400"
                     aria-label={`Remove option ${oi + 1}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -164,13 +164,13 @@ export function QuizBuilder({
               <button
                 type="button"
                 onClick={() => set(i, { options: [...q.options, ""] })}
-                className="text-[11px] font-semibold text-indigo-300 hover:text-indigo-200"
+                className="text-[11px] font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
               >
                 + Add option
               </button>
             )}
           </div>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-(--app-ink-3)">
             The green dot marks the right answer. It stays on our server —
             workers never receive it.
           </p>
@@ -189,7 +189,7 @@ export function QuizBuilder({
           onClick={() =>
             onChange({ questions: [...value.questions, emptyQuizQuestion()] })
           }
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-gray-800"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-2 text-xs font-semibold text-(--app-ink) hover:bg-(--app-surface-2)"
         >
           <Plus className="h-3.5 w-3.5" /> Add question
         </button>
@@ -257,25 +257,25 @@ export function ArticleBuilder({
           onChange={(e) => set({ minWords: parseInt(e.target.value, 10) || 0 })}
           className={inputCls}
         />
-        <p className="mt-1 text-[11px] text-gray-500">
+        <p className="mt-1 text-[11px] text-(--app-ink-3)">
           Anything shorter is refused at submit time — you never see it.
         </p>
       </div>
-      <label className="flex items-center gap-2 text-xs text-gray-300">
+      <label className="flex items-center gap-2 text-xs text-(--app-ink-2)">
         <input
           type="checkbox"
           checked={value.requireUrl}
           onChange={(e) => set({ requireUrl: e.target.checked })}
-          className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+          className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
         />
         Also require a link to where they published it
       </label>
-      <label className="flex items-center gap-2 text-xs text-gray-300">
+      <label className="flex items-center gap-2 text-xs text-(--app-ink-2)">
         <input
           type="checkbox"
           checked={value.requireScreenshot}
           onChange={(e) => set({ requireScreenshot: e.target.checked })}
-          className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+          className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
         />
         Also require a screenshot
       </label>
@@ -396,8 +396,8 @@ export function AppInstallBuilder({
             onClick={() => set({ appKind: k })}
             className={`rounded-lg border py-2 text-xs font-semibold capitalize ${
               value.appKind === k
-                ? "border-indigo-500 bg-indigo-500/10 text-indigo-200"
-                : "border-gray-700 text-gray-300 hover:bg-gray-800"
+                ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
+                : "border-(--app-line) text-(--app-ink-2) hover:bg-(--app-surface-2)"
             }`}
           >
             {k}
@@ -436,7 +436,7 @@ export function AppInstallBuilder({
           return (
             <div
               key={i}
-              className="space-y-2 rounded-xl border border-gray-800 bg-gray-900/40 p-3"
+              className="space-y-2 rounded-xl border border-(--app-line) bg-(--app-surface)/40 p-3"
             >
               <div className="flex items-center gap-2">
                 <select
@@ -459,13 +459,13 @@ export function AppInstallBuilder({
                       proofItems: value.proofItems.filter((_, n) => n !== i),
                     })
                   }
-                  className="rounded p-1 text-gray-500 hover:text-red-400"
+                  className="rounded p-1 text-(--app-ink-3) hover:text-red-400"
                   aria-label={`Remove requirement ${i + 1}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-              {meta && <p className="text-[11px] text-gray-500">{meta.hint}</p>}
+              {meta && <p className="text-[11px] text-(--app-ink-3)">{meta.hint}</p>}
               {NEEDS_TARGET.has(p.kind) && (
                 <input
                   type="number"
@@ -492,12 +492,12 @@ export function AppInstallBuilder({
                   className={inputCls}
                 />
               )}
-              <label className="flex items-center gap-2 text-xs text-gray-300">
+              <label className="flex items-center gap-2 text-xs text-(--app-ink-2)">
                 <input
                   type="checkbox"
                   checked={p.screenshot}
                   onChange={(e) => setItem(i, { screenshot: e.target.checked })}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-(--app-line) bg-(--app-surface-2) text-(--app-accent-ink) focus:ring-indigo-500"
                 />
                 Require a screenshot for this
               </label>
@@ -527,7 +527,7 @@ export function AppInstallBuilder({
                 ],
               })
             }
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-gray-800"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-2 text-xs font-semibold text-(--app-ink) hover:bg-(--app-surface-2)"
           >
             <Plus className="h-3.5 w-3.5" /> Add a requirement
           </button>

@@ -79,7 +79,7 @@ const TYPES: SurveyQuestionType[] = [
 ];
 
 const inputCls =
-  "w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none";
+  "w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-(--app-accent-edge) focus:outline-none";
 
 export function SurveyBuilder({
   value,
@@ -124,14 +124,14 @@ export function SurveyBuilder({
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-300">
+        <p className="text-xs font-semibold text-(--app-ink-2)">
           Questions{" "}
-          <span className="font-normal text-gray-500">({qs.length}/50)</span>
+          <span className="font-normal text-(--app-ink-3)">({qs.length}/50)</span>
         </p>
         <button
           type="button"
           onClick={() => setPreview((p) => !p)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-2.5 py-1.5 text-[11px] font-bold text-gray-300 hover:border-gray-600"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-2.5 py-1.5 text-[11px] font-bold text-(--app-ink-2) hover:border-(--app-line)"
         >
           {preview ? (
             <>
@@ -150,7 +150,7 @@ export function SurveyBuilder({
       ) : (
         <>
           {qs.length === 0 && (
-            <p className="rounded-lg border border-dashed border-gray-700 p-4 text-center text-xs text-gray-500">
+            <p className="rounded-lg border border-dashed border-(--app-line) p-4 text-center text-xs text-(--app-ink-3)">
               No questions yet. Add one below.
             </p>
           )}
@@ -158,10 +158,10 @@ export function SurveyBuilder({
           {qs.map((q, i) => (
             <div
               key={q.id}
-              className="space-y-2 rounded-xl border border-gray-800 bg-gray-950/60 p-3"
+              className="space-y-2 rounded-xl border border-(--app-line) bg-(--app-page)/60 p-3"
             >
               <div className="flex items-center gap-2">
-                <span className="shrink-0 rounded-md bg-gray-800 px-2 py-1 text-[11px] font-bold text-gray-400">
+                <span className="shrink-0 rounded-md bg-(--app-surface-2) px-2 py-1 text-[11px] font-bold text-(--app-ink-3)">
                   Q{i + 1}
                 </span>
                 <select
@@ -179,7 +179,7 @@ export function SurveyBuilder({
                       required: q.required,
                     });
                   }}
-                  className="min-w-0 flex-1 rounded-lg border border-gray-700 bg-gray-950 px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1.5 text-xs text-white focus:border-(--app-accent-edge) focus:outline-none"
                 >
                   {TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -192,7 +192,7 @@ export function SurveyBuilder({
                   onClick={() => move(i, -1)}
                   disabled={i === 0}
                   aria-label="Move up"
-                  className="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 disabled:opacity-30"
+                  className="rounded-md p-1.5 text-(--app-ink-3) hover:bg-(--app-surface-2) disabled:opacity-30"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </button>
@@ -201,7 +201,7 @@ export function SurveyBuilder({
                   onClick={() => move(i, 1)}
                   disabled={i === qs.length - 1}
                   aria-label="Move down"
-                  className="rounded-md p-1.5 text-gray-400 hover:bg-gray-800 disabled:opacity-30"
+                  className="rounded-md p-1.5 text-(--app-ink-3) hover:bg-(--app-surface-2) disabled:opacity-30"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
@@ -250,7 +250,7 @@ export function SurveyBuilder({
                           })
                         }
                         aria-label="Remove option"
-                        className="rounded-md p-1.5 text-gray-500 hover:text-red-400"
+                        className="rounded-md p-1.5 text-(--app-ink-3) hover:text-red-400"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -267,7 +267,7 @@ export function SurveyBuilder({
                           ],
                         })
                       }
-                      className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300"
+                      className="text-[11px] font-bold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
                     >
                       + Add option
                     </button>
@@ -276,7 +276,7 @@ export function SurveyBuilder({
               )}
 
               {q.type === "RATING" && (
-                <label className="flex items-center gap-2 text-[11px] text-gray-400">
+                <label className="flex items-center gap-2 text-[11px] text-(--app-ink-3)">
                   Scale 1 to
                   <input
                     type="number"
@@ -291,13 +291,13 @@ export function SurveyBuilder({
                         ),
                       })
                     }
-                    className="w-20 rounded-lg border border-gray-700 bg-gray-950 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                    className="w-20 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
                   />
                 </label>
               )}
 
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                <label className="flex items-center gap-1.5 text-[11px] text-(--app-ink-3)">
                   <input
                     type="checkbox"
                     checked={q.required}
@@ -311,7 +311,7 @@ export function SurveyBuilder({
                   onChange={(e) => setQ(i, { hint: e.target.value })}
                   maxLength={300}
                   placeholder="Helper text (optional)"
-                  className="min-w-0 flex-1 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1 text-[11px] text-gray-300 placeholder-gray-600 focus:border-indigo-500 focus:outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2 py-1 text-[11px] text-(--app-ink-2) placeholder-gray-600 focus:border-(--app-accent-edge) focus:outline-none"
                 />
               </div>
             </div>
@@ -324,7 +324,7 @@ export function SurveyBuilder({
                   key={t}
                   type="button"
                   onClick={() => add(t)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-gray-700 bg-gray-950 px-2.5 py-1.5 text-[11px] font-semibold text-gray-300 hover:border-indigo-500 hover:text-indigo-300"
+                  className="inline-flex items-center gap-1 rounded-lg border border-(--app-line) bg-(--app-page) px-2.5 py-1.5 text-[11px] font-semibold text-(--app-ink-2) hover:border-(--app-accent-edge) hover:text-(--app-accent-ink)"
                 >
                   <Plus className="h-3 w-3" />
                   {SURVEY_QUESTION_TYPE_LABEL[t]}
@@ -335,7 +335,7 @@ export function SurveyBuilder({
 
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-gray-400">
+              <label className="mb-1 block text-[11px] font-medium text-(--app-ink-3)">
                 Intro shown before the questions
               </label>
               <textarea
@@ -348,7 +348,7 @@ export function SurveyBuilder({
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-gray-400">
+              <label className="mb-1 block text-[11px] font-medium text-(--app-ink-3)">
                 Thank-you message
               </label>
               <textarea
@@ -362,7 +362,7 @@ export function SurveyBuilder({
           </div>
 
           <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-1.5 text-[11px] text-gray-400">
+            <label className="flex items-center gap-1.5 text-[11px] text-(--app-ink-3)">
               <input
                 type="checkbox"
                 checked={value.randomizeQuestions}
@@ -371,7 +371,7 @@ export function SurveyBuilder({
               />
               Shuffle question order per respondent
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] text-gray-400">
+            <label className="flex items-center gap-1.5 text-[11px] text-(--app-ink-3)">
               <input
                 type="checkbox"
                 checked={value.shuffleOptions}
@@ -394,25 +394,25 @@ export function SurveyBuilder({
  */
 function SurveyPreview({ draft }: { draft: SurveyDraft }) {
   return (
-    <div className="space-y-3 rounded-xl border border-gray-800 bg-gray-950/60 p-3">
-      <p className="rounded-lg border border-gray-800 bg-gray-900 p-2.5 text-[11px] leading-relaxed text-gray-400">
+    <div className="space-y-3 rounded-xl border border-(--app-line) bg-(--app-page)/60 p-3">
+      <p className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 text-[11px] leading-relaxed text-(--app-ink-3)">
         {BUYER_SURVEY_NOTICE}
       </p>
       {draft.introMessage.trim() && (
-        <p className="whitespace-pre-wrap text-xs text-gray-300">
+        <p className="whitespace-pre-wrap text-xs text-(--app-ink-2)">
           {draft.introMessage}
         </p>
       )}
       {draft.questions.length === 0 && (
-        <p className="text-center text-xs text-gray-500">Nothing to preview yet.</p>
+        <p className="text-center text-xs text-(--app-ink-3)">Nothing to preview yet.</p>
       )}
       {draft.questions.map((q, i) => (
         <div key={q.id} className="space-y-1.5">
           <p className="text-xs font-semibold text-white">
-            {i + 1}. {q.prompt || <span className="text-gray-500">(no prompt)</span>}
+            {i + 1}. {q.prompt || <span className="text-(--app-ink-3)">(no prompt)</span>}
             {q.required && <span className="text-red-400"> *</span>}
           </p>
-          {q.hint && <p className="text-[11px] text-gray-500">{q.hint}</p>}
+          {q.hint && <p className="text-[11px] text-(--app-ink-3)">{q.hint}</p>}
           {q.type === "SHORT_TEXT" && (
             <input disabled placeholder="Their answer" className={inputCls} />
           )}
@@ -436,7 +436,7 @@ function SurveyPreview({ draft }: { draft: SurveyDraft }) {
             (q.options ?? []).map((o, n) => (
               <label
                 key={n}
-                className="flex items-center gap-2 text-xs text-gray-300"
+                className="flex items-center gap-2 text-xs text-(--app-ink-2)"
               >
                 <input
                   disabled
@@ -451,7 +451,7 @@ function SurveyPreview({ draft }: { draft: SurveyDraft }) {
               {Array.from({ length: q.scale ?? 5 }, (_, n) => (
                 <span
                   key={n}
-                  className="rounded-lg border border-gray-700 px-2.5 py-1 text-xs text-gray-400"
+                  className="rounded-lg border border-(--app-line) px-2.5 py-1 text-xs text-(--app-ink-3)"
                 >
                   {n + 1}
                 </span>

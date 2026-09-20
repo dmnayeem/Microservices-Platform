@@ -111,7 +111,7 @@ export function MissionsView() {
       <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
         <Target className="w-6 h-6 text-emerald-400" /> Missions
       </h1>
-      <p className="text-sm text-gray-400 -mt-1">
+      <p className="text-sm text-(--app-ink-3) -mt-1">
         Long-run goals with the biggest rewards on the platform. Progress is
         counted from the moment a mission goes live — keep going and claim.
       </p>
@@ -145,8 +145,8 @@ export function MissionsView() {
                 className={cn(
                   "rounded-2xl border p-4 flex flex-col",
                   locked
-                    ? "border-gray-800 bg-gray-900/50 opacity-75"
-                    : "border-gray-800 bg-gray-900"
+                    ? "border-(--app-line) bg-(--app-surface)/50 opacity-75"
+                    : "border-(--app-line) bg-(--app-surface)"
                 )}
               >
                 <div className="flex items-start gap-3">
@@ -158,7 +158,7 @@ export function MissionsView() {
                       {m.title}
                     </p>
                     {remaining && (
-                      <p className="text-[11px] text-gray-500 inline-flex items-center gap-1 mt-0.5">
+                      <p className="text-[11px] text-(--app-ink-3) inline-flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" /> {remaining}
                       </p>
                     )}
@@ -166,14 +166,14 @@ export function MissionsView() {
                 </div>
 
                 {m.description && (
-                  <p className="text-xs text-gray-400 mt-2 line-clamp-2">
+                  <p className="text-xs text-(--app-ink-3) mt-2 line-clamp-2">
                     {m.description}
                   </p>
                 )}
 
                 {/* The dedup rule, stated plainly — it's the thing users
                     otherwise complain about ("I liked 50 posts, why is it 12?"). */}
-                <p className="text-[11px] text-gray-500 mt-2">{meta.hint}</p>
+                <p className="text-[11px] text-(--app-ink-3) mt-2">{meta.hint}</p>
 
                 {locked ? (
                   <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 px-2.5 py-2 text-[11px] text-amber-300">
@@ -183,12 +183,12 @@ export function MissionsView() {
                 ) : (
                   <div className="mt-3">
                     <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="text-gray-400">{meta.label}</span>
+                      <span className="text-(--app-ink-3)">{meta.label}</span>
                       <span className="text-white font-bold tabular-nums">
                         {m.progress}/{m.targetValue} {meta.unit}
                       </span>
                     </div>
-                    <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                    <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
                       <div
                         className="h-full bg-linear-to-r from-emerald-500 to-cyan-500 transition-[width]"
                         style={{ width: `${pct}%` }}
@@ -204,9 +204,9 @@ export function MissionsView() {
                       return (
                         <div
                           key={t.threshold}
-                          className="flex items-center justify-between gap-2 rounded-lg bg-gray-950/60 border border-gray-800 px-2.5 py-1.5"
+                          className="flex items-center justify-between gap-2 rounded-lg bg-(--app-page)/60 border border-(--app-line) px-2.5 py-1.5"
                         >
-                          <span className="text-xs text-gray-300">
+                          <span className="text-xs text-(--app-ink-2)">
                             {t.threshold} {meta.unit} →{" "}
                             <span className="text-amber-400 font-bold">
                               +{t.rewardPoints}
@@ -227,7 +227,7 @@ export function MissionsView() {
                                 "inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold",
                                 t.reached && !locked
                                   ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                                  : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                                  : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
                               )}
                             >
                               {busy ? (
@@ -262,7 +262,7 @@ export function MissionsView() {
                           "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold",
                           canClaim
                             ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                            : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                            : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"
                         )}
                       >
                         {claiming === m.id ? (

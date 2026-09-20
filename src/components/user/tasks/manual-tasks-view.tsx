@@ -129,10 +129,10 @@ export function ManualTasksView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <ClipboardList className="w-6 h-6 text-indigo-400" />
+          <ClipboardList className="w-6 h-6 text-(--app-accent-ink)" />
           Manual Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Complete a task manually, upload your proof, and get rewarded after
           admin review.
         </p>
@@ -226,14 +226,14 @@ export function ManualTasksView() {
             <button
               disabled={busy}
               onClick={() => setSubmitting(null)}
-              className="flex-1 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               disabled={busy}
               onClick={submit}
-              className="flex-1 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -247,11 +247,11 @@ export function ManualTasksView() {
       >
         <div className="space-y-3">
           {submitting?.description && (
-            <div className="rounded-lg bg-gray-950 border border-gray-800 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">
+            <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3">
+              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1">
                 About this task
               </p>
-              <p className="text-sm text-gray-300 whitespace-pre-wrap">
+              <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
                 {submitting.description}
               </p>
             </div>
@@ -260,12 +260,12 @@ export function ManualTasksView() {
           {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
           <TaskInstructions
             value={submitting?.instructions}
-            className="rounded-lg bg-gray-950 border border-gray-800 p-3"
+            className="rounded-lg bg-(--app-page) border border-(--app-line) p-3"
           />
 
           {submitting?.instructionVideoUrl && (
             <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold inline-flex items-center gap-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
                 <VideoIcon className="w-3 h-3" />
                 Instruction video
               </p>
@@ -279,27 +279,27 @@ export function ManualTasksView() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Proof URL
             </label>
             <input
               value={proofUrl}
               onChange={(e) => setProofUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Screenshot
             </label>
             <ProofImageUpload value={screenshotUrl} onChange={setScreenshotUrl} />
-            <p className="text-[11px] text-gray-500 mt-1">
+            <p className="text-[11px] text-(--app-ink-3) mt-1">
               Give a proof URL, a screenshot, or both — at least one is required.
             </p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Notes (optional)
             </label>
             <textarea
@@ -307,7 +307,7 @@ export function ManualTasksView() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Anything we should know?"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
           </div>
         </div>

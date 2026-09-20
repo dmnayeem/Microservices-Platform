@@ -77,7 +77,7 @@ export function UserListTab({
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
-        <Users className="w-10 h-10 text-(--app-glyph) mx-auto mb-2" />
+        <Users className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
         <p className="text-sm text-gray-400 font-semibold">No users yet</p>
       </div>
     );

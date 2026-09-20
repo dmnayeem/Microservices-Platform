@@ -123,33 +123,33 @@ export function CourseCreator() {
   return (
     <div className="space-y-3">
       <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-        <BookOpen className="w-6 h-6 text-indigo-400" /> Create Course
+        <BookOpen className="w-6 h-6 text-(--app-accent-ink)" /> Create Course
       </h1>
 
       <div className="card p-4 space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Title *
           </label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Description *
           </label>
           <textarea
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm resize-none focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Thumbnail
           </label>
           <UserUploadField
@@ -161,13 +161,13 @@ export function CourseCreator() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-2 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500"
+              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
             >
               <option>BUSINESS</option>
               <option>TECH</option>
@@ -177,13 +177,13 @@ export function CourseCreator() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Difficulty
             </label>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full px-2 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500"
+              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
             >
               <option>BEGINNER</option>
               <option>INTERMEDIATE</option>
@@ -191,7 +191,7 @@ export function CourseCreator() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Reward (pts)
             </label>
             <input
@@ -199,7 +199,7 @@ export function CourseCreator() {
               min={0}
               value={pointsReward}
               onChange={(e) => setPointsReward(Number(e.target.value))}
-              className="w-full px-2 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-indigo-500"
+              className="w-full px-2 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-xs focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
         </div>
@@ -212,13 +212,13 @@ export function CourseCreator() {
             className="card p-3"
           >
             <div className="flex items-center gap-2 mb-2">
-              <GripVertical className="w-4 h-4 text-gray-500" />
+              <GripVertical className="w-4 h-4 text-(--app-ink-3)" />
               <input
                 value={m.title}
                 onChange={(e) => updateModule(m.id, { title: e.target.value })}
                 className="flex-1 bg-transparent text-sm font-bold text-white focus:outline-none"
               />
-              <span className="text-[10px] text-gray-500">M{mi + 1}</span>
+              <span className="text-[10px] text-(--app-ink-3)">M{mi + 1}</span>
               <button
                 onClick={() => removeModule(m.id)}
                 className="p-1 text-red-400 hover:bg-red-500/10 rounded"
@@ -230,7 +230,7 @@ export function CourseCreator() {
               {m.lessons.map((l) => (
                 <div
                   key={l.id}
-                  className="rounded-lg bg-gray-950 border border-gray-800 p-2 space-y-1.5"
+                  className="rounded-lg bg-(--app-page) border border-(--app-line) p-2 space-y-1.5"
                 >
                   <div className="flex items-center gap-1">
                     <input
@@ -243,7 +243,7 @@ export function CourseCreator() {
                     />
                     <button
                       onClick={() => removeLesson(m.id, l.id)}
-                      className="p-0.5 text-gray-500 hover:text-red-400"
+                      className="p-0.5 text-(--app-ink-3) hover:text-red-400"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -254,7 +254,7 @@ export function CourseCreator() {
                       updateLesson(m.id, l.id, { videoUrl: e.target.value })
                     }
                     placeholder="Video URL (optional)"
-                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1 bg-(--app-surface) border border-(--app-line) rounded text-xs text-(--app-ink-2) focus:outline-none focus:border-(--app-accent-edge)"
                   />
                   <textarea
                     rows={2}
@@ -263,13 +263,13 @@ export function CourseCreator() {
                       updateLesson(m.id, l.id, { content: e.target.value })
                     }
                     placeholder="Lesson notes/content (optional)"
-                    className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 resize-none focus:outline-none focus:border-indigo-500"
+                    className="w-full px-2 py-1 bg-(--app-surface) border border-(--app-line) rounded text-xs text-(--app-ink-2) resize-none focus:outline-none focus:border-(--app-accent-edge)"
                   />
                 </div>
               ))}
               <button
                 onClick={() => addLesson(m.id)}
-                className="w-full py-1.5 rounded-lg border border-dashed border-gray-700 text-xs text-gray-400 hover:text-indigo-400 hover:border-indigo-500/50"
+                className="w-full py-1.5 rounded-lg border border-dashed border-(--app-line) text-xs text-(--app-ink-3) hover:text-(--app-accent-ink) hover:border-(--app-accent-edge)/50"
               >
                 + Add Lesson
               </button>
@@ -278,7 +278,7 @@ export function CourseCreator() {
         ))}
         <button
           onClick={addModule}
-          className="w-full py-2.5 rounded-xl border border-dashed border-gray-700 text-sm text-gray-400 hover:text-indigo-400 hover:border-indigo-500/50 inline-flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 rounded-xl border border-dashed border-(--app-line) text-sm text-(--app-ink-3) hover:text-(--app-accent-ink) hover:border-(--app-accent-edge)/50 inline-flex items-center justify-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
           Add Module
@@ -288,7 +288,7 @@ export function CourseCreator() {
       <button
         disabled={busy}
         onClick={submit}
-        className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+        className="w-full py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
         Publish Course

@@ -87,7 +87,7 @@ export function ArticleTasksView() {
           <FileText className="w-6 h-6 text-blue-400" />
           Article Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Read articles, submit proof, get rewarded. Submissions go to PENDING
           and get credited when admin approves.
         </p>

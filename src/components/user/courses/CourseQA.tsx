@@ -66,7 +66,7 @@ export function CourseQA({ courseId, initial, isEnrolled, viewerId, tutorId }: P
           <MessageCircleQuestion className="w-5 h-5 text-fuchsia-300" />
           Q&amp;A
         </h2>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-(--app-ink-3)">
           {initial.length} question{initial.length === 1 ? "" : "s"}
         </p>
       </div>
@@ -79,7 +79,7 @@ export function CourseQA({ courseId, initial, isEnrolled, viewerId, tutorId }: P
             rows={2}
             maxLength={2000}
             placeholder="Ask the tutor a question…"
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-fuchsia-500 resize-none"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-fuchsia-500 resize-none"
           />
           <div className="flex justify-end">
             <button
@@ -98,13 +98,13 @@ export function CourseQA({ courseId, initial, isEnrolled, viewerId, tutorId }: P
           </div>
         </div>
       ) : (
-        <p className="text-xs text-gray-500 italic">
+        <p className="text-xs text-(--app-ink-3) italic">
           Enrol to ask the tutor a question.
         </p>
       )}
 
       {initial.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-(--app-ink-3) italic">
           No questions yet. Be the first to ask.
         </p>
       ) : (
@@ -167,7 +167,7 @@ function QuestionCard({
   };
 
   return (
-    <li className="rounded-xl border border-gray-800 bg-gray-950 p-3">
+    <li className="rounded-xl border border-(--app-line) bg-(--app-page) p-3">
       <div className="flex items-center gap-2">
         <Avatar
           src={q.asker.avatar}
@@ -181,17 +181,17 @@ function QuestionCard({
             <Pin className="w-3 h-3" /> Pinned
           </span>
         )}
-        <span className="ml-auto text-[11px] text-gray-500">
+        <span className="ml-auto text-[11px] text-(--app-ink-3)">
           {formatDistanceToNow(q.createdAt, { addSuffix: true })}
         </span>
       </div>
-      <p className="text-sm text-gray-200 mt-2 whitespace-pre-wrap">{q.question}</p>
+      <p className="text-sm text-(--app-ink) mt-2 whitespace-pre-wrap">{q.question}</p>
 
       {q.answer ? (
-        <div className="mt-3 pt-3 border-t border-gray-800">
+        <div className="mt-3 pt-3 border-t border-(--app-line)">
           <p className="text-xs font-bold text-emerald-300 inline-flex items-center gap-1.5">
             {q.answeredBy?.avatar ? (
-              <span className="relative inline-block w-5 h-5 rounded-full overflow-hidden bg-gray-800">
+              <span className="relative inline-block w-5 h-5 rounded-full overflow-hidden bg-(--app-surface-2)">
                 <SmartImage
                   src={q.answeredBy.avatar}
                   alt=""
@@ -203,26 +203,26 @@ function QuestionCard({
             ) : null}
             {q.answeredBy?.name ?? "Tutor"} answered
           </p>
-          <p className="text-sm text-gray-300 mt-1 whitespace-pre-wrap">
+          <p className="text-sm text-(--app-ink-2) mt-1 whitespace-pre-wrap">
             {q.answer}
           </p>
         </div>
       ) : canAnswer ? (
         editing ? (
-          <div className="mt-3 pt-3 border-t border-gray-800 space-y-2">
+          <div className="mt-3 pt-3 border-t border-(--app-line) space-y-2">
             <textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               rows={3}
               maxLength={4000}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-fuchsia-500 resize-none"
+              className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-fuchsia-500 resize-none"
               placeholder="Your answer"
             />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white"
+                className="px-3 py-1.5 rounded-lg text-xs text-(--app-ink-3) hover:text-white"
               >
                 Cancel
               </button>

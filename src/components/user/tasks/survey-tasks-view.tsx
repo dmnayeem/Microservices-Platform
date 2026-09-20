@@ -84,7 +84,7 @@ export function SurveyTasksView() {
           <ClipboardList className="w-6 h-6 text-purple-400" />
           Survey Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Answer surveys and get rewarded. Each survey is a one-time submission;
           your response goes to admin for review.
         </p>

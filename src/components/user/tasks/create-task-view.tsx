@@ -377,7 +377,7 @@ export function CreateTaskView({
     <div className="space-y-3">
       <div>
         <h1 className="text-xl font-bold text-white">Create Task</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <p className="text-sm text-(--app-ink-3) mt-0.5">
           Fund a task from your wallet. It goes live after admin review.
         </p>
       </div>
@@ -413,8 +413,8 @@ export function CreateTaskView({
               onClick={() => setType(opt.value)}
               className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
                 active
-                  ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
-                  : "border-gray-700 bg-gray-950 text-gray-400 hover:border-gray-600"
+                  ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
+                  : "border-(--app-line) bg-(--app-page) text-(--app-ink-3) hover:border-(--app-line)"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -426,7 +426,7 @@ export function CreateTaskView({
 
       <div className="glass rounded-xl p-4 space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Title *
           </label>
           <input
@@ -434,12 +434,12 @@ export function CreateTaskView({
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
             placeholder="What should people do?"
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">
+          <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
             Description *
           </label>
           <textarea
@@ -447,28 +447,28 @@ export function CreateTaskView({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe the task for participants..."
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
           />
         </div>
 
         {type === "VIDEO" ? (
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">
+              <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
                 Video link
               </label>
               <input
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
                 placeholder="https://youtube.com/watch?v=…"
-                className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
               />
-              <p className="mt-1 text-[11px] text-gray-500">
+              <p className="mt-1 text-[11px] text-(--app-ink-3)">
                 YouTube, Facebook, Vimeo or a direct video file.
               </p>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-400">
+              <label className="mb-1 block text-xs font-medium text-(--app-ink-3)">
                 How long must they watch? (seconds)
               </label>
               <input
@@ -479,9 +479,9 @@ export function CreateTaskView({
                 onChange={(e) =>
                   setWatchSeconds(parseInt(e.target.value) || 30)
                 }
-                className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2.5 text-sm text-white focus:border-(--app-accent-edge) focus:outline-none"
               />
-              <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+              <p className="mt-1 text-[11px] leading-relaxed text-(--app-ink-3)">
                 Watch time is counted on our server while the video is actually
                 playing and in view — it is not something the viewer can claim.
               </p>
@@ -496,13 +496,13 @@ export function CreateTaskView({
                 verification, and every submission fell to manual review. */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                   Platform *
                 </label>
                 <select
                   value={socialPlatform}
                   onChange={(e) => pickPlatform(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
                 >
                   <option value="">Choose…</option>
                   {platforms.map((p) => (
@@ -513,14 +513,14 @@ export function CreateTaskView({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                   Action *
                 </label>
                 <select
                   value={socialAction}
                   onChange={(e) => setSocialAction(e.target.value)}
                   disabled={!platformDef}
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50"
                 >
                   <option value="">
                     {platformDef ? "Choose…" : "Pick a platform first"}
@@ -534,14 +534,14 @@ export function CreateTaskView({
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+              <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
                 Target URL *
               </label>
               <input
                 value={socialUrl}
                 onChange={(e) => setSocialUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
           </>
@@ -555,7 +555,7 @@ export function CreateTaskView({
           <AppInstallBuilder value={appInstall} onChange={setAppInstall} />
         ) : (
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Instructions
             </label>
             <textarea
@@ -563,14 +563,14 @@ export function CreateTaskView({
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Step-by-step instructions for completing this task..."
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
           </div>
         )}
 
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Points reward
             </label>
             <input
@@ -579,11 +579,11 @@ export function CreateTaskView({
               step={1}
               value={pointsReward}
               onChange={(e) => setPointsReward(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Completions
             </label>
             <input
@@ -592,14 +592,14 @@ export function CreateTaskView({
               step={1}
               value={targetCount}
               onChange={(e) => setTargetCount(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-(--app-ink-3) mt-1">
               How many completions to fund
             </p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
+            <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Min level
             </label>
             <input
@@ -608,7 +608,7 @@ export function CreateTaskView({
               step={1}
               value={minLevel}
               onChange={(e) => setMinLevel(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)"
             />
           </div>
         </div>
@@ -619,9 +619,9 @@ export function CreateTaskView({
         <div className="glass rounded-xl p-4 space-y-3">
           <div>
             <h2 className="text-sm font-bold text-white inline-flex items-center gap-1.5">
-              <Target className="w-4 h-4 text-indigo-400" /> Audience targeting
+              <Target className="w-4 h-4 text-(--app-accent-ink)" /> Audience targeting
             </h2>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-(--app-ink-3) mt-0.5">
               Optional. Limit who can do this task by country / area, gender and
               age. Leave empty to reach everyone.
             </p>
@@ -643,7 +643,7 @@ export function CreateTaskView({
             <p className="text-sm font-semibold text-white">
               Who this can reach
             </p>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-(--app-ink-3)">
               {reachLoading
                 ? "Checking…"
                 : reach === null
@@ -675,11 +675,11 @@ export function CreateTaskView({
         {reach && !reach.empty && !reach.tooNarrow && (
           <div className="mt-3 space-y-1.5 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">
-                <Clock className="mr-1 inline h-3.5 w-3.5 text-gray-500" />
+              <span className="text-(--app-ink-3)">
+                <Clock className="mr-1 inline h-3.5 w-3.5 text-(--app-ink-3)" />
                 Should fill in
               </span>
-              <span className="tabular-nums text-gray-200">
+              <span className="tabular-nums text-(--app-ink)">
                 {reach.daysToFill === null
                   ? "no history yet"
                   : reach.daysToFill <= 1
@@ -688,7 +688,7 @@ export function CreateTaskView({
               </span>
             </div>
             {reach.sampleSize > 0 && (
-              <p className="text-[11px] leading-relaxed text-gray-500">
+              <p className="text-[11px] leading-relaxed text-(--app-ink-3)">
                 Based on {reach.sampleSize} task
                 {reach.sampleSize === 1 ? "" : "s"} of this kind over the last 30
                 days
@@ -714,12 +714,12 @@ export function CreateTaskView({
       {/* Invoice — what this task costs, itemised before you commit to it. */}
       <div className="glass rounded-xl p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 ring-1 ring-indigo-500/20 flex items-center justify-center shrink-0">
-            <Wallet className="w-5 h-5 text-indigo-400" />
+          <div className="w-10 h-10 rounded-xl bg-(--app-cta)/10 ring-1 ring-indigo-500/20 flex items-center justify-center shrink-0">
+            <Wallet className="w-5 h-5 text-(--app-accent-ink)" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">If everyone completes it</p>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-(--app-ink-3)">
               {pointsReward.toLocaleString()} pts ×{" "}
               {targetCount.toLocaleString()} completions
             </p>
@@ -731,15 +731,15 @@ export function CreateTaskView({
             see what it is worth. */}
         <div className="mt-3 space-y-1.5 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-400">Reward pool</span>
-            <span className="tabular-nums text-gray-200">
+            <span className="text-(--app-ink-3)">Reward pool</span>
+            <span className="tabular-nums text-(--app-ink)">
               {pts(budget)} pts
             </span>
           </div>
           {feePercent > 0 && (
             <div className="flex justify-between">
-              <span className="text-gray-400">Platform fee ({feePercent}%)</span>
-              <span className="tabular-nums text-gray-200">
+              <span className="text-(--app-ink-3)">Platform fee ({feePercent}%)</span>
+              <span className="tabular-nums text-(--app-ink)">
                 {pts(quote.feePoints)} pts
               </span>
             </div>
@@ -751,8 +751,8 @@ export function CreateTaskView({
             </span>
           </div>
           <div className="flex justify-between text-[11px]">
-            <span className="text-gray-500">Worth about</span>
-            <span className="tabular-nums text-gray-500">
+            <span className="text-(--app-ink-3)">Worth about</span>
+            <span className="tabular-nums text-(--app-ink-3)">
               {usd(quote.totalUsd)}
             </span>
           </div>
@@ -768,7 +768,7 @@ export function CreateTaskView({
               : cn(TASK_CREDIT.border, TASK_CREDIT.bg)
           )}
         >
-          <span className={shortBy > 0 ? "text-amber-300" : "text-gray-400"}>
+          <span className={shortBy > 0 ? "text-amber-300" : "text-(--app-ink-3)"}>
             {shortBy > 0
               ? `You need at least ${pts(shortBy)} more credit to publish this`
               : `Your credit: ${pts(taskCredit)} — enough for ${Math.floor(
@@ -789,9 +789,9 @@ export function CreateTaskView({
           )}
         </div>
 
-        <div className="mt-3 space-y-1 border-t border-white/10 pt-2 text-[11px] leading-relaxed text-gray-500">
+        <div className="mt-3 space-y-1 border-t border-white/10 pt-2 text-[11px] leading-relaxed text-(--app-ink-3)">
           <p>
-            <span className="font-semibold text-gray-300">
+            <span className="font-semibold text-(--app-ink-2)">
               Nothing is charged now.
             </span>{" "}
             Credit comes out as people complete the task —{" "}
@@ -821,7 +821,7 @@ export function CreateTaskView({
       <button
         onClick={submit}
         disabled={busy || !!limitError || shortBy > 0}
-        className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+        className="w-full py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
       >
         {busy ? (
           <Loader2 className="w-4 h-4 animate-spin" />

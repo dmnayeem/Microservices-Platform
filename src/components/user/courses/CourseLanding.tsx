@@ -93,7 +93,7 @@ export function CourseLanding({ data, viewerId }: Props) {
               <h2 className="text-base font-bold text-white mb-3">What you&apos;ll learn</h2>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {course.learningOutcomes.map((o, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-200">
+                  <li key={i} className="flex items-start gap-2 text-sm text-(--app-ink)">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                     <span>{o}</span>
                   </li>
@@ -113,11 +113,11 @@ export function CourseLanding({ data, viewerId }: Props) {
           {/* Description */}
           <section className="card p-5">
             <h2 className="text-base font-bold text-white mb-3">About this course</h2>
-            <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-gray-300">
+            <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-(--app-ink-2)">
               {course.description}
             </div>
             {course.lastContentUpdate && (
-              <p className="text-xs text-gray-500 mt-4">
+              <p className="text-xs text-(--app-ink-3) mt-4">
                 Last updated {new Date(course.lastContentUpdate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
               </p>
             )}
@@ -138,8 +138,8 @@ export function CourseLanding({ data, viewerId }: Props) {
               <h2 className="text-base font-bold text-white mb-3">Requirements</h2>
               <ul className="space-y-1.5">
                 {course.requirements.map((r, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                    <span className="text-gray-500">•</span>
+                  <li key={i} className="flex items-start gap-2 text-sm text-(--app-ink-2)">
+                    <span className="text-(--app-ink-3)">•</span>
                     <span>{r}</span>
                   </li>
                 ))}
@@ -153,8 +153,8 @@ export function CourseLanding({ data, viewerId }: Props) {
               <h2 className="text-base font-bold text-white mb-3">What&apos;s included</h2>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {course.whatsIncluded.map((w, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-200">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-300 mt-0.5 shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-(--app-ink)">
+                    <CheckCircle2 className="w-4 h-4 text-(--app-accent-ink) mt-0.5 shrink-0" />
                     <span>{w}</span>
                   </li>
                 ))}
@@ -176,11 +176,11 @@ export function CourseLanding({ data, viewerId }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-bold">{course.tutor.name}</p>
                   {course.tutor.tutorProfile?.headline && (
-                    <p className="text-sm text-indigo-300">
+                    <p className="text-sm text-(--app-accent-ink)">
                       {course.tutor.tutorProfile.headline}
                     </p>
                   )}
-                  <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
+                  <div className="mt-1 flex items-center gap-3 text-xs text-(--app-ink-3)">
                     {course.tutor.tutorProfile?.avgRating ? (
                       <span className="inline-flex items-center gap-0.5">
                         <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
@@ -191,7 +191,7 @@ export function CourseLanding({ data, viewerId }: Props) {
                     <span>{course.tutor.tutorProfile?.totalStudents ?? 0} students</span>
                   </div>
                   {course.tutor.tutorProfile?.bio && (
-                    <p className="text-sm text-gray-300 mt-2 whitespace-pre-wrap">
+                    <p className="text-sm text-(--app-ink-2) mt-2 whitespace-pre-wrap">
                       {course.tutor.tutorProfile.bio}
                     </p>
                   )}
@@ -228,7 +228,7 @@ export function CourseLanding({ data, viewerId }: Props) {
                 {faqs.map((f, i) => (
                   <li key={i}>
                     <p className="text-sm font-bold text-white">Q: {f.question}</p>
-                    <p className="text-sm text-gray-300 mt-1 whitespace-pre-wrap">
+                    <p className="text-sm text-(--app-ink-2) mt-1 whitespace-pre-wrap">
                       {f.answer}
                     </p>
                   </li>

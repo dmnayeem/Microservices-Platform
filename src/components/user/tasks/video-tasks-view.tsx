@@ -101,7 +101,7 @@ export function VideoTasksView() {
           <VideoIcon className="w-6 h-6 text-rose-400" />
           Video Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Watch videos to earn points. Stay on the player until the timer
           finishes.
         </p>

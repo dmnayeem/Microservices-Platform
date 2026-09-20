@@ -173,12 +173,12 @@ export function CoursesBrowse({ initialFeatured }: Props) {
       {/* Search + sort */}
       <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3)" />
           <input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            className="w-full pl-9 pr-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
             placeholder="Search courses…"
           />
         </div>
@@ -189,14 +189,14 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             className={
               "lg:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold border " +
               (activeFilterCount > 0
-                ? "border-indigo-500 bg-indigo-500/10 text-indigo-200"
-                : "border-gray-800 bg-gray-900 text-gray-300")
+                ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
+                : "border-(--app-line) bg-(--app-surface) text-(--app-ink-2)")
             }
           >
             <Filter className="w-4 h-4" />
             Filters
             {activeFilterCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] tabular-nums">
+              <span className="px-1.5 py-0.5 rounded-full bg-(--app-cta) text-(--app-on-cta) text-[10px] tabular-nums">
                 {activeFilterCount}
               </span>
             )}
@@ -205,7 +205,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="appearance-none pl-3 pr-9 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="appearance-none pl-3 pr-9 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-(--app-accent-edge)"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -213,7 +213,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-(--app-ink-3) pointer-events-none" />
           </div>
         </div>
       </div>
@@ -338,7 +338,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
                     "inline-flex items-center gap-0.5 px-2 py-1 rounded-md text-xs font-bold border " +
                     (minRating === r
                       ? "border-amber-400 bg-amber-400/10 text-amber-200"
-                      : "border-gray-700 bg-gray-900 text-gray-300 hover:bg-gray-800")
+                      : "border-(--app-line) bg-(--app-surface) text-(--app-ink-2) hover:bg-(--app-surface-2)")
                   }
                 >
                   {r === null ? "Any" : `${r}+`}
@@ -354,7 +354,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             <button
               type="button"
               onClick={clearAll}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gray-900 hover:bg-gray-800 text-gray-300 text-xs font-bold border border-gray-800"
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface) hover:bg-(--app-surface-2) text-(--app-ink-2) text-xs font-bold border border-(--app-line)"
             >
               <X className="w-3.5 h-3.5" />
               Clear all filters
@@ -382,7 +382,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
             />
           ) : (
             <>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-(--app-ink-3)">
                 {rows.length} course{rows.length === 1 ? "" : "s"}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -401,7 +401,7 @@ export function CoursesBrowse({ initialFeatured }: Props) {
 function FilterCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="card p-3">
-      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-(--app-ink-3) mb-2">
         {title}
       </p>
       {children}
@@ -430,8 +430,8 @@ function FilterRow({
         className={
           "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors " +
           (active
-            ? "bg-indigo-500/15 text-white"
-            : "text-gray-300 hover:bg-gray-800")
+            ? "bg-(--app-cta)/15 text-white"
+            : "text-(--app-ink-2) hover:bg-(--app-surface-2)")
         }
       >
         <span className="inline-flex items-center gap-2 min-w-0">
@@ -443,7 +443,7 @@ function FilterRow({
           )}
           <span className="truncate">{label}</span>
         </span>
-        <span className="text-[11px] text-gray-500 tabular-nums shrink-0">
+        <span className="text-[11px] text-(--app-ink-3) tabular-nums shrink-0">
           {count}
         </span>
       </button>
@@ -470,12 +470,12 @@ function SegmentedThree<T extends string>({
           className={
             "px-2 py-1.5 rounded-md text-xs font-bold border " +
             (value === o.value
-              ? "border-indigo-500 bg-indigo-500/15 text-white"
-              : "border-gray-700 bg-gray-900 text-gray-300 hover:bg-gray-800")
+              ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-white"
+              : "border-(--app-line) bg-(--app-surface) text-(--app-ink-2) hover:bg-(--app-surface-2)")
           }
         >
           {o.label}
-          <span className="ml-1 text-gray-500">{o.count}</span>
+          <span className="ml-1 text-(--app-ink-3)">{o.count}</span>
         </button>
       ))}
     </div>
@@ -494,7 +494,7 @@ function CourseCard({ c, highlight }: { c: BrowseCard; highlight?: boolean }) {
           : "card-interactive")
       }
     >
-      <div className="aspect-video bg-gray-950 relative">
+      <div className="aspect-video bg-(--app-page) relative">
         {c.thumbnail ? (
           <Image
             src={c.thumbnail}
@@ -504,7 +504,7 @@ function CourseCard({ c, highlight }: { c: BrowseCard; highlight?: boolean }) {
             className="object-cover group-hover:scale-[1.02] transition-transform"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-(--app-glyph)">
+          <div className="w-full h-full flex items-center justify-center text-(--app-ink-3)">
             <GraduationCap className="w-12 h-12" />
           </div>
         )}
@@ -520,22 +520,22 @@ function CourseCard({ c, highlight }: { c: BrowseCard; highlight?: boolean }) {
         )}
       </div>
       <div className="p-3 flex-1 flex flex-col gap-1.5">
-        <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-indigo-200">
+        <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-(--app-accent-ink)">
           {c.title}
         </p>
         {c.subtitle && (
-          <p className="text-xs text-gray-400 line-clamp-2">{c.subtitle}</p>
+          <p className="text-xs text-(--app-ink-3) line-clamp-2">{c.subtitle}</p>
         )}
         {c.tutor && (
-          <p className="text-xs text-gray-500">by {c.tutor.name ?? "Tutor"}</p>
+          <p className="text-xs text-(--app-ink-3)">by {c.tutor.name ?? "Tutor"}</p>
         )}
-        <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
+        <div className="mt-1 flex items-center gap-3 text-xs text-(--app-ink-3)">
           {c.avgRating > 0 && (
             <span className="inline-flex items-center gap-0.5">
               <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
               {c.avgRating.toFixed(1)}
               {c.totalReviews > 0 && (
-                <span className="text-gray-500">({c.totalReviews})</span>
+                <span className="text-(--app-ink-3)">({c.totalReviews})</span>
               )}
             </span>
           )}
@@ -557,7 +557,7 @@ function CourseCard({ c, highlight }: { c: BrowseCard; highlight?: boolean }) {
                 {usd(livePrice)}
               </span>
               {c.originalPrice && c.originalPrice > livePrice && (
-                <span className="text-xs text-gray-500 line-through">
+                <span className="text-xs text-(--app-ink-3) line-through">
                   {usd(c.originalPrice)}
                 </span>
               )}

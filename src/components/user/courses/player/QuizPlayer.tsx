@@ -137,15 +137,15 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
 
   return (
     <div className="space-y-3">
-      <header className="bg-gray-900 rounded-2xl border border-fuchsia-500/30 p-5">
+      <header className="bg-(--app-surface) rounded-2xl border border-fuchsia-500/30 p-5">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-500/20 text-fuchsia-200 text-[10px] font-bold uppercase tracking-wider">
           <Brain className="w-3 h-3" /> Quiz
         </span>
         <h1 className="text-xl font-bold text-white mt-2">{quiz.title}</h1>
         {quiz.description && (
-          <p className="text-sm text-gray-400 mt-1">{quiz.description}</p>
+          <p className="text-sm text-(--app-ink-3) mt-1">{quiz.description}</p>
         )}
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-(--app-ink-3) mt-2">
           {quiz.questions.length} questions · Pass mark {quiz.passMarkPercent}%
           {quiz.timeLimitMinutes ? ` · ${quiz.timeLimitMinutes} min time limit` : ""}
         </p>
@@ -207,12 +207,12 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
                 className="card p-4"
               >
                 <p className="text-sm font-bold text-white">
-                  <span className="text-gray-500 font-mono text-xs mr-1">
+                  <span className="text-(--app-ink-3) font-mono text-xs mr-1">
                     Q{qi + 1}.
                   </span>
                   {q.question}
                 </p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
+                <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider mt-1">
                   {multi ? "Select all that apply" : "Pick one"} · {q.points} pt{q.points === 1 ? "" : "s"}
                 </p>
                 <ul className="mt-3 space-y-1.5">
@@ -227,13 +227,13 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
                             "w-full text-left flex items-start gap-2 p-2 rounded-lg border " +
                             (isSel
                               ? "border-fuchsia-500 bg-fuchsia-500/15 text-white"
-                              : "border-gray-800 bg-gray-950 hover:bg-gray-800/60 text-gray-300")
+                              : "border-(--app-line) bg-(--app-page) hover:bg-(--app-surface-2)/60 text-(--app-ink-2)")
                           }
                         >
                           {isSel ? (
                             <CheckCircle2 className="w-4 h-4 text-fuchsia-300 mt-0.5 shrink-0" />
                           ) : (
-                            <div className="w-4 h-4 rounded-full border border-gray-600 mt-0.5 shrink-0" />
+                            <div className="w-4 h-4 rounded-full border border-(--app-line) mt-0.5 shrink-0" />
                           )}
                           <span className="text-sm">{opt}</span>
                         </button>

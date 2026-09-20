@@ -43,7 +43,7 @@ export function PostsListTab({ userId }: { userId: string }) {
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
-        <ImageIcon className="w-10 h-10 text-(--app-glyph) mx-auto mb-2" />
+        <ImageIcon className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
         <p className="text-sm text-gray-400 font-semibold">No posts yet</p>
         <p className="text-xs text-gray-600 mt-1">
           Your published posts will appear here.

@@ -39,7 +39,7 @@ export function CourseReviews({
     <section className="card p-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-bold text-white">Student reviews</h2>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-(--app-ink-3)">
           {totalReviews} review{totalReviews === 1 ? "" : "s"}
         </p>
       </div>
@@ -56,12 +56,12 @@ export function CourseReviews({
                 className={
                   n <= Math.round(avgRating)
                     ? "w-4 h-4 fill-amber-300 text-amber-300"
-                    : "w-4 h-4 text-(--app-glyph)"
+                    : "w-4 h-4 text-(--app-ink-3)"
                 }
               />
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-(--app-ink-3) mt-1">
             Course rating
           </p>
         </div>
@@ -71,17 +71,17 @@ export function CourseReviews({
             const pct = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
             return (
               <div key={n} className="flex items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-0.5 w-10 text-gray-300 tabular-nums">
+                <span className="inline-flex items-center gap-0.5 w-10 text-(--app-ink-2) tabular-nums">
                   {n}
                   <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
                 </span>
-                <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-(--app-surface-2) rounded-full overflow-hidden">
                   <div
                     className="h-full bg-amber-400"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="w-10 text-right text-gray-500 tabular-nums">
+                <span className="w-10 text-right text-(--app-ink-3) tabular-nums">
                   {count}
                 </span>
               </div>
@@ -93,7 +93,7 @@ export function CourseReviews({
       {canReview && <ReviewComposer courseId={courseId} existing={myReview} />}
 
       {reviews.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-(--app-ink-3) italic">
           No written reviews yet. Be the first to share what you thought.
         </p>
       ) : (
@@ -101,7 +101,7 @@ export function CourseReviews({
           {reviews.map((r) => (
             <li
               key={r.id}
-              className="rounded-xl border border-gray-800 bg-gray-950 p-3"
+              className="rounded-xl border border-(--app-line) bg-(--app-page) p-3"
             >
               <div className="flex items-center gap-2">
                 <Avatar
@@ -118,12 +118,12 @@ export function CourseReviews({
                       className={
                         n <= r.rating
                           ? "w-3 h-3 fill-amber-300 text-amber-300"
-                          : "w-3 h-3 text-(--app-glyph)"
+                          : "w-3 h-3 text-(--app-ink-3)"
                       }
                     />
                   ))}
                 </div>
-                <span className="ml-auto text-[11px] text-gray-500">
+                <span className="ml-auto text-[11px] text-(--app-ink-3)">
                   {formatDistanceToNow(r.createdAt, { addSuffix: true })}
                 </span>
               </div>
@@ -131,7 +131,7 @@ export function CourseReviews({
                 <p className="text-sm font-bold text-white mt-2">{r.title}</p>
               )}
               {r.comment && (
-                <p className="text-sm text-gray-300 mt-1 whitespace-pre-wrap">
+                <p className="text-sm text-(--app-ink-2) mt-1 whitespace-pre-wrap">
                   {r.comment}
                 </p>
               )}
@@ -186,7 +186,7 @@ function ReviewComposer({
   };
 
   return (
-    <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
+    <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3 space-y-2">
       <p className="text-sm font-bold text-white">
         {existing ? "Update your review" : "Leave a review"}
       </p>
@@ -203,7 +203,7 @@ function ReviewComposer({
               className={
                 n <= rating
                   ? "w-6 h-6 fill-amber-300 text-amber-300"
-                  : "w-6 h-6 text-(--app-glyph)"
+                  : "w-6 h-6 text-(--app-ink-3)"
               }
             />
           </button>
@@ -215,7 +215,7 @@ function ReviewComposer({
         onChange={(e) => setTitle(e.target.value)}
         maxLength={120}
         placeholder="Headline (optional)"
-        className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
       />
       <textarea
         value={comment}
@@ -223,13 +223,13 @@ function ReviewComposer({
         rows={3}
         maxLength={2000}
         placeholder="What did you think? (optional)"
-        className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+        className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-none"
       />
       <button
         type="button"
         onClick={submit}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
       >
         {busy ? (
           <Loader2 className="w-4 h-4 animate-spin" />

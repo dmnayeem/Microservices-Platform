@@ -60,7 +60,7 @@ export function ProofImageUpload({ value, onChange, placeholder }: Props) {
           <img
             src={value}
             alt="proof"
-            className="w-full max-w-[220px] rounded-lg border border-gray-700 object-cover bg-gray-950"
+            className="w-full max-w-[220px] rounded-lg border border-(--app-line) object-cover bg-(--app-page)"
           />
           <button
             type="button"
@@ -76,7 +76,7 @@ export function ProofImageUpload({ value, onChange, placeholder }: Props) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-gray-700 bg-gray-800 text-sm text-gray-300 hover:border-indigo-500 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-(--app-line) bg-(--app-surface-2) text-sm text-(--app-ink-2) hover:border-(--app-accent-edge) disabled:opacity-50"
         >
           {busy ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -102,7 +102,7 @@ export function ProofImageUpload({ value, onChange, placeholder }: Props) {
       <button
         type="button"
         onClick={() => setShowUrl((v) => !v)}
-        className="text-[11px] text-gray-500 hover:text-gray-300"
+        className="text-[11px] text-(--app-ink-3) hover:text-(--app-ink-2)"
       >
         {showUrl ? "Hide URL option" : "or paste a URL"}
       </button>
@@ -113,7 +113,7 @@ export function ProofImageUpload({ value, onChange, placeholder }: Props) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder ?? "https://..."}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
         />
       )}
     </div>

@@ -109,25 +109,25 @@ export function CoursePlayerShell({
         <button
           type="button"
           onClick={() => setSidebarOpen((s) => !s)}
-          className="p-2 rounded-lg bg-gray-900 border border-gray-800 text-gray-300 hover:text-white"
+          className="p-2 rounded-lg bg-(--app-surface) border border-(--app-line) text-(--app-ink-2) hover:text-white"
           aria-label="Toggle curriculum"
         >
           {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
         </button>
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
         >
           <ChevronLeft className="w-3.5 h-3.5" /> Course page
         </Link>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white truncate">{course.title}</p>
-          <div className="flex items-center gap-3 text-[11px] text-gray-500">
+          <div className="flex items-center gap-3 text-[11px] text-(--app-ink-3)">
             <span className="inline-flex items-center gap-1">
               <ListChecks className="w-3 h-3" />
               {completedCount} / {allLessons.length} lessons
             </span>
-            <div className="h-1 flex-1 max-w-[160px] bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-1 flex-1 max-w-[160px] bg-(--app-surface-2) rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500"
                 style={{ width: `${progressPct}%` }}

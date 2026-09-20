@@ -170,15 +170,15 @@ export function AssignmentSubmitter({
 
   return (
     <div className="space-y-3">
-      <header className="bg-gray-900 rounded-2xl border border-amber-500/30 p-5">
+      <header className="bg-(--app-surface) rounded-2xl border border-amber-500/30 p-5">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 text-[10px] font-bold uppercase tracking-wider">
           <ClipboardList className="w-3 h-3" /> Assignment
         </span>
         <h1 className="text-xl font-bold text-white mt-2">{payload.title}</h1>
-        <p className="text-sm text-gray-300 mt-2 whitespace-pre-wrap">
+        <p className="text-sm text-(--app-ink-2) mt-2 whitespace-pre-wrap">
           {payload.instructions}
         </p>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-(--app-ink-3) mt-2">
           Max marks: {payload.maxMarks}
         </p>
       </header>
@@ -199,7 +199,7 @@ export function AssignmentSubmitter({
       <div className="card p-5 space-y-4">
         {payload.fields.map((f) => (
           <div key={f.id}>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-(--app-ink-3) uppercase tracking-wider mb-1">
               {f.label}
               {f.required && <span className="text-rose-400 ml-1">*</span>}
             </label>
@@ -211,7 +211,7 @@ export function AssignmentSubmitter({
                 }
                 rows={4}
                 disabled={isGraded}
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 resize-y"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 resize-y"
               />
             ) : (
               <input
@@ -227,18 +227,18 @@ export function AssignmentSubmitter({
                   setAnswers((prev) => ({ ...prev, [f.id]: e.target.value }))
                 }
                 disabled={isGraded}
-                className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
+                className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
               />
             )}
             {f.hint && (
-              <p className="text-[11px] text-gray-500 mt-1">{f.hint}</p>
+              <p className="text-[11px] text-(--app-ink-3) mt-1">{f.hint}</p>
             )}
           </div>
         ))}
 
         {/* Optional attachments — separate from typed fields */}
         <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+          <label className="block text-xs font-bold text-(--app-ink-3) uppercase tracking-wider mb-1">
             Attachments
           </label>
           <input
@@ -256,14 +256,14 @@ export function AssignmentSubmitter({
             {fileUrls.map((u, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 p-2 rounded-lg bg-gray-950 border border-gray-700 text-xs"
+                className="flex items-center gap-2 p-2 rounded-lg bg-(--app-page) border border-(--app-line) text-xs"
               >
                 <Paperclip className="w-3.5 h-3.5 text-amber-300" />
                 <a
                   href={u}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-gray-300 break-all min-w-0 flex-1 hover:underline"
+                  className="text-(--app-ink-2) break-all min-w-0 flex-1 hover:underline"
                 >
                   {u}
                 </a>
@@ -273,7 +273,7 @@ export function AssignmentSubmitter({
                     onClick={() =>
                       setFileUrls((prev) => prev.filter((_, j) => j !== i))
                     }
-                    className="text-gray-500 hover:text-rose-300"
+                    className="text-(--app-ink-3) hover:text-rose-300"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -285,7 +285,7 @@ export function AssignmentSubmitter({
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-gray-700 hover:border-amber-500 text-gray-400 hover:text-amber-300 text-xs disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-(--app-line) hover:border-amber-500 text-(--app-ink-3) hover:text-amber-300 text-xs disabled:opacity-50"
               >
                 {uploading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

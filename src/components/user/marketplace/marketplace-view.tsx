@@ -493,7 +493,7 @@ function ListingCardV2({ listing }: { listing: Listing }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="w-10 h-10 text-(--app-glyph)" />
+            <ShoppingBag className="w-10 h-10 text-(--app-ink-3)" />
           </div>
         )}
         {/* Top-left flags */}

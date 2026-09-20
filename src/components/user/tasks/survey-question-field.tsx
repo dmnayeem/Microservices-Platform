@@ -34,7 +34,7 @@ export function SurveyQuestionField({
           {question.required && <span className="text-red-400 ml-1">*</span>}
         </span>
         {question.hint && (
-          <span className="block text-[11px] text-gray-500 mt-0.5">
+          <span className="block text-[11px] text-(--app-ink-3) mt-0.5">
             {question.hint}
           </span>
         )}
@@ -48,7 +48,7 @@ export function SurveyQuestionField({
           onChange={(e) => onChange(e.target.value)}
           maxLength={question.maxLength ?? 200}
           disabled={disabled}
-          className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50"
           placeholder="Your answer…"
         />
       )}
@@ -62,10 +62,10 @@ export function SurveyQuestionField({
             onChange={(e) => onChange(e.target.value)}
             maxLength={question.maxLength ?? 1000}
             disabled={disabled}
-            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-y disabled:opacity-50"
+            className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) resize-y disabled:opacity-50"
             placeholder="Your answer…"
           />
-          <p className="text-[11px] text-gray-500 text-right mt-1 tabular-nums">
+          <p className="text-[11px] text-(--app-ink-3) text-right mt-1 tabular-nums">
             {(typeof value === "string" ? value : "").length} /{" "}
             {question.maxLength ?? 1000}
           </p>
@@ -82,8 +82,8 @@ export function SurveyQuestionField({
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors",
                   checked
-                    ? "border-indigo-500 bg-indigo-500/10"
-                    : "border-gray-800 bg-gray-950 hover:border-gray-700",
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                    : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)",
                   disabled && "opacity-50 pointer-events-none"
                 )}
               >
@@ -93,7 +93,7 @@ export function SurveyQuestionField({
                   checked={checked}
                   onChange={() => onChange(opt)}
                   disabled={disabled}
-                  className="text-indigo-500"
+                  className="text-(--app-accent-ink)"
                 />
                 <span className="text-sm text-white">{opt}</span>
               </label>
@@ -117,8 +117,8 @@ export function SurveyQuestionField({
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors",
                   checked
-                    ? "border-indigo-500 bg-indigo-500/10"
-                    : "border-gray-800 bg-gray-950 hover:border-gray-700",
+                    ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                    : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)",
                   disabled && "opacity-50 pointer-events-none"
                 )}
               >
@@ -127,7 +127,7 @@ export function SurveyQuestionField({
                   checked={checked}
                   onChange={toggle}
                   disabled={disabled}
-                  className="rounded text-indigo-500 bg-gray-800 border-gray-600"
+                  className="rounded text-(--app-accent-ink) bg-(--app-surface-2) border-(--app-line)"
                 />
                 <span className="text-sm text-white">{opt}</span>
               </label>
@@ -142,7 +142,7 @@ export function SurveyQuestionField({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50"
         >
           <option value="" disabled>
             Choose…
@@ -179,7 +179,7 @@ export function SurveyQuestionField({
                       "w-6 h-6",
                       active
                         ? "text-amber-400 fill-amber-400"
-                        : "text-gray-600"
+                        : "text-(--app-ink-3)"
                     )}
                   />
                 </button>
@@ -187,7 +187,7 @@ export function SurveyQuestionField({
             }
           )}
           {typeof value === "number" && (
-            <span className="ml-2 text-xs text-gray-400 tabular-nums">
+            <span className="ml-2 text-xs text-(--app-ink-3) tabular-nums">
               {value} / {question.scale ?? 5}
             </span>
           )}

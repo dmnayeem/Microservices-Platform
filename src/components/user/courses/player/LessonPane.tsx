@@ -138,14 +138,14 @@ export function LessonPane({
           <LessonTypePill type={lesson.lessonType} />
           <h1 className="text-xl font-bold text-white mt-2">{lesson.title}</h1>
           {lesson.description && (
-            <p className="text-sm text-gray-400 mt-1">{lesson.description}</p>
+            <p className="text-sm text-(--app-ink-3) mt-1">{lesson.description}</p>
           )}
           {lesson.content ? (
-            <div className="prose prose-invert prose-sm max-w-none mt-4 whitespace-pre-wrap text-gray-200">
+            <div className="prose prose-invert prose-sm max-w-none mt-4 whitespace-pre-wrap text-(--app-ink)">
               {lesson.content}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 italic mt-4">
+            <p className="text-sm text-(--app-ink-3) italic mt-4">
               No content for this lesson.
             </p>
           )}
@@ -160,7 +160,7 @@ export function LessonPane({
             {lesson.title}
           </h2>
           {lesson.description && (
-            <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+            <p className="text-xs text-(--app-ink-3) mt-0.5 line-clamp-2">
               {lesson.description}
             </p>
           )}
@@ -170,7 +170,7 @@ export function LessonPane({
             type="button"
             onClick={onPrev}
             disabled={!hasPrev}
-            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold disabled:opacity-30"
+            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink) text-xs font-bold disabled:opacity-30"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Prev
           </button>
@@ -197,7 +197,7 @@ export function LessonPane({
             type="button"
             onClick={onNext}
             disabled={!hasNext}
-            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold disabled:opacity-30"
+            className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold disabled:opacity-30"
           >
             Next <ChevronRight className="w-3.5 h-3.5" />
           </button>
@@ -206,7 +206,7 @@ export function LessonPane({
 
       {/* Tabs */}
       <div className="card">
-        <div className="flex border-b border-gray-800 overflow-x-auto scrollbar-none">
+        <div className="flex border-b border-(--app-line) overflow-x-auto scrollbar-none">
           <TabButton active={tab === "overview"} onClick={() => setTab("overview")} icon={<FileText className="w-3.5 h-3.5" />}>
             Overview
           </TabButton>
@@ -222,11 +222,11 @@ export function LessonPane({
         </div>
         <div className="p-4">
           {tab === "overview" && (
-            <div className="space-y-2 text-sm text-gray-300">
+            <div className="space-y-2 text-sm text-(--app-ink-2)">
               {lesson.content ? (
                 <div className="whitespace-pre-wrap">{lesson.content}</div>
               ) : (
-                <p className="text-gray-500 italic">
+                <p className="text-(--app-ink-3) italic">
                   No transcript or notes for this lesson.
                 </p>
               )}
@@ -262,12 +262,12 @@ export function LessonPane({
                     href={r.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-2 p-2 rounded-lg border border-gray-800 hover:border-indigo-500/40 text-sm text-gray-200"
+                    className="flex items-center gap-2 p-2 rounded-lg border border-(--app-line) hover:border-(--app-accent-edge)/40 text-sm text-(--app-ink)"
                   >
-                    <Download className="w-4 h-4 text-indigo-300" />
+                    <Download className="w-4 h-4 text-(--app-accent-ink)" />
                     <span className="truncate min-w-0 flex-1">{r.label || r.url}</span>
                     {r.mimeType && (
-                      <span className="text-[10px] text-gray-500 font-mono uppercase">
+                      <span className="text-[10px] text-(--app-ink-3) font-mono uppercase">
                         {r.mimeType}
                       </span>
                     )}
@@ -300,8 +300,8 @@ function TabButton({
       className={
         "inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 -mb-px " +
         (active
-          ? "border-indigo-500 text-white"
-          : "border-transparent text-gray-400 hover:text-white")
+          ? "border-(--app-accent-edge) text-white"
+          : "border-transparent text-(--app-ink-3) hover:text-white")
       }
     >
       {icon}
@@ -312,7 +312,7 @@ function TabButton({
 
 function LessonTypePill({ type }: { type: string }) {
   const meta: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; cls: string }> = {
-    VIDEO: { icon: Video, label: "Video", cls: "bg-indigo-500/20 text-indigo-200" },
+    VIDEO: { icon: Video, label: "Video", cls: "bg-(--app-cta)/20 text-(--app-accent-ink)" },
     ARTICLE: { icon: FileText, label: "Article", cls: "bg-emerald-500/20 text-emerald-200" },
     QUIZ: { icon: Brain, label: "Quiz", cls: "bg-fuchsia-500/20 text-fuchsia-200" },
     ASSIGNMENT: { icon: ClipboardList, label: "Assignment", cls: "bg-amber-500/20 text-amber-200" },

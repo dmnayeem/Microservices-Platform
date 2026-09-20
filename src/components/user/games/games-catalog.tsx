@@ -58,7 +58,7 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
         </div>
         <div>
           <h1 className="text-lg font-bold text-white">Games</h1>
-          <p className="text-xs text-gray-400">Play instantly — no download.</p>
+          <p className="text-xs text-(--app-ink-3)">Play instantly — no download.</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
         <>
           {featured.length > 0 && tab === ALL && (
             <div className="space-y-2">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider inline-flex items-center gap-1.5">
+              <p className="text-xs font-bold text-(--app-ink-3) uppercase tracking-wider inline-flex items-center gap-1.5">
                 <Star className="w-3.5 h-3.5 text-amber-400" /> Featured
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -80,9 +80,9 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
                   <button
                     key={g.id}
                     onClick={() => setPlaying(g)}
-                    className="group relative rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden text-left hover:border-emerald-500/40 transition-colors"
+                    className="group relative rounded-2xl border border-(--app-line) bg-(--app-surface) overflow-hidden text-left hover:border-emerald-500/40 transition-colors"
                   >
-                    <div className="relative aspect-16/7 bg-gray-800">
+                    <div className="relative aspect-16/7 bg-(--app-surface-2)">
                       <SmartImage
                         src={g.coverUrl || g.iconUrl}
                         alt={g.title}
@@ -114,7 +114,7 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
                     "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
                     tab === c
                       ? "bg-emerald-500 text-white"
-                      : "bg-gray-800 text-gray-400 hover:text-white"
+                      : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
                   )}
                 >
                   {c === ALL ? "All" : c}
@@ -128,9 +128,9 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
               <button
                 key={g.id}
                 onClick={() => setPlaying(g)}
-                className="group rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden text-left hover:border-emerald-500/40 transition-colors"
+                className="group rounded-2xl border border-(--app-line) bg-(--app-surface) overflow-hidden text-left hover:border-emerald-500/40 transition-colors"
               >
-                <div className="relative aspect-square bg-gray-800">
+                <div className="relative aspect-square bg-(--app-surface-2)">
                   <SmartImage
                     src={g.iconUrl}
                     alt={g.title}
@@ -148,10 +148,10 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
                   <p className="text-sm font-bold text-white truncate">{g.title}</p>
                   <EarnBadge game={g} />
                   <div className="flex items-center justify-between mt-0.5">
-                    <span className="text-[10px] text-gray-500 truncate min-w-0">
+                    <span className="text-[10px] text-(--app-ink-3) truncate min-w-0">
                       {g.categoryName ?? g.category ?? ""}
                     </span>
-                    <span className="text-[10px] text-gray-600 tabular-nums shrink-0">
+                    <span className="text-[10px] text-(--app-ink-3) tabular-nums shrink-0">
                       {g.playsCount.toLocaleString()} plays
                     </span>
                   </div>
@@ -161,7 +161,7 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
           </div>
 
           {shown.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-8">
+            <p className="text-sm text-(--app-ink-3) text-center py-8">
               No games in this category yet.
             </p>
           )}

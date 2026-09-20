@@ -172,12 +172,12 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
 
   if (upgradeMsg !== null) {
     return (
-      <div className="fixed inset-0 z-100 bg-gray-950 overflow-y-auto">
+      <div className="fixed inset-0 z-100 bg-(--app-page) overflow-y-auto">
         <div className="min-h-screen flex flex-col items-center justify-center px-6">
           <TaskUpgradeNotice message={upgradeMsg} />
           <button
             onClick={onClose}
-            className="mt-2 px-5 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold"
+            className="mt-2 px-5 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
           >
             Close
           </button>
@@ -194,10 +194,10 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
   const lowTime = timeLeft < 60;
 
   return (
-    <div className="fixed inset-0 z-100 bg-gray-950 overflow-y-auto">
+    <div className="fixed inset-0 z-100 bg-(--app-page) overflow-y-auto">
       {state === "loading" && (
         <div className="min-h-screen flex flex-col items-center justify-center text-white">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-3" />
+          <Loader2 className="w-8 h-8 animate-spin text-(--app-accent-ink) mb-3" />
           <p className="text-sm">Loading Quiz…</p>
         </div>
       )}
@@ -208,12 +208,12 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           <p className="text-base font-semibold text-white">
             Failed to load quiz
           </p>
-          <p className="text-sm text-gray-400 mt-1 mb-4">
+          <p className="text-sm text-(--app-ink-3) mt-1 mb-4">
             {errorMsg || "Something went wrong loading the questions."}
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold"
+            className="px-4 py-2 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
           >
             Close
           </button>
@@ -222,10 +222,10 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
 
       {state === "active" && cur && (
         <>
-          <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-4 py-3">
+          <div className="sticky top-0 z-10 bg-(--app-surface) border-b border-(--app-line) px-4 py-3">
             <div className="max-w-3xl mx-auto flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-400 truncate">
+                <p className="text-xs text-(--app-ink-3) truncate">
                   {meta?.title ?? "Quiz"}
                 </p>
                 <p className="text-sm font-bold text-white">
@@ -238,7 +238,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                     "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-sm tabular-nums",
                     lowTime
                       ? "bg-red-500/15 text-red-400"
-                      : "bg-gray-800 text-white"
+                      : "bg-(--app-surface-2) text-white"
                   )}
                 >
                   <Clock className="w-3.5 h-3.5" />
@@ -257,12 +257,12 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                   )
                     onClose();
                 }}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white"
+                className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="max-w-3xl mx-auto mt-2 h-1 rounded-full bg-gray-800 overflow-hidden">
+            <div className="max-w-3xl mx-auto mt-2 h-1 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
                 className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width]"
                 style={{ width: `${((idx + 1) / questions.length) * 100}%` }}
@@ -278,7 +278,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                 <AdRenderer placement="TASK_START" dismissible />
               </div>
             )}
-            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+            <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-5">
               <p className="text-base font-semibold text-white mb-4">
                 {cur.question}
               </p>
@@ -287,7 +287,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                 <img
                   src={cur.imageUrl}
                   alt=""
-                  className="mb-4 max-h-64 w-auto rounded-xl border border-gray-800"
+                  className="mb-4 max-h-64 w-auto rounded-xl border border-(--app-line)"
                 />
               )}
               <div className="space-y-2">
@@ -302,16 +302,16 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                       className={cn(
                         "w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors",
                         active
-                          ? "border-indigo-500 bg-indigo-500/10"
-                          : "border-gray-700 bg-gray-950 hover:border-gray-600"
+                          ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                          : "border-(--app-line) bg-(--app-page) hover:border-(--app-line)"
                       )}
                     >
                       <div
                         className={cn(
                           "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
                           active
-                            ? "border-indigo-500 bg-indigo-500"
-                            : "border-gray-600"
+                            ? "border-(--app-accent-edge) bg-(--app-cta)"
+                            : "border-(--app-line)"
                         )}
                       >
                         {active && <Check className="w-3 h-3 text-white" />}
@@ -327,7 +327,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
               {idx > 0 && (
                 <button
                   onClick={() => setIdx((i) => Math.max(0, i - 1))}
-                  className="px-4 py-2.5 rounded-lg bg-gray-800 text-white text-sm font-semibold"
+                  className="px-4 py-2.5 rounded-lg bg-(--app-surface-2) text-white text-sm font-semibold"
                 >
                   Back
                 </button>
@@ -336,7 +336,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                 <button
                   disabled={selected === undefined}
                   onClick={() => setIdx((i) => i + 1)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold disabled:opacity-50"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
                 >
                   Next Question
                   <ArrowRight className="w-4 h-4" />
@@ -379,12 +379,12 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           <h2 className="text-2xl font-bold text-white mb-1">
             {result.passed ? "Quiz Completed!" : "Failed"}
           </h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-(--app-ink-3) mb-6">
             You scored {result.score} / {result.scoreMax} ({result.percent}%)
           </p>
           <div className="grid grid-cols-2 gap-2 max-w-xs w-full mb-6">
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-3">
-              <p className="text-[10px] uppercase font-bold text-gray-500">
+            <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3">
+              <p className="text-[10px] uppercase font-bold text-(--app-ink-3)">
                 Time
               </p>
               <p className="text-base font-bold text-white tabular-nums">
@@ -392,8 +392,8 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                 {String(result.timeTakenSec % 60).padStart(2, "0")}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-3">
-              <p className="text-[10px] uppercase font-bold text-gray-500">
+            <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3">
+              <p className="text-[10px] uppercase font-bold text-(--app-ink-3)">
                 Points
               </p>
               <p className="text-base font-bold text-amber-400 tabular-nums">
@@ -403,7 +403,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
           </div>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-lg bg-indigo-500 text-white text-sm font-bold"
+            className="px-5 py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
           >
             {result.passed ? "Claim Reward" : "Try Again Later"}
           </button>

@@ -95,11 +95,11 @@ export function HashtagFeedClient({ tag }: { tag: string }) {
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
-        <Hash className="w-10 h-10 text-(--app-glyph) mx-auto mb-2" />
+        <Hash className="w-10 h-10 text-(--app-ink-3) mx-auto mb-2" />
         <p className="text-sm text-(--app-ink-3) font-semibold">
           No posts with #{tag} yet
         </p>
-        <p className="text-xs text-(--app-glyph) mt-1">
+        <p className="text-xs text-(--app-ink-3) mt-1">
           Be the first to post with this hashtag.
         </p>
       </div>

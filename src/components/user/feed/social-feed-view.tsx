@@ -703,7 +703,7 @@ function FeedTab({
           <div ref={sentinelRef} className="h-1" />
           {loadingMore && <ListSkeleton rows={2} />}
           {!hasMore && (
-            <p className="text-center text-[11px] text-(--app-glyph) py-4">
+            <p className="text-center text-[11px] text-(--app-ink-3) py-4">
               You&apos;re all caught up.
             </p>
           )}

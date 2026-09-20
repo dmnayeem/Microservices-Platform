@@ -50,7 +50,7 @@ export function AppInstallListView() {
           <Smartphone className="w-6 h-6 text-green-400" />
           App Install Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Install apps, submit proof, and earn points once your install is
           verified.
         </p>

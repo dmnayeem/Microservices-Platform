@@ -102,7 +102,7 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-(--app-accent-ink)" />
       </div>
     );
   }
@@ -111,12 +111,12 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
     <div className="space-y-3">
       <div>
         <h1 className="text-xl font-bold text-white">{course.title}</h1>
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="text-xs text-(--app-ink-3) mt-0.5">
           {course.difficulty} · {course.duration} min · {done}/{total} lessons
         </p>
       </div>
 
-      <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
         <div
           className="h-full bg-linear-to-r from-emerald-500 to-cyan-500 transition-[width]"
           style={{ width: `${pct}%` }}
@@ -124,7 +124,7 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
       </div>
 
       {activeLesson && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface) overflow-hidden">
           {activeLesson.videoUrl && (
             <div className="aspect-video bg-black">
               <video
@@ -139,7 +139,7 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
               {activeLesson.title}
             </p>
             {activeLesson.content && (
-              <p className="text-sm text-gray-300 whitespace-pre-wrap">
+              <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
                 {activeLesson.content}
               </p>
             )}
@@ -169,8 +169,8 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
 
       <div className="space-y-2">
         {modules.map((m) => (
-          <div key={m.id} className="rounded-xl border border-gray-800 bg-gray-900">
-            <div className="px-3 py-2 border-b border-gray-800">
+          <div key={m.id} className="rounded-xl border border-(--app-line) bg-(--app-surface)">
+            <div className="px-3 py-2 border-b border-(--app-line)">
               <p className="text-sm font-semibold text-white">{m.title}</p>
             </div>
             <ul>
@@ -183,17 +183,17 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
                       onClick={() => setActive({ moduleId: m.id, lessonId: l.id })}
                       className={cn(
                         "w-full flex items-center gap-2 px-3 py-2 text-left text-xs",
-                        isActive ? "bg-indigo-500/10" : "hover:bg-gray-800/60"
+                        isActive ? "bg-(--app-cta)/10" : "hover:bg-(--app-surface-2)/60"
                       )}
                     >
                       {l.completed ? (
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                       ) : (
-                        <Play className="w-3.5 h-3.5 text-gray-500" />
+                        <Play className="w-3.5 h-3.5 text-(--app-ink-3)" />
                       )}
                       <span className="flex-1 text-white">{l.title}</span>
                       {l.durationMin && (
-                        <span className="text-gray-500">{l.durationMin}m</span>
+                        <span className="text-(--app-ink-3)">{l.durationMin}m</span>
                       )}
                     </button>
                   </li>
@@ -206,15 +206,15 @@ export function CoursePlayer({ course }: CoursePlayerProps) {
 
       {showComplete && (
         <div className="fixed inset-0 z-100 bg-black/80 flex items-center justify-center p-4">
-          <div className="rounded-2xl bg-gray-900 border border-gray-800 p-6 max-w-sm w-full text-center">
+          <div className="rounded-2xl bg-(--app-surface) border border-(--app-line) p-6 max-w-sm w-full text-center">
             <Trophy className="w-12 h-12 text-amber-400 mx-auto mb-3" />
             <h2 className="text-xl font-bold text-white">Course Complete!</h2>
-            <p className="text-sm text-gray-400 mt-1 mb-4">
+            <p className="text-sm text-(--app-ink-3) mt-1 mb-4">
               You finished &quot;{course.title}&quot;
             </p>
             <button
               onClick={() => setShowComplete(false)}
-              className="w-full py-2.5 rounded-lg bg-indigo-500 text-white font-bold"
+              className="w-full py-2.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) font-bold"
             >
               Awesome
             </button>

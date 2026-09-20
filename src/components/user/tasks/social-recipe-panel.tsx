@@ -113,7 +113,7 @@ export function SocialRecipePanel({
 
       {steps.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[11px] text-gray-400 font-semibold">
+          <p className="text-[11px] text-(--app-ink-3) font-semibold">
             Copy each item below, then create your {platformLabel} post:
           </p>
           {steps.map((step) => (
@@ -137,13 +137,13 @@ function DiyPromptBlock({
   platformLabel: string;
 }) {
   return (
-    <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/30 p-3 space-y-2">
+    <div className="rounded-lg bg-(--app-cta)/5 border border-(--app-accent-edge)/30 p-3 space-y-2">
       <div className="flex items-center gap-2">
-        <Wand2 className="w-4 h-4 shrink-0 text-indigo-400" />
-        <p className="min-w-0 text-sm font-bold text-indigo-300">
+        <Wand2 className="w-4 h-4 shrink-0 text-(--app-accent-ink)" />
+        <p className="min-w-0 text-sm font-bold text-(--app-accent-ink)">
           Text prompt — writes your {platformLabel} post
         </p>
-        <span className="ml-auto shrink-0 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-indigo-300">
+        <span className="ml-auto shrink-0 rounded bg-(--app-cta)/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-(--app-accent-ink)">
           Free
         </span>
       </div>
@@ -184,8 +184,8 @@ function PromptHowTo({
   const dot =
     tone === "amber"
       ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
-      : "border-indigo-500/40 bg-indigo-500/15 text-indigo-200";
-  const text = tone === "amber" ? "text-amber-100/90" : "text-indigo-100/90";
+      : "border-(--app-accent-edge)/40 bg-(--app-cta)/15 text-(--app-accent-ink)";
+  const text = tone === "amber" ? "text-amber-100/90" : "text-(--app-accent-ink)/90";
   return (
     <ol className="space-y-1.5">
       {steps.map((s, i) => (
@@ -259,7 +259,7 @@ function RecipeStep({
           href={step.value}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300"
+          className="inline-flex items-center gap-1 text-[11px] text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           <ExternalLink className="w-3 h-3" /> Open
         </a>
@@ -288,12 +288,12 @@ function ImageStep({
   const href = mediaSrc(step.value);
 
   return (
-    <div className="rounded-lg bg-gray-950 border border-gray-800 p-3 space-y-2">
+    <div className="rounded-lg bg-(--app-page) border border-(--app-line) p-3 space-y-2">
       <div className="flex items-center gap-2">
-        <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-500/15 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold grid place-items-center">
+        <span className="shrink-0 w-5 h-5 rounded-full bg-(--app-cta)/15 border border-(--app-accent-edge)/40 text-(--app-accent-ink) text-[10px] font-bold grid place-items-center">
           {step.serial}
         </span>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold truncate min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold truncate min-w-0">
           {step.label}
         </p>
         {badge}
@@ -303,14 +303,14 @@ function ImageStep({
         alt={step.label}
         width={480}
         height={320}
-        className="w-full max-h-56 rounded-lg object-contain bg-gray-900 border border-gray-800"
+        className="w-full max-h-56 rounded-lg object-contain bg-(--app-surface) border border-(--app-line)"
       />
       <div className="flex items-center gap-3">
         {isOurs ? (
           <a
             href={href}
             download
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-[11px] font-bold"
           >
             <Download className="w-3.5 h-3.5" /> Download image
           </a>
@@ -319,7 +319,7 @@ function ImageStep({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-[11px] font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-[11px] font-bold"
           >
             <ExternalLink className="w-3.5 h-3.5" /> Open image to save
           </a>

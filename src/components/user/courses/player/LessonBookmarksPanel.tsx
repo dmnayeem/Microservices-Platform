@@ -37,10 +37,10 @@ export function LessonBookmarksPanel({ bookmarks, onChange }: Props) {
           onChange={(e) => setLabel(e.target.value)}
           maxLength={120}
           placeholder="Label (optional)"
-          className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+          className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
         />
         <div className="flex items-center gap-2">
-          <label className="text-[11px] text-gray-500 uppercase font-bold">
+          <label className="text-[11px] text-(--app-ink-3) uppercase font-bold">
             At
           </label>
           <input
@@ -48,9 +48,9 @@ export function LessonBookmarksPanel({ bookmarks, onChange }: Props) {
             min={0}
             value={position}
             onChange={(e) => setPosition(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1 bg-gray-950 border border-gray-700 rounded text-xs text-white tabular-nums"
+            className="w-20 px-2 py-1 bg-(--app-page) border border-(--app-line) rounded text-xs text-white tabular-nums"
           />
-          <span className="text-[11px] text-gray-500">seconds</span>
+          <span className="text-[11px] text-(--app-ink-3)">seconds</span>
           <button
             type="button"
             onClick={add}
@@ -74,7 +74,7 @@ export function LessonBookmarksPanel({ bookmarks, onChange }: Props) {
           {bookmarks.map((b) => (
             <li
               key={b.id}
-              className="rounded-lg border border-gray-800 bg-gray-950 p-3 flex items-center gap-3"
+              className="rounded-lg border border-(--app-line) bg-(--app-page) p-3 flex items-center gap-3"
             >
               <Bookmark className="w-4 h-4 text-amber-300 shrink-0" />
               <div className="flex-1 min-w-0">

@@ -236,7 +236,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
         <Loader2 className="w-7 h-7 animate-spin text-purple-400" />
-        <p className="text-sm text-gray-500">Loading survey…</p>
+        <p className="text-sm text-(--app-ink-3)">Loading survey…</p>
       </div>
     );
   }
@@ -254,7 +254,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
       <div className="space-y-4">
         <Link
           href="/survey-tasks"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to surveys
@@ -275,14 +275,14 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
     <div className="space-y-5">
       <Link
         href="/survey-tasks"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to surveys
       </Link>
 
       {/* Hero */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) overflow-hidden">
         {task.thumbnailUrl && (
           <div className="relative w-full h-40 sm:h-52">
             <SmartImage
@@ -299,7 +299,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
             <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
               <ClipboardList className="w-5 h-5" />
             </div>
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+            <span className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
               Survey
             </span>
           </div>
@@ -307,7 +307,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
             {task.title}
           </h1>
           {task.description && (
-            <p className="text-sm text-gray-300 whitespace-pre-wrap">
+            <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
               {task.description}
             </p>
           )}
@@ -355,7 +355,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
       )}
 
       {cfg?.introMessage && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-200 whitespace-pre-wrap">
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 text-sm text-(--app-ink) whitespace-pre-wrap">
           {cfg.introMessage}
         </div>
       )}
@@ -436,7 +436,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
         <section className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 sm:p-5 space-y-5">
           <div>
             <h2 className="text-base font-bold text-white">Your answers</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-(--app-ink-3) mt-0.5">
               {orderedQuestions.filter((q) => q.required).length} required of{" "}
               {orderedQuestions.length} questions.
             </p>
@@ -446,9 +446,9 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
             {orderedQuestions.map((q, i) => (
               <div
                 key={q.id}
-                className="rounded-lg bg-gray-950 border border-gray-800 p-3"
+                className="rounded-lg bg-(--app-page) border border-(--app-line) p-3"
               >
-                <div className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2">
+                <div className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2">
                   Question {i + 1}
                 </div>
                 <SurveyQuestionField
@@ -464,7 +464,7 @@ export function SurveyTaskDetailView({ taskId }: { taskId: string }) {
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <Link
               href="/survey-tasks"
-              className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold text-center transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-white text-sm font-semibold text-center transition-colors"
             >
               Cancel
             </Link>

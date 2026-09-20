@@ -202,7 +202,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
         <Loader2 className="w-7 h-7 animate-spin text-green-400" />
-        <p className="text-sm text-gray-500">Loading task…</p>
+        <p className="text-sm text-(--app-ink-3)">Loading task…</p>
       </div>
     );
   }
@@ -218,7 +218,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
   if (loadError || !task) {
     return (
       <div className="space-y-4">
-        <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
+        <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white">
           <ArrowLeft className="w-4 h-4" /> Back to tasks
         </Link>
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
@@ -231,14 +231,14 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
 
   return (
     <div className="space-y-5">
-      <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
+      <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white">
         <ArrowLeft className="w-4 h-4" /> Back to tasks
       </Link>
 
       {/* App card */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5 space-y-4">
+      <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5 space-y-4">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gray-800 overflow-hidden shrink-0 grid place-items-center">
+          <div className="w-16 h-16 rounded-2xl bg-(--app-surface-2) overflow-hidden shrink-0 grid place-items-center">
             {logo ? (
               <SmartImage
                 src={logo}
@@ -248,7 +248,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <Smartphone className="w-7 h-7 text-gray-600" />
+              <Smartphone className="w-7 h-7 text-(--app-ink-3)" />
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -272,7 +272,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
         </div>
 
         {(cfg?.description || task.description) && (
-          <p className="text-sm text-gray-300 whitespace-pre-wrap">
+          <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap">
             {cfg?.description || task.description}
           </p>
         )}
@@ -308,13 +308,13 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
 
       {/* Steps */}
       {steps.length > 0 && (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 space-y-2.5">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+        <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 space-y-2.5">
+          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
             How to complete
           </p>
           <ol className="space-y-2">
             {steps.map((s, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-sm text-gray-200">
+              <li key={i} className="flex items-start gap-2.5 text-sm text-(--app-ink)">
                 <span className="w-5 h-5 rounded-full bg-green-500/15 text-green-400 text-[11px] font-bold grid place-items-center shrink-0 mt-0.5">
                   {i + 1}
                 </span>
@@ -367,10 +367,10 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
               (!it.valueLabel || proof[it.id]?.value?.trim())
           );
           return (
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 space-y-4">
+            <div className="rounded-xl border border-(--app-line) bg-(--app-surface) p-4 sm:p-5 space-y-4">
               <div>
                 <p className="text-sm font-bold text-white">Submit your proof</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-(--app-ink-3) mt-0.5">
                   Complete each requirement below, then submit.
                 </p>
               </div>
@@ -378,14 +378,14 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
               {items.map((it, i) => (
                 <div
                   key={it.id}
-                  className="rounded-lg border border-gray-800 bg-gray-950/40 p-3 space-y-2"
+                  className="rounded-lg border border-(--app-line) bg-(--app-page)/40 p-3 space-y-2"
                 >
                   <p className="text-sm font-semibold text-white">
                     <span className="text-emerald-400">{i + 1}.</span> {it.label}
                   </p>
                   {it.valueLabel && (
                     <div>
-                      <label className="block text-[11px] text-gray-400 mb-1">
+                      <label className="block text-[11px] text-(--app-ink-3) mb-1">
                         {it.valueLabel}
                       </label>
                       <input
@@ -396,7 +396,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
                             [it.id]: { ...p[it.id], value: e.target.value },
                           }))
                         }
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500"
                         placeholder={
                           it.kind === "LEVEL"
                             ? `e.g. ${it.target ?? 10}`

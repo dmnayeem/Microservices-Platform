@@ -56,9 +56,9 @@ export function CustomTasksView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-indigo-400" /> Custom Tasks
+          <Sparkles className="w-6 h-6 text-(--app-accent-ink)" /> Custom Tasks
         </h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <p className="text-(--app-ink-3) text-sm mt-1">
           Complete custom tasks to earn points and XP.
         </p>
       </div>

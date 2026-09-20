@@ -40,7 +40,7 @@ const ReactPlayer = dynamic(() => import("react-player"), {
   ssr: false,
   loading: () => (
     <div className="absolute inset-0 grid place-items-center bg-black">
-      <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+      <Loader2 className="w-8 h-8 animate-spin text-(--app-accent-ink)" />
     </div>
   ),
 });
@@ -519,7 +519,7 @@ export function VideoTaskPlayer({
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/80 to-transparent">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">
+          <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold">
             Video Task
           </p>
           <p className="text-sm text-white font-semibold truncate">
@@ -529,7 +529,7 @@ export function VideoTaskPlayer({
         <button
           onClick={handleCancel}
           disabled={busy}
-          className="ml-3 p-2 rounded-full bg-gray-900/60 hover:bg-gray-800 text-gray-300 disabled:opacity-50"
+          className="ml-3 p-2 rounded-full bg-(--app-surface)/60 hover:bg-(--app-surface-2) text-(--app-ink-2) disabled:opacity-50"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -620,7 +620,7 @@ export function VideoTaskPlayer({
             }}
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center text-gray-400">
+          <div className="absolute inset-0 grid place-items-center text-(--app-ink-3)">
             <p>No video URL configured.</p>
           </div>
         )}
@@ -633,7 +633,7 @@ export function VideoTaskPlayer({
               <p className="text-sm font-semibold text-white">
                 Couldn&apos;t load this video
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-(--app-ink-3)">
                 The video link may be invalid or unsupported for in-app playback.
                 You can open it directly and try again.
               </p>
@@ -642,14 +642,14 @@ export function VideoTaskPlayer({
                   href={videoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
                 >
                   <ExternalLink className="w-4 h-4" /> Open video
                 </a>
               )}
               <button
                 onClick={handleCancel}
-                className="block w-full text-xs text-gray-400 hover:text-white"
+                className="block w-full text-xs text-(--app-ink-3) hover:text-white"
               >
                 Close
               </button>
@@ -697,7 +697,7 @@ export function VideoTaskPlayer({
               <span className="text-sm font-semibold text-white">
                 Tap to play with sound
               </span>
-              <span className="text-xs text-gray-300">
+              <span className="text-xs text-(--app-ink-2)">
                 Watch time counts only while the video is playing
               </span>
             </span>
@@ -708,13 +708,13 @@ export function VideoTaskPlayer({
         {phase === "warmup" && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-black/70 pointer-events-none">
             <div className="text-center">
-              <p className="text-xs uppercase tracking-widest text-indigo-400 font-bold mb-2">
+              <p className="text-xs uppercase tracking-widest text-(--app-accent-ink) font-bold mb-2">
                 Get ready
               </p>
               <p className="text-7xl font-black text-white tabular-nums">
                 {warmupLeft}
               </p>
-              <p className="text-sm text-gray-400 mt-3">
+              <p className="text-sm text-(--app-ink-3) mt-3">
                 Starting in… stay on this screen.
               </p>
             </div>
@@ -787,15 +787,15 @@ export function VideoTaskPlayer({
         {phase === "watch" && (
           <>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-300 inline-flex items-center gap-1.5">
-                <PlayCircle className="w-4 h-4 text-indigo-400" />
+              <span className="text-(--app-ink-2) inline-flex items-center gap-1.5">
+                <PlayCircle className="w-4 h-4 text-(--app-accent-ink)" />
                 Watching
               </span>
               <span className="text-white tabular-nums font-mono">
                 {formatDuration(watched)} / {formatDuration(watchTarget)}
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
               <div
                 className="h-full bg-linear-to-r from-indigo-500 to-purple-500 transition-[width] duration-300"
                 style={{ width: `${watchPct}%` }}
@@ -830,8 +830,8 @@ export function VideoTaskPlayer({
                         done
                           ? "border-emerald-500/30 bg-emerald-500/5"
                           : active
-                            ? "border-indigo-500/40 bg-gray-900"
-                            : "border-gray-800 bg-gray-950 opacity-50"
+                            ? "border-(--app-accent-edge)/40 bg-(--app-surface)"
+                            : "border-(--app-line) bg-(--app-page) opacity-50"
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -845,7 +845,7 @@ export function VideoTaskPlayer({
                             {s.label || meta.verb}
                           </span>
                           {optional && (
-                            <span className="shrink-0 text-[9px] font-bold uppercase text-gray-400 bg-gray-800 rounded px-1.5 py-0.5">
+                            <span className="shrink-0 text-[9px] font-bold uppercase text-(--app-ink-3) bg-(--app-surface-2) rounded px-1.5 py-0.5">
                               {skipped ? "Skipped" : "Optional"}
                             </span>
                           )}
@@ -855,7 +855,7 @@ export function VideoTaskPlayer({
                             href={s.actionUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-semibold shrink-0"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-semibold shrink-0"
                           >
                             <ExternalLink className="w-3 h-3" />
                             {meta.openText}
@@ -873,10 +873,10 @@ export function VideoTaskPlayer({
                                   .then(() => toast.success("Comment copied"))
                                   .catch(() => {});
                               }}
-                              className="w-full flex items-start gap-2 rounded-lg border border-gray-700 bg-gray-950 px-2.5 py-2 text-left"
+                              className="w-full flex items-start gap-2 rounded-lg border border-(--app-line) bg-(--app-page) px-2.5 py-2 text-left"
                             >
-                              <Copy className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                              <span className="flex-1 text-xs text-gray-300">
+                              <Copy className="w-3.5 h-3.5 text-(--app-accent-ink) shrink-0 mt-0.5" />
+                              <span className="flex-1 text-xs text-(--app-ink-2)">
                                 {s.commentTemplate}
                               </span>
                             </button>
@@ -892,7 +892,7 @@ export function VideoTaskPlayer({
                           )}
                           {s.requireLink && (
                             <div className="relative">
-                              <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                              <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--app-ink-3)" />
                               <input
                                 type="url"
                                 value={link}
@@ -903,7 +903,7 @@ export function VideoTaskPlayer({
                                   }))
                                 }
                                 placeholder="Paste the proof link (e.g. your comment URL)"
-                                className="w-full pl-8 pr-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                                className="w-full pl-8 pr-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)"
                               />
                             </div>
                           )}
@@ -912,7 +912,7 @@ export function VideoTaskPlayer({
                               type="button"
                               onClick={saveStep}
                               disabled={!canSave}
-                              className="flex-1 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 py-2 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <CheckCircle2 className="w-4 h-4" />
                               Save &amp; continue
@@ -921,7 +921,7 @@ export function VideoTaskPlayer({
                               <button
                                 type="button"
                                 onClick={skipStep}
-                                className="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+                                className="px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-2) text-(--app-ink-2) text-sm font-semibold inline-flex items-center justify-center gap-1.5"
                               >
                                 <SkipForward className="w-4 h-4" />
                                 Skip
@@ -935,7 +935,7 @@ export function VideoTaskPlayer({
                 })}
                 {allStepsDone && proofReq.uniqueKey && (
                   <div>
-                    <label className="flex text-xs font-medium text-gray-400 mb-1 items-center gap-1">
+                    <label className="flex text-xs font-medium text-(--app-ink-3) mb-1 items-center gap-1">
                       <KeyRound className="w-3 h-3" />
                       Unique Key <span className="text-red-400">*</span>
                     </label>
@@ -943,7 +943,7 @@ export function VideoTaskPlayer({
                       value={uniqueKey}
                       onChange={(e) => setUniqueKey(e.target.value)}
                       placeholder="Enter the key shown in the video"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                      className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
                     />
                     {cfg?.uniqueKeyHint && (
                       <p className="text-[11px] text-amber-400/80 mt-1">
@@ -979,7 +979,7 @@ export function VideoTaskPlayer({
                 {engSteps.map((s) => (
                   <div
                     key={s.key}
-                    className="rounded-lg border border-gray-800 bg-gray-900 p-2.5 space-y-2"
+                    className="rounded-lg border border-(--app-line) bg-(--app-surface) p-2.5 space-y-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm text-white">{s.label}</span>
@@ -987,7 +987,7 @@ export function VideoTaskPlayer({
                         href={s.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 text-xs font-semibold shrink-0"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-(--app-cta)/15 text-(--app-accent-ink) text-xs font-semibold shrink-0"
                       >
                         <ExternalLink className="w-3 h-3" />
                         Open
@@ -995,7 +995,7 @@ export function VideoTaskPlayer({
                     </div>
                     {s.key === "comment" && cfg?.engagement?.commentTemplate && (
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 px-2 py-1.5 rounded bg-gray-950 border border-gray-800 text-gray-300 text-xs break-words">
+                        <code className="flex-1 px-2 py-1.5 rounded bg-(--app-page) border border-(--app-line) text-(--app-ink-2) text-xs break-words">
                           {cfg.engagement.commentTemplate}
                         </code>
                         <button
@@ -1008,7 +1008,7 @@ export function VideoTaskPlayer({
                                 setTimeout(() => setCopiedComment(false), 1500);
                               });
                           }}
-                          className="px-2 py-1.5 rounded bg-gray-800 text-gray-200 text-xs font-semibold shrink-0"
+                          className="px-2 py-1.5 rounded bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold shrink-0"
                         >
                           {copiedComment ? "Copied!" : "Copy"}
                         </button>
@@ -1021,7 +1021,7 @@ export function VideoTaskPlayer({
                         onChange={(e) =>
                           setEngDone((p) => ({ ...p, [s.key]: e.target.checked }))
                         }
-                        className="rounded bg-gray-800 border-gray-600 text-emerald-500"
+                        className="rounded bg-(--app-surface-2) border-(--app-line) text-emerald-500"
                       />
                       <span className="text-xs text-emerald-300 inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1036,7 +1036,7 @@ export function VideoTaskPlayer({
               <div className="space-y-2">
                 {proofReq.screenshot && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">
+                    <label className="block text-xs font-medium text-(--app-ink-3) mb-1">
                       Screenshot <span className="text-red-400">*</span>
                     </label>
                     <ProofImageUpload
@@ -1047,7 +1047,7 @@ export function VideoTaskPlayer({
                 )}
                 {proofReq.uniqueKey && (
                   <div>
-                    <label className="flex text-xs font-medium text-gray-400 mb-1 items-center gap-1">
+                    <label className="flex text-xs font-medium text-(--app-ink-3) mb-1 items-center gap-1">
                       <KeyRound className="w-3 h-3" />
                       Unique Key <span className="text-red-400">*</span>
                     </label>
@@ -1055,7 +1055,7 @@ export function VideoTaskPlayer({
                       value={uniqueKey}
                       onChange={(e) => setUniqueKey(e.target.value)}
                       placeholder="Enter the key shown in the video"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
+                      className="w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
                     />
                     {cfg?.uniqueKeyHint && (
                       <p className="text-[11px] text-amber-400/80 mt-1">
@@ -1072,7 +1072,7 @@ export function VideoTaskPlayer({
             <button
               onClick={doSubmit}
               disabled={busy || !allEngDone}
-              className="w-full py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

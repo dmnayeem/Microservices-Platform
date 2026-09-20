@@ -309,7 +309,7 @@ export function ListingDetailView({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <ImageOff className="w-12 h-12 text-(--app-glyph)" />
+                <ImageOff className="w-12 h-12 text-(--app-ink-3)" />
               </div>
             )}
             <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">

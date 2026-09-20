@@ -61,7 +61,7 @@ const TABS: { key: TabKey; label: string; icon: typeof ListTodo }[] = [
 // Cohesive tinted chips (not saturated rainbow gradients) — matches the
 // tasks-hub Quick Access for a consistent, professional look.
 const QA_CHIP: Record<string, string> = {
-  indigo: "bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20",
+  indigo: "bg-(--app-cta)/10 text-(--app-accent-ink) ring-1 ring-indigo-500/20",
   violet: "bg-violet-500/10 text-violet-400 ring-1 ring-violet-500/20",
   emerald: "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20",
   cyan: "bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20",
@@ -106,13 +106,13 @@ export function EarningHub({ user }: EarningHubProps) {
             <Sparkles className="w-6 h-6 text-amber-400" />
             Earn
           </h1>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="text-(--app-ink-3) text-sm mt-0.5">
             All your earning options in one place.
           </p>
         </div>
         <button
           onClick={() => setSearchOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white text-sm transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-(--app-surface) border border-(--app-line) hover:border-(--app-line) text-(--app-ink-3) hover:text-white text-sm transition-colors"
         >
           <Search className="w-4 h-4" />
           Search…
@@ -121,7 +121,7 @@ export function EarningHub({ user }: EarningHubProps) {
 
       {/* Quick Access 8-grid */}
       <section>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2 px-1">
+        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 px-1">
           Quick Access
         </p>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
@@ -136,7 +136,7 @@ export function EarningHub({ user }: EarningHubProps) {
               >
                 <item.icon className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium text-gray-300 group-hover:text-white text-center leading-tight">
+              <span className="text-[11px] font-medium text-(--app-ink-2) group-hover:text-white text-center leading-tight">
                 {item.name}
               </span>
             </Link>
@@ -146,7 +146,7 @@ export function EarningHub({ user }: EarningHubProps) {
 
       {/* Tab Nav */}
       <ScrollFadeRow
-        className="-mx-1 sticky top-0 z-10 bg-gray-950/80 backdrop-blur-sm"
+        className="-mx-1 sticky top-0 z-10 bg-(--app-page)/80 backdrop-blur-sm"
         innerClassName="flex gap-1 px-1 pb-1"
         ariaLabel="Earn tabs"
       >
@@ -159,8 +159,8 @@ export function EarningHub({ user }: EarningHubProps) {
               className={cn(
                 "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors border",
                 isActive
-                  ? "bg-indigo-500/15 text-white border-indigo-500/40"
-                  : "bg-gray-900 text-gray-400 border-gray-800 hover:text-white hover:bg-gray-800"
+                  ? "bg-(--app-cta)/15 text-white border-(--app-accent-edge)/40"
+                  : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white hover:bg-(--app-surface-2)"
               )}
             >
               <t.icon className="w-4 h-4" />
@@ -327,7 +327,7 @@ export function LearnTab() {
         <h2 className="text-sm font-bold text-white">Available Courses</h2>
         <Link
           href="/course-creator"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           <Sparkles className="w-3.5 h-3.5" />
           Create Course
@@ -350,7 +350,7 @@ export function LearnTab() {
             <Link
               key={c.id}
               href={`/courses/${c.id}`}
-              className="group glass rounded-xl hover:border-indigo-500/40 p-4 transition-colors"
+              className="group glass rounded-xl hover:border-(--app-accent-edge)/40 p-4 transition-colors"
             >
               <div className="flex gap-3">
                 {c.thumbnail ? (
@@ -359,10 +359,10 @@ export function LearnTab() {
                     alt=""
                     width={64}
                     height={64}
-                    className="w-16 h-16 rounded-lg object-cover bg-gray-800 shrink-0"
+                    className="w-16 h-16 rounded-lg object-cover bg-(--app-surface-2) shrink-0"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                  <div className="w-16 h-16 rounded-lg bg-(--app-cta)/10 text-(--app-accent-ink) flex items-center justify-center shrink-0">
                     <GraduationCap className="w-7 h-7" />
                   </div>
                 )}
@@ -371,13 +371,13 @@ export function LearnTab() {
                     {c.title}
                   </h3>
                   {c.creator?.name && (
-                    <p className="text-[11px] text-gray-500 mt-0.5">
+                    <p className="text-[11px] text-(--app-ink-3) mt-0.5">
                       By {c.creator.name}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2 text-[11px] text-gray-400">
+                  <div className="flex items-center gap-2 mt-2 text-[11px] text-(--app-ink-3)">
                     {c.difficulty && (
-                      <span className="px-1.5 py-0.5 rounded bg-gray-800 uppercase">
+                      <span className="px-1.5 py-0.5 rounded bg-(--app-surface-2) uppercase">
                         {c.difficulty}
                       </span>
                     )}
@@ -389,7 +389,7 @@ export function LearnTab() {
                     )}
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-white shrink-0 self-center" />
+                <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-white shrink-0 self-center" />
               </div>
             </Link>
           ))}
@@ -487,7 +487,7 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
 
       {/* Level Map */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2 px-1">
+        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 px-1">
           Full Level Map (1–100)
         </p>
         <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
@@ -505,10 +505,10 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors",
                   isCurrent
-                    ? "bg-indigo-500/10 border-indigo-500/50 scale-[1.02]"
+                    ? "bg-(--app-cta)/10 border-(--app-accent-edge)/50 scale-[1.02]"
                     : isPast
-                      ? "bg-gray-900 border-emerald-500/20"
-                      : "bg-gray-900/60 border-gray-800 opacity-70"
+                      ? "bg-(--app-surface) border-emerald-500/20"
+                      : "bg-(--app-surface)/60 border-(--app-line) opacity-70"
                 )}
               >
                 <div
@@ -518,7 +518,7 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
                       ? "bg-emerald-500/15 text-emerald-400"
                       : isCurrent
                         ? `bg-linear-to-r ${tier.gradient} text-white shadow-lg`
-                        : "bg-gray-800 text-gray-500"
+                        : "bg-(--app-surface-2) text-(--app-ink-3)"
                   )}
                 >
                   {isPast ? <CheckCircle className="w-4 h-4" /> : lvl}
@@ -527,21 +527,21 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
                   <p
                     className={cn(
                       "text-sm font-semibold truncate",
-                      isCurrent ? "text-white" : isPast ? "text-emerald-300" : "text-gray-400"
+                      isCurrent ? "text-white" : isPast ? "text-emerald-300" : "text-(--app-ink-3)"
                     )}
                   >
                     Lvl {lvl} · {tier.title}
                     {isCurrent && (
-                      <span className="ml-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wider bg-indigo-500 text-white rounded">
+                      <span className="ml-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wider bg-(--app-cta) text-(--app-on-cta) rounded">
                         Current
                       </span>
                     )}
                   </p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-(--app-ink-3)">
                     {xpForLevel.toLocaleString()} XP needed
                   </p>
                 </div>
-                {isLocked && <Lock className="w-3.5 h-3.5 text-gray-600 shrink-0" />}
+                {isLocked && <Lock className="w-3.5 h-3.5 text-(--app-ink-3) shrink-0" />}
                 {isPast && (
                   <span className="text-[10px] text-emerald-400 font-bold uppercase">
                     Done
@@ -670,7 +670,7 @@ export function PromoteTab() {
                         {m.title}
                       </p>
                       {m.description && (
-                        <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">
+                        <p className="text-xs text-(--app-ink-3) line-clamp-2 mt-0.5">
                           {m.description}
                         </p>
                       )}
@@ -679,7 +679,7 @@ export function PromoteTab() {
                       <Coins className="w-3 h-3" />+{m.reward}
                     </span>
                   </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                  <div className="mt-2 h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
                     <div
                       className={cn(
                         "h-full rounded-full transition-all",
@@ -690,7 +690,7 @@ export function PromoteTab() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1 tabular-nums">
+                  <p className="text-[10px] text-(--app-ink-3) mt-1 tabular-nums">
                     {m.progress} / {m.goal}
                   </p>
                 </div>
@@ -777,7 +777,7 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
                     "rounded-xl p-3 text-center border backdrop-blur-xl",
                     isFirst
                       ? "bg-linear-to-b from-yellow-500/20 to-amber-500/5 border-yellow-500/40 -translate-y-2"
-                      : "bg-gray-900 border-gray-800"
+                      : "bg-(--app-surface) border-(--app-line)"
                   )}
                 >
                   {isFirst && (
@@ -787,7 +787,7 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
                   <p className="text-sm font-bold text-white truncate">
                     {e.name ?? "Anon"}
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
+                  <p className="text-[10px] text-(--app-ink-3) mt-0.5">
                     Lvl {e.level}
                   </p>
                   <p className="text-base font-extrabold text-amber-400 tabular-nums mt-1">
@@ -805,10 +805,10 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
                 key={e.userId}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5",
-                  e.userId === user.id && "bg-indigo-500/10"
+                  e.userId === user.id && "bg-(--app-cta)/10"
                 )}
               >
-                <span className="w-7 text-right text-xs text-gray-500 font-mono">
+                <span className="w-7 text-right text-xs text-(--app-ink-3) font-mono">
                   #{e.rank}
                 </span>
                 <Avatar
@@ -822,12 +822,12 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
                   <p className="text-sm font-semibold text-white truncate">
                     {e.name ?? "Anon"}
                     {e.userId === user.id && (
-                      <span className="ml-1 text-[10px] uppercase text-indigo-400 font-bold">
+                      <span className="ml-1 text-[10px] uppercase text-(--app-accent-ink) font-bold">
                         You
                       </span>
                     )}
                   </p>
-                  <p className="text-[10px] text-gray-500">Lvl {e.level}</p>
+                  <p className="text-[10px] text-(--app-ink-3)">Lvl {e.level}</p>
                 </div>
                 <span className="text-sm font-bold text-amber-400 tabular-nums">
                   {e.value.toLocaleString()}
@@ -838,7 +838,7 @@ export function LeaderboardTab({ user }: { user: UserSummary }) {
 
           {/* Your position banner (if outside top 50) */}
           {!youEntry && (
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2.5 text-sm text-indigo-200">
+            <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/10 px-3 py-2.5 text-sm text-(--app-accent-ink)">
               Your position is outside the top 50 — keep grinding to climb the
               ranks!
             </div>
@@ -948,7 +948,7 @@ export function OfferwallTab() {
                   href={p.url ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group glass rounded-xl hover:border-indigo-500/40 p-4 transition-colors"
+                  className="group glass rounded-xl hover:border-(--app-accent-edge)/40 p-4 transition-colors"
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-xl bg-linear-to-br from-fuchsia-500 to-pink-600 flex items-center justify-center text-white">
@@ -963,13 +963,13 @@ export function OfferwallTab() {
                           "inline-block px-1.5 py-0.5 text-[10px] uppercase rounded font-bold mt-0.5",
                           p.status === "ACTIVE"
                             ? "bg-emerald-500/15 text-emerald-400"
-                            : "bg-gray-700 text-gray-400"
+                            : "bg-(--app-surface-2) text-(--app-ink-3)"
                         )}
                       >
                         {p.status}
                       </span>
                       {p.description && (
-                        <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+                        <p className="text-xs text-(--app-ink-3) line-clamp-2 mt-1">
                           {p.description}
                         </p>
                       )}
@@ -979,7 +979,7 @@ export function OfferwallTab() {
                         </p>
                       )}
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-white shrink-0 self-center" />
+                    <ArrowRight className="w-4 h-4 text-(--app-ink-3) group-hover:text-white shrink-0 self-center" />
                   </div>
                 </a>
               ))}
@@ -1011,7 +1011,7 @@ function SummaryCard({
   const tones = {
     amber: "bg-amber-500/10 border-amber-500/30 text-amber-400",
     emerald: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
-    indigo: "bg-indigo-500/10 border-indigo-500/30 text-indigo-400",
+    indigo: "bg-(--app-cta)/10 border-(--app-accent-edge)/30 text-(--app-accent-ink)",
   } as const;
   return (
     <div
