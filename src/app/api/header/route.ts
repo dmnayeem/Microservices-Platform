@@ -3,8 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma, safeRead } from "@/lib/prisma";
 
 /**
- * The two numbers the app header polls: points balance and unread-notification
- * count. Two indexed queries, nothing else.
+ * The figures the app header polls: points balance, streak, level and the
+ * unread-notification count. Still two indexed queries — streak and level ride
+ * along in the row that was already being read for the balance, so the header's
+ * streak pill and level badge cost nothing extra.
  *
  * This exists because the header used to poll `/api/notifications` **and**
  * `/api/wallet` every 30 seconds on every page — about 11 queries, including two
@@ -30,7 +32,7 @@ export async function GET() {
     safeRead(
       prisma.user.findUnique({
         where: { id: userId },
-        select: { pointsBalance: true },
+        select: { pointsBalance: true, streak: true, level: true },
       }),
       null,
       "header:points"
@@ -44,6 +46,8 @@ export async function GET() {
 
   return NextResponse.json({
     points: user?.pointsBalance ?? 0,
+    streak: user?.streak ?? 0,
+    level: user?.level ?? 1,
     unreadCount,
   });
 }

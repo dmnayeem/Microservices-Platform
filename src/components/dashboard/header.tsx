@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Menu, Bell, Search, Wallet, Sparkles, Settings, LogOut, User, ChevronDown, FileText, Check, ChevronLeft } from "lucide-react";
+import { Menu, Bell, Search, Wallet, Sparkles, Settings, LogOut, User, ChevronDown, FileText, Check, ChevronLeft, Flame } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
@@ -59,6 +59,8 @@ export function Header({ user, avatar }: HeaderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [level, setLevel] = useState(0);
   // The balance is re-polled every 60s and on every pull-to-refresh, and it
   // used to change with no acknowledgement at all — the number was simply
   // different the next time you looked at it. `tick` counts real changes (not
@@ -83,6 +85,8 @@ export function Header({ user, avatar }: HeaderProps) {
         }
         prevBalance.current = next;
         setWalletBalance(next);
+        setStreak(d.streak ?? 0);
+        setLevel(d.level ?? 0);
         setUnreadCount(d.unreadCount ?? 0);
       }
     } catch (error) {
@@ -270,7 +274,7 @@ export function Header({ user, avatar }: HeaderProps) {
                 <span
                   key={tick}
                   className={cn(
-                    "text-base font-extrabold tabular-nums tracking-tight text-white",
+                    "text-base font-extrabold tabular-nums tracking-tight text-(--app-ink)",
                     tick > 0 && "app-tick"
                   )}
                 >
@@ -279,6 +283,23 @@ export function Header({ user, avatar }: HeaderProps) {
                 <span className="t-eyebrow text-(--app-ink-3)">PTS</span>
               </span>
             </Link>
+
+            {streak > 0 && (
+              <Link
+                href="/daily-mission"
+                aria-label={`Current streak: ${streak} ${
+                  streak === 1 ? "day" : "days"
+                }`}
+                title={`${streak}-day streak`}
+                className="app-press app-tap-row hidden md:inline-flex items-center gap-1.5 px-3 rounded-full bg-(--app-warn-soft) border border-(--app-warn-line) text-(--app-warn)"
+              >
+                <Flame className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span className="text-sm font-extrabold tabular-nums leading-none">
+                  {streak}d
+                </span>
+                <span className="t-eyebrow hidden lg:inline">Streak</span>
+              </Link>
+            )}
 
             {/* Light/dark, back in the row.
                 It was moved into the account menu to thin out a crowded header,
@@ -398,6 +419,11 @@ export function Header({ user, avatar }: HeaderProps) {
                   name={user.name || user.email}
                   size={32}
                 />
+                {level > 0 && (
+                  <span className="app-chip hidden lg:inline-flex" aria-hidden>
+                    LVL {level}
+                  </span>
+                )}
                 <ChevronDown className="hidden sm:block w-4 h-4 text-(--app-ink-3)" />
               </button>
 
@@ -412,7 +438,7 @@ export function Header({ user, avatar }: HeaderProps) {
                     <div className="flex items-center gap-3 px-4 py-3.5 border-b border-(--app-line)">
                       <Avatar src={avatar} name={user.name || user.email} size={40} />
                       <div className="min-w-0">
-                        <p className="t-card-title text-white truncate">
+                        <p className="t-card-title text-(--app-ink) truncate">
                           {user.name || "User"}
                         </p>
                         <p className="t-meta text-(--app-ink-3) truncate">
