@@ -143,7 +143,7 @@ export function SocialFeedView({
     // genuinely spare.
     <div className="mx-auto w-full max-w-5xl xl:max-w-6xl flex justify-center gap-6">
       {/* Center feed column (FB/Twitter-width) */}
-      <div className="w-full max-w-[40rem] xl:max-w-[46.25rem] min-w-0 space-y-4">
+      <div className="w-full max-w-[40rem] 2xl:max-w-[46.25rem] min-w-0 space-y-4">
         {/* ONE toolbar for everything that steers the feed.
             It replaces a tab strip at the top of the column and a sort toggle
             floating on its own line further down — two rows, in two places, each
@@ -283,7 +283,7 @@ export function SocialFeedView({
           The aside is deliberately left to stretch to the row height: `sticky`
           needs a taller ancestor to travel inside, so adding `self-start` here
           would shrink it to its content and stop the stickiness working. */}
-      <aside className="hidden xl:block w-[21.25rem] 2xl:w-[23.75rem] shrink-0">
+      <aside className="hidden xl:block w-80 2xl:w-[23.75rem] shrink-0">
         {/* The rail scrolls on its own.
             `sticky` alone pinned this column 80px below the header and then let
             it move with the page — so once the widgets were taller than the

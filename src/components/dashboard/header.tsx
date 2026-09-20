@@ -193,7 +193,7 @@ export function Header({ user, avatar }: HeaderProps) {
               <button
                 onClick={() => router.back()}
                 aria-label="Go back"
-                className="app-tap app-press -ml-1.5 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
+                className="app-tap app-press -ml-1.5 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -202,7 +202,7 @@ export function Header({ user, avatar }: HeaderProps) {
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open menu"
               className={cn(
-                "app-tap app-press inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)",
+                "app-tap app-press inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)",
                 !showBack && "-ml-1.5"
               )}
             >
@@ -253,7 +253,7 @@ export function Header({ user, avatar }: HeaderProps) {
               type="button"
               onClick={() => setIsSearchOpen(true)}
               aria-label="Search"
-              className="app-tap app-press md:hidden inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
+              className="app-tap app-press md:hidden inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -323,7 +323,7 @@ export function Header({ user, avatar }: HeaderProps) {
                     ? `Notifications, ${unreadCount} unread`
                     : "Notifications"
                 }
-                className="app-tap app-press relative inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
+                className="app-tap app-press relative inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -344,7 +344,7 @@ export function Header({ user, avatar }: HeaderProps) {
                       top-16 opened the panel under the bar on notched devices. */}
                   <div className="fixed inset-x-2 top-[calc(4rem+env(safe-area-inset-top))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-88 rounded-(--app-r-card) bg-(--app-surface) border border-(--app-line) shadow-(--app-e3) z-50 overflow-hidden">
                     <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-(--app-line)">
-                      <h3 className="t-section text-white">Notifications</h3>
+                      <h3 className="t-section text-(--app-ink)">Notifications</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
@@ -377,7 +377,7 @@ export function Header({ user, avatar }: HeaderProps) {
                                 <span className="w-2 h-2 mt-2 rounded-full shrink-0 bg-(--app-info)" />
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="t-card-title text-white truncate">
+                                <p className="t-card-title text-(--app-ink) truncate">
                                   {notif.title}
                                 </p>
                                 <p className="t-meta text-(--app-ink-3) mt-0.5 line-clamp-2">

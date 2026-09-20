@@ -137,7 +137,7 @@ function Card({
   return (
     <section className="app-card">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="t-section text-white inline-flex items-center gap-2">
+        <h3 className="t-section text-(--app-ink) inline-flex items-center gap-2">
           {icon}
           {title}
         </h3>
@@ -462,11 +462,11 @@ export function FeedRightRail({
           {widgets.mission.rewardPoints > 0 && (
             <p className="mt-2.5 pt-2.5 border-t border-(--app-line) t-meta text-(--app-ink-3)">
               Complete all →{" "}
-              <span className="font-extrabold text-white">
+              <span className="font-extrabold text-(--app-ink)">
                 +{widgets.mission.rewardPoints} pts
               </span>
               {widgets.mission.rewardXp > 0 && (
-                <span className="font-extrabold text-white">
+                <span className="font-extrabold text-(--app-ink)">
                   {" "}
                   · +{widgets.mission.rewardXp} XP
                 </span>
@@ -521,7 +521,7 @@ export function FeedRightRail({
                   </span>
                   <Avatar size={36} src={u.avatar} name={u.name} className="shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate group-hover:text-(--app-accent-ink)">
+                    <p className="text-sm font-semibold text-(--app-ink) truncate group-hover:text-(--app-accent-ink)">
                       {u.name ?? "Anonymous"}
                     </p>
                     <p className="text-[11px] text-(--app-ink-3)">Level {u.level}</p>
@@ -544,7 +544,7 @@ export function FeedRightRail({
                 <div className="flex-1 min-w-0">
                   <Link
                     href={profileHref(u)}
-                    className="text-sm font-semibold text-white truncate inline-flex items-center gap-1 hover:text-(--app-accent-ink)"
+                    className="text-sm font-semibold text-(--app-ink) truncate inline-flex items-center gap-1 hover:text-(--app-accent-ink)"
                   >
                     <span className="truncate min-w-0">{u.name ?? "Anonymous"}</span>
                     {u.isBlueVerified && (

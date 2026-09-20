@@ -129,17 +129,23 @@ check("the user can see the count", /\{BIO_WORD_LIMIT\} words/.test(form));
 console.log("\n4. Feed and rail widths");
 const view = code("src/components/user/feed/social-feed-view.tsx");
 const REM = 16;
-const feedXl = 42 * REM; // max-w-[42rem]
+// The design document's three-column measure — centre 640-740, rail 340-380 —
+// is written for 1440px and up, and it does not fit below that: at 1280 the
+// content row is 920px, so a 340px rail would leave a 556px centre, under the
+// document's own minimum. So xl keeps the narrower rail that does fit, and the
+// document's figures take over at 2xl where they were meant to apply.
+const feedBase = 40 * REM; // max-w-[40rem] — the document's 640 minimum
+const feed2xl = 46.25 * REM; // 2xl:max-w-[46.25rem] — its 740 maximum
 const railXl = 20 * REM; // w-80
-const rail2xl = 26 * REM; // 2xl:w-[26rem]
+const rail2xl = 23.75 * REM; // 2xl:w-[23.75rem] — its 380
 const GAP = 24; // gap-6
 
 check(
-  "the feed is wider from xl up",
-  /xl:max-w-\[42rem\]/.test(view),
-  "this is the change that pulls the block left and fills the corridor"
+  "the centre column holds the document's measure",
+  /max-w-\[40rem\] 2xl:max-w-\[46\.25rem\]/.test(view),
+  "640 is its minimum reading measure, 740 its maximum"
 );
-check("the rail grows only at 2xl", /w-80 2xl:w-\[26rem\]/.test(view));
+check("the rail takes its full width only at 2xl", /w-80 2xl:w-\[23\.75rem\]/.test(view));
 check("the row cap grows with it", /max-w-5xl xl:max-w-6xl/.test(view));
 
 // 1280 is the first width where two columns fit at all: 1280 - 288 nav
@@ -151,27 +157,32 @@ check(
   `feed would be ${ROW_AT_1280 - GAP - railXl}px`
 );
 check(
-  "…which is exactly why the wider rail waits for 2xl",
+  "…which is exactly why the document's rail waits for 2xl",
   ROW_AT_1280 - GAP - rail2xl < 576,
-  `a 416px rail at 1280 would leave the feed ${ROW_AT_1280 - GAP - rail2xl}px — narrower than today`
+  `a 380px rail at 1280 would leave the feed ${ROW_AT_1280 - GAP - rail2xl}px — narrower than today`
 );
 // At 2xl main is capped at max-w-7xl (1280) with lg:px-8, so 1216 of content.
 const CONTENT_AT_2XL = 1216;
 check(
   "at 2xl both columns fit inside main with room to spare",
-  feedXl + GAP + rail2xl <= CONTENT_AT_2XL,
-  `needs ${feedXl + GAP + rail2xl}px of ${CONTENT_AT_2XL}px`
+  feed2xl + GAP + rail2xl <= CONTENT_AT_2XL,
+  `needs ${feed2xl + GAP + rail2xl}px of ${CONTENT_AT_2XL}px`
 );
 check(
   "…and the row cap does not clip them",
-  feedXl + GAP + rail2xl <= 72 * REM,
-  `needs ${feedXl + GAP + rail2xl}px, max-w-6xl is ${72 * REM}px`
+  feed2xl + GAP + rail2xl <= 72 * REM,
+  `needs ${feed2xl + GAP + rail2xl}px, max-w-6xl is ${72 * REM}px`
+);
+check(
+  "the centre never falls under the document's 640 minimum at 2xl",
+  CONTENT_AT_2XL - GAP - rail2xl >= feedBase,
+  `${CONTENT_AT_2XL - GAP - rail2xl}px available for a ${feedBase}px minimum`
 );
 // The measured outcome this was built for.
 check(
   "the dead space either side is roughly halved",
-  Math.round((CONTENT_AT_2XL - (feedXl + GAP + rail2xl)) / 2) < 100,
-  `${Math.round((CONTENT_AT_2XL - (feedXl + GAP + rail2xl)) / 2)}px per side, was 148px`
+  Math.round((CONTENT_AT_2XL - (feed2xl + GAP + rail2xl)) / 2) < 100,
+  `${Math.round((CONTENT_AT_2XL - (feed2xl + GAP + rail2xl)) / 2)}px per side, was 148px`
 );
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

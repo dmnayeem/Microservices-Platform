@@ -244,7 +244,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           <span className="app-icon app-icon-accent h-9 w-9 rounded-(--app-r-control)">
             <Sparkles className="w-4.5 h-4.5" />
           </span>
-          <span className="text-lg font-extrabold tracking-tight text-white">
+          <span className="text-lg font-extrabold tracking-tight text-(--app-ink)">
             EarnGPT
           </span>
         </Link>
@@ -276,7 +276,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
                 "t-card-title truncate",
                 pathname.startsWith("/profile")
                   ? "text-(--app-info)"
-                  : "text-white"
+                  : "text-(--app-ink)"
               )}
             >
               {user.name || "User"}
@@ -303,7 +303,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
               type="button"
               onClick={() => setFilter("")}
               aria-label="Clear filter"
-              className="app-press absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-(--app-r-chip) text-(--app-ink-3) hover:text-white hover:bg-(--shell-hover)"
+              className="app-press absolute right-1 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-(--app-r-chip) text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--shell-hover)"
             >
               <X className="w-4 h-4" />
             </button>
@@ -440,7 +440,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
         <button
           onClick={() => setMobileOpen(false)}
           aria-label="Close menu"
-          className="app-tap app-press absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-white hover:bg-(--shell-hover)"
+          className="app-tap app-press absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)"
         >
           <X className="w-5 h-5" />
         </button>
