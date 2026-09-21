@@ -18,6 +18,8 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  CalendarDays,
+  UserPlus,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -35,6 +37,7 @@ import {
 } from "@/lib/finance/scope";
 import { getRevenueBreakdown } from "@/lib/finance/revenue";
 import { getDailySeries, getLedgerTotals } from "@/lib/finance/series";
+import { getFinancePulse } from "@/lib/finance/pulse";
 import { getPayrollExpense, lastClosedPeriod } from "@/lib/payroll/run";
 
 export const revalidate = 60;
@@ -100,6 +103,7 @@ export default async function AdminFinancePage({
     totals,
     series,
     payroll,
+    pulse,
     sellerName,
     taxId,
   ] = await Promise.all([
@@ -110,6 +114,7 @@ export default async function AdminFinancePage({
     getLedgerTotals({ from }),
     getDailySeries({ from }),
     getPayrollExpense({ from }),
+    getFinancePulse(),
     getSetting<string>("billing.seller_name", ""),
     getSetting<string>("billing.tax_id", ""),
   ]);
@@ -186,6 +191,7 @@ export default async function AdminFinancePage({
           balances={balances}
           obligations={obligations}
           payroll={payroll}
+          pulse={pulse}
           rangeLabel={range.label}
         />
       )}
@@ -212,6 +218,7 @@ function OverviewTab({
   balances,
   obligations,
   payroll,
+  pulse,
   rangeLabel,
 }: {
   revenue: Awaited<ReturnType<typeof getRevenueBreakdown>>;
@@ -220,6 +227,7 @@ function OverviewTab({
   balances: Awaited<ReturnType<typeof getBalances>>;
   obligations: Awaited<ReturnType<typeof getObligations>>;
   payroll: Awaited<ReturnType<typeof getPayrollExpense>>;
+  pulse: Awaited<ReturnType<typeof getFinancePulse>>;
   rangeLabel: string;
 }) {
   // Payroll lands in the ledger as a BONUS row, so it is ALREADY inside
@@ -275,6 +283,151 @@ function OverviewTab({
           icon={Wallet}
           tone="purple"
         />
+      </div>
+
+      {/* ── Today ──────────────────────────────────────────────────────────
+          The range selector at the top answers "what did this window do".
+          None of these answered "what is happening now", which is the reason
+          an owner opens a dashboard in the morning. Days are UTC, like the
+          rest of this page. */}
+      <div>
+        <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-emerald-400" />
+          Today
+          <span className="text-xs font-normal text-slate-500">
+            UTC · week is the last 7 days including today
+          </span>
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard
+            title="Points earned today"
+            value={pts(pulse.pointsEarned.day)}
+            subtext={`${usd(pulse.pointsEarned.dayUsd)} · ${pts(
+              pulse.pointsEarned.week
+            )} this week`}
+            icon={Coins}
+            tone="green"
+          />
+          <StatCard
+            title="Returning users today"
+            value={String(pulse.returning.day)}
+            subtext={`came back on a later day than they joined · ${pulse.returning.week} this week`}
+            icon={Users}
+            tone="blue"
+          />
+          <StatCard
+            title="Referred signups today"
+            value={String(pulse.referred.day)}
+            subtext={`${pulse.referred.total} referred in total`}
+            icon={UserPlus}
+            tone="purple"
+            href="/admin/referrals"
+          />
+          <StatCard
+            title="New subscriptions today"
+            value={String(pulse.subscriptions.day)}
+            subtext={
+              pulse.subscriptions.total === 0
+                ? "nobody has subscribed yet"
+                : `${usd(pulse.subscriptions.dayUsd)} today · ${
+                    pulse.activeSubscribers
+                  } active`
+            }
+            icon={BadgeDollarSign}
+            tone="amber"
+            href="/admin/subscriptions"
+          />
+        </div>
+      </div>
+
+      {/* ── Subscriptions, in full ─────────────────────────────────────────
+          Day / week / month / year / total for both the count and the money,
+          in one table rather than twelve cards. A table is also the only
+          shape in which the reader can see that the periods nest — which is
+          the first thing you check when a number looks wrong. */}
+      <div>
+        <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+          <BadgeDollarSign className="w-4 h-4 text-amber-400" />
+          Subscriptions
+          <span className="text-xs font-normal text-slate-500">
+            {pulse.activeSubscribers} active now · {pulse.everSubscribed}{" "}
+            account(s) have ever subscribed
+          </span>
+        </h2>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                  <th className="text-left px-4 py-2.5">Period</th>
+                  <th className="text-right px-4 py-2.5">New subscriptions</th>
+                  <th className="text-right px-4 py-2.5">Value</th>
+                  <th className="text-right px-4 py-2.5">Points earned</th>
+                  <th className="text-right px-4 py-2.5">Signups</th>
+                  <th className="text-right px-4 py-2.5">Returning</th>
+                  <th className="text-right px-4 py-2.5">Referred</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/70">
+                {(
+                  [
+                    ["Today", "day"],
+                    ["This week", "week"],
+                    ["This month", "month"],
+                    ["This year", "year"],
+                    ["All time", "total"],
+                  ] as const
+                ).map(([label, k]) => (
+                  <tr key={k} className="hover:bg-slate-800/40">
+                    <td className="px-4 py-2.5 font-semibold text-white whitespace-nowrap">
+                      {label}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-200">
+                      {pulse.subscriptions[k]}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-emerald-300">
+                      {usd(
+                        pulse.subscriptions[
+                          `${k}Usd` as keyof typeof pulse.subscriptions
+                        ] as number
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-300">
+                      {pts(pulse.pointsEarned[k])}
+                      <span className="block text-[11px] text-slate-500">
+                        {usd(
+                          pulse.pointsEarned[
+                            `${k}Usd` as keyof typeof pulse.pointsEarned
+                          ] as number
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-300">
+                      {pulse.signups[k]}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-300">
+                      {pulse.returning[k]}
+                    </td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-300">
+                      {pulse.referred[k]}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {pulse.subscriptions.total === 0 && (
+            <p className="px-4 py-3 text-xs text-slate-500 border-t border-slate-800">
+              No subscription has been sold yet, so these rows read zero. The
+              figures are live — they will fill in on the first sale.
+            </p>
+          )}
+          <p className="px-4 py-2.5 text-[11px] text-slate-600 border-t border-slate-800">
+            &quot;All time&quot; for points earned covers this calendar year:
+            that pass reads the ledger from 1 January. Every point ever held
+            sits in Balances, which is the authoritative total.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
