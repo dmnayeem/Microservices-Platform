@@ -60,6 +60,23 @@ const PATCH_SCHEMA = z
     popupBgColor: HEX_COLOR,
     popupAccentColor: HEX_COLOR,
     generateKeyButtonLabel: z.string().max(80).optional(),
+    /* How the worker must arrive. `null` is meaningful and distinct from
+       absent: absent means "this patch does not mention it", null means "the
+       admin switched back to a direct link", and without the difference there
+       is no way to turn the feature off once it is on. */
+    entry: z
+      .object({
+        mode: z.enum(["search", "referral"]),
+        searchKeyword: z.string().max(120).optional(),
+        searchEngine: z.enum(["google", "bing", "any"]).optional(),
+        postUrl: z.string().max(500).optional(),
+        landingUrl: z.string().max(500).optional(),
+        srcTag: z.string().regex(/^[a-z0-9]{6,16}$/).optional(),
+        onUnknownSource: z.enum(["review", "block"]).optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
   })
   .strict();
 
@@ -112,7 +129,14 @@ export async function PATCH(
     keywords: [],
     proofRequirements: { url: false, screenshot: false, uniqueKey: false },
   };
-  const merged: ArticleConfig = { ...existing, ...patch };
+  /* A shallow merge cannot express removal, and "back to a direct link" IS a
+     removal: everything downstream treats an absent `entry` as direct, so a
+     null left in the column would be a second way of saying the same thing.
+     Pulled out of the spread for that reason. */
+  const { entry: entryPatch, ...restPatch } = patch;
+  const merged: ArticleConfig = { ...existing, ...restPatch };
+  if (entryPatch === null) delete merged.entry;
+  else if (entryPatch !== undefined) merged.entry = entryPatch;
 
   // Validate the merged config — catches "useKeyPool=true with no pages" etc.
   const valid = validateArticleConfig(merged);

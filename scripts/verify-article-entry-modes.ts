@@ -660,6 +660,88 @@ const REFERRAL: ArticleEntryConfig = {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   14. The admin control, and whether it reaches the column
+   ══════════════════════════════════════════════════════════════════════════
+   This platform has shipped 44 settings that wrote a row nothing read, and
+   one that wrote a different key than the code read. A control that renders
+   is not a control that works, so these follow the value from the form to the
+   database and back. */
+{
+  const builder = readFileSync(
+    join(process.cwd(), "src/app/admin/tasks/_components/ArticleTaskBuilder.tsx"),
+    "utf8"
+  );
+  const save = readFileSync(
+    join(process.cwd(), "src/app/api/admin/tasks/[id]/article-config/route.ts"),
+    "utf8"
+  );
+
+  check("the builder offers the three modes", /ARRIVAL_MODES/.test(builder));
+  check(
+    "the save route accepts `entry` at all",
+    /entry: z\s*\n?\s*\.object\(/.test(save),
+    "the patch schema is .strict(), so a field it does not name is dropped and Save reports success"
+  );
+  check(
+    "the schema only accepts the two real modes",
+    /mode: z\.enum\(\["search", "referral"\]\)/.test(save),
+    "there is no stored `direct` — absent is direct, and a second spelling is how the two drift apart"
+  );
+
+  /* Turning the feature back OFF is the half that a shallow merge cannot
+     express, and the half that is easy to leave broken: the switch flips in
+     the UI, the patch omits the field, the server merges nothing, and the
+     mode stays on. */
+  check(
+    "choosing Direct sends an explicit removal, not an omission",
+    /entry: null as unknown/.test(builder),
+    "omitting it would save as 'unchanged' and the mode would silently stay on"
+  );
+  check(
+    "the save route accepts that null",
+    /\.nullable\(\)/.test(save)
+  );
+  check(
+    "…and turns it back into an absent field",
+    /if \(entryPatch === null\) delete merged\.entry;/.test(save)
+  );
+  check(
+    "the removal is handled outside the spread that cannot express it",
+    /const \{ entry: entryPatch, \.\.\.restPatch \} = patch;/.test(save)
+  );
+  check(
+    "a null in the column still reads as direct in the form",
+    /value\.entry \?\? undefined/.test(builder)
+  );
+
+  /* The tag is minted once. Regenerating it on every render would break every
+     post already carrying the old one, silently, at some later date. */
+  check(
+    "the tag is minted once and then left alone",
+    /entry\?\.srcTag \|\| mintArticleSrcTag\(\)/.test(builder)
+  );
+  check(
+    "the admin is given the tagged link to paste, not asked to build it",
+    /buildTaggedLandingUrl\(entry\.landingUrl, entry\.srcTag\)/.test(builder) &&
+      /Put THIS link in your post/.test(builder)
+  );
+  check(
+    "the landing page is chosen from the task's own pages",
+    /pageUrls\.map\(/.test(builder),
+    "a free-text field here is how you get a landing page the embed does not run on"
+  );
+  check(
+    "search mode warns against handing over a clickable URL",
+    /not a clickable link/.test(builder),
+    "if they can paste the URL they will, and pasting it is not a search"
+  );
+  check(
+    "the unknown-source choice explains what each side costs",
+    /Reviewing costs you a look; blocking costs you them/.test(builder)
+  );
+}
+
 console.log(
   `\n${passed} passed, ${failed} failed\n` +
     (failures.length ? failures.map((f) => `  · ${f}`).join("\n") + "\n" : "")

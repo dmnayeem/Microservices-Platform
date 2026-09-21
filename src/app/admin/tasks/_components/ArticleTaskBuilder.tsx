@@ -27,6 +27,7 @@ import {
   Eye,
   ExternalLink,
   Type,
+  Compass,
 } from "lucide-react";
 import {
   type ArticleConfig,
@@ -35,6 +36,8 @@ import {
   generateRandomArticleKey,
   sanitizePopupHtml,
   DEFAULT_POPUP_THEME,
+  mintArticleSrcTag,
+  buildTaggedLandingUrl,
 } from "@/lib/article-tasks";
 import { toast } from "@/lib/toast";
 
@@ -617,6 +620,8 @@ function PagesStep({
         ))}
       </div>
 
+      <ArrivalSection value={value} onChange={onChange} />
+
       <div className="flex flex-wrap justify-end items-center gap-2 pt-2">
         {!taskId && (
           <button
@@ -656,6 +661,269 @@ function PagesStep({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+    </div>
+  );
+}
+
+
+/* ───────────────────── Arrival — how the worker gets here ─────────────────
+   Lives inside the Pages step on purpose: the landing page has to BE one of
+   the pages above, because the embed only runs there. Splitting this into its
+   own step would let an admin set a landing page before the pages exist. */
+
+const ARRIVAL_MODES = [
+  {
+    id: "direct" as const,
+    label: "Direct link",
+    blurb:
+      "We hand the worker a link and they click it. The publisher sees EarnGPT as the traffic source.",
+  },
+  {
+    id: "search" as const,
+    label: "From a search",
+    blurb:
+      "The worker is told a keyword and a site name, searches, and clicks the result. The publisher sees search traffic.",
+  },
+  {
+    id: "referral" as const,
+    label: "From your post",
+    blurb:
+      "The worker opens a post you published and clicks the link inside it. The publisher sees social traffic.",
+  },
+];
+
+function ArrivalSection({
+  value,
+  onChange,
+}: {
+  value: ArticleConfig;
+  onChange: (v: ArticleConfig) => void;
+}) {
+  const entry = value.entry ?? undefined;
+  const mode = entry?.mode ?? "direct";
+  const pageUrls = (value.pages ?? []).map((p) => p.url.trim()).filter(Boolean);
+
+  const setMode = (next: "direct" | "search" | "referral") => {
+    if (next === "direct") {
+      // `null`, not "drop the key". A shallow merge on the server cannot see
+      // an absent field, so removing it here would save as "unchanged" and the
+      // mode would stay on — a switch that visibly flips and silently does
+      // nothing. The save route turns this null back into an absent field,
+      // which is what every reader treats as direct.
+      onChange({ ...value, entry: null as unknown as ArticleConfig["entry"] });
+      return;
+    }
+    onChange({
+      ...value,
+      entry: {
+        onUnknownSource: "review",
+        searchEngine: "any",
+        // Default the landing page to the first page, which is right almost
+        // every time and saves the admin a paste.
+        landingUrl: entry?.landingUrl || pageUrls[0] || "",
+        ...entry,
+        mode: next,
+        // Minted once and then left alone: regenerating would silently break
+        // every post already carrying the old one.
+        srcTag:
+          next === "referral"
+            ? entry?.srcTag || mintArticleSrcTag()
+            : entry?.srcTag,
+      },
+    });
+  };
+
+  const patch = (p: Partial<NonNullable<ArticleConfig["entry"]>>) => {
+    if (!entry) return;
+    onChange({ ...value, entry: { ...entry, ...p } });
+  };
+
+  const taggedLink =
+    entry?.mode === "referral" && entry.landingUrl && entry.srcTag
+      ? buildTaggedLandingUrl(entry.landingUrl, entry.srcTag)
+      : "";
+
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4 space-y-4">
+      <div>
+        <h4 className="text-sm font-bold text-white inline-flex items-center gap-2">
+          <Compass className="w-4 h-4 text-indigo-400" />
+          How the worker arrives
+        </h4>
+        <p className="text-xs text-gray-500 mt-1">
+          The reading journey is the same in all three — popups, pages, key.
+          Only the traffic source your site records changes.
+        </p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {ARRIVAL_MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setMode(m.id)}
+            className={`text-left rounded-lg border p-3 transition-colors ${
+              mode === m.id
+                ? "border-indigo-500 bg-indigo-500/10"
+                : "border-gray-800 bg-gray-900 hover:border-gray-700"
+            }`}
+          >
+            <span className="block text-xs font-bold text-white">{m.label}</span>
+            <span className="block text-[11px] text-gray-500 mt-1 leading-relaxed">
+              {m.blurb}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {entry && (
+        <div className="space-y-3 border-t border-gray-800 pt-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1">
+              Landing page
+              <span className="text-gray-600 font-normal ml-2">
+                where they end up — must be one of the pages above
+              </span>
+            </label>
+            <select
+              value={entry.landingUrl ?? ""}
+              onChange={(e) => patch({ landingUrl: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white"
+            >
+              <option value="">Choose a page…</option>
+              {pageUrls.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+            {pageUrls.length === 0 && (
+              <p className="text-[11px] text-amber-400 mt-1">
+                Add a page URL above first — the embed only runs on your pages,
+                so a landing page anywhere else could never start the task.
+              </p>
+            )}
+          </div>
+
+          {entry.mode === "search" && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">
+                  Keyword the worker searches
+                </label>
+                <input
+                  value={entry.searchKeyword ?? ""}
+                  onChange={(e) => patch({ searchKeyword: e.target.value })}
+                  placeholder="best freelance sites in bangladesh"
+                  maxLength={120}
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Tell them your site&apos;s NAME, not a clickable link — if they
+                  can paste the URL they will, and pasting it is not a search.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">
+                  Accept arrivals from
+                </label>
+                <select
+                  value={entry.searchEngine ?? "any"}
+                  onChange={(e) =>
+                    patch({
+                      searchEngine: e.target.value as "google" | "bing" | "any",
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white"
+                >
+                  <option value="any">Any search engine</option>
+                  <option value="google">Google only</option>
+                  <option value="bing">Bing only</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {entry.mode === "referral" && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">
+                  Your post
+                  <span className="text-gray-600 font-normal ml-2">
+                    the worker opens this first
+                  </span>
+                </label>
+                <input
+                  value={entry.postUrl ?? ""}
+                  onChange={(e) => patch({ postUrl: e.target.value })}
+                  placeholder="https://www.facebook.com/yourpage/posts/123"
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white"
+                />
+              </div>
+
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <p className="text-xs font-bold text-emerald-300">
+                  Put THIS link in your post
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
+                  Not the plain page URL. Facebook and Instagram open links in
+                  their own browser, which usually strips the referrer — this
+                  tag is what proves the worker came through your post when
+                  that happens.
+                </p>
+                {taggedLink ? (
+                  <div className="flex items-center gap-2 mt-2">
+                    <code className="flex-1 min-w-0 truncate rounded bg-gray-900 border border-gray-800 px-2 py-1.5 text-[11px] text-emerald-200">
+                      {taggedLink}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(taggedLink);
+                        toast.success("Link copied — paste it into your post");
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-400 mt-2">
+                    Choose a landing page above and the link appears here.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1">
+              When we cannot tell how they arrived
+            </label>
+            <select
+              value={entry.onUnknownSource ?? "review"}
+              onChange={(e) =>
+                patch({
+                  onUnknownSource: e.target.value as "review" | "block",
+                })
+              }
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white"
+            >
+              <option value="review">
+                Let them work — send the submission for review
+              </option>
+              <option value="block">Do not let them start</option>
+            </select>
+            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+              A browser sending no referrer looks exactly like someone typing
+              your address in — nothing can tell them apart. Blocking stops the
+              second one and also stops real workers whose browser hides
+              referrers. Reviewing costs you a look; blocking costs you them.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
