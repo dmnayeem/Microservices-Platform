@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ClipboardCheck, Filter, Clock, CheckCircle, XCircle, RotateCcw, ChevronLeft, ChevronRight, Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Star, Layers, ChevronDown, Smartphone } from "lucide-react";
+import { ClipboardCheck, Filter, Clock, CheckCircle, XCircle, RotateCcw, ChevronLeft, ChevronRight, Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Star, Layers, ChevronDown, Smartphone, Zap } from "lucide-react";
 import { SubmissionActions } from "@/components/admin/submissions/submission-actions";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { SocialReviewActions } from "@/components/admin/submissions/social-review-actions";
@@ -73,11 +73,28 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
   // `proof`, `proofImages` and `answers` are all still null, rendered with a
   // live Approve button. `/api/tasks/route.ts` already distinguishes the two
   // ("SUBMITTED" vs "IN_PROGRESS"); the review queue did not.
-  const where: Prisma.TaskSubmissionWhereInput = { submittedAt: { not: null } };
+  /* What belongs on this page.
+     `submittedAt` alone was the rule, and it hid 54 decided submissions —
+     every one of the 28 finished quizzes among them — because several
+     approval paths set a status without ever stamping the submit moment. A
+     row that has been approved, auto-approved, rejected or sent back is by
+     definition not "in progress", whatever that column says. So: submitted,
+     OR decided. In-progress PENDING rows stay hidden, which was the point of
+     the original rule. */
+  const VISIBLE: Prisma.TaskSubmissionWhereInput = {
+    OR: [{ submittedAt: { not: null } }, { status: { not: "PENDING" } }],
+  };
+  const where: Prisma.TaskSubmissionWhereInput = { ...VISIBLE };
   const taskWhere: Prisma.TaskWhereInput = {};
 
   if (params.status && params.status !== "all") {
-    where.status = params.status as Prisma.EnumSubmissionStatusFilter["equals"];
+    /* "Approved" means both kinds unless the admin asks for one. The card
+       counted both and linked to one, so the number on it disagreed with the
+       list behind it — the two are the same expression now. */
+    where.status =
+      params.status === "APPROVED_ANY"
+        ? { in: ["APPROVED", "AUTO_APPROVED"] }
+        : (params.status as Prisma.EnumSubmissionStatusFilter["equals"]);
   }
 
   if (params.type && params.type !== "all") {
@@ -106,6 +123,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
     totalCount,
     pendingCount,
     approvedCount,
+    autoApprovedCount,
     rejectedCount,
     revisionsCount,
     boards,
@@ -155,22 +173,22 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
     // list. The Pending badge used to include in-progress rows nobody had
     // submitted yet.
     prisma.taskSubmission.count({
-      where: { status: "PENDING", submittedAt: { not: null } },
+      where: { status: "PENDING", ...VISIBLE },
     }),
     // AUTO_APPROVED is the majority of approvals on this platform. Counting
     // only APPROVED made the Approved card systematically under-report, and its
     // filter link led somewhere that disagreed with the number on it.
     prisma.taskSubmission.count({
-      where: {
-        status: { in: ["APPROVED", "AUTO_APPROVED"] },
-        submittedAt: { not: null },
-      },
+      where: { status: { in: ["APPROVED", "AUTO_APPROVED"] }, ...VISIBLE },
     }),
     prisma.taskSubmission.count({
-      where: { status: "REJECTED", submittedAt: { not: null } },
+      where: { status: "AUTO_APPROVED", ...VISIBLE },
     }),
     prisma.taskSubmission.count({
-      where: { status: "REVISION_REQUESTED", submittedAt: { not: null } },
+      where: { status: "REJECTED", ...VISIBLE },
+    }),
+    prisma.taskSubmission.count({
+      where: { status: "REVISION_REQUESTED", ...VISIBLE },
     }),
     prisma.taskBoard.findMany({
       where: { isActive: true },
@@ -269,8 +287,11 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
         </div>
       </div>
 
-      {/* Stats — 4-card row per spec: Pending / Approved / Rejected / Revisions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Pending / Approved / Auto-approved / Rejected / Revisions.
+          Auto-approved earns its own card because it is the majority of
+          approvals here and it is the one an admin actually wants to spot
+          check — a machine decided it, and nobody has looked. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Link
           href="/admin/submissions?status=PENDING"
           className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
@@ -288,9 +309,9 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
           </div>
         </Link>
         <Link
-          href="/admin/submissions?status=APPROVED"
+          href="/admin/submissions?status=APPROVED_ANY"
           className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
-            params.status === "APPROVED" ? "border-emerald-500/50" : "border-slate-800 hover:border-emerald-500/50"
+            params.status === "APPROVED_ANY" ? "border-emerald-500/50" : "border-slate-800 hover:border-emerald-500/50"
           }`}
         >
           <div className="flex items-center gap-3">
@@ -300,6 +321,24 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
             <div>
               <p className="text-2xl font-bold text-white tabular-nums">{approvedCount}</p>
               <p className="text-sm text-slate-500">Approved</p>
+              <p className="text-[11px] text-slate-600">by hand or automatically</p>
+            </div>
+          </div>
+        </Link>
+        <Link
+          href="/admin/submissions?status=AUTO_APPROVED"
+          className={`bg-slate-900 rounded-xl border p-4 transition-colors ${
+            params.status === "AUTO_APPROVED" ? "border-sky-500/50" : "border-slate-800 hover:border-sky-500/50"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-sky-500/10 rounded-lg">
+              <Zap className="w-5 h-5 text-sky-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white tabular-nums">{autoApprovedCount}</p>
+              <p className="text-sm text-slate-500">Auto-approved</p>
+              <p className="text-[11px] text-slate-600">nobody reviewed these</p>
             </div>
           </div>
         </Link>
@@ -347,7 +386,8 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
           >
             <option value="all">All Status</option>
             <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
+            <option value="APPROVED_ANY">Approved (any)</option>
+            <option value="APPROVED">Approved by hand</option>
             <option value="REJECTED">Rejected</option>
             <option value="REVISION_REQUESTED">Revision Requested</option>
             <option value="AUTO_APPROVED">Auto-Approved</option>

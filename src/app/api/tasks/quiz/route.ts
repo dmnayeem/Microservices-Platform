@@ -397,6 +397,11 @@ export async function POST(request: NextRequest) {
               taskId,
               userId: session.user.id,
               status: "AUTO_APPROVED",
+              // A decided quiz is a SUBMITTED quiz. Leaving this null read as
+              // "still in progress" everywhere that distinction is drawn — the
+              // worker's own task list, and the admin's submissions page,
+              // where 28 decided quizzes were invisible because of it.
+              submittedAt: new Date(),
               answers: answersJson,
               score,
               pointsEarned,
@@ -434,6 +439,7 @@ export async function POST(request: NextRequest) {
             taskId,
             userId: session.user.id,
             status: "REJECTED",
+            submittedAt: new Date(),
             answers: answersJson,
             score,
             pointsEarned,
