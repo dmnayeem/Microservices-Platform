@@ -18,7 +18,7 @@ import type { CalculatorContent, CalculatorPlan } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 
 const PLAN_GRADIENTS: Record<string, string> = {
-  FREE: "from-slate-500 to-slate-600",
+  FREE: "from-[#64748b] to-[#475569]",
   STARTER: "from-blue-500 to-cyan-500",
   PRO: "from-purple-500 to-pink-500",
   ELITE: "from-amber-500 to-orange-500",

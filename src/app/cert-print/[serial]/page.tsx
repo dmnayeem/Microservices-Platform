@@ -28,15 +28,15 @@ export default async function CertificatePrintPage({
         <p className="tracking-[0.3em] text-amber-700 font-bold text-sm uppercase">
           Certificate of Completion
         </p>
-        <p className="text-gray-600 mt-7">This certifies that</p>
+        <p className="text-[#475569] mt-7">This certifies that</p>
         <p className="text-4xl font-extrabold my-2">
           {cert.user.name ?? cert.user.email}
         </p>
-        <p className="text-gray-600">has successfully completed</p>
+        <p className="text-[#475569]">has successfully completed</p>
         <p className="text-2xl font-bold text-amber-700 my-2 mb-7">
           {cert.course.title}
         </p>
-        <p className="text-gray-500 text-sm">
+        <p className="text-[#64748b] text-sm">
           Issued{" "}
           {new Date(cert.issuedAt).toLocaleDateString(undefined, {
             month: "long",
@@ -44,7 +44,7 @@ export default async function CertificatePrintPage({
             year: "numeric",
           })}
         </p>
-        <p className="text-gray-400 text-[11px] font-mono mt-2">Serial: {cert.serial}</p>
+        <p className="text-[#64748b] text-[11px] font-mono mt-2">Serial: {cert.serial}</p>
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ export interface MyPackageViewProps {
 }
 
 const TIER_GRADIENT: Record<string, string> = {
-  FREE: "from-gray-600 to-gray-700",
+  FREE: "from-[#4b5563] to-[#374151]",
   STARTER: "from-blue-500 to-cyan-500",
   PRO: "from-purple-500 to-pink-500",
   ELITE: "from-amber-500 to-orange-500",

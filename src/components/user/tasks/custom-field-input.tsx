@@ -14,7 +14,7 @@ interface Props {
 }
 
 const inp =
-  "w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50";
+  "w-full px-3 py-2.5 bg-(--app-page) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50";
 
 export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
   const labelEl = (

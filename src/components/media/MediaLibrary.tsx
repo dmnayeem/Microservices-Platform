@@ -221,7 +221,7 @@ export function MediaLibrary() {
             <button
               onClick={() => setViewMode("grid")}
               className={`p-2 rounded ${
-                viewMode === "grid" ? "bg-(--app-surface-2) text-white" : "text-(--app-ink-3) hover:text-white"
+                viewMode === "grid" ? "bg-(--app-surface-2) text-(--app-ink)" : "text-(--app-ink-3) hover:text-white"
               }`}
             >
               <Grid3x3 className="w-4 h-4" />
@@ -229,7 +229,7 @@ export function MediaLibrary() {
             <button
               onClick={() => setViewMode("list")}
               className={`p-2 rounded ${
-                viewMode === "list" ? "bg-(--app-surface-2) text-white" : "text-(--app-ink-3) hover:text-white"
+                viewMode === "list" ? "bg-(--app-surface-2) text-(--app-ink)" : "text-(--app-ink-3) hover:text-white"
               }`}
             >
               <List className="w-4 h-4" />

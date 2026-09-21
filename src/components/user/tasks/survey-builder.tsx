@@ -79,7 +79,7 @@ const TYPES: SurveyQuestionType[] = [
 ];
 
 const inputCls =
-  "w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-(--app-accent-edge) focus:outline-none";
+  "w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:border-(--app-accent-edge) focus:outline-none";
 
 export function SurveyBuilder({
   value,

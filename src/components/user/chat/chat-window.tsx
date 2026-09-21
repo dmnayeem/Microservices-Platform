@@ -208,7 +208,7 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
                       "max-w-[75%] rounded-2xl px-3 py-1.5 text-sm",
                       isOwn
                         ? "bg-(--app-cta) text-(--app-on-cta) rounded-br-md"
-                        : "bg-(--app-surface-2) text-white rounded-bl-md"
+                        : "bg-(--app-surface-2) text-(--app-ink) rounded-bl-md"
                     )}
                   >
                     <p className="whitespace-pre-wrap wrap-break-word">{m.content}</p>

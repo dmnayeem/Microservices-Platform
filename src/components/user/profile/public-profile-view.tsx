@@ -297,7 +297,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
                 className={cn(
                   "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50",
                   viewer.isFollowing
-                    ? "bg-(--app-surface-2) text-white border border-(--app-line) hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30"
+                    ? "bg-(--app-surface-2) text-(--app-ink) border border-(--app-line) hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30"
                     : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >
@@ -894,7 +894,7 @@ function UserListTab({
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50",
                   u.isFollowing
-                    ? "bg-(--app-surface-2) text-white border border-(--app-line)"
+                    ? "bg-(--app-surface-2) text-(--app-ink) border border-(--app-line)"
                     : "bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta)"
                 )}
               >

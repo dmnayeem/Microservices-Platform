@@ -37,7 +37,7 @@ export interface EditableAd {
 }
 
 const inp =
-  "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm focus:outline-none focus:border-(--app-accent-edge)";
+  "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)";
 
 /**
  * Create or edit one ad. Editing exists because there was previously no way for

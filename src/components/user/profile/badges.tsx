@@ -7,7 +7,7 @@ export const PACKAGE_TIER_STYLES: Record<
   { gradient: string; border: string; ring: string; text: string; label: string }
 > = {
   FREE: {
-    gradient: "from-slate-700 to-slate-600",
+    gradient: "from-[#334155] to-[#475569]",
     border: "border-(--app-line)/40",
     ring: "ring-(--app-ink-3)/20",
     text: "text-(--app-ink)",
@@ -158,7 +158,7 @@ export function RankBadge({ rank }: { rank: number }) {
       ? "from-amber-500/20 to-yellow-500/20 border-amber-400/40 text-amber-300"
       : rank <= 100
       ? "from-purple-500/15 to-pink-500/15 border-purple-400/30 text-purple-200"
-      : "from-slate-700/40 to-slate-600/40 border-(--app-line)/30 text-(--app-ink)";
+      : "from-[#334155]/40 to-[#475569]/40 border-(--app-line)/30 text-(--app-ink)";
   return (
     <div
       className={cn(

@@ -447,7 +447,7 @@ export default function NotificationsPage() {
                   className={cn(
                     "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
                     currentPage > 1
-                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-hover)"
+                      ? "bg-(--app-surface-2) text-(--app-ink) hover:bg-(--app-surface-hover)"
                       : "bg-(--app-surface-2)/50 text-(--app-ink-3) cursor-not-allowed"
                   )}
                 >
@@ -460,7 +460,7 @@ export default function NotificationsPage() {
                   className={cn(
                     "inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors",
                     currentPage < pagination.totalPages
-                      ? "bg-(--app-surface-2) text-white hover:bg-(--app-surface-hover)"
+                      ? "bg-(--app-surface-2) text-(--app-ink) hover:bg-(--app-surface-hover)"
                       : "bg-(--app-surface-2)/50 text-(--app-ink-3) cursor-not-allowed"
                   )}
                 >

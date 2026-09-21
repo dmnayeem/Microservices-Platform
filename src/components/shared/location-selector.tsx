@@ -531,7 +531,7 @@ function FreeText({
 }
 
 const fieldCls =
-  "w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50";
+  "w-full px-3 py-2 bg-(--app-surface) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Country combobox — searchable input with filtered dropdown.

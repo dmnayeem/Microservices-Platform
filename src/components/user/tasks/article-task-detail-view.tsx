@@ -1140,7 +1140,7 @@ function ManualKeySubmitCard({
               }
             }}
             placeholder="Paste the key you received on the final article page"
-            className={`w-full px-3 py-2 bg-(--app-page) border rounded-lg text-sm font-mono text-white placeholder-gray-500 focus:outline-none transition-colors ${inputTone}`}
+            className={`w-full px-3 py-2 bg-(--app-page) border rounded-lg text-sm font-mono text-white placeholder:text-(--app-ink-3) focus:outline-none transition-colors ${inputTone}`}
           />
           {matchState === "fail" && resultMsg && (
             <p className="text-xs text-red-400 inline-flex items-center gap-1.5">

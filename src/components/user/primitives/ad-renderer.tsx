@@ -534,6 +534,24 @@ export function AdRenderer({
    * inside the one anchor, so a tap on the headline or on the arrow is the same
    * recorded click as a tap on the creative. Nothing here is a second control.
    */
+  /* The brand chip alone. The card layout wants the chip without the headline
+     under it — that moved onto the brand row, where the reference has it. The
+     banner layouts still take both together via `overlay`. */
+  const brandChip = (
+    <span
+      className="on-media pointer-events-none absolute left-2 top-2 z-20 inline-flex max-w-[75%] items-center gap-1.5 rounded-full px-2 py-1"
+      style={{ backgroundColor: CHIP_BG }}
+    >
+      <span className="app-on-white [--app-on-white-ink:#000] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white text-[9px] font-black">
+        {monogram}
+      </span>
+      <span className="truncate text-[11px] font-semibold text-white">
+        {brand}
+      </span>
+    </span>
+  );
+
+
   const overlay = (big: boolean) => (
     <>
       <span
@@ -807,7 +825,11 @@ export function AdRenderer({
         aria-label={ad.title ? `${ad.title} — ${brand}` : `Open ${brand}`}
       >
         {media("w-full")}
-        {overlay(true)}
+        {/* Only the brand chip here. The headline belongs on the row below,
+            beside the avatar, which is where the reference puts it — and a
+            circular arrow the size of a button, above two actual buttons,
+            reads as a third action that does something different. */}
+        {brandChip}
       </a>
       {hideButton}
 
@@ -828,9 +850,23 @@ export function AdRenderer({
               {monogram}
             </span>
           )}
-          <p className="t-body line-clamp-2 min-w-0 flex-1 text-(--app-ink-2)">
-            {ad.body || ad.title || brand}
-          </p>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5">
+              <span className="t-card-title line-clamp-2 min-w-0 text-(--app-ink)">
+                {lead}
+                {accent ? (
+                  <span className="text-(--app-accent-ink)">
+                    {lead ? " " : ""}
+                    {accent}
+                  </span>
+                ) : null}
+              </span>
+              <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-(--app-ink-3)" />
+            </span>
+            <span className="t-meta mt-0.5 block truncate text-(--app-ink-3)">
+              Sponsored · {brand}
+            </span>
+          </span>
           <div className="relative shrink-0">
             <button
               type="button"
@@ -879,7 +915,9 @@ export function AdRenderer({
           </div>
         </div>
 
-        <p className="t-meta mt-2 text-(--app-ink-3)">Sponsored · {brand}</p>
+        {ad.body && (
+          <p className="t-body mt-2 line-clamp-2 text-(--app-ink-2)">{ad.body}</p>
+        )}
         {showWhy && (
           <p className="t-meta mt-1 text-(--app-ink-3)">
             Ads like this keep the platform free to use.

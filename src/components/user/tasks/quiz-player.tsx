@@ -238,7 +238,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                     "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-sm tabular-nums",
                     lowTime
                       ? "bg-red-500/15 text-red-400"
-                      : "bg-(--app-surface-2) text-white"
+                      : "bg-(--app-surface-2) text-(--app-ink)"
                   )}
                 >
                   <Clock className="w-3.5 h-3.5" />

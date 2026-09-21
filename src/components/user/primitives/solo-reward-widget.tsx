@@ -72,7 +72,7 @@ export function SoloRewardWidget({
   const headerByStatus: Record<SoloRewardStatus, { title: string; tone: string; icon: React.ReactNode }> = {
     LOCKED: {
       title: "Solo Reward",
-      tone: "from-gray-700 to-gray-800",
+      tone: "from-[#374151] to-[#1f2937]",
       icon: <Lock className="w-4 h-4" />,
     },
     ELIGIBLE: {
@@ -87,7 +87,7 @@ export function SoloRewardWidget({
     },
     EXPIRED: {
       title: "Expired",
-      tone: "from-red-700 to-gray-800",
+      tone: "from-red-700 to-[#1f2937]",
       icon: <Clock className="w-4 h-4" />,
     },
   };

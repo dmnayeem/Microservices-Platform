@@ -96,7 +96,7 @@ async function loadChildren(params: {
 }
 
 const fieldCls =
-  "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50";
+  "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) disabled:opacity-50";
 
 export function Chip({
   label,

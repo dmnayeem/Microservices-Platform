@@ -524,7 +524,7 @@ export function PrivacyTab({
                         onChange={(e) => setLevel(f, e.target.value)}
                         aria-label={`Who can see ${f.label}`}
                         className={cn(
-                          "bg-(--app-surface-2) border rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-(--app-accent-edge) shrink-0",
+                          "bg-(--app-surface-2) border rounded-lg px-3 py-1.5 text-sm text-(--app-ink) focus:outline-none focus:border-(--app-accent-edge) shrink-0",
                           value === "PRIVATE"
                             ? "border-rose-500/40"
                             : value === "FRIENDS"

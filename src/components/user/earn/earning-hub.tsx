@@ -404,7 +404,7 @@ export function LearnTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LEVEL_TIERS: { range: [number, number]; title: string; gradient: string }[] = [
-  { range: [1, 10], title: "NOVICE", gradient: "from-slate-500 to-slate-600" },
+  { range: [1, 10], title: "NOVICE", gradient: "from-[#64748b] to-[#475569]" },
   { range: [11, 25], title: "APPRENTICE", gradient: "from-blue-500 to-cyan-500" },
   { range: [26, 40], title: "EARNER", gradient: "from-emerald-500 to-teal-500" },
   { range: [41, 60], title: "PRO", gradient: "from-purple-500 to-pink-500" },

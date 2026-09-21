@@ -583,7 +583,7 @@ export function CreatePostComposer({
                       activeBg.textClass,
                       activeBg.textClass === "text-white"
                         ? "placeholder:text-white/70"
-                        : "placeholder:text-gray-900/60"
+                        : "placeholder:text-[#0f172a]/60"
                     )
                   : "text-sm text-(--app-ink) placeholder:text-(--app-ink-3)"
               )}

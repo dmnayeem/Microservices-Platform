@@ -163,7 +163,7 @@ export function DepositView({ from }: { from?: string } = {}) {
   };
 
   const inputCls =
-    "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-(--app-accent-edge)";
+    "w-full px-3 py-2 bg-(--app-surface-2) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge)";
 
   return (
     <div className="space-y-6 max-w-2xl">

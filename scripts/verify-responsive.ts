@@ -273,6 +273,71 @@ console.log(`\nverify-responsive — ${FILES.length} files (admin included), ${A
 }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   8. Classes that hide from an attribute-shaped scan
+   ══════════════════════════════════════════════════════════════════════════
+   Half this app's shared styling lives in string constants — `const inputCls =
+   "…"` — not in a className attribute. Two sweeps missed those and left 10
+   dead placeholder utilities and 24 white inks behind, so the scan looks at
+   every string literal long enough to be a class list. */
+{
+  const GROUND = /bg-\(--app-(page|surface|surface-2)\)/;
+  const WHITE = /(?<![-:\w])text-white(?![-/\w])/;
+  const DEAD_PLACEHOLDER = /(?<![-\w:])placeholder-(gray|slate)-\d+(?![-\w])/;
+
+  const white: string[] = [];
+  const dead: string[] = [];
+  for (const f of FILES) {
+    if (f.includes("/admin/")) continue;
+    const body = read(f);
+    for (const m of body.match(/"[^"\n]{20,400}"/g) ?? []) {
+      if (GROUND.test(m) && WHITE.test(m)) white.push(f);
+      if (DEAD_PLACEHOLDER.test(m)) dead.push(f);
+    }
+  }
+  check(
+    "no white ink on a themed ground, string constants included",
+    white.length === 0,
+    [...new Set(white)].join(", ")
+  );
+  check(
+    "no `placeholder-<colour>` anywhere — Tailwind v4 removed it",
+    dead.length === 0,
+    [...new Set(dead)].join(", ") ||
+      "it produces nothing, so those placeholders had no styling in dark mode at all"
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. Nothing user-facing rides the grey ramp any more
+   ══════════════════════════════════════════════════════════════════════════
+   The light theme works by redefining the gray/slate ramp variables, so a
+   `text-gray-400` means one colour in one theme and a different one in the
+   other. That is right for the admin panel, which is painted entirely in that
+   ramp. It is wrong for anything whose job is to look the SAME in both — an
+   identity colour, or ink on a page that is always white.
+
+   It cost a real defect: the printed certificate wrote its serial number in
+   `text-gray-400`, which resolves dark in light mode and #99a1af in dark, so
+   a worker reading in dark mode printed a certificate with a serial you could
+   barely see. Those are literal values now, and this keeps them that way. */
+{
+  const RAMP = /(?<![-\w:])(bg|text|border|ring|from|via|to|divide|shadow|stroke|fill)-(gray|slate|indigo)-\d+/;
+  const offenders: string[] = [];
+  for (const f of FILES) {
+    if (f.includes("/admin/")) continue;
+    const body = read(f);
+    for (const m of body.match(/"[^"\n]{4,400}"/g) ?? []) {
+      if (RAMP.test(m)) offenders.push(f);
+    }
+  }
+  check(
+    "no user-facing class rides the theme's grey ramp",
+    offenders.length === 0,
+    [...new Set(offenders)].join(", ")
+  );
+}
+
 console.log(
   `\n${passed} passed, ${failed} failed\n` +
     (failures.length ? failures.map((f) => `  · ${f}`).join("\n") + "\n" : "")

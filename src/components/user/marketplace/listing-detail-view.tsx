@@ -931,7 +931,7 @@ function Pill({
     amber: "bg-amber-500 text-white",
     emerald: "bg-emerald-500 text-white",
     purple: "bg-purple-500/90 text-white",
-    slate: "bg-(--app-surface-2)/90 text-white",
+    slate: "bg-(--app-surface-2)/90 text-(--app-ink)",
   };
   return (
     <span

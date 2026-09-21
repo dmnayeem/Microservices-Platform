@@ -27,7 +27,7 @@ const PLATFORMS: Array<{
   {
     key: "x",
     name: "X (Twitter)",
-    color: "bg-(--app-surface) text-white",
+    color: "bg-(--app-surface) text-(--app-ink)",
     build: (u, t) =>
       `https://twitter.com/intent/tweet?url=${encodeURIComponent(
         u

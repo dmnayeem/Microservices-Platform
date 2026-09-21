@@ -5,7 +5,7 @@ import { Mail, MessageSquare, Clock, Globe2, Loader2, CheckCircle2, LifeBuoy } f
 import { toast } from "@/lib/toast";
 import { SUPPORT_EMAIL, COMPANY_NAME } from "@/config/company";
 
-const inp = "w-full rounded-xl mk-card px-4 py-3 text-(--mk-text) placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500/40";
+const inp = "w-full rounded-xl mk-card px-4 py-3 text-(--mk-text) placeholder:text-(--app-ink-3) text-sm focus:outline-none focus:border-blue-500/40";
 const CATEGORIES = ["General question", "Payments & withdrawals", "Account & login", "Report a problem", "Partnership / press", "Other"];
 
 export default function ContactPage() {
