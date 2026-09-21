@@ -22,11 +22,16 @@ import {
   isSearchEngineHost,
   mintArticleSrcTag,
   validateArticleConfig,
+  evaluateArticleEntry,
+  entryVerdictAllows,
   ARTICLE_SRC_PARAM,
+  type ArticleEntryConfig,
   type ArticleConfig,
   type ArticlePage,
   type ArticlePopupItem,
 } from "../src/lib/article-tasks";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 let passed = 0;
 let failed = 0;
@@ -290,6 +295,165 @@ for (const [label, raw] of [
     "restricting to google excludes bing",
     isSearchEngineHost("google.com.bd", "google") &&
       !isSearchEngineHost("bing.com", "google")
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. Judging an arrival
+   ══════════════════════════════════════════════════════════════════════════ */
+const SEARCH: ArticleEntryConfig = {
+  mode: "search",
+  searchKeyword: "bd jobs",
+  searchEngine: "any",
+  landingUrl: "https://example.com/a",
+  onUnknownSource: "review",
+};
+const REFERRAL: ArticleEntryConfig = {
+  mode: "referral",
+  postUrl: "https://www.facebook.com/page/posts/123",
+  landingUrl: "https://example.com/a",
+  srcTag: "k7m2qp4x",
+  onUnknownSource: "review",
+};
+
+{
+  const fromGoogle = evaluateArticleEntry(
+    SEARCH,
+    "https://www.google.com/",
+    "https://example.com/a"
+  );
+  check("a Google referrer is a search arrival", fromGoogle.verdict === "search");
+
+  const fromElsewhere = evaluateArticleEntry(
+    SEARCH,
+    "https://someforum.com/thread",
+    "https://example.com/a"
+  );
+  check(
+    "a referrer from somewhere else is a mismatch",
+    fromElsewhere.verdict === "mismatch"
+  );
+
+  /* No referrer is the ambiguous case, and the one that decides whether this
+     feature is fair. A typed-in address and a stripped referrer are the same
+     thing from the page — so it is held, never called a mismatch. */
+  const typedIn = evaluateArticleEntry(SEARCH, "", "https://example.com/a");
+  check("no referrer is unknown, not mismatch", typedIn.verdict === "unknown");
+
+  const junk = evaluateArticleEntry(SEARCH, "not a url", "https://example.com/a");
+  check("an unparseable referrer is unknown, not a crash", junk.verdict === "unknown");
+
+  const engineLocked = evaluateArticleEntry(
+    { ...SEARCH, searchEngine: "google" },
+    "https://www.bing.com/",
+    "https://example.com/a"
+  );
+  check("restricting the engine rejects the other one", engineLocked.verdict === "mismatch");
+}
+
+/* Referral. The tag is the evidence; the referrer only corroborates, because
+   the in-app browsers carrying most social traffic strip it. */
+{
+  const tagged = evaluateArticleEntry(
+    REFERRAL,
+    "",
+    "https://example.com/a?src=k7m2qp4x"
+  );
+  check(
+    "a tagged arrival counts even with NO referrer at all",
+    tagged.verdict === "referral",
+    "this is the whole reason the tag exists — in-app browsers strip referrers"
+  );
+
+  const wrongTag = evaluateArticleEntry(
+    REFERRAL,
+    "",
+    "https://example.com/a?src=somethingelse"
+  );
+  check("a different task's tag does not count", wrongTag.verdict === "unknown");
+
+  const shim = evaluateArticleEntry(
+    REFERRAL,
+    "https://l.facebook.com/l.php?u=x",
+    "https://example.com/a"
+  );
+  check("Facebook's outbound shim counts as the post's referrer", shim.verdict === "referral");
+
+  const samePlatform = evaluateArticleEntry(
+    REFERRAL,
+    "https://www.facebook.com/",
+    "https://example.com/a"
+  );
+  check("the post's own host counts", samePlatform.verdict === "referral");
+
+  const elsewhere = evaluateArticleEntry(
+    REFERRAL,
+    "https://www.google.com/",
+    "https://example.com/a"
+  );
+  check(
+    "arriving from search when a post was asked for is a mismatch",
+    elsewhere.verdict === "mismatch"
+  );
+
+  const bare = evaluateArticleEntry(REFERRAL, "", "https://example.com/a");
+  check("untagged and no referrer is unknown", bare.verdict === "unknown");
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. What a verdict permits
+   ══════════════════════════════════════════════════════════════════════════
+   The rule that keeps this honest in both directions: a held verdict lets the
+   worker do the job, and does NOT auto-approve it. Never both allow the
+   journey and then pay out on evidence we do not have. */
+{
+  const matched = entryVerdictAllows(SEARCH, "search");
+  check("a matching arrival starts and auto-approves", matched.start && matched.autoApprove);
+
+  const held = entryVerdictAllows(SEARCH, "unknown");
+  check(
+    "an unknown arrival starts but does NOT auto-approve",
+    held.start && !held.autoApprove
+  );
+
+  const strict = entryVerdictAllows({ ...SEARCH, onUnknownSource: "block" }, "unknown");
+  check("…unless the admin chose block, in which case it does not start", !strict.start);
+
+  const wrong = entryVerdictAllows(SEARCH, "mismatch");
+  check("a mismatch neither starts nor approves", !wrong.start && !wrong.autoApprove);
+
+  check(
+    "a referral verdict does not satisfy a search task",
+    !entryVerdictAllows(SEARCH, "referral").autoApprove
+  );
+  check(
+    "a search verdict does not satisfy a referral task",
+    !entryVerdictAllows(REFERRAL, "search").autoApprove
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10. The landing route answers before the journey, not after
+   ══════════════════════════════════════════════════════════════════════════ */
+{
+  const route = readFileSync(
+    join(process.cwd(), "src/app/api/article-tasks/[taskId]/landing/route.ts"),
+    "utf8"
+  );
+  check("the landing route exists and speaks CORS", /corsResponse/.test(route));
+  check("a direct task is told so rather than judged", /mode: "direct"/.test(route));
+  check(
+    "a refused arrival is given no signed note to present later",
+    /start\s*\?\s*signArticleVisitToken/.test(route),
+    "signing one anyway would let a refused visitor claim a key"
+  );
+  check(
+    "the refusal message tells the worker what to do instead",
+    /Go back and search for/.test(route)
+  );
+  check(
+    "nothing is written — a public page costs no row per visitor",
+    !/prisma\.\w+\.(create|update|upsert|delete)/.test(route)
   );
 }
 

@@ -2019,9 +2019,33 @@ model ArticleTaskKey {
   submission      TaskSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
   createdAt       DateTime        @default(now())
 
+  // ── Arrival evidence (entry modes: search / referral) ──────────────────
+  // Null on every key issued through the direct flow, which is every key that
+  // exists today. Only the no-token branch of the embed writes these.
+  //
+  // What the embed observed when the visitor landed, judged at issue time and
+  // recorded as a verdict rather than re-derived later: "search", "referral",
+  // "unknown" (no referrer at all — indistinguishable from a typed address) or
+  // "mismatch". Stored because the referrer is gone by the time the key is
+  // submitted, and a verdict that cannot be re-checked has to be kept.
+  entrySource     String?
+  // The raw referrer host and landing URL behind that verdict, so an admin
+  // reviewing a held submission can see what was actually seen.
+  entryReferrer   String?
+  entryLandingUrl String?
+  // When the key left the embed. The submit path refuses a key older than the
+  // task's window — a key that sat around is a key that was harvested.
+  issuedAt        DateTime?
+  // A coarse browser fingerprint hash. Submitting from a different browser is
+  // not refused, only held for review: one person legitimately searches on a
+  // phone and submits on a laptop.
+  visitFingerprint String?
+
   @@unique([taskId, keyValue])
   @@index([taskId, claimedByUserId])
   @@index([claimedByUserId])
+  // Rate-limiting the no-token branch counts recent issues per fingerprint.
+  @@index([taskId, visitFingerprint, issuedAt])
 }
 
 // Per-page popup completion progress. The embed script POSTs each completed

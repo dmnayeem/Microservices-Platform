@@ -410,6 +410,116 @@ export function articleEntryMode(cfg: ArticleConfig | null): ArticleEntryMode {
   return coerceArticleEntry(cfg?.entry)?.mode ?? "direct";
 }
 
+/**
+ * What the embed concluded about how this visitor arrived.
+ *
+ *   search / referral  the arrival matched what the task asks for
+ *   unknown            no referrer and no tag — which is ALSO what a typed-in
+ *                      address looks like. The two are indistinguishable from
+ *                      the page, so this is a held verdict, not a guilty one.
+ *   mismatch           a referrer was present and it was the wrong one
+ */
+export type ArticleEntryVerdict =
+  | "search"
+  | "referral"
+  | "unknown"
+  | "mismatch";
+
+export interface ArticleEntryEvidence {
+  verdict: ArticleEntryVerdict;
+  /** Host of `document.referrer`, or "" when there was none. */
+  referrerHost: string;
+  /** Whether the landing URL carried the task's tag (referral mode). */
+  taggedMatch: boolean;
+}
+
+/**
+ * Judge an arrival. Pure, so the rules can be tested without a browser.
+ *
+ * The honest limit, stated where the decision is made: `document.referrer` and
+ * the landing URL are both reported BY the page, and a page runs in the
+ * visitor's browser. Someone with developer tools can claim whatever they
+ * like. That is true of every client-side signal, including the dwell and
+ * scroll gates this feature sits beside, and the bar here is the same one:
+ * enough that ordinary shortcuts do not pay, not a proof against a determined
+ * forger. What actually bounds the loss is that keys are finite, single-use,
+ * and bound to the first account that submits them.
+ */
+export function evaluateArticleEntry(
+  entry: ArticleEntryConfig,
+  referrer: string,
+  landingUrl: string
+): ArticleEntryEvidence {
+  let referrerHost = "";
+  try {
+    if (referrer) referrerHost = new URL(referrer).host.toLowerCase();
+  } catch {
+    referrerHost = "";
+  }
+
+  let taggedMatch = false;
+  if (entry.mode === "referral" && entry.srcTag) {
+    try {
+      taggedMatch =
+        new URL(landingUrl).searchParams.get(ARTICLE_SRC_PARAM) ===
+        entry.srcTag;
+    } catch {
+      taggedMatch = false;
+    }
+  }
+
+  if (entry.mode === "search") {
+    if (!referrerHost) return { verdict: "unknown", referrerHost, taggedMatch };
+    return {
+      verdict: isSearchEngineHost(referrerHost, entry.searchEngine ?? "any")
+        ? "search"
+        : "mismatch",
+      referrerHost,
+      taggedMatch,
+    };
+  }
+
+  // Referral. The tag is the evidence; the referrer only corroborates, because
+  // the in-app browsers that carry most social traffic strip it. A tagged
+  // arrival is accepted whatever the referrer says — including none at all.
+  if (taggedMatch) {
+    return { verdict: "referral", referrerHost, taggedMatch };
+  }
+  if (!referrerHost) return { verdict: "unknown", referrerHost, taggedMatch };
+
+  let postHost = "";
+  try {
+    if (entry.postUrl) postHost = new URL(entry.postUrl).host.toLowerCase();
+  } catch {
+    postHost = "";
+  }
+  const bare = referrerHost.replace(/^www\./, "");
+  const fromSocial =
+    (postHost && (bare === postHost.replace(/^www\./, "") || bare.endsWith(`.${postHost.replace(/^www\./, "")}`))) ||
+    SOCIAL_REFERRER_SHIMS.some((h) => bare === h || bare.endsWith(`.${h}`));
+
+  return {
+    verdict: fromSocial ? "referral" : "mismatch",
+    referrerHost,
+    taggedMatch,
+  };
+}
+
+/** Does this verdict satisfy the task, given the admin's strictness? */
+export function entryVerdictAllows(
+  entry: ArticleEntryConfig,
+  verdict: ArticleEntryVerdict
+): { start: boolean; autoApprove: boolean } {
+  if (verdict === entry.mode) return { start: true, autoApprove: true };
+  if (verdict === "unknown") {
+    const block = entry.onUnknownSource === "block";
+    // Let them work, but the submission is reviewed by a person. Never both
+    // allow the journey and then auto-approve on evidence we do not have.
+    return { start: !block, autoApprove: false };
+  }
+  return { start: false, autoApprove: false };
+}
+
 export function validateArticleConfig(
   cfg: ArticleConfig
 ): { ok: boolean; error?: string } {

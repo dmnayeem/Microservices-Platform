@@ -125,6 +125,107 @@ export function verifyArticleTaskToken(
   return { ok: true, payload };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   Visit tokens — the no-token entry modes
+   ══════════════════════════════════════════════════════════════════════════
+   A search result and a public social post both hand the SAME url to every
+   reader, so neither can carry a per-user session token. Those journeys start
+   anonymously: the embed reports how the visitor arrived, the server judges
+   it, and hands back a signed note of that judgement. The note travels with
+   the rest of the journey and is presented when the key is claimed.
+
+   Signed rather than stored, so this needs no table and no row per visitor on
+   a public page — and an expired note simply stops verifying.
+
+   What the signature proves is that WE issued the verdict, not that the
+   referrer behind it was truthful; the referrer is reported by a page running
+   in the visitor's browser and nothing can make that authoritative. See
+   `evaluateArticleEntry` for why that bar is the right one here. */
+
+export interface ArticleVisitTokenPayload {
+  /** Task id. */
+  t: string;
+  /** The verdict reached at landing: search | referral | unknown | mismatch. */
+  v: string;
+  /** Coarse browser fingerprint, so the key can be held if it moves. */
+  f: string;
+  /** Referrer host behind the verdict, kept for the reviewer. */
+  r?: string;
+  /** Landing URL, kept for the reviewer. */
+  l?: string;
+  iat: number;
+  exp: number;
+}
+
+/* Long enough for a real journey — several pages with dwell gates — and short
+   enough that a note cannot be kept and reused tomorrow. */
+const VISIT_TTL_SECONDS = 60 * 60 * 3;
+
+export function signArticleVisitToken(
+  payload: Omit<ArticleVisitTokenPayload, "iat" | "exp">,
+  ttlSeconds: number = VISIT_TTL_SECONDS
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  const full: ArticleVisitTokenPayload = {
+    ...payload,
+    iat: now,
+    exp: now + ttlSeconds,
+  };
+  const body = b64urlEncode(JSON.stringify(full));
+  const sig = b64urlEncode(
+    createHmac("sha256", getSecret()).update(body).digest()
+  );
+  return `${body}.${sig}`;
+}
+
+export function verifyArticleVisitToken(
+  token: string | null | undefined
+):
+  | { ok: true; payload: ArticleVisitTokenPayload }
+  | { ok: false; error: string } {
+  if (!token || typeof token !== "string") {
+    return { ok: false, error: "Missing visit token" };
+  }
+  const parts = token.split(".");
+  if (parts.length !== 2) return { ok: false, error: "Malformed visit token" };
+  const [body, sig] = parts;
+
+  let expected: Buffer;
+  let provided: Buffer;
+  try {
+    expected = createHmac("sha256", getSecret()).update(body).digest();
+    provided = b64urlDecode(sig);
+  } catch {
+    return { ok: false, error: "Invalid visit token" };
+  }
+  if (
+    expected.length !== provided.length ||
+    !timingSafeEqual(expected, provided)
+  ) {
+    return { ok: false, error: "Bad signature" };
+  }
+
+  let payload: ArticleVisitTokenPayload;
+  try {
+    payload = JSON.parse(b64urlDecode(body).toString("utf8"));
+  } catch {
+    return { ok: false, error: "Invalid payload" };
+  }
+  if (
+    typeof payload.t !== "string" ||
+    typeof payload.v !== "string" ||
+    typeof payload.f !== "string" ||
+    typeof payload.iat !== "number" ||
+    typeof payload.exp !== "number"
+  ) {
+    return { ok: false, error: "Invalid payload shape" };
+  }
+  if (payload.exp < Math.floor(Date.now() / 1000)) {
+    return { ok: false, error: "Visit token expired" };
+  }
+  return { ok: true, payload };
+}
+
 /**
  * Put the session token on an article page URL.
  *
