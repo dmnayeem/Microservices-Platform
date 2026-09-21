@@ -592,6 +592,74 @@ const REFERRAL: ArticleEntryConfig = {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   13. What submitting a key decides
+   ══════════════════════════════════════════════════════════════════════════
+   The rule the owner asked for is "key matches, therefore approved", and that
+   stays exactly true for the direct flow. What these checks hold is that it
+   does not quietly become true for a journey whose arrival could not be
+   confirmed — otherwise the two new modes would ask nothing of anyone. */
+{
+  const submit = readFileSync(
+    join(process.cwd(), "src/app/api/tasks/[id]/submit/route.ts"),
+    "utf8"
+  );
+
+  check(
+    "the key's arrival evidence is read when it is claimed",
+    /entrySource: true/.test(submit) && /entryReferrer: true/.test(submit)
+  );
+  check(
+    "a key with no evidence decides exactly as it always did",
+    /if \(keyRow\.entrySource\) \{/.test(submit),
+    "every key issued before this feature has a null entrySource, and must be untouched by it"
+  );
+  check(
+    "an unconfirmed arrival blocks auto-approval",
+    /!articleEntryHold &&/.test(submit)
+  );
+
+  /* The important half: it blocks the PAYOUT, never the submission. The popups
+     were all clicked — that is what holding a key means — so the work exists
+     and only the route in is in doubt. */
+  check(
+    "an unconfirmed arrival is never turned into a rejection",
+    !/articleEntryHold[\s\S]{0,200}SubmissionStatus\.REJECTED/.test(submit),
+    "rejecting would throw away work that was demonstrably done"
+  );
+  check(
+    "the reason reaches the field the review screen shows",
+    /articleEntryHold \? \{ feedback: articleEntryHold \}/.test(submit),
+    "a reason buried in a JSON blob is a reason nobody reads"
+  );
+  check(
+    "what was actually observed is kept for the reviewer",
+    /articleEntryEvidence = \{[\s\S]{0,200}referrer: keyRow\.entryReferrer/.test(
+      submit
+    ) && /submissionMetadata\.articleEntry = articleEntryEvidence/.test(submit)
+  );
+
+  /* An admin who switches the mode off after keys are out has changed the
+     rules mid-journey. The worker cannot know that, and must not lose for it. */
+  check(
+    "a mode switched off after issue holds rather than punishes",
+    /no longer requires a specific entry route/.test(submit)
+  );
+
+  /* Staleness is a suspicion, not a verdict. */
+  check(
+    "a stale key is held, not killed",
+    /ARTICLE_KEY_FRESH_MINUTES/.test(submit) &&
+      /Held, not killed/.test(submit)
+  );
+  check(
+    "the freshness window is long enough for a real multi-page read",
+    /const ARTICLE_KEY_FRESH_MINUTES = (\d+)/.test(submit) &&
+      Number(submit.match(/const ARTICLE_KEY_FRESH_MINUTES = (\d+)/)?.[1]) >= 60,
+    "dwell gates plus several pages plus walking back to EarnGPT is not a five-minute errand"
+  );
+}
+
 console.log(
   `\n${passed} passed, ${failed} failed\n` +
     (failures.length ? failures.map((f) => `  · ${f}`).join("\n") + "\n" : "")

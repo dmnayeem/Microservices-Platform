@@ -18,7 +18,15 @@ import { getBuyerSettings } from "@/lib/buyer-settings";
 import {
   compareUniqueKey,
   type ArticleConfig,
+  coerceArticleEntry,
+  entryVerdictAllows,
 } from "@/lib/article-tasks";
+
+/* How long an anonymously-issued key stays fresh. Generous on purpose: a
+   multi-page journey with dwell gates is not quick, and a worker may finish
+   the reading before coming back to EarnGPT to paste the key. Past it the
+   submission is HELD, never refused. */
+const ARTICLE_KEY_FRESH_MINUTES = 120;
 import {
   hasEngagement,
   stepIsRequired,
@@ -306,6 +314,10 @@ export async function POST(
 
     // ── Article task: check unique key + force PENDING (admin reviews) ──
     let uniqueKeyMismatch = false;
+    /* Set when an anonymously-issued article key needs a human to look at it.
+       Never a rejection — see where it is assigned. */
+    let articleEntryHold: string | null = null;
+    let articleEntryEvidence: Record<string, unknown> | null = null;
     let claimedArticleKeyId: string | null = null;
     let articleOriginality: ArticleOriginality | null = null;
     if (task.type === "ARTICLE") {
@@ -386,6 +398,13 @@ export async function POST(
             id: true,
             claimedByUserId: true,
             submissionId: true,
+            // Arrival evidence, written when the key was issued. Null on every
+            // key from the direct flow, which is every key issued before this
+            // feature existed — so `articleEntryHold` stays null for those and
+            // they decide exactly as they always have.
+            entrySource: true,
+            entryReferrer: true,
+            issuedAt: true,
           },
         });
         if (!keyRow) {
@@ -433,6 +452,59 @@ export async function POST(
           );
         }
         claimedArticleKeyId = keyRow.id;
+
+        /* ── Did they arrive the way the task asked? ──────────────────────
+           Only for a key issued anonymously — one carrying evidence. A key
+           from the direct flow has none, and nothing below fires.
+
+           Nothing here REJECTS. The work was really done: every popup on
+           every page was clicked, which is what the key attests. What is in
+           doubt is only the route in, so the outcome is a person looking at
+           it rather than an instant payout — or an instant loss. */
+        if (keyRow.entrySource) {
+          const entryCfg = coerceArticleEntry(cfg?.entry);
+          if (!entryCfg) {
+            // The admin turned the mode off after this key went out. The
+            // worker did nothing wrong and cannot be expected to know.
+            articleEntryHold =
+              "This task no longer requires a specific entry route; the key was issued while it did.";
+          } else {
+            const verdict = keyRow.entrySource as Parameters<
+              typeof entryVerdictAllows
+            >[1];
+            if (!entryVerdictAllows(entryCfg, verdict).autoApprove) {
+              articleEntryHold =
+                verdict === "unknown"
+                  ? `Could not tell how this visit arrived — no referrer and no tag. That looks identical to a browser with referrers switched off, so it is held rather than refused.`
+                  : `Arrived as "${verdict}" but the task asks for "${entryCfg.mode}"${
+                      keyRow.entryReferrer ? ` (referrer: ${keyRow.entryReferrer})` : ""
+                    }.`;
+            }
+          }
+
+          if (!articleEntryHold && keyRow.issuedAt) {
+            const ageMinutes =
+              (Date.now() - keyRow.issuedAt.getTime()) / 60000;
+            if (ageMinutes > ARTICLE_KEY_FRESH_MINUTES) {
+              /* Held, not killed. A key this old is more likely harvested
+                 than earned — but "more likely" is not a reason to throw away
+                 an hour of someone's work AND a key from a finite pool. */
+              articleEntryHold = `Key was issued ${Math.round(ageMinutes)} minutes before it was submitted (window is ${ARTICLE_KEY_FRESH_MINUTES}).`;
+            }
+          }
+
+          if (articleEntryHold) {
+            // Merged into the submission metadata further down, where that
+            // object is declared — the reviewer sees what was actually
+            // observed, not just that something was off.
+            articleEntryEvidence = {
+              verdict: keyRow.entrySource,
+              referrer: keyRow.entryReferrer,
+              issuedAt: keyRow.issuedAt?.toISOString() ?? null,
+              held: articleEntryHold,
+            };
+          }
+        }
       } else if (cfg?.proofRequirements?.uniqueKey && cfg.uniqueKey) {
         // Legacy single-key mode
         if (!compareUniqueKey(submittedUniqueKey, cfg.uniqueKey)) {
@@ -666,6 +738,9 @@ export async function POST(
     const socialBundle: Array<Record<string, unknown>> | null =
       isSocial && Array.isArray(socialItems) ? socialItems : null;
     const submissionMetadata: Record<string, unknown> = {};
+    if (articleEntryEvidence) {
+      submissionMetadata.articleEntry = articleEntryEvidence;
+    }
     // True only when EVERY item is a code-verify item and ALL codes were found
     // at their public URLs — then the submission is trustworthy enough to
     // auto-approve without human review.
@@ -1145,6 +1220,7 @@ export async function POST(
     // bundle was server-verified by code.
     let shouldAutoApprove =
       !uniqueKeyMismatch &&
+      !articleEntryHold &&
       task.type !== "SURVEY" &&
       (isArticleKeyPool ||
         customAutoApprove ||
@@ -1257,6 +1333,11 @@ export async function POST(
         ...(hasMetadata
           ? { metadata: JSON.parse(JSON.stringify(submissionMetadata)) }
           : {}),
+        /* Why a person is being asked to look at this. In `feedback` rather
+           than only in the metadata blob, because that is the field the
+           review screen already shows — a reason buried in JSON is a reason
+           nobody reads. */
+        ...(articleEntryHold ? { feedback: articleEntryHold } : {}),
         ...(shouldAutoApprove && {
           reviewedAt: new Date(),
           pointsEarned: isBoardTask ? 0 : task.pointsReward,
