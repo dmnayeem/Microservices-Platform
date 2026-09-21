@@ -742,6 +742,76 @@ const REFERRAL: ArticleEntryConfig = {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   15. What the worker is shown
+   ══════════════════════════════════════════════════════════════════════════
+   The door refuses a wrong arrival politely, but a worker who was never told
+   what to do will hit it every time. These hold the two halves that make the
+   instruction and the refusal agree with each other. */
+{
+  const view = readFileSync(
+    join(process.cwd(), "src/components/user/tasks/article-task-detail-view.tsx"),
+    "utf8"
+  );
+  const start = readFileSync(
+    join(process.cwd(), "src/app/api/article-tasks/[taskId]/start/route.ts"),
+    "utf8"
+  );
+
+  /* The single most important line in this phase. Hand a search task a ready
+     link to the article and the worker will click it — a direct arrival, which
+     the door then refuses, for doing exactly what the page offered. */
+  check(
+    "a non-direct task is not handed a link to the article",
+    /const firstPageUrl = entry \? null :/.test(start),
+    "offering one would invite the very arrival the task refuses"
+  );
+  check(
+    "the site is named, never linked, for a search task",
+    /landingHost/.test(start) && !/landingUrl,/.test(start.split("return NextResponse.json")[1] ?? ""),
+    "a URL in the payload is a URL the worker can paste, and pasting is not searching"
+  );
+  check(
+    "the start payload describes the arrival the task wants",
+    /mode: entry\.mode/.test(start) && /searchKeyword: entry\.searchKeyword/.test(start)
+  );
+
+  check(
+    "the worker gets the keyword with a copy button",
+    /Keyword copied/.test(view)
+  );
+  check(
+    "search mode opens the search engine, not the article",
+    /searchUrlFor\(e\.searchEngine/.test(view)
+  );
+  check(
+    "referral mode opens the post",
+    /e\.postUrl \?\? ""/.test(view)
+  );
+  check(
+    "the worker is warned that typing the address does not count",
+    /Typing the address straight/.test(view),
+    "otherwise the first thing they learn is a refusal they did not expect"
+  );
+
+  /* A label that says "Start Article Journey" on a button that opens Google
+     is a small lie, and the worker discovers it by arriving somewhere they did
+     not expect. */
+  check(
+    "the button names what it actually opens",
+    /"Open the search"/.test(view) && /"Open the post"/.test(view)
+  );
+  check(
+    "the blocked-tab fallback opens the same destination",
+    /entry\?\.mode === "search"\s*\n?\s*\? "Open the search"/.test(view)
+  );
+  check(
+    "the direct flow's wording is untouched",
+    /"Start Article Journey"/.test(view) && /"Reopen Article"/.test(view),
+    "every existing article task still reads exactly as it did"
+  );
+}
+
 console.log(
   `\n${passed} passed, ${failed} failed\n` +
     (failures.length ? failures.map((f) => `  · ${f}`).join("\n") + "\n" : "")

@@ -5,6 +5,7 @@ import { requireActiveUser } from "@/lib/require-active";
 import { SubmissionStatus } from "@/generated/prisma/client";
 import { TaskType } from "@/generated/prisma";
 import type { ArticleConfig } from "@/lib/article-tasks";
+import { coerceArticleEntry } from "@/lib/article-tasks";
 import {
   signArticleTaskToken,
   appendArticleToken,
@@ -200,12 +201,39 @@ export async function POST(
     u: session.user.id,
   });
 
-  const firstPageUrl = appendArticleToken(pages[0].url, token);
+  const entry = coerceArticleEntry(cfg?.entry);
+
+  /* A task that asks the worker to arrive from a search or a post must NOT be
+     handed a ready link to the article. Give them one and they will click it —
+     which is a direct arrival, which the door then refuses, and they will have
+     done nothing wrong. So those modes get the search page or the post, and
+     the destination is described rather than linked. */
+  const firstPageUrl = entry ? null : appendArticleToken(pages[0].url, token);
+
+  let landingHost: string | null = null;
+  if (entry?.landingUrl) {
+    try {
+      landingHost = new URL(entry.landingUrl).host.replace(/^www\./, "");
+    } catch {
+      landingHost = null;
+    }
+  }
 
   return NextResponse.json({
     submissionId: submission.id,
     token,
     firstPageUrl,
     pageCount: pages.length,
+    entry: entry
+      ? {
+          mode: entry.mode,
+          searchKeyword: entry.searchKeyword ?? null,
+          searchEngine: entry.searchEngine ?? "any",
+          postUrl: entry.postUrl ?? null,
+          /* The NAME of the site, never its URL — the worker has to recognise
+             it in the results, not paste it. */
+          landingHost,
+        }
+      : null,
   });
 }

@@ -737,6 +737,13 @@ function RewardBadge({
  * the embed redirects them back to /article-tasks/complete which
  * auto-submits the key.
  */
+/** Where to send a worker who has to search for the site themselves. */
+function searchUrlFor(engine: "google" | "bing" | "any", keyword: string) {
+  const q = encodeURIComponent(keyword);
+  if (engine === "bing") return `https://www.bing.com/search?q=${q}`;
+  return `https://www.google.com/search?q=${q}`;
+}
+
 function KeyPoolStartCard({ taskId }: { taskId: string }) {
   const [busy, setBusy] = useState(false);
   const [opened, setOpened] = useState(false);
@@ -744,6 +751,15 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
   // time would hand the reader a new session and orphan the progress they had.
   const [articleUrl, setArticleUrl] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
+  /* How this task wants the worker to arrive. Null for the ordinary flow,
+     which is every task unless an admin says otherwise. */
+  const [entry, setEntry] = useState<{
+    mode: "search" | "referral";
+    searchKeyword: string | null;
+    searchEngine: "google" | "bing" | "any";
+    postUrl: string | null;
+    landingHost: string | null;
+  } | null>(null);
 
   const start = async () => {
     if (articleUrl) {
@@ -775,17 +791,38 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      const url = data.firstPageUrl as string | undefined;
-      if (!url) throw new Error("Missing first page URL");
+      const e = (data.entry ?? null) as typeof entry;
+      setEntry(e);
+
+      /* Search and referral tasks are not handed a link to the article: the
+         whole point is that the worker arrives from somewhere else. They get
+         the search page or the post instead, and the destination is described
+         rather than linked. */
+      const url = e
+        ? e.mode === "referral"
+          ? (e.postUrl ?? "")
+          : searchUrlFor(e.searchEngine, e.searchKeyword ?? "")
+        : ((data.firstPageUrl as string | undefined) ?? "");
+      if (!url) throw new Error("Missing destination for this task");
       setArticleUrl(url);
       if (tab && !tab.closed) {
         tab.location.replace(url);
         setOpened(true);
         setBlocked(false);
-        toast.success("Article journey started in a new tab", {
-          description:
-            "Complete all pages — you'll be redirected back here automatically with your key.",
-        });
+        toast.success(
+          e
+            ? e.mode === "search"
+              ? "Search opened in a new tab"
+              : "Post opened in a new tab"
+            : "Article journey started in a new tab",
+          {
+            description: e
+              ? e.mode === "search"
+                ? `Find ${e.landingHost ?? "the site"} in the results and open it from there.`
+                : "Click the link inside the post to reach the article."
+              : "Complete all pages — you'll be redirected back here automatically with your key.",
+          }
+        );
       } else {
         // The blocker won, or the reader closed the blank tab. A real link
         // that the reader clicks themselves is never blocked, so offer that
@@ -819,12 +856,82 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
         </p>
       </div>
 
+      {/* How to get there. Shown only once the journey has started, because
+          until then we do not know which mode this task is in — and asking
+          the server up front would cost a round-trip on every article task
+          for something almost none of them need. */}
+      {entry && (
+        <div className="rounded-lg border border-(--app-accent-edge)/30 bg-(--app-surface-2) p-3 space-y-2.5">
+          <p className="t-eyebrow text-(--app-ink-3)">
+            {entry.mode === "search" ? "Find it yourself" : "Come in through the post"}
+          </p>
+
+          {entry.mode === "search" ? (
+            <>
+              <div className="space-y-1">
+                <p className="text-xs text-(--app-ink-2)">
+                  1. Search for this:
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 min-w-0 truncate rounded-(--app-r-chip) bg-(--app-page) border border-(--app-line) px-2.5 py-2 text-xs text-(--app-ink)">
+                    {entry.searchKeyword}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(entry.searchKeyword ?? "");
+                      toast.success("Keyword copied");
+                    }}
+                    className="app-press shrink-0 inline-flex items-center gap-1.5 rounded-(--app-r-chip) bg-(--app-cta) px-3 py-2 text-xs font-bold text-(--app-on-cta)"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-(--app-ink-2)">
+                2. In the results, open{" "}
+                <span className="font-bold text-(--app-ink)">
+                  {entry.landingHost ?? "the site"}
+                </span>
+                .
+              </p>
+              <p className="text-[11px] text-(--app-warn) leading-relaxed">
+                Open it from the search results. Typing the address straight
+                into the bar does not count, and the article will tell you so
+                instead of starting.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-(--app-ink-2)">
+                1. Open the post (the button below does it).
+              </p>
+              <p className="text-xs text-(--app-ink-2)">
+                2. Click the link inside the post to reach{" "}
+                <span className="font-bold text-(--app-ink)">
+                  {entry.landingHost ?? "the article"}
+                </span>
+                .
+              </p>
+              <p className="text-[11px] text-(--app-warn) leading-relaxed">
+                Go through the post&apos;s own link. Reaching the article any
+                other way does not count.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
       {opened && !blocked && (
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-200 flex items-start gap-2">
           <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span className="min-w-0">
-            Article opened in a new tab. Keep this tab open — your reward
-            will land here when you finish.
+            {entry?.mode === "search"
+              ? "Search opened in a new tab. Find the site in the results and open it from there."
+              : entry?.mode === "referral"
+                ? "Post opened in a new tab. Click the link inside it to reach the article."
+                : "Article opened in a new tab."}{" "}
+            Keep this tab open — your reward will land here when you finish.
           </span>
         </div>
       )}
@@ -834,8 +941,8 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
           <p className="flex items-start gap-2">
             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span className="min-w-0">
-              Your browser blocked the new tab. Open the article with this
-              link instead — your journey is already started.
+              Your browser blocked the new tab. Use this link instead —
+              your journey is already started.
             </span>
           </p>
           <a
@@ -846,7 +953,11 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
             className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/20 px-2.5 py-1.5 font-semibold text-amber-100 hover:bg-amber-500/30"
           >
             <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-            Open the article
+            {entry?.mode === "search"
+              ? "Open the search"
+              : entry?.mode === "referral"
+                ? "Open the post"
+                : "Open the article"}
           </a>
         </div>
       )}
@@ -861,7 +972,20 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
         ) : (
           <ArrowRight className="w-4 h-4" />
         )}
-        {opened ? "Reopen Article" : "Start Article Journey"}
+        {/* The label has to name what the button actually opens. "Start
+            Article Journey" on a task that opens Google is a small lie, and
+            the worker finds out by landing somewhere unexpected. */}
+        {entry?.mode === "search"
+          ? opened
+            ? "Open the search again"
+            : "Open the search"
+          : entry?.mode === "referral"
+            ? opened
+              ? "Open the post again"
+              : "Open the post"
+            : opened
+              ? "Reopen Article"
+              : "Start Article Journey"}
       </button>
     </section>
   );
