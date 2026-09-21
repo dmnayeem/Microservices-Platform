@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { invalidatePointsRateCache } from "@/lib/economy";
 import { invalidateSettingsCache } from "@/lib/system-settings";
+import { invalidateUiTogglesCache } from "@/lib/ui-toggles-server";
 import { validateSettingValues } from "@/lib/setting-guards";
 
 export async function GET() {
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
 
     // Flush caches so changed settings take effect immediately.
     invalidateSettingsCache();
+    invalidateUiTogglesCache();
     if ("points_per_usd" in settings) invalidatePointsRateCache();
 
     // These keys decide what money is worth. Without a trail there is no way to

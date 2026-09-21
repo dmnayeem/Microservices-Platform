@@ -16,6 +16,19 @@ export interface UiToggles {
    * every Group, member and group post stays in the database untouched.
    */
   groupsEnabled: boolean;
+  /**
+   * The theme everyone gets unless they have chosen otherwise AND are allowed
+   * to choose. This is also the theme a user is forced back to the moment
+   * `themeUserChoice` goes off, so turning choice off is a real lever and not
+   * just a hidden button.
+   */
+  themeDefault: "dark" | "light";
+  /**
+   * Whether a user may change the theme at all. Off hides the switch in the
+   * header and in Settings, and the pre-paint script stops reading the stored
+   * preference — a user who had picked light sees the admin's default instead.
+   */
+  themeUserChoice: boolean;
 }
 
 const KEYS = {
@@ -26,6 +39,8 @@ const KEYS = {
   requireKycForWithdrawal: "ui.require_kyc_for_withdrawal",
   requireEmailVerification: "ui.require_email_verification",
   groupsEnabled: "ui.groups_enabled",
+  themeDefault: "ui.theme_default",
+  themeUserChoice: "ui.theme_user_choice",
 } as const;
 
 const DEFAULTS: UiToggles = {
@@ -44,7 +59,20 @@ const DEFAULTS: UiToggles = {
   // setting IS the off state. Turning it on later is one toggle in
   // /admin/settings and the two existing groups come straight back.
   groupsEnabled: false,
+  // Dark by default, and users may choose — which is exactly how the app
+  // behaved before these two settings existed, so an install with no rows in
+  // `SystemSetting` is unchanged by this feature.
+  themeDefault: "dark",
+  themeUserChoice: true,
 };
+
+function asTheme(v: unknown, fallback: "dark" | "light"): "dark" | "light" {
+  const unwrapped =
+    v && typeof v === "object" && "v" in (v as object)
+      ? (v as { v: unknown }).v
+      : v;
+  return unwrapped === "light" || unwrapped === "dark" ? unwrapped : fallback;
+}
 
 function asBool(v: unknown, fallback: boolean): boolean {
   // Settings may be stored as raw booleans or wrapped as { v: boolean }.
@@ -60,6 +88,16 @@ function asBool(v: unknown, fallback: boolean): boolean {
 // apply within CACHE_MS.
 const CACHE_MS = 60_000;
 let _cache: { value: UiToggles; ts: number } | null = null;
+
+/**
+ * Drop the memo. The settings save route calls this, because without it an
+ * admin flips a switch, the row is written, and nothing changes for up to a
+ * minute — which reads exactly like a control that does nothing, and this
+ * platform has shipped 44 of those before.
+ */
+export function invalidateUiTogglesCache(): void {
+  _cache = null;
+}
 
 /**
  * Read the admin ON/OFF toggles: the site-wide popups (cookie consent,
@@ -99,6 +137,11 @@ export async function getUiToggles(): Promise<UiToggles> {
         DEFAULTS.requireEmailVerification
       ),
       groupsEnabled: asBool(map.get(KEYS.groupsEnabled), DEFAULTS.groupsEnabled),
+      themeDefault: asTheme(map.get(KEYS.themeDefault), DEFAULTS.themeDefault),
+      themeUserChoice: asBool(
+        map.get(KEYS.themeUserChoice),
+        DEFAULTS.themeUserChoice
+      ),
     };
     _cache = { value, ts: Date.now() };
     return value;

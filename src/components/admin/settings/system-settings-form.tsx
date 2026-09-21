@@ -165,6 +165,10 @@ const DEFAULTS: SettingsBag = {
   "ui.require_profile_completion": false,
   "ui.require_kyc_for_withdrawal": true,
   "ui.groups_enabled": false,
+  // Dark, and users may choose — the behaviour before these settings existed,
+  // so an install with no rows saved is unchanged.
+  "ui.theme_default": "dark",
+  "ui.theme_user_choice": true,
   analytics_pageviews_enabled: true,
 };
 
@@ -1391,6 +1395,28 @@ export function SystemSettingsForm({
               onChange={(v) => set("ui.groups_enabled", v)}
               disabled={!canEdit}
               tone="purple"
+            />
+            {/* Appearance. Two controls that belong together: which theme the
+                platform wears, and whether a user may change it. With choice
+                off the default is not a starting point any more — it is the
+                theme, for everyone, including users who had already picked the
+                other one. */}
+            <Field settingKey="ui.theme_default">
+              <select
+                value={(values["ui.theme_default"] as string) || "dark"}
+                onChange={(e) => set("ui.theme_default", e.target.value)}
+                disabled={!canEdit}
+                className={inp}
+              >
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </Field>
+            <Toggle settingKey="ui.theme_user_choice"
+              checked={values["ui.theme_user_choice"] !== false}
+              onChange={(v) => set("ui.theme_user_choice", v)}
+              disabled={!canEdit}
+              tone="emerald"
             />
             <Toggle settingKey="ui.require_email_verification"
               checked={values["ui.require_email_verification"] === true}

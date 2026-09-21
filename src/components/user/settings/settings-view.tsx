@@ -90,7 +90,8 @@ export function SettingsView({
   language: languageInit,
 }: Props) {
   const router = useRouter();
-  const { theme, setTheme, accent, setAccent, accentIsDefault } = useTheme();
+  const { theme, setTheme, accent, setAccent, accentIsDefault, canChangeTheme } =
+    useTheme();
   const [emailNotif, setEmailNotif] = useState(emailNotifInit);
   const [pushNotif, setPushNotif] = useState(pushNotifInit);
   const [twoFA, setTwoFA] = useState(twoFAInit);
@@ -459,8 +460,13 @@ export function SettingsView({
                       <p className="text-sm text-(--app-ink-3)">Choose your appearance & accent color</p>
                     </div>
                   </div>
-                  {/* Mode segmented control */}
-                  <div className="grid grid-cols-3 gap-2">
+                  {/* Mode segmented control. Hidden when the admin has not
+                      granted theme choice — a picker that refuses to act reads
+                      as a broken app, not as a policy. */}
+                  <div
+                    className="grid grid-cols-3 gap-2"
+                    hidden={!canChangeTheme}
+                  >
                     {(
                       [
                         { id: "dark", label: "Dark", Icon: Moon },

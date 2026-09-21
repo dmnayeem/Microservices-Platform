@@ -30,7 +30,11 @@ export function ThemeSwitch({
   className?: string;
   withLabel?: boolean;
 }) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, canChangeTheme } = useTheme();
+
+  // Admin switch off: render nothing. The provider also refuses to act on
+  // setTheme, so the guard holds even if some other surface renders a control.
+  if (!canChangeTheme) return null;
 
   // `theme` may be "system"; ask the document what actually got applied so the
   // icon never contradicts the screen.

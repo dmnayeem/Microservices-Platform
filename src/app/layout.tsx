@@ -162,18 +162,32 @@ export default async function RootLayout({
             },
           ]}
         />
-        {/* Set the saved theme + accent before first paint so a reload never
-            flashes the wrong theme/color. Resolves "system" via prefers-color-
-            scheme. Runs synchronously before the body content paints. */}
+        {/* Set the theme + accent before first paint so a reload never flashes
+            the wrong one. Resolves "system" via prefers-color-scheme. Runs
+            synchronously, before the body content paints.
+
+            The admin's two settings are baked in as literals rather than read
+            from anywhere at runtime: this script runs before React, before any
+            fetch, and before the provider mounts, so anything it cannot see
+            synchronously would arrive a frame too late and show as a flash.
+            When choice is off the stored preference is not even read, so a
+            user who had picked light lands on the admin's theme immediately —
+            not after a repaint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var d=document.documentElement;var t=localStorage.getItem('earngpt-theme')||'dark';var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var a=localStorage.getItem('earngpt-accent');if(a){d.setAttribute('data-accent',a);}}catch(e){}`,
+            __html: `try{var d=document.documentElement;var D=${JSON.stringify(
+              ui.themeDefault
+            )};var C=${ui.themeUserChoice};var t=C?(localStorage.getItem('earngpt-theme')||D):D;var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var a=localStorage.getItem('earngpt-accent');if(a){d.setAttribute('data-accent',a);}}catch(e){}`,
           }}
         />
         {/* Google's ad tags — one per page, and only when a publisher id is
             configured. Renders nothing at all until then. */}
         <NetworkScripts />
-        <ThemeProvider defaultTheme="dark" storageKey="earngpt-theme">
+        <ThemeProvider
+          defaultTheme={ui.themeDefault}
+          storageKey="earngpt-theme"
+          allowUserChoice={ui.themeUserChoice}
+        >
           {children}
           <PageViewTracker />
           <ServiceWorkerRegister />

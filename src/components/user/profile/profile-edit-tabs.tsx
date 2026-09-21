@@ -572,7 +572,7 @@ export function ThemeTab({
   preferences: { theme: string; themeAccent: string; notifications: { enabled: boolean; email: boolean; push: boolean } };
   patch: (body: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const { setTheme, setAccent, accentIsDefault } = useTheme();
+  const { setTheme, setAccent, accentIsDefault, canChangeTheme } = useTheme();
 
   const applyTheme = (mode: Theme) => {
     setTheme(mode); // provider resolves "system" (OS-reactive) + persists
@@ -587,8 +587,13 @@ export function ThemeTab({
   return (
     <div className="space-y-4">
       <Card title="Appearance">
-        <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold mb-2">Mode</p>
-        <div className="grid grid-cols-3 gap-2">
+        <p
+          className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold mb-2"
+          hidden={!canChangeTheme}
+        >
+          Mode
+        </p>
+        <div className="grid grid-cols-3 gap-2" hidden={!canChangeTheme}>
           {(
             [
               { id: "dark", label: "Dark", style: { backgroundColor: "#0f172a" } },

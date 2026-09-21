@@ -46,6 +46,8 @@ type ThemeContextType = {
   setAccent: (accent: Accent | null) => void;
   /** True when no accent has been chosen, so the platform's own is showing. */
   accentIsDefault: boolean;
+  /** Admin switch: whether this user may change the theme at all. */
+  canChangeTheme: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -70,10 +72,18 @@ export function ThemeProvider({
   children,
   defaultTheme = "dark",
   storageKey = "earngpt-theme",
+  allowUserChoice = true,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
+  /**
+   * Admin switch. When false the stored preference is ignored entirely and
+   * `setTheme` does nothing, so a control that somehow renders anyway cannot
+   * change the theme — the guard is here, not only in the markup that hides
+   * the switch.
+   */
+  allowUserChoice?: boolean;
 }) {
   // Start from defaults on BOTH server and first client render so the tree
   // renders identically (no hydration mismatch) — then hydrate the stored
@@ -91,16 +101,21 @@ export function ThemeProvider({
   // mismatch, then syncs the real preference in. The one-time setState is the
   // intended pattern for this — hence the rule disable.
   useEffect(() => {
-    const storedTheme = localStorage.getItem(storageKey) as Theme | null;
+    // With choice off, the stored preference is not read at all — the same
+    // rule the pre-paint script follows, so the two never disagree.
+    const storedTheme = allowUserChoice
+      ? (localStorage.getItem(storageKey) as Theme | null)
+      : null;
     if (storedTheme === "dark" || storedTheme === "light" || storedTheme === "system") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(storedTheme);
     }
     const storedAccent = localStorage.getItem(ACCENT_KEY) as Accent | null;
     if (storedAccent && ACCENTS.includes(storedAccent)) setAccentState(storedAccent);
-  }, [storageKey]);
+  }, [storageKey, allowUserChoice]);
 
   const setTheme = (next: Theme) => {
+    if (!allowUserChoice) return;
     setThemeState(next);
     if (typeof window !== "undefined") localStorage.setItem(storageKey, next);
   };
@@ -164,7 +179,7 @@ export function ThemeProvider({
   // defeating SSR streaming. Children now render on the server and stream in.
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, accent, setAccent, accentIsDefault }}
+      value={{ theme, setTheme, accent, setAccent, accentIsDefault, canChangeTheme: allowUserChoice }}
     >
       {children}
     </ThemeContext.Provider>
