@@ -9,6 +9,9 @@ import {
 } from "@/lib/article-tasks";
 import { createHmac } from "crypto";
 import {
+  verifyArticleVisitToken,
+  appendArticleVisitToken,
+  type ArticleVisitTokenPayload,
   verifyArticleTaskToken,
   appendArticleToken,
 } from "@/lib/article-task-token";
@@ -32,15 +35,40 @@ export async function GET(
   const { taskId } = await params;
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token") ?? searchParams.get("eg");
+  const visitToken = searchParams.get("visitToken") ?? searchParams.get("egv");
   const pageParam = parseInt(searchParams.get("page") ?? "1", 10);
   const pageNumber = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 
-  const v = verifyArticleTaskToken(token);
-  if (!v.ok) {
-    return corsResponse({ error: v.error }, { status: 401 });
-  }
-  if (v.payload.t !== taskId) {
-    return corsResponse({ error: "Token / task mismatch" }, { status: 403 });
+  // Two ways to be here. A session token means the worker followed a link we
+  // handed them; a visit note means they arrived from a search result or a
+  // social post, where no per-user link can exist. Everything below is the
+  // same for both — only where progress comes from differs.
+  let visit: ArticleVisitTokenPayload | null = null;
+  let submissionId: string | null = null;
+  // Whatever identifies this reader for the seeded waypoint layout. The token
+  // flow has a user id; an anonymous journey has only its fingerprint, which
+  // is the closest stable thing it owns. Either way the point is the same: two
+  // readers get different popup positions, and one reader gets the same
+  // positions back after a refresh.
+  let seedSubject = "";
+  if (visitToken && !token) {
+    const vv = verifyArticleVisitToken(visitToken);
+    if (!vv.ok) return corsResponse({ error: vv.error }, { status: 401 });
+    if (vv.payload.t !== taskId) {
+      return corsResponse({ error: "Visit / task mismatch" }, { status: 403 });
+    }
+    visit = vv.payload;
+    seedSubject = vv.payload.f || vv.payload.v;
+  } else {
+    const v = verifyArticleTaskToken(token);
+    if (!v.ok) {
+      return corsResponse({ error: v.error }, { status: 401 });
+    }
+    if (v.payload.t !== taskId) {
+      return corsResponse({ error: "Token / task mismatch" }, { status: 403 });
+    }
+    submissionId = v.payload.s;
+    seedSubject = v.payload.u;
   }
 
   const task = await prisma.task.findUnique({ where: { id: taskId } });
@@ -68,17 +96,19 @@ export async function GET(
   const isFinal = pageIndex === pages.length - 1;
   const next = isFinal ? null : pages[pageIndex + 1];
 
-  // Look up live popup progress for this submission/page so the embed can
-  // resume mid-page after a refresh.
-  const progress = await prisma.articleTaskPageProgress.findUnique({
-    where: {
-      submissionId_pageIndex: {
-        submissionId: v.payload.s,
-        pageIndex,
-      },
-    },
-    select: { popupsCompleted: true, pageCompleted: true },
-  });
+  // Live popup progress for this page, so the embed can resume mid-page after
+  // a refresh. An anonymous journey has no submission row to read: its
+  // progress is whole pages, carried in the note, so a refresh mid-page starts
+  // that page again. Acceptable — the alternative is a row per visitor on a
+  // public article, and the pages are short.
+  const progress = submissionId
+    ? await prisma.articleTaskPageProgress.findUnique({
+        where: { submissionId_pageIndex: { submissionId, pageIndex } },
+        select: { popupsCompleted: true, pageCompleted: true },
+      })
+    : visit?.p.includes(pageIndex)
+      ? { popupsCompleted: renderedPopupCount(page), pageCompleted: true }
+      : null;
 
   // Compute the auto-submit landing URL on our origin (the embed redirects
   // here after the user generates their key on the final page).
@@ -130,7 +160,7 @@ export async function GET(
     process.env.AUTH_SECRET ||
     "fallback-static-secret-change-me";
   const seedHex = createHmac("sha256", engagementSecret)
-    .update(`${v.payload.u}|${taskId}|${pageNumber}`)
+    .update(`${seedSubject}|${taskId}|${pageNumber}`)
     .digest("hex");
   // v3.2/v3.4: single-knob timing. `popupIntervalSeconds` controls both
   // the first-popup delay AND the gap between subsequent popups. We do
@@ -188,7 +218,12 @@ export async function GET(
     popupAfterClickMessage:
       cfg.popupAfterClickMessage ??
       "Nice — keep reading, the next prompt will appear soon.",
-    nextPageUrl: next ? appendArticleToken(next.url, token!) : null,
+    // The note rides to the next page the same way the session token does.
+    nextPageUrl: next
+      ? visit
+        ? appendArticleVisitToken(next.url, visitToken!)
+        : appendArticleToken(next.url, token!)
+      : null,
     completeUrl, // where to redirect with the key after generation
     progress: {
       popupsCompleted: progress?.popupsCompleted ?? 0,

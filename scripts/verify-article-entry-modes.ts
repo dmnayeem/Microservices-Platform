@@ -457,6 +457,141 @@ const REFERRAL: ArticleEntryConfig = {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   11. The embed's anonymous branch
+   ══════════════════════════════════════════════════════════════════════════
+   Everything here is about the boundary between the two flows. The journey
+   itself — popups, dwell, scroll — is shared code and is not re-tested. */
+{
+  const embed = readFileSync(
+    join(process.cwd(), "src/app/embed/article.js/route.ts"),
+    "utf8"
+  );
+
+  check(
+    "a page with no token asks the door instead of giving up",
+    /if \(!token && !visitToken\) \{\s*askTheDoor\(\);/.test(embed),
+    "this line used to be a bare return — an ordinary reader and nothing else"
+  );
+  check(
+    "a direct task still leaves the article alone",
+    /d\.mode === 'direct'/.test(embed) && /left alone/.test(embed)
+  );
+  check(
+    "a refusal says what to do instead of dying silently",
+    /if \(!d\.start\)/.test(embed) && /showNotice\(/.test(embed)
+  );
+  check(
+    "the door runs before the config, not after",
+    embed.indexOf("askTheDoor") < embed.indexOf("function begin()"),
+    "asking after the journey has started is the failure this feature exists to avoid"
+  );
+
+  /* A journey with no submission has nothing to upsert per-popup against.
+     Calling popup-progress anyway would 401 on every click. */
+  check(
+    "per-popup reporting is skipped when there is no session token",
+    /function reportProgress\(\) \{[\s\S]{0,400}?if \(!token\) return;/.test(embed)
+  );
+  check(
+    "a finished page is written into the note before moving on",
+    /recordVisitPage\(\)\.then/.test(embed),
+    "otherwise the note reaches the last page still saying the page was unread"
+  );
+  check(
+    "the next page is rebuilt from the NEW note, not the one config handed over",
+    /withVisitToken\(cfg\.nextPageUrl\)/.test(embed)
+  );
+  check(
+    "swapping the note on a URL replaces it rather than appending a second",
+    /replace\(\/\(\[\?&\]\)egv=\[\^&\]\*\/g/.test(embed)
+  );
+  check(
+    "the key is claimed with whichever proof this journey holds",
+    /token\s*\?\s*JSON\.stringify\(\{ token: token \}\)/.test(embed)
+  );
+  check(
+    "the fingerprint is coarse and derived, never an identifier we store",
+    /function browserFingerprint\(\)/.test(embed) && !/localStorage/.test(embed)
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12. The server side of the anonymous journey
+   ══════════════════════════════════════════════════════════════════════════ */
+{
+  const progress = readFileSync(
+    join(process.cwd(), "src/app/api/article-tasks/[taskId]/visit-progress/route.ts"),
+    "utf8"
+  );
+  check(
+    "visit-progress re-signs rather than trusting what it was handed",
+    /signArticleVisitToken/.test(progress) && /verifyArticleVisitToken/.test(progress)
+  );
+  check(
+    "adding the same page twice does not grow the note",
+    /new Set\(\[\.\.\.v\.payload\.p, pageIndex\]\)/.test(progress)
+  );
+  check(
+    "finishing a long journey does not extend how long the note lives",
+    /v\.payload\.exp - Math\.floor\(Date\.now\(\) \/ 1000\)/.test(progress),
+    "re-signing with a fresh TTL would let a note be renewed indefinitely"
+  );
+
+  const key = readFileSync(
+    join(process.cwd(), "src/app/api/article-tasks/[taskId]/generate-key/route.ts"),
+    "utf8"
+  );
+  check(
+    "the verdict is re-checked server-side before a key is issued",
+    /entryVerdictAllows\(entry, verdict\)/.test(key),
+    "the door is client-side; this is not"
+  );
+  check(
+    "every page with popups must be in the note",
+    /renderedPopupCount\(p\) > 0 && !vv\.payload\.p\.includes\(i\)/.test(key)
+  );
+  check(
+    "the arrival is written onto the key, because the referrer is gone by submit time",
+    /"entrySource" = /.test(key) && /"entryReferrer" = /.test(key)
+  );
+  check(
+    "an anonymous key is left unclaimed — it binds to whoever submits it",
+    // Split on the DEFINITION, not the call: the call sits above the
+    // signed-in path, whose SQL legitimately sets claimedByUserId.
+    !/claimedByUserId" =/.test(
+      key.split("async function issueAnonymousKey")[1] ?? ""
+    )
+  );
+  check(
+    "the anonymous path is rate-limited per browser",
+    /ANON_KEYS_PER_BROWSER_PER_DAY/.test(key),
+    "a public page can be reloaded by anyone; a drainable pool will be drained"
+  );
+  check(
+    "a key already issued to someone is not handed out again",
+    /"issuedAt" IS NULL/.test(key)
+  );
+
+  const config = readFileSync(
+    join(process.cwd(), "src/app/api/article-tasks/[taskId]/embed-config/route.ts"),
+    "utf8"
+  );
+  check(
+    "embed-config accepts either proof",
+    /verifyArticleVisitToken/.test(config) && /verifyArticleTaskToken/.test(config)
+  );
+  check(
+    "the note rides to the next page the way the session token does",
+    /appendArticleVisitToken\(next\.url/.test(config)
+  );
+  check(
+    "waypoint seeding has a subject in both flows",
+    /seedSubject/.test(config),
+    "it used to read the user id, which an anonymous journey does not have"
+  );
+}
+
 console.log(
   `\n${passed} passed, ${failed} failed\n` +
     (failures.length ? failures.map((f) => `  · ${f}`).join("\n") + "\n" : "")

@@ -80,6 +80,7 @@ export async function POST(
         f: fp,
         r: evidence.referrerHost || undefined,
         l: url ? url.slice(0, 500) : undefined,
+        p: [],
       })
     : undefined;
 

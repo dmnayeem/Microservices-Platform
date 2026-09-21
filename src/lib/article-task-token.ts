@@ -153,6 +153,15 @@ export interface ArticleVisitTokenPayload {
   r?: string;
   /** Landing URL, kept for the reviewer. */
   l?: string;
+  /**
+   * Page indices finished so far.
+   *
+   * An anonymous journey has no submission row to hang progress on, so it
+   * travels inside the note instead. Signed, therefore not forgeable by the
+   * page — a reader cannot add a page they did not read — and it costs no
+   * table and no row per visitor on a public article.
+   */
+  p: number[];
   iat: number;
   exp: number;
 }
@@ -215,6 +224,8 @@ export function verifyArticleVisitToken(
     typeof payload.t !== "string" ||
     typeof payload.v !== "string" ||
     typeof payload.f !== "string" ||
+    !Array.isArray(payload.p) ||
+    !payload.p.every((n) => Number.isInteger(n) && n >= 0) ||
     typeof payload.iat !== "number" ||
     typeof payload.exp !== "number"
   ) {
@@ -244,6 +255,29 @@ export function verifyArticleVisitToken(
  * copy in the start route (the reader's FIRST link) still had both bugs after
  * the one in embed-config was fixed.
  */
+/**
+ * The same job for an anonymous journey.
+ *
+ * localStorage would not do: it is per-origin, and a task's pages may sit on
+ * more than one host. The note rides the URL between pages exactly as the
+ * session token does, under its own name so the two can never be confused.
+ */
+export function appendArticleVisitToken(url: string, token: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.set("egv", token);
+    return u.toString();
+  } catch {
+    const [beforeHash, ...hashParts] = url.split("#");
+    const hash = hashParts.length ? `#${hashParts.join("#")}` : "";
+    const stripped = beforeHash
+      .replace(/([?&])egv=[^&]*/g, "$1")
+      .replace(/[?&]$/, "");
+    const sep = stripped.includes("?") ? "&" : "?";
+    return `${stripped}${sep}egv=${encodeURIComponent(token)}${hash}`;
+  }
+}
+
 export function appendArticleToken(url: string, token: string): string {
   try {
     const u = new URL(url);

@@ -152,6 +152,7 @@ function buildScript(origin: string, appOrigin: string): string {
   var pageStr = selfTag.getAttribute('data-page') || '1';
   var pageNumber = parseInt(pageStr, 10) || 1;
   var token = getQueryParam('eg');
+  var visitToken = getQueryParam('egv');
 
   // A visitor with no token is just a reader: the article stays untouched.
   // But say so in the console, because an admin testing the snippet by opening
@@ -160,11 +161,96 @@ function buildScript(origin: string, appOrigin: string): string {
     log('the snippet has no data-task id, so there is nothing to run.');
     return;
   }
-  if (!token) {
-    log('no "eg" token in the page URL, so this is an ordinary reader and the ' +
-        'article is left alone. To test, start the task from EarnGPT — that is ' +
-        'what adds ?eg=... to the link.');
+  // Three ways to be on this page.
+  //
+  //  - with ?eg=   a worker who followed a link we handed them
+  //  - with ?egv=  a worker already judged at the door, on page two or later
+  //  - with neither
+  //
+  // The third used to be the end of it: no token, ordinary reader, article
+  // left alone. It still is for a direct-entry task. But a task that asks the
+  // worker to arrive from a search result or a social post CANNOT put a token
+  // in the URL — a search result and a public post hand the same link to
+  // everyone — so for those the journey begins here, by asking the server
+  // whether this arrival counts.
+  if (!token && !visitToken) {
+    askTheDoor();
     return;
+  }
+
+  /**
+   * Ask whether this arrival counts, BEFORE anything else happens.
+   *
+   * At the door, not at the end. A worker who reached the page the wrong way
+   * is told now — clicking through every popup on every page and being refused
+   * at the last step is the worst possible version of this.
+   *
+   * A direct-entry task answers "not mine", and the article is left alone
+   * as it was before any of this existed.
+   */
+  function askTheDoor() {
+    fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) + '/landing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        referrer: document.referrer || '',
+        url: window.location.href,
+        fp: browserFingerprint()
+      })
+    })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        var d = res.data || {};
+        if (!res.ok) {
+          log('the door could not be asked: ' + (d.error || 'unknown'), d);
+          return;
+        }
+        if (d.mode === 'direct') {
+          log('no "eg" token in the page URL, so this is an ordinary reader and ' +
+              'the article is left alone. To test, start the task from EarnGPT — ' +
+              'that is what adds ?eg=... to the link.');
+          return;
+        }
+        if (!d.start) {
+          // Refused. Say what to do instead; a dead end with no instruction is
+          // how a worker concludes the task is broken.
+          showNotice(
+            d.mode === 'search' ? 'Open this from a search result' : 'Open this from the post',
+            d.message || 'Go back and follow the steps on EarnGPT.'
+          );
+          return;
+        }
+        visitToken = d.visitToken;
+        begin();
+      })
+      .catch(function(e) {
+        log('could not reach ' + ORIGIN + ' to check how you arrived.', e);
+      });
+  }
+
+  /**
+   * A coarse, stable-per-browser value. Not an identity and not meant to be —
+   * it exists so a key that was issued to one browser and submitted from
+   * another can be held for review, and so a public page cannot be reloaded
+   * for key after key.
+   */
+  function browserFingerprint() {
+    try {
+      var parts = [
+        navigator.userAgent || '',
+        navigator.language || '',
+        String(screen.width) + 'x' + String(screen.height),
+        String(new Date().getTimezoneOffset()),
+        String(navigator.hardwareConcurrency || 0)
+      ].join('|');
+      var h = 5381;
+      for (var i = 0; i < parts.length; i++) {
+        h = ((h * 33) ^ parts.charCodeAt(i)) >>> 0;
+      }
+      return h.toString(36);
+    } catch (e) {
+      return '';
+    }
   }
 
   var state = {
@@ -188,10 +274,19 @@ function buildScript(origin: string, appOrigin: string): string {
     lastClickAtMs: 0    // dwellMs value when the last popup was clicked
   };
 
-  // Fetch the embed-config and render once DOM is ready.
+  // Fetch the embed-config and render once DOM is ready. The door calls this
+  // too, once it has decided the arrival counts.
   ready(function() {
+    if (!token && !visitToken) return;   // the door will call begin() itself
+    begin();
+  });
+
+  function begin() {
+    var auth = token
+      ? '&token=' + encodeURIComponent(token)
+      : '&egv=' + encodeURIComponent(visitToken);
     fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) +
-          '/embed-config?page=' + pageNumber + '&token=' + encodeURIComponent(token))
+          '/embed-config?page=' + pageNumber + auth)
       .then(function(r) {
         return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; });
       })
@@ -229,7 +324,7 @@ function buildScript(origin: string, appOrigin: string): string {
           'Check your connection and reload this page.'
         );
       });
-  });
+  }
 
   // ── v3 engagement tracking ─────────────────────────────────────────────
 
@@ -717,11 +812,36 @@ function buildScript(origin: string, appOrigin: string): string {
   function onAllDone() {
     var cfg = state.config;
     if (!cfg) return;
+
+    // An anonymous journey has to have this page written into its note before
+    // it moves on, or the note arrives at the final page still saying the page
+    // was never read. The note comes back longer, and the next-page URL has to
+    // be rebuilt from the NEW one — the one the config handed us carries the
+    // note as it was a moment ago.
+    if (!token) {
+      recordVisitPage().then(function() {
+        if (!cfg.isFinal) {
+          window.location.href = withVisitToken(cfg.nextPageUrl);
+          return;
+        }
+        showFinalCta();
+      });
+      return;
+    }
+
     if (!cfg.isFinal) {
       window.location.href = cfg.nextPageUrl;
       return;
     }
     showFinalCta();
+  }
+
+  /** Swap whatever note is on a URL for the one we hold now. */
+  function withVisitToken(url) {
+    if (!url) return url;
+    var clean = url.replace(/([?&])egv=[^&]*/g, '$1').replace(/[?&]$/, '');
+    var sep = clean.indexOf('?') >= 0 ? '&' : '?';
+    return clean + sep + 'egv=' + encodeURIComponent(visitToken);
   }
 
   function showFinalCta() {
@@ -877,6 +997,10 @@ function buildScript(origin: string, appOrigin: string): string {
   // ── API calls ──────────────────────────────────────────────────────────
 
   function reportProgress() {
+    // Anonymous journeys have no submission row to upsert against. Their
+    // progress is whole pages, added to the signed note when the page is
+    // finished — so there is nothing to report per popup.
+    if (!token) return;
     fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) + '/popup-progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -884,11 +1008,34 @@ function buildScript(origin: string, appOrigin: string): string {
     }).catch(function() { /* swallow */ });
   }
 
+  /**
+   * Record this page as finished on an anonymous journey, and carry the longer
+   * note onward.
+   *
+   * The server re-signs it, so the page cannot add a page it did not read: the
+   * only way to hold a longer note is to have been given one.
+   */
+  function recordVisitPage() {
+    return fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) + '/visit-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitToken: visitToken, page: pageNumber })
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d && d.visitToken) visitToken = d.visitToken;
+        return d;
+      })
+      .catch(function() { return null; });
+  }
+
   function generateKey() {
     return fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) + '/generate-key', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: token })
+      body: token
+        ? JSON.stringify({ token: token })
+        : JSON.stringify({ visitToken: visitToken })
     })
     .then(function(r) {
       return r.json().then(function(d) {
