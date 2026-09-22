@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import QRCode from "qrcode";
 import { getEnabledDepositMethods } from "@/lib/deposit-methods";
+import { qrPayloadKind } from "@/lib/deposit-qr";
 
 /**
  * GET /api/deposits/qr?method=<key> → a PNG of that method's receiving account.
@@ -30,6 +31,15 @@ export async function GET(req: NextRequest) {
   // caller needs distinguished, and both mean there is nothing to pay to.
   if (!method?.account.trim()) {
     return new Response("not found", { status: 404 });
+  }
+
+  /* Only draw what a wallet app can act on. The QR is scanned at the moment
+     of paying, so a code carrying a UID or a phone number scans to that text
+     and the app does nothing — the payer reads that as our site being broken,
+     which is worse than showing no QR. Refusing here rather than trusting the
+     flag means a mistaken tick in settings costs nothing. */
+  if (qrPayloadKind(method.account) === "plain") {
+    return new Response("not scannable", { status: 404 });
   }
 
   const png = await QRCode.toBuffer(method.account.trim(), {

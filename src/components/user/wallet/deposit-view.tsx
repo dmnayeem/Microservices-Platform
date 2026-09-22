@@ -10,6 +10,7 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
 import type { DepositMethod } from "@/lib/deposit-methods";
+import { qrPayloadKind } from "@/lib/deposit-qr";
 import type { Currency } from "@/lib/currencies";
 import {
   computeDepositBreakdown,
@@ -433,8 +434,12 @@ export function DepositView({ from }: { from?: string } = {}) {
 
             {/* An uploaded QR wins when the admin supplied one — some methods'
               * codes carry more than the bare account. Otherwise it is drawn
-              * from the account itself, which cannot fall out of step with it. */}
-            {(selected.qrUrl || (selected.autoQr && selected.account)) && (
+              * from the account itself, which cannot fall out of step with it,
+              * and only when the account is something a wallet app can act on:
+              * a QR of a UID scans to a number and leaves the payer tapping a
+              * screen that never reacts. */}
+            {(selected.qrUrl ||
+              (selected.autoQr && qrPayloadKind(selected.account) !== "plain")) && (
               <div className="flex flex-col items-center gap-1.5 py-1">
                 <div className="rounded-xl bg-white p-2">
                   {selected.qrUrl ? (

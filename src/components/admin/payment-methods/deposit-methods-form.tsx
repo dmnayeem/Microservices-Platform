@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import type { DepositMethod } from "@/lib/deposit-methods";
+import { qrPayloadKind } from "@/lib/deposit-qr";
 
 const slug = (s: string) =>
   s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -124,12 +125,27 @@ export function DepositMethodsForm({
                 <span>
                   Generate the QR from the receiving account above
                   <span className="block text-[11px] text-gray-500">
-                    Recommended for wallet addresses. It always matches the
-                    account — an uploaded image keeps pointing at the old
-                    wallet after you change the address here.
+                    For wallet addresses only. It always matches the account —
+                    an uploaded image keeps pointing at the old wallet after
+                    you change the address here.
                   </span>
                 </span>
               </label>
+              {/* The account decides whether generating is even possible. A
+                * user scans this QR inside their wallet app at the moment of
+                * paying; a QR of a UID or a phone number scans to that text
+                * and the app does nothing, which reads to the payer as a
+                * broken site. So the check is on what the account IS, not on
+                * what the admin intended. */}
+              {m.autoQr && qrPayloadKind(m.account) === "plain" && m.account.trim() && (
+                <p className="text-[11px] text-amber-300 mb-2">
+                  <b>{m.accountLabel || "This account"}</b> is not a wallet
+                  address, so a generated QR would scan to just that text and
+                  the payer&apos;s app would do nothing. Upload the QR from the
+                  provider&apos;s own app instead — Bitget: Pay → Receive ·
+                  bKash / Nagad: My QR · Binance: Pay → Receive.
+                </p>
+              )}
               <ImageUploadField value={m.qrUrl ?? ""} onChange={(url) => update(i, { qrUrl: url })} previewSize="square" title="Payment QR code" />
               {m.qrUrl && m.autoQr && (
                 <p className="text-[11px] text-amber-300 mt-1">

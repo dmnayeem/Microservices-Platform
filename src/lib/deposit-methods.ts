@@ -74,7 +74,12 @@ export const DEPOSIT_METHOD_PRESETS: DepositMethod[] = [
     enabled: false,
     minAmount: 1,
     maxAmount: 100000,
-    autoQr: true,
+    /* A UID is a number, and a QR of a number is a QR of a number. Bitget's
+       app does not read it as a payment code, so a generated one would scan
+       to nothing and leave the user staring at a screen that did not react —
+       worse than no QR at all. Bitget's real payment QR comes from Pay →
+       Receive inside the app, so this one is uploaded. */
+    autoQr: false,
   },
   {
     key: "bitget_usdt",
@@ -88,6 +93,10 @@ export const DEPOSIT_METHOD_PRESETS: DepositMethod[] = [
     minAmount: 1,
     maxAmount: 100000,
     feeFlatUsd: 1,
+    /* A wallet address IS the scannable payload — every wallet app reads one.
+       This is the case the generated QR exists for: 34 characters of mixed
+       case that nobody should be retyping, where one wrong character sends
+       the money somewhere unrecoverable. */
     autoQr: true,
   },
   { key: "binance", label: "Binance Pay", accountLabel: "Binance Pay ID / UID", account: "", instructions: "Send via Binance Pay to the ID above, then paste the transaction ID.", enabled: false, minAmount: 1, maxAmount: 100000 },
