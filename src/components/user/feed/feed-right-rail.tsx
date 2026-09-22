@@ -548,7 +548,13 @@ export function FeedRightRail({
                   >
                     <span className="truncate min-w-0">{u.name ?? "Anonymous"}</span>
                     {u.isBlueVerified && (
-                      <BadgeCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span
+                        title="Verified"
+                        aria-label="Verified"
+                        className="inline-flex shrink-0"
+                      >
+                        <BadgeCheck className="w-3.5 h-3.5 text-sky-400" />
+                      </span>
                     )}
                   </Link>
                   <p className="text-[11px] text-(--app-ink-3) truncate">

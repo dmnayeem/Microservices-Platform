@@ -530,10 +530,13 @@ export const FeedPostCard = memo(function FeedPostCard({
                 {post.user?.name ?? "Anonymous"}
               </Link>
               {post.user?.isBlueVerified && (
-                <CheckCircle
-                  className="w-4 h-4 shrink-0 text-(--app-accent-ink)"
+                <span
+                  title="Verified"
                   aria-label="Verified"
-                />
+                  className="inline-flex shrink-0"
+                >
+                  <CheckCircle className="w-4 h-4 text-(--app-accent-ink)" />
+                </span>
               )}
               {/* Was an amber pill. A level is not a warning, and on a feed
                   where a third of authors are level 10+ it was a wall of amber

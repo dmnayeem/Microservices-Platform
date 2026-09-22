@@ -322,7 +322,10 @@ console.log(`\nverify-responsive — ${FILES.length} files (admin included), ${A
    a worker reading in dark mode printed a certificate with a serial you could
    barely see. Those are literal values now, and this keeps them that way. */
 {
-  const RAMP = /(?<![-\w:])(bg|text|border|ring|from|via|to|divide|shadow|stroke|fill)-(gray|slate|indigo)-\d+/;
+  // `border-t-gray-950` hid from the first version of this: it looked for
+// `border-` immediately followed by the ramp name, and a directional
+// border puts a side in between.
+  const RAMP = /(?<![-\w:])(bg|text|border|ring|from|via|to|divide|shadow|stroke|fill|outline)(-(t|b|l|r|x|y|s|e))?-(gray|slate|indigo)-\d+/;
   const offenders: string[] = [];
   for (const f of FILES) {
     if (f.includes("/admin/")) continue;
@@ -335,6 +338,45 @@ console.log(`\nverify-responsive — ${FILES.length} files (admin included), ${A
     "no user-facing class rides the theme's grey ramp",
     offenders.length === 0,
     [...new Set(offenders)].join(", ")
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10. A badge a sighted person can read
+   ══════════════════════════════════════════════════════════════════════════
+   `aria-label` is spoken by a screen reader and shown to nobody else. The
+   verified tick in the feed carried one and nothing more, so hovering it —
+   or tapping it — produced silence, which is what the owner reported. The
+   profile badge has its own hover pill; the bare icons need the browser's.
+
+   `title` is the cheap correct answer here: no positioning, no z-index, no
+   stacking context to lose it behind, and long-press works on touch. */
+{
+  const files = [
+    "src/components/user/feed/feed-post-card.tsx",
+    "src/components/user/feed/feed-right-rail.tsx",
+  ];
+  const silent: string[] = [];
+  for (const f of files) {
+    const body = read(f);
+    // Every verified mark in these files must be inside something that names
+    // itself to a pointer, not only to a screen reader.
+    for (const m of body.match(/aria-label="Verified"[\s\S]{0,120}/g) ?? []) {
+      const near = body.slice(Math.max(0, body.indexOf(m) - 160), body.indexOf(m) + 160);
+      if (!/title="Verified"/.test(near)) silent.push(f);
+    }
+  }
+  check(
+    "a verified tick says so to a pointer, not only to a screen reader",
+    silent.length === 0,
+    [...new Set(silent)].join(", ")
+  );
+  check(
+    "the profile badge's tooltip pill and its arrow are the same colour",
+    /border-t-\(--app-page\)\/95/.test(
+      read("src/components/user/profile/verified-badge.tsx")
+    ),
+    "the arrow is the pill's own corner; a ramp step made it a near-match in dark and a mismatch in light"
   );
 }
 
