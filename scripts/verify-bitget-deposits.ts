@@ -275,7 +275,39 @@ function main() {
     }
   }
 
-  console.log(
+  /* ══════════════════════════════════════════════════════════════════════════
+   A new method has to reach an install that is already configured
+   ══════════════════════════════════════════════════════════════════════════
+   This suite passed while the feature was invisible, and that is the lesson
+   worth keeping. It checked that the Bitget presets exist in the code. They
+   did. What nothing checked was whether they could ever be SEEN: the saved
+   list is whatever the admin last pressed Save on, `normalize` returned
+   exactly that, and this platform's saved list predated Bitget by a few days.
+   Seven methods in the column, nine in the code, and the owner could not find
+   the one he had asked for.
+
+   So the check is not "is Bitget in the presets" — it is "does a preset the
+   saved list has never heard of get added to it". */
+{
+  const lib = read("src/lib/deposit-methods.ts");
+  check(
+    "presets the saved list has never seen are added to it",
+    /function withNewPresets/.test(lib) && /withNewPresets\(list\)/.test(lib),
+    "without this, shipping a payment method reaches nobody who has configured deposits even once"
+  );
+  check(
+    "a saved method always wins over its preset",
+    /const known = new Set\(saved\.map/.test(lib),
+    "an admin's own UID must never be overwritten by a shipped default"
+  );
+  check(
+    "a newly appearing method arrives switched off",
+    /enabled: false/.test(lib),
+    "it must be visible to the admin and invisible to users until an account is filled in"
+  );
+}
+
+console.log(
     `\n${passed} passed, ${failures.length} failed` +
       (failures.length ? `\n\n${failures.map((f) => `  - ${f}`).join("\n")}\n` : "\n")
   );
