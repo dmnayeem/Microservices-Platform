@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { syncUserLevelQuietly } from "@/lib/level-sync";
 import {
   SubmissionStatus,
   TransactionType,
@@ -358,6 +359,11 @@ export async function recheckPendingSocialSubmissions(opts?: {
       }
 
       await closeTaskIfFull(sub.taskId).catch(() => {});
+
+      // An eighth XP-awarding path, and one my own grep missed — the suite
+      // found it. Same placement as everywhere else: after the transaction,
+      // quietly, because the reward has already landed.
+      await syncUserLevelQuietly(sub.userId);
 
       await prisma.notification
         .create({

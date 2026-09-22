@@ -18,20 +18,77 @@
  * XP→level function in the codebase.
  */
 
+/**
+ * The curve the platform ships with. Cumulative XP to REACH each level,
+ * starting at level 2 — level 1 is always 0.
+ */
+export const DEFAULT_LEVEL_CURVE: number[] = [
+  100, 250, 500, 1000, 2000, 4000, 7000, 11000, 16000, 22000,
+];
+
+/** Beyond the table, each level costs this much more than the last. */
+export const DEFAULT_LEVEL_STEP = 10000;
+
+/**
+ * The curve in force.
+ *
+ * Admin-editable, and therefore a single global rather than a parameter on
+ * seventeen call sites. That is deliberate: the bug this module was written to
+ * kill was two curves disagreeing — the one that WROTE `User.level` and the one
+ * that DREW the progress bar — which pinned users at 100% forever. A curve
+ * passed in by some callers and defaulted by others would rebuild exactly that.
+ *
+ * The server sets it from settings before it reads a level; the browser gets
+ * the same numbers from a script the layout inlines, so both sides answer
+ * identically from the first paint.
+ */
+let CURVE: number[] = DEFAULT_LEVEL_CURVE;
+let STEP: number = DEFAULT_LEVEL_STEP;
+
+/* Picked up on module load in the browser. The layout writes this before any
+   app code runs, the same way it sets the theme, so nothing renders a bar from
+   one curve and a level from another. */
+declare global {
+  interface Window {
+    __EG_LEVEL_CURVE?: { thresholds: number[]; step: number };
+  }
+}
+if (typeof window !== "undefined" && window.__EG_LEVEL_CURVE) {
+  const w = window.__EG_LEVEL_CURVE;
+  if (Array.isArray(w.thresholds) && w.thresholds.length > 0) CURVE = w.thresholds;
+  if (Number.isFinite(w.step) && w.step > 0) STEP = w.step;
+}
+
+/**
+ * Replace the curve.
+ *
+ * Rejects anything that does not strictly increase: a flat or falling curve
+ * makes `calculateLevel` ambiguous, and a user could be two levels at once.
+ */
+export function setLevelCurve(thresholds: number[], step: number): boolean {
+  if (!Array.isArray(thresholds) || thresholds.length === 0) return false;
+  if (!Number.isFinite(step) || step <= 0) return false;
+  let last = 0;
+  for (const t of thresholds) {
+    if (!Number.isFinite(t) || t <= last) return false;
+    last = t;
+  }
+  CURVE = thresholds;
+  STEP = step;
+  return true;
+}
+
+/** The curve in force, for the admin screen and for the boot script. */
+export function getLevelCurveInUse(): { thresholds: number[]; step: number } {
+  return { thresholds: [...CURVE], step: STEP };
+}
+
 /** Total XP needed to be AT a given level (cumulative from 0). */
 export function calculateXpForLevel(level: number): number {
   if (level <= 1) return 0;
-  if (level === 2) return 100;
-  if (level === 3) return 250;
-  if (level === 4) return 500;
-  if (level === 5) return 1000;
-  if (level === 6) return 2000;
-  if (level === 7) return 4000;
-  if (level === 8) return 7000;
-  if (level === 9) return 11000;
-  if (level === 10) return 16000;
-  if (level === 11) return 22000;
-  return 22000 + (level - 11) * 10000;
+  const i = level - 2;
+  if (i < CURVE.length) return CURVE[i];
+  return CURVE[CURVE.length - 1] + (i - (CURVE.length - 1)) * STEP;
 }
 
 /** The highest level a given total XP has reached. Exact inverse of the above. */

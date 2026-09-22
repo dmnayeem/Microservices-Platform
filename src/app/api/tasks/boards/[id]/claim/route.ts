@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncUserLevelQuietly } from "@/lib/level-sync";
 import { requireActiveUser } from "@/lib/require-active";
 import {
   SubmissionStatus,
@@ -226,6 +227,11 @@ export async function POST(
     action: "board_claim",
     targetId: board.id,
   });
+
+  // The reward is already committed; the level is a consequence of it.
+  // Quietly, because a failed bump must not turn a paid claim into an
+  // error — the next award or the backfill will catch it up.
+  await syncUserLevelQuietly(userId);
 
   return NextResponse.json({
     success: true,

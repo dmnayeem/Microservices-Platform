@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncUserLevelQuietly } from "@/lib/level-sync";
 import { generateTaskQuiz, isGeminiConfigured } from "@/lib/gemini";
 // `TaskStatus` is no longer needed here: `visibleTaskWhere()` pins the status
 // (and `hidden`, the date windows, level, access level and audience) itself.
@@ -450,6 +451,10 @@ export async function POST(request: NextRequest) {
     // A pass just took a slot — retire the task if that filled its global
     // `totalLimit`. Outside the transaction: the reward is already committed.
     if (passed) await closeTaskIfFull(taskId);
+
+    // A pass awarded xp. Same reasoning as the slot retirement above: the
+    // reward has landed, so this runs outside the transaction and quietly.
+    if (passed) await syncUserLevelQuietly(session.user.id);
 
     return NextResponse.json({
       submissionId: submission.id,

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { syncUserLevelQuietly } from "@/lib/level-sync";
 import { creditPoints } from "@/lib/ledger";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { TransactionType } from "@/generated/prisma";
@@ -302,6 +303,10 @@ async function runClaim(
         });
       }
     });
+
+    // Outside the transaction, for the same reason as everywhere else here.
+    await syncUserLevelQuietly(userId);
+
     return { ok: true, rewardPoints: points, rewardXp: xp };
   } catch (err) {
     if (isDuplicateLedgerError(err)) {

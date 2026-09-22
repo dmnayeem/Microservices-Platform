@@ -1235,6 +1235,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "PLATFORM",
   },
   {
+    name: "Levels & Achievements",
+    href: "/admin/gamification",
+    icon: "Trophy",
+    permissions: ["settings.view"],
+    category: "PLATFORM",
+  },
+  {
     name: "Offerwalls",
     href: "/admin/offerwalls",
     icon: "Gift",

@@ -3,6 +3,7 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
+import { syncUserLevelQuietly } from "@/lib/level-sync";
 import { toNum } from "@/lib/money";
 import { getUserDayContext } from "@/lib/user-day";
 import { getPointsPerUsd } from "@/lib/economy";
@@ -112,6 +113,11 @@ export async function POST(request: NextRequest) {
       },
     }),
   ]);
+
+  // The reward is already committed; the level is a consequence of it.
+  // Quietly, because a failed bump must not turn a paid claim into an
+  // error — the next award or the backfill will catch it up.
+  await syncUserLevelQuietly(userId);
 
   return NextResponse.json({
     success: true,

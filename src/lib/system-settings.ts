@@ -13,6 +13,23 @@ export function invalidateSettingsCache(): void {
 }
 
 /**
+ * Put a freshly written value straight into the cache.
+ *
+ * Clearing is not enough on its own. The read below also carries an Accelerate
+ * `cacheStrategy`, and that edge cache is not ours to clear — after a write it
+ * keeps serving the old row for up to its TTL. So an admin saves a setting,
+ * reloads, sees the old value, and saves again.
+ *
+ * Priming closes that on the instance that did the write, which is the one the
+ * admin is talking to. Other instances still wait out the edge TTL, which is
+ * the ordinary staleness this cache was chosen for; what they must not do is
+ * disagree with the admin who just pressed Save.
+ */
+export function primeSetting(key: string, value: unknown): void {
+  _settingsCache.set(key, { value, at: Date.now() });
+}
+
+/**
  * Read a SystemSetting JSON value by key, falling back to `fallback` when the
  * row is missing or the DB is unreachable. Centralises the findUnique+cast
  * pattern used across the app for admin-configurable settings. Cached (~45s).

@@ -34,6 +34,7 @@ import { RewardInterstitialHost } from "@/components/providers/reward-interstiti
 import { AdblockHost } from "@/components/providers/adblock-host";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { getUiToggles } from "@/lib/ui-toggles-server";
+import { getLevelCurve } from "@/lib/level-curve-server";
 import { kickScheduler } from "@/lib/scheduler/run";
 import "./globals.css";
 
@@ -129,8 +130,9 @@ export default async function RootLayout({
   // nothing, it cannot throw, and nobody looking at a page ever waits for it.
   kickScheduler();
 
-  const [ui, googleCmp] = await Promise.all([
+  const [ui, levelCurve, googleCmp] = await Promise.all([
     getUiToggles(),
+    getLevelCurve(),
     getSetting<boolean>("ads.google_cmp_enabled", false),
   ]);
   return (
@@ -178,6 +180,19 @@ export default async function RootLayout({
             __html: `try{var d=document.documentElement;var D=${JSON.stringify(
               ui.themeDefault
             )};var C=${ui.themeUserChoice};var t=C?(localStorage.getItem('earngpt-theme')||D):D;var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var a=localStorage.getItem('earngpt-accent');if(a){d.setAttribute('data-accent',a);}}catch(e){}`,
+          }}
+        />
+        {/* The level curve, before any app code runs.
+            The bug this module family exists to kill was two curves
+            disagreeing — the one that wrote `User.level` and the one that drew
+            the progress bar — which pinned users at 100% forever. If the
+            browser learned the admin's curve from a fetch, every first paint
+            would draw the shipped one and then correct itself, which is the
+            same disagreement with a shorter lifespan. So it is inlined, like
+            the theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__EG_LEVEL_CURVE=${JSON.stringify(levelCurve)};`,
           }}
         />
         {/* Google's ad tags — one per page, and only when a publisher id is

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { syncUserLevelQuietly } from "@/lib/level-sync";
 import { creditPoints } from "@/lib/ledger";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { TransactionType } from "@/generated/prisma";
@@ -296,6 +297,11 @@ export async function claimEvent(
         });
       }
     });
+
+    // Outside the transaction: the reward is committed and a level bump must
+    // not be able to roll it back.
+    await syncUserLevelQuietly(userId);
+
     return {
       ok: true,
       rewardPoints: event.rewardPoints,
