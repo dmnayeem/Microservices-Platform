@@ -8,9 +8,14 @@ import {
   requiresDeliverable,
   getDeliverableKind,
   resolveSaleMode,
+  canBeUnlimited,
   getSection,
 } from "@/lib/marketplace-categories";
 import { extractMediaMetadata, type MediaMeta } from "@/lib/media-metadata";
+import {
+  getLicenseTiersEnabled,
+  sanitizeTiers,
+} from "@/lib/marketplace-selling";
 import { hammingDistance, PHASH_HAMMING_THRESHOLD } from "@/lib/phash";
 import { assertPublicUrl } from "@/lib/link-preview";
 import { inngest, EVENTS } from "@/lib/inngest/client";
@@ -322,6 +327,17 @@ const userCreateSchema = z.object({
   assetType: z.enum(ASSET_TYPES).default("DIGITAL_PRODUCT"),
   subType: z.string().nullable().optional(),
   saleMode: z.enum(["ONE_OFF", "UNLIMITED"]).optional(),
+  licenseTiers: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(32),
+        name: z.string().min(1).max(60),
+        price: z.number().positive(),
+        description: z.string().max(300).optional(),
+      })
+    )
+    .max(5)
+    .optional(),
   details: z.record(z.string(), z.unknown()).optional(),
   price: z.number().positive(),
   currency: z.string().default("USD"),
@@ -437,6 +453,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Tiers are only honoured while the admin has the feature on, and only
+    // for a category sold repeatedly: a domain has one buyer, so offering it
+    // at three licence levels would promise something it cannot deliver.
+    const tiers =
+      (await getLicenseTiersEnabled()) && canBeUnlimited(data.assetType)
+        ? sanitizeTiers(data.licenseTiers)
+        : [];
+
     const listing = await prisma.marketplaceListing.create({
       data: {
         sellerId: session.user.id,
@@ -456,8 +480,12 @@ export async function POST(request: NextRequest) {
         saleMode: data.auctionMode
           ? "ONE_OFF"
           : resolveSaleMode(data.assetType, data.saleMode),
+        licenseTiers: tiers.length > 0 ? tiers : undefined,
         details: data.details ? JSON.parse(JSON.stringify(data.details)) : null,
-        price: data.price,
+        // The headline price IS the cheapest tier when tiers are used. Letting
+        // the two drift means the card advertises one number while checkout,
+        // or the cart which has no tier to pick, charges another.
+        price: tiers.length > 0 ? tiers[0].price : data.price,
         currency: data.currency,
         affiliateCommissionType:
           data.affiliateCommissionValue && data.affiliateCommissionValue > 0

@@ -7,6 +7,10 @@ import {
   settleMagnificTasks,
   summariseSweep,
 } from "@/lib/marketplace-studio-tasks";
+import {
+  releaseDuePayouts,
+  summariseReleases,
+} from "@/lib/marketplace-payouts";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -93,6 +97,21 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await settleMagnificTasks();
       return { ok: true, summary: summariseSweep(s), result: s };
+    },
+  },
+  {
+    name: "marketplace-payouts",
+    label: "Release held seller payouts",
+    description:
+      "When the payout hold is switched on, a marketplace sale parks the seller\u2019s share instead of paying it straight out, so a refund in the first few days reverses an untouched row rather than chasing money already withdrawn. This is what actually pays them once the hold expires \u2014 nothing else does, so if it stops running sellers stop being paid while the shop keeps taking money. Does nothing at all while the hold is switched off.",
+    intervalMs: 15 * MINUTE,
+    // A payout is due on a day boundary, not a minute one, so a quarter hour
+    // of lateness is invisible; the lease only has to outlast a batch of
+    // wallet writes.
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const s = await releaseDuePayouts();
+      return { ok: true, summary: summariseReleases(s), result: s };
     },
   },
 ];

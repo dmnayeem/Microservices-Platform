@@ -1,4 +1,5 @@
 import { usd } from "@/lib/utils";
+import { reverseHeldPayout } from "@/lib/marketplace-payouts";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -422,11 +423,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             // balance so a spent-out seller cannot be driven negative; the
             // unrecoverable remainder is recorded rather than hidden.
             if (sellerId && sellerOwed > 0) {
+              // If the payout hold is on and this sale is still inside its
+              // window, the money never reached the seller: reverse the held
+              // row instead of chasing a balance. Whatever that covers is
+              // money that never had to be clawed back at all — which is the
+              // entire reason the hold exists.
+              const reversed = await reverseHeldPayout(
+                tx,
+                purchase.id,
+                `Refunded by dispute ${id}`
+              );
+              const stillOwed = money2(Math.max(0, sellerOwed - reversed));
               const sellerRow = await tx.user.findUnique({
                 where: { id: sellerId },
                 select: { cashBalance: true },
               });
-              const debit = Math.min(toNum(sellerRow?.cashBalance), sellerOwed);
+              const debit = Math.min(toNum(sellerRow?.cashBalance), stillOwed);
               if (debit > 0) {
                 await tx.user.update({
                   where: { id: sellerId },
@@ -446,8 +458,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                     disputeId: id,
                     purchaseId: purchase.id,
                     owed: sellerOwed,
+                    reversedFromHold: reversed,
                     clawedBack: debit,
-                    shortfall: money2(sellerOwed - debit),
+                    shortfall: money2(stillOwed - debit),
                   },
                 },
               });

@@ -15,6 +15,10 @@ import {
   resolveCommissionBps,
   splitPrice,
 } from "@/lib/marketplace-commission";
+import {
+  getPayoutHoldConfig,
+  payOrHoldSeller,
+} from "@/lib/marketplace-selling";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum } from "@/lib/money";
 
@@ -103,6 +107,8 @@ export async function POST(request: NextRequest) {
     }
 
     const total = cart.reduce((s, i) => s + toNum(i.listing.price), 0);
+
+    const hold = await getPayoutHoldConfig();
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
@@ -212,14 +218,17 @@ export async function POST(request: NextRequest) {
           data: { status: MarketplaceBidStatus.LOST },
         });
 
-        // Seller credit + earnings counter + EARNING ledger row
-        await tx.user.update({
-          where: { id: l.sellerId },
-          data: {
-            cashBalance: { increment: plan.sellerAmount },
-            totalEarnings: { increment: plan.sellerAmount },
-          },
+        // Seller credit, or a held payout when the admin has the hold on.
+        const paidNow = await payOrHoldSeller(tx, {
+          sellerId: l.sellerId,
+          purchaseId: p.id,
+          amount: toNum(plan.sellerAmount),
+          hold,
         });
+        // The EARNING row only makes sense once the money is actually theirs.
+        // While it is held the release sweep writes its own row on payout, so
+        // logging one here too would show the sale as earned twice.
+        if (!paidNow.held) {
         await tx.transaction.create({
           data: {
             userId: l.sellerId,
@@ -238,6 +247,7 @@ export async function POST(request: NextRequest) {
             },
           },
         });
+        }
 
         created.push({
           purchaseId: p.id,

@@ -10,6 +10,12 @@ import { CATEGORIES } from "@/lib/marketplace-categories";
 import { CommissionSettingsForm } from "./_components/CommissionSettingsForm";
 import { PromotionPricingForm } from "./_components/PromotionPricingForm";
 import { MediationFeeForm } from "./_components/MediationFeeForm";
+import { SellingRulesForm } from "./_components/SellingRulesForm";
+import { prisma } from "@/lib/prisma";
+import {
+  getLicenseTiersEnabled,
+  getPayoutHoldConfig,
+} from "@/lib/marketplace-selling";
 
 export default async function MarketplaceSettingsPage() {
   const session = await auth();
@@ -17,11 +23,19 @@ export default async function MarketplaceSettingsPage() {
   if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
 
   const canManage = await can(session.user.id, "marketplace.manage");
-  const [config, promoPackages, mediation] = await Promise.all([
-    getCommissionConfig(),
-    getPromotionPricing(),
-    getMediationConfig(),
-  ]);
+  const [config, promoPackages, mediation, licenseTiersEnabled, payoutHold, held] =
+    await Promise.all([
+      getCommissionConfig(),
+      getPromotionPricing(),
+      getMediationConfig(),
+      getLicenseTiersEnabled(),
+      getPayoutHoldConfig(),
+      prisma.marketplacePayout.aggregate({
+        where: { status: "HELD" },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
+    ]);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -44,6 +58,16 @@ export default async function MarketplaceSettingsPage() {
           wins; otherwise the default applies.
         </p>
       </div>
+
+      <SellingRulesForm
+        licenseTiersEnabled={licenseTiersEnabled}
+        payoutHold={payoutHold}
+        heldNow={{
+          count: held._count._all,
+          amount: Number(held._sum.amount ?? 0),
+        }}
+        canEdit={canManage}
+      />
 
       <CommissionSettingsForm
         initial={config}

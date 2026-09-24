@@ -80,6 +80,9 @@ interface Listing {
   nsfw: boolean;
   /** "ONE_OFF" | "UNLIMITED" — whether buying it takes it off the market. */
   saleMode: string;
+  /** Licence options, cheapest first. Empty when the feature is off or the
+   *  seller offers a single price. */
+  licenseTiers: { id: string; name: string; price: number; description?: string }[];
   auctionMode: boolean;
   startingBid: number | null;
   reservePrice: number | null;
@@ -148,6 +151,14 @@ export function ListingDetailView({
   };
   const [showReport, setShowReport] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tierId, setTierId] = useState<string>(
+    listing.licenseTiers[0]?.id ?? ""
+  );
+  const selectedTier =
+    listing.licenseTiers.find((t) => t.id === tierId) ?? null;
+  // What the buyer will actually be charged. The listing price is the cheapest
+  // tier, so these agree until a dearer licence is picked.
+  const effectivePrice = selectedTier ? selectedTier.price : listing.price;
   const [addingToCart, setAddingToCart] = useState(false);
   const [watched, setWatched] = useState(initialWatched);
   const [watchCount, setWatchCount] = useState(listing.watchCount);
@@ -218,7 +229,7 @@ export function ListingDetailView({
     // is purchased the status flips to SOLD and the spend is final.
     const ok = await confirmDialog({
       title: "Confirm purchase",
-      description: `Buy "${listing.title}" for $${listing.price.toLocaleString()}? The amount will be debited from your wallet immediately.`,
+      description: `Buy "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${effectivePrice.toLocaleString()}? The amount will be debited from your wallet immediately.`,
       tone: "info",
       confirmLabel: "Buy now",
     });
@@ -228,6 +239,7 @@ export function ListingDetailView({
       const res = await fetch(`/api/marketplace/${listing.id}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        body: JSON.stringify(tierId ? { tier: tierId } : {}),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -416,6 +428,46 @@ export function ListingDetailView({
             <p className="text-3xl font-extrabold text-white tabular-nums">
               ${listing.price.toLocaleString()}
             </p>
+            {listing.licenseTiers.length > 1 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[11px] uppercase tracking-wider font-bold text-(--app-ink-3)">
+                  Choose a licence
+                </p>
+                {listing.licenseTiers.map((t) => (
+                  <label
+                    key={t.id}
+                    className={cn(
+                      "flex items-start gap-2 rounded-lg border p-2 cursor-pointer transition-colors",
+                      tierId === t.id
+                        ? "border-(--app-accent-edge) bg-(--app-cta)/10"
+                        : "border-(--app-line) hover:border-(--app-accent-edge)/50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="licence"
+                      checked={tierId === t.id}
+                      onChange={() => setTierId(t.id)}
+                      className="mt-1"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-medium text-white">{t.name}</span>
+                        <span className="text-sm font-bold tabular-nums text-white">
+                          ${t.price.toLocaleString()}
+                        </span>
+                      </span>
+                      {t.description && (
+                        <span className="block text-[11px] text-(--app-ink-3)">
+                          {t.description}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+
             {/* A buyer needs to know which of the two things they are buying:
                 the only copy, or a licence alongside everyone else. */}
             <p className="text-[11px] text-(--app-ink-3)">

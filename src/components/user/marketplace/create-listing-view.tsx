@@ -64,7 +64,15 @@ const DELIVERABLE_ACCEPT: Record<string, string> = {
   file: "*/*",
 };
 
-export function CreateListingView() {
+type Tier = { id: string; name: string; price: number; description?: string };
+
+export function CreateListingView({
+  licenseTiersEnabled = false,
+  suggestedTiers = [],
+}: {
+  licenseTiersEnabled?: boolean;
+  suggestedTiers?: Tier[];
+} = {}) {
   const router = useRouter();
 
   const [assetType, setAssetType] = useState<string>("");
@@ -73,6 +81,7 @@ export function CreateListingView() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number>(9.99);
   const [exclusive, setExclusive] = useState(false);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [files, setFiles] = useState<string[]>([]); // deliverable(s)
   const [details, setDetails] = useState<Record<string, unknown>>({});
@@ -164,6 +173,9 @@ export function CreateListingView() {
           // Only meaningful for a repeatable category; the server clamps
           // anything else back to ONE_OFF.
           saleMode: repeatable && !exclusive ? "UNLIMITED" : "ONE_OFF",
+          // Ignored by the server unless the admin has tiers switched on and
+          // the category is one that can be sold repeatedly.
+          licenseTiers: tiers.length > 0 ? tiers : undefined,
           affiliateCommissionType: affType || null,
           affiliateCommissionValue: affType && affValue > 0 ? affValue : null,
           images,
@@ -307,6 +319,80 @@ export function CreateListingView() {
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
+            {/* Licence tiers. Only where the admin has switched them on AND the
+                category is sold repeatedly — a domain has one buyer, so three
+                licence levels would promise something it cannot deliver. */}
+            {licenseTiersEnabled && repeatable && !exclusive && (
+              <div className="w-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-(--app-ink-3)">
+                    Licence tiers (optional)
+                  </label>
+                  {tiers.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTiers(
+                          suggestedTiers.map((t, i) => ({
+                            ...t,
+                            price: Math.max(0.5, price * (i === 0 ? 1 : 4)),
+                          }))
+                        )
+                      }
+                      className="text-xs text-(--app-accent-ink) hover:underline"
+                    >
+                      Add standard + extended
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setTiers([])}
+                      className="text-xs text-(--app-ink-3) hover:text-white"
+                    >
+                      Remove tiers
+                    </button>
+                  )}
+                </div>
+                {tiers.length > 0 && (
+                  <>
+                    {tiers.map((t, i) => (
+                      <div key={t.id} className="flex gap-2">
+                        <input
+                          value={t.name}
+                          onChange={(e) =>
+                            setTiers((prev) =>
+                              prev.map((x, j) =>
+                                j === i ? { ...x, name: e.target.value } : x
+                              )
+                            )
+                          }
+                          className="flex-1 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0.5}
+                          value={t.price}
+                          onChange={(e) =>
+                            setTiers((prev) =>
+                              prev.map((x, j) =>
+                                j === i ? { ...x, price: Number(e.target.value) } : x
+                              )
+                            )
+                          }
+                          className="w-28 px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm"
+                        />
+                      </div>
+                    ))}
+                    <p className="text-[11px] text-(--app-ink-3)">
+                      The cheapest tier becomes the listing price, so the card and the
+                      checkout always agree.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Only offered where it is a real choice. A domain or an account
                 can only ever go to one buyer, so showing a toggle there would
                 promise something the category cannot deliver. */}

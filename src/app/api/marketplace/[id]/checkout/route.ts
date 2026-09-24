@@ -23,8 +23,15 @@ import {
   parseAttribution,
 } from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
-import { lt, sub, toNum, toNumOrNull } from "@/lib/money";
+import { D, lt, sub, toNum, toNumOrNull } from "@/lib/money";
 import { requiresDeliverable } from "@/lib/marketplace-categories";
+import {
+  getLicenseTiersEnabled,
+  readTiers,
+  resolveTierPrice,
+  getPayoutHoldConfig,
+  payOrHoldSeller,
+} from "@/lib/marketplace-selling";
 
 // POST /api/marketplace/:id/checkout
 //
@@ -61,6 +68,7 @@ export async function POST(
         status: true,
         assetType: true,
         saleMode: true,
+        licenseTiers: true,
         auctionMode: true,
         commissionRateBps: true,
         affiliateCommissionType: true,
@@ -110,13 +118,30 @@ export async function POST(
         );
       }
     }
-    const priceNum = toNum(listing.price);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+    const basePrice = toNum(listing.price);
+    if (!Number.isFinite(basePrice) || basePrice <= 0) {
       return NextResponse.json(
         { error: "This listing has no valid price." },
         { status: 400 }
       );
     }
+
+    // Which licence the buyer picked, and therefore what they pay. With the
+    // feature off, or on a listing with no tiers, this is simply the listing
+    // price — so turning the switch off cannot strand a listing at a price
+    // nobody is able to pay.
+    const body = (await _request.json().catch(() => ({}))) as { tier?: string };
+    const tiersEnabled = await getLicenseTiersEnabled();
+    const hold = await getPayoutHoldConfig();
+    const tiers = readTiers(listing.licenseTiers);
+    const choice = resolveTierPrice(basePrice, tiers, body?.tier, tiersEnabled);
+    if (!choice.ok) {
+      return NextResponse.json({ error: choice.error }, { status: 400 });
+    }
+    const priceNum = choice.price;
+    // Every money movement below uses this, never listing.price: the tier is
+    // what was actually bought.
+    const charge = D(priceNum);
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
@@ -125,12 +150,12 @@ export async function POST(
     if (!buyer) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    if (lt(buyer.cashBalance, listing.price)) {
+    if (lt(buyer.cashBalance, charge)) {
       return NextResponse.json(
         {
           error: "Insufficient wallet balance",
-          shortBy: sub(listing.price, buyer.cashBalance).toNumber(),
-          details: `Need ${usd(toNum(listing.price))}, have ${usd(toNum(buyer.cashBalance))}.`,
+          shortBy: sub(charge, buyer.cashBalance).toNumber(),
+          details: `Need ${usd(priceNum)}, have ${usd(toNum(buyer.cashBalance))}.`,
         },
         { status: 402 }
       );
@@ -208,9 +233,10 @@ export async function POST(
         data: {
           listingId: id,
           buyerId: userId,
-          amount: listing.price,
+          amount: charge,
           fee,
           sellerAmount: sellerNet,
+          licenseTier: choice.tier?.id ?? null,
           status: "COMPLETED",
         },
       });
@@ -248,18 +274,21 @@ export async function POST(
       // twice; it does nothing to guard the wallet against a second purchase on
       // a different listing at the same moment.
       const paid = await tx.user.updateMany({
-        where: { id: userId, cashBalance: { gte: listing.price } },
-        data: { cashBalance: { decrement: listing.price } },
+        where: { id: userId, cashBalance: { gte: charge } },
+        data: { cashBalance: { decrement: charge } },
       });
       if (paid.count === 0) {
         throw new Error("INSUFFICIENT_BALANCE");
       }
-      await tx.user.update({
-        where: { id: listing.sellerId },
-        data: {
-          cashBalance: { increment: sellerNet },
-          totalEarnings: { increment: sellerNet },
-        },
+      // Pay the seller now, or hold it. With the hold off this is the exact
+      // update it replaces; with it on the money waits in a payout row, so a
+      // refund inside the window reverses an untouched row instead of clawing
+      // back a balance the seller may already have withdrawn.
+      await payOrHoldSeller(tx, {
+        sellerId: listing.sellerId,
+        purchaseId: p.id,
+        amount: sellerNet,
+        hold,
       });
 
       // Affiliate payout (from the seller's cut) — credit + ledger, deduped by
@@ -296,7 +325,7 @@ export async function POST(
             sourceId: id,
             orderRef: p.id,
             buyerId: userId,
-            saleAmount: listing.price,
+            saleAmount: charge,
             commissionAmount: affiliateAmount,
           },
         });
@@ -308,7 +337,7 @@ export async function POST(
           userId,
           type: TransactionType.PURCHASE,
           status: TransactionStatus.COMPLETED,
-          amount: -listing.price,
+          amount: charge.negated(),
           points: 0,
           description: `Marketplace — "${listing.title}"`,
           reference: `marketplace_${id}_${p.id}`,
@@ -353,8 +382,8 @@ export async function POST(
           userId,
           type: NotificationType.SYSTEM,
           title: "Purchase complete 🎉",
-          message: `You bought "${listing.title}" for $${listing.price.toLocaleString()}.`,
-          data: { listingId: id, purchaseId: purchase.id, amount: listing.price },
+          message: `You bought "${listing.title}" for $${priceNum.toLocaleString()}.`,
+          data: { listingId: id, purchaseId: purchase.id, amount: charge },
         },
       }),
       prisma.notification.create({
@@ -362,11 +391,11 @@ export async function POST(
           userId: listing.sellerId,
           type: NotificationType.SYSTEM,
           title: "You made a sale 💸",
-          message: `"${listing.title}" sold for $${listing.price.toLocaleString()}. You earned $${sellerNet.toLocaleString()}${affiliateId ? ` (after $${affiliateAmount.toLocaleString()} affiliate reward)` : ""}.`,
+          message: `"${listing.title}" sold for $${priceNum.toLocaleString()}. You earned $${sellerNet.toLocaleString()}${affiliateId ? ` (after $${affiliateAmount.toLocaleString()} affiliate reward)` : ""}.`,
           data: {
             listingId: id,
             purchaseId: purchase.id,
-            amount: listing.price,
+            amount: charge,
             sellerAmount: sellerNet,
             affiliateAmount,
           },
@@ -380,7 +409,7 @@ export async function POST(
           entityId: purchase.id,
           newData: {
             listingId: id,
-            amount: listing.price,
+            amount: charge,
             fee,
             sellerAmount,
             commissionBps: bps,
@@ -394,7 +423,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       purchaseId: purchase.id,
-      amount: toNum(listing.price),
+      amount: priceNum,
       fee,
       sellerAmount: sellerNet,
       affiliateAmount,

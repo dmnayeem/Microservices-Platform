@@ -2,6 +2,10 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
+import {
+  getLicenseTiersEnabled,
+  readTiers,
+} from "@/lib/marketplace-selling";
 import { ListingDetailView } from "@/components/user/marketplace/listing-detail-view";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
@@ -67,6 +71,11 @@ export default async function ListingDetailPage({
         where: { brandId: listing.brandId, status: "ACTIVE" },
       })
     : 0;
+
+  // Tiers are only offered while the admin has the feature on. Reading them
+  // here rather than in the client keeps a switched-off feature completely
+  // invisible instead of shipping prices the checkout would refuse.
+  const tiersEnabled = await getLicenseTiersEnabled();
 
   const isOwner = listing.sellerId === session.user.id;
   const hideFinancials = listing.ndaGated && !isOwner;
@@ -151,6 +160,7 @@ export default async function ListingDetailPage({
           ? listing.auctionEndsAt.toISOString()
           : null,
         saleMode: listing.saleMode,
+        licenseTiers: tiersEnabled ? readTiers(listing.licenseTiers) : [],
         isFeatured: listing.isFeatured,
         isPromoted: listing.isPromoted,
         createdAt: listing.createdAt.toISOString(),

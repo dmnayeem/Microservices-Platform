@@ -1595,6 +1595,7 @@ model User {
   notifications                     Notification[]
   marketplaceListings               MarketplaceListing[]
   marketplacePurchases              MarketplacePurchase[]
+  marketplacePayouts                MarketplacePayout[]
   marketplaceWatches                MarketplaceWatch[]
   marketplaceViews                  MarketplaceListingView[]
   marketplaceBids                   MarketplaceBid[]
@@ -2409,6 +2410,16 @@ model MarketplaceListing {
   //
   // Defaults to ONE_OFF so existing rows keep exactly the behaviour they had.
   saleMode                 String                   @default("ONE_OFF")
+  // Optional licence tiers, e.g. [{ id, name, price, description }].
+  //
+  // A stock marketplace sells the same file at different prices depending on
+  // what the buyer may do with it — a standard licence for a blog post, an
+  // extended one for a product someone resells. `price` stays the headline
+  // (and the price of the cheapest tier); a tier only ever raises it.
+  //
+  // Null = single price, which is every listing until a seller adds tiers and
+  // the whole behaviour when the admin has the feature switched off.
+  licenseTiers             Json?
   // Category-specific structured data (mirrors customConfig pattern on Task).
   details                  Json?
   price                    Decimal                  @db.Decimal(18, 6)
@@ -2494,6 +2505,47 @@ model MarketplaceListing {
 }
 
 /**
+ * A seller's share of one sale, held before it reaches their wallet.
+ *
+ * Without this the seller is paid the instant a buyer clicks Buy, so a refund
+ * has to claw money back out of a balance they may already have withdrawn —
+ * the clawback is clamped to whatever is left and the rest is simply lost to
+ * the platform. Holding the money for a few days means a refund inside the
+ * window reverses an untouched row instead of chasing a spent one.
+ *
+ * Only created when the admin turns the hold on. With it off the seller is
+ * credited immediately exactly as before and no row is written, so the feature
+ * leaves no trace when unused.
+ *
+ * Escrow deals do NOT go through here: `MarketplaceDeal` already holds funds
+ * through its own lifecycle, and holding twice would pay the seller late for a
+ * sale the buyer had explicitly confirmed.
+ */
+model MarketplacePayout {
+  id         String              @id @default(cuid())
+  purchaseId String              @unique
+  purchase   MarketplacePurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     User                @relation(fields: [sellerId], references: [id])
+  amount     Decimal             @db.Decimal(18, 6)
+  /// HELD → the money is promised but not spendable.
+  /// RELEASED → paid into the seller's wallet.
+  /// REVERSED → a refund cancelled it before release; never paid.
+  status     String              @default("HELD")
+  /// When the scheduler may release it.
+  releaseAt  DateTime
+  releasedAt DateTime?
+  reversedAt DateTime?
+  /// Why it was reversed, shown to the seller.
+  reason     String?
+  createdAt  DateTime            @default(now())
+
+  /// Drives the release sweep: "everything still held whose time has come".
+  @@index([status, releaseAt])
+  @@index([sellerId, status])
+}
+
+/**
  * A storefront name that listings can be published under.
  *
  * Admin-curated stock (AI-generated or licensed) still needs a real `sellerId`
@@ -2532,8 +2584,13 @@ model MarketplacePurchase {
   fee          Decimal              @db.Decimal(18, 6)
   sellerAmount Decimal              @db.Decimal(18, 6)
   status       String               @default("COMPLETED")
+  /// Which licence tier was bought, by tier id. Null = the listing had none.
+  /// Recorded rather than derived: a seller can edit their tiers afterwards,
+  /// and the buyer's rights are whatever they paid for on the day.
+  licenseTier  String?
   createdAt    DateTime             @default(now())
   disputes     MarketplaceDispute[]
+  payout       MarketplacePayout?
 
   @@index([listingId])
   @@index([buyerId])
