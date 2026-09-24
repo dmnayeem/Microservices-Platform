@@ -2383,6 +2383,12 @@ model MarketplaceListing {
   id                       String                   @id @default(cuid())
   sellerId                 String
   seller                   User                     @relation(fields: [sellerId], references: [id])
+  // Storefront the listing is presented under. Admin-curated stock is owned by
+  // an admin account but should read as the brand, not as a staff member, so
+  // the buyer-facing seller block prefers this when set. Null = show the real
+  // seller, which is every user listing.
+  brandId                  String?
+  brand                    MarketplaceBrand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
   title                    String
   description              String                   @db.Text
   // Free-form category retained for back-compat (existing rows). New listings
@@ -2472,6 +2478,36 @@ model MarketplaceListing {
   @@index([category])
   @@index([assetType])
   @@index([isFeatured])
+  @@index([brandId])
+}
+
+/**
+ * A storefront name that listings can be published under.
+ *
+ * Admin-curated stock (AI-generated or licensed) still needs a real `sellerId`
+ * for payouts, escrow and the deliverable-download gate, so a brand is a
+ * presentation layer over that account rather than a second seller identity.
+ * Modelling it as its own row — instead of a text column, and instead of fake
+ * User accounts — is what makes "browse everything by this company" a plain
+ * indexed lookup, and keeps invented sellers out of user counts, staff
+ * listings and Who-to-Follow.
+ */
+model MarketplaceBrand {
+  id        String               @id @default(cuid())
+  name      String
+  /** URL segment for /marketplace/brand/<slug>. Unique, lowercased. */
+  slug      String               @unique
+  logo      String?
+  bio       String?              @db.Text
+  website   String?
+  /** Inactive brands stay attached to sold listings but are not offered in the
+   *  publisher or shown as a browsable storefront. */
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  listings  MarketplaceListing[]
+
+  @@index([isActive])
 }
 
 model MarketplacePurchase {

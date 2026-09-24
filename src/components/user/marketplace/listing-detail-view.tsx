@@ -94,6 +94,18 @@ interface Listing {
     memberSince: string;
     totalListings: number;
   };
+  /**
+   * Storefront the listing is published under, when there is one. Admin-curated
+   * stock belongs to a staff account for payouts and the download gate, but a
+   * buyer should see the shop it is sold by — not the name of an administrator.
+   */
+  brand?: {
+    name: string;
+    slug: string;
+    logo: string | null;
+    bio: string | null;
+    listingCount: number;
+  } | null;
 }
 
 interface Props {
@@ -714,34 +726,61 @@ export function ListingDetailView({
         </section>
       )}
 
-      {/* Seller card */}
+      {/* Seller card — or the storefront, when the listing is sold under one */}
       <section className="glass rounded-xl p-4 sm:p-5">
-        <div className="flex items-center gap-3">
-          <Avatar
-            src={listing.seller.avatar}
-            size={48}
-            fallbackText={(listing.seller.name ?? listing.seller.username ?? "S")
-              .charAt(0)
-              .toUpperCase()}
-          />
-          <div className="flex-1 min-w-0">
-            <Link
-              href={profileHref(listing.seller)}
-              className="text-sm font-bold text-white hover:text-(--app-accent-ink)"
-            >
-              {listing.seller.name ?? "Seller"}
-            </Link>
-            {listing.seller.username && (
-              <p className="text-[11px] text-(--app-ink-3)">
-                @{listing.seller.username}
+        {listing.brand ? (
+          <div className="flex items-center gap-3">
+            <Avatar
+              src={listing.brand.logo}
+              size={48}
+              fallbackText={listing.brand.name.charAt(0).toUpperCase()}
+            />
+            <div className="flex-1 min-w-0">
+              <Link
+                href={`/marketplace/brand/${listing.brand.slug}`}
+                className="text-sm font-bold text-white hover:text-(--app-accent-ink)"
+              >
+                {listing.brand.name}
+              </Link>
+              {listing.brand.bio && (
+                <p className="text-[11px] text-(--app-ink-3) line-clamp-2">
+                  {listing.brand.bio}
+                </p>
+              )}
+              <p className="text-[11px] text-(--app-ink-3) mt-0.5">
+                {listing.brand.listingCount} listing
+                {listing.brand.listingCount === 1 ? "" : "s"} in this store
               </p>
-            )}
-            <p className="text-[11px] text-(--app-ink-3) mt-0.5">
-              Joined {format(new Date(listing.seller.memberSince), "MMM yyyy")}{" "}
-              · {listing.seller.totalListings} listings
-            </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Avatar
+              src={listing.seller.avatar}
+              size={48}
+              fallbackText={(listing.seller.name ?? listing.seller.username ?? "S")
+                .charAt(0)
+                .toUpperCase()}
+            />
+            <div className="flex-1 min-w-0">
+              <Link
+                href={profileHref(listing.seller)}
+                className="text-sm font-bold text-white hover:text-(--app-accent-ink)"
+              >
+                {listing.seller.name ?? "Seller"}
+              </Link>
+              {listing.seller.username && (
+                <p className="text-[11px] text-(--app-ink-3)">
+                  @{listing.seller.username}
+                </p>
+              )}
+              <p className="text-[11px] text-(--app-ink-3) mt-0.5">
+                Joined {format(new Date(listing.seller.memberSince), "MMM yyyy")}{" "}
+                · {listing.seller.totalListings} listings
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Modals */}

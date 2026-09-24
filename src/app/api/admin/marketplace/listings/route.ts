@@ -19,6 +19,15 @@ const ASSET_TYPES = [
   "MOBILE_APP",
   "MOBILE_GAME",
   "SAAS_PRODUCT",
+  // These five are declared in `lib/marketplace-categories.ts` and accepted by
+  // the seller-facing route, but were missing here — so an admin could not
+  // create the very asset types the taxonomy defines for stock media. Every
+  // attempt failed zod validation with "Invalid input" before reaching Prisma.
+  "PLATFORM",
+  "STOCK_PHOTO",
+  "STOCK_VIDEO",
+  "MUSIC",
+  "EBOOK",
   "DIGITAL_PRODUCT",
   "SERVICE",
   "OTHER",
@@ -58,7 +67,15 @@ const createListingSchema = z.object({
   isFeatured: z.boolean().optional(),
   isPromoted: z.boolean().optional(),
   commissionRateBps: z.number().int().min(0).max(10000).nullable().optional(),
-  status: z.enum(["ACTIVE", "SOLD", "CANCELLED", "EXPIRED"]).default("ACTIVE"),
+  // Storefront to publish under. The listing still belongs to the admin's own
+  // account for payouts and the download gate; this only changes whose name
+  // the buyer sees.
+  brandId: z.string().nullable().optional(),
+  // PENDING_REVIEW is what the batch publisher writes: generated listings land
+  // in the existing admin review queue instead of going straight live.
+  status: z
+    .enum(["ACTIVE", "SOLD", "CANCELLED", "EXPIRED", "PENDING_REVIEW"])
+    .default("ACTIVE"),
 });
 
 // POST /api/admin/marketplace/listings - Create a new listing (admin)
@@ -126,9 +143,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Reject a brand that does not exist rather than letting Prisma raise a
+    // foreign-key error the admin cannot read.
+    if (data.brandId) {
+      const brand = await prisma.marketplaceBrand.findUnique({
+        where: { id: data.brandId },
+        select: { id: true },
+      });
+      if (!brand) {
+        return NextResponse.json({ error: "That brand no longer exists" }, { status: 400 });
+      }
+    }
+
     const listing = await prisma.marketplaceListing.create({
       data: {
         sellerId: session.user.id,
+        brandId: data.brandId ?? null,
         title: data.title,
         description: data.description,
         richDescription: data.richDescription ?? null,

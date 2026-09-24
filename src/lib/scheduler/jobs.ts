@@ -3,6 +3,10 @@ import {
   summariseAutoReset,
 } from "@/lib/leaderboard-auto-reset";
 import { recheckPendingSocialSubmissions } from "@/lib/social-recheck";
+import {
+  settleMagnificTasks,
+  summariseSweep,
+} from "@/lib/marketplace-studio-tasks";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -73,6 +77,22 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
         summary: `Examined ${s.examined}, approved ${s.approved}, still unreadable ${s.stillUnreadable}.`,
         result: s,
       };
+    },
+  },
+  {
+    name: "magnific-tasks",
+    label: "Finish AI generations",
+    description:
+      "Stock Studio starts a video generation and does not wait for it — a clip takes minutes. This checks the ones still rendering and, when one is ready, pulls it into our own storage and completes the listing. It has a hard deadline to respect: the provider's download link expires about an hour after the generation starts and re-asking does not renew it, so anything that misses the window is failed with a reason rather than retried against a dead link.",
+    intervalMs: 2 * MINUTE,
+    // Matches the sweep's own cap of a handful of downloads. Shorter than the
+    // window, so a tick killed mid-download is retried inside the same window
+    // instead of waiting two minutes — which matters when the result link is
+    // on a clock.
+    leaseMs: 2 * MINUTE,
+    async run() {
+      const s = await settleMagnificTasks();
+      return { ok: true, summary: summariseSweep(s), result: s };
     },
   },
 ];

@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Tag,
   Settings as SettingsIcon,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -265,6 +266,24 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
             <SettingsIcon className="h-4 w-4" />
             Settings
           </Link>
+          {canManage && (
+            <>
+              <Link
+                href="/admin/marketplace/brands"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:border-slate-600 hover:text-white"
+              >
+                <Store className="h-4 w-4" />
+                Storefronts
+              </Link>
+              <Link
+                href="/admin/marketplace/studio"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/50 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-300 hover:bg-indigo-500/20"
+              >
+                <Sparkles className="h-4 w-4" />
+                Stock Studio
+              </Link>
+            </>
+          )}
           <CreateListingButton canManage={canManage} />
         </div>
       </div>

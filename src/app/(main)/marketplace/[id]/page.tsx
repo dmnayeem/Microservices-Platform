@@ -53,10 +53,20 @@ export default async function ListingDetailPage({
           _count: { select: { marketplaceListings: true } },
         },
       },
+      brand: { select: { name: true, slug: true, logo: true, bio: true } },
       _count: { select: { purchases: true, watches: true } },
     },
   });
   if (!listing) notFound();
+
+  // Counted separately: `_count` on the brand relation is not surfaced by the
+  // generated client for this model, and a silently-dropped include would show
+  // every storefront as empty.
+  const brandListingCount = listing.brandId
+    ? await prisma.marketplaceListing.count({
+        where: { brandId: listing.brandId, status: "ACTIVE" },
+      })
+    : 0;
 
   const isOwner = listing.sellerId === session.user.id;
   const hideFinancials = listing.ndaGated && !isOwner;
@@ -151,6 +161,15 @@ export default async function ListingDetailPage({
           memberSince: listing.seller.createdAt.toISOString(),
           totalListings: sellerCount.marketplaceListings,
         },
+        brand: listing.brand
+          ? {
+              name: listing.brand.name,
+              slug: listing.brand.slug,
+              logo: listing.brand.logo,
+              bio: listing.brand.bio,
+              listingCount: brandListingCount,
+            }
+          : null,
       }}
         isOwner={isOwner}
         isWatched={isWatched}
