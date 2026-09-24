@@ -24,6 +24,7 @@ export interface AuctionListingRow {
   sellerId: string;
   title: string;
   assetType: string;
+  saleMode: string;
   reservePrice: MoneyInput | null;
   commissionRateBps: number | null;
 }
@@ -33,6 +34,7 @@ const AUCTION_SELECT = {
   sellerId: true,
   title: true,
   assetType: true,
+  saleMode: true,
   reservePrice: true,
   commissionRateBps: true,
 } as const;
@@ -150,9 +152,17 @@ export async function settleAuction(
       },
       data: { status: MarketplaceBidStatus.LOST },
     });
+    // An auction is forced to ONE_OFF when the listing is created, so in
+    // practice this always flips. Checked anyway rather than trusting that
+    // invariant from a distance: an edit could set UNLIMITED on a listing that
+    // already had bids, and closing the auction would then delete a listing
+    // that is still licensed to everyone else.
     await tx.marketplaceListing.update({
       where: { id: listing.id },
-      data: { status: MarketplaceListingStatus.SOLD },
+      data:
+        listing.saleMode === "UNLIMITED"
+          ? { directPurchasesCount: { increment: 1 } }
+          : { status: MarketplaceListingStatus.SOLD },
     });
     await tx.user.update({
       where: { id: listing.sellerId },

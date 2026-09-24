@@ -4,7 +4,11 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { toNum } from "@/lib/money";
-import { getCategory, validateDetails } from "@/lib/marketplace-categories";
+import {
+  getCategory,
+  validateDetails,
+  resolveSaleMode,
+} from "@/lib/marketplace-categories";
 import { buildListingPayload } from "@/lib/marketplace-studio";
 import { z } from "zod";
 
@@ -133,6 +137,11 @@ export async function POST(request: NextRequest) {
       category: payload.category,
       assetType: payload.assetType,
       subType: payload.subType,
+      // Studio output is stock: a photo or clip is licensed to every buyer who
+      // wants it, so it must not leave the shop after the first $5 sale.
+      // resolveSaleMode clamps this back to ONE_OFF for any category that
+      // cannot be sold repeatedly.
+      saleMode: resolveSaleMode(d.assetType, "UNLIMITED"),
       details: JSON.parse(JSON.stringify(payload.details)),
       price: payload.price,
       currency: payload.currency,

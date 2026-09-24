@@ -2398,6 +2398,17 @@ model MarketplaceListing {
   // commission. Defaults to "DIGITAL_PRODUCT" so legacy rows stay valid.
   assetType                String                   @default("DIGITAL_PRODUCT")
   subType                  String?
+  // "ONE_OFF" | "UNLIMITED" — see SaleMode in src/lib/marketplace-categories.ts.
+  //
+  // ONE_OFF listings go SOLD on the first purchase, which is right for a domain
+  // or an account: there is one of them and it changes hands. UNLIMITED
+  // listings stay ACTIVE and are licensed to every buyer who wants them, which
+  // is the entire point of stock media and digital products — marking those
+  // SOLD after one sale deleted the listing from the shop after a single $5
+  // licence.
+  //
+  // Defaults to ONE_OFF so existing rows keep exactly the behaviour they had.
+  saleMode                 String                   @default("ONE_OFF")
   // Category-specific structured data (mirrors customConfig pattern on Task).
   details                  Json?
   price                    Decimal                  @db.Decimal(18, 6)
@@ -2479,6 +2490,7 @@ model MarketplaceListing {
   @@index([assetType])
   @@index([isFeatured])
   @@index([brandId])
+  @@index([status, saleMode])
 }
 
 /**
@@ -2525,6 +2537,9 @@ model MarketplacePurchase {
 
   @@index([listingId])
   @@index([buyerId])
+  // "has this buyer already licensed this listing?" — asked on every view of
+  // an UNLIMITED listing, where repeat buyers are the normal case.
+  @@index([buyerId, listingId])
 }
 
 // Buyer↔seller conversation scoped to a listing. An admin can join a thread to

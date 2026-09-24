@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
             price: true,
             status: true,
             assetType: true,
+            saleMode: true,
             auctionMode: true,
             commissionRateBps: true,
           },
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
         price: number;
         status: string;
         assetType: string;
+        saleMode: string;
         auctionMode: boolean;
         commissionRateBps: number | null;
       };
@@ -156,12 +158,17 @@ export async function POST(request: NextRequest) {
       for (const plan of itemPlans) {
         const l = plan.item.listing;
 
-        // Atomic status flip — if a concurrent purchase already took it,
-        // bail out and roll back everything.
+        // Only a ONE_OFF listing leaves the shop when it sells; an UNLIMITED
+        // one is licensed to everyone who wants it and stays ACTIVE. The
+        // updateMany remains the concurrency guard either way — it matches
+        // only an ACTIVE row, so something withdrawn mid-checkout still
+        // rolls the whole cart back.
         const flipped = await tx.marketplaceListing.updateMany({
           where: { id: l.id, status: MarketplaceListingStatus.ACTIVE },
           data: {
-            status: MarketplaceListingStatus.SOLD,
+            ...(l.saleMode !== "UNLIMITED"
+              ? { status: MarketplaceListingStatus.SOLD }
+              : {}),
             directPurchasesCount: { increment: 1 },
           },
         });

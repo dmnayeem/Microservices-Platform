@@ -78,6 +78,8 @@ interface Listing {
   verifiedMetrics: boolean;
   ndaGated: boolean;
   nsfw: boolean;
+  /** "ONE_OFF" | "UNLIMITED" — whether buying it takes it off the market. */
+  saleMode: string;
   auctionMode: boolean;
   startingBid: number | null;
   reservePrice: number | null;
@@ -240,7 +242,20 @@ export function ListingDetailView({
           });
           return;
         }
-        // 409 = race-loss. Specific copy.
+        // 409 covers two very different things. An UNLIMITED listing stays on
+        // sale, so a repeat buyer has not lost a race — they already own it,
+        // and telling them someone else got there first would be nonsense.
+        if (res.status === 409 && d.alreadyOwned) {
+          toast.success("You already own this", {
+            description: d.error ?? "Download it again from Orders at no extra cost.",
+            action: {
+              label: "Orders",
+              onClick: () => router.push("/marketplace/orders"),
+            },
+          });
+          return;
+        }
+        // 409 = race-loss on a one-off listing. Specific copy.
         if (res.status === 409) {
           toast.error("Just missed it", {
             description: d.error ?? "Another buyer took this listing first.",
@@ -400,6 +415,13 @@ export function ListingDetailView({
             </p>
             <p className="text-3xl font-extrabold text-white tabular-nums">
               ${listing.price.toLocaleString()}
+            </p>
+            {/* A buyer needs to know which of the two things they are buying:
+                the only copy, or a licence alongside everyone else. */}
+            <p className="text-[11px] text-(--app-ink-3)">
+              {listing.saleMode === "UNLIMITED"
+                ? "Licensed to every buyer — stays on sale after you buy it."
+                : "Sold once. It leaves the marketplace when it sells."}
             </p>
             {listing.auctionMode && (
               <div className="flex flex-wrap gap-3 text-xs text-(--app-ink-3)">

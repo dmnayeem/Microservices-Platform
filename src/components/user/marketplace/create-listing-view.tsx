@@ -31,6 +31,7 @@ import {
   getCategory,
   getFieldsFor,
   getDeliverableKind,
+  canBeUnlimited,
   requiresDeliverable,
   type CategoryField,
 } from "@/lib/marketplace-categories";
@@ -71,6 +72,7 @@ export function CreateListingView() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number>(9.99);
+  const [exclusive, setExclusive] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [files, setFiles] = useState<string[]>([]); // deliverable(s)
   const [details, setDetails] = useState<Record<string, unknown>>({});
@@ -86,6 +88,7 @@ export function CreateListingView() {
     [assetType, subType]
   );
   const deliverableKind = assetType ? getDeliverableKind(assetType) : null;
+  const repeatable = assetType ? canBeUnlimited(assetType) : false;
   const needsDeliverable = assetType ? requiresDeliverable(assetType) : false;
 
   const setField = (key: string, v: unknown) =>
@@ -158,6 +161,9 @@ export function CreateListingView() {
           details,
           price,
           currency: "USD",
+          // Only meaningful for a repeatable category; the server clamps
+          // anything else back to ONE_OFF.
+          saleMode: repeatable && !exclusive ? "UNLIMITED" : "ONE_OFF",
           affiliateCommissionType: affType || null,
           affiliateCommissionValue: affType && affValue > 0 ? affValue : null,
           images,
@@ -301,6 +307,29 @@ export function CreateListingView() {
                 className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm focus:outline-none focus:border-(--app-accent-edge)"
               />
             </div>
+            {/* Only offered where it is a real choice. A domain or an account
+                can only ever go to one buyer, so showing a toggle there would
+                promise something the category cannot deliver. */}
+            {repeatable && (
+              <div className="w-full">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={exclusive}
+                    onChange={(e) => setExclusive(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-xs text-(--app-ink-2)">
+                    Sell this once, to a single buyer
+                    <span className="block text-(--app-ink-3)">
+                      {exclusive
+                        ? "The listing leaves the shop as soon as someone buys it."
+                        : "By default this stays on sale and is licensed to every buyer who wants it."}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
           </section>
 
           {/* Step 3 — category-specific fields */}

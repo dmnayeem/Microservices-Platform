@@ -59,6 +59,7 @@ export async function PATCH(
             title: true,
             price: true,
             assetType: true,
+            saleMode: true,
             commissionRateBps: true,
           },
         },
@@ -181,10 +182,15 @@ export async function PATCH(
       // Re-check the listing inside the transaction. The status read above is
       // check-then-act; two accepts on competing offers could otherwise both
       // sell the same listing.
+      // Accepting a negotiated price on an UNLIMITED listing sells one
+      // licence, not the listing: it stays on sale for everyone else. Only a
+      // ONE_OFF item is gone once its buyer is settled.
       const claimed = await tx.marketplaceListing.updateMany({
         where: { id, status: MarketplaceListingStatus.ACTIVE },
         data: {
-          status: MarketplaceListingStatus.SOLD,
+          ...(offer.listing.saleMode !== "UNLIMITED"
+            ? { status: MarketplaceListingStatus.SOLD }
+            : {}),
           directPurchasesCount: { increment: 1 },
         },
       });

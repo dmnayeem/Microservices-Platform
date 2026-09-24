@@ -24,6 +24,7 @@ import {
 } from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum, toNumOrNull } from "@/lib/money";
+import { requiresDeliverable } from "@/lib/marketplace-categories";
 
 // POST /api/marketplace/:id/checkout
 //
@@ -59,6 +60,7 @@ export async function POST(
         price: true,
         status: true,
         assetType: true,
+        saleMode: true,
         auctionMode: true,
         commissionRateBps: true,
         affiliateCommissionType: true,
@@ -85,6 +87,28 @@ export async function POST(
         { error: "Cannot purchase your own listing" },
         { status: 400 }
       );
+    }
+
+    // An UNLIMITED listing can be licensed by any number of buyers, but the
+    // same buyer paying twice for the same file gets nothing for the second
+    // payment — they already hold a permanent download. Only guarded for
+    // listings that hand over a file: ordering the same SERVICE again is a
+    // perfectly normal thing to want.
+    if (listing.saleMode === "UNLIMITED" && requiresDeliverable(listing.assetType)) {
+      const owned = await prisma.marketplacePurchase.findFirst({
+        where: { listingId: id, buyerId: userId, status: "COMPLETED" },
+        select: { id: true },
+      });
+      if (owned) {
+        return NextResponse.json(
+          {
+            error:
+              "You already own this — download it again from Orders, at no extra cost.",
+            alreadyOwned: true,
+          },
+          { status: 409 }
+        );
+      }
     }
     const priceNum = toNum(listing.price);
     if (!Number.isFinite(priceNum) || priceNum <= 0) {
@@ -159,12 +183,20 @@ export async function POST(
       : sellerAmount;
 
     const purchase = await prisma.$transaction(async (tx) => {
-      // Atomic status flip — bails out (count: 0) if a concurrent request
-      // already took the listing.
+      // Only a ONE_OFF listing leaves the shop when it sells. An UNLIMITED
+      // one — a stock photo, an ebook, a template — is licensed to every
+      // buyer who wants it, so it stays ACTIVE and only its counter moves.
+      // Flipping those to SOLD removed a $5 photo from the shop after a
+      // single sale, which is the opposite of how licensing a file works.
+      //
+      // The updateMany is still the concurrency guard in both cases: it
+      // matches only an ACTIVE row, so a listing sold or withdrawn a
+      // moment ago yields count 0 rather than a second sale.
+      const oneOff = listing.saleMode !== "UNLIMITED";
       const flipped = await tx.marketplaceListing.updateMany({
         where: { id, status: MarketplaceListingStatus.ACTIVE },
         data: {
-          status: MarketplaceListingStatus.SOLD,
+          ...(oneOff ? { status: MarketplaceListingStatus.SOLD } : {}),
           directPurchasesCount: { increment: 1 },
         },
       });

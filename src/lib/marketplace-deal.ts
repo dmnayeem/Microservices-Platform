@@ -382,7 +382,7 @@ export async function releaseDeal(opts: {
   const { dealId, actor } = opts;
   const deal = await prisma.marketplaceDeal.findUnique({
     where: { id: dealId },
-    include: { listing: { select: { id: true, title: true } } },
+    include: { listing: { select: { id: true, title: true, saleMode: true } } },
   });
   if (!deal) return { ok: false, error: "Deal not found.", status: 404 };
 
@@ -434,10 +434,15 @@ export async function releaseDeal(opts: {
       });
 
       // Single-quantity listing → mark SOLD if it's still active (best-effort).
-      await tx.marketplaceListing.updateMany({
-        where: { id: deal.listingId, status: MarketplaceListingStatus.ACTIVE },
-        data: { status: MarketplaceListingStatus.SOLD },
-      });
+      // A ONE_OFF listing is gone once the escrow releases. An UNLIMITED one
+      // is still for sale to everyone else — an escrow deal there is one
+      // negotiated licence, not the end of the listing.
+      if (deal.listing?.saleMode !== "UNLIMITED") {
+        await tx.marketplaceListing.updateMany({
+          where: { id: deal.listingId, status: MarketplaceListingStatus.ACTIVE },
+          data: { status: MarketplaceListingStatus.SOLD },
+        });
+      }
 
       // Pay the seller.
       await tx.user.update({

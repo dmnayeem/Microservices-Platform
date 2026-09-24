@@ -198,9 +198,17 @@ export async function POST(request: NextRequest) {
       });
       if (paid.count === 0) throw new Error("INSUFFICIENT_BALANCE");
 
+      // Same rule as the cash checkout: only a ONE_OFF listing leaves the
+      // shop. Kept in step deliberately — nothing in the app posts here any
+      // more, but the endpoint is still reachable, and a second sale path
+      // that quietly disagreed about what "sold" means is exactly the kind
+      // of thing found later by accident.
       const claimed = await tx.marketplaceListing.updateMany({
         where: { id: listingId, status: MarketplaceListingStatus.ACTIVE },
-        data: { status: MarketplaceListingStatus.SOLD },
+        data:
+          listing.saleMode === "UNLIMITED"
+            ? { directPurchasesCount: { increment: 1 } }
+            : { status: MarketplaceListingStatus.SOLD },
       });
       if (claimed.count === 0) throw new Error("LISTING_TAKEN");
 

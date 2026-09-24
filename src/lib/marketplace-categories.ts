@@ -94,6 +94,142 @@ export interface CategoryConfig {
   /** When true, COMMON_FIELDS (financials/handover) are skipped — stock media
    *  and simple digital goods don't have monthly revenue etc. */
   skipCommonFields?: boolean;
+  /**
+   * Whether one listing of this type can be sold to many buyers.
+   *
+   * This is the difference between the two businesses living in this
+   * marketplace. A domain or a social account is a single thing that changes
+   * hands once, so the listing has to disappear when it sells. A stock photo,
+   * an ebook or a template is a file that is licensed over and over — marking
+   * it SOLD after the first buyer would delete the entire business model.
+   *
+   * Only the DEFAULT for the type; the seller may still list a repeatable item
+   * as a one-off (an exclusive licence, a single-copy sale).
+   */
+  repeatable?: boolean;
+}
+
+/**
+ * How a listing is sold.
+ *
+ * ONE_OFF   the listing goes SOLD on the first purchase and leaves the shop.
+ * UNLIMITED the listing stays ACTIVE and is licensed to as many buyers as
+ *           want it. The buyer's own download access comes from their
+ *           purchase row, so nothing about delivery changes.
+ */
+export type SaleMode = "ONE_OFF" | "UNLIMITED";
+
+export const SALE_MODES: SaleMode[] = ["ONE_OFF", "UNLIMITED"];
+
+export function isSaleMode(v: unknown): v is SaleMode {
+  return v === "ONE_OFF" || v === "UNLIMITED";
+}
+
+/** The sale mode a category starts on when the seller does not choose. */
+export function defaultSaleMode(assetType: string): SaleMode {
+  return getCategory(assetType)?.repeatable ? "UNLIMITED" : "ONE_OFF";
+}
+
+/** True when the seller is allowed to offer this listing repeatedly. */
+export function canBeUnlimited(assetType: string): boolean {
+  return getCategory(assetType)?.repeatable === true;
+}
+
+/**
+ * The sale mode to store, given what (if anything) the seller asked for.
+ *
+ * Clamps rather than trusts. An UNLIMITED domain or social account would be
+ * sold over and over while only one buyer can possibly receive it, so a request
+ * the category cannot honour falls back to ONE_OFF — the direction where a
+ * mistake costs a missed sale instead of selling the same account to fifty
+ * people. The UI only offers the choice where it is allowed, so this is the
+ * guard for direct API calls.
+ */
+export function resolveSaleMode(
+  assetType: string,
+  requested?: string | null
+): SaleMode {
+  if (isSaleMode(requested)) {
+    if (requested === "UNLIMITED" && !canBeUnlimited(assetType)) return "ONE_OFF";
+    return requested;
+  }
+  return defaultSaleMode(assetType);
+}
+
+/**
+ * The marketplaces inside the marketplace.
+ *
+ * Eighteen asset types shown as one flat row of chips reads as a junk drawer:
+ * a domain broker and someone after a stock photo have nothing to say to each
+ * other, yet they were browsing the same undifferentiated list. Grouping them
+ * gives each trade its own front door while keeping one set of listings, one
+ * checkout, one escrow and one dispute process underneath.
+ *
+ * `OTHER` is deliberately absent from every section — it is the escape hatch,
+ * and putting it in a storefront would make it look like a category.
+ */
+export interface MarketplaceSection {
+  slug: string;
+  label: string;
+  /** One line under the section tab. */
+  tagline: string;
+  iconKey: string;
+  assetTypes: AssetType[];
+}
+
+export const MARKETPLACE_SECTIONS: MarketplaceSection[] = [
+  {
+    slug: "stock",
+    label: "Stock media",
+    tagline: "Photos, footage and audio, licensed to as many buyers as want them",
+    iconKey: "Image",
+    assetTypes: ["STOCK_PHOTO", "STOCK_VIDEO", "MUSIC"],
+  },
+  {
+    slug: "products",
+    label: "Digital products",
+    tagline: "Ebooks, templates and downloads you can sell again and again",
+    iconKey: "Package",
+    assetTypes: ["EBOOK", "DIGITAL_PRODUCT"],
+  },
+  {
+    slug: "assets",
+    label: "Digital assets",
+    tagline: "Domains, websites, apps and accounts — sold once, transferred to the buyer",
+    iconKey: "Globe",
+    assetTypes: [
+      "DOMAIN",
+      "WEBSITE",
+      "SOCIAL_ACCOUNT",
+      "POD_ACCOUNT",
+      "PLAYSTORE_ACCOUNT",
+      "APPLE_DEV_ACCOUNT",
+      "MOBILE_APP",
+      "MOBILE_GAME",
+      "SAAS_PRODUCT",
+      "PLATFORM",
+    ],
+  },
+  {
+    slug: "services",
+    label: "Services",
+    tagline: "Work delivered to order",
+    iconKey: "Wrench",
+    assetTypes: ["SERVICE"],
+  },
+];
+
+export function getSection(slug: string): MarketplaceSection | null {
+  return MARKETPLACE_SECTIONS.find((s) => s.slug === slug) ?? null;
+}
+
+/** Which section an asset type belongs to, if any. */
+export function sectionForAssetType(assetType: string): MarketplaceSection | null {
+  return (
+    MARKETPLACE_SECTIONS.find((s) =>
+      (s.assetTypes as string[]).includes(assetType)
+    ) ?? null
+  );
 }
 
 // ─── Fields every monetizable asset gets ────────────────────────────────────
@@ -474,6 +610,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     assetType: "STOCK_PHOTO",
+    repeatable: true,
     label: "Stock photo",
     description: "Original photograph licensed for reuse",
     iconKey: "Image",
@@ -493,6 +630,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     assetType: "STOCK_VIDEO",
+    repeatable: true,
     label: "Stock video",
     description: "Original video clip / footage licensed for reuse",
     iconKey: "Video",
@@ -513,6 +651,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     assetType: "MUSIC",
+    repeatable: true,
     label: "Music / audio",
     description: "Original track, loop, or sound effect licensed for reuse",
     iconKey: "Music",
@@ -537,6 +676,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     assetType: "EBOOK",
+    repeatable: true,
     label: "Ebook",
     description: "Ebook / PDF guide you hold the rights to sell",
     iconKey: "BookOpen",
@@ -557,6 +697,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     assetType: "DIGITAL_PRODUCT",
+    repeatable: true,
     label: "Digital product",
     description: "Ebook, template, course, software, media — downloadable",
     iconKey: "FileText",
@@ -589,6 +730,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     assetType: "SERVICE",
+    repeatable: true,
     label: "Service",
     description: "Done-for-you service offering",
     iconKey: "Briefcase",

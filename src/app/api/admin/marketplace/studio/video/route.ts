@@ -4,7 +4,11 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { isMagnificConfigured, type MagnificFeature } from "@/lib/magnific";
-import { getCategory, validateDetails } from "@/lib/marketplace-categories";
+import {
+  getCategory,
+  validateDetails,
+  resolveSaleMode,
+} from "@/lib/marketplace-categories";
 import {
   startVideoTask,
   generateListingMetadata,
@@ -137,6 +141,8 @@ export async function POST(request: NextRequest) {
       category: cat.label,
       assetType: d.assetType,
       subType: d.subType ?? null,
+      // Stock footage, same as the still it came from: licensed repeatedly.
+      saleMode: resolveSaleMode(d.assetType, "UNLIMITED"),
       details: {
         ...details,
         // Picked up by `settleMagnificTasks`. Kept on the listing rather than

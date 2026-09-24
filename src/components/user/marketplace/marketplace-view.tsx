@@ -23,7 +23,10 @@ import {
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { BottomSheet } from "@/components/user/primitives/bottom-sheet";
-import { ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
+import {
+  ASSET_TYPE_LABEL,
+  MARKETPLACE_SECTIONS,
+} from "@/lib/marketplace-categories";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AffiliateRewardBadge } from "@/components/user/affiliate/affiliate-reward-badge";
 import { cn } from "@/lib/utils";
@@ -77,6 +80,7 @@ const SORT_OPTIONS: Array<{ value: string; label: string }> = [
 export function MarketplaceView() {
   const [search, setSearch] = useState("");
   const [assetType, setAssetType] = useState<string>("");
+  const [section, setSection] = useState<string>("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [monetizedOnly, setMonetizedOnly] = useState(false);
   const [auctionOnly, setAuctionOnly] = useState(false);
@@ -104,6 +108,7 @@ export function MarketplaceView() {
     setLoading(true);
     const params = new URLSearchParams();
     if (assetType) params.set("assetType", assetType);
+    if (section) params.set("section", section);
     if (search) params.set("search", search);
     if (verifiedOnly) params.set("verified", "true");
     if (monetizedOnly) params.set("monetized", "true");
@@ -132,6 +137,7 @@ export function MarketplaceView() {
     };
   }, [
     assetType,
+    section,
     search,
     verifiedOnly,
     monetizedOnly,
@@ -319,6 +325,41 @@ export function MarketplaceView() {
         </Link>
       </div>
 
+      {/* Storefront sections. Eighteen asset types in one flat row read as a
+          junk drawer: someone buying a stock photo and someone buying a domain
+          were browsing the same undifferentiated list. Picking a section also
+          clears the asset-type chip, because the chip is a refinement WITHIN a
+          section and keeping a stale one would show an empty shop. */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => {
+            setSection("");
+            setAssetType("");
+          }}
+          className={sectionClass(!section)}
+        >
+          Everything
+        </button>
+        {MARKETPLACE_SECTIONS.map((s) => (
+          <button
+            key={s.slug}
+            onClick={() => {
+              setSection(s.slug === section ? "" : s.slug);
+              setAssetType("");
+            }}
+            className={sectionClass(section === s.slug)}
+            title={s.tagline}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {section && (
+        <p className="text-[11px] text-(--app-ink-3) -mt-1">
+          {MARKETPLACE_SECTIONS.find((s) => s.slug === section)?.tagline}
+        </p>
+      )}
+
       {/* Asset-type chips */}
       <div className="flex flex-wrap gap-1.5">
         <button
@@ -411,6 +452,18 @@ export function MarketplaceView() {
         </div>
       )}
     </div>
+  );
+}
+
+// Sections are the primary navigation, so they read as tabs rather than as
+// another row of the same small pills the refinements use — a buyer should be
+// able to tell at a glance which choice picks the shop and which narrows it.
+function sectionClass(active: boolean) {
+  return cn(
+    "px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors whitespace-nowrap",
+    active
+      ? "bg-(--app-cta) text-(--app-on-cta) border-transparent"
+      : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:text-white"
   );
 }
 

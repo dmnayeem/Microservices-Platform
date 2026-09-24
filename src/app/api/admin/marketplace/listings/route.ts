@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   validateDetails,
   getCategory,
+  resolveSaleMode,
 } from "@/lib/marketplace-categories";
 
 const ASSET_TYPES = [
@@ -40,6 +41,7 @@ const createListingSchema = z.object({
   category: z.string().min(1),
   assetType: z.enum(ASSET_TYPES).default("DIGITAL_PRODUCT"),
   subType: z.string().nullable().optional(),
+  saleMode: z.enum(["ONE_OFF", "UNLIMITED"]).optional(),
   details: z.record(z.string(), z.unknown()).optional(),
   price: z.number().positive(),
   currency: z.string().default("USD"),
@@ -165,6 +167,16 @@ export async function POST(request: NextRequest) {
         category: data.category,
         assetType: data.assetType,
         subType: data.subType ?? null,
+        // Defaults from the category: stock media, ebooks, digital products
+        // and services are licensed repeatedly, everything else changes hands
+        // once. A seller can still offer a repeatable item as a single
+        // exclusive copy by asking for ONE_OFF.
+        // An auction has exactly one winner by definition, so it forces
+        // ONE_OFF regardless of category — bidding for a licence that stays
+        // on sale to everyone else afterwards is not an auction.
+        saleMode: data.auctionMode
+          ? "ONE_OFF"
+          : resolveSaleMode(data.assetType, data.saleMode),
         // Prisma JSON expects a plain JSON value — strip undefined.
         details: data.details ? JSON.parse(JSON.stringify(data.details)) : null,
         price: data.price,

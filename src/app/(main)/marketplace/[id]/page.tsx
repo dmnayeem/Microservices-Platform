@@ -150,6 +150,7 @@ export default async function ListingDetailPage({
         auctionEndsAt: listing.auctionEndsAt
           ? listing.auctionEndsAt.toISOString()
           : null,
+        saleMode: listing.saleMode,
         isFeatured: listing.isFeatured,
         isPromoted: listing.isPromoted,
         createdAt: listing.createdAt.toISOString(),

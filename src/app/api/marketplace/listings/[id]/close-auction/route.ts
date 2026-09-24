@@ -35,6 +35,7 @@ export async function POST(
         status: true,
         title: true,
         assetType: true,
+      saleMode: true,
         auctionMode: true,
         auctionEndsAt: true,
         reservePrice: true,
