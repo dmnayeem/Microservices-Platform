@@ -24,6 +24,25 @@ export default async function MyListingsPage() {
       })
     : [];
 
+  // Sales money still inside the payout hold. Queried unconditionally: with
+  // the hold off no payout rows exist, so this is an empty aggregate and the
+  // tile stays hidden.
+  const heldAgg = await prisma.marketplacePayout.aggregate({
+    where: { sellerId: session.user.id, status: "HELD" },
+    _sum: { amount: true },
+    _count: { _all: true },
+  });
+  const nextRelease = await prisma.marketplacePayout.findFirst({
+    where: { sellerId: session.user.id, status: "HELD" },
+    orderBy: { releaseAt: "asc" },
+    select: { releaseAt: true },
+  });
+  const pendingPayout = {
+    amount: Number(heldAgg._sum.amount ?? 0),
+    count: heldAgg._count._all,
+    nextReleaseAt: nextRelease?.releaseAt.toISOString() ?? null,
+  };
+
   const salesMap = new Map<string, { count: number; earned: number }>();
   for (const p of purchases) {
     const cur = salesMap.get(p.listingId) ?? { count: 0, earned: 0 };
@@ -50,5 +69,7 @@ export default async function MyListingsPage() {
     };
   });
 
-  return <SellerDashboardView listings={sellerListings} />;
+  return (
+    <SellerDashboardView listings={sellerListings} pendingPayout={pendingPayout} />
+  );
 }

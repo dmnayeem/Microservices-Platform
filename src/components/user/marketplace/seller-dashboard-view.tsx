@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   Hourglass,
+  Clock,
 } from "lucide-react";
 import { ListingCard } from "@/components/user/primitives/listing-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
@@ -55,9 +56,12 @@ type FilterKey = typeof STATUS_FILTERS[number]["value"];
 
 interface Props {
   listings: SellerListing[];
+  /** Money from completed sales still inside the platform's payout hold.
+   *  Zero — and hidden — whenever the hold is switched off. */
+  pendingPayout?: { amount: number; count: number; nextReleaseAt: string | null };
 }
 
-export function SellerDashboardView({ listings }: Props) {
+export function SellerDashboardView({ listings, pendingPayout }: Props) {
   const [filter, setFilter] = useState<FilterKey>("ALL");
 
   const stats = useMemo(() => {
@@ -103,6 +107,16 @@ export function SellerDashboardView({ listings }: Props) {
           value={`${usd(stats.totalEarned)}`}
           tone="emerald"
         />
+        {/* Without this a seller with the hold on sees a sale go through and
+            nothing arrive, with no explanation anywhere. */}
+        {pendingPayout && pendingPayout.count > 0 && (
+          <StatCard
+            icon={Clock}
+            label="Clearing"
+            value={`${usd(pendingPayout.amount)}`}
+            tone="amber"
+          />
+        )}
         <StatCard
           icon={ShoppingBag}
           label="Sales"

@@ -15,6 +15,7 @@
  * It saves and restores the real settings around itself, and deletes every row
  * it creates, so it is safe to run against production.
  */
+import { readFileSync } from "fs";
 import { prisma } from "./_q";
 import { toNum } from "../src/lib/money";
 import {
@@ -35,8 +36,38 @@ function check(label: string, ok: boolean, detail = "") {
   console.log(`${ok ? "  ok  " : "FAIL  "}${label}${detail ? ` — ${detail}` : ""}`);
 }
 
+/**
+ * Every path that pays a marketplace seller. Each must route through
+ * payOrHoldSeller, or the admin turns the hold on and some ways of buying
+ * quietly keep paying instantly \u2014 a switch that only half works is worse
+ * than no switch. Escrow is excluded on purpose: MarketplaceDeal holds funds
+ * through its own lifecycle and must not hold them twice.
+ */
+const SELLER_PAY_SITES = [
+  "src/app/api/marketplace/[id]/checkout/route.ts",
+  "src/app/api/cart/checkout/route.ts",
+  "src/app/api/marketplace/listings/[id]/offers/[offerId]/route.ts",
+  "src/lib/marketplace-auctions.ts",
+];
+
 async function main() {
-  console.log("Tier sanitising");
+  console.log("Every sale path honours the hold");
+  for (const f of SELLER_PAY_SITES) {
+    let src = "";
+    try {
+      src = readFileSync(f, "utf8");
+    } catch {
+      check(`${f} exists`, false, "file not found \u2014 was it moved?");
+      continue;
+    }
+    check(
+      `${f.split("/").slice(-2).join("/")} routes through payOrHoldSeller`,
+      src.includes("payOrHoldSeller"),
+      src.includes("payOrHoldSeller") ? "" : "PAYS THE SELLER DIRECTLY"
+    );
+  }
+
+  console.log("\nTier sanitising");
   const dirty = [
     { id: "Standard Licence!", name: "Standard", price: "12.005" },
     { id: "ext", name: "Extended", price: 40 },

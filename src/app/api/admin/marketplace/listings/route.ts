@@ -3,11 +3,16 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
+import {
+  getLicenseTiersEnabled,
+  sanitizeTiers,
+} from "@/lib/marketplace-selling";
 import { z } from "zod";
 import {
   validateDetails,
   getCategory,
   resolveSaleMode,
+  canBeUnlimited,
 } from "@/lib/marketplace-categories";
 
 const ASSET_TYPES = [
@@ -42,6 +47,17 @@ const createListingSchema = z.object({
   assetType: z.enum(ASSET_TYPES).default("DIGITAL_PRODUCT"),
   subType: z.string().nullable().optional(),
   saleMode: z.enum(["ONE_OFF", "UNLIMITED"]).optional(),
+  licenseTiers: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(32),
+        name: z.string().min(1).max(60),
+        price: z.number().positive(),
+        description: z.string().max(300).optional(),
+      })
+    )
+    .max(5)
+    .optional(),
   details: z.record(z.string(), z.unknown()).optional(),
   price: z.number().positive(),
   currency: z.string().default("USD"),
@@ -157,6 +173,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Same rule as the seller route: only honoured while the admin has the
+    // feature on and only for a category sold repeatedly.
+    const tiers =
+      (await getLicenseTiersEnabled()) && canBeUnlimited(data.assetType)
+        ? sanitizeTiers(data.licenseTiers)
+        : [];
+
     const listing = await prisma.marketplaceListing.create({
       data: {
         sellerId: session.user.id,
@@ -174,12 +197,13 @@ export async function POST(request: NextRequest) {
         // An auction has exactly one winner by definition, so it forces
         // ONE_OFF regardless of category — bidding for a licence that stays
         // on sale to everyone else afterwards is not an auction.
+        licenseTiers: tiers.length > 0 ? tiers : undefined,
         saleMode: data.auctionMode
           ? "ONE_OFF"
           : resolveSaleMode(data.assetType, data.saleMode),
         // Prisma JSON expects a plain JSON value — strip undefined.
         details: data.details ? JSON.parse(JSON.stringify(data.details)) : null,
-        price: data.price,
+        price: tiers.length > 0 ? tiers[0].price : data.price,
         currency: data.currency,
         images: data.images ?? [],
         screenshots: data.screenshots ?? [],

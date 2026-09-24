@@ -8,6 +8,10 @@ import {
 } from "@/generated/prisma";
 import { resolveCommissionBps, splitPrice } from "@/lib/marketplace-commission";
 import { lt, toNum, type MoneyInput } from "@/lib/money";
+import {
+  getPayoutHoldConfig,
+  payOrHoldSeller,
+} from "@/lib/marketplace-selling";
 
 export type AuctionCloseResult =
   | { listingId: string; outcome: "sold"; winnerId: string; amount: number }
@@ -123,6 +127,8 @@ export async function settleAuction(
   // Settle atomically. The winner debit is a CAS (`cashBalance >= amount`) so the
   // platform never pays the seller from a buyer who can't cover the bid. If the
   // winner is short, void the sale: mark all bids LOST + close the listing unsold.
+  const hold = await getPayoutHoldConfig();
+
   const purchase = await prisma.$transaction(async (tx) => {
     const paid = await tx.user.updateMany({
       where: { id: highBid.bidderId, cashBalance: { gte: amount } },
@@ -164,12 +170,14 @@ export async function settleAuction(
           ? { directPurchasesCount: { increment: 1 } }
           : { status: MarketplaceListingStatus.SOLD },
     });
-    await tx.user.update({
-      where: { id: listing.sellerId },
-      data: {
-        cashBalance: { increment: sellerAmount },
-        totalEarnings: { increment: sellerAmount },
-      },
+    // The fourth and last sale path to honour the payout hold. Winning an
+    // auction is still just a sale, and a switch that only applied to some
+    // ways of buying would be worse than no switch at all.
+    const held = await payOrHoldSeller(tx, {
+      sellerId: listing.sellerId,
+      purchaseId: p.id,
+      amount: toNum(sellerAmount),
+      hold,
     });
     await tx.transaction.create({
       data: {
@@ -182,17 +190,20 @@ export async function settleAuction(
         reference: `marketplace_auction_${listing.id}`,
       },
     });
-    await tx.transaction.create({
-      data: {
-        userId: listing.sellerId,
-        type: TransactionType.EARNING,
-        status: TransactionStatus.COMPLETED,
-        amount: sellerAmount,
-        points: 0,
-        description: `Auction sale — "${listing.title}"`,
-        reference: `marketplace_auction_${listing.id}`,
-      },
-    });
+    // Written on release instead when the money is held.
+    if (!held.held) {
+      await tx.transaction.create({
+        data: {
+          userId: listing.sellerId,
+          type: TransactionType.EARNING,
+          status: TransactionStatus.COMPLETED,
+          amount: sellerAmount,
+          points: 0,
+          description: `Auction sale — "${listing.title}"`,
+          reference: `marketplace_auction_${listing.id}`,
+        },
+      });
+    }
     return p;
   });
 

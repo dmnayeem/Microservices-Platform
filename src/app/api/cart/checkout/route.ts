@@ -18,6 +18,8 @@ import {
 import {
   getPayoutHoldConfig,
   payOrHoldSeller,
+  getLicenseTiersEnabled,
+  readTiers,
 } from "@/lib/marketplace-selling";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum } from "@/lib/money";
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
             status: true,
             assetType: true,
             saleMode: true,
+            licenseTiers: true,
             auctionMode: true,
             commissionRateBps: true,
           },
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest) {
         status: string;
         assetType: string;
         saleMode: string;
+        licenseTiers: unknown;
         auctionMode: boolean;
         commissionRateBps: number | null;
       };
@@ -109,6 +113,7 @@ export async function POST(request: NextRequest) {
     const total = cart.reduce((s, i) => s + toNum(i.listing.price), 0);
 
     const hold = await getPayoutHoldConfig();
+    const tiersEnabled = await getLicenseTiersEnabled();
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
@@ -191,6 +196,11 @@ export async function POST(request: NextRequest) {
             amount: l.price,
             fee: plan.fee,
             sellerAmount: plan.sellerAmount,
+            // The cart has no licence picker, and the listing price IS the
+            // cheapest tier, so that is what the buyer just bought. Recording
+            // it means a cart purchase carries the same proof of rights as one
+            // made from the listing page.
+            licenseTier: tiersEnabled ? (readTiers(l.licenseTiers)[0]?.id ?? null) : null,
             status: "COMPLETED",
           },
         });

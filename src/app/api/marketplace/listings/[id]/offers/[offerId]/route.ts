@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import {
+  getPayoutHoldConfig,
+  payOrHoldSeller,
+} from "@/lib/marketplace-selling";
+import {
   MarketplaceListingStatus,
   MarketplaceOfferStatus,
   NotificationType,
@@ -172,6 +176,8 @@ export async function PATCH(
     // `z.number().positive()` on the offer amount, two accounts could mint
     // arbitrary cash: B offers $1,000,000 on a $0 balance, A accepts, A is
     // credited real withdrawable money and B simply goes negative.
+    const hold = await getPayoutHoldConfig();
+
     const settled = await prisma.$transaction(async (tx) => {
       const paid = await tx.user.updateMany({
         where: { id: offer.buyerId, cashBalance: { gte: acceptedAmount } },
@@ -226,12 +232,15 @@ export async function PATCH(
         },
         data: { status: MarketplaceOfferStatus.WITHDRAWN },
       });
-      await tx.user.update({
-        where: { id: offer.listing.sellerId },
-        data: {
-          cashBalance: { increment: sellerAmount },
-          totalEarnings: { increment: sellerAmount },
-        },
+      // Honours the payout hold, same as the direct and cart checkouts. An
+      // accepted offer is an ordinary sale at a negotiated price; two of the
+      // four sale paths ignoring the switch would mean an owner who turned it
+      // on still had sellers paid instantly through this one.
+      const held = await payOrHoldSeller(tx, {
+        sellerId: offer.listing.sellerId,
+        purchaseId: p.id,
+        amount: toNum(sellerAmount),
+        hold,
       });
       await tx.transaction.create({
         data: {
@@ -244,17 +253,21 @@ export async function PATCH(
           reference: `marketplace_offer_${offerId}`,
         },
       });
-      await tx.transaction.create({
-        data: {
-          userId: offer.listing.sellerId,
-          type: TransactionType.EARNING,
-          status: TransactionStatus.COMPLETED,
-          amount: sellerAmount,
-          points: 0,
-          description: `Marketplace sale (offer) — "${offer.listing.title}"`,
-          reference: `marketplace_offer_${offerId}`,
-        },
-      });
+      // Only once the money is really theirs. While held, the release sweep
+      // writes this row on payout instead.
+      if (!held.held) {
+        await tx.transaction.create({
+          data: {
+            userId: offer.listing.sellerId,
+            type: TransactionType.EARNING,
+            status: TransactionStatus.COMPLETED,
+            amount: sellerAmount,
+            points: 0,
+            description: `Marketplace sale (offer) — "${offer.listing.title}"`,
+            reference: `marketplace_offer_${offerId}`,
+          },
+        });
+      }
       return { purchase: p, offer: o };
     });
 
