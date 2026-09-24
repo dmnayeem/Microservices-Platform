@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { getSetting, invalidateSettingsCache } from "@/lib/system-settings";
+import {
+  getSetting,
+  invalidateSettingsCache,
+  primeSetting,
+} from "@/lib/system-settings";
 
 /**
  * The admin-facing platform fee, as a PERCENT, on `/admin/settings` → Financial.
@@ -142,5 +146,12 @@ export async function saveCommissionConfig(
   });
   // `getSetting` caches; without this the new fee applies only after the cache
   // expires, which reads to the admin as a box that did nothing.
+  //
+  // Clearing alone is still not enough: the read carries an Accelerate
+  // `cacheStrategy`, and that edge cache keeps serving the old row (or, the
+  // first time either key is written, the cached ABSENCE of it, which reads
+  // as the default rate). Both keys are primed with exactly what was stored.
   invalidateSettingsCache();
+  primeSetting(FEE_PERCENT_KEY, Math.round((bps / 100) * 100) / 100);
+  primeSetting(SETTING_KEY, payload);
 }

@@ -55,6 +55,35 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 }
 
 /**
+ * Write a setting and make the new value readable immediately.
+ *
+ * Use this instead of a bare `systemSetting.upsert`. Doing the upsert by hand
+ * is how a settings control ends up looking dead: the admin saves, the page
+ * reloads, and `getSetting` hands back the old value — or, the very first time
+ * a key is written, the cached ABSENCE of the row, which reads as the fallback
+ * and looks exactly like the save having done nothing.
+ *
+ * Clearing the in-memory map alone does not fix that, because the read above
+ * also carries an Accelerate `cacheStrategy` and that edge cache is not ours to
+ * clear. Priming closes it on the instance the admin is actually talking to;
+ * other instances wait out the ordinary TTL, which is the staleness this cache
+ * was chosen for in the first place.
+ */
+export async function saveSetting(
+  key: string,
+  value: unknown,
+  category: string
+): Promise<void> {
+  await prisma.systemSetting.upsert({
+    where: { key },
+    create: { key, category, value: value as object },
+    update: { category, value: value as object },
+  });
+  invalidateSettingsCache();
+  primeSetting(key, value);
+}
+
+/**
  * Resolve a secret/config value: prefer the env var, then a SystemSetting row
  * (under `category`, key === the env name lowercased is NOT assumed — pass the
  * exact settings key). Returns "" when neither is set.

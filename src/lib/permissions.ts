@@ -3,7 +3,8 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { getSetting, invalidateSettingsCache } from "@/lib/system-settings";
+import { getSetting, invalidateSettingsCache,
+  primeSetting } from "@/lib/system-settings";
 import {
   ROLE_PERMISSIONS,
   isPermission,
@@ -91,7 +92,12 @@ export async function saveRolePermissionConfig(
     },
     update: { category: SETTING_CATEGORY, value: clean as unknown as object },
   });
+  // Clear first, then prime — priming before the clear would simply be wiped
+  // by it. The read goes through an Accelerate cacheStrategy whose edge cache
+  // is not ours to clear, so without the prime a permission change appeared to
+  // take up to a minute to apply, or nothing at all on the very first save.
   invalidateSettingsCache();
+  primeSetting(ROLE_PERM_SETTING_KEY, clean);
 }
 
 /**

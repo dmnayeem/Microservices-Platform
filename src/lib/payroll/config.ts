@@ -1,6 +1,10 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { getSetting, invalidateSettingsCache } from "@/lib/system-settings";
+import {
+  getSetting,
+  invalidateSettingsCache,
+  primeSetting,
+} from "@/lib/system-settings";
 
 /**
  * Payroll configuration — salaries and commission rates for STAFF accounts.
@@ -192,5 +196,10 @@ export async function savePayrollConfig(patch: SettingPatch): Promise<void> {
       update: { value: w.value as object, category: "payroll" },
     });
   }
+  // Order matters: clear first, then prime. `getSetting` reads through an
+  // Accelerate cacheStrategy whose edge cache is not ours to clear, so a
+  // freshly saved rate still reads as its old value without priming — and
+  // priming before the clear would simply be wiped by it.
   invalidateSettingsCache();
+  for (const w of writes) primeSetting(w.key, w.value);
 }

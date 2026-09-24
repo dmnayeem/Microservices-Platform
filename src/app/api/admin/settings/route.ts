@@ -3,7 +3,10 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { invalidatePointsRateCache } from "@/lib/economy";
-import { invalidateSettingsCache } from "@/lib/system-settings";
+import {
+  invalidateSettingsCache,
+  primeSetting,
+} from "@/lib/system-settings";
 import { invalidateUiTogglesCache } from "@/lib/ui-toggles-server";
 import { validateSettingValues } from "@/lib/setting-guards";
 
@@ -95,6 +98,12 @@ export async function POST(request: NextRequest) {
 
     // Flush caches so changed settings take effect immediately.
     invalidateSettingsCache();
+    // Clearing is not enough on its own. `getSetting` reads through an
+    // Accelerate `cacheStrategy`, and that edge cache is not ours to clear, so
+    // the next read can still return the OLD row — or, the first time a key is
+    // ever written, the cached ABSENCE of it, which reads as the fallback. The
+    // admin then saves, reloads, sees no change, and saves again.
+    for (const [key, value] of entries) primeSetting(key, value);
     invalidateUiTogglesCache();
     if ("points_per_usd" in settings) invalidatePointsRateCache();
 
