@@ -32,7 +32,10 @@ import {
   type SocialTaskView,
   type SocialTaskItemView,
 } from "@/lib/social-tasks";
-import { diyPromptFor } from "@/lib/social-ai-recipe";
+import {
+  diyPromptFor,
+  splitDiyPromptsFor,
+} from "@/lib/social-ai-recipe";
 import { SocialRecipePanel } from "@/components/user/tasks/social-recipe-panel";
 import { CopyButton } from "@/components/user/primitives/copy-field";
 import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
@@ -930,6 +933,19 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                 item.aiPrompt
               )
             : "";
+        // Pinterest (and any other image-first platform) gets two prompts
+        // instead of one, in the order the platform forces. Null elsewhere,
+        // so every other platform keeps the single combined prompt.
+        const splitPrompts =
+          def && item.aiMode !== "off"
+            ? splitDiyPromptsFor(
+                def,
+                platform?.label ?? task.platform,
+                item.fields,
+                task,
+                item.aiPrompt
+              )
+            : null;
         const req = item.proofRequirements;
         const ready = isItemReady(item, idx);
         const unlocked = isItemUnlocked(idx);
@@ -1137,6 +1153,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
               platformLabel={platform?.label ?? task.platform}
               mode={item.aiMode}
               diyPrompt={diyPrompt}
+              splitPrompts={splitPrompts}
               regenLeft={regenLeftByIndex[idx] ?? AI_REGEN_FALLBACK}
               generating={generatingAi === idx}
               hasGenerated={!!aiFieldsByIndex[idx]}

@@ -3,6 +3,7 @@ import type {
   ResolvedStep,
   SocialAction,
 } from "@/lib/social-tasks";
+import { isPostCreationAction } from "@/lib/social-tasks";
 
 /**
  * Prompt building for social post recipes.
@@ -220,6 +221,57 @@ export function buildDiyContentPrompt(
 }
 
 
+/**
+ * Platforms where the picture has to exist before anything else can be filled
+ * in — Pinterest above all, where a pin without an image cannot be published
+ * at all.
+ *
+ * Derived from the recipe rather than from a platform list, because
+ * `social-tasks` has already decided the order: if the first step IS the
+ * image, this is an image-first flow.
+ */
+export function isImageFirstRecipe(ctx: RecipeAiContext): boolean {
+  const first = ctx.specs[0]?.role;
+  return first === "image" || first === "imagePrompt";
+}
+
+/**
+ * The prompt that produces the PICTURE.
+ *
+ * Kept separate from the content prompt on image-first platforms. One combined
+ * prompt asked ChatGPT for a text-to-image *description* alongside the title
+ * and body, which left the user holding a paragraph they then had to feed back
+ * in a second time before they had anything to upload. This one is addressed
+ * to an image model directly: paste it, get a picture, download it.
+ */
+export function buildDiyImagePrompt(ctx: RecipeAiContext): string {
+  const lines: string[] = [
+    `Create an image I can upload as a ${ctx.platformLabel} pin.`,
+  ];
+
+  const topic = topicLine(ctx);
+  if (topic) lines.push(topic + ".");
+
+  // The admin's own image direction, when they wrote one, is the art brief.
+  const adminImage = ctx.specs
+    .filter((s) => s.role === "imagePrompt")
+    .map((s) => (ctx.fields[s.key] ?? "").trim())
+    .find(Boolean);
+  if (adminImage) lines.push(`Follow this direction: ${adminImage}`);
+
+  lines.push(
+    "",
+    "Requirements:",
+    "- Vertical, roughly 2:3 (1000 x 1500 px) — that is the shape the feed shows.",
+    "- Bright, high contrast, one clear subject. It has to read at thumbnail size.",
+    "- No text, no watermark, no logo anywhere in the picture.",
+    "",
+    "Reply with the image itself, nothing else."
+  );
+
+  return lines.join("\n");
+}
+
 /** Convenience for callers that just want the DIY text from a def + values. */
 export function diyPromptFor(
   def: SocialAction,
@@ -230,6 +282,57 @@ export function diyPromptFor(
 ): string {
   const ctx = buildRecipeContext(def, platformLabel, fields, task, extraGuidance);
   return buildDiyContentPrompt(ctx, aiTargetKeys(ctx));
+}
+
+/** The two prompts an image-first flow needs, in the order they are used. */
+export interface SplitDiyPrompts {
+  /** Paste into ChatGPT/Gemini, download the picture it returns. */
+  image: string;
+  /** Paste second; returns the title, description and hashtags. */
+  content: string;
+}
+
+/**
+ * Split the DIY prompt in two for image-first platforms.
+ *
+ * Returns `null` for everything else, so a caller can fall back to the single
+ * combined prompt without knowing which platforms are which.
+ *
+ * The split matters because of the order the platform forces. On Pinterest the
+ * image must be uploaded before the title and description fields even accept
+ * input, so handing someone one prompt that answers with all of it at once
+ * invites them to write the caption first and then discover they cannot use
+ * it yet. Two prompts match the two things they actually do.
+ */
+export function splitDiyPromptsFor(
+  def: SocialAction,
+  platformLabel: string,
+  fields: Record<string, string>,
+  task: { title?: string | null; description?: string | null },
+  extraGuidance?: string | null
+): SplitDiyPrompts | null {
+  // Only where the user is CREATING the pin. Every Pinterest action inherits
+  // the image-first ordering, so commenting on someone else's pin matched too
+  // — and telling someone to upload an image before leaving a comment is
+  // advice for a screen they will never see.
+  if (!isPostCreationAction(def.key)) return null;
+
+  const ctx = buildRecipeContext(def, platformLabel, fields, task, extraGuidance);
+  if (!isImageFirstRecipe(ctx)) return null;
+
+  // The content prompt drops the image-prompt line: that job now belongs to
+  // the first prompt, and asking for it twice produces a description the user
+  // has no use for by the time they reach it.
+  const contentKeys = aiTargetKeys(ctx).filter((key) => {
+    const spec = ctx.specs.find((s) => s.key === key);
+    return spec?.role !== "imagePrompt";
+  });
+  if (contentKeys.length === 0) return null;
+
+  return {
+    image: buildDiyImagePrompt(ctx),
+    content: buildDiyContentPrompt(ctx, contentKeys),
+  };
 }
 
 /** Re-exported so consumers don't need two imports. */

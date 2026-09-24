@@ -35,6 +35,7 @@ export function SocialRecipePanel({
   platformLabel,
   mode,
   diyPrompt,
+  splitPrompts,
   regenLeft,
   generating,
   hasGenerated,
@@ -46,6 +47,12 @@ export function SocialRecipePanel({
   mode: AiMode;
   /** Ready-made prompt the user pastes into ChatGPT/Gemini themselves. */
   diyPrompt: string;
+  /**
+   * On image-first platforms the DIY prompt is split in two, because the
+   * platform forces that order: the picture has to exist before the caption
+   * fields can be used at all. Null everywhere else.
+   */
+  splitPrompts?: { image: string; content: string } | null;
   regenLeft: number;
   generating: boolean;
   hasGenerated: boolean;
@@ -55,6 +62,14 @@ export function SocialRecipePanel({
   const canGenerate = mode === "generate" || mode === "both";
   const showDiyUpfront = mode === "diy" || mode === "both";
   const [diyOpen, setDiyOpen] = useState(showDiyUpfront);
+
+  // Derived from the steps rather than passed in: the recipe already orders
+  // image-first platforms (Pinterest) with the picture at the top, so if the
+  // first step IS the image, the instruction should say so. The order was
+  // right but silent, which left people writing the caption first and then
+  // discovering the platform wanted the image before anything else.
+  const firstRole = steps[0]?.role;
+  const imageFirst = firstRole === "image" || firstRole === "imagePrompt";
 
   if (!canGenerate && !showDiyUpfront && steps.length === 0) return null;
 
@@ -107,14 +122,22 @@ export function SocialRecipePanel({
         </div>
       )}
 
-      {diyOpen && diyPrompt && (
-        <DiyPromptBlock prompt={diyPrompt} platformLabel={platformLabel} />
-      )}
+      {diyOpen &&
+        (splitPrompts ? (
+          <ImageFirstGuide
+            prompts={splitPrompts}
+            platformLabel={platformLabel}
+          />
+        ) : diyPrompt ? (
+          <DiyPromptBlock prompt={diyPrompt} platformLabel={platformLabel} />
+        ) : null)}
 
       {steps.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] text-(--app-ink-3) font-semibold">
-            Copy each item below, then create your {platformLabel} post:
+            {imageFirst
+              ? `Start with the image — ${platformLabel} will not let you publish without one, so make and upload it before you fill anything else. Then work down:`
+              : `Copy each item below, then create your ${platformLabel} post:`}
           </p>
           {steps.map((step) => (
             <RecipeStep
@@ -126,6 +149,140 @@ export function SocialRecipePanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The whole Pinterest journey, in the order the platform forces.
+ *
+ * Two prompts instead of one, because a pin cannot be published without an
+ * image: the picture has to be made and downloaded before the title and
+ * description fields are even usable. A single prompt returning everything at
+ * once invited people to write the caption first, paste it into a pin they
+ * could not yet create, and lose it.
+ *
+ * The colour changes with the stage — amber while making the picture, indigo
+ * while writing, emerald on the platform, violet to finish — so someone
+ * halfway through can see where they are without re-reading.
+ */
+function ImageFirstGuide({
+  prompts,
+  platformLabel,
+}: {
+  prompts: { image: string; content: string };
+  platformLabel: string;
+}) {
+  return (
+    <div className="space-y-2">
+      {/* The map, before the detail. Four lines, so it can be read in one go. */}
+      <div className="rounded-xl border border-(--app-line) bg-gradient-to-br from-amber-500/10 via-(--app-cta)/10 to-violet-500/10 p-3 space-y-2">
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-(--app-ink-2)">
+          <Wand2 className="h-3.5 w-3.5 shrink-0" />
+          How to finish this task
+        </p>
+        <ol className="space-y-1.5">
+          <JourneyLine
+            n={1}
+            tone="amber"
+            text={`Copy the IMAGE prompt → paste it into ChatGPT or Gemini → download the picture it makes.`}
+          />
+          <JourneyLine
+            n={2}
+            tone="indigo"
+            text="Copy the CONTENT prompt → paste it into ChatGPT or Gemini → keep the title, description and hashtags it writes."
+          />
+          <JourneyLine
+            n={3}
+            tone="emerald"
+            text={`Open ${platformLabel} → upload the image FIRST → then paste the title, description, link and board name.`}
+          />
+          <JourneyLine
+            n={4}
+            tone="violet"
+            text="Publish it, copy your pin link, and submit that link below to complete the task."
+          />
+        </ol>
+      </div>
+
+      {/* Step 1 — the picture. */}
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-500 text-[10px] font-bold text-black">
+            1
+          </span>
+          <ImageIcon className="h-4 w-4 shrink-0 text-amber-300" />
+          <p className="min-w-0 text-sm font-bold text-amber-200">
+            Image prompt — makes the picture
+          </p>
+          <span className="ml-auto shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-200">
+            Do this first
+          </span>
+        </div>
+        <PromptHowTo
+          tone="amber"
+          steps={[
+            "Copy the prompt below.",
+            "Paste it into ChatGPT or Gemini and send it.",
+            "Save the image it returns to your phone or computer.",
+          ]}
+        />
+        <CopyField label="Image prompt" value={prompts.image} />
+      </div>
+
+      {/* Step 2 — the words. */}
+      <div className="rounded-lg border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-(--app-cta) text-[10px] font-bold text-(--app-on-cta)">
+            2
+          </span>
+          <Wand2 className="h-4 w-4 shrink-0 text-(--app-accent-ink)" />
+          <p className="min-w-0 text-sm font-bold text-(--app-accent-ink)">
+            Content prompt — writes the words
+          </p>
+          <span className="ml-auto shrink-0 rounded bg-(--app-cta)/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-(--app-accent-ink)">
+            Free
+          </span>
+        </div>
+        <PromptHowTo
+          tone="indigo"
+          steps={[
+            "Copy the prompt below.",
+            "Paste it into ChatGPT or Gemini and send it.",
+            `Keep its answer open — you will paste those lines into ${platformLabel} next.`,
+          ]}
+        />
+        <CopyField label="Content prompt" value={prompts.content} />
+      </div>
+    </div>
+  );
+}
+
+function JourneyLine({
+  n,
+  tone,
+  text,
+}: {
+  n: number;
+  tone: "amber" | "indigo" | "emerald" | "violet";
+  text: string;
+}) {
+  const dot: Record<typeof tone, string> = {
+    amber: "bg-amber-500 text-black",
+    indigo: "bg-(--app-cta) text-(--app-on-cta)",
+    emerald: "bg-emerald-500 text-black",
+    violet: "bg-violet-500 text-white",
+  };
+  return (
+    <li className="flex items-start gap-2">
+      <span
+        className={`mt-px grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-bold ${dot[tone]}`}
+      >
+        {n}
+      </span>
+      <span className="min-w-0 text-[11px] leading-snug text-(--app-ink-2)">
+        {text}
+      </span>
+    </li>
   );
 }
 
