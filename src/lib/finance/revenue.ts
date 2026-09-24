@@ -43,6 +43,14 @@ export interface RevenueStream {
 export interface RevenueBreakdown {
   streams: RevenueStream[];
   totalUsd: number;
+  /**
+   * Tax charged on marketplace commission and collected from buyers.
+   *
+   * Deliberately NOT a stream and NOT part of `totalUsd`: it is money held
+   * for a tax authority, not income. Reporting it alongside revenue is how a
+   * platform ends up spending what it owes.
+   */
+  taxCollectedUsd: number;
 }
 
 interface Range {
@@ -78,7 +86,7 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
   ] = (await Promise.all([
     prisma.marketplacePurchase.aggregate({
       where: created ? { createdAt: created } : {},
-      _sum: { fee: true },
+      _sum: { fee: true, tax: true },
       _count: true,
     }),
     prisma.marketplaceDeal.aggregate({
@@ -152,7 +160,7 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     // collapse to `{}` and every `_sum` below becomes a type error. The shapes
     // are restated, which is the documented workaround in this codebase.
   ])) as unknown as [
-    SumCount<{ fee: unknown }>,
+    SumCount<{ fee: unknown; tax: unknown }>,
     SumCount<{ adminFee: unknown }>,
     SumCount<{ fee: unknown }>,
     SumCount<{ houseCutPoints: number | null; overflowToHouse: number | null }>,
@@ -266,5 +274,6 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
   return {
     streams,
     totalUsd: streams.reduce((s, x) => s + x.usd, 0),
+    taxCollectedUsd: toNum(marketplace._sum.tax as never),
   };
 }

@@ -11,6 +11,8 @@ import { lt, toNum, type MoneyInput } from "@/lib/money";
 import {
   getPayoutHoldConfig,
   payOrHoldSeller,
+  getMarketplaceTaxConfig,
+  computeCommissionTax,
 } from "@/lib/marketplace-selling";
 
 export type AuctionCloseResult =
@@ -123,6 +125,13 @@ export async function settleAuction(
     perListingOverride: listing.commissionRateBps,
   });
   const { fee, sellerAmount } = splitPrice(amount, bps);
+  // Tax on the commission, on top of the winning bid — the same rule the other
+  // three sale paths follow. A winner who cannot cover bid + tax fails the CAS
+  // below and the auction voids, which is the behaviour that already existed
+  // for a winner who could not cover the bid itself.
+  const taxCfg = await getMarketplaceTaxConfig();
+  const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
+  const winnerTotal = Math.round((amount + tax) * 100) / 100;
 
   // Settle atomically. The winner debit is a CAS (`cashBalance >= amount`) so the
   // platform never pays the seller from a buyer who can't cover the bid. If the
@@ -131,8 +140,8 @@ export async function settleAuction(
 
   const purchase = await prisma.$transaction(async (tx) => {
     const paid = await tx.user.updateMany({
-      where: { id: highBid.bidderId, cashBalance: { gte: amount } },
-      data: { cashBalance: { decrement: amount } },
+      where: { id: highBid.bidderId, cashBalance: { gte: winnerTotal } },
+      data: { cashBalance: { decrement: winnerTotal } },
     });
     if (paid.count === 0) return null; // winner can't cover — abort settlement
 
@@ -142,6 +151,8 @@ export async function settleAuction(
         buyerId: highBid.bidderId,
         amount,
         fee,
+        tax,
+        taxPct,
         sellerAmount,
         status: "COMPLETED",
       },
@@ -184,7 +195,7 @@ export async function settleAuction(
         userId: highBid.bidderId,
         type: TransactionType.PURCHASE,
         status: TransactionStatus.COMPLETED,
-        amount: -amount,
+        amount: -winnerTotal,
         points: 0,
         description: `Auction won — "${listing.title}"`,
         reference: `marketplace_auction_${listing.id}`,

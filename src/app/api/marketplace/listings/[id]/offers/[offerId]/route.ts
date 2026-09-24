@@ -6,6 +6,8 @@ import { isDuplicateLedgerError } from "@/lib/idempotency";
 import {
   getPayoutHoldConfig,
   payOrHoldSeller,
+  getMarketplaceTaxConfig,
+  computeCommissionTax,
 } from "@/lib/marketplace-selling";
 import {
   MarketplaceListingStatus,
@@ -165,7 +167,13 @@ export async function PATCH(
       assetType: offer.listing.assetType,
       perListingOverride: offer.listing.commissionRateBps,
     });
+    const taxCfg = await getMarketplaceTaxConfig();
     const { fee, sellerAmount } = splitPrice(acceptedAmount, bps);
+    // Tax on the commission, charged on top — same rule as every other way of
+    // buying. The buyer therefore has to cover the offer plus the tax, which
+    // the compare-and-set below enforces.
+    const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
+    const buyerTotal = Math.round((acceptedAmount + tax) * 100) / 100;
 
     // Interactive, not the array form, because the buyer debit has to be a
     // compare-and-set and the rest of the sale must not happen when it fails.
@@ -180,8 +188,8 @@ export async function PATCH(
 
     const settled = await prisma.$transaction(async (tx) => {
       const paid = await tx.user.updateMany({
-        where: { id: offer.buyerId, cashBalance: { gte: acceptedAmount } },
-        data: { cashBalance: { decrement: acceptedAmount } },
+        where: { id: offer.buyerId, cashBalance: { gte: buyerTotal } },
+        data: { cashBalance: { decrement: buyerTotal } },
       });
       if (paid.count === 0) return null; // buyer can't cover — no sale
 
@@ -209,6 +217,8 @@ export async function PATCH(
           listingId: id,
           buyerId: offer.buyerId,
           amount: acceptedAmount,
+          tax,
+          taxPct,
           fee,
           sellerAmount,
           status: "COMPLETED",
@@ -247,7 +257,7 @@ export async function PATCH(
           userId: offer.buyerId,
           type: TransactionType.PURCHASE,
           status: TransactionStatus.COMPLETED,
-          amount: -acceptedAmount,
+          amount: -buyerTotal,
           points: 0,
           description: `Marketplace offer accepted — "${offer.listing.title}"`,
           reference: `marketplace_offer_${offerId}`,

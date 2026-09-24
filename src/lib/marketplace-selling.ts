@@ -148,6 +148,88 @@ export function resolveTierPrice(
 }
 
 /* ------------------------------------------------------------------ *
+ * Tax on the platform's commission
+ * ------------------------------------------------------------------ */
+
+export type MarketplaceTaxConfig = {
+  enabled: boolean;
+  /** Percent, applied to the commission — not to the sale. */
+  pct: number;
+  /** What the buyer sees on the receipt line. */
+  label: string;
+};
+
+export const MARKETPLACE_TAX_KEY = "marketplace_commission_tax";
+
+export const DEFAULT_MARKETPLACE_TAX: MarketplaceTaxConfig = {
+  enabled: false,
+  pct: 15,
+  label: "VAT",
+};
+
+/**
+ * Deliberately its own setting rather than reusing `vat_pct` (deposits) or
+ * `billing.tax_pct` (ad invoices).
+ *
+ * Those tax different things at different moments — topping up a wallet, and
+ * invoicing an advertiser — and an owner who changes one of them almost
+ * certainly does not mean to silently change what every marketplace buyer is
+ * charged. Sharing a key would make that impossible to avoid.
+ */
+export async function getMarketplaceTaxConfig(): Promise<MarketplaceTaxConfig> {
+  const raw = await getSetting<Partial<MarketplaceTaxConfig>>(
+    MARKETPLACE_TAX_KEY,
+    DEFAULT_MARKETPLACE_TAX
+  );
+  const pct = Number(raw?.pct);
+  return {
+    enabled: raw?.enabled === true,
+    pct: Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : DEFAULT_MARKETPLACE_TAX.pct,
+    label: String(raw?.label || DEFAULT_MARKETPLACE_TAX.label).slice(0, 20),
+  };
+}
+
+export async function saveMarketplaceTaxConfig(cfg: MarketplaceTaxConfig): Promise<void> {
+  const value = {
+    enabled: cfg.enabled === true,
+    pct: Math.min(100, Math.max(0, Number(cfg.pct) || 0)),
+    label: String(cfg.label || "VAT").trim().slice(0, 20) || "VAT",
+  };
+  await prisma.systemSetting.upsert({
+    where: { key: MARKETPLACE_TAX_KEY },
+    create: { key: MARKETPLACE_TAX_KEY, category: "marketplace", value },
+    update: { category: "marketplace", value },
+  });
+  invalidateSettingsCache();
+  primeSetting(MARKETPLACE_TAX_KEY, value);
+}
+
+/**
+ * Tax due on one sale, charged ON TOP of the price.
+ *
+ * The base is the platform's commission, not the sale: the taxable supply is
+ * the service the platform provides, while the goods themselves are the
+ * seller's own business and their own tax affair. So a $10 sale at 20%
+ * commission and 15% tax costs the buyer $10.30 — the seller still receives
+ * $8, and $0.30 is held for the tax authority.
+ *
+ * Rounded to whole cents, because that is what is actually charged and any
+ * finer figure would never reconcile against the wallet.
+ */
+export function computeCommissionTax(
+  commission: number,
+  cfg: MarketplaceTaxConfig
+): { tax: number; pct: number } {
+  if (!cfg.enabled || !(commission > 0) || !(cfg.pct > 0)) {
+    return { tax: 0, pct: 0 };
+  }
+  return {
+    tax: Math.round(commission * (cfg.pct / 100) * 100) / 100,
+    pct: cfg.pct,
+  };
+}
+
+/* ------------------------------------------------------------------ *
  * Payout hold
  * ------------------------------------------------------------------ */
 

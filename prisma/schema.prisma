@@ -2588,6 +2588,16 @@ model MarketplacePurchase {
   /// Recorded rather than derived: a seller can edit their tiers afterwards,
   /// and the buyer's rights are whatever they paid for on the day.
   licenseTier  String?
+  /// Tax charged ON TOP of `amount`, on the platform's commission only.
+  ///
+  /// This is money owed to a tax authority, NOT platform income — it must never
+  /// be added to revenue. It is stored separately from `fee` for exactly that
+  /// reason: `fee` is what the platform earned, `tax` is what it is holding on
+  /// someone else's behalf.
+  tax          Decimal              @default(0) @db.Decimal(18, 6)
+  /// The rate applied, kept so an old receipt still reconciles after the rate
+  /// is changed.
+  taxPct       Decimal              @default(0) @db.Decimal(9, 4)
   createdAt    DateTime             @default(now())
   disputes     MarketplaceDispute[]
   payout       MarketplacePayout?

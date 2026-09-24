@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import {
   getLicenseTiersEnabled,
   getPayoutHoldConfig,
+  getMarketplaceTaxConfig,
 } from "@/lib/marketplace-selling";
 
 export default async function MarketplaceSettingsPage() {
@@ -23,13 +24,14 @@ export default async function MarketplaceSettingsPage() {
   if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
 
   const canManage = await can(session.user.id, "marketplace.manage");
-  const [config, promoPackages, mediation, licenseTiersEnabled, payoutHold, held] =
+  const [config, promoPackages, mediation, licenseTiersEnabled, payoutHold, marketplaceTax, held] =
     await Promise.all([
       getCommissionConfig(),
       getPromotionPricing(),
       getMediationConfig(),
       getLicenseTiersEnabled(),
       getPayoutHoldConfig(),
+      getMarketplaceTaxConfig(),
       prisma.marketplacePayout.aggregate({
         where: { status: "HELD" },
         _sum: { amount: true },
@@ -62,6 +64,7 @@ export default async function MarketplaceSettingsPage() {
       <SellingRulesForm
         licenseTiersEnabled={licenseTiersEnabled}
         payoutHold={payoutHold}
+        tax={marketplaceTax}
         heldNow={{
           count: held._count._all,
           amount: Number(held._sum.amount ?? 0),

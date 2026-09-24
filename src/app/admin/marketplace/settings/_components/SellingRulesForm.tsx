@@ -2,14 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Save, Layers, Clock, Info } from "lucide-react";
+import { Loader2, Save, Layers, Clock, Info, Receipt } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { usd } from "@/lib/utils";
-import type { PayoutHoldConfig } from "@/lib/marketplace-selling";
+import type {
+  PayoutHoldConfig,
+  MarketplaceTaxConfig,
+} from "@/lib/marketplace-selling";
 
 interface Props {
   licenseTiersEnabled: boolean;
   payoutHold: PayoutHoldConfig;
+  tax: MarketplaceTaxConfig;
   heldNow: { count: number; amount: number };
   canEdit: boolean;
 }
@@ -17,6 +21,7 @@ interface Props {
 export function SellingRulesForm({
   licenseTiersEnabled,
   payoutHold,
+  tax,
   heldNow,
   canEdit,
 }: Props) {
@@ -24,10 +29,18 @@ export function SellingRulesForm({
   const [tiers, setTiers] = useState(licenseTiersEnabled);
   const [holdOn, setHoldOn] = useState(payoutHold.enabled);
   const [days, setDays] = useState(String(payoutHold.days));
+  const [taxOn, setTaxOn] = useState(tax.enabled);
+  const [taxPct, setTaxPct] = useState(String(tax.pct));
+  const [taxLabel, setTaxLabel] = useState(tax.label);
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
     const d = parseInt(days, 10);
+    const pct = Number(taxPct);
+    if (taxOn && (!Number.isFinite(pct) || pct < 0 || pct > 100)) {
+      toast.error("Tax rate must be between 0 and 100");
+      return;
+    }
     if (holdOn && (!Number.isFinite(d) || d < 1 || d > 90)) {
       toast.error("Hold must be between 1 and 90 days");
       return;
@@ -40,6 +53,11 @@ export function SellingRulesForm({
         body: JSON.stringify({
           licenseTiersEnabled: tiers,
           payoutHold: { enabled: holdOn, days: Number.isFinite(d) ? d : payoutHold.days },
+          tax: {
+            enabled: taxOn,
+            pct: Number.isFinite(pct) ? pct : tax.pct,
+            label: taxLabel.trim() || "VAT",
+          },
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -58,8 +76,8 @@ export function SellingRulesForm({
       <div>
         <h2 className="text-white font-semibold">Selling rules</h2>
         <p className="text-slate-400 text-sm">
-          Both are off by default. With them off the marketplace behaves exactly as it
-          did before they existed.
+          All three are off by default. With them off the marketplace behaves
+          exactly as it did before they existed.
         </p>
       </div>
 
@@ -136,6 +154,62 @@ export function SellingRulesForm({
             its own window ends.
           </p>
         )}
+      </div>
+
+      {/* Tax on the commission */}
+      <div className="border-t border-slate-800 pt-4 space-y-3">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={taxOn}
+            disabled={!canEdit}
+            onChange={(e) => setTaxOn(e.target.checked)}
+            className="mt-1"
+          />
+          <span className="text-sm">
+            <span className="text-white font-medium inline-flex items-center gap-1.5">
+              <Receipt className="w-4 h-4 text-emerald-400" />
+              Tax on your commission
+            </span>
+            <span className="block text-slate-400 mt-0.5">
+              Charged on the commission you earn, not on the goods — the sale itself
+              is the seller’s own tax affair. Added on top of the price, so a $10 sale
+              at 20% commission and 15% tax costs the buyer $10.30, the seller still
+              receives $8, and $0.30 is yours to remit.
+            </span>
+            <span className="block text-slate-500 text-xs mt-1">
+              Separate from the deposit VAT and the advertiser invoice tax on purpose:
+              changing one of those should not silently change what every marketplace
+              buyer pays.
+            </span>
+          </span>
+        </label>
+
+        {taxOn && (
+          <div className="pl-7 flex flex-wrap items-center gap-2">
+            <input
+              value={taxLabel}
+              onChange={(e) => setTaxLabel(e.target.value)}
+              disabled={!canEdit}
+              placeholder="VAT"
+              className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm"
+            />
+            <span className="text-sm text-slate-400">at</span>
+            <input
+              value={taxPct}
+              onChange={(e) => setTaxPct(e.target.value)}
+              disabled={!canEdit}
+              inputMode="decimal"
+              className="w-20 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm"
+            />
+            <span className="text-sm text-slate-400">% of the commission</span>
+          </div>
+        )}
+
+        <p className="pl-7 text-xs text-slate-500">
+          Collected tax is reported separately in Finance and is never counted as
+          revenue — it is money you hold for someone else.
+        </p>
       </div>
 
       {canEdit && (

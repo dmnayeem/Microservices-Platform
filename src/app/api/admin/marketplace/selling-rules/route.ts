@@ -8,6 +8,8 @@ import {
   setLicenseTiersEnabled,
   getPayoutHoldConfig,
   savePayoutHoldConfig,
+  getMarketplaceTaxConfig,
+  saveMarketplaceTaxConfig,
 } from "@/lib/marketplace-selling";
 import { z } from "zod";
 
@@ -30,9 +32,10 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [licenseTiersEnabled, payoutHold, held] = await Promise.all([
+  const [licenseTiersEnabled, payoutHold, tax, held] = await Promise.all([
     getLicenseTiersEnabled(),
     getPayoutHoldConfig(),
+    getMarketplaceTaxConfig(),
     prisma.marketplacePayout.aggregate({
       where: { status: "HELD" },
       _sum: { amount: true },
@@ -43,6 +46,7 @@ export async function GET() {
   return NextResponse.json({
     licenseTiersEnabled,
     payoutHold,
+    tax,
     heldNow: {
       count: held._count._all,
       amount: Number(held._sum.amount ?? 0),
@@ -56,6 +60,13 @@ const schema = z.object({
     .object({
       enabled: z.boolean(),
       days: z.number().int().min(1).max(90),
+    })
+    .optional(),
+  tax: z
+    .object({
+      enabled: z.boolean(),
+      pct: z.number().min(0).max(100),
+      label: z.string().min(1).max(20),
     })
     .optional(),
 });
@@ -77,6 +88,7 @@ export async function PATCH(request: NextRequest) {
   const before = {
     licenseTiersEnabled: await getLicenseTiersEnabled(),
     payoutHold: await getPayoutHoldConfig(),
+    tax: await getMarketplaceTaxConfig(),
   };
 
   if (v.data.licenseTiersEnabled !== undefined) {
@@ -85,10 +97,14 @@ export async function PATCH(request: NextRequest) {
   if (v.data.payoutHold !== undefined) {
     await savePayoutHoldConfig(v.data.payoutHold);
   }
+  if (v.data.tax !== undefined) {
+    await saveMarketplaceTaxConfig(v.data.tax);
+  }
 
   const after = {
     licenseTiersEnabled: await getLicenseTiersEnabled(),
     payoutHold: await getPayoutHoldConfig(),
+    tax: await getMarketplaceTaxConfig(),
   };
 
   await writeAudit({

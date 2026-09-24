@@ -83,6 +83,8 @@ interface Listing {
   /** Licence options, cheapest first. Empty when the feature is off or the
    *  seller offers a single price. */
   licenseTiers: { id: string; name: string; price: number; description?: string }[];
+  /** Tax charged on the platform commission, on top of the price. */
+  tax: { enabled: boolean; pct: number; label: string; commissionBps: number };
   auctionMode: boolean;
   startingBid: number | null;
   reservePrice: number | null;
@@ -159,6 +161,15 @@ export function ListingDetailView({
   // What the buyer will actually be charged. The listing price is the cheapest
   // tier, so these agree until a dearer licence is picked.
   const effectivePrice = selectedTier ? selectedTier.price : listing.price;
+  // Mirrors the server: commission on the chosen price, tax on the commission,
+  // both rounded to cents. A buyer must never see one total and be charged
+  // another, so the same arithmetic runs in both places.
+  const commission =
+    Math.round((effectivePrice * listing.tax.commissionBps) / 10000 * 100) / 100;
+  const taxAmount = listing.tax.enabled
+    ? Math.round(commission * (listing.tax.pct / 100) * 100) / 100
+    : 0;
+  const payable = Math.round((effectivePrice + taxAmount) * 100) / 100;
   const [addingToCart, setAddingToCart] = useState(false);
   const [watched, setWatched] = useState(initialWatched);
   const [watchCount, setWatchCount] = useState(listing.watchCount);
@@ -229,7 +240,7 @@ export function ListingDetailView({
     // is purchased the status flips to SOLD and the spend is final.
     const ok = await confirmDialog({
       title: "Confirm purchase",
-      description: `Buy "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${effectivePrice.toLocaleString()}? The amount will be debited from your wallet immediately.`,
+      description: `Buy "${listing.title}"${selectedTier ? ` (${selectedTier.name})` : ""} for $${payable.toLocaleString()}${taxAmount > 0 ? ` (incl. $${taxAmount.toLocaleString()} ${listing.tax.label})` : ""}? The amount will be debited from your wallet immediately.`,
       tone: "info",
       confirmLabel: "Buy now",
     });
@@ -465,6 +476,19 @@ export function ListingDetailView({
                     </span>
                   </label>
                 ))}
+              </div>
+            )}
+
+            {taxAmount > 0 && (
+              <div className="text-[11px] text-(--app-ink-3) space-y-0.5 pt-1">
+                <p className="flex justify-between">
+                  <span>{listing.tax.label} on service fee</span>
+                  <span className="tabular-nums">+${taxAmount.toLocaleString()}</span>
+                </p>
+                <p className="flex justify-between font-bold text-white">
+                  <span>You pay</span>
+                  <span className="tabular-nums">${payable.toLocaleString()}</span>
+                </p>
               </div>
             )}
 

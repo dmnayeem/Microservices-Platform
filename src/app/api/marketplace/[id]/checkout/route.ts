@@ -31,6 +31,8 @@ import {
   resolveTierPrice,
   getPayoutHoldConfig,
   payOrHoldSeller,
+  getMarketplaceTaxConfig,
+  computeCommissionTax,
 } from "@/lib/marketplace-selling";
 
 // POST /api/marketplace/:id/checkout
@@ -133,15 +135,30 @@ export async function POST(
     const body = (await _request.json().catch(() => ({}))) as { tier?: string };
     const tiersEnabled = await getLicenseTiersEnabled();
     const hold = await getPayoutHoldConfig();
+    const taxCfg = await getMarketplaceTaxConfig();
     const tiers = readTiers(listing.licenseTiers);
     const choice = resolveTierPrice(basePrice, tiers, body?.tier, tiersEnabled);
     if (!choice.ok) {
       return NextResponse.json({ error: choice.error }, { status: 400 });
     }
     const priceNum = choice.price;
-    // Every money movement below uses this, never listing.price: the tier is
-    // what was actually bought.
-    const charge = D(priceNum);
+
+    // Commission and tax are resolved BEFORE the affordability check, because
+    // the buyer has to be able to cover the total, not just the price. Doing
+    // it the other way round let someone through the check and then failed
+    // them inside the transaction.
+    const bps = await resolveCommissionBps({
+      assetType: listing.assetType,
+      perListingOverride: listing.commissionRateBps,
+    });
+    const { fee, sellerAmount } = splitPrice(priceNum, bps);
+    // Tax sits on the commission, which is the service the platform sells;
+    // the goods are the seller's own affair. Added on top of the price.
+    const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
+    const totalNum = Math.round((priceNum + tax) * 100) / 100;
+    // Every buyer-side money movement uses this; the seller is paid from
+    // `sellerAmount`, which the tax never touches.
+    const charge = D(totalNum);
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
@@ -155,18 +172,11 @@ export async function POST(
         {
           error: "Insufficient wallet balance",
           shortBy: sub(charge, buyer.cashBalance).toNumber(),
-          details: `Need ${usd(priceNum)}, have ${usd(toNum(buyer.cashBalance))}.`,
+          details: `Need ${usd(totalNum)}, have ${usd(toNum(buyer.cashBalance))}.`,
         },
         { status: 402 }
       );
     }
-
-    // Resolve commission via the same path offers + auctions use.
-    const bps = await resolveCommissionBps({
-      assetType: listing.assetType,
-      perListingOverride: listing.commissionRateBps,
-    });
-    const { fee, sellerAmount } = splitPrice(priceNum, bps);
 
     // Affiliate attribution: if the buyer arrived via an affiliate's link and
     // the seller set a reward, the affiliate earns it OUT OF the seller's cut
@@ -237,6 +247,10 @@ export async function POST(
           fee,
           sellerAmount: sellerNet,
           licenseTier: choice.tier?.id ?? null,
+          // Stored beside the fee, never folded into it: the fee is income,
+          // this is money held for a tax authority.
+          tax,
+          taxPct,
           status: "COMPLETED",
         },
       });

@@ -23,6 +23,9 @@ import {
   resolveTierPrice,
   getPayoutHoldConfig,
   savePayoutHoldConfig,
+  getMarketplaceTaxConfig,
+  saveMarketplaceTaxConfig,
+  computeCommissionTax,
   getLicenseTiersEnabled,
   setLicenseTiersEnabled,
   payOrHoldSeller,
@@ -86,6 +89,44 @@ async function main() {
   check("non-array input is not fatal", sanitizeTiers(null).length === 0);
 
   console.log("\nTier pricing");
+  const taxOff = { enabled: false, pct: 15, label: "VAT" };
+  const taxOnCfg = { enabled: true, pct: 15, label: "VAT" };
+  check("tax off charges nothing", computeCommissionTax(2, taxOff).tax === 0);
+  check(
+    "15% of a $2 commission is $0.30",
+    computeCommissionTax(2, taxOnCfg).tax === 0.3,
+    String(computeCommissionTax(2, taxOnCfg).tax)
+  );
+  check("the rate is recorded with it", computeCommissionTax(2, taxOnCfg).pct === 15);
+  check("a zero commission is untaxed", computeCommissionTax(0, taxOnCfg).tax === 0);
+  check(
+    "a 0% rate charges nothing even when enabled",
+    computeCommissionTax(2, { enabled: true, pct: 0, label: "VAT" }).tax === 0
+  );
+  check(
+    "rounded to whole cents",
+    computeCommissionTax(1.333, taxOnCfg).tax === 0.2,
+    String(computeCommissionTax(1.333, taxOnCfg).tax)
+  );
+  {
+    const price = 10;
+    const commission = 2;
+    const { tax } = computeCommissionTax(commission, taxOnCfg);
+    check("seller is unaffected by tax", price - commission === 8);
+    check("buyer pays price + tax", price + tax === 10.3, String(price + tax));
+    check("commission and tax stay separate", commission === 2 && tax === 0.3);
+  }
+
+  const taxRt = await getMarketplaceTaxConfig();
+  await saveMarketplaceTaxConfig({ enabled: true, pct: 7.5, label: "GST" });
+  const back = await getMarketplaceTaxConfig();
+  check(
+    "tax settings round-trip",
+    back.enabled && back.pct === 7.5 && back.label === "GST",
+    JSON.stringify(back)
+  );
+  await saveMarketplaceTaxConfig(taxRt);
+
   const tiers = sanitizeTiers([
     { id: "std", name: "Standard", price: 10 },
     { id: "ext", name: "Extended", price: 40 },

@@ -5,7 +5,9 @@ import { toNum, toNumOrNull } from "@/lib/money";
 import {
   getLicenseTiersEnabled,
   readTiers,
+  getMarketplaceTaxConfig,
 } from "@/lib/marketplace-selling";
+import { resolveCommissionBps } from "@/lib/marketplace-commission";
 import { ListingDetailView } from "@/components/user/marketplace/listing-detail-view";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
@@ -76,6 +78,14 @@ export default async function ListingDetailPage({
   // here rather than in the client keeps a switched-off feature completely
   // invisible instead of shipping prices the checkout would refuse.
   const tiersEnabled = await getLicenseTiersEnabled();
+  // The buyer is charged price + tax on the commission, so the listing page
+  // has to quote the total. Resolving the rate here keeps the arithmetic in
+  // one place with the checkout that enforces it.
+  const taxCfg = await getMarketplaceTaxConfig();
+  const listingBps = await resolveCommissionBps({
+    assetType: listing.assetType,
+    perListingOverride: listing.commissionRateBps,
+  });
 
   const isOwner = listing.sellerId === session.user.id;
   const hideFinancials = listing.ndaGated && !isOwner;
@@ -160,6 +170,7 @@ export default async function ListingDetailPage({
           ? listing.auctionEndsAt.toISOString()
           : null,
         saleMode: listing.saleMode,
+        tax: { enabled: taxCfg.enabled, pct: taxCfg.pct, label: taxCfg.label, commissionBps: listingBps },
         licenseTiers: tiersEnabled ? readTiers(listing.licenseTiers) : [],
         isFeatured: listing.isFeatured,
         isPromoted: listing.isPromoted,

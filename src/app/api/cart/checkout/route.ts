@@ -20,6 +20,8 @@ import {
   payOrHoldSeller,
   getLicenseTiersEnabled,
   readTiers,
+  getMarketplaceTaxConfig,
+  computeCommissionTax,
 } from "@/lib/marketplace-selling";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum } from "@/lib/money";
@@ -110,10 +112,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const total = cart.reduce((s, i) => s + toNum(i.listing.price), 0);
-
     const hold = await getPayoutHoldConfig();
     const tiersEnabled = await getLicenseTiersEnabled();
+    const taxCfg = await getMarketplaceTaxConfig();
+
+    // Commission rates (and therefore tax) are resolved before the balance is
+    // checked, because the buyer has to cover price + tax, not just price.
+    // No writes here, so it is safe outside the transaction.
+    const itemPlans = await Promise.all(
+      cart.map(async (item) => {
+        const bps = await resolveCommissionBps({
+          assetType: item.listing.assetType,
+          perListingOverride: item.listing.commissionRateBps,
+        });
+        const { fee, sellerAmount } = splitPrice(toNum(item.listing.price), bps);
+        const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
+        return { item, bps, fee, sellerAmount, tax, taxPct };
+      })
+    );
+
+    const goods = cart.reduce((s, i) => s + toNum(i.listing.price), 0);
+    const taxTotal = Math.round(itemPlans.reduce((s, p) => s + p.tax, 0) * 100) / 100;
+    const total = Math.round((goods + taxTotal) * 100) / 100;
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
@@ -132,18 +152,6 @@ export async function POST(request: NextRequest) {
         { status: 402 }
       );
     }
-
-    // Pre-resolve commission rates outside the transaction (no writes; safe).
-    const itemPlans = await Promise.all(
-      cart.map(async (item) => {
-        const bps = await resolveCommissionBps({
-          assetType: item.listing.assetType,
-          perListingOverride: item.listing.commissionRateBps,
-        });
-        const { fee, sellerAmount } = splitPrice(toNum(item.listing.price), bps);
-        return { item, bps, fee, sellerAmount };
-      })
-    );
 
     // Lock ORDER matters. The loop below locks each listing and then its
     // seller's user row; taking them in cart order meant two buyers whose carts
@@ -201,6 +209,8 @@ export async function POST(request: NextRequest) {
             // it means a cart purchase carries the same proof of rights as one
             // made from the listing page.
             licenseTier: tiersEnabled ? (readTiers(l.licenseTiers)[0]?.id ?? null) : null,
+            tax: plan.tax,
+            taxPct: plan.taxPct,
             status: "COMPLETED",
           },
         });
