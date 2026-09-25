@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Landmark, Info, Plus } from "lucide-react";
+import { Landmark, Info, Plus, Printer } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { shiftPeriod } from "@/lib/company-finance/constants";
 import { api, btnPrimary, cardCls, inputCls, Loading, thisMonth, usdFmt, type Meta } from "./ui";
@@ -60,6 +60,14 @@ export function TaxTab({ meta, onChanged }: { meta: Meta; onChanged?: () => void
           <input type="month" className={`${inputCls} w-40`} value={from} onChange={(e) => setFrom(e.target.value)} />
           <span className="text-slate-500">→</span>
           <input type="month" className={`${inputCls} w-40`} value={to} onChange={(e) => setTo(e.target.value)} />
+          <a
+            href={`/admin/finance/company/print/tax?from=${from}&to=${to}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:text-white"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </a>
           {meta.can.create && (
             <button className={btnPrimary} onClick={() => setPaying(true)}>
               <Plus className="h-4 w-4" /> Record a tax payment

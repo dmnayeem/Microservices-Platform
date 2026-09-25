@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Download, Search, Check, Ban, Pencil, Loader2 } from "lucide-react";
+import { Plus, Download, Search, Check, Ban, Pencil, Loader2, Printer } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { promptDialog } from "@/lib/confirm";
 import {
@@ -31,6 +31,7 @@ import {
   usdFmt,
   type Meta,
 } from "./ui";
+import { LineItemsEditor, emptyLine, lineTotal, type LineDraft } from "./line-items-editor";
 
 export type EntryRow = {
   id: string;
@@ -58,6 +59,7 @@ export type EntryRow = {
   reference: string | null;
   attachments: string[];
   customFields: Record<string, string> | null;
+  lineItems: { date?: string; description: string; from?: string; to?: string; mode?: string; qty?: number; amount: number }[] | null;
   source: string;
   createdBy: { name: string | null } | null;
   approvedBy: { name: string | null } | null;
@@ -208,6 +210,9 @@ export function EntriesTab({ meta, onChanged }: { meta: Meta; onChanged?: () => 
           <a className={btnGhost} href={`/api/admin/company-finance/export?${qs}`}>
             <Download className="h-4 w-4" /> Export CSV
           </a>
+          <a className={btnGhost} href={`/admin/finance/company/print/entries?${qs}`} target="_blank" rel="noreferrer">
+            <Printer className="h-4 w-4" /> Print list
+          </a>
           {!meta.can.hrView && (
             <span className="text-[11px] text-slate-500">Salary rows are hidden — you do not have the salaries permission.</span>
           )}
@@ -273,6 +278,16 @@ export function EntriesTab({ meta, onChanged }: { meta: Meta; onChanged?: () => 
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-right">
                     <div className="flex justify-end gap-1">
+                      <a
+                        href={`/admin/finance/company/print/voucher/${r.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={r.category.name === "Conveyance" ? "Print conveyance bill" : "Print voucher"}
+                        aria-label="Print"
+                        className="rounded-lg border border-slate-700 p-1.5 text-slate-400 hover:border-slate-600 hover:text-white"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                      </a>
                       {r.status === "PENDING" && meta.can.create && (
                         <IconBtn title="Edit" onClick={() => setEditing(r)} disabled={busy === r.id}>
                           <Pencil className="h-3.5 w-3.5" />
@@ -398,6 +413,17 @@ export function EntryForm({
   });
   const [custom, setCustom] = useState<Record<string, string>>(entry?.customFields ?? {});
   const [attachments, setAttachments] = useState<string[]>(entry?.attachments ?? []);
+  const [lines, setLines] = useState<LineDraft[]>(
+    (entry?.lineItems ?? []).map((l) => ({
+      date: l.date ?? "",
+      description: l.from && l.to && l.description === `${l.from} → ${l.to}` ? "" : l.description,
+      from: l.from ?? "",
+      to: l.to ?? "",
+      mode: l.mode ?? "",
+      qty: l.qty ? String(l.qty) : "",
+      amount: String(l.amount),
+    }))
+  );
   const [markPaid, setMarkPaid] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -410,7 +436,16 @@ export function EntryForm({
 
   const defs = fieldsFor(meta, "ENTRY", f.categoryId);
   const rate = meta.currencies.find((c) => c.code === f.currency)?.usdRate ?? 0;
-  const amt = Number(f.amount) || 0;
+  const isConveyance = meta.categories.find((c) => c.id === f.categoryId)?.slug === "conveyance";
+  const itemised = lines.length > 0;
+  // Itemised: the lines are the amount, exactly as the server will store it.
+  const amt = itemised ? lineTotal(lines) : Number(f.amount) || 0;
+
+  // A conveyance bill is a list of trips by definition — open with one row.
+  useEffect(() => {
+    if (isConveyance && lines.length === 0) setLines([emptyLine()]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConveyance]);
   const tax = Number(f.taxAmount) || 0;
 
   const save = async () => {
@@ -433,6 +468,17 @@ export function EntryForm({
         reference: f.reference || null,
         attachments,
         customFields: custom,
+        lineItems: itemised
+          ? lines.map((l) => ({
+              date: l.date || undefined,
+              description: l.description,
+              from: l.from || undefined,
+              to: l.to || undefined,
+              mode: l.mode || undefined,
+              qty: l.qty ? Number(l.qty) : undefined,
+              amount: Number(l.amount) || 0,
+            }))
+          : [],
         ...(entry ? {} : { markPaid }),
       };
       if (entry) {
@@ -512,9 +558,17 @@ export function EntryForm({
           )}
           {f.paidTo === "none" && <div className="hidden sm:block" />}
 
-          <Field label="Amount paid">
+          <Field label={itemised ? "Amount — total of the lines below" : "Amount paid"}>
             <div className="flex gap-2">
-              <input type="number" min={0} step="0.01" className={inputCls} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className={inputCls}
+                value={itemised ? String(amt) : f.amount}
+                readOnly={itemised}
+                onChange={(e) => setF({ ...f, amount: e.target.value })}
+              />
               <select className={`${inputCls} w-28`} value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>
                 {meta.currencies.map((c) => (
                   <option key={c.code} value={c.code}>{c.code}</option>
@@ -556,6 +610,29 @@ export function EntryForm({
           <Field label="Notes" className="sm:col-span-2">
             <textarea className={inputCls} rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
           </Field>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+              {isConveyance ? "Trips" : "Itemise this bill"}
+              {!isConveyance && <span className="ml-1 normal-case text-slate-600">(optional — prints on the voucher)</span>}
+            </p>
+            {!itemised && (
+              <button type="button" onClick={() => setLines([emptyLine()])} className="text-xs text-emerald-400 hover:text-emerald-300">
+                + Add lines
+              </button>
+            )}
+          </div>
+          {itemised && (
+            <LineItemsEditor
+              lines={lines}
+              onChange={setLines}
+              conveyance={isConveyance}
+              currency={f.currency}
+              currencies={meta.currencies}
+            />
+          )}
         </div>
 
         {defs.length > 0 && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, CheckCheck, ClipboardList } from "lucide-react";
+import { Loader2, CheckCheck, ClipboardList, Printer } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { periodLabel } from "@/lib/company-finance/constants";
@@ -124,6 +124,9 @@ export function SalaryTab({ meta, onChanged }: { meta: Meta; onChanged?: () => v
         <input type="month" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" value={period} onChange={(e) => setPeriod(e.target.value)} />
         <span className="text-sm text-slate-400">{periodLabel(period)}</span>
         <div className="ml-auto flex flex-wrap gap-2">
+          <a className={btnGhost} href={`/admin/finance/company/print/salary-sheet?period=${period}`} target="_blank" rel="noreferrer">
+            <Printer className="h-4 w-4" /> Print salary sheet
+          </a>
           <button className={btnGhost} disabled={!todo.length || busy !== null || !meta.can.hrManage} onClick={() => runAll(false)}>
             {busy === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
             Record all as owed ({todo.length})
@@ -191,6 +194,11 @@ export function SalaryTab({ meta, onChanged }: { meta: Meta; onChanged?: () => v
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex justify-end gap-1.5">
+                      {r.entry && r.entry.status !== "VOID" && (
+                        <a className={btnGhost} href={`/admin/finance/company/print/payslip/${r.entry.id}`} target="_blank" rel="noreferrer" title="Print payslip">
+                          <Printer className="h-4 w-4" />
+                        </a>
+                      )}
                       {!r.entry && r.salaryAmount > 0 && meta.can.hrManage && (
                         <>
                           <button className={btnGhost} disabled={busy !== null} onClick={() => one(r, false)}>

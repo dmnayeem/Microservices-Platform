@@ -89,6 +89,9 @@ export const DEFAULT_CATEGORIES: {
   { slug: "supplies", name: "Office supplies", kind: "EXPENSE", color: "#84cc16", icon: "Package" },
   { slug: "maintenance", name: "Repairs & maintenance", kind: "EXPENSE", color: "#a3a3a3", icon: "Wrench" },
   { slug: "travel", name: "Travel & transport", kind: "EXPENSE", color: "#22c55e", icon: "Car" },
+  // A Bangladeshi office's conveyance bill: the trips staff take on company
+  // business, itemised, reimbursed together. Printed as its own form.
+  { slug: "conveyance", name: "Conveyance", kind: "EXPENSE", color: "#16a34a", icon: "Bus" },
   { slug: "food", name: "Food & refreshments", kind: "EXPENSE", color: "#fb923c", icon: "Coffee" },
   { slug: "legal", name: "Legal & professional", kind: "EXPENSE", color: "#475569", icon: "Scale" },
   { slug: "misc", name: "Miscellaneous", kind: "EXPENSE", color: "#71717a", icon: "Ellipsis" },
@@ -196,4 +199,67 @@ export function validateCustomFields(
     values[d.key] = str.slice(0, d.type === "TEXTAREA" ? 4000 : 500);
   }
   return { values, error: null };
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Line items — conveyance trips, bill items
+ * ------------------------------------------------------------------ */
+
+export type LineItem = {
+  date?: string;
+  description: string;
+  /** Conveyance only. */
+  from?: string;
+  to?: string;
+  mode?: string;
+  qty?: number;
+  amount: number;
+};
+
+export const CONVEYANCE_MODES = ["Rickshaw", "CNG", "Bus", "Uber / Pathao", "Train", "Launch", "Walk", "Other"];
+
+/**
+ * Clean a line-item list. Returns the lines and their total, or the first
+ * problem as a sentence. Lines are the truth: the entry's amount becomes their
+ * sum, so a printed bill whose lines add up to ৳1,240 cannot sit in the books
+ * as ৳1,420.
+ */
+export function cleanLineItems(raw: unknown): { lines: LineItem[]; total: number; error: string | null } {
+  if (!Array.isArray(raw) || raw.length === 0) return { lines: [], total: 0, error: null };
+  if (raw.length > 60) return { lines: [], total: 0, error: "At most 60 lines on one bill" };
+  const lines: LineItem[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const r = (raw[i] ?? {}) as Record<string, unknown>;
+    const str = (k: string, n: number) => (typeof r[k] === "string" ? (r[k] as string).trim().slice(0, n) : "");
+    const description = str("description", 200);
+    const amount = Number(r.amount);
+    const blank = !description && !str("from", 80) && !str("to", 80) && !(amount > 0);
+    if (blank) continue; // an empty trailing row in the form
+    if (!description && !(str("from", 80) && str("to", 80))) {
+      return { lines: [], total: 0, error: `Line ${i + 1}: say what it was for` };
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { lines: [], total: 0, error: `Line ${i + 1}: enter an amount above zero` };
+    }
+    const date = str("date", 10);
+    if (date && Number.isNaN(Date.parse(date))) {
+      return { lines: [], total: 0, error: `Line ${i + 1}: that date is not a date` };
+    }
+    const qty = r.qty === undefined || r.qty === null || r.qty === "" ? undefined : Number(r.qty);
+    if (qty !== undefined && (!Number.isFinite(qty) || qty <= 0)) {
+      return { lines: [], total: 0, error: `Line ${i + 1}: quantity must be above zero` };
+    }
+    lines.push({
+      ...(date ? { date } : {}),
+      description: description || `${str("from", 80)} → ${str("to", 80)}`,
+      ...(str("from", 80) ? { from: str("from", 80) } : {}),
+      ...(str("to", 80) ? { to: str("to", 80) } : {}),
+      ...(str("mode", 40) ? { mode: str("mode", 40) } : {}),
+      ...(qty !== undefined ? { qty } : {}),
+      amount: Math.round(amount * 100) / 100,
+    });
+  }
+  const total = Math.round(lines.reduce((s, l) => s + l.amount, 0) * 100) / 100;
+  return { lines, total, error: null };
 }

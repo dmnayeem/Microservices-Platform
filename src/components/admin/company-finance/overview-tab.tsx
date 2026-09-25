@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Wallet, Clock, Landmark, Scale } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Clock, Landmark, Scale, Printer } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { SeriesChart, DonutChart } from "@/components/admin/charts";
 import { periodLabel, shiftPeriod } from "@/lib/company-finance/constants";
@@ -81,6 +81,14 @@ export function OverviewTab({ meta }: { meta: Meta }) {
           <input type="month" className={`${inputCls} w-40`} value={from} onChange={(e) => setFrom(e.target.value)} />
           <span className="text-slate-500">→</span>
           <input type="month" className={`${inputCls} w-40`} value={to} onChange={(e) => setTo(e.target.value)} />
+          <a
+            href={`/admin/finance/company/print/pnl?from=${from}&to=${to}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:text-white"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </a>
         </div>
       </div>
 

@@ -5091,6 +5091,11 @@ model FinanceEntry {
   reference     String?
   attachments   String[] @default([])
   customFields  Json?
+  /// Itemised lines — one per trip on a conveyance bill, one per item on an
+  /// expense bill: [{ date?, description, from?, to?, mode?, qty?, amount }].
+  /// When present they ARE the entry: `amount` is set to their sum, so the
+  /// printed bill and the books can never disagree.
+  lineItems     Json?
 
   /// Where it came from: MANUAL, RECURRING, SALARY.
   source    String  @default("MANUAL")

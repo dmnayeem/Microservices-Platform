@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getCurrencies } from "@/lib/currencies";
 import { getSetting } from "@/lib/system-settings";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import {
   DEFAULT_CATEGORIES,
   ENTRY_KINDS,
@@ -11,6 +11,7 @@ import {
   isPeriod,
   periodOf,
   validateCustomFields,
+  cleanLineItems,
   type EntryKind,
   type FieldDef,
   type FieldEntity,
@@ -375,6 +376,8 @@ export type EntryInput = {
   reference?: string | null;
   attachments?: string[];
   customFields?: unknown;
+  /** Itemised lines; when present, `amount` is replaced by their sum. */
+  lineItems?: unknown;
 };
 
 /**
@@ -403,7 +406,10 @@ async function buildEntry(input: EntryInput): Promise<Result<Prisma.FinanceEntry
   const title = input.title.trim().slice(0, 160);
   if (title.length < 2) return fail("Give the entry a title");
 
-  const amount = Number(input.amount);
+  const items = cleanLineItems(input.lineItems);
+  if (items.error) return fail(items.error);
+  // Itemised: the lines are the truth and the amount is their sum.
+  const amount = items.lines.length ? items.total : Number(input.amount);
   if (!Number.isFinite(amount) || amount <= 0) return fail("Enter an amount above zero");
   if (amount > 1_000_000_000) return fail("That amount is too large to be real");
 
@@ -463,6 +469,7 @@ async function buildEntry(input: EntryInput): Promise<Result<Prisma.FinanceEntry
       reference: clip(input.reference, 120),
       attachments,
       customFields: cf.values as Prisma.InputJsonValue,
+      lineItems: items.lines.length ? (items.lines as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       createdById: "", // set by the caller
     },
   };

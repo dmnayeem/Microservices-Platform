@@ -159,6 +159,37 @@ async function main() {
     if (gas.ok) created.entries.push(gas.data.id);
     if (f.ok) await prisma.financeFieldDef.update({ where: { id: f.data.id }, data: { isActive: false } });
 
+    console.log("\nLine items — a conveyance bill");
+    const conveyanceCat = await cat("conveyance");
+    check("the Conveyance category exists", !!conveyanceCat);
+    const trips = await createEntry(me, {
+      kind: "EXPENSE",
+      categoryId: conveyanceCat,
+      title: `${TAG} conveyance`,
+      amount: 99999, // deliberately wrong — the lines must win
+      currency: "BDT",
+      period: P,
+      lineItems: [
+        { date: "2019-03-02", from: "Office", to: "Bank", description: "Cheque deposit", mode: "Rickshaw", amount: 60 },
+        { date: "2019-03-05", from: "Office", to: "Client", description: "", mode: "CNG", amount: 250.5 },
+        { description: "", from: "", to: "", amount: "" }, // an empty trailing row in the form
+      ],
+    });
+    check("an itemised bill records", trips.ok, trips.ok ? "" : trips.error);
+    if (trips.ok) {
+      created.entries.push(trips.data.id);
+      const t = await prisma.financeEntry.findUniqueOrThrow({ where: { id: trips.data.id } });
+      check("its amount is the sum of the lines, not what was typed", Number(t.amount) === 310.5, `${t.amount}`);
+      const stored = (t.lineItems ?? []) as { description: string }[];
+      check("the empty trailing row is dropped", stored.length === 2, `${stored.length} lines`);
+      check("a trip with no purpose is described by its route", stored[1]?.description === "Office → Client", stored[1]?.description);
+    }
+    const badLine = await createEntry(me, {
+      kind: "EXPENSE", categoryId: conveyanceCat, title: `${TAG} bad`, amount: 1, currency: "BDT", period: P,
+      lineItems: [{ description: "Taxi", amount: -5 }],
+    });
+    check("a line with a negative amount is refused", !badLine.ok, badLine.ok ? "accepted!" : badLine.error);
+
     console.log("\nEmployees & salary");
     const emp = await saveEmployee(null, {
       name: `${TAG} Cleaner`, designation: "Cleaner", employmentType: "FULL_TIME", status: "ACTIVE",
@@ -240,7 +271,7 @@ async function main() {
     check("other income counts", !!pnl && Math.abs(pnl.otherIncomeUsd - 100) < 0.01, `$${pnl?.otherIncomeUsd}`);
     // Only March's rent. January's and February's belong to those months —
     // "the month this is FOR" is the whole point of `period`.
-    const pendingExpected = (2000 + 30000) / rate;
+    const pendingExpected = (2000 + 30000 + 310.5) / rate;
     check(
       "pending bills are shown as owed, not as spent",
       !!pnl && Math.abs(pnl.pendingUsd - pendingExpected) < 0.01,
