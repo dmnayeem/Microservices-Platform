@@ -1722,6 +1722,8 @@ model User {
   // FK index — present in the live database; declared here so schema and DB
   // agree and a future `db push` can't drop it.
   @@index([customRoleId])
+  // The Fraud Monitor lists users by risk, highest first.
+  @@index([fraudRisk])
 }
 
 model Account {
@@ -4882,6 +4884,8 @@ model Broadcast {
   @@index([status, scheduledFor])
   @@index([status, important, createdAt])
   @@index([createdAt])
+  // Foreign keys / sort keys the database had no index for.
+  @@index([createdById])
 }
 
 /// One recipient of one broadcast, and what has actually reached them.
@@ -4915,6 +4919,8 @@ model BroadcastRecipient {
   @@index([broadcastId, inAppAt])
   /// Today's email usage, for the daily cap.
   @@index([emailAt])
+  // Foreign keys / sort keys the database had no index for.
+  @@index([userId])
 }
 
 
@@ -4990,6 +4996,8 @@ model FinanceFieldDef {
 
   @@unique([entity, categoryId, key])
   @@index([entity, isActive, order])
+  // Foreign keys / sort keys the database had no index for.
+  @@index([categoryId])
 }
 
 /// Somebody the company pays who is not an employee: a company, a person, a
@@ -5162,6 +5170,10 @@ model FinanceEntry {
   @@index([payeeId])
   @@index([paidAt])
   @@index([status, dueDate])
+  // Foreign keys / sort keys the database had no index for.
+  @@index([approvedById])
+  @@index([createdById])
+  @@index([recurringId])
 }
 
 /// A cost that repeats — rent, internet, a server, a salary. The scheduler
@@ -5198,4 +5210,8 @@ model RecurringEntry {
   updatedAt DateTime @updatedAt
 
   @@index([isActive])
+  // Foreign keys / sort keys the database had no index for.
+  @@index([categoryId])
+  @@index([employeeId])
+  @@index([payeeId])
 }
