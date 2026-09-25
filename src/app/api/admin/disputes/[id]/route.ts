@@ -428,10 +428,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               // row instead of chasing a balance. Whatever that covers is
               // money that never had to be clawed back at all — which is the
               // entire reason the hold exists.
+              // Only up to what is owed: on a partial refund the seller keeps
+              // the rest of a held sale.
               const reversed = await reverseHeldPayout(
                 tx,
                 purchase.id,
-                `Refunded by dispute ${id}`
+                `Refunded by dispute ${id}`,
+                sellerOwed
               );
               const stillOwed = money2(Math.max(0, sellerOwed - reversed));
               const sellerRow = await tx.user.findUnique({

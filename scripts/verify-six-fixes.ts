@@ -154,13 +154,22 @@ async function main() {
       "the refund cannot exceed what was paid",
       /refundAmount\s*>\s*paidAmount/.test(s)
     );
+    // Since the payout hold (dd15467) the clawback first takes what is owed
+    // out of a still-held payout and claws only the remainder from the
+    // balance — so the clamp is on `stillOwed`, not `sellerOwed`.
     check(
       "the seller is clawed back, clamped to their balance",
-      /Math\.min\(toNum\(sellerRow\?\.cashBalance\),\s*sellerOwed\)/.test(s)
+      /Math\.min\(toNum\(sellerRow\?\.cashBalance\),\s*stillOwed\)/.test(s)
     );
     check(
       "an unrecoverable clawback is recorded rather than hidden",
-      /shortfall:\s*money2\(sellerOwed\s*-\s*debit\)/.test(s)
+      /shortfall:\s*money2\(stillOwed\s*-\s*debit\)/.test(s)
+    );
+    // The 2026-09-26 audit: without this cap a PARTIAL refund cancelled the
+    // seller's whole held payout. See verify-payout-hold-refund.ts.
+    check(
+      "a held payout is only reversed up to what the refund owes",
+      /reverseHeldPayout\(\s*tx,\s*purchase\.id,[^)]*sellerOwed\s*\)/.test(s)
     );
     // The affiliate's cut comes OUT of the seller's, so clawing back the full
     // sellerAmount would take money the seller never received.

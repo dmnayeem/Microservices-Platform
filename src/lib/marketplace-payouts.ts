@@ -127,16 +127,28 @@ export async function releaseDuePayouts(
 }
 
 /**
- * Cancel a held payout because the sale was refunded.
+ * Take a refund out of a held payout, up to `owed`.
  *
  * Returns how much was actually reclaimed this way. Anything already RELEASED
  * is not touched — that money is in the seller's wallet and has to be clawed
  * back by the caller, which is the situation the hold exists to avoid.
+ *
+ * `owed` is the ceiling, and it matters: on a PARTIAL refund the seller keeps
+ * the rest of the sale. This used to cancel the whole held payout whatever the
+ * refund was — a 50% refund on an $80 held share took all $80, the buyer got
+ * their $40 back, and the other $40 vanished: not the seller's, not the buyer's,
+ * and recorded nowhere, because the caller's "still owed" came out at zero. Now
+ * a partial refund shrinks the held row and the remainder still releases to
+ * the seller on schedule; only a refund of the whole share reverses it.
+ *
+ * Both writes are compare-and-set on the row as read, so two refunds racing on
+ * one sale cannot both take the same held money.
  */
 export async function reverseHeldPayout(
   tx: { marketplacePayout: typeof prisma.marketplacePayout },
   purchaseId: string,
-  reason: string
+  reason: string,
+  owed?: number
 ): Promise<number> {
   const payout = await tx.marketplacePayout.findUnique({
     where: { purchaseId },
@@ -144,9 +156,27 @@ export async function reverseHeldPayout(
   });
   if (!payout || payout.status !== "HELD") return 0;
 
-  const reversed = await tx.marketplacePayout.updateMany({
-    where: { id: payout.id, status: "HELD" },
-    data: { status: "REVERSED", reversedAt: new Date(), reason: reason.slice(0, 300) },
+  const held = toNum(payout.amount);
+  const take = owed === undefined ? held : Math.min(held, Math.max(0, Math.round(owed * 100) / 100));
+  if (take <= 0) return 0;
+
+  // The whole share (to the cent): the sale is fully unwound.
+  if (take >= held - 0.005) {
+    const reversed = await tx.marketplacePayout.updateMany({
+      where: { id: payout.id, status: "HELD" },
+      data: { status: "REVERSED", reversedAt: new Date(), reason: reason.slice(0, 300) },
+    });
+    return reversed.count > 0 ? held : 0;
+  }
+
+  // Part of it: shrink the held row and leave it HELD, so what is left still
+  // pays out to the seller when the hold ends.
+  const shrunk = await tx.marketplacePayout.updateMany({
+    where: { id: payout.id, status: "HELD", amount: payout.amount },
+    data: {
+      amount: Math.round((held - take) * 100) / 100,
+      reason: `${reason} (partial: ${take.toFixed(2)} of ${held.toFixed(2)})`.slice(0, 300),
+    },
   });
-  return reversed.count > 0 ? toNum(payout.amount) : 0;
+  return shrunk.count > 0 ? take : 0;
 }
