@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Reorder, useDragControls } from "framer-motion";
 import {
   getPlatform,
@@ -81,6 +81,26 @@ export function SocialTaskBuilder({
 }: Props) {
   const platform = useMemo(() => getPlatform(value.platform), [value.platform]);
 
+  // The platform grid is 41 cards — roughly a screen and a half of scrolling
+  // that an admin reads once and then never needs again. It collapses to the
+  // chosen platform the moment one is picked, and reopens on Change.
+  const [pickerOpen, setPickerOpen] = useState(!value.platform);
+  const [platformQuery, setPlatformQuery] = useState("");
+
+  // Filtered groups, empty ones dropped — a heading with nothing under it reads
+  // like a broken search.
+  const platformGroups = useMemo(() => {
+    const q = platformQuery.trim().toLowerCase();
+    return getPlatformGroups()
+      .map((g) => ({
+        ...g,
+        platforms: q
+          ? g.platforms.filter((p) => p.label.toLowerCase().includes(q))
+          : g.platforms,
+      }))
+      .filter((g) => g.platforms.length > 0);
+  }, [platformQuery]);
+
   // Selected items in the admin's chosen order — the exact order users will
   // complete them in. Reorderable by drag (see the Reorder.Group below).
   const items = value.items;
@@ -149,8 +169,46 @@ export function SocialTaskBuilder({
         <label className="block text-sm font-medium text-gray-400 mb-2">
           Platform <span className="text-red-400">*</span>
         </label>
-        <div className="space-y-4">
-          {getPlatformGroups().map((group) => (
+        {/* Chosen and closed: one row instead of a screen and a half. */}
+        {platform && !pickerOpen ? (
+          <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 p-2.5">
+            <BrandIcon
+              brand={platform.key}
+              fallback={platform.emoji}
+              colored
+              className="w-6 h-6 shrink-0"
+            />
+            <span className="min-w-0 truncate text-sm font-semibold text-white">
+              {platform.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setPlatformQuery("");
+                setPickerOpen(true);
+              }}
+              className="ml-auto shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:border-gray-500 hover:text-white"
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* 41 platforms is more than anyone scans. Typing two letters beats
+                hunting through four groups of cards. */}
+            <input
+              value={platformQuery}
+              onChange={(e) => setPlatformQuery(e.target.value)}
+              placeholder="Search platforms…"
+              className="w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+            />
+            {platformGroups.length === 0 && (
+              <p className="text-xs text-gray-500">
+                Nothing matches “{platformQuery}”.
+              </p>
+            )}
+            <div className="space-y-4">
+              {platformGroups.map((group) => (
             <div key={group.key}>
               <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-2">
                 {group.label}
@@ -165,7 +223,13 @@ export function SocialTaskBuilder({
                     <button
                       key={p.key}
                       type="button"
-                      onClick={() => setPlatform(p.key)}
+                      onClick={() => {
+                        setPlatform(p.key);
+                        // Collapse straight away: the grid has done its job and
+                        // the actions below are what the admin needs next.
+                        setPickerOpen(false);
+                        setPlatformQuery("");
+                      }}
                       className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-colors ${
                         selected
                           ? `${p.brandColor} border-transparent shadow-lg`
@@ -183,9 +247,11 @@ export function SocialTaskBuilder({
                   );
                 })}
               </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Action checklist (only after platform selected) */}
