@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { ProfileGateSettings } from "@/components/admin/settings/profile-gate-settings";
 import { cn, usd } from "@/lib/utils";
 import {
   NotActiveBadge,
@@ -168,6 +169,8 @@ const DEFAULTS: SettingsBag = {
   "ui.notification_popup_enabled": true,
   "ui.pwa_install_prompt_enabled": true,
   "ui.require_profile_completion": false,
+  "profile_gate.mode": "ESSENTIALS",
+  "profile_gate.features": ["tasks", "missions"],
   "ui.require_kyc_for_withdrawal": true,
   "ui.groups_enabled": false,
   // Dark, and users may choose — the behaviour before these settings existed,
@@ -1455,6 +1458,18 @@ export function SystemSettingsForm({
               onChange={(v) => set("ui.require_profile_completion", v)}
               disabled={!canEdit}
               tone="amber"
+            />
+            <ProfileGateSettings
+              on={values["ui.require_profile_completion"] === true}
+              mode={String(values["profile_gate.mode"] ?? "ESSENTIALS")}
+              features={
+                Array.isArray(values["profile_gate.features"])
+                  ? (values["profile_gate.features"] as string[])
+                  : ["tasks", "missions"]
+              }
+              onMode={(v) => set("profile_gate.mode", v)}
+              onFeatures={(v) => set("profile_gate.features", v)}
+              disabled={!canEdit}
             />
             <Toggle settingKey="ui.require_kyc_for_withdrawal"
               checked={values["ui.require_kyc_for_withdrawal"] !== false}

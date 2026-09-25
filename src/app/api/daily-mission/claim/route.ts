@@ -18,12 +18,17 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { usd } from "@/lib/utils";
 import { getUserDayContext, localDayKeyDaysAgo } from "@/lib/user-day";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+  // that lets a user earn, or a locked user earns through the unchecked one.
+  const profileGated = await profileGateResponse(session.user.id, "missions");
+  if (profileGated) return profileGated;
   // Reward claim. Correctness comes from the unique ledger constraints; this
   // keeps a claim flood from being absorbed by the database.
   const limited = await enforceDbRateLimit(request, "claim", session.user.id, 30, 60_000);

@@ -5,6 +5,7 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { getEffectivePackage } from "@/lib/packages";
 import { claimMission } from "@/lib/missions";
 import { TASK_VIEWER_SELECT } from "@/lib/task-visibility";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 // POST /api/missions/:id/claim — claim a mission reward (or one tier of it).
 export async function POST(
@@ -15,6 +16,10 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+  // that lets a user earn, or a locked user earns through the unchecked one.
+  const profileGated = await profileGateResponse(session.user.id, "missions");
+  if (profileGated) return profileGated;
   // Reward claim. Correctness comes from the unique ledger constraint; this
   // keeps a claim flood from being absorbed by the database.
   const limited = await enforceDbRateLimit(req, "claim", session.user.id, 30, 60_000);

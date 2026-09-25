@@ -24,6 +24,7 @@ import { toNum, toNumOrNull } from "@/lib/money";
 import { getSetting } from "@/lib/system-settings";
 import { formatAffiliateReward } from "@/lib/affiliate";
 import { z } from "zod";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 // Cap how many bytes we pull back to analyse a deliverable (bounds bandwidth
 // for large stock video; images/audio are usually far smaller). For a bigger
@@ -376,6 +377,10 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+    // that lets a user earn, or a locked user earns through the unchecked one.
+    const profileGated = await profileGateResponse(session.user.id, "selling");
+    if (profileGated) return profileGated;
     if (!(await userCanFeature(session.user.id, "marketplace"))) {
       return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
     }

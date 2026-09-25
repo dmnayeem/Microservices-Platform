@@ -16,6 +16,7 @@ import {
 } from "@/generated/prisma";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { getWithdrawalConfig } from "@/lib/withdrawal";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 // GET /api/withdrawals - Get user's withdrawal history
 export async function GET(request: NextRequest) {
@@ -111,6 +112,10 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+  // that lets a user earn, or a locked user earns through the unchecked one.
+  const profileGated = await profileGateResponse(session.user.id, "withdrawals");
+  if (profileGated) return profileGated;
 
   // Money leaving the platform. `User.status` was checked only at login, and
   // the JWT lives 30 days with no status claim — so an account banned for fraud

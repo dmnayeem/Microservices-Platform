@@ -6,10 +6,14 @@ import { getUiToggles } from "@/lib/ui-toggles-server";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getWithdrawalConfig } from "@/lib/withdrawal";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { ProfileGate } from "@/components/user/profile/profile-gate";
+import { getProfileGateState } from "@/lib/profile-gate-server";
 
 export default async function WithdrawalPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const gate = await getProfileGateState(session.user.id, "withdrawals");
+  if (gate.locked) return <ProfileGate progress={gate.progress} surface="withdrawals" />;
 
   const [user, methods, toggles, pointsPerUsd, wcfg] = await Promise.all([
     prisma.user.findUnique({

@@ -16,6 +16,7 @@ import {
   visibleTaskWhere,
   visibleBoardWhere,
 } from "@/lib/task-visibility";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 export async function POST(
   _req: Request,
@@ -25,6 +26,10 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+  // that lets a user earn, or a locked user earns through the unchecked one.
+  const profileGated = await profileGateResponse(session.user.id, "tasks");
+  if (profileGated) return profileGated;
 
   // A banned or suspended account must not be able to claim a board. `User.status`
   // is otherwise only ever read at login, and the JWT lives 30 days with no

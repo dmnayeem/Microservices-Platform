@@ -9,8 +9,6 @@ import {
   parseFeatureOverrides,
   type PackageFeatureKey,
 } from "@/lib/packages";
-import { getUiToggles } from "@/lib/ui-toggles-server";
-import { isProfileComplete } from "@/lib/profile-completion";
 import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
 import { matchesTaskAudience } from "@/lib/task-targeting";
@@ -27,6 +25,7 @@ import {
   accountsOnIp,
   recordFraudEvent,
 } from "@/lib/fraud";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
   SOCIAL: "socialTasks",
@@ -51,6 +50,10 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+    // that lets a user earn, or a locked user earns through the unchecked one.
+    const profileGated = await profileGateResponse(session.user.id, "tasks");
+    if (profileGated) return profileGated;
 
     // A banned or suspended account must not be able to start a task. `User.status`
     // is otherwise only ever read at login, and the JWT lives 30 days with no
@@ -179,13 +182,9 @@ export async function POST(
 
     // Admin-gated profile-completion requirement — block starting any task until
     // the user's core profile is filled.
-    const { requireProfileCompletion } = await getUiToggles();
-    if (requireProfileCompletion && !isProfileComplete(user)) {
-      return NextResponse.json(
-        { error: "Complete your profile to start tasks." },
-        { status: 403 }
-      );
-    }
+    // (The profile gate is enforced at the top of this route, before the
+    // fraud checks, by profileGateResponse — it honours the admin's chosen
+    // standard and feature list, which this old check could not.)
 
     // Resolve effective plan (handles expiry + isDefault fallback).
     const userPackage = await getEffectivePackage(session.user.id);

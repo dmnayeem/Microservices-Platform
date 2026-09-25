@@ -70,8 +70,20 @@ const has = (v: unknown): boolean => {
   return Boolean(v);
 };
 
+/**
+ * Whether a user can verify their phone number here at all.
+ *
+ * False, and not a setting, because the feature does not exist yet: there is
+ * an API (`/api/auth/verify-phone`, Firebase-based) but no page calls it, the
+ * `/verify-phone` link the ring pointed to was a 404, and Firebase is not
+ * configured. While it counted towards the ring, 100% was impossible for every
+ * user — the real ceiling was 93% — so a gate set to "100%" would have locked
+ * everyone out for good. Flip this only when a working verify-phone page ships.
+ */
+export const PHONE_VERIFICATION_AVAILABLE = false;
+
 export function calculateProfileCompletion(p: ProfileSnapshot): CompletionResult {
-  const items: CompletionItem[] = [
+  const all: CompletionItem[] = [
     // Basic — heaviest weight (this is what people see first)
     { key: "avatar", label: "Profile photo", category: "basic", weight: 8, done: has(p.avatar), href: "?modal=photo&which=avatar" },
     { key: "coverPhoto", label: "Cover photo", category: "basic", weight: 4, done: has(p.coverPhoto), href: "?modal=photo&which=coverPhoto" },
@@ -102,6 +114,9 @@ export function calculateProfileCompletion(p: ProfileSnapshot): CompletionResult
     { key: "social", label: "At least 1 social account connected", category: "social", weight: 5, done: (p.socialAccountsCount ?? 0) > 0, href: "?tab=social" },
     { key: "socialThree", label: "3+ social accounts connected", category: "social", weight: 4, done: (p.socialAccountsCount ?? 0) >= 3, href: "?tab=social" },
   ];
+
+  // An item the user has no way to complete is not part of the total.
+  const items = all.filter((it) => it.key !== "phoneVerified" || PHONE_VERIFICATION_AVAILABLE);
 
   const totalWeight = items.reduce((s, it) => s + it.weight, 0);
   const filledWeight = items.filter((it) => it.done).reduce((s, it) => s + it.weight, 0);
@@ -169,5 +184,31 @@ export function requiredProfileProgress(p: RequiredSnapshot): RequiredProgress {
     percentage: total > 0 ? Math.round((done / total) * 100) : 100,
     complete: missing.length === 0,
     missing,
+  };
+}
+
+
+/**
+ * Progress towards the FULL 100% profile, in the same shape as the essentials
+ * progress, so the lock screen and banner render either without knowing which
+ * mode the admin chose.
+ */
+export function fullProfileProgress(p: ProfileSnapshot): RequiredProgress {
+  const r = calculateProfileCompletion(p);
+  const total = r.items.length;
+  const done = total - r.missing.length;
+  return {
+    done,
+    total,
+    // The weighted percentage — the same number the profile ring shows.
+    percentage: r.percentage,
+    complete: r.missing.length === 0,
+    missing: r.missing.map((m) => ({
+      key: m.key as keyof RequiredSnapshot,
+      label: m.label,
+      // Ring hrefs are relative to the profile page ("?tab=…") or absolute
+      // ("/verify-email"); the lock screen lives elsewhere, so resolve them.
+      href: !m.href ? "/profile" : m.href.startsWith("?") ? `/profile${m.href}` : m.href,
+    })),
   };
 }

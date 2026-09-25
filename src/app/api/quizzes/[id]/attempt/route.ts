@@ -17,6 +17,7 @@ import {
   type QuizRepeat,
 } from "@/lib/quiz-period";
 import { closeQuizIfFull, quizParticipantCount } from "@/lib/quiz-slots";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -29,6 +30,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+  // that lets a user earn, or a locked user earns through the unchecked one.
+  const profileGated = await profileGateResponse(session.user.id, "quizzes");
+  if (profileGated) return profileGated;
   const userId = session.user.id;
   const { id } = await params;
 

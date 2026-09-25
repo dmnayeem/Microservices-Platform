@@ -9,7 +9,7 @@ export default async function TasksPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const gate = await getProfileGateState(session.user.id);
+  const gate = await getProfileGateState(session.user.id, "tasks");
   if (gate.locked) {
     return <ProfileGate progress={gate.progress} surface="Tasks" />;
   }

@@ -9,7 +9,7 @@ export default async function DailyMissionPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const gate = await getProfileGateState(session.user.id);
+  const gate = await getProfileGateState(session.user.id, "missions");
   if (gate.locked) {
     return <ProfileGate progress={gate.progress} surface="the Daily Mission" />;
   }

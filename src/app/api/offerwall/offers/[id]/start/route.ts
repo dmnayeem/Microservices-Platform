@@ -7,6 +7,7 @@ import {
   offerAllowsCountry,
   buildTrackingUrl,
 } from "@/lib/offerwall";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -17,6 +18,8 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const profileGated = await profileGateResponse(session.user.id, "offerwalls");
+  if (profileGated) return profileGated;
   const userId = session.user.id;
 
   if (!(await userCanFeature(userId, "offerwallTasks")))

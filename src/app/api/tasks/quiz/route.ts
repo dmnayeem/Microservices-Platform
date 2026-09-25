@@ -28,6 +28,7 @@ import {
 } from "@/lib/quiz-shape";
 import { requireActiveUser } from "@/lib/require-active";
 import { closeTaskIfFull } from "@/lib/task-slots";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 
 /**
  * Strip the answer key before sending a quiz to the browser.
@@ -205,6 +206,10 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Profile gate — see lib/profile-gate-server.ts. Checked on every route
+    // that lets a user earn, or a locked user earns through the unchecked one.
+    const profileGated = await profileGateResponse(session.user.id, "tasks");
+    if (profileGated) return profileGated;
 
     const body = await request.json();
     // `questions` is still accepted from older clients but is NEVER read — see
