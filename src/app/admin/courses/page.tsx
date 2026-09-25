@@ -123,6 +123,7 @@ export default async function CoursesAdminPage({ searchParams }: PageProps) {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const canManage = await can(session.user.id, "courses.manage");
+  const seesMoney = await can(session.user.id, "finance.view");
 
   const buildHref = (newPage: number) => {
     const sp = new URLSearchParams();
@@ -222,12 +223,15 @@ export default async function CoursesAdminPage({ searchParams }: PageProps) {
           value={tutorCount}
           label="Total tutors"
         />
-        <Stat
-          icon={<Wallet className="w-5 h-5" />}
-          tone="emerald"
-          value={usd(totalRevenue)}
-          label="Lifetime revenue"
-        />
+        {/* Course revenue is finance's figure, not a course admin's. */}
+        {seesMoney && (
+          <Stat
+            icon={<Wallet className="w-5 h-5" />}
+            tone="emerald"
+            value={usd(totalRevenue)}
+            label="Lifetime revenue"
+          />
+        )}
         <Stat
           icon={<Star className="w-5 h-5" />}
           tone="amber"

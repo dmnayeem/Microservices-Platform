@@ -154,6 +154,7 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
   ]);
 
   const canManage = await can(session.user.id, "marketplace.manage");
+  const seesMoney = await can(session.user.id, "finance.view");
   const canResolveDisputes = await can(session.user.id, "marketplace.disputes");
 
   // Per-tab data fetch
@@ -316,13 +317,26 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
           value={openDisputes.toLocaleString()}
           label="Open Disputes"
         />
-        <StatCard
-          icon={<DollarSign className="w-5 h-5" />}
-          tone="amber"
-          value={usd(totalRevenue._sum.amount ?? 0)}
-          label="Revenue"
-          extra={`${totalListings.toLocaleString()} total listings`}
-        />
+        {/* The shop's money is finance's figure. Running the marketplace —
+            listings, disputes, moderation — does not need it, and this tile
+            was showing platform revenue to every admin who can review a
+            listing. */}
+        {seesMoney ? (
+          <StatCard
+            icon={<DollarSign className="w-5 h-5" />}
+            tone="amber"
+            value={usd(totalRevenue._sum.amount ?? 0)}
+            label="Revenue"
+            extra={`${totalListings.toLocaleString()} total listings`}
+          />
+        ) : (
+          <StatCard
+            icon={<DollarSign className="w-5 h-5" />}
+            tone="amber"
+            value={totalListings.toLocaleString()}
+            label="Total listings"
+          />
+        )}
       </div>
 
       {/* Tab Bar */}
