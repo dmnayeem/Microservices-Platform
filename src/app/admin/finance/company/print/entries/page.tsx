@@ -107,9 +107,9 @@ export default async function EntriesPrint({ searchParams }: { searchParams: Pro
         </tbody>
       </table>
       <div className="mt-3 text-[13px]">
-        <p><span className="text-gray-500">Total (excluding void):</span> <span className="font-semibold">{paperMoney(totalUsd, "USD")}</span></p>
-        <p className="text-[12px] text-gray-600">Paid {paperMoney(paidUsd, "USD")} · owed {paperMoney(totalUsd - paidUsd, "USD")} · tax inside these {paperMoney(taxUsd, "USD")}</p>
-        {rows.length === 2000 && <p className="text-[11px] text-red-700">Only the first 2,000 entries are printed — narrow the filter.</p>}
+        <p><span className="pd-muted">Total (excluding void):</span> <span className="font-semibold">{paperMoney(totalUsd, "USD")}</span></p>
+        <p className="text-[12px] pd-muted2">Paid {paperMoney(paidUsd, "USD")} · owed {paperMoney(totalUsd - paidUsd, "USD")} · tax inside these {paperMoney(taxUsd, "USD")}</p>
+        {rows.length === 2000 && <p className="text-[11px] pd-danger">Only the first 2,000 entries are printed — narrow the filter.</p>}
       </div>
     </PrintDoc>
   );

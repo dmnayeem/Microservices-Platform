@@ -68,7 +68,7 @@ export default async function TaxPrint({ searchParams }: { searchParams: Promise
         </tbody>
       </table>
       {reg.notes.map((n) => (
-        <p key={n} className="mt-2 text-[11px] text-gray-600">Note: {n}</p>
+        <p key={n} className="mt-2 text-[11px] pd-muted2">Note: {n}</p>
       ))}
     </PrintDoc>
   );

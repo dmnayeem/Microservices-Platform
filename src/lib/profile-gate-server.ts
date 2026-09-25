@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  GATE_FEATURES,
+  DEFAULT_GATE_FEATURES,
+  type GateFeature,
+  type GateMode,
+} from "@/lib/profile-gate-features";
 import { prisma } from "@/lib/prisma";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { getSetting } from "@/lib/system-settings";
@@ -25,19 +31,10 @@ import {
  * Every route that lets a user earn now calls `profileGateResponse`.
  */
 
-export const GATE_FEATURES = [
-  { key: "tasks", label: "Tasks (every task type)" },
-  { key: "missions", label: "Daily missions & missions" },
-  { key: "quizzes", label: "Quiz games" },
-  { key: "offerwalls", label: "Offerwalls" },
-  { key: "selling", label: "Selling on the marketplace" },
-  { key: "withdrawals", label: "Withdrawals" },
-] as const;
-export type GateFeature = (typeof GATE_FEATURES)[number]["key"];
-
-/** What an admin who only flips the master switch gets — the original behaviour. */
-export const DEFAULT_GATE_FEATURES: GateFeature[] = ["tasks", "missions"];
-export type GateMode = "ESSENTIALS" | "FULL";
+// The list itself lives in a client-safe module so the settings screen can show
+// it without importing prisma.
+export { GATE_FEATURES, DEFAULT_GATE_FEATURES } from "@/lib/profile-gate-features";
+export type { GateFeature, GateMode } from "@/lib/profile-gate-features";
 
 export interface ProfileGateState {
   /** Admin master switch is ON and this feature is one of the locked ones. */

@@ -296,10 +296,16 @@ check(
   "it pointed at the KYC tab; the field lives on Personal"
 );
 check(
-  "email/phone verification go to their own pages",
-  byKey.get("emailVerified")?.href === "/verify-email" &&
-    byKey.get("phoneVerified")?.href === "/verify-phone",
+  "email verification goes to its own page",
+  byKey.get("emailVerified")?.href === "/verify-email",
   "no profile tab has a verification control, so pointing at one is a different wrong door"
+);
+// There is no /verify-phone page (the link was a 404) and nothing can verify a
+// phone yet, so the item is left out of the ring until that ships — while it
+// counted, 100% was impossible for everyone. See PHONE_VERIFICATION_AVAILABLE.
+check(
+  "phone verification is not offered while there is no way to do it",
+  !byKey.has("phoneVerified")
 );
 check(
   "named fields carry an anchor",

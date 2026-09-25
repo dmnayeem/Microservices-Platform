@@ -21,7 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { ProfileGateSettings } from "@/components/admin/settings/profile-gate-settings";
+import { ProfileGateStandard, ProfileGateFeatures } from "@/components/admin/settings/profile-gate-settings";
 import { cn, usd } from "@/lib/utils";
 import {
   NotActiveBadge,
@@ -197,6 +197,10 @@ export function SystemSettingsForm({
 
   const set = <K extends string>(k: K, v: unknown) =>
     setValues((p) => ({ ...p, [k]: v }));
+
+  const gateFeatures = Array.isArray(values["profile_gate.features"])
+    ? (values["profile_gate.features"] as string[])
+    : ["tasks", "missions"];
 
   const saveCategory = async (category: string) => {
     setBusy(true);
@@ -1459,18 +1463,24 @@ export function SystemSettingsForm({
               disabled={!canEdit}
               tone="amber"
             />
-            <ProfileGateSettings
-              on={values["ui.require_profile_completion"] === true}
-              mode={String(values["profile_gate.mode"] ?? "ESSENTIALS")}
-              features={
-                Array.isArray(values["profile_gate.features"])
-                  ? (values["profile_gate.features"] as string[])
-                  : ["tasks", "missions"]
-              }
-              onMode={(v) => set("profile_gate.mode", v)}
-              onFeatures={(v) => set("profile_gate.features", v)}
-              disabled={!canEdit}
-            />
+            <div className="ml-1 space-y-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <Field settingKey="profile_gate.mode">
+                <ProfileGateStandard
+                  on={values["ui.require_profile_completion"] === true}
+                  mode={String(values["profile_gate.mode"] ?? "ESSENTIALS")}
+                  features={gateFeatures}
+                  onMode={(v) => set("profile_gate.mode", v)}
+                  disabled={!canEdit}
+                />
+              </Field>
+              <Field settingKey="profile_gate.features">
+                <ProfileGateFeatures
+                  features={gateFeatures}
+                  onFeatures={(v) => set("profile_gate.features", v)}
+                  disabled={!canEdit}
+                />
+              </Field>
+            </div>
             <Toggle settingKey="ui.require_kyc_for_withdrawal"
               checked={values["ui.require_kyc_for_withdrawal"] !== false}
               onChange={(v) => set("ui.require_kyc_for_withdrawal", v)}

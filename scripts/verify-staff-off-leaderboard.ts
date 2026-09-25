@@ -569,11 +569,13 @@ check(
   "a MANAGER cannot edit another MANAGER",
   !canAdministerStaffAccount("MANAGER", "MANAGER").ok
 );
+// FINANCE_MODERATOR joined on 2026-09-25: a manager must not be able to hand
+// out access to money, including by assigning the finance data-entry role.
 check(
-  "MANAGER_FORBIDDEN_ROLES covers exactly super/finance/manager",
-  ["SUPER_ADMIN", "FINANCE_ADMIN", "MANAGER"].every((r) =>
+  "MANAGER_FORBIDDEN_ROLES covers exactly super/finance admin/finance moderator/manager",
+  ["SUPER_ADMIN", "FINANCE_ADMIN", "FINANCE_MODERATOR", "MANAGER"].every((r) =>
     MANAGER_FORBIDDEN_ROLES.includes(r as UserRole)
-  ) && MANAGER_FORBIDDEN_ROLES.length === 3
+  ) && MANAGER_FORBIDDEN_ROLES.length === 4
 );
 check(
   "…but a MANAGER CAN still administer the staff it is meant to (it is not inert)",

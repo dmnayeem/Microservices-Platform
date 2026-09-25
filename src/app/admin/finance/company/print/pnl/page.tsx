@@ -78,7 +78,7 @@ export default async function PnlPrint({ searchParams }: { searchParams: Promise
               </tr>
             </tbody>
           </table>
-          <p className="mt-3 text-[11px] text-gray-500">
+          <p className="mt-3 text-[11px] pd-muted">
             Tax collected or paid is excluded from both income and costs — it is held for, or paid to, the tax authority. See
             the VAT &amp; Tax register. Only paid entries are counted.
           </p>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { financeGuard, reply, auditFinance } from "@/lib/company-finance/api";
-import { saveCategory, saveFieldDef } from "@/lib/company-finance/books";
+import { availableCurrencies, saveCategory, saveFieldDef } from "@/lib/company-finance/books";
+import { prisma } from "@/lib/prisma";
+import { invalidateSettingsCache, primeSetting } from "@/lib/system-settings";
 
 export const runtime = "nodejs";
 
@@ -18,7 +20,35 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as {
     category?: Parameters<typeof saveCategory>[0];
     field?: Parameters<typeof saveFieldDef>[0];
+    defaultCurrency?: string;
   };
+
+  // The currency a new entry starts in. It was read by the books and editable
+  // nowhere — the settings-truth audit caught it. Lives here rather than on the
+  // general Settings screen because this is a finance decision, and that
+  // screen is editable by admins who are not allowed to see the books.
+  if (body.defaultCurrency !== undefined) {
+    const code = String(body.defaultCurrency).trim().toUpperCase();
+    const known = (await availableCurrencies()).some((c) => c.code === code);
+    if (!known) {
+      return NextResponse.json(
+        { error: `${code || "That"} has no exchange rate set — add it under Settings → Currencies first` },
+        { status: 400 }
+      );
+    }
+    const KEY = "finance.default_currency";
+    await prisma.systemSetting.upsert({
+      where: { key: KEY },
+      create: { key: KEY, value: code, category: "finance" },
+      update: { value: code, category: "finance" },
+    });
+    // Clear, then prime — the read goes through an edge cache that is not ours
+    // to clear, so without the prime the change would appear not to save.
+    invalidateSettingsCache();
+    primeSetting(KEY, code);
+    await auditFinance(g.caller, "DEFAULT_CURRENCY_SET", "SystemSetting", KEY, `Set the default entry currency to ${code}`);
+    return NextResponse.json({ ok: true, defaultCurrency: code });
+  }
 
   if (body.category) {
     const res = await saveCategory(body.category);

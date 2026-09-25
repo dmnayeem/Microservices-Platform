@@ -1045,7 +1045,7 @@ export function SendNotificationForm() {
                     onChange={(e) =>
                       setFormData({ ...formData, important: e.target.checked })
                     }
-                    className="mt-0.5 rounded bg-slate-800 border-slate-600 text-rose-500"
+                    className="mt-0.5 rounded bg-slate-800 border-slate-600 text-rose-400"
                   />
                   <span className="min-w-0">
                     <span className="block text-sm text-white">

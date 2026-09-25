@@ -30,7 +30,7 @@
  *                      from the most vivid step that reads on its bar and moves
  *                      only as far as the floor forces it: 400 on the near-black
  *                      bar, 500 on the white one. The two can end up far apart —
- *                      silver is 400 (#c7ced9) in dark and 700 (#6b7688) in
+ *                      silver is 400 (#c4d1ca) in dark and 700 (#667b70) in
  *                      light, four steps in the opposite direction — which is
  *                      the whole reason they are separate columns.
  *
@@ -81,7 +81,10 @@ export const ACCENT_SURFACE: Record<string, AccentSurface> = {
   pink: { gradA: "#c6005c", gradB: "#c70036", railADark: "#fb64b6", railBDark: "#ff637e", railALight: "#f6339a", railBLight: "#ff2056" },
   rose: { gradA: "#c70036", gradB: "#c10007", railADark: "#ff637e", railBDark: "#ff6467", railALight: "#ff2056", railBLight: "#fb2c36" },
   gold: { gradA: "#8a6b18", gradB: "#bb4d00", railADark: "#e3c15a", railBDark: "#ffb900", railALight: "#8a6b18", railBLight: "#bb4d00" },
-  silver: { gradA: "#535c6b", gradB: "#3c434f", railADark: "#c7ced9", railBDark: "#90a1b9", railALight: "#6b7688", railBLight: "#314158" },
+  // The green-tinted neutral the owner approved on 2026-09-25. These were
+  // hand-edited into globals.css and never written back here, so the next
+  // regeneration would have silently reverted the chrome to slate-blue.
+  silver: { gradA: "#4e6057", gradB: "#38473f", railADark: "#c4d1ca", railBDark: "#8aa898", railALight: "#667b70", railBLight: "#294839" },
 };
 
 /** The accent that ships when nobody has chosen one. */

@@ -777,7 +777,7 @@ export function StudioClient({
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+          <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className="space-y-2">
               <div className="aspect-square bg-gray-950 rounded-lg overflow-hidden border border-gray-700 flex items-center justify-center">
                 {asset.previewUrl ? (
@@ -895,7 +895,7 @@ export function StudioClient({
                 <Film className="w-4 h-4 text-indigo-400" />
                 Turn this into a video
               </h3>
-              <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
+              <div className="grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)]">
                 <label className="text-sm">
                   <span className="text-gray-400">Model</span>
                   <select

@@ -87,11 +87,11 @@ export default async function SalarySheetPrint({
         {[...totals.entries()].map(([cur, t]) => (
           <div key={cur}>
             <p>
-              <span className="text-gray-500">Total {cur}:</span>{" "}
+              <span className="pd-muted">Total {cur}:</span>{" "}
               <span className="font-semibold">{paperMoney(t.paid + t.owed, cur)}</span>
-              <span className="text-gray-500"> — paid {paperMoney(t.paid, cur)}, still owed {paperMoney(t.owed, cur)}</span>
+              <span className="pd-muted"> — paid {paperMoney(t.paid, cur)}, still owed {paperMoney(t.owed, cur)}</span>
             </p>
-            <p className="text-[12px] text-gray-600">In words: {amountInWords(t.paid + t.owed, cur)}</p>
+            <p className="text-[12px] pd-muted2">In words: {amountInWords(t.paid + t.owed, cur)}</p>
           </div>
         ))}
       </div>

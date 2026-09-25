@@ -76,9 +76,9 @@ export default async function PayslipPrint({ params }: { params: Promise<{ id: s
         </tfoot>
       </table>
       <p className="mt-3 text-[13px]">
-        <span className="text-gray-500">In words:</span> <span className="font-semibold">{amountInWords(amount, e.currency)}</span>
+        <span className="pd-muted">In words:</span> <span className="font-semibold">{amountInWords(amount, e.currency)}</span>
       </p>
-      {emp.commissionNote && <p className="mt-2 text-[11px] text-gray-500">Commission terms: {emp.commissionNote} (paid separately).</p>}
+      {emp.commissionNote && <p className="mt-2 text-[11px] pd-muted">Commission terms: {emp.commissionNote} (paid separately).</p>}
     </PrintDoc>
   );
 }

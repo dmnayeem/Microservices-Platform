@@ -420,9 +420,13 @@ check(
 );
 
 const runView = code("src/components/user/tasks/social-task-run-view.tsx");
+// Since 11e6b87 (the owner's request): a rule the user was already handed in
+// the steps above — usually the pin's destination link — is not repeated. Any
+// rule they were NOT given still shows, which is the case the warning exists for.
 check(
-  "the run view renders those requirements",
-  /contentRules\[idx\]\?\.labels\.length/.test(runView)
+  "the run view renders the requirements the user was not already given",
+  /unlistedRules\s*=\s*\(contentRules\[idx\]\?\.labels/.test(runView) &&
+    /item\.verify === "CONTENT" && unlistedRules\.length > 0/.test(runView)
 );
 check(
   "…and says plainly that FB/IG go to manual review",

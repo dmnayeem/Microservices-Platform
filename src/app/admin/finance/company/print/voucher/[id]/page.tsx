@@ -148,15 +148,15 @@ export default async function VoucherPrint({ params }: { params: Promise<{ id: s
       )}
 
       <p className="mt-3 text-[13px]">
-        <span className="text-gray-500">In words:</span> <span className="font-semibold">{amountInWords(amount, e.currency)}</span>
+        <span className="pd-muted">In words:</span> <span className="font-semibold">{amountInWords(amount, e.currency)}</span>
       </p>
       {e.currency !== "USD" && (
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] pd-muted">
           ≈ {paperMoney(toNum(e.amountUsd), "USD")} at {toNum(e.usdRate)} {e.currency} per USD, the rate recorded with this entry.
         </p>
       )}
-      {e.status === "VOID" && e.voidReason && <p className="mt-2 text-[12px] font-semibold text-red-700">Void reason: {e.voidReason}</p>}
-      <p className="mt-2 text-[11px] text-gray-500">
+      {e.status === "VOID" && e.voidReason && <p className="mt-2 text-[12px] font-semibold pd-danger">Void reason: {e.voidReason}</p>}
+      <p className="mt-2 text-[11px] pd-muted">
         Recorded by {e.createdBy?.name ?? "—"}
         {e.approvedBy?.name ? ` · approved by ${e.approvedBy.name}` : ""}
         {e.attachments.length ? ` · ${e.attachments.length} receipt(s) on file` : ""}

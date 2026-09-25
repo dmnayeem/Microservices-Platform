@@ -30,6 +30,8 @@ export function SettingsTab({ meta, onChanged }: { meta: Meta; onChanged: () => 
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      <DefaultCurrency meta={meta} onChanged={onChanged} />
+
       <div className={`${cardCls} p-4`}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-semibold text-white"><Tags className="h-4 w-4 text-slate-400" /> Categories</h3>
@@ -45,7 +47,7 @@ export function SettingsTab({ meta, onChanged }: { meta: Meta; onChanged: () => 
                 {list.map((c) => (
                   <div key={c.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-800/50 ${c.isActive ? "" : "opacity-50"}`}>
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: c.color ?? "#64748b" }} />
-                    <span className="flex-1 truncate text-sm text-slate-200">{c.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{c.name}</span>
                     {c.isSystem && <span className="text-[10px] text-slate-600">built-in</span>}
                     {!c.isActive && <span className="text-[10px] text-slate-500">off</span>}
                     <button onClick={() => setCat(c)} className="rounded p-1 text-slate-500 hover:text-white" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></button>
@@ -77,7 +79,7 @@ export function SettingsTab({ meta, onChanged }: { meta: Meta; onChanged: () => 
                 <div className="space-y-1">
                   {list.map((f) => (
                     <div key={f.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-800/50 ${f.isActive ? "" : "opacity-50"}`}>
-                      <span className="flex-1 truncate text-sm text-slate-200">
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-200">
                         {f.label}
                         {f.required && <span className="text-rose-400"> *</span>}
                       </span>
@@ -238,5 +240,47 @@ function FieldForm({ meta, field, onClose, onSaved }: { meta: Meta; field: MetaF
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * The currency a new entry, salary or recurring bill starts in. Every entry
+ * still records its own currency and frozen rate; this only picks the default.
+ */
+function DefaultCurrency({ meta, onChanged }: { meta: Meta; onChanged: () => void }) {
+  const [value, setValue] = useState(meta.defaultCurrency);
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api("/api/admin/company-finance/settings", {
+        method: "POST",
+        body: JSON.stringify({ defaultCurrency: value }),
+      });
+      toast.success(`New entries now start in ${value}`);
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className={`${cardCls} p-4 lg:col-span-2`}>
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Default currency for new entries" hint="Each entry still keeps its own currency and the rate on the day it was recorded." className="min-w-[14rem] flex-1">
+          <select className={inputCls} value={value} onChange={(e) => setValue(e.target.value)}>
+            {meta.currencies.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} {c.code === "USD" ? "" : `(${c.usdRate} per $1)`}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <button className={btnPrimary} onClick={save} disabled={saving || value === meta.defaultCurrency}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}Save
+        </button>
+      </div>
+    </div>
   );
 }
