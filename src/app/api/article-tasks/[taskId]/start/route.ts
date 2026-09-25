@@ -115,11 +115,19 @@ export async function POST(
 
   // Reuse an in-flight PENDING submission if one exists for this user/task —
   // this lets the user resume mid-flow without losing popup progress.
+  //
+  // In flight means NOT yet submitted (`submittedAt: null`), as in
+  // /api/tasks/[id]/start. PENDING alone also matches yesterday's submission
+  // still waiting for review, and resuming that one sent the user through the
+  // whole article again only for submit to answer "You've already submitted
+  // this" — a repeatable task could never be done a second time while the
+  // first was in the review queue.
   let submission = await prisma.taskSubmission.findFirst({
     where: {
       taskId: task.id,
       userId: session.user.id,
       status: SubmissionStatus.PENDING,
+      submittedAt: null,
     },
     orderBy: { createdAt: "desc" },
   });

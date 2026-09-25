@@ -52,11 +52,17 @@ export async function POST(
     return corsResponse({ error: "Token / task mismatch" }, { status: 403 });
   }
 
-  // 1. Idempotent: if this user already has a key claimed for this task
-  //    (any submission), return it instead of pulling another one. Prevents
-  //    accidental double-claims after refresh.
+  // 1. Idempotent: if this user already holds a key for this task that has
+  //    NOT been submitted yet, return it instead of pulling another one.
+  //    Prevents accidental double-claims after refresh.
+  //
+  //    Only an unsubmitted key. This once matched any key the user had ever
+  //    claimed, so on a repeatable task the second day's attempt was handed
+  //    back yesterday's key — already bound to yesterday's submission — and
+  //    submit refused it with "This key has already been submitted". The user
+  //    had done the work and could not be paid for it.
   const existing = await prisma.articleTaskKey.findFirst({
-    where: { taskId, claimedByUserId: v.payload.u },
+    where: { taskId, claimedByUserId: v.payload.u, submissionId: null },
     orderBy: { claimedAt: "desc" },
     select: { id: true, keyValue: true },
   });
