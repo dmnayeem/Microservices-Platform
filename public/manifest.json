@@ -10,8 +10,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "background_color": "#0b1713",
-  "theme_color": "#0b1713",
+  "background_color": "#08120d",
+  "theme_color": "#08120d",
   "categories": ["finance", "productivity"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

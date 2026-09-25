@@ -112,8 +112,8 @@ export const viewport: Viewport = {
   // the pull-to-refresh area with this, so a value that drifts from the page
   // shows as a band of a different colour above the content.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#eef6f3" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1713" },
+    { media: "(prefers-color-scheme: light)", color: "#edf2ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#08120d" },
   ],
 };
 

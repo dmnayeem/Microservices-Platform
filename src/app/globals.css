@@ -41,11 +41,11 @@ html[data-theme="light"] ::-webkit-calendar-picker-indicator:hover {
    a dark popover, so recolour the parts that don't inherit. */
 .rdp-dark {
   --rdp-outside-opacity: 0.35;
-  color: #e5ebe9;
+  color: #e4e8e6;
   font-size: 0.8rem;
 }
 .rdp-dark .rdp-weekday {
-  color: #6b8079;
+  color: #66766e;
   font-weight: 700;
 }
 .rdp-dark .rdp-day_button:hover:not([disabled]) {
@@ -53,7 +53,7 @@ html[data-theme="light"] ::-webkit-calendar-picker-indicator:hover {
   border-radius: 0.375rem;
 }
 .rdp-dark .rdp-chevron {
-  fill: #9cafa9;
+  fill: #99a79f;
 }
 .rdp-dark .rdp-button_next:hover .rdp-chevron,
 .rdp-dark .rdp-button_previous:hover .rdp-chevron {
@@ -62,13 +62,13 @@ html[data-theme="light"] ::-webkit-calendar-picker-indicator:hover {
 .rdp-dark .rdp-dropdown,
 .rdp-dark .rdp-months_dropdown,
 .rdp-dark .rdp-years_dropdown {
-  background-color: #03120d;
-  color: #e5ebe9;
-  border: 1px solid #375148;
+  background-color: #000a05;
+  color: #e4e8e6;
+  border: 1px solid #32463c;
   border-radius: 0.375rem;
 }
 .rdp-dark .rdp-caption_label {
-  color: #f3f6f5;
+  color: #f2f5f3;
   font-weight: 700;
 }
 .rdp-dark .rdp-today:not(.rdp-selected) .rdp-day_button {
@@ -97,30 +97,30 @@ html[data-theme="light"] ::-webkit-calendar-picker-indicator:hover {
      contrasts above were re-measured rather than assumed: 500 went 5.47 ->
      6.23 and 600 went 4.29 -> 5.05 against gray-900, so the ratios this
      comment exists to protect got better, not worse. */
-  --color-gray-50: #f6faf9;
-  --color-gray-100: #ecf3f1;
-  --color-gray-200: #e0ece8;
-  --color-gray-300: #c7dbd4;
-  --color-gray-400: #99b6ac;
-  --color-gray-500: #82a096;
-  --color-gray-600: #709085;
-  --color-gray-700: #283c35;
-  --color-gray-800: #1a2924;
-  --color-gray-900: #101b17;
-  --color-gray-950: #0a110f;
+  --color-gray-50: #f5f8f6;
+  --color-gray-100: #eaf0ed;
+  --color-gray-200: #dce6e1;
+  --color-gray-300: #c1d1c8;
+  --color-gray-400: #8fa89b;
+  --color-gray-500: #7a9285;
+  --color-gray-600: #668173;
+  --color-gray-700: #1f3228;
+  --color-gray-800: #13211a;
+  --color-gray-900: #0b1510;
+  --color-gray-950: #070d0a;
 
   /* Admin uses slate-* — map it to the same ramp for one cohesive neutral. */
-  --color-slate-50: #f6faf9;
-  --color-slate-100: #ecf3f1;
-  --color-slate-200: #e0ece8;
-  --color-slate-300: #c7dbd4;
-  --color-slate-400: #99b6ac;
-  --color-slate-500: #82a096;
-  --color-slate-600: #709085;
-  --color-slate-700: #283c35;
-  --color-slate-800: #1a2924;
-  --color-slate-900: #101b17;
-  --color-slate-950: #0a110f;
+  --color-slate-50: #f5f8f6;
+  --color-slate-100: #eaf0ed;
+  --color-slate-200: #dce6e1;
+  --color-slate-300: #c1d1c8;
+  --color-slate-400: #8fa89b;
+  --color-slate-500: #7a9285;
+  --color-slate-600: #668173;
+  --color-slate-700: #1f3228;
+  --color-slate-800: #13211a;
+  --color-slate-900: #0b1510;
+  --color-slate-950: #070d0a;
 
   /* Curated accents (replaces per-feature rainbow gradients). */
   --color-brand: #6366f1;
@@ -228,9 +228,9 @@ html[data-accent="gold"] {
   --color-brand: #d4af37; --color-brand-2: #e3c15a;
 }
 html[data-accent="silver"] {
-  --color-indigo-300: #dfece8; --color-indigo-400: #c7d9d3; --color-indigo-500: #a8c0b8;
-  --color-indigo-600: #86a399; --color-indigo-700: #6b887e;
-  --color-brand: #a8c0b8; --color-brand-2: #c7d9d3;
+  --color-indigo-300: #dde6e1; --color-indigo-400: #c4d1ca; --color-indigo-500: #a5b6ad;
+  --color-indigo-600: #82978c; --color-indigo-700: #667b70;
+  --color-brand: #a5b6ad; --color-brand-2: #c4d1ca;
 }
 
 /* Shell tokens live in a plain :root rather than @theme: they are consumed
@@ -253,15 +253,15 @@ html[data-accent="silver"] {
      at L* 88.2 and a real shadow (white-on-white needs an edge, not a tint).
      Measured on the chrome: gray-400 6.9:1, gray-500 5.2:1 (dark) /
      7.6:1 and 5.8:1 (light) — every shell label clears 4.5:1 in both. */
-  --shell-bg: #0f2a21;
-  --shell-border: #273832;
-  --shell-hover: #1f312b;
+  --shell-bg: #031d12;
+  --shell-border: #202f28;
+  --shell-hover: #172820;
   --shell-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.7);
   --shell-veil: 88%;
   /* The well behind a creative. `bg-black` made a letterboxed ad a black slab
      across the card; this is the card's own dark neutral, so the bars read as
      the frame rather than as a hole in the page. */
-  --app-media-well: #0d1613;
+  --app-media-well: #09110d;
 }
 
 /* Base styles */
@@ -270,14 +270,14 @@ html {
   /* Dark-first base so a full page reload never flashes white before the
      app's own dark surfaces (or the theme boot script) paint. The light
      theme overrides this via `html[data-theme="light"] body` below. */
-  background-color: #0a110f;
+  background-color: #070d0a;
 }
 
 body {
   font-family: var(--font-plus-jakarta);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #0a0f0d;
+  background-color: #070c09;
   color: #fff;
 }
 
@@ -558,7 +558,7 @@ textarea,
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: #375148;
+    background: #32463c;
     border-radius: 9999px;
   }
 }
@@ -574,12 +574,12 @@ textarea,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #283c35;
+  background: #1f3228;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b554c;
+  background: #2f483b;
 }
 
 /* Text selection */
@@ -733,16 +733,16 @@ html[data-theme="light"] {
      against the DARKEST (the page), so a step is legible wherever it lands:
        200  14.63 : 1     400   7.58 : 1     600   4.63 : 1
        300  10.35 : 1     500   5.83 : 1
-     600 used to be #7a988e, which came to 3.78:1 on the page — under the body
-     floor — while a second rule further down painted the same class #617d74.
+     600 used to be #748b7f, which came to 3.78:1 on the page — under the body
+     floor — while a second rule further down painted the same class #5b7065.
      One class, two colours, neither of them measured. Now one value. */
-  --color-gray-50: #0f2a21;
-  --color-gray-100: #132620;
-  --color-gray-200: #1e3b31;
-  --color-gray-300: #33554a;
-  --color-gray-400: #47695e;
-  --color-gray-500: #5b756c;
-  --color-gray-600: #5c776e;
+  --color-gray-50: #031d12;
+  --color-gray-100: #0e1e16;
+  --color-gray-200: #172e23;
+  --color-gray-300: #2d473a;
+  --color-gray-400: #415b4e;
+  --color-gray-500: #576a60;
+  --color-gray-600: #576b60;
 
   /* ── Surfaces (high numbers) ─────────────────────────────────────────────
      Four planes with a DELIBERATE relationship, mirroring the dark theme's
@@ -763,37 +763,37 @@ html[data-theme="light"] {
      light UI does, and it puts the tile between the page and the chrome. The
      card stays pure white so it is unambiguously the top plane and the place
      content lives. */
-  --color-gray-700: #ddeee8; /* line / divider, L* 90.08 */
-  --color-gray-800: #ecf7f3; /* inset tile inside a card, L* 94.68 */
+  --color-gray-700: #dae6df; /* line / divider, L* 90.08 */
+  --color-gray-800: #eaf2ee; /* inset tile inside a card, L* 94.68 */
   --color-gray-900: #ffffff; /* card, L* 100 */
-  --color-gray-950: #e5f2ee; /* page ground, L* 92.29 */
+  --color-gray-950: #e2ece6; /* page ground, L* 92.29 */
 
-  --color-slate-50: #0f2a21;
-  --color-slate-100: #132620;
-  --color-slate-200: #1e3b31;
-  --color-slate-300: #33554a;
-  --color-slate-400: #47695e;
-  --color-slate-500: #5b756c;
-  --color-slate-600: #5c776e;
-  --color-slate-700: #ddeee8;
-  --color-slate-800: #ecf7f3;
+  --color-slate-50: #031d12;
+  --color-slate-100: #0e1e16;
+  --color-slate-200: #172e23;
+  --color-slate-300: #2d473a;
+  --color-slate-400: #415b4e;
+  --color-slate-500: #576a60;
+  --color-slate-600: #576b60;
+  --color-slate-700: #dae6df;
+  --color-slate-800: #eaf2ee;
   --color-slate-900: #ffffff;
-  --color-slate-950: #e5f2ee;
+  --color-slate-950: #e2ece6;
 
   /* App chrome, light. NOT white any more — see the ramp note above. The bar
      is the plane between the page and the cards, so the sidebar and the header
      read as chrome rather than as one more card, and a white card laid on the
      bar still separates from it without a shadow.
-     chrome #f5fcfa = L* 97.21, border #d6e9e3 = L* 87.92 (Δ 9.29). */
-  --shell-bg: #f7fcfa;
+     chrome #f3f9f6 = L* 97.21, border #d3e1d9 = L* 87.92 (Δ 9.29). */
+  --shell-bg: #f6faf8;
   /* 97%, not 88% — see `.app-chrome`. Dark text under a pale bar reads
      through anything looser, and the blur does not hide it. */
   --shell-veil: 97%;
   /* Light mode keeps a DARK well on purpose: the overlaid headline and chip are
      white in both themes, so a pale well would put white text on near-white. */
-  --app-media-well: #1a2924;
-  --shell-border: #d6e9e3;
-  --shell-hover: #e9f6f2;
+  --app-media-well: #13211a;
+  --shell-border: #d3e1d9;
+  --shell-hover: #e6f0ea;
   --shell-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.06),
     0 8px 24px -14px rgba(16, 24, 40, 0.18);
 }
@@ -854,7 +854,7 @@ html[data-theme="light"] .glass-strong {
 /* Solid card / elevation utilities — light-tuned shadows (dark ones look muddy) */
 html[data-theme="light"] .card {
   background-color: #ffffff;
-  border-color: #e6f2ee;
+  border-color: #e3ece8;
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
     0 1px 2px 0 rgba(16, 24, 40, 0.06),
     0 16px 34px -18px rgba(16, 24, 40, 0.16);
@@ -872,11 +872,11 @@ html[data-theme="light"] .elevate-2 {
    What is NOT here any more, and why.
 
    This block used to restate the surface and ink ramps class by class:
-   `.bg-gray-950 { background-color: #eaf5f1 !important }` and thirteen more
+   `.bg-gray-950 { background-color: #e8f0ec !important }` and thirteen more
    like it, each repeating a colour the ramp flip above already produces. Every
    one was a second place the same value had to be kept correct, and they had
-   already drifted apart — `.text-gray-600` painted #617d74 while
-   `--color-gray-600` said #7a988e, so one class had two colours depending on
+   already drifted apart — `.text-gray-600` painted #5b7065 while
+   `--color-gray-600` said #748b7f, so one class had two colours depending on
    which rule an element happened to match.
 
    Tailwind v4 emits `bg-gray-950` as `var(--color-gray-950)`, so flipping the
@@ -894,9 +894,9 @@ html[data-theme="light"] .bg-gray-900\/50 { background-color: rgba(255, 255, 255
 
 /* Hover states. A hover on a light plane goes DOWN in lightness, so it cannot
    come from the same variable as the resting state. */
-html[data-theme="light"] .hover\:bg-gray-800:hover { background-color: #e4f2ed !important; }
-html[data-theme="light"] .hover\:bg-gray-700:hover { background-color: #d9ece6 !important; }
-html[data-theme="light"] .hover\:bg-gray-900:hover { background-color: #f5fcfa !important; }
+html[data-theme="light"] .hover\:bg-gray-800:hover { background-color: #e1ece6 !important; }
+html[data-theme="light"] .hover\:bg-gray-700:hover { background-color: #d6e4dc !important; }
+html[data-theme="light"] .hover\:bg-gray-900:hover { background-color: #f3f9f6 !important; }
 
 /* Inputs use bg-gray-950 + border-gray-700 in this codebase */
 html[data-theme="light"] input.bg-gray-950,
@@ -917,7 +917,7 @@ html[data-theme="light"] .text-white { color: var(--app-ink) !important; }
    chosen because the thing UNDER it is dark: the accent gradient, a scrim
    over a photo, a translucent black chip. Those do not flip with the theme,
    so their text must not either. In light mode the balance figure, every ad
-   headline over a creative and every brand chip were rendering #0f2a21 on a
+   headline over a creative and every brand chip were rendering #031d12 on a
    dark ground — which is what "black text inside the blue" was.
 
    Scoped to the SURFACE rather than listed per component, so the next dark
@@ -967,7 +967,7 @@ html[data-theme="light"] .on-media [class*="text-white/"] {
    ground in light mode (it is mapped to a dark slate below, not inverted), so
    the `text-white` written on it must stay white too. It did not, and the
    image-caption overlays, the video controls and the link-preview chips were
-   all painting #0f2a21 on #516760 — 2.48:1. Matched on the class PREFIX so
+   all painting #031d12 on #4b5d54 — 2.48:1. Matched on the class PREFIX so
    every alpha step is covered at once, and so the next one someone writes is
    covered before it is written. */
 html[data-theme="light"] [class*="bg-black/"].text-white,
@@ -980,7 +980,7 @@ html[data-theme="light"] [class*="bg-(--app-media-well)"] {
 /* `.text-gray-200` … `.text-gray-600` are NOT restated here. The ramp flip
    above already paints them, and a second copy here is how 600 ended up with
    two different values. */
-html[data-theme="light"] .placeholder-gray-500::placeholder { color: #7b988e !important; }
+html[data-theme="light"] .placeholder-gray-500::placeholder { color: #758b7f !important; }
 
 /* …but text on saturated colored fills / gradients MUST stay white. This wins
    over the blanket `.text-white → dark` rule above via higher specificity. */
@@ -1005,8 +1005,8 @@ html[data-theme="light"] .bg-rose-500.text-white, html[data-theme="light"] .bg-r
 html[data-theme="light"] .bg-pink-500.text-white, html[data-theme="light"] .bg-pink-600.text-white,
 html[data-theme="light"] .bg-fuchsia-500.text-white, html[data-theme="light"] .bg-fuchsia-600.text-white,
 /* …and so must text on the MID-GREY neutral fills. The ramp flip moves 600 to
-   #5c776e — still a mid grey, still a dark ground — so the blanket
-   `text-white → ink` rule was putting #0f2a21 on it at 3.08:1. The step is a
+   #576b60 — still a mid grey, still a dark ground — so the blanket
+   `text-white → ink` rule was putting #031d12 on it at 3.08:1. The step is a
    secondary-button fill in both themes; only its neighbours flip. */
 html[data-theme="light"] .bg-gray-600.text-white, html[data-theme="light"] .bg-slate-600.text-white,
 html[data-theme="light"] .bg-gray-500.text-white, html[data-theme="light"] .bg-slate-500.text-white {
@@ -1269,14 +1269,14 @@ html[data-theme="light"] .bg-slate-900\/40 { background-color: rgba(255, 255, 25
 html[data-theme="light"] .bg-slate-900\/50 { background-color: rgba(255, 255, 255, 0.75) !important; }
 html[data-theme="light"] .bg-slate-950\/50 { background-color: rgba(229, 233, 242, 0.85) !important; }
 
-html[data-theme="light"] .hover\:bg-slate-800:hover { background-color: #e4f2ed !important; }
-html[data-theme="light"] .hover\:bg-slate-700:hover { background-color: #d9ece6 !important; }
-html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: #f5fcfa !important; }
+html[data-theme="light"] .hover\:bg-slate-800:hover { background-color: #e1ece6 !important; }
+html[data-theme="light"] .hover\:bg-slate-700:hover { background-color: #d6e4dc !important; }
+html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: #f3f9f6 !important; }
 
 /* Scrollbar in light mode */
 html[data-theme="light"] ::-webkit-scrollbar-track { background: var(--app-page); }
-html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #bcd6cd; }
-html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #b8cbc0; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8da699; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    White labels on a bright fill — BOTH themes, because this one was never a
@@ -1348,23 +1348,23 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
    green as the app instead of the old indigo/violet it was drawn in.
    ──────────────────────────────────────────────────────────────────────────── */
 [data-mk-theme="light"] {
-  /* The page was #ffffff with #ffffff cards on a #f8fcfb band: three surfaces
+  /* The page was #ffffff with #ffffff cards on a #f8faf9 band: three surfaces
      inside 1.5 CIE L* of each other, i.e. no depth at all — the landing page
      read as one flat white sheet with hairlines drawn on it. The page is now
      an off-white so the white cards and the white band actually sit ON it.
-     page #effaf6 L* 95.7 < band/surface #ffffff L* 100 (Δ 4.3). */
-  --mk-bg: #effaf6;
+     page #edf5f1 L* 95.7 < band/surface #ffffff L* 100 (Δ 4.3). */
+  --mk-bg: #edf5f1;
   --mk-band: #ffffff;
   --mk-surface: #ffffff;
-  --mk-surface-2: #f6fcfa;
-  --mk-border: #e2f0eb;       /* slate-200, L* 91.7 */
-  --mk-border-strong: #cbe1da;/* slate-300 */
-  --mk-text: #0f2a21;         /* slate-900 */
-  --mk-muted: #47695e;        /* slate-600 — 6.8:1 on the page, 8.6:1 on a card */
-  /* slate-500 (#648b7e) measured 4.28:1 against the new page colour, i.e. it
+  --mk-surface-2: #f5f9f7;
+  --mk-border: #e0eae5;       /* slate-200, L* 91.7 */
+  --mk-border-strong: #c9d8d0;/* slate-300 */
+  --mk-text: #031d12;         /* slate-900 */
+  --mk-muted: #415b4e;        /* slate-600 — 6.8:1 on the page, 8.6:1 on a card */
+  /* slate-500 (#5e7b6c) measured 4.28:1 against the new page colour, i.e. it
      FAILED body-text contrast the moment the page stopped being pure white.
      Darkened one notch: 4.86:1 on the page, 5.41:1 on a card. */
-  --mk-subtle: #5d8074;
+  --mk-subtle: #577164;
   /* Accent text: the readable half of the brand in each theme, used by prose,
      links and inline figures. A brand colour bright enough to be a good FILL is
      never bright enough to be TEXT on white, which is why this is a separate
@@ -1385,7 +1385,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
   --mk-on-cta: #ffffff;
   --mk-nav: rgba(255, 255, 255, 0.72);
   --mk-nav-scrolled: rgba(255, 255, 255, 0.95);
-  --mk-quote: #e2f0eb;        /* faint quote glyph */
+  --mk-quote: #e0eae5;        /* faint quote glyph */
   --mk-grid: rgba(15, 23, 42, 0.05);
   --mk-blob-a: rgba(16, 185, 129, 0.14);
   --mk-blob-b: rgba(5, 150, 105, 0.12);
@@ -1398,15 +1398,15 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
     0 18px 40px -18px rgba(16, 24, 40, 0.2);
 }
 [data-mk-theme="dark"] {
-  --mk-bg: #0a110f;
-  --mk-band: #0f1916;
-  --mk-surface: #141f1b;
-  --mk-surface-2: #101b17;
-  --mk-border: #23342e;
-  --mk-border-strong: #31463f;
-  --mk-text: #f1f9f6;
-  --mk-muted: #94b8ac;
-  --mk-subtle: #7c998f;
+  --mk-bg: #070d0a;
+  --mk-band: #0b140f;
+  --mk-surface: #0f1914;
+  --mk-surface-2: #0b1510;
+  --mk-border: #1c2b24;
+  --mk-border-strong: #2a3c33;
+  --mk-text: #f1f6f3;
+  --mk-muted: #8fa99b;
+  --mk-subtle: #768c80;
   /* dark #a5b4fc = 9.05:1 on a card, 9.86:1 on the page. */
   --mk-accent: #34d399;
   --mk-grad-a: #047857;
@@ -1414,10 +1414,10 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
   --mk-rail-a: #34d399;
   --mk-rail-b: #10b981;
   --mk-cta: #10b981;
-  --mk-on-cta: #0b1713;
+  --mk-on-cta: #08120d;
   --mk-nav: rgba(10, 11, 17, 0.72);
   --mk-nav-scrolled: rgba(10, 11, 17, 0.92);
-  --mk-quote: #23342e;
+  --mk-quote: #1c2b24;
   --mk-grid: rgba(255, 255, 255, 0.045);
   --mk-blob-a: rgba(16, 185, 129, 0.22);
   --mk-blob-b: rgba(5, 150, 105, 0.20);
@@ -1509,8 +1509,8 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
    flips the toggle. Measured (WCAG 2.1 relative luminance):
      light  accent #047857 on accent-soft #ecfdf5 = 5.15:1
      dark   accent #34d399 on accent-soft #0e2a22 = 8.44:1
-     light  success #047857 on surface #ffffff 5.48:1, on page #effaf6 4.93:1
-     dark   success #34d399 on surface #141f1b 9.38:1, on page #0a110f 10.22:1 */
+     light  success #047857 on surface #ffffff 5.48:1, on page #edf5f1 4.93:1
+     dark   success #34d399 on surface #0f1914 9.38:1, on page #070d0a 10.22:1 */
 [data-mk-theme="light"] {
   --mk-accent-soft: #ecfdf5;
   --mk-accent-soft-border: #c8ead9;
@@ -1845,7 +1845,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
      3:1 against its own bar.
 
      Both are per-theme AND per-accent. For silver the dark bar wants step 400
-     (#c7d9d3) and the white bar step 700 (#6b887e): four steps apart, in
+     (#c4d1ca) and the white bar step 700 (#667b70): four steps apart, in
      opposite directions. One value could not have served both. Every accent's
      pair is in src/lib/accent-palette.ts and re-measured by the verify script
      on every run. */
@@ -1873,7 +1873,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
      on the page. */
   --app-cta: #10b981;
   --app-cta-hover: #34d399;
-  --app-on-cta: #0b1713;
+  --app-on-cta: #08120d;
   --app-accent-ink: #34d399;
   --app-rail: linear-gradient(180deg, var(--app-rail-a), var(--app-rail-b));
 
@@ -1937,7 +1937,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
      all it does is put a grey smudge around every card, which is what reads as
      cheap. Depth in a dark UI comes from the lighter surface and the hairline
      above it, both of which are already here. So the shadow drops to a hint,
-     and it carries the palette's own blue-black (#06140f) rather than neutral
+     and it carries the palette's own blue-black (#010c06) rather than neutral
      black, so it sits in the same family as everything around it. */
   --app-e1: inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
     0 1px 2px 0 rgba(6, 8, 20, 0.28), 0 10px 24px -16px rgba(6, 8, 20, 0.4);
@@ -1957,7 +1957,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
   --app-glow-cta: 0 0 16px rgba(16, 185, 129, 0.35);
   --app-ring-focus: 0 0 0 3px rgba(16, 185, 129, 0.15);
   /* Frosted layers: modals, command bars, sticky earning headers. */
-  --app-field-bg: #0f2a21;
+  --app-field-bg: #031d12;
   --app-glass: rgba(19, 46, 37, 0.75);
   --app-glass-blur: 16px;
 
@@ -1965,14 +1965,14 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
   /* Obsidian Kinetic's luminance stack, verbatim. Elevation in this design is
      not a shadow — a black shadow is invisible on slate — it is a brighter
      tint per layer, so these four values ARE the depth model:
-       canvas #0b1713 -> card #132e25 -> elevated #163329 -> overlay #1c3e33
+       canvas #08120d -> card #072116 -> elevated #0a261a -> overlay #0f2e21
      The hue moved from slate-blue to the emerald the CTA already used;
      saturation and lightness are unchanged, so the depth stack above is
      exactly the one this comment has always described. */
-  --app-page: #0b1713;
-  --app-surface: #132e25;
-  --app-surface-hover: #163329;
-  --app-surface-2: #1c3e33;
+  --app-page: #08120d;
+  --app-surface: #072116;
+  --app-surface-hover: #0a261a;
+  --app-surface-2: #0f2e21;
   --app-line-subtle: rgba(255, 255, 255, 0.06);
   --app-line: rgba(255, 255, 255, 0.08);
   --app-line-strong: rgba(255, 255, 255, 0.16);
@@ -1983,7 +1983,7 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
      picked for what it looks like in dark mode — `text-gray-950` meaning
      "near-black", `bg-white text-gray-900` meaning "a white pill with dark
      text". Both are correct sentences about the dark theme and both invert
-     into nonsense: `text-gray-950` resolves to #e5f2ee in light, i.e. a
+     into nonsense: `text-gray-950` resolves to #e2ece6 in light, i.e. a
      near-white label on a literal white button.
 
      A ramp step cannot express "dark, in both themes", because the ramp is
@@ -2013,17 +2013,17 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #93b5aa; 
      one clears every floor at once: white on it 5.36:1, and the chip itself
      3.33:1 on the dark bar and 5.01:1 on the light one. */
   --app-badge: #d70410;
-  /* The design names three tiers — primary, secondary, muted #648b7e — and
+  /* The design names three tiers — primary, secondary, muted #5e7b6c — and
      puts muted on timestamps and captions. Measured on the design's own card
      that is 3.6:1, under the 4.5 floor for text. So muted keeps the value the
      design gives it but only where it is NOT text (decorative glyphs, 3:1),
      and captions get a step chosen by measurement. This is the one place the
      palette deliberately departs from the document, and it departs upward. */
-  --app-ink: #f8fcfb;
-  --app-ink-2: #94b8ac;
-  --app-ink-3: #8bb0a4;
-  --app-glyph: #648b7e;
-  --app-on-bright: #0a110f;
+  --app-ink: #f8faf9;
+  --app-ink-2: #8fa99b;
+  --app-ink-3: #85a092;
+  --app-glyph: #5e7b6c;
+  --app-on-bright: #070d0a;
   --app-on-accent: #ffffff;
   --app-bright: #ffffff;
 
@@ -2094,25 +2094,25 @@ html[data-theme="light"] {
 
   /* The four planes, same values as the ramp flip at the top of the file so
      there is exactly one light palette and not two. */
-  /* The design's canvas is #f8fcfb — an ultra-clean cool white, NOT a grey.
-     I had this at #e2f0eb, two whole steps darker, and that single value is
+  /* The design's canvas is #f8faf9 — an ultra-clean cool white, NOT a grey.
+     I had this at #e0eae5, two whole steps darker, and that single value is
      most of why light mode did not look like the template: white cards barely
      separated from a grey page instead of sitting crisply on near-white. */
-  /* The document says #f8fcfb. Rendered, that is 1.8 L* from a white card —
+  /* The document says #f8faf9. Rendered, that is 1.8 L* from a white card —
      no separation at all, and the whole app read as one white sheet. The
      template's own screenshot shows a canvas you can plainly see against the
      cards, so the canvas is tinted to match what the picture shows rather than
      what the frontmatter says:
-       canvas #eef6f3 94.9  <  chrome #f7fcfa 97.7  <  card #ffffff 100
+       canvas #edf2ef 94.9  <  chrome #f6faf8 97.7  <  card #ffffff 100
      Hover goes DOWN from white, never up: on a white card, lightening is
      invisible, which is why hovering read as "turns white". */
-  --app-page: #eef6f3;
+  --app-page: #edf2ef;
   --app-surface: #ffffff;
-  --app-surface-hover: #eef7f4;
-  --app-surface-2: #f1f9f6;
+  --app-surface-hover: #edf3f0;
+  --app-surface-2: #f1f6f3;
   --app-line-subtle: rgba(226, 232, 240, 0.6);
-  --app-line: #e2f0eb;
-  --app-line-strong: #cbe1da;
+  --app-line: #e0eae5;
+  --app-line-strong: #c9d8d0;
   --app-line-glow: rgba(16, 185, 129, 0.35);
   --app-halo-earn: 0 10px 25px -5px rgba(5, 150, 105, 0.08),
     0 8px 10px -6px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(16, 185, 129, 0.35);
@@ -2120,16 +2120,16 @@ html[data-theme="light"] {
     0 0 0 1px rgba(139, 92, 246, 0.3);
   --app-glow-cta: 0 2px 8px rgba(5, 150, 105, 0.25);
   --app-ring-focus: 0 0 0 3px rgba(5, 150, 105, 0.15);
-  --app-field-bg: #f1f9f6;
+  --app-field-bg: #f1f6f3;
   --app-glass: rgba(255, 255, 255, 0.82);
 
-  --app-ink: #0f2a21;
-  --app-ink-2: #47695e;
-  --app-ink-3: #5b756c;
+  --app-ink: #031d12;
+  --app-ink-2: #415b4e;
+  --app-ink-3: #576a60;
   /* 3.65:1 on the white card, 3.00 on the page — over the 3:1 non-text floor
      everywhere, and still clearly subordinate to body text. It was 1.08:1. */
-  --app-glyph: #6b9184;
-  --app-on-bright: #0a110f;
+  --app-glyph: #658173;
+  --app-on-bright: #070d0a;
   --app-on-accent: #ffffff;
   --app-bright: #ffffff;
 }
@@ -2819,16 +2819,16 @@ html[data-theme="light"][data-accent="gold"] {
   --app-rail-b: #bb4d00;
 }
 html[data-accent="silver"] {
-  --app-grad-a: #536b63;
-  --app-grad-b: #3c4f49;
-  --app-accent-edge: #c7d9d3;
-  --app-rail-a: #c7d9d3;
-  --app-rail-b: #90b9ab;
+  --app-grad-a: #4e6057;
+  --app-grad-b: #38473f;
+  --app-accent-edge: #c4d1ca;
+  --app-rail-a: #c4d1ca;
+  --app-rail-b: #8aa898;
 }
 html[data-theme="light"][data-accent="silver"] {
-  --app-accent-edge: #6b887e;
-  --app-rail-a: #6b887e;
-  --app-rail-b: #31584b;
+  --app-accent-edge: #667b70;
+  --app-rail-a: #667b70;
+  --app-rail-b: #294839;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
