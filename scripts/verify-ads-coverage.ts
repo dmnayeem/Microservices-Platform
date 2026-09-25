@@ -502,7 +502,9 @@ async function main() {
     // object: a control cannot be added that looks like a CTA and forgets the
     // handler, because there is no second anchor shape to forget it in.
     for (const [label, s, expect] of [
-      ["the shared renderer", rend, 5],
+      // 6: the banner-image strip (a 728×90 creative shown whole) is its own
+      // layout, and it must be billed and observed like the other five.
+      ["the shared renderer", rend, 6],
       ["the in-feed card", feed, 3],
     ] as const) {
       const anchors = (s.match(/<a\s/g) ?? []).length;
@@ -609,7 +611,15 @@ async function main() {
     );
     check(
       "the strip layout still caps the whole bar, not just its media",
-      /maxHeight: spec\.maxHeightPx \}\}/.test(rend)
+      // A fixed `height` since the media needs a definite box for `h-full`:
+      // under `maxHeight` a 3:2 photo rendered 318×212 in a 72px card and
+      // pushed the title and CTA out of it.
+      /height: spec\.maxHeightPx \}\}/.test(rend)
+    );
+    check(
+      "a banner creative in a strip space is sized from the ceiling, not squeezed beside a text column",
+      /spec\.maxHeightPx \* bannerImg\.w\) \/ bannerImg\.h/.test(rend) &&
+        /w \/ h >= 3\) setBannerImg/.test(rend)
     );
     check(
       "the in-feed card reads its ceiling from the catalog, not a literal",
@@ -718,8 +728,8 @@ async function main() {
     check(
       "visibility comes from a real IntersectionObserver on the slot's own root",
       /new IntersectionObserver\(/.test(rend) &&
-        (rend.match(/ref=\{attachRoot\}/g) ?? []).length === 5,
-      `${(rend.match(/ref=\{attachRoot\}/g) ?? []).length} of 5 roots observed`
+        (rend.match(/ref=\{attachRoot\}/g) ?? []).length === 6,
+      `${(rend.match(/ref=\{attachRoot\}/g) ?? []).length} of 6 roots observed`
     );
     // The gates must sit on ROTATION only. The first load still fetches and
     // still counts one impression per mounted slot, exactly as before — that is

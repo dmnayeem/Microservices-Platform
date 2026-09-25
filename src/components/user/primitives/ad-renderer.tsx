@@ -135,6 +135,10 @@ export function AdRenderer({
   const [error, setError] = useState(false);
   const [fading, setFading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  // A strip-space image that is itself a whole banner (≥ 3:1 — a 728×90 or
+  // 320×50 creative with its own headline and button baked in). Keyed by ad
+  // id, because the slot rotates and the next creative may not be one.
+  const [bannerImg, setBannerImg] = useState<{ id: string; w: number; h: number } | null>(null);
   // The ⋮ affordance on the card layout. Deliberately NOT a navigation control:
   // it never opens the destination and never records a click, which is why it is
   // drawn as a grey glyph and not as a button.
@@ -670,12 +674,67 @@ export function AdRenderer({
   // space became a 138px bar pinned to the bottom of every screen. Here the
   // media sits beside the text and `maxHeight` bounds the card itself, so the
   // space's ceiling is the height the user actually sees.
+  // A banner creative in a strip space is shown AS a banner: the image is the
+  // whole ad. Laid out as a strip it was squeezed into the same row as a title
+  // column and a CTA chip — on the anchor a 728×90 creative took the full
+  // 320px card, the title column got 0px, the "See plans" chip overflowed out
+  // of the card, and a dark band sat under an image 39px tall in a 56px card.
+  // Sized from the image's own shape: as wide as the space's height ceiling
+  // allows, and never wider than the column.
+  if (isStrip && ad.imageUrl && !ad.videoUrl && bannerImg?.id === ad.id) {
+    return (
+      <a
+        ref={attachRoot}
+        {...linkProps}
+        style={{
+          ...outerStyle,
+          maxWidth: Math.min(bannerImg.w, Math.round((spec.maxHeightPx * bannerImg.w) / bannerImg.h)),
+        }}
+        className={cn(
+          "app-press group relative mx-auto block w-full overflow-hidden",
+          "rounded-(--app-r-control) border border-(--app-line) hover:border-(--app-accent-edge)",
+          className
+        )}
+      >
+        {ad.impressionPixel ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={ad.impressionPixel} alt="" width={1} height={1} className="absolute bottom-0 right-0 opacity-0 pointer-events-none" />
+        ) : null}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={ad.imageUrl} alt={ad.title ?? "Ad"} className="block h-auto w-full" />
+        {/* The disclosure the strip's text column used to carry. */}
+        <span className="pointer-events-none absolute bottom-0.5 left-0.5 rounded bg-black/55 px-1 text-[9px] font-semibold uppercase tracking-wide text-white/85">
+          {brand && brand !== "Sponsored" ? `Ad · ${brand}` : "Ad"}
+        </span>
+        {dismissible && (
+          <button
+            type="button"
+            aria-label="Hide ad"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDismissed(true);
+            }}
+            className="absolute top-0.5 right-0.5 z-20 w-5 h-5 grid place-items-center rounded-full bg-black/60 backdrop-blur text-white/70 hover:text-white hover:bg-black/80"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </a>
+    );
+  }
+
   if (isStrip) {
     return (
       <a
         ref={attachRoot}
         {...linkProps}
-        style={{ ...outerStyle, maxHeight: spec.maxHeightPx }}
+        // `height`, not `maxHeight`: the media's `h-full` needs a DEFINITE
+        // height to be a percentage of. Under a max-height alone it fell back
+        // to the image's natural size — a 3:2 photo rendered 318×212 in a 72px
+        // card, cropped, and took the whole width, so the title column got 0px
+        // and the CTA was pushed out past the card's edge.
+        style={{ ...outerStyle, height: spec.maxHeightPx }}
         className={cn(
           "app-tap-row app-press group relative mx-auto flex items-stretch gap-3 overflow-hidden",
           "rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface)",
@@ -694,7 +753,7 @@ export function AdRenderer({
             muted
             loop
             playsInline
-            className="h-full w-auto shrink-0 object-contain"
+            className="h-full w-auto max-w-[45%] shrink-0 object-cover"
           />
         ) : (
           ad.imageUrl && (
@@ -702,7 +761,11 @@ export function AdRenderer({
             <img
               src={ad.imageUrl}
               alt={ad.title ?? "Ad"}
-              className="h-full w-auto shrink-0 object-contain"
+              className="h-full w-auto max-w-[45%] shrink-0 object-cover"
+              onLoad={(e) => {
+                const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+                if (h > 0 && w / h >= 3) setBannerImg({ id: ad.id, w, h });
+              }}
             />
           )
         )}

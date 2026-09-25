@@ -47,6 +47,9 @@ const CSS_VAR = "--anchor-ad-h";
 export function AnchorAdBar() {
   const pathname = usePathname();
   const [dismissed, setDismissed] = useState(true); // assume hidden until read
+  // False while the slot is empty (no inventory, or still loading): the close
+  // button must not float on its own over an empty strip.
+  const [hasAd, setHasAd] = useState(false);
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   // Read the session dismissal once on mount. Starts `true` so the bar never
@@ -78,6 +81,7 @@ export function AnchorAdBar() {
     if (!el) return;
     const sync = () => {
       root.style.setProperty(CSS_VAR, `${Math.round(el.offsetHeight)}px`);
+      setHasAd(el.offsetHeight > 12);
     };
     sync();
     const obs = new ResizeObserver(sync);
@@ -107,16 +111,23 @@ export function AnchorAdBar() {
       // is `lg:hidden`.
       className="fixed inset-x-0 z-30 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] lg:bottom-0 lg:pl-72"
     >
-      <div className="relative mx-auto max-w-3xl px-2 pb-1">
-        <AdRenderer placement="ANCHOR_BOTTOM" />
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label="Hide ad"
-          className="absolute -top-2 right-1 rounded-full bg-(--app-page)/90 border border-(--app-line) p-1 text-(--app-ink-3) hover:text-white"
-        >
-          <X className="w-3 h-3" />
-        </button>
+      <div className="mx-auto max-w-3xl px-3 pb-1">
+        {/* Shrink-wrapped to the ad, so the close button sits on the AD's
+            corner. It was on the corner of this 768px column instead, while
+            the ad is a 320px card centred inside it — about 200px apart. */}
+        <div className="relative mx-auto w-fit max-w-full">
+          <AdRenderer placement="ANCHOR_BOTTOM" />
+          {hasAd && (
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Hide ad"
+              className="absolute -top-2 -right-2 z-10 grid h-6 w-6 place-items-center rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink-2) shadow-md hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
