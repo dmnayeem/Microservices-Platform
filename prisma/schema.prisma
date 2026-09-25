@@ -1593,6 +1593,8 @@ model User {
   withdrawals                       Withdrawal[]
   paymentMethods                    UserPaymentMethod[]
   notifications                     Notification[]
+  broadcastsCreated                 Broadcast[]                  @relation("BroadcastAuthor")
+  broadcastDeliveries               BroadcastRecipient[]         @relation("BroadcastRecipientUser")
   marketplaceListings               MarketplaceListing[]
   marketplacePurchases              MarketplacePurchase[]
   marketplacePayouts                MarketplacePayout[]
@@ -4721,4 +4723,110 @@ model ScheduledJobRun {
   @@unique([job, windowKey])
   @@index([job, claimedAt])
   @@index([state])
+}
+
+/// One admin broadcast — an in-app notification, a push and/or an email sent to
+/// a chosen audience.
+///
+/// This exists because the send used to happen inside the HTTP request that
+/// started it: every recipient id loaded into memory, one `createMany`, then
+/// emails forty at a time. Past a few thousand users that request cannot
+/// finish, and when it died there was no record of who had already been
+/// written to — so the only safe thing an admin could do was not press the
+/// button. Scheduling was worse: it wrote an audit row saying "scheduled" and
+/// nothing ever sent it.
+///
+/// A broadcast is now a durable row that the scheduler drains a batch at a
+/// time. Anything killed mid-flight resumes exactly where it stopped, because
+/// progress lives in BroadcastRecipient rather than in the running function.
+model Broadcast {
+  id          String @id @default(cuid())
+  createdById String
+  createdBy   User   @relation("BroadcastAuthor", fields: [createdById], references: [id])
+
+  /// In-app / push copy. Short by nature — these render in a list row.
+  title   String
+  message String           @db.Text
+  type    NotificationType @default(SYSTEM)
+
+  /// Email copy. Kept separate because an email is not a notification: the
+  /// 50/200-character limits that suit a list row make a useless email, and
+  /// reusing them is why the email channel had nothing more to say than the
+  /// toast did. Null → fall back to title/message.
+  emailSubject String?
+  emailBody    String? @db.Text
+
+  priority    String  @default("NORMAL")
+  imageUrl    String?
+  actionUrl   String?
+  actionLabel String?
+
+  /// { inApp: bool, push: bool, email: bool }
+  channels Json
+
+  /// ALL | SEGMENT | PACKAGE | SPECIFIC
+  targetKind String
+  /// AudienceCriteria (see lib/audience.ts) when targetKind = SEGMENT.
+  criteria   Json?
+  /// Explicit recipients when targetKind = SPECIFIC; package slugs for PACKAGE.
+  userIds    String[]
+  packages   String[]
+
+  /// DRAFT | SCHEDULED | SENDING | PAUSED | DONE | CANCELLED | FAILED
+  status       String    @default("SENDING")
+  scheduledFor DateTime?
+  /// False until every recipient row has been written. The audience is resolved
+  /// in chunks, so a broadcast can be delivering to the first ten thousand
+  /// while the rest are still being enumerated.
+  audienceReady Boolean  @default(false)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  totalRecipients Int     @default(0)
+  inAppSent       Int     @default(0)
+  pushSent        Int     @default(0)
+  emailSent       Int     @default(0)
+  emailFailed     Int     @default(0)
+  lastError       String?
+
+  recipients BroadcastRecipient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([createdAt])
+}
+
+/// One recipient of one broadcast, and what has actually reached them.
+///
+/// Yes, this is a row per user per broadcast. That is the price of being able
+/// to answer "did this person get it?", to resume a half-finished send without
+/// writing to anyone twice, and to retry only the addresses that bounced. A
+/// cursor would be cheaper and could do none of those.
+model BroadcastRecipient {
+  id          String    @id @default(cuid())
+  broadcastId String
+  broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("BroadcastRecipientUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Snapshotted at enumeration time. An address changed mid-send must not
+  /// silently redirect a message the admin already believes was delivered.
+  email String?
+
+  inAppAt DateTime?
+  emailAt DateTime?
+  /// Why the email did not go. Kept so "1,203 failed" is a list, not a number.
+  emailError String?
+  attempts   Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([broadcastId, userId])
+  /// The delivery sweep's own query: the next unsent slice of one broadcast.
+  @@index([broadcastId, emailAt])
+  @@index([broadcastId, inAppAt])
+  /// Today's email usage, for the daily cap.
+  @@index([emailAt])
 }

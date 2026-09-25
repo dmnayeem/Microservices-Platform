@@ -11,6 +11,10 @@ import {
   releaseDuePayouts,
   summariseReleases,
 } from "@/lib/marketplace-payouts";
+import {
+  runBroadcastSweep,
+  summariseSweep as summariseBroadcasts,
+} from "@/lib/broadcast";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -112,6 +116,21 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await releaseDuePayouts();
       return { ok: true, summary: summariseReleases(s), result: s };
+    },
+  },
+  {
+    name: "broadcast-delivery",
+    label: "Send broadcasts",
+    description:
+      "Delivers admin notifications and emails to their audience, a batch at a time, and starts the ones that were scheduled for later. Nothing else sends them — the Send button only writes the broadcast down. A send to a hundred thousand people is therefore just a slow one, not a request that times out halfway with no record of who was already written to. Email is paced by the daily cap and per-minute rate in Settings, because exceeding a provider's limit does not bounce one message, it gets the sending domain throttled — and that takes password resets down with it.",
+    intervalMs: MINUTE,
+    // Matches the window. A tick killed mid-batch is retried a minute later and
+    // resumes from the recipient rows, so nothing is sent twice and nothing is
+    // skipped.
+    leaseMs: MINUTE,
+    async run() {
+      const s = await runBroadcastSweep({ maxMs: 45_000 });
+      return { ok: true, summary: summariseBroadcasts(s), result: s };
     },
   },
 ];

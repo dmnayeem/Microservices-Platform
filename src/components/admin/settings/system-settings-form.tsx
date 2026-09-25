@@ -122,6 +122,8 @@ const DEFAULTS: SettingsBag = {
   email_from_address: "noreply@earngpt.com",
   email_from_name: "EarnGPT Team",
   email_notifications_enabled: true,
+  email_daily_cap: 500,
+  email_per_minute: 60,
   // Notifications
   push_notifications_enabled: true,
   notify_new_task: true,
@@ -918,6 +920,28 @@ export function SystemSettingsForm({
               onChange={(v) => set("email_notifications_enabled", v)}
               disabled={!canEdit}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <Field settingKey="email_daily_cap">
+                <input
+                  type="number"
+                  min={0}
+                  value={Number(values.email_daily_cap ?? 500)}
+                  onChange={(e) => set("email_daily_cap", Number(e.target.value))}
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+              <Field settingKey="email_per_minute">
+                <input
+                  type="number"
+                  min={0}
+                  value={Number(values.email_per_minute ?? 60)}
+                  onChange={(e) => set("email_per_minute", Number(e.target.value))}
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+            </div>
             <button
               type="button"
               onClick={sendTestEmail}

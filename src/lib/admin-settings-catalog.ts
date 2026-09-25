@@ -217,6 +217,8 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "email_from_address", group: "email", label: "From Email", description: "The address recipients see — and reply to" },
   { key: "email_from_name", group: "email", label: "From Name", description: "The sender name shown beside the address" },
   { key: "email_notifications_enabled", group: "email", label: "Enable Email Notifications", description: "Master switch for all outgoing email. Off stops verification, reset and alert mail platform-wide." },
+  { key: "email_daily_cap", group: "email", label: "Broadcast emails per day", description: "How many broadcast emails may leave the platform in one calendar day. Gmail SMTP allows 500, SendGrid's free tier 100, Amazon SES 200 in sandbox and 50,000 in production — set this to your provider's figure. Exceeding it does not bounce one message, it gets the sending domain throttled, which takes password resets with it. 0 = no limit." },
+  { key: "email_per_minute", group: "email", label: "Broadcast emails per minute", description: "Throughput cap, so a large send is paced instead of arriving as a burst a provider reads as spam. 60 is safe almost everywhere. 0 = no limit." },
 
   // ── Integrations ──
   { key: "gemini_api_key", group: "integrations", label: "Gemini API Key", description: "Powers every AI feature — caption generation, KYC document reading. Stored encrypted." },

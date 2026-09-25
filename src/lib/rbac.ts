@@ -1310,6 +1310,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "MARKETING",
   },
   {
+    name: "Broadcasts",
+    href: "/admin/notifications/broadcasts",
+    icon: "Send",
+    permissions: ["notifications.send"],
+    category: "MARKETING",
+  },
+  {
     name: "Banners",
     href: "/admin/banners",
     icon: "Image",

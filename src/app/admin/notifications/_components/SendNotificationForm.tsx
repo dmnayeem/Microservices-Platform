@@ -177,6 +177,8 @@ export function SendNotificationForm() {
     sendInApp: true,
     sendPush: false,
     sendEmail: false,
+    emailSubject: "",
+    emailBody: "",
   });
 
   const [audience, setAudience] = useState<TaskAudienceValue>(EMPTY_AUDIENCE);
@@ -192,6 +194,20 @@ export function SendNotificationForm() {
 
   // Estimated reach
   const [estimate, setEstimate] = useState<number | null>(null);
+  // Today's email allowance, so a send of 40,000 does not look like a failure
+  // when 500 of them leave today and the rest go out tomorrow.
+  const [budget, setBudget] = useState<{
+    cap: number;
+    usedToday: number;
+    remainingToday: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/notifications/send", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.emailBudget && setBudget(j.emailBudget))
+      .catch(() => {});
+  }, []);
   const [estimating, setEstimating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -315,6 +331,12 @@ export function SendNotificationForm() {
         sendInApp: formData.sendInApp,
         sendPush: formData.sendPush,
         sendEmail: formData.sendEmail,
+        ...(formData.sendEmail && formData.emailSubject.trim()
+          ? { emailSubject: formData.emailSubject.trim() }
+          : {}),
+        ...(formData.sendEmail && formData.emailBody.trim()
+          ? { emailBody: formData.emailBody.trim() }
+          : {}),
       };
       if (formData.target === "package") {
         payload.packageFilter = formData.packageFilter;
@@ -344,13 +366,23 @@ export function SendNotificationForm() {
 
       setSuccess(
         data.scheduled
-          ? `Scheduled for ${new Date(data.scheduledFor).toLocaleString()} — ${data.recipientCount} recipient(s)`
-          : `Successfully sent to ${data.recipientCount} user(s)`
+          ? `Scheduled for ${new Date(data.scheduledFor).toLocaleString()} — ${data.recipientCount} recipient(s). It is sent even if nobody is on the site.`
+          : data.finished
+            ? `Sent to ${data.recipientCount} user(s).`
+            : `Started — ${data.recipientCount} recipient(s). Delivery continues in the background; watch it on Broadcasts.` +
+              (data.note ? ` ${data.note}` : "")
       );
-      setTimeout(() => {
-        router.push("/admin/notifications");
-        router.refresh();
-      }, 2000);
+      setTimeout(
+        () => {
+          router.push(
+            data.scheduled || !data.finished
+              ? "/admin/notifications/broadcasts"
+              : "/admin/notifications"
+          );
+          router.refresh();
+        },
+        2000
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -539,7 +571,7 @@ export function SendNotificationForm() {
               </div>
               <input
                 type="text"
-                maxLength={50}
+                maxLength={80}
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -559,7 +591,7 @@ export function SendNotificationForm() {
                 </span>
               </div>
               <textarea
-                maxLength={200}
+                maxLength={500}
                 value={formData.message}
                 onChange={(e) =>
                   setFormData({ ...formData, message: e.target.value })
@@ -918,10 +950,48 @@ export function SendNotificationForm() {
                   />
                   <MessageSquare className="w-4 h-4 text-slate-400" />
                   <span className="text-sm text-white">Email</span>
-                  <span className="ml-auto text-xs text-amber-500">
-                    queued
-                  </span>
+                  <span className="ml-auto text-xs text-slate-500">paced daily</span>
                 </label>
+
+                {formData.sendEmail && (
+                  <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                    {/* An email is not a notification row. Reusing the 80/500
+                        limits above makes a mail with nothing to say, which is
+                        exactly what the email channel used to send. */}
+                    <p className="text-[11px] text-slate-500">
+                      Optional — leave blank to email the title and message above.
+                    </p>
+                    <input
+                      value={formData.emailSubject}
+                      onChange={(e) =>
+                        setFormData({ ...formData, emailSubject: e.target.value })
+                      }
+                      maxLength={150}
+                      placeholder="Email subject"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    />
+                    <textarea
+                      value={formData.emailBody}
+                      onChange={(e) =>
+                        setFormData({ ...formData, emailBody: e.target.value })
+                      }
+                      rows={5}
+                      maxLength={5000}
+                      placeholder="Email body — say as much as you need here."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                    />
+                    {budget && (
+                      <p className="text-[11px] text-slate-400">
+                        {budget.cap === 0
+                          ? `No daily cap set · ${budget.usedToday.toLocaleString()} sent today`
+                          : `${(budget.remainingToday ?? 0).toLocaleString()} of ${budget.cap.toLocaleString()} emails left today`}
+                        {estimate !== null && budget.cap > 0 && estimate > (budget.remainingToday ?? 0)
+                          ? " — the rest goes out tomorrow, automatically."
+                          : ""}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
