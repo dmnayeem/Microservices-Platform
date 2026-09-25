@@ -4764,6 +4764,21 @@ model Broadcast {
   /// { inApp: bool, push: bool, email: bool }
   channels Json
 
+  /// A service notice rather than marketing.
+  ///
+  /// Registering for an account is consent to hear about the account — a
+  /// security alert, a failed withdrawal, an outage, a change of terms. It is
+  /// NOT consent to be marketed at, and the two must not share a switch: a user
+  /// who turns off "email notifications" is turning off offers, and silently
+  /// dropping "your withdrawal failed" on the same setting is how somebody
+  /// loses money without ever being told.
+  ///
+  /// So an important broadcast ignores the marketing opt-out and the master
+  /// email switch, and is not held back by our own daily cap. It still obeys
+  /// the per-minute rate, because that one is physics: the provider will reject
+  /// what it rejects regardless of how urgent we think the message is.
+  important Boolean @default(false)
+
   /// ALL | SEGMENT | PACKAGE | SPECIFIC
   targetKind String
   /// AudienceCriteria (see lib/audience.ts) when targetKind = SEGMENT.
@@ -4795,6 +4810,7 @@ model Broadcast {
   updatedAt DateTime @updatedAt
 
   @@index([status, scheduledFor])
+  @@index([status, important, createdAt])
   @@index([createdAt])
 }
 

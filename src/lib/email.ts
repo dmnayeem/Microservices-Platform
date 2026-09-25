@@ -235,7 +235,15 @@ export async function sendNotificationEmail(
   email: string,
   title: string,
   message: string,
-  link?: string
+  link?: string,
+  /**
+   * `transactional` marks this as a service notice rather than marketing, which
+   * is the difference between a message that reaches a registered user and one
+   * that is silently dropped. `sendMail` refuses non-transactional mail while
+   * the master "Email notifications" switch is off — correct for an offer,
+   * wrong for "your withdrawal failed".
+   */
+  opts: { transactional?: boolean } = {}
 ) {
   if (!(await isSmtpConfigured())) return;
   const APP_NAME = await getPlatformName();
@@ -263,5 +271,6 @@ export async function sendNotificationEmail(
     to: email,
     subject: `${title} · ${APP_NAME}`,
     html,
+    ...(opts.transactional ? { transactional: true } : {}),
   });
 }

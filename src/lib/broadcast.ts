@@ -139,6 +139,8 @@ export type CreateBroadcastInput = {
   actionUrl?: string | null;
   actionLabel?: string | null;
   channels: BroadcastChannels;
+  /** Service notice rather than marketing — see the schema comment. */
+  important?: boolean;
   targetKind: BroadcastTargetKind;
   criteria?: AudienceCriteria | null;
   userIds?: string[];
@@ -165,6 +167,7 @@ export async function createBroadcast(input: CreateBroadcastInput) {
       actionUrl: input.actionUrl ?? null,
       actionLabel: input.actionLabel ?? null,
       channels: input.channels as unknown as Prisma.InputJsonValue,
+      important: input.important ?? false,
       targetKind: input.targetKind,
       criteria: (input.criteria ?? undefined) as unknown as Prisma.InputJsonValue,
       userIds: input.userIds ?? [],
@@ -222,7 +225,13 @@ export async function estimateAudience(b: {
 async function enumerateChunk(broadcastId: string): Promise<{ added: number; done: boolean }> {
   const b = await prisma.broadcast.findUnique({
     where: { id: broadcastId },
-    select: { targetKind: true, criteria: true, userIds: true, packages: true },
+    select: {
+      targetKind: true,
+      criteria: true,
+      userIds: true,
+      packages: true,
+      important: true,
+    },
   });
   if (!b) return { added: 0, done: true };
 
@@ -258,9 +267,15 @@ async function enumerateChunk(broadcastId: string): Promise<{ added: number; don
       // address, so they count as "reached" for in-app and are simply never
       // emailed. Dropping them here instead would make the totals disagree
       // with the audience the admin was shown.
+      // The marketing opt-out is honoured for marketing and ignored for a
+      // service notice: somebody who switched off offers has not switched off
+      // being told their withdrawal failed. A deleted account is skipped
+      // either way — there is nobody at that address.
       email:
-        u.emailNotifications && u.email && !u.email.endsWith("@deleted.local")
-          ? u.email
+        u.email && !u.email.endsWith("@deleted.local")
+          ? b.important || u.emailNotifications
+            ? u.email
+            : null
           : null,
     })),
     skipDuplicates: true,
@@ -412,6 +427,7 @@ export async function deliverBroadcast(
       body: b.emailBody || b.message,
       actionUrl: b.actionUrl,
       maxEmails: opts.maxEmails,
+      important: b.important,
     });
     out.email = pass.sent;
     out.emailFailed = pass.failed;
@@ -463,6 +479,7 @@ async function deliverEmails(
     body: string;
     actionUrl?: string | null;
     maxEmails?: number;
+    important?: boolean;
   }
 ): Promise<{ sent: number; failed: number; note?: string }> {
   if (!(await isSmtpConfigured())) {
@@ -471,7 +488,9 @@ async function deliverEmails(
   // `sendMail` silently returns false for non-transactional mail while the
   // master "Email notifications" switch is off. Reporting that as delivery is
   // how a broadcast could claim four thousand sends with nothing on the wire.
-  if (!(await getMailConfig()).enabled) {
+  // A service notice is transactional, so that switch does not apply to it —
+  // it turns off marketing, not "your account was locked".
+  if (!opts.important && !(await getMailConfig()).enabled) {
     return {
       sent: 0,
       failed: 0,
@@ -480,7 +499,7 @@ async function deliverEmails(
   }
 
   const budget = await emailBudget();
-  if (budget.remainingToday <= 0) {
+  if (!opts.important && budget.remainingToday <= 0) {
     return {
       sent: 0,
       failed: 0,
@@ -488,10 +507,15 @@ async function deliverEmails(
     };
   }
 
+  // An important notice is not held back by a ceiling we invented — deferring
+  // "your withdrawal failed" to tomorrow is worse than any cap it breaks. The
+  // per-minute rate still applies, because that one is not ours to waive: the
+  // provider rejects what it rejects however urgent we think this is, and a
+  // burst is exactly what gets a domain throttled.
   const perPass = Math.min(
     opts.maxEmails ?? (budget.perMinute || Number.MAX_SAFE_INTEGER),
     budget.perMinute || Number.MAX_SAFE_INTEGER,
-    budget.remainingToday
+    opts.important ? Number.MAX_SAFE_INTEGER : budget.remainingToday
   );
 
   let sent = 0;
@@ -519,7 +543,9 @@ async function deliverEmails(
 
     const results = await Promise.allSettled(
       slice.map((r) =>
-        sendNotificationEmail(r.email as string, opts.subject, opts.body, opts.actionUrl ?? undefined)
+        sendNotificationEmail(r.email as string, opts.subject, opts.body, opts.actionUrl ?? undefined, {
+          transactional: !!opts.important,
+        })
       )
     );
 
@@ -560,7 +586,7 @@ async function deliverEmails(
   }
 
   const note =
-    sent + failed >= perPass && budget.remainingToday <= perPass
+    !opts.important && sent + failed >= perPass && budget.remainingToday <= perPass
       ? `Daily email cap reached (${budget.cap}). The rest goes out tomorrow.`
       : undefined;
   return { sent, failed, note };
@@ -592,9 +618,11 @@ export async function runBroadcastSweep(
     data: { status: "SENDING", startedAt: new Date() },
   });
 
+  // Important first, then oldest. A service notice must not queue behind a
+  // promotional send that happens to have started earlier.
   const live = await prisma.broadcast.findMany({
     where: { status: "SENDING" },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ important: "desc" }, { createdAt: "asc" }],
     take: 5,
     select: { id: true },
   });

@@ -179,6 +179,7 @@ export function SendNotificationForm() {
     sendEmail: false,
     emailSubject: "",
     emailBody: "",
+    important: false,
   });
 
   const [audience, setAudience] = useState<TaskAudienceValue>(EMPTY_AUDIENCE);
@@ -331,6 +332,7 @@ export function SendNotificationForm() {
         sendInApp: formData.sendInApp,
         sendPush: formData.sendPush,
         sendEmail: formData.sendEmail,
+        important: formData.important,
         ...(formData.sendEmail && formData.emailSubject.trim()
           ? { emailSubject: formData.emailSubject.trim() }
           : {}),
@@ -953,6 +955,33 @@ export function SendNotificationForm() {
                   <span className="ml-auto text-xs text-slate-500">paced daily</span>
                 </label>
 
+                <label className="flex items-start gap-3 px-3 py-2 rounded-lg border border-rose-500/30 bg-rose-500/5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.important}
+                    onChange={(e) =>
+                      setFormData({ ...formData, important: e.target.checked })
+                    }
+                    className="mt-0.5 rounded bg-slate-800 border-slate-600 text-rose-500"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm text-white">
+                      Important — service notice, not marketing
+                    </span>
+                    {/* Registering is consent to hear about the account. It is
+                        not consent to be marketed at, and the two must not share
+                        a switch: dropping "your withdrawal failed" because
+                        somebody turned off offers is how a user loses money
+                        without ever being told. */}
+                    <span className="block text-[11px] text-slate-400 mt-0.5">
+                      Security, payments, outages, changes to the terms. Reaches users
+                      who switched marketing email off, ignores the daily cap, and goes
+                      ahead of anything promotional. Do not use it for offers — that is
+                      what gets a sending domain blocked.
+                    </span>
+                  </span>
+                </label>
+
                 {formData.sendEmail && (
                   <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
                     {/* An email is not a notification row. Reusing the 80/500
@@ -985,9 +1014,13 @@ export function SendNotificationForm() {
                         {budget.cap === 0
                           ? `No daily cap set · ${budget.usedToday.toLocaleString()} sent today`
                           : `${(budget.remainingToday ?? 0).toLocaleString()} of ${budget.cap.toLocaleString()} emails left today`}
-                        {estimate !== null && budget.cap > 0 && estimate > (budget.remainingToday ?? 0)
-                          ? " — the rest goes out tomorrow, automatically."
-                          : ""}
+                        {formData.important
+                          ? " — an important notice is not held back by this cap."
+                          : estimate !== null &&
+                              budget.cap > 0 &&
+                              estimate > (budget.remainingToday ?? 0)
+                            ? " — the rest goes out tomorrow, automatically."
+                            : ""}
                       </p>
                     )}
                   </div>

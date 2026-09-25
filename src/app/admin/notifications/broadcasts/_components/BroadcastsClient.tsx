@@ -22,6 +22,7 @@ type Broadcast = {
   message: string;
   type: string;
   channels: { inApp?: boolean; push?: boolean; email?: boolean } | null;
+  important: boolean;
   targetKind: string;
   status: string;
   scheduledFor: string | null;
@@ -196,6 +197,11 @@ export function BroadcastsClient() {
                   >
                     {b.status}
                   </span>
+                  {b.important && (
+                    <span className="rounded border border-rose-500/40 bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-rose-300">
+                      Important
+                    </span>
+                  )}
                   <span className="text-sm font-semibold text-white truncate">{b.title}</span>
                   <span className="text-[11px] text-slate-500">
                     {b.targetKind.toLowerCase()}

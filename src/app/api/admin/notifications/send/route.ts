@@ -62,6 +62,8 @@ interface SendNotificationBody {
   sendInApp?: boolean;
   sendPush?: boolean;
   sendEmail?: boolean;
+  /** Service notice rather than marketing — reaches opted-out users, ignores the daily cap. */
+  important?: boolean;
 
   url?: string;
 }
@@ -120,6 +122,7 @@ export async function POST(request: NextRequest) {
       sendInApp = true,
       sendPush = false,
       sendEmail = false,
+      important = false,
       url,
     } = body;
 
@@ -201,6 +204,7 @@ export async function POST(request: NextRequest) {
       actionUrl: actionUrl || url || null,
       actionLabel: actionLabel || null,
       channels: { inApp: sendInApp !== false, push: !!sendPush, email: !!sendEmail },
+      important: !!important,
       ...target_,
       criteria: resolvedCriteria,
       scheduledFor: when,
@@ -217,14 +221,14 @@ export async function POST(request: NextRequest) {
       summary:
         broadcast.status === "SCHEDULED"
           ? `Scheduled "${title}" for ${when?.toLocaleString()} — about ${expected} recipient(s)`
-          : `Sending "${title}" to about ${expected} recipient(s) via ${[
+          : `Sending ${important ? "an IMPORTANT notice " : ""}"${title}" to about ${expected} recipient(s) via ${[
               sendInApp !== false && "in-app",
               sendPush && "push",
               sendEmail && "email",
             ]
               .filter(Boolean)
               .join(" + ")}`,
-      meta: { targetKind, expected, channels: { sendInApp, sendPush, sendEmail } },
+      meta: { targetKind, expected, important: !!important, channels: { sendInApp, sendPush, sendEmail } },
     });
 
     if (broadcast.status === "SCHEDULED") {

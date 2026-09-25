@@ -236,6 +236,68 @@ async function main() {
       !sweep.passes.some((x) => x.broadcastId === p.id)
     );
 
+    console.log("\nA service notice reaches people who switched marketing off");
+    // Somebody who turned off "email notifications" turned off OFFERS. A
+    // marketing broadcast must skip them; a security or payment notice must
+    // not, because registering for an account is consent to hear about it.
+    const guinea = some[0];
+    const before = await prisma.user.findUnique({
+      where: { id: guinea.id },
+      select: { emailNotifications: true },
+    });
+    await prisma.user.update({
+      where: { id: guinea.id },
+      data: { emailNotifications: false },
+    });
+    try {
+      const marketing = await createBroadcast({
+        createdById: admin.id,
+        title: MARK,
+        message: "Marketing.",
+        channels: { inApp: true, push: false, email: true },
+        targetKind: "SPECIFIC",
+        userIds: [guinea.id],
+        packages: [],
+        criteria: null,
+      });
+      made.push(marketing.id);
+      // `maxEmails: 0` lets enumeration run without a single message being
+      // sent, so this asserts who WOULD be emailed without emailing anyone.
+      await deliverBroadcast(marketing.id, { maxMs: 8_000, maxEmails: 0 });
+      const mRow = await prisma.broadcastRecipient.findFirst({
+        where: { broadcastId: marketing.id, userId: guinea.id },
+        select: { email: true },
+      });
+      check("a marketing broadcast will not email an opted-out user", mRow?.email === null);
+
+      const notice = await createBroadcast({
+        createdById: admin.id,
+        title: MARK,
+        message: "Service notice.",
+        channels: { inApp: true, push: false, email: true },
+        important: true,
+        targetKind: "SPECIFIC",
+        userIds: [guinea.id],
+        packages: [],
+        criteria: null,
+      });
+      made.push(notice.id);
+      await deliverBroadcast(notice.id, { maxMs: 8_000, maxEmails: 0 });
+      const nRow = await prisma.broadcastRecipient.findFirst({
+        where: { broadcastId: notice.id, userId: guinea.id },
+        select: { email: true },
+      });
+      check("an important notice still reaches them", !!nRow?.email, nRow?.email ?? "skipped");
+      check("it is flagged important", notice.important === true);
+    } finally {
+      // The opt-out belongs to a real person; it goes back exactly as it was
+      // whatever happens above.
+      await prisma.user.update({
+        where: { id: guinea.id },
+        data: { emailNotifications: before?.emailNotifications ?? true },
+      });
+    }
+
     console.log("\nThe daily email budget reads back");
     const bud = await emailBudget();
     check("a cap is configured", Number.isFinite(bud.cap), `${bud.cap}/day`);
