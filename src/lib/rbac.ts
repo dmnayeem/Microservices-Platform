@@ -1338,6 +1338,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "MARKETING",
   },
   {
+    name: "Promote Products",
+    href: "/admin/ads/promote",
+    icon: "Megaphone",
+    permissions: ["ads.view"],
+    category: "MARKETING",
+  },
+  {
     name: "Monetization",
     href: "/admin/monetization",
     icon: "DollarSign",
