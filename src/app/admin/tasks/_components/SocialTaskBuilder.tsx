@@ -318,6 +318,24 @@ export function SocialTaskBuilder({
 // Draggable per-action config card (order = the order users complete them in)
 // -----------------------------------------------------------------------------
 
+/**
+ * Admin fields in the order the user will work through them.
+ *
+ * `def.recipe` is the resolved user-facing order (image-first platforms already
+ * have the picture at the top). Anything with no recipe step — the target URL
+ * the task points at, admin-only knobs — has no place in that sequence and
+ * sorts first.
+ *
+ * Sorted, never filtered: a field missing from the recipe must still be
+ * editable, or an admin loses the ability to set it at all.
+ */
+function orderedAdminFields(def: SocialAction): SocialAction["adminFields"] {
+  const pos = new Map((def.recipe ?? []).map((s, i) => [s.key, i]));
+  return [...def.adminFields].sort(
+    (a, b) => (pos.get(a.key) ?? -1) - (pos.get(b.key) ?? -1)
+  );
+}
+
 function SocialActionCard({
   item,
   idx,
@@ -460,11 +478,25 @@ function SocialActionCard({
         />
       ) : null}
 
-      {/* Admin fields. When AI-generate is on, the content field stays visible
-          as the "reference/example" the AI bases each user's variant on (and it
-          becomes optional — users may generate purely from the task). */}
+      {/* Admin fields, in the order the USER works through them.
+        *
+        * The declaration order put the image and the image prompt near the
+        * bottom, below the title, body and hashtags — the exact opposite of a
+        * Pinterest pin, where the picture has to exist before anything else can
+        * be filled in. An admin setting the task up read one order here and
+        * their users were shown another, so the form felt arbitrary and the
+        * image fields were easy to miss entirely.
+        *
+        * `def.recipe` is already the resolved user order, so sorting by it
+        * keeps the two screens in step for free. Fields with no recipe step
+        * (the target URL to open, admin-only knobs) sort first: they are what
+        * the task points AT, not part of composing the post.
+        *
+        * When AI-generate is on, the content field stays visible as the
+        * "reference/example" the AI bases each user's variant on (and it
+        * becomes optional — users may generate purely from the task). */}
       <div className="space-y-3">
-        {def.adminFields.map((field) => {
+        {orderedAdminFields(def).map((field) => {
           const isAiGen = def.aiGeneratableFields?.includes(field.key);
           const aiRef = item.aiPromptEnabled && isAiGen;
           return (
@@ -728,7 +760,7 @@ function AiPromptSection({
                 {label} task image prompt
               </span>{" "}
               — describes the picture. It comes from the{" "}
-              <span className="font-semibold">Image prompt</span> field above,
+              <span className="font-semibold">Image prompt</span> field below,
               not from this box.{" "}
               {imagePromptSet ? (
                 <span className="text-emerald-400">Set.</span>

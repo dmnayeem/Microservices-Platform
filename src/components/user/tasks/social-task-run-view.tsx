@@ -71,6 +71,19 @@ function isWatchLocked(item: SocialTaskItemView): boolean {
   return isWatchAction(item.action) && !!item.watchSeconds && item.watchSeconds > 0;
 }
 
+/**
+ * Compare a verification rule against a step the user was given.
+ *
+ * Both sides are URLs typed by an admin, so they differ in the ways URLs
+ * always differ — a trailing slash, a capital in the host, stray whitespace
+ * from a paste. Normalising here decides whether a rule is a duplicate of
+ * something already on screen; being too strict just means the duplicate is
+ * shown again, which is the safe direction to fail.
+ */
+function normalizeRuleValue(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\/+$/, "");
+}
+
 export function SocialTaskRunView({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<SocialTaskView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -946,6 +959,21 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                 item.aiPrompt
               )
             : null;
+        // Rules the user has NOT already been handed as a step.
+        //
+        // The panel exists so nobody is auto-rejected for a rule they were
+        // never told about. But on a pin task the only rule is usually the
+        // destination link — which they are already copying from the steps
+        // right above it — so it repeated itself and pushed the real work off
+        // screen. Anything they were NOT given (a keyword, a hashtag, some
+        // other link) still shows, because that is the case the warning is for.
+        const stepValues = new Set(
+          recipeSteps.map((s) => normalizeRuleValue(s.value))
+        );
+        const unlistedRules = (contentRules[idx]?.labels ?? []).filter((l) => {
+          const value = normalizeRuleValue(l.slice(l.indexOf(":") + 1));
+          return !value || !stepValues.has(value);
+        });
         const req = item.proofRequirements;
         const ready = isItemReady(item, idx);
         const unlocked = isItemUnlocked(idx);
@@ -1098,7 +1126,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                 Shown BEFORE the user publishes, because a task that can
                 auto-reject has to state its rules up front; otherwise the first
                 anyone hears of a requirement is a rejection for missing it. */}
-            {item.verify === "CONTENT" && !!contentRules[idx]?.labels.length && (
+            {item.verify === "CONTENT" && unlistedRules.length > 0 && (
               <div className="rounded-lg bg-sky-500/5 border border-sky-500/30 p-3 space-y-1.5">
                 <p className="text-xs font-bold text-sky-300 inline-flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4" />
@@ -1108,7 +1136,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
                     : " all of these"}
                 </p>
                 <ul className="space-y-1">
-                  {contentRules[idx].labels.map((l, k) => (
+                  {unlistedRules.map((l, k) => (
                     <li
                       key={k}
                       className="text-[12px] text-sky-100/90 flex items-start gap-1.5"
