@@ -108,9 +108,12 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  // Must match --app-page in globals.css. The phone paints the status bar and
+  // the pull-to-refresh area with this, so a value that drifts from the page
+  // shows as a band of a different colour above the content.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+    { media: "(prefers-color-scheme: light)", color: "#eef6f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1713" },
   ],
 };
 
