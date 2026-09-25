@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Video as VideoIcon } from "lucide-react";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
@@ -10,6 +10,12 @@ import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { TaskSubmissionRow } from "@/components/user/primitives/task-submission-row";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import {
+  videoNetworkOf,
+  VIDEO_NETWORK_LABEL,
+  VIDEO_NETWORK_ORDER,
+  type VideoNetwork,
+} from "@/lib/video-networks";
 import type { VideoConfig } from "@/lib/video-tasks";
 import { formatDuration } from "@/lib/video-tasks";
 
@@ -29,6 +35,10 @@ interface VideoTask {
   videoConfig?: VideoConfig | null;
   contentUrl?: string | null;
   locked?: boolean;
+  /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED.
+   *  Rendering it is what stops a task the user walked away from looking
+   *  identical to one they have never opened. */
+  userStatus?: string;
 }
 
 interface Submission {
@@ -92,6 +102,19 @@ export function VideoTasksView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  // Preserves VIDEO_NETWORK_ORDER and drops empty groups, so the page never
+  // shows a "Facebook" heading with nothing under it.
+  const groups = useMemo(() => {
+    const by = new Map<VideoNetwork, VideoTask[]>();
+    for (const t of tasks) {
+      const n = videoNetworkOf(t.contentUrl ?? t.videoConfig?.videoUrl ?? null);
+      by.set(n, [...(by.get(n) ?? []), t]);
+    }
+    return VIDEO_NETWORK_ORDER.filter((n) => by.get(n)?.length).map(
+      (n) => [n, by.get(n)!] as const
+    );
+  }, [tasks]);
+
   useAutoRefresh(() => load(true));
 
   return (
@@ -130,12 +153,26 @@ export function VideoTasksView() {
         />
       )}
 
+      {/* Grouped by network. A YouTube watch, a Facebook watch and a clip we
+          host ourselves each ask something different of the user, and in one
+          flat grid they were indistinguishable until the player opened. */}
       {!loading && tab === "available" && tasks.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {tasks.map((t) => {
-            const watchSecs = t.videoConfig?.watchSeconds ?? t.duration ?? 0;
-            return (
-              <TaskCard
+        <div className="space-y-6">
+          {groups.map(([network, list]) => (
+            <div key={network}>
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-sm font-bold text-white">
+                  {VIDEO_NETWORK_LABEL[network]}
+                </h2>
+                <span className="text-[11px] text-(--app-ink-3)">
+                  {list.length} task{list.length > 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {list.map((t) => {
+                  const watchSecs = t.videoConfig?.watchSeconds ?? t.duration ?? 0;
+                  return (
+                    <TaskCard
                 key={t.id}
                 title={t.title}
                 description={
@@ -151,14 +188,17 @@ export function VideoTasksView() {
                   watchSecs > 0 ? Math.max(1, Math.round(watchSecs / 60)) : undefined
                 }
                 thumbnail={t.thumbnailUrl ?? undefined}
-                status={t.locked ? "LOCKED" : undefined}
+                status={t.locked ? "LOCKED" : ((t.userStatus ?? "AVAILABLE") as never)}
                 actionLabel={t.locked ? "🔒 Locked" : "Watch & Earn"}
                 onAction={
                   t.locked ? undefined : () => router.push(`/video-tasks/${t.id}`)
                 }
               />
-            );
-          })}
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

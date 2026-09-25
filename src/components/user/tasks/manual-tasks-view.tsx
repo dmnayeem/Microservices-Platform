@@ -32,6 +32,8 @@ interface ManualTask {
   instructions?: string | null;
   instructionVideoUrl?: string | null;
   locked?: boolean;
+  /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED. */
+  userStatus?: string;
 }
 
 interface Submission {
@@ -173,7 +175,7 @@ export function ManualTasksView() {
               xpReward={t.xpReward}
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
-              status={t.locked ? "LOCKED" : undefined}
+              status={t.locked ? "LOCKED" : ((t.userStatus ?? "AVAILABLE") as never)}
               actionLabel={t.locked ? "🔒 Locked" : "Submit Proof"}
               onAction={
                 t.locked

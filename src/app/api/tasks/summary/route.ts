@@ -39,17 +39,21 @@ export async function GET() {
     // Eligible active tasks per type + total earnable XP; the board aggregate
     // (board-only tasks, any type); standalone published quizzes; active
     // offerwalls — all in parallel.
-    const [grouped, boardAgg, quizzes, offerwalls, doneToday] = await Promise.all([
+    const [grouped, boardAgg, quizzes, offerwalls, doneToday, doneEver] =
+      await Promise.all([
       prisma.task.groupBy({
         by: ["type"],
         where: eligible,
         _count: { _all: true },
-        _sum: { xpReward: true },
+        // Points as well as XP. The tile promised "up to 50 XP" and said
+        // nothing about the points, which are the number users actually care
+        // about and the only one they can compare between task types.
+        _sum: { xpReward: true, pointsReward: true },
       }) as unknown as Promise<
         {
           type: string;
           _count: { _all: number };
-          _sum: { xpReward: number | null };
+          _sum: { xpReward: number | null; pointsReward: number | null };
         }[]
       >,
       prisma.task.aggregate({
@@ -58,10 +62,10 @@ export async function GET() {
           OR: [{ isBoardOnly: true }, { boardId: { not: null } }],
         },
         _count: { _all: true },
-        _sum: { xpReward: true },
+        _sum: { xpReward: true, pointsReward: true },
       }) as unknown as Promise<{
         _count: { _all: number };
-        _sum: { xpReward: number | null };
+        _sum: { xpReward: number | null; pointsReward: number | null };
       }>,
       // Quiz GAMES (the standalone Quiz model). Same gate /quizzes applies —
       // counting bare PUBLISHED ignored the level/plan requirements and
@@ -93,6 +97,30 @@ export async function GET() {
           } | null;
         }[]
       >,
+      // Lifetime, and DISTINCT by task: "5 of the 20 article tasks are done"
+      // is the sentence the tile has to be able to say, and a task completed
+      // three times is still one of the twenty. Scoped to the same `eligible`
+      // filter as the count it is compared against, so the two halves of the
+      // fraction can never describe different sets of tasks.
+      prisma.taskSubmission.findMany({
+        where: {
+          userId,
+          status: { in: ["APPROVED", "AUTO_APPROVED"] },
+          task: { is: eligible },
+        },
+        distinct: ["taskId"],
+        select: {
+          task: { select: { type: true, isBoardOnly: true, boardId: true } },
+        },
+      }) as unknown as Promise<
+        {
+          task: {
+            type: string;
+            isBoardOnly: boolean;
+            boardId: string | null;
+          } | null;
+        }[]
+      >,
     ]);
 
     // Tally today's completions per type (+ board) in JS (Prisma can't groupBy
@@ -105,22 +133,41 @@ export async function GET() {
       if (s.task && (s.task.isBoardOnly || s.task.boardId)) boardCompletedToday += 1;
     }
 
+    const doneByType = new Map<string, number>();
+    let boardDone = 0;
+    for (const s of doneEver) {
+      const t = s.task?.type;
+      if (t) doneByType.set(t, (doneByType.get(t) ?? 0) + 1);
+      if (s.task && (s.task.isBoardOnly || s.task.boardId)) boardDone += 1;
+    }
+
     const summary: Record<
       string,
-      { available: number; completedToday: number; earnableXp: number }
+      {
+        available: number;
+        completedToday: number;
+        /** Distinct eligible tasks of this type the user has ever completed. */
+        completed: number;
+        earnableXp: number;
+        earnablePoints: number;
+      }
     > = {};
     for (const g of grouped) {
       summary[g.type] = {
         available: g._count._all,
         completedToday: completedByType.get(g.type) ?? 0,
+        completed: Math.min(doneByType.get(g.type) ?? 0, g._count._all),
         earnableXp: g._sum.xpReward ?? 0,
+        earnablePoints: g._sum.pointsReward ?? 0,
       };
     }
 
     const board = {
       available: boardAgg._count._all,
       completedToday: boardCompletedToday,
+      completed: Math.min(boardDone, boardAgg._count._all),
       earnableXp: boardAgg._sum.xpReward ?? 0,
+      earnablePoints: boardAgg._sum.pointsReward ?? 0,
     };
 
     // Admin per-category visibility toggles (missing key ⇒ shown).

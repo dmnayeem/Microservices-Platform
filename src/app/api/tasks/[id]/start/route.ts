@@ -345,22 +345,66 @@ export async function POST(
       }
     }
 
-    // Per-task daily limit (admin-set on the task itself)
-    const todaySubmissions = await prisma.taskSubmission.count({
+    // An attempt the user walked away from, before any limit is counted.
+    //
+    // This is THE reason a task the user opened and left became impossible to
+    // get back into. Starting writes a PENDING row; the daily-limit count below
+    // includes PENDING; `dailyLimit` defaults to 1. So one abandoned attempt
+    // filled the day's only slot, the gate fired, and the resume path further
+    // down — which exists precisely for this — was never reached. The card
+    // still said "Start", and pressing it answered "Daily limit reached for
+    // this task" on a task the user had never finished once.
+    //
+    // Resuming what you already started is not a second attempt, so it is
+    // looked up first. `submittedAt: null` is what separates "still in the
+    // middle of it" from "sent in, waiting for review" — the second one IS
+    // finished from the user's side and must still be counted.
+    //
+    // /api/article-tasks/[taskId]/start already had this order. Only this route
+    // had it backwards, which is why every type except ARTICLE was affected.
+    const resumable = await prisma.taskSubmission.findFirst({
       where: {
         taskId: id,
         userId: session.user.id,
-        createdAt: { gte: dayStart },
-        status: { in: ["APPROVED", "AUTO_APPROVED", "PENDING"] },
+        status: SubmissionStatus.PENDING,
+        submittedAt: null,
       },
+      orderBy: { createdAt: "desc" },
     });
 
-    const dailyLimit = task.dailyLimit || 1;
-    if (todaySubmissions >= dailyLimit) {
-      return NextResponse.json(
-        { error: "Daily limit reached for this task" },
-        { status: 400 }
-      );
+    // Per-task daily limit (admin-set on the task itself)
+    if (!resumable) {
+      const todaySubmissions = await prisma.taskSubmission.count({
+        where: {
+          taskId: id,
+          userId: session.user.id,
+          createdAt: { gte: dayStart },
+          status: { in: ["APPROVED", "AUTO_APPROVED", "PENDING"] },
+        },
+      });
+
+      const dailyLimit = task.dailyLimit || 1;
+      if (todaySubmissions >= dailyLimit) {
+        // A submission that is in for review is not "the daily limit" as far as
+        // the user is concerned, and telling them it is sends them looking for
+        // a limit they have not hit.
+        const awaitingReview = await prisma.taskSubmission.count({
+          where: {
+            taskId: id,
+            userId: session.user.id,
+            status: SubmissionStatus.PENDING,
+            submittedAt: { not: null },
+          },
+        });
+        return NextResponse.json(
+          {
+            error: awaitingReview
+              ? "You have already submitted this task — it is waiting to be reviewed."
+              : "Daily limit reached for this task",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Admin-requested redo: if the latest submission is REVISION_REQUESTED,
@@ -412,8 +456,11 @@ export async function POST(
       });
     }
 
-    // Cooldown between attempts on this specific task
-    if (task.cooldownMinutes > 0) {
+    // Cooldown between attempts — again, only for a NEW attempt. A cooldown
+    // measured from "the last submission of any status" includes the very row
+    // the user is trying to get back into, so without this a task with any
+    // cooldown at all locked the user out of their own unfinished attempt.
+    if (!resumable && task.cooldownMinutes > 0) {
       const cooldownTime = new Date(
         Date.now() - task.cooldownMinutes * 60 * 1000
       );
@@ -440,18 +487,9 @@ export async function POST(
       }
     }
 
-    // Resume a pending submission if one exists.
-    const existingPending = await prisma.taskSubmission.findFirst({
-      where: {
-        taskId: id,
-        userId: session.user.id,
-        status: SubmissionStatus.PENDING,
-      },
-    });
-
-    if (existingPending) {
+    if (resumable) {
       return NextResponse.json({
-        submission: existingPending,
+        submission: resumable,
         task: {
           id: task.id,
           title: task.title,
@@ -474,7 +512,7 @@ export async function POST(
           questions: toPlayerQuestions(task.questions),
           autoApprove: task.autoApprove,
         },
-        message: "You already have an active submission for this task",
+        message: "Picking up where you left off.",
       });
     }
 

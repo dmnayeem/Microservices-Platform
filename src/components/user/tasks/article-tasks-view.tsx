@@ -23,6 +23,8 @@ interface ArticleTask {
   thumbnailUrl?: string | null;
   duration?: number | null;
   locked?: boolean;
+  /** AVAILABLE | IN_PROGRESS | SUBMITTED | REVISION | REJECTED | COMPLETED. */
+  userStatus?: string;
 }
 
 interface Submission {
@@ -128,7 +130,7 @@ export function ArticleTasksView() {
               xpReward={t.xpReward}
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
-              status={t.locked ? "LOCKED" : undefined}
+              status={t.locked ? "LOCKED" : ((t.userStatus ?? "AVAILABLE") as never)}
               actionLabel={t.locked ? "🔒 Locked" : "Read & Submit"}
               onAction={
                 t.locked ? undefined : () => router.push(`/article-tasks/${t.id}`)

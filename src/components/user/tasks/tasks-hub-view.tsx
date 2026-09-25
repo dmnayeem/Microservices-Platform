@@ -23,7 +23,7 @@ import {
   Award,
 } from "lucide-react";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
-import { cn } from "@/lib/utils";
+import { cn, pts } from "@/lib/utils";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { StatCard } from "@/components/user/primitives/stat-card";
 import { isCategoryVisible } from "@/lib/task-categories";
@@ -42,7 +42,10 @@ import {
 type SummaryRow = {
   available: number;
   completedToday: number;
+  /** Distinct eligible tasks of this type already completed, all time. */
+  completed?: number;
   earnableXp: number;
+  earnablePoints?: number;
 };
 type SummaryData = {
   summary: Record<string, SummaryRow>;
@@ -100,9 +103,9 @@ interface Category {
 // Order exactly as requested.
 const CATEGORIES: Category[] = [
   { key: "article", label: "Article", description: "Read articles to earn", icon: FileText, color: "blue", href: "/article-tasks", kind: "type", taskType: "ARTICLE" },
-  { key: "video", label: "Video", description: "Watch videos to earn", icon: Video, color: "red", href: "/video-tasks", kind: "type", taskType: "VIDEO" },
-  { key: "social-posts", label: "Social Posts", description: "Earn from your posts", icon: Megaphone, color: "violet", href: "/social-posts", kind: "feature", feature: "social-posts" },
-  { key: "social", label: "Social Tasks", description: "Social media engagement", icon: Share2, color: "pink", href: "/social-tasks", kind: "type", taskType: "SOCIAL" },
+  { key: "video", label: "Video", description: "YouTube, Facebook & direct videos", icon: Video, color: "red", href: "/video-tasks", kind: "type", taskType: "VIDEO" },
+  { key: "social-posts", label: "Social Posts", description: "Write & publish a post", icon: Megaphone, color: "violet", href: "/social-posts", kind: "feature", feature: "social-posts" },
+  { key: "social", label: "Social Tasks", description: "Like, comment, share, follow", icon: Share2, color: "pink", href: "/social-tasks", kind: "type", taskType: "SOCIAL" },
   { key: "appinstall", label: "App Install", description: "Install an app + proof", icon: Smartphone, color: "emerald", href: "/app-install-tasks", kind: "type", taskType: "APPINSTALL" },
   { key: "custom", label: "Custom", description: "Custom tasks to earn", icon: Sparkles, color: "indigo", href: "/custom-tasks", kind: "type", taskType: "CUSTOM" },
   { key: "survey", label: "Survey", description: "Complete surveys", icon: ClipboardList, color: "purple", href: "/survey-tasks", kind: "type", taskType: "SURVEY" },
@@ -115,7 +118,7 @@ const CATEGORIES: Category[] = [
 
 const EMPTY: SummaryData = {
   summary: {},
-  board: { available: 0, completedToday: 0, earnableXp: 0 },
+  board: { available: 0, completedToday: 0, completed: 0, earnableXp: 0, earnablePoints: 0 },
   quizzes: 0,
   offerwalls: 0,
   visibility: {},
@@ -291,8 +294,13 @@ export function TasksHubView({
               const Icon = cat.icon;
               const row = progressFor(cat);
               const hasProgress = !!row && row.available > 0;
+              // The bar tracks how much of this type is FINISHED, not how much
+              // was finished today. A user who cleared nineteen of twenty
+              // article tasks last week saw an empty bar and "0/20 done today",
+              // which reads as "nothing here has been touched".
+              const done = row?.completed ?? 0;
               const pct = hasProgress
-                ? Math.min(100, Math.round((row!.completedToday / row!.available) * 100))
+                ? Math.min(100, Math.round((done / row!.available) * 100))
                 : 0;
               return (
                 <Link
@@ -316,14 +324,21 @@ export function TasksHubView({
                     <div className="mt-auto pt-4">
                       <div className="flex items-center justify-between t-meta mb-1.5">
                         <span className="text-(--app-ink-3)">
-                          {row!.completedToday}/{row!.available} done today
+                          <span className="text-white font-bold">{done}</span>
+                          /{row!.available} done
                         </span>
-                        {/* XP available is a genuine "there is something here
-                            for you" signal, so it keeps the one warn colour —
-                            it used to be amber next to an amber icon tile, an
-                            amber card border and an amber progress bar. */}
+                        {/* Points first: it is the number users compare between
+                            task types. XP available is a genuine "there is
+                            something here for you" signal, so it keeps the one
+                            warn colour. */}
                         <span className="t-warn font-bold">
-                          Up to {row!.earnableXp} XP
+                          {(row!.earnablePoints ?? 0) > 0
+                            ? `${pts(row!.earnablePoints ?? 0)} pts`
+                            : ""}
+                          {(row!.earnablePoints ?? 0) > 0 && row!.earnableXp > 0
+                            ? " · "
+                            : ""}
+                          {row!.earnableXp > 0 ? `${row!.earnableXp} XP` : ""}
                         </span>
                       </div>
                       <div className="h-2 rounded-full bg-(--app-surface-2) overflow-hidden">
@@ -332,6 +347,12 @@ export function TasksHubView({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
+                      <p className="t-meta text-(--app-ink-3) mt-1.5">
+                        {Math.max(0, row!.available - done)} left
+                        {row!.completedToday > 0
+                          ? ` · ${row!.completedToday} today`
+                          : ""}
+                      </p>
                     </div>
                   ) : (
                     <span className="mt-auto pt-4 inline-flex items-center gap-1 text-xs font-bold text-(--app-ink-3)">
