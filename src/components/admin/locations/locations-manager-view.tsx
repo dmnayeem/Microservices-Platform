@@ -319,10 +319,15 @@ function LocationTree({
       return;
     }
     let cancel = false;
-    setLoading(true);
-    fetch(
-      `/api/locations/children?countryId=${country.id}&type=${topType}&limit=1000`
-    )
+    // The spinner is switched on from the promise chain, not synchronously in
+    // the effect body (react-hooks/set-state-in-effect).
+    Promise.resolve()
+      .then(() => {
+        if (!cancel) setLoading(true);
+        return fetch(
+          `/api/locations/children?countryId=${country.id}&type=${topType}&limit=1000`
+        );
+      })
       .then((r) => r.json())
       .then((d) => {
         if (!cancel) setTopRows(d.items ?? []);

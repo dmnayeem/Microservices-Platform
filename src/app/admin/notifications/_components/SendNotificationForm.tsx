@@ -217,24 +217,26 @@ export function SendNotificationForm() {
   const [estimating, setEstimating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Recompute estimate whenever target/criteria change
+  // Recompute estimate whenever target/criteria change. Only the audience
+  // fields are read, so typing the title or message does not re-estimate.
+  const { target, packageFilter, segPackages, minLevel, maxLevel, activeWithinDays, minTasksCompleted } = formData;
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setEstimating(true);
       try {
         const payload: Record<string, unknown> = {
-          target: formData.target,
+          target: target,
         };
-        if (formData.target === "package") {
-          payload.packageFilter = formData.packageFilter;
-        } else if (formData.target === "specific") {
+        if (target === "package") {
+          payload.packageFilter = packageFilter;
+        } else if (target === "specific") {
           payload.userIds = selectedUsers.map((u) => u.id);
-        } else if (formData.target === "segment") {
-          payload.criteria = buildCriteria(formData, audience);
-          if (formData.minTasksCompleted)
+        } else if (target === "segment") {
+          payload.criteria = buildCriteria({ segPackages, minLevel, maxLevel, activeWithinDays }, audience);
+          if (minTasksCompleted)
             payload.minTasksCompleted = parseInt(
-              formData.minTasksCompleted,
+              minTasksCompleted,
               10
             );
         }
@@ -258,13 +260,13 @@ export function SendNotificationForm() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [
-    formData.target,
-    formData.packageFilter,
-    formData.segPackages,
-    formData.minLevel,
-    formData.maxLevel,
-    formData.activeWithinDays,
-    formData.minTasksCompleted,
+    target,
+    packageFilter,
+    segPackages,
+    minLevel,
+    maxLevel,
+    activeWithinDays,
+    minTasksCompleted,
     audience,
     selectedUsers,
   ]);

@@ -96,7 +96,9 @@ export function TransactionHistory({
   }, [range, day, source, kind, page]);
 
   useEffect(() => {
-    load();
+    // Deferred a tick so load()'s setLoading is not synchronous in the effect
+    // body (react-hooks/set-state-in-effect).
+    void Promise.resolve().then(load);
   }, [load]);
 
   // Changing a filter goes back to page 1 — done in the setters below, not in

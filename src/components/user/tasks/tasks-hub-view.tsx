@@ -166,8 +166,12 @@ export function TasksHubView({
   }, []);
 
   useEffect(() => {
-    loadSummary();
-    loadStats();
+    // Deferred a tick so the loaders' setState calls are not synchronous in the
+    // effect body (react-hooks/set-state-in-effect).
+    void Promise.resolve().then(() => {
+      loadSummary();
+      loadStats();
+    });
   }, [loadSummary, loadStats]);
 
   useAutoRefresh(() => {
