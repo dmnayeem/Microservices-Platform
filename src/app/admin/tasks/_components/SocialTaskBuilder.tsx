@@ -495,8 +495,8 @@ function SocialActionCard({
         * When AI-generate is on, the content field stays visible as the
         * "reference/example" the AI bases each user's variant on (and it
         * becomes optional — users may generate purely from the task). */}
-      <div className="space-y-3">
-        {orderedAdminFields(def).map((field) => {
+      {(() => {
+        const renderField = (field: SocialAction["adminFields"][number]) => {
           const isAiGen = def.aiGeneratableFields?.includes(field.key);
           const aiRef = item.aiPromptEnabled && isAiGen;
           return (
@@ -519,8 +519,44 @@ function SocialActionCard({
               }
             />
           );
-        })}
-      </div>
+        };
+
+        const ordered = orderedAdminFields(def);
+        // With AI on, the admin's job is two prompts: the content box above and
+        // the image prompt. Everything the AI writes for itself — title, body,
+        // hashtags — is only an optional example, and the image upload is only
+        // the alternative to the image prompt. Showing all of them open made a
+        // two-field job look like a seven-field one, and buried the two that
+        // matter among five that usually stay blank.
+        const isAside = (f: SocialAction["adminFields"][number]) =>
+          item.aiPromptEnabled &&
+          f.role !== "imagePrompt" &&
+          (def.aiGeneratableFields?.includes(f.key) || f.role === "image");
+
+        const primary = ordered.filter((f) => !isAside(f));
+        const aside = ordered.filter(isAside);
+
+        return (
+          <div className="space-y-3">
+            {primary.map(renderField)}
+            {aside.length > 0 && (
+              /* Collapsed, never removed. These still feed the prompt when they
+                 are filled, so an admin who wants to steer the wording — or to
+                 upload a picture instead of describing one — must be able to
+                 get at them. */
+              <details className="rounded-lg border border-gray-800 bg-gray-950/40">
+                <summary className="cursor-pointer select-none px-3 py-2 text-xs text-gray-400 hover:text-gray-200">
+                  Optional — example title, description, hashtags, or upload an
+                  image instead of describing one ({aside.length})
+                </summary>
+                <div className="space-y-3 border-t border-gray-800 p-3">
+                  {aside.map(renderField)}
+                </div>
+              </details>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Auto-verify by code — content actions only. The server fetches the
           user's proof URL and confirms their unique code is present, so it
