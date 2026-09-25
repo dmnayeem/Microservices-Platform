@@ -25,6 +25,7 @@ import {
   emailBudget,
   runBroadcastSweep,
 } from "../src/lib/broadcast";
+import { readPayload, notificationStyle } from "../src/lib/notification-styles";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -234,6 +235,42 @@ async function main() {
     check(
       "and the sweep does not pick it up either",
       !sweep.passes.some((x) => x.broadcastId === p.id)
+    );
+
+    console.log("\nThe template reaches the notification the user opens");
+    const styled = await createBroadcast({
+      createdById: admin.id,
+      title: MARK,
+      message: "Styled.",
+      channels: { inApp: true, push: false, email: false },
+      style: "URGENT",
+      kicker: "Ends in 3 hours",
+      imageUrl: "/api/media/marketplace-previews/example.jpg",
+      actionUrl: "/wallet",
+      actionLabel: "Open wallet",
+      ...specific,
+    });
+    made.push(styled.id);
+    await deliverBroadcast(styled.id, { maxMs: 15_000 });
+    const one = await prisma.notification.findFirst({
+      where: { title: MARK, userId: specific.userIds[0] },
+      orderBy: { createdAt: "desc" },
+      select: { data: true },
+    });
+    const payload = readPayload(one?.data);
+    check("the template id arrives", payload.style === "URGENT", payload.style ?? "none");
+    check("the kicker arrives", payload.kicker === "Ends in 3 hours", payload.kicker ?? "none");
+    check("the image arrives", !!payload.imageUrl, payload.imageUrl ?? "none");
+    check(
+      "the button label arrives",
+      payload.actionLabel === "Open wallet",
+      payload.actionLabel ?? "none"
+    );
+    check("the link arrives", payload.actionUrl === "/wallet", payload.actionUrl ?? "none");
+    // An unknown template must not break the row — it renders plain instead.
+    check(
+      "an unknown template falls back to Normal rather than throwing",
+      notificationStyle("NOT_A_STYLE").id === "PLAIN"
     );
 
     console.log("\nA service notice reaches people who switched marketing off");

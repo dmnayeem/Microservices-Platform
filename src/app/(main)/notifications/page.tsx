@@ -25,6 +25,7 @@ import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { ListSkeleton } from "@/components/user/primitives/skeleton";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { NotificationCard } from "@/components/user/primitives/notification-card";
 
 interface Notification {
   id: string;
@@ -33,6 +34,10 @@ interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  /** The stored payload: template, image, button. `metadata` is the old
+   *  name that nothing ever wrote — kept so an old cached response still
+   *  renders rather than throwing. */
+  data?: unknown;
   metadata?: Record<string, unknown>;
 }
 
@@ -347,88 +352,53 @@ export default function NotificationsPage() {
               const typeConfig =
                 NOTIFICATION_TYPE_CONFIG[notification.type] ||
                 NOTIFICATION_TYPE_CONFIG.SYSTEM;
-              const Icon = typeConfig.icon;
               const isSelected = selectedIds.has(notification.id);
 
               return (
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-4 p-4 transition-all hover:bg-(--app-surface-2)/50",
-                    notification.isRead
-                      ? "bg-transparent"
-                      : "bg-(--app-cta)/5",
+                    "flex items-start gap-3 p-3 transition-all",
                     isSelected && "ring-2 ring-inset ring-(--app-accent-edge)"
                   )}
                 >
-                  {/* Checkbox */}
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSelection(notification.id)}
-                    className="mt-1 w-4 h-4 rounded border-(--app-line) bg-(--app-surface) text-(--app-accent-ink) focus:ring-(--app-accent-edge)"
+                    className="mt-4 w-4 h-4 rounded border-(--app-line) bg-(--app-surface) text-(--app-accent-ink) focus:ring-(--app-accent-edge) shrink-0"
                   />
 
-                  {/* Icon */}
-                  <div
-                    className={cn(
-                      "p-2 rounded-lg shrink-0",
-                      typeConfig.bgColor
-                    )}
+                  {/* The card owns the template — colour, motion, image and
+                      button. The page keeps only what is page business:
+                      selection, mark-read and delete. */}
+                  <NotificationCard
+                    className="flex-1 min-w-0"
+                    title={notification.title}
+                    message={notification.message}
+                    data={notification.data ?? notification.metadata}
+                    isRead={notification.isRead}
+                    createdAtLabel={`${typeConfig.label} · ${formatDistanceToNow(
+                      new Date(notification.createdAt)
+                    )} ago`}
                   >
-                    <Icon className={cn("w-5 h-5", typeConfig.color)} />
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-white">
-                            {notification.title}
-                          </h3>
-                          {!notification.isRead && (
-                            <span className="w-2 h-2 bg-(--app-cta) rounded-full shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-sm text-(--app-ink-3)">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center gap-3 mt-2 text-xs text-(--app-ink-3)">
-                          <span className={typeConfig.color}>
-                            {typeConfig.label}
-                          </span>
-                          <span>•</span>
-                          <span>
-                            {formatDistanceToNow(
-                              new Date(notification.createdAt)
-                            )}{" "}
-                            ago
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {!notification.isRead && (
-                          <button
-                            onClick={() => handleMarkAsRead([notification.id])}
-                            className="p-1.5 text-(--app-ink-3) hover:text-(--app-accent-ink) hover:bg-(--app-surface-2) rounded transition-colors"
-                            title="Mark as read"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(notification.id)}
-                          className="p-1.5 text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) rounded transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    {!notification.isRead && (
+                      <button
+                        onClick={() => handleMarkAsRead([notification.id])}
+                        className="p-1.5 text-(--app-ink-3) hover:text-(--app-accent-ink) hover:bg-(--app-surface-2) rounded transition-colors"
+                        title="Mark as read"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(notification.id)}
+                      className="p-1.5 text-(--app-ink-3) hover:text-red-400 hover:bg-(--app-surface-2) rounded transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </NotificationCard>
                 </div>
               );
             })}

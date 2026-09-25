@@ -1,5 +1,6 @@
 import { sendMail, getMailConfig } from "@/lib/mailer";
 import { getPlatformName } from "@/lib/system-settings";
+import { notificationStyle } from "@/lib/notification-styles";
 
 // Host, port, credentials and the From header now come from `lib/mailer.ts`,
 // which reads the admin **Email settings** first and falls back to the env
@@ -243,34 +244,102 @@ export async function sendNotificationEmail(
    * the master "Email notifications" switch is off — correct for an offer,
    * wrong for "your withdrawal failed".
    */
-  opts: { transactional?: boolean } = {}
+  opts: {
+    transactional?: boolean;
+    /** Template id from `lib/notification-styles.ts` — colours the band and button. */
+    style?: string;
+    /** Header artwork. Must be a public absolute URL; mail clients cannot see our proxy. */
+    imageUrl?: string;
+    /** Button text. Defaults to "View". */
+    actionLabel?: string;
+    /** Short line above the title, e.g. "Ends in 3 hours". */
+    kicker?: string;
+  } = {}
 ) {
   if (!(await isSmtpConfigured())) return;
   const APP_NAME = await getPlatformName();
   const currentYear = new Date().getFullYear();
-  const cta = link
-    ? `<div style="text-align:center;margin:28px 0;">
-         <a href="${link.startsWith("http") ? link : `${APP_URL}${link}`}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:600;">View</a>
-       </div>`
+  const def = notificationStyle(opts.style);
+  const decorated = def.id !== "PLAIN";
+
+  const abs = (u: string) => (u.startsWith("http") ? u : `${APP_URL}${u}`);
+
+  // No CSS animation here on purpose. Gmail strips `@keyframes` and `<style>`
+  // entirely, and a template that relies on motion arrives as a blank block in
+  // the client most of these addresses actually use. Attention in email is
+  // bought with a colour band, a loud badge and a large button — all of which
+  // survive inlining.
+  const band = decorated
+    ? `<tr><td style="background:${def.mail.accent};height:6px;line-height:6px;font-size:0;">&nbsp;</td></tr>`
     : "";
+
+  const badge = decorated
+    ? `<span style="display:inline-block;background:${def.mail.accent};color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:5px 10px;border-radius:5px;">${escapeHtml(def.label)}</span>`
+    : "";
+
+  const kicker = opts.kicker
+    ? `<p style="color:${def.mail.accent};font-size:13px;font-weight:600;margin:14px 0 0 0;">${escapeHtml(opts.kicker)}</p>`
+    : "";
+
+  const hero = opts.imageUrl
+    ? `<tr><td style="padding:0;"><img src="${abs(opts.imageUrl)}" alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;" /></td></tr>`
+    : "";
+
+  const cta = link
+    ? `<table cellpadding="0" cellspacing="0" style="margin:26px 0 0 0;"><tr>
+         <td style="background:${def.mail.accent};border-radius:8px;">
+           <a href="${abs(link)}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 34px;font-weight:700;font-size:15px;">${escapeHtml(opts.actionLabel || "View")}</a>
+         </td>
+       </tr></table>`
+    : "";
+
   const html = `
     <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
     <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,sans-serif;background-color:#0a0a0f;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:40px 20px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:32px 16px;">
         <tr><td>
-          <div style="background:linear-gradient(145deg,#14141f,#1a1a25);border-radius:16px;padding:36px;border:1px solid #2a2a3a;">
-            <h1 style="color:#fff;font-size:22px;margin:0 0 12px 0;">${title}</h1>
-            <p style="color:#a0a0b0;font-size:15px;line-height:1.6;margin:0;">${message}</p>
-            ${cta}
-          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#14141f;border-radius:16px;overflow:hidden;border:1px solid ${decorated ? def.mail.accent + "55" : "#2a2a3a"};">
+            ${band}
+            ${hero}
+            <tr><td style="padding:30px 32px 34px 32px;">
+              ${badge}
+              ${kicker}
+              <h1 style="color:#ffffff;font-size:23px;line-height:1.3;margin:14px 0 12px 0;font-weight:800;">${escapeHtml(title)}</h1>
+              <div style="color:#b4b4c4;font-size:15px;line-height:1.65;">${paragraphs(message)}</div>
+              ${cta}
+            </td></tr>
+          </table>
           <p style="color:#6a6a7a;font-size:12px;text-align:center;margin:20px 0 0 0;">&copy; ${currentYear} ${APP_NAME}. All rights reserved.</p>
         </td></tr>
       </table>
     </body></html>`;
+
   await sendMail({
     to: email,
     subject: `${title} · ${APP_NAME}`,
     html,
     ...(opts.transactional ? { transactional: true } : {}),
   });
+}
+
+/**
+ * The body is admin-typed plain text, not HTML.
+ *
+ * Interpolating it raw would let a stray `<` break the layout and would put an
+ * injection hole in a message going to every account on the platform, so it is
+ * escaped and only then given paragraph breaks.
+ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function paragraphs(s: string): string {
+  return escapeHtml(s)
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 12px 0;">${p.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
 }

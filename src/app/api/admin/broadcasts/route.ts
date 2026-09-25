@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         type: true,
         channels: true,
         important: true,
+        style: true,
         targetKind: true,
         status: true,
         scheduledFor: true,

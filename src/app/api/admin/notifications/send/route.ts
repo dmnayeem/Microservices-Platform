@@ -12,6 +12,7 @@ import {
   type BroadcastTargetKind,
 } from "@/lib/broadcast";
 import type { AudienceCriteria } from "@/lib/audience";
+import { isNotificationStyle } from "@/lib/notification-styles";
 import type { NotificationType } from "@/generated/prisma/client";
 
 /**
@@ -50,6 +51,9 @@ interface SendNotificationBody {
   criteria?: AudienceCriteria;
 
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  /** Visual template — URGENT, OFFER, UPDATE … see lib/notification-styles.ts. */
+  style?: string;
+  kicker?: string;
   imageUrl?: string;
   actionUrl?: string;
   actionLabel?: string;
@@ -113,6 +117,8 @@ export async function POST(request: NextRequest) {
       activeWithinDays,
       criteria,
       priority = "NORMAL",
+      style = "PLAIN",
+      kicker,
       imageUrl,
       actionUrl,
       actionLabel,
@@ -200,6 +206,11 @@ export async function POST(request: NextRequest) {
       emailSubject: emailSubject?.trim() || null,
       emailBody: emailBody?.trim() || null,
       priority,
+      // An unknown template renders as PLAIN rather than failing the send —
+      // a notification with no decoration is a far better outcome than one
+      // that never reaches anybody.
+      style: isNotificationStyle(style) ? style : "PLAIN",
+      kicker: kicker?.trim() || null,
       imageUrl: imageUrl || null,
       actionUrl: actionUrl || url || null,
       actionLabel: actionLabel || null,
@@ -228,7 +239,7 @@ export async function POST(request: NextRequest) {
             ]
               .filter(Boolean)
               .join(" + ")}`,
-      meta: { targetKind, expected, important: !!important, channels: { sendInApp, sendPush, sendEmail } },
+      meta: { targetKind, expected, style, important: !!important, channels: { sendInApp, sendPush, sendEmail } },
     });
 
     if (broadcast.status === "SCHEDULED") {

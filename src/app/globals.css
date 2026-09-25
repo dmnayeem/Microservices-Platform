@@ -2882,3 +2882,100 @@ html[data-theme="light"][data-accent="silver"] {
     transition: none;
   }
 }
+
+/* ── Notification templates ────────────────────────────────────────────────
+   Three motions, used by NotificationCard through `lib/notification-styles.ts`.
+
+   Only URGENT pulses. That is the whole design: if every notification moved,
+   movement would carry no information, and the one message the user actually
+   has to act on would look exactly like a bonus offer. Everything else is
+   either a slow glow or a single sweep that settles.
+
+   All three respect `prefers-reduced-motion` — a moving card is an
+   accessibility problem for some people and an unusable screen for a few, and
+   an attention-grabbing notification that cannot be read has failed at the one
+   job it had. */
+
+@keyframes notif-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--notif-accent, #e11d48) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--notif-accent, #e11d48) 0%, transparent);
+  }
+}
+
+@keyframes notif-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 10px -2px color-mix(in oklab, var(--notif-accent, #f59e0b) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 22px 2px color-mix(in oklab, var(--notif-accent, #f59e0b) 55%, transparent);
+  }
+}
+
+/* A highlight that travels across the card and comes back. Cheap: it moves a
+   single gradient layer, so it never repaints the text under it. */
+@keyframes notif-shine {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.notif-pulse {
+  animation: notif-pulse 1.8s ease-out infinite;
+}
+.notif-glow {
+  animation: notif-glow 2.6s ease-in-out infinite;
+}
+.notif-shine {
+  position: relative;
+  overflow: hidden;
+}
+.notif-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateX(-120%);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in oklab, white 14%, transparent) 50%,
+    transparent 80%
+  );
+  animation: notif-shine 3.4s ease-in-out infinite;
+}
+
+/* The unread chip on an urgent card, so the label itself breathes even when
+   the card is not the thing being looked at. */
+@keyframes notif-chip {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.notif-chip-blink {
+  animation: notif-chip 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-pulse,
+  .notif-glow,
+  .notif-chip-blink {
+    animation: none;
+  }
+  .notif-shine::after {
+    animation: none;
+    opacity: 0;
+  }
+}

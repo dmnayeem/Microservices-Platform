@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { NOTIFICATION_STYLES } from "@/lib/notification-styles";
+import { NotificationCard } from "@/components/user/primitives/notification-card";
 import {
   TaskAudienceTargeting,
   type TaskAudienceValue,
@@ -180,6 +183,8 @@ export function SendNotificationForm() {
     emailSubject: "",
     emailBody: "",
     important: false,
+    style: "PLAIN",
+    kicker: "",
   });
 
   const [audience, setAudience] = useState<TaskAudienceValue>(EMPTY_AUDIENCE);
@@ -333,6 +338,8 @@ export function SendNotificationForm() {
         sendPush: formData.sendPush,
         sendEmail: formData.sendEmail,
         important: formData.important,
+        style: formData.style,
+        ...(formData.kicker.trim() ? { kicker: formData.kicker.trim() } : {}),
         ...(formData.sendEmail && formData.emailSubject.trim()
           ? { emailSubject: formData.emailSubject.trim() }
           : {}),
@@ -602,6 +609,82 @@ export function SendNotificationForm() {
                 rows={3}
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500 resize-none"
               />
+            </div>
+
+            {/* Template. Kept separate from "Type" above: type decides which
+                filter tab the user finds this under and must keep meaning
+                "wallet" forever; the template decides how loudly it is said. */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Template
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {NOTIFICATION_STYLES.map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, style: st.id })}
+                    title={st.hint}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition",
+                      formData.style === st.id
+                        ? "border-white/60 text-white"
+                        : "border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white"
+                    )}
+                    style={
+                      formData.style === st.id
+                        ? { backgroundColor: st.mail.accent }
+                        : undefined
+                    }
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                {NOTIFICATION_STYLES.find((x) => x.id === formData.style)?.hint}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Kicker <span className="text-slate-600">(optional)</span>
+              </label>
+              <input
+                type="text"
+                maxLength={60}
+                value={formData.kicker}
+                onChange={(e) => setFormData({ ...formData, kicker: e.target.value })}
+                placeholder="e.g. Ends in 3 hours"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {/* The real component the user will see, not a mock-up of it. A
+                separate preview drifts from the thing it previews, and the one
+                time that matters is the send that already went out. */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Preview
+              </label>
+              <div className="rounded-xl border border-slate-800 bg-[#0b0b12] p-3">
+                <NotificationCard
+                  title={formData.title || "Your title appears here"}
+                  message={formData.message || "And the message, exactly as the user reads it."}
+                  createdAtLabel="just now"
+                  data={{
+                    style: formData.style,
+                    ...(formData.kicker ? { kicker: formData.kicker } : {}),
+                    ...(formData.imageUrl ? { imageUrl: formData.imageUrl } : {}),
+                    ...(formData.actionUrl ? { actionUrl: formData.actionUrl } : {}),
+                    ...(formData.actionLabel ? { actionLabel: formData.actionLabel } : {}),
+                  }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                The animation is in-app only. Gmail strips CSS animation, so the
+                email uses the same colour as a band, badge and button instead.
+              </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">

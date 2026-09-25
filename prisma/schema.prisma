@@ -4761,6 +4761,22 @@ model Broadcast {
   actionUrl   String?
   actionLabel String?
 
+  /// Visual template — see `lib/notification-styles.ts` (URGENT, OFFER, …).
+  ///
+  /// Kept apart from `type` deliberately. `type` is what the message is ABOUT
+  /// and drives the user's filter tabs, so it has to keep meaning "wallet"
+  /// forever; style is how loudly it is said. The same wallet message is calm
+  /// when a payout lands and urgent when one fails, and folding the two
+  /// together would force a choice between a correct filter and a correct
+  /// colour.
+  ///
+  /// A plain string rather than an enum: adding a template is then a code
+  /// change, not a migration, and an unknown value renders as PLAIN instead of
+  /// breaking the row.
+  style  String  @default("PLAIN")
+  /// Short line above the title, e.g. "Ends in 3 hours".
+  kicker String?
+
   /// { inApp: bool, push: bool, email: bool }
   channels Json
 

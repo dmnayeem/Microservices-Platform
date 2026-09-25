@@ -139,6 +139,9 @@ export type CreateBroadcastInput = {
   actionUrl?: string | null;
   actionLabel?: string | null;
   channels: BroadcastChannels;
+  /** Visual template id — see lib/notification-styles.ts. */
+  style?: string;
+  kicker?: string | null;
   /** Service notice rather than marketing — see the schema comment. */
   important?: boolean;
   targetKind: BroadcastTargetKind;
@@ -168,6 +171,8 @@ export async function createBroadcast(input: CreateBroadcastInput) {
       actionLabel: input.actionLabel ?? null,
       channels: input.channels as unknown as Prisma.InputJsonValue,
       important: input.important ?? false,
+      style: input.style ?? "PLAIN",
+      kicker: input.kicker ?? null,
       targetKind: input.targetKind,
       criteria: (input.criteria ?? undefined) as unknown as Prisma.InputJsonValue,
       userIds: input.userIds ?? [],
@@ -359,9 +364,14 @@ export async function deliverBroadcast(
       });
       if (pending.length === 0) break;
 
+      // Exactly the shape `readPayload` in lib/notification-styles.ts reads.
+      // The image, link and button label were already being stored here before
+      // the card existed to render them; the template is what was missing.
       const data = {
         broadcastId,
         priority: b.priority,
+        style: b.style,
+        ...(b.kicker ? { kicker: b.kicker } : {}),
         ...(b.imageUrl ? { imageUrl: b.imageUrl } : {}),
         ...(b.actionUrl ? { actionUrl: b.actionUrl } : {}),
         ...(b.actionLabel ? { actionLabel: b.actionLabel } : {}),
@@ -428,6 +438,10 @@ export async function deliverBroadcast(
       actionUrl: b.actionUrl,
       maxEmails: opts.maxEmails,
       important: b.important,
+      style: b.style,
+      kicker: b.kicker,
+      imageUrl: b.imageUrl,
+      actionLabel: b.actionLabel,
     });
     out.email = pass.sent;
     out.emailFailed = pass.failed;
@@ -480,6 +494,10 @@ async function deliverEmails(
     actionUrl?: string | null;
     maxEmails?: number;
     important?: boolean;
+    style?: string;
+    kicker?: string | null;
+    imageUrl?: string | null;
+    actionLabel?: string | null;
   }
 ): Promise<{ sent: number; failed: number; note?: string }> {
   if (!(await isSmtpConfigured())) {
@@ -545,6 +563,10 @@ async function deliverEmails(
       slice.map((r) =>
         sendNotificationEmail(r.email as string, opts.subject, opts.body, opts.actionUrl ?? undefined, {
           transactional: !!opts.important,
+          style: opts.style,
+          kicker: opts.kicker ?? undefined,
+          imageUrl: opts.imageUrl ?? undefined,
+          actionLabel: opts.actionLabel ?? undefined,
         })
       )
     );
