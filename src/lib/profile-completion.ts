@@ -171,6 +171,8 @@ export interface RequiredProgress {
   percentage: number;
   complete: boolean;
   missing: RequiredItem[];
+  /** The percentage the admin requires, when the gate is percentage-based. */
+  target?: number;
 }
 
 /** Progress across the core essentials — for the locked screen + nudge banner. */
@@ -193,7 +195,12 @@ export function requiredProfileProgress(p: RequiredSnapshot): RequiredProgress {
  * progress, so the lock screen and banner render either without knowing which
  * mode the admin chose.
  */
-export function fullProfileProgress(p: ProfileSnapshot): RequiredProgress {
+/**
+ * Progress on the whole profile ring. `minPercent` is the admin's bar
+ * (`profile_gate.min_percent`): complete means the ring has reached it, so an
+ * owner can ask for 80% instead of every last field.
+ */
+export function fullProfileProgress(p: ProfileSnapshot, minPercent = 100): RequiredProgress {
   const r = calculateProfileCompletion(p);
   const total = r.items.length;
   const done = total - r.missing.length;
@@ -202,7 +209,8 @@ export function fullProfileProgress(p: ProfileSnapshot): RequiredProgress {
     total,
     // The weighted percentage — the same number the profile ring shows.
     percentage: r.percentage,
-    complete: r.missing.length === 0,
+    complete: minPercent >= 100 ? r.missing.length === 0 : r.percentage >= minPercent,
+    target: minPercent,
     missing: r.missing.map((m) => ({
       key: m.key as keyof RequiredSnapshot,
       label: m.label,

@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, Users } from "lucide-react";
-import { GATE_FEATURES } from "@/lib/profile-gate-features";
+import { GATE_FEATURES, clampGatePercent } from "@/lib/profile-gate-features";
 
 type Impact = {
   users: number;
   completeEssentials: number;
   completeFull: number;
   bestPercentage: number;
+  percentages: number[];
   phoneVerificationAvailable: boolean;
 };
 
@@ -23,12 +24,14 @@ type Impact = {
 export function ProfileGateStandard({
   on,
   mode,
+  minPercent = 100,
   features,
   onMode,
   disabled,
 }: {
   on: boolean;
   mode: string;
+  minPercent?: number;
   features: string[];
   onMode: (v: string) => void;
   disabled?: boolean;
@@ -46,7 +49,14 @@ export function ProfileGateStandard({
     };
   }, []);
 
-  const complete = impact ? (mode === "FULL" ? impact.completeFull : impact.completeEssentials) : null;
+  const bar = clampGatePercent(minPercent);
+  const complete = impact
+    ? mode === "FULL"
+      ? bar >= 100
+        ? impact.completeFull
+        : (impact.percentages ?? []).filter((p) => p >= bar).length
+      : impact.completeEssentials
+    : null;
   const locked = impact && complete !== null ? impact.users - complete : null;
 
   return (
@@ -54,7 +64,7 @@ export function ProfileGateStandard({
       <div className="flex flex-wrap gap-2">
         {[
           { v: "ESSENTIALS", l: "7 essentials", d: "Photo, name, birth date, gender, phone, country" },
-          { v: "FULL", l: "Full 100% profile", d: "Everything on the profile ring" },
+          { v: "FULL", l: "Profile percentage", d: "The profile ring, to a percentage you choose" },
         ].map((o) => (
           <button
             key={o.v}
@@ -100,6 +110,47 @@ export function ProfileGateStandard({
           complete it. With it in the total, 100% was impossible for everyone.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The percentage the profile ring must reach. Rendered inside
+ * `<Field settingKey="profile_gate.min_percent">`, only with the ring standard.
+ */
+export function ProfileGatePercent({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+}) {
+  const v = clampGatePercent(value);
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <input
+        type="range"
+        min={10}
+        max={100}
+        step={5}
+        value={v}
+        disabled={disabled}
+        onChange={(e) => onChange(clampGatePercent(e.target.value))}
+        className="w-48 accent-amber-400"
+        aria-label="Profile percentage required"
+      />
+      <input
+        type="number"
+        min={10}
+        max={100}
+        value={v}
+        disabled={disabled}
+        onChange={(e) => onChange(clampGatePercent(e.target.value))}
+        className="w-16 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
+      />
+      <span className="text-xs text-slate-400">% of the profile ring</span>
     </div>
   );
 }

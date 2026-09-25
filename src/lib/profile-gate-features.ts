@@ -16,3 +16,9 @@ export type GateFeature = (typeof GATE_FEATURES)[number]["key"];
 /** What an admin who only flips the master switch gets — the original behaviour. */
 export const DEFAULT_GATE_FEATURES: GateFeature[] = ["tasks", "missions"];
 export type GateMode = "ESSENTIALS" | "FULL";
+
+/** The admin's profile percentage, kept to a sensible 10–100 whole number. */
+export function clampGatePercent(v: unknown): number {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(100, Math.max(10, n)) : 100;
+}

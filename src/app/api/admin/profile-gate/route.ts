@@ -52,12 +52,16 @@ export async function GET() {
   let essentials = 0;
   let full = 0;
   let best = 0;
+  // Every user's ring percentage, so the settings screen can count who a
+  // 70% or 80% bar would lock out as the admin moves it, with no round trip.
+  const percentages: number[] = [];
   for (const u of users) {
     if (isProfileComplete(u)) essentials++;
     const pct = calculateProfileCompletion({
       ...u,
       socialAccountsCount: (u as unknown as { _count: { socialAccounts: number } })._count.socialAccounts,
     }).percentage;
+    percentages.push(pct);
     if (pct === 100) full++;
     if (pct > best) best = pct;
   }
@@ -68,6 +72,7 @@ export async function GET() {
     completeEssentials: essentials,
     completeFull: full,
     bestPercentage: best,
+    percentages,
     config: cfg,
     features: GATE_FEATURES,
     phoneVerificationAvailable: PHONE_VERIFICATION_AVAILABLE,

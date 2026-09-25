@@ -19,6 +19,7 @@ import {
   PHONE_VERIFICATION_AVAILABLE,
 } from "../src/lib/profile-completion";
 import { getGateConfig, getProfileGateState, profileGateResponse, GATE_FEATURES } from "../src/lib/profile-gate-server";
+import { clampGatePercent } from "../src/lib/profile-gate-features";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -64,6 +65,15 @@ async function main() {
     half.missing.map((m) => m.href).join(" ")
   );
   check("essentials are a subset of full", isProfileComplete(FULL));
+
+  console.log("\nThe admin's percentage bar (profile_gate.min_percent)");
+  const atBar = fullProfileProgress({ ...FULL, bio: "", city: "" }, half.percentage);
+  check("a profile AT the bar counts as complete", atBar.complete, `${half.percentage}% vs bar ${half.percentage}%`);
+  const aboveBar = fullProfileProgress({ ...FULL, bio: "", city: "" }, Math.min(100, half.percentage + 1));
+  check("one point short of the bar is still locked", !aboveBar.complete);
+  check("the bar travels with the progress, for the lock screen", atBar.target === half.percentage);
+  check("100% still means every item, not a rounded 100", !fullProfileProgress({ ...FULL, bio: "" }, 100).complete);
+  check("the bar is clamped to 10–100", clampGatePercent(5) === 10 && clampGatePercent(250) === 100 && clampGatePercent("x") === 100);
 
   console.log("\nWhile the switch is off, nothing is locked");
   const cfg = await getGateConfig();

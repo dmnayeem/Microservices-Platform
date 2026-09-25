@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   GATE_FEATURES,
   DEFAULT_GATE_FEATURES,
+  clampGatePercent,
   type GateFeature,
   type GateMode,
 } from "@/lib/profile-gate-features";
@@ -21,7 +22,8 @@ import {
  * Three admin settings, all on Settings → Toggles:
  *   ui.require_profile_completion   master switch (off by default)
  *   profile_gate.mode               ESSENTIALS — the 7 core fields
- *                                   FULL       — the whole 100% profile ring
+ *                                   FULL       — the profile ring, up to
+ *   profile_gate.min_percent        the percentage the admin requires (10–100)
  *   profile_gate.features           which features lock (see GATE_FEATURES)
  *
  * The gate is only as good as its weakest entry point. It used to be checked by
@@ -61,16 +63,23 @@ const open = (mode: GateMode): ProfileGateState => ({
   progress: OPEN_PROGRESS,
 });
 
-export async function getGateConfig(): Promise<{ on: boolean; mode: GateMode; features: GateFeature[] }> {
-  const [{ requireProfileCompletion }, mode, features] = await Promise.all([
+export async function getGateConfig(): Promise<{
+  on: boolean;
+  mode: GateMode;
+  minPercent: number;
+  features: GateFeature[];
+}> {
+  const [{ requireProfileCompletion }, mode, features, minPercent] = await Promise.all([
     getUiToggles(),
     getSetting<string>("profile_gate.mode", "ESSENTIALS"),
     getSetting<string[]>("profile_gate.features", DEFAULT_GATE_FEATURES),
+    getSetting<number>("profile_gate.min_percent", 100),
   ]);
   const valid = new Set<string>(GATE_FEATURES.map((f) => f.key));
   return {
     on: !!requireProfileCompletion,
     mode: mode === "FULL" ? "FULL" : "ESSENTIALS",
+    minPercent: clampGatePercent(minPercent),
     features: (Array.isArray(features) ? features : DEFAULT_GATE_FEATURES).filter((f): f is GateFeature =>
       valid.has(f)
     ),
@@ -126,7 +135,7 @@ export async function getProfileGateState(
   const socialAccountsCount = (user as unknown as { _count: { socialAccounts: number } })._count.socialAccounts;
   const progress =
     cfg.mode === "FULL"
-      ? fullProfileProgress({ ...user, socialAccountsCount })
+      ? fullProfileProgress({ ...user, socialAccountsCount }, cfg.minPercent)
       : requiredProfileProgress(user);
 
   return {
@@ -159,10 +168,10 @@ export async function profileGateResponse(userId: string, feature: GateFeature):
     {
       error:
         gate.mode === "FULL"
-          ? `Complete your profile to 100% to ${FEATURE_NOUN[feature]} — you are at ${percentage}%.`
+          ? `Complete your profile to ${gate.progress.target ?? 100}% to ${FEATURE_NOUN[feature]} — you are at ${percentage}%.`
           : `Complete your profile to ${FEATURE_NOUN[feature]} — ${done} of ${total} essentials done.`,
       code: "PROFILE_INCOMPLETE",
-      profileGate: { done, total, percentage, missing: missing.map((m) => ({ label: m.label, href: m.href })) },
+      profileGate: { done, total, percentage, target: gate.progress.target, missing: missing.map((m) => ({ label: m.label, href: m.href })) },
     },
     { status: 403 }
   );

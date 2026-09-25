@@ -26,7 +26,9 @@ export function ProfileGate({
 
         <h1 className="text-lg font-bold text-white">Complete your profile</h1>
         <p className="text-sm text-(--app-ink-3) mt-1">
-          Finish your profile to unlock {surface}. It only takes a minute.
+          {progress.target && progress.target < 100
+            ? `Reach ${progress.target}% on your profile to unlock ${surface}. It only takes a minute.`
+            : `Finish your profile to unlock ${surface}. It only takes a minute.`}
         </p>
 
         {/* Progress ring */}
