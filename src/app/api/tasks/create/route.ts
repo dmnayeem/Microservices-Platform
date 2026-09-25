@@ -11,6 +11,7 @@ import { detectProvider } from "@/lib/video-tasks";
 import { getPlatform } from "@/lib/social-tasks";
 import { validateSurveyConfig, type SurveyConfig } from "@/lib/survey-tasks";
 import { buyerSurveySchema, buildBuyerSurveyConfig } from "@/lib/survey-buyer";
+import type { CustomConfig } from "@/lib/custom-tasks";
 import {
   buyerQuizSchema,
   buildBuyerQuizQuestions,
@@ -18,6 +19,8 @@ import {
   buildBuyerArticleConfig,
   buyerAppInstallSchema,
   buildBuyerAppInstallConfig,
+  buyerCustomSchema,
+  buildBuyerCustomConfig,
 } from "@/lib/buyer-task-configs";
 import { validateAppInstallConfig } from "@/lib/app-install-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
@@ -63,6 +66,7 @@ const schema = z.object({
   watchSeconds: z.number().int().min(5).max(3600).optional(),
   // CUSTOM
   instructions: z.string().max(4000).optional().nullable(),
+  custom: buyerCustomSchema.optional(),
   // SURVEY
   survey: buyerSurveySchema.optional(),
   // QUIZ / ARTICLE / APPINSTALL — one schema each, shared with the edit route.
@@ -244,6 +248,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── CUSTOM ───────────────────────────────────────────────────────────────
+  let customConfig: CustomConfig | null = null;
+  if (d.type === "CUSTOM") {
+    if (!d.custom) {
+      return NextResponse.json(
+        {
+          error:
+            "A custom task needs at least one field, or the worker is paid for pressing a button and you receive nothing.",
+        },
+        { status: 400 }
+      );
+    }
+    customConfig = buildBuyerCustomConfig(d.custom);
+  }
+
   if (d.type === "SOCIAL" && (!d.socialUrl || !d.socialAction)) {
     return NextResponse.json(
       { error: "Social tasks need a target URL and an action." },
@@ -413,6 +432,12 @@ export async function POST(req: NextRequest) {
           // task, so a buyer survey is answered by exactly the same screen an
           // admin survey is. One-response-per-person is enforced in
           // /api/tasks/[id]/start, also regardless of who funded it.
+          // The runner reads `customConfig` and the reviewer reads the answers
+          // out of it, neither asking who built the task — so a buyer custom
+          // task is answered and reviewed by exactly the admin code path.
+          ...(d.type === "CUSTOM" && customConfig
+            ? { customConfig: customConfig as unknown as object }
+            : {}),
           ...(d.type === "SURVEY" && surveyConfig
             ? { surveyConfig: surveyConfig as unknown as object }
             : {}),

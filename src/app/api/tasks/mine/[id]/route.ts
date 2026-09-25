@@ -12,6 +12,8 @@ import {
   buildBuyerArticleConfig,
   buyerAppInstallSchema,
   buildBuyerAppInstallConfig,
+  buyerCustomSchema,
+  buildBuyerCustomConfig,
 } from "@/lib/buyer-task-configs";
 import { validateAppInstallConfig } from "@/lib/app-install-tasks";
 import { validateSurveyConfig } from "@/lib/survey-tasks";
@@ -66,6 +68,7 @@ const patchSchema = z.object({
   quiz: buyerQuizSchema.optional(),
   article: buyerArticleSchema.optional(),
   appInstall: buyerAppInstallSchema.optional(),
+  custom: buyerCustomSchema.optional(),
   // Only honoured while the task is still awaiting review — see above.
   pointsReward: z.number().int().min(1).max(10_000_000).optional(),
   targetCount: z.number().int().min(1).max(10_000_000).optional(),
@@ -186,6 +189,7 @@ export async function PATCH(
   let appInstallConfig = null as ReturnType<
     typeof buildBuyerAppInstallConfig
   > | null;
+  let customConfig = null as ReturnType<typeof buildBuyerCustomConfig> | null;
   const configEdits: { sent: boolean; type: string; noun: string }[] = [
     { sent: d.quiz !== undefined, type: "QUIZ", noun: "quiz" },
     { sent: d.article !== undefined, type: "ARTICLE", noun: "article task" },
@@ -194,6 +198,7 @@ export async function PATCH(
       type: "APPINSTALL",
       noun: "install task",
     },
+    { sent: d.custom !== undefined, type: "CUSTOM", noun: "custom task" },
   ];
   for (const edit of configEdits) {
     if (!edit.sent) continue;
@@ -209,6 +214,7 @@ export async function PATCH(
   }
   if (d.quiz) quizQuestions = buildBuyerQuizQuestions(d.quiz);
   if (d.article) articleConfig = buildBuyerArticleConfig(d.article);
+  if (d.custom) customConfig = buildBuyerCustomConfig(d.custom);
   if (d.appInstall) {
     appInstallConfig = buildBuyerAppInstallConfig(d.appInstall);
     const problem = validateAppInstallConfig(appInstallConfig);
@@ -315,6 +321,9 @@ export async function PATCH(
         : {}),
       ...(articleConfig
         ? { articleConfig: articleConfig as unknown as object }
+        : {}),
+      ...(customConfig
+        ? { customConfig: customConfig as unknown as object }
         : {}),
       ...(appInstallConfig
         ? { appInstallConfig: appInstallConfig as unknown as object }

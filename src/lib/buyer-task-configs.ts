@@ -27,6 +27,7 @@ import {
   type AppInstallProofItem,
 } from "@/lib/app-install-tasks";
 import type { QuizQuestionShape } from "@/lib/quiz-shape";
+import type { CustomConfig, CustomField } from "@/lib/custom-tasks";
 
 /* ────────────────────────────── QUIZ ──────────────────────────────────────
  *
@@ -297,3 +298,108 @@ export function buildBuyerAppInstallConfig(
 /** Shown to the buyer, above the app-install form. */
 export const BUYER_APPINSTALL_NOTICE =
   "Install tasks attract the most fraud on the platform. Ask for more than one screenshot: a level reached, days opened or minutes played all take real time in the app and are far harder to fake or share. Every submission comes to you for review — install tasks are never auto-approved.";
+
+/* ───────────────────────────── CUSTOM ─────────────────────────────────────
+ *
+ * HAZARD: a funded task that collects nothing.
+ *
+ * A buyer CUSTOM task used to store only free-text `instructions` and no
+ * `customConfig` at all. The submit route reads that as "no fields configured"
+ * and treats the task as a plain mark-done completion — so a buyer who funded
+ * "five Gmail accounts, $1 each" paid five workers who pressed a button and
+ * received nothing. The money moved correctly and the deliverable never
+ * existed.
+ *
+ * So the fields are the point of this schema, and `min(1)` is what stops the
+ * silent version coming back. The worker runner already renders whatever is in
+ * `customConfig` and the reviewer panel already shows the answers; a buyer
+ * custom task is therefore indistinguishable from an admin one downstream,
+ * which is the same rule the other three types follow.
+ *
+ * The quieter hazard is upload cost. Every IMAGE/IMAGES/FILE/VIDEO field is
+ * storage a buyer commissions but the platform pays for, so the per-file and
+ * per-field ceilings below are tighter than the admin builder's.
+ */
+
+/** A buyer may ask for at most this many things in one task. */
+const BUYER_CUSTOM_MAX_FIELDS = 12;
+/** Tighter than the admin ceiling: the platform stores what the buyer asks for. */
+const BUYER_CUSTOM_MAX_FILE_MB = 10;
+
+export const buyerCustomFieldSchema = z.object({
+  id: z.string().min(1).max(64),
+  type: z.enum([
+    "TEXT",
+    "TEXTAREA",
+    "LINK",
+    "EMAIL",
+    "PHONE",
+    "NUMBER",
+    "IMAGE",
+    "IMAGES",
+    "FILE",
+    "VIDEO",
+    "SELECT",
+    "CHECKBOX_GROUP",
+  ]),
+  label: z.string().min(1).max(160),
+  hint: z.string().max(300).optional().nullable(),
+  required: z.boolean().optional(),
+  maxLength: z.number().int().min(1).max(10_000).optional().nullable(),
+  accept: z.string().max(200).optional().nullable(),
+  maxSizeMb: z.number().int().min(1).max(BUYER_CUSTOM_MAX_FILE_MB).optional().nullable(),
+  maxImages: z.number().int().min(1).max(10).optional().nullable(),
+  options: z.array(z.string().min(1).max(120)).max(20).optional(),
+  min: z.number().optional().nullable(),
+  max: z.number().optional().nullable(),
+});
+
+export const buyerCustomSchema = z.object({
+  // At least one. A task that asks for nothing pays for nothing.
+  fields: z.array(buyerCustomFieldSchema).min(1).max(BUYER_CUSTOM_MAX_FIELDS),
+  introMessage: z.string().max(2000).optional().nullable(),
+  thankYouMessage: z.string().max(1000).optional().nullable(),
+});
+
+export type BuyerCustomInput = z.infer<typeof buyerCustomSchema>;
+
+/**
+ * Turn the buyer's field list into the exact `customConfig` column the existing
+ * worker runner and reviewer already read.
+ */
+export function buildBuyerCustomConfig(input: BuyerCustomInput): CustomConfig {
+  const fields: CustomField[] = input.fields.map((f, i) => ({
+    id: f.id,
+    order: i,
+    type: f.type as CustomField["type"],
+    label: f.label.trim(),
+    required: f.required !== false,
+    ...(f.hint?.trim() ? { hint: f.hint.trim() } : {}),
+    ...(f.maxLength ? { maxLength: f.maxLength } : {}),
+    ...(f.accept?.trim() ? { accept: f.accept.trim() } : {}),
+    ...(f.maxSizeMb
+      ? { maxSizeMb: Math.min(f.maxSizeMb, BUYER_CUSTOM_MAX_FILE_MB) }
+      : {}),
+    ...(f.maxImages ? { maxImages: f.maxImages } : {}),
+    // A choice field with no choices renders as an empty dropdown nobody can
+    // answer, which fails the task rather than the form.
+    ...(f.options?.length
+      ? { options: f.options.map((o) => o.trim()).filter(Boolean) }
+      : {}),
+    ...(f.min != null ? { min: f.min } : {}),
+    ...(f.max != null ? { max: f.max } : {}),
+  }));
+
+  return {
+    fields,
+    introMessage: input.introMessage?.trim() || "",
+    thankYouMessage: input.thankYouMessage?.trim() || "",
+    // Never true for a buyer: the whole point of a custom task is that the
+    // buyer looks at what came back before it is paid for.
+    autoApprove: false,
+  };
+}
+
+/** Shown to the buyer, above the custom form builder. */
+export const BUYER_CUSTOM_NOTICE =
+  "Add a field for every single thing you need back. A custom task with no fields pays the worker for pressing a button and hands you nothing — so if you want five email accounts, ask for the address and the password as separate fields, and set how many completions to fund below.";

@@ -19,6 +19,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { CustomTaskBuilder } from "@/app/admin/tasks/_components/CustomTaskBuilder";
+import type { CustomConfig } from "@/lib/custom-tasks";
+import { BUYER_CUSTOM_NOTICE } from "@/lib/buyer-task-configs";
 import { usd, pts, cn } from "@/lib/utils";
 import Link from "next/link";
 import { TASK_CREDIT } from "@/lib/task-credit-theme";
@@ -134,6 +137,14 @@ export function CreateTaskView({
   const [watchSeconds, setWatchSeconds] = useState(30);
   // CUSTOM
   const [instructions, setInstructions] = useState("");
+  // What the worker must hand back. Without at least one field a custom task
+  // is a mark-done button: the worker is paid and the buyer receives nothing.
+  const [customCfg, setCustomCfg] = useState<CustomConfig>({
+    fields: [],
+    introMessage: "",
+    thankYouMessage: "",
+    autoApprove: false,
+  });
   // SURVEY
   const [survey, setSurvey] = useState<SurveyDraft>(emptySurveyDraft);
   const [quiz, setQuiz] = useState<QuizDraft>(emptyQuizDraft);
@@ -323,6 +334,13 @@ export function CreateTaskView({
         body.socialUrl = socialUrl.trim();
       } else {
         body.instructions = instructions.trim() || undefined;
+      }
+      if (type === "CUSTOM") {
+        body.custom = {
+          fields: customCfg.fields,
+          introMessage: customCfg.introMessage || undefined,
+          thankYouMessage: customCfg.thankYouMessage || undefined,
+        };
       }
       if (canTarget) {
         body.countries = audience.countries;
@@ -554,7 +572,7 @@ export function CreateTaskView({
         ) : type === "APPINSTALL" ? (
           <AppInstallBuilder value={appInstall} onChange={setAppInstall} />
         ) : (
-          <div>
+          <div className="space-y-3">
             <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
               Instructions
             </label>
@@ -565,6 +583,15 @@ export function CreateTaskView({
               placeholder="Step-by-step instructions for completing this task..."
               className="w-full px-3 py-2 bg-(--app-page) border border-(--app-line) rounded-lg text-(--app-ink) text-sm placeholder:text-(--app-ink-3) focus:outline-none focus:border-(--app-accent-edge) resize-none"
             />
+
+            {type === "CUSTOM" && (
+              <div className="space-y-2">
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] leading-snug text-amber-100/90">
+                  {BUYER_CUSTOM_NOTICE}
+                </p>
+                <CustomTaskBuilder value={customCfg} onChange={setCustomCfg} />
+              </div>
+            )}
           </div>
         )}
 
