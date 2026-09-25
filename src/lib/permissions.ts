@@ -115,6 +115,7 @@ export const getEffectivePermissions = cache(
         select: {
           role: true,
           permissionOverrides: true,
+          financeGrants: true,
           customRoleId: true,
           customRole: { select: { permissions: true, isActive: true } },
         },
@@ -140,9 +141,10 @@ export const getEffectivePermissions = cache(
       if (granted) perms.add(perm as Permission);
       else perms.delete(perm as Permission);
     }
-    // Hard backstop: strip finance + admins.manage for non-super principals
-    // (finance kept only for the built-in FINANCE_ADMIN role).
-    return stripProtectedForRole(perms, role);
+    // Hard backstop: strip admins.manage for non-super principals, and every
+    // finance permission that was not granted to this person by name. See
+    // `stripProtectedForRole` — `financeGrants` is the only way in.
+    return stripProtectedForRole(perms, role, user.financeGrants ?? []);
   }
 );
 

@@ -32,6 +32,11 @@ enum UserRole {
   AGENCY
   // Ad Manager admin — scoped to the Ads Manager surface.
   AD_MANAGER
+  // Finance data entry. Records expenses and reads the books; cannot approve,
+  // pay, void or configure. Created by a super admin OR a finance admin — the
+  // only role a finance admin may create — and walled off from MANAGER exactly
+  // as FINANCE_ADMIN is.
+  FINANCE_MODERATOR
 }
 
 enum UserStatus {
@@ -1502,6 +1507,16 @@ model User {
   googleLinkedAt                    DateTime?
   featureOverrides                  Json? // per-user feature grants/denials { [featureKey]: boolean } overriding the package
   permissionOverrides               Json? // per-user RBAC permission grants/denials { [permission]: boolean } on top of the role
+  /// Finance permissions granted to THIS person by a super admin (or, for a
+  /// FINANCE_MODERATOR, by a finance admin).
+  ///
+  /// Deliberately NOT part of `permissionOverrides`. A MANAGER may edit
+  /// overrides — administering staff is its job — and the one thing a manager
+  /// must never be able to do is hand out access to the company's money. So
+  /// finance access lives in its own column that only the finance-grant route
+  /// writes, and `stripProtectedForRole` honours finance permissions from here
+  /// and nowhere else.
+  financeGrants                     String[]                     @default([])
   pageOverrides                     Json? // per-user page-visibility grants/denials { [path]: boolean } — super-admin page hiding
   // Anti-fraud: IP captured at signup + most recent request IP (per-IP account
   // cap + VPN/proxy heuristic). @@index on signupIp for the per-IP count.
@@ -1595,6 +1610,9 @@ model User {
   notifications                     Notification[]
   broadcastsCreated                 Broadcast[]                  @relation("BroadcastAuthor")
   broadcastDeliveries               BroadcastRecipient[]         @relation("BroadcastRecipientUser")
+  financeEntriesCreated             FinanceEntry[]               @relation("FinanceEntryCreatedBy")
+  financeEntriesApproved            FinanceEntry[]               @relation("FinanceEntryApprovedBy")
+  employeeRecord                    Employee?                    @relation("EmployeeUser")
   marketplaceListings               MarketplaceListing[]
   marketplacePurchases              MarketplacePurchase[]
   marketplacePayouts                MarketplacePayout[]
@@ -4861,4 +4879,282 @@ model BroadcastRecipient {
   @@index([broadcastId, inAppAt])
   /// Today's email usage, for the daily cap.
   @@index([emailAt])
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Company finance & HR
+//
+//  Everything above this line records money moving INSIDE the platform — a
+//  user's wallet, a sale, a withdrawal. Nothing recorded money the company
+//  spends out of its own pocket: the electricity bill, the office rent, the
+//  server, the salary of a cleaner who has no account here. The payroll module
+//  (src/lib/payroll) can only pay staff who DO have an account, into their
+//  wallet, and its own comments say an off-platform payment "needs a row of its
+//  own". These are those rows.
+//
+//  Three rules hold for every table here:
+//   - Amounts are entered in the currency actually paid, and the USD rate is
+//     SNAPSHOTTED on the row. A report of last March must not change because
+//     today's taka rate did.
+//   - Nothing is hard-deleted. A wrong entry is VOIDed with a reason; the books
+//     keep it. Accounting records that can silently disappear are not records.
+//   - Custom fields are data, not schema: an admin can add "meter number" to
+//     Electricity without a migration.
+// ════════════════════════════════════════════════════════════════════════════
+
+/// What a money entry is for. Admin-defined, seeded with the usual office set.
+model FinanceCategory {
+  id       String  @id @default(cuid())
+  /// EXPENSE | INCOME | TAX_PAYMENT
+  kind     String  @default("EXPENSE")
+  name     String
+  /// Stable machine key for seeded categories (e.g. "rent"). Null for ones an
+  /// admin adds; code never looks those up by key.
+  slug     String? @unique
+  color    String? // hex, for the charts
+  icon     String? // lucide name
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+  /// Seeded categories cannot be deleted, only deactivated — reports and
+  /// recurring templates point at them.
+  isSystem Boolean @default(false)
+
+  entries   FinanceEntry[]
+  recurring RecurringEntry[]
+  fields    FinanceFieldDef[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, isActive, order])
+}
+
+/// A custom field an admin added — to one category's entries, to every
+/// employee, or to every payee. The VALUES live in each row's `customFields`.
+model FinanceFieldDef {
+  id         String           @id @default(cuid())
+  /// ENTRY | EMPLOYEE | PAYEE
+  entity     String
+  /// Only for ENTRY: the category this field belongs to. Null = every entry.
+  categoryId String?
+  category   FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  /// Key inside `customFields`. Never renamed once used, or old values orphan.
+  key        String
+  label      String
+  /// TEXT | NUMBER | DATE | SELECT | URL | TEXTAREA
+  type       String           @default("TEXT")
+  options    String[]         @default([])
+  required   Boolean          @default(false)
+  order      Int              @default(0)
+  isActive   Boolean          @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entity, categoryId, key])
+  @@index([entity, isActive, order])
+}
+
+/// Somebody the company pays who is not an employee: a company, a person, a
+/// platform (AWS, Google, a courier).
+model Payee {
+  id             String  @id @default(cuid())
+  /// COMPANY | PERSON | PLATFORM
+  kind           String  @default("COMPANY")
+  name           String
+  contactName    String?
+  phone          String?
+  email          String?
+  address        String?
+  /// e.g. "bKash", "Bank transfer", "Card"
+  paymentMethod  String?
+  /// Account number, bKash number, IBAN — free text on purpose.
+  paymentDetails String?
+  /// BIN / TIN / VAT number
+  taxId          String?
+  notes          String?
+  customFields   Json?
+  isActive       Boolean @default(true)
+
+  entries   FinanceEntry[]
+  recurring RecurringEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, isActive])
+  @@index([name])
+}
+
+/// An employee — anyone the company pays a wage, with or without an account
+/// on this platform. A cleaner and a finance admin are both employees; only the
+/// second also has a `userId`.
+model Employee {
+  id     String  @id @default(cuid())
+  /// Optional link to a platform account (a staff member). Unique: one person,
+  /// one HR record.
+  userId String? @unique
+  user   User?   @relation("EmployeeUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  name        String
+  /// "Office assistant", "Cleaner", "Backend developer"
+  designation String?
+  department  String?
+  phone       String?
+  email       String?
+  address     String?
+  nationalId  String?
+  photoUrl    String?
+
+  /// FULL_TIME | PART_TIME | CONTRACT | DAILY | INTERN
+  employmentType String    @default("FULL_TIME")
+  /// ACTIVE | ON_LEAVE | LEFT
+  status         String    @default("ACTIVE")
+  joinDate       DateTime?
+  leaveDate      DateTime?
+
+  /// Pay for one cycle, in `salaryCurrency`.
+  salaryAmount   Decimal   @default(0) @db.Decimal(18, 2)
+  salaryCurrency String    @default("BDT")
+  /// MONTHLY | WEEKLY | DAILY
+  salaryCycle    String    @default("MONTHLY")
+  /// Free text for how commission works for this person, plus an optional
+  /// percentage for the common case. Commission itself is recorded as entries.
+  commissionNote String?
+  commissionPct  Decimal?  @db.Decimal(9, 4)
+
+  paymentMethod    String?
+  paymentDetails   String?
+  emergencyContact String?
+  notes            String?
+  customFields     Json?
+
+  entries   FinanceEntry[]
+  recurring RecurringEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([name])
+}
+
+/// One money event in the company's own books.
+model FinanceEntry {
+  id   String @id @default(cuid())
+  /// EXPENSE — money out. INCOME — money in that the platform's own revenue
+  /// streams do not already record (a sponsorship, a grant). TAX_PAYMENT —
+  /// money paid TO a tax authority, which settles collected tax and is never
+  /// an operating expense.
+  kind String @default("EXPENSE")
+
+  categoryId String
+  category   FinanceCategory @relation(fields: [categoryId], references: [id])
+
+  /// Who was paid. At most one is set; both null = unnamed (petty cash).
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  payeeId    String?
+  payee      Payee?    @relation(fields: [payeeId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?
+
+  /// In the currency actually paid.
+  amount    Decimal @db.Decimal(18, 2)
+  currency  String  @default("BDT")
+  /// Units of `currency` per 1 USD at the time of entry. Snapshotted.
+  usdRate   Decimal @default(1) @db.Decimal(18, 6)
+  /// `amount / usdRate`, stored so every report sums one column in one currency.
+  amountUsd Decimal @db.Decimal(18, 6)
+
+  /// Tax that is PART OF this payment — VAT on a vendor's bill, AIT withheld.
+  /// Kept on its own so the tax register can report it and so it is never
+  /// silently counted as an operating cost.
+  taxAmount    Decimal @default(0) @db.Decimal(18, 2)
+  taxAmountUsd Decimal @default(0) @db.Decimal(18, 6)
+  /// "VAT", "Income tax", "AIT", "Withholding" — free text, grouped by it.
+  taxLabel     String?
+
+  /// The month this is FOR (`YYYY-MM`). A July electricity bill paid in August
+  /// belongs to July's costs.
+  period  String
+  dueDate DateTime?
+  paidAt  DateTime?
+  /// PENDING — recorded, not yet paid. PAID. VOID — cancelled, kept.
+  status  String    @default("PENDING")
+
+  /// cash, bank, bKash, card …
+  paymentMethod String?
+  /// Cheque number, bank transaction id, bKash trxID.
+  reference     String?
+  attachments   String[] @default([])
+  customFields  Json?
+
+  /// Where it came from: MANUAL, RECURRING, SALARY.
+  source    String  @default("MANUAL")
+  /// Makes generated entries idempotent: `salary:<employeeId>:2026-09`,
+  /// `recurring:<id>:2026-09`. Unique, so a double click, a retry and the
+  /// scheduler running twice all collapse to one row.
+  dedupeKey String? @unique
+
+  recurringId String?
+  recurring   RecurringEntry? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+
+  createdById  String
+  createdBy    User      @relation("FinanceEntryCreatedBy", fields: [createdById], references: [id])
+  approvedById String?
+  approvedBy   User?     @relation("FinanceEntryApprovedBy", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  voidedById   String?
+  voidedAt     DateTime?
+  voidReason   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, status, period])
+  @@index([period])
+  @@index([categoryId, period])
+  @@index([employeeId, period])
+  @@index([payeeId])
+  @@index([paidAt])
+  @@index([status, dueDate])
+}
+
+/// A cost that repeats — rent, internet, a server, a salary. The scheduler
+/// writes one PENDING entry per period; paying it is still a human act.
+model RecurringEntry {
+  id         String          @id @default(cuid())
+  kind       String          @default("EXPENSE")
+  categoryId String
+  category   FinanceCategory @relation(fields: [categoryId], references: [id])
+  employeeId String?
+  employee   Employee?       @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  payeeId    String?
+  payee      Payee?          @relation(fields: [payeeId], references: [id], onDelete: SetNull)
+
+  title     String
+  amount    Decimal @db.Decimal(18, 2)
+  currency  String  @default("BDT")
+  taxAmount Decimal @default(0) @db.Decimal(18, 2)
+  taxLabel  String?
+  /// Day of the month it falls due, 1–28. Capped at 28 so February exists.
+  dueDay    Int     @default(1)
+  /// First and last period it applies to. Empty end = open-ended.
+  startPeriod String
+  endPeriod   String?
+  isActive    Boolean @default(true)
+  /// The last period an entry was generated for. The sweep only moves this
+  /// forward; the entry's dedupeKey is what actually prevents doubles.
+  lastPeriod  String?
+  notes       String?
+
+  entries FinanceEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
 }

@@ -20,6 +20,7 @@ import {
   Wallet,
   CalendarDays,
   UserPlus,
+  BookOpenCheck,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -166,6 +167,22 @@ export default async function AdminFinancePage({
           </p>
         </div>
       )}
+
+      {/* The platform's money is this page; the company's own money — bills,
+          salaries, tax — is Company books. Two ledgers, one link apart, so an
+          owner looking at revenue is one click from what it cost to earn. */}
+      <Link
+        href="/admin/finance/company"
+        className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 hover:border-emerald-400"
+      >
+        <BookOpenCheck className="h-5 w-5 shrink-0 text-emerald-300" />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-white">Company books</span>
+          <span className="block text-xs text-slate-400">
+            Expenses, salaries, employees, VAT &amp; tax, and profit after costs.
+          </span>
+        </span>
+      </Link>
 
       <nav className="flex gap-1 border-b border-slate-800">
         {TABS.map((t) => (

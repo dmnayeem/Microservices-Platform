@@ -15,6 +15,10 @@ import {
   runBroadcastSweep,
   summariseSweep as summariseBroadcasts,
 } from "@/lib/broadcast";
+import {
+  generateRecurring,
+  summariseRecurring,
+} from "@/lib/company-finance/recurring";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -131,6 +135,20 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await runBroadcastSweep({ maxMs: 45_000 });
       return { ok: true, summary: summariseBroadcasts(s), result: s };
+    },
+  },
+  {
+    name: "finance-recurring",
+    label: "Write recurring bills",
+    description:
+      "Rent, internet, servers and any other cost set up as recurring get their entry for the month written as Pending, ready to be paid. It never marks anything paid — paying is a person's decision. Running it twice writes nothing twice: every entry carries a key for its template and month, and the database refuses a second one.",
+    // Hourly is plenty for a monthly bill, and it means a deploy or an outage
+    // across the month boundary delays the entry by an hour, not a month.
+    intervalMs: HOUR,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const s = await generateRecurring();
+      return { ok: s.failed.length === 0, summary: summariseRecurring(s), result: s };
     },
   },
 ];

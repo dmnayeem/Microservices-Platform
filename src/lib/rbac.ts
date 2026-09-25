@@ -19,7 +19,10 @@ export type UserRole =
   // Advertiser/agency console — a user-side role (NOT in the admin panel).
   | "AGENCY"
   // Ad Manager admin — scoped to the Ads Manager surface.
-  | "AD_MANAGER";
+  | "AD_MANAGER"
+  // Finance data entry: records expenses and reads the books. See the
+  // FINANCE_MODERATOR note on ROLE_PERMISSIONS.
+  | "FINANCE_MODERATOR";
 
 // Admin roles that have access to admin panel.
 // AGENCY is intentionally excluded — it is a user-side advertiser console.
@@ -33,6 +36,7 @@ export const ADMIN_ROLES: UserRole[] = [
   "MARKETING_ADMIN",
   "MODERATOR",
   "AD_MANAGER",
+  "FINANCE_MODERATOR",
 ];
 
 // String array version for client components
@@ -46,6 +50,7 @@ export const ADMIN_ROLE_STRINGS = [
   "MARKETING_ADMIN",
   "MODERATOR",
   "AD_MANAGER",
+  "FINANCE_MODERATOR",
 ] as const;
 
 // Sidebar category groups
@@ -126,6 +131,22 @@ export type Permission =
   | "referrals.configure"
   // Finance hub (aggregate financial reporting across every money flow)
   | "finance.view"
+  // The company's own books — expenses, other income, tax paid to the
+  // authority. `create` drafts an entry; `approve` marks it paid, approves or
+  // voids it. Split because entering a bill and releasing money for it are the
+  // two halves of every expense control that works.
+  | "finance.entries.create"
+  | "finance.entries.approve"
+  // HR: employees, including the ones with no account here. Separate from the
+  // books because salaries are the most sensitive figure in the building and a
+  // data-entry clerk does not need to see what everyone earns.
+  | "finance.hr.view"
+  | "finance.hr.manage"
+  // Categories, custom fields, recurring costs.
+  | "finance.settings"
+  // Create, suspend and grant access to FINANCE_MODERATOR accounts. The only
+  // staff-administration power a finance admin has.
+  | "finance.staff"
   // Staff payroll — salaries and commissions for employees, not for users.
   // Both live in FINANCE_PERMISSIONS, so a MANAGER can never be granted them.
   | "payroll.view"
@@ -327,6 +348,12 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
     label: "Finance & Wallet",
     permissions: [
       "finance.view",
+      "finance.entries.create",
+      "finance.entries.approve",
+      "finance.hr.view",
+      "finance.hr.manage",
+      "finance.settings",
+      "finance.staff",
       "payroll.view",
       "payroll.manage",
       "withdrawals.view",
@@ -397,6 +424,10 @@ export const ALL_PERMISSIONS: Permission[] = PERMISSION_CATALOG.flatMap(
 // these to a lower admin, a MANAGER, or a custom role.
 export const FINANCE_PERMISSIONS: Permission[] = [
   "finance.view",
+  "finance.entries.create", "finance.entries.approve",
+  "finance.hr.view", "finance.hr.manage",
+  "finance.settings",
+  "finance.staff",
   "payroll.view", "payroll.manage",
   "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
   "payment_methods.view", "payment_methods.manage",
@@ -490,6 +521,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   FINANCE_ADMIN: [
     "dashboard.view",
     "finance.view",
+    "finance.entries.create", "finance.entries.approve",
+    "finance.hr.view", "finance.hr.manage",
+    "finance.settings",
+    "finance.staff",
     "payroll.view", "payroll.manage",
     "users.view",
     "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
@@ -503,6 +538,22 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "ads.view",
     "offerwalls.view",
     "analytics.view", "analytics.export",
+  ],
+
+  /**
+   * Finance data entry. Reads the books and records bills; cannot approve, pay,
+   * void, configure, or see salaries.
+   *
+   * Its finance powers are NOT read from here at runtime — they are capped by
+   * FINANCE_MODERATOR_CEILING in `stripProtectedForRole`. This list is the
+   * default a fresh moderator starts with, and the role matrix may widen the
+   * NON-finance part of it; the finance part only ever widens through a grant
+   * from a super admin or finance admin.
+   */
+  FINANCE_MODERATOR: [
+    "dashboard.view",
+    "finance.view",
+    "finance.entries.create",
   ],
 
   CONTENT_ADMIN: [
@@ -610,19 +661,74 @@ export function isFinancePermission(p: Permission): boolean {
  * only sees the actor. They are enforced by `canAdministerStaffAccount` /
  * `canAssignStaffRole` below, which every staff-mutating route calls.
  */
+/**
+ * The most a FINANCE_MODERATOR can hold without an explicit grant.
+ *
+ * A fixed ceiling rather than "whatever the role matrix says", because the role
+ * matrix is edited by MANAGERs (`admins.manage`), and a manager must never be
+ * able to widen anyone's access to money — including by editing the
+ * moderator role itself.
+ */
+export const FINANCE_MODERATOR_CEILING: Permission[] = [
+  "finance.view",
+  "finance.entries.create",
+];
+const FINANCE_MODERATOR_CEILING_SET = new Set<Permission>(FINANCE_MODERATOR_CEILING);
+
+/**
+ * Finance permissions a super admin may grant to ANY staff member, one by one.
+ * Everything finance except `finance.staff`: handing out finance access stays
+ * with the super admin and the finance admin.
+ */
+export const GRANTABLE_FINANCE_PERMISSIONS: Permission[] = FINANCE_PERMISSIONS.filter(
+  (p) => p !== "finance.staff"
+);
+
+/**
+ * Finance permissions a FINANCE ADMIN may grant — and only to a
+ * FINANCE_MODERATOR. Narrower than the super admin's list: a finance admin can
+ * widen a clerk's desk, not create a second finance admin.
+ */
+export const FINANCE_ADMIN_GRANTABLE: Permission[] = [
+  "finance.view",
+  "finance.entries.create",
+  "finance.entries.approve",
+  "finance.hr.view",
+];
+
 export function stripProtectedForRole(
   perms: Set<Permission>,
-  role: UserRole | undefined
+  role: UserRole | undefined,
+  /** `User.financeGrants` — the ONLY source of finance access for anyone who
+   *  is not a super admin or finance admin. */
+  financeGrants: readonly string[] = []
 ): Set<Permission> {
   if (role === "SUPER_ADMIN") return perms;
   // Staff administration: super admin and manager only.
   if (role !== "MANAGER") {
     for (const p of SUPERADMIN_ONLY_SET) perms.delete(p);
   }
-  // Money: super admin and the built-in finance admin only. MANAGER is
-  // deliberately NOT an exception here — that is its defining limit.
+  // Money. The finance admin keeps what its role gives it. Everyone else —
+  // MANAGER included, which is that role's defining limit — holds a finance
+  // permission ONLY if it was granted to them by name, in `financeGrants`,
+  // which nothing but the finance-grant route writes. A mis-saved role config
+  // or a per-user override can therefore never leak money access: both are
+  // stripped here, and only the grant list is read back.
+  //
+  // Two sources, two rules:
+  //  - A GRANT is an explicit decision about one person, so it is added even
+  //    when their role lacks it — that is the whole point of granting.
+  //  - The moderator CEILING only caps. A ceiling permission survives if the
+  //    role already has it, so the role matrix can narrow a moderator but can
+  //    never widen one past the ceiling.
   if (role !== "FINANCE_ADMIN") {
-    for (const p of FINANCE_SET) perms.delete(p);
+    const granted = new Set<string>(financeGrants);
+    for (const p of FINANCE_SET) {
+      const fromCeiling =
+        role === "FINANCE_MODERATOR" && FINANCE_MODERATOR_CEILING_SET.has(p) && perms.has(p);
+      if (granted.has(p) || fromCeiling) perms.add(p);
+      else perms.delete(p);
+    }
   }
   return perms;
 }
@@ -673,6 +779,7 @@ const MANAGER_MANAGEABLE_SET = new Set<UserRole>(MANAGER_MANAGEABLE_ROLES);
 export const MANAGER_FORBIDDEN_ROLES: UserRole[] = [
   "SUPER_ADMIN",
   "FINANCE_ADMIN",
+  "FINANCE_MODERATOR",
   "MANAGER",
 ];
 
@@ -696,11 +803,11 @@ export function canAdministerStaffAccount(
   const target = (targetRole ?? "USER") as UserRole;
 
   if (actorRole === "MANAGER") {
-    if (target === "FINANCE_ADMIN") {
+    if (target === "FINANCE_ADMIN" || target === "FINANCE_MODERATOR") {
       return {
         ok: false,
         reason:
-          "A manager cannot modify a finance admin account. Only a super admin can.",
+          "A manager cannot modify a finance account. Only a super admin or a finance admin can.",
       };
     }
     if (target === "SUPER_ADMIN") {
@@ -715,6 +822,21 @@ export function canAdministerStaffAccount(
     return MANAGER_MANAGEABLE_SET.has(target)
       ? { ok: true }
       : { ok: false, reason: `A manager cannot modify a ${target} account.` };
+  }
+
+  // A finance admin administers exactly one kind of account: the finance
+  // moderators who work for it. Not other finance admins — that would let one
+  // finance admin mint another and route around the super admin — and no
+  // other staff at all.
+  if (actorRole === "FINANCE_ADMIN") {
+    if (target === "FINANCE_MODERATOR") return { ok: true };
+    return {
+      ok: false,
+      reason:
+        target === "FINANCE_ADMIN"
+          ? "Only a super admin can modify a finance admin account."
+          : "A finance admin can only manage finance moderator accounts.",
+    };
   }
 
   // Every other role: may not touch ANY staff account, only customers.
@@ -746,14 +868,24 @@ export function canAssignStaffRole(
       return {
         ok: false,
         reason:
-          nextRole === "FINANCE_ADMIN"
-            ? "A manager cannot promote anyone to finance admin. Only a super admin can."
+          nextRole === "FINANCE_ADMIN" || nextRole === "FINANCE_MODERATOR"
+            ? "A manager cannot give anyone a finance role. Only a super admin or a finance admin can."
             : `A manager cannot assign the ${nextRole} role. Only a super admin can.`,
       };
     }
     return MANAGER_MANAGEABLE_SET.has(nextRole)
       ? { ok: true }
       : { ok: false, reason: `A manager cannot assign the ${nextRole} role.` };
+  }
+
+  // A finance admin may make someone a finance moderator — and may take that
+  // role away again (back to a plain user). Nothing else.
+  if (actorRole === "FINANCE_ADMIN") {
+    if (nextRole === "FINANCE_MODERATOR" || nextRole === "USER") return { ok: true };
+    return {
+      ok: false,
+      reason: "A finance admin can only assign the Finance Moderator role.",
+    };
   }
 
   if (isStaffRoleName(nextRole)) {
@@ -895,6 +1027,12 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
 
   // ── Finance & Wallet ──
   "finance.view": { label: "Finance Hub", description: "Open the finance dashboard — income by source, payouts, wallet liabilities and reports." },
+  "finance.entries.create": { label: "Record expenses", description: "Add bills, expenses, other income and tax payments to the company books. Entries start as Pending; recording one moves no money and approves nothing." },
+  "finance.entries.approve": { label: "Approve & pay expenses", description: "Mark an entry paid, approve it, or void it. The half of expense control that releases money — keep it with fewer people than Record expenses." },
+  "finance.hr.view": { label: "View employees & salaries", description: "See every employee record, including what each person is paid. The most sensitive figure in the company." },
+  "finance.hr.manage": { label: "Manage employees", description: "Add, edit and offboard employees — with or without a platform account — and set their salary and payment details." },
+  "finance.settings": { label: "Finance settings", description: "Expense categories, custom fields, and recurring bills such as rent, internet and servers." },
+  "finance.staff": { label: "Manage finance moderators", description: "Create and suspend Finance Moderator accounts and widen what they can do. The only staff-administration power a finance admin has." },
   "payroll.view": { label: "View payroll", description: "See staff salaries, commissions earned, what is owed and what has been paid." },
   "payroll.manage": { label: "Run payroll", description: "Set salary and commission rates, and pay a staff member for a period. Every payment credits their wallet and is audited." },
   "withdrawals.view": { label: "View withdrawals", description: "See users' withdrawal & deposit requests, amounts, methods and history." },
@@ -1082,7 +1220,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "FINANCE",
   },
   {
-    name: "Payroll",
+    name: "Company Books",
+    href: "/admin/finance/company",
+    icon: "BookOpenCheck",
+    permissions: ["finance.view"],
+    category: "FINANCE",
+  },
+  {
+    name: "Wallet Payroll",
     href: "/admin/finance/payroll",
     icon: "BadgeDollarSign",
     permissions: ["payroll.view"],
@@ -1516,6 +1661,7 @@ export const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bgCol
   MANAGER: { label: "Manager", color: "text-violet-300", bgColor: "bg-violet-500/10" },
   ADMIN: { label: "Admin", color: "text-indigo-300", bgColor: "bg-indigo-500/10" },
   FINANCE_ADMIN: { label: "Finance Admin", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  FINANCE_MODERATOR: { label: "Finance Moderator", color: "text-teal-400", bgColor: "bg-teal-500/10" },
   CONTENT_ADMIN: { label: "Content Admin", color: "text-blue-400", bgColor: "bg-blue-500/10" },
   SUPPORT_ADMIN: { label: "Support Admin", color: "text-amber-400", bgColor: "bg-amber-500/10" },
   MARKETING_ADMIN: { label: "Marketing Admin", color: "text-pink-400", bgColor: "bg-pink-500/10" },
@@ -1553,7 +1699,12 @@ export const ROLE_META: Record<
   FINANCE_ADMIN: {
     kind: "staff",
     description:
-      "The only role besides Super Admin that can see the books: withdrawals, payment methods, packages and referral payouts. Cannot administer staff.",
+      "The only role besides Super Admin that can see the books: withdrawals, payment methods, packages, referral payouts, company expenses, HR and tax. Can create Finance Moderators, and no other staff.",
+  },
+  FINANCE_MODERATOR: {
+    kind: "staff",
+    description:
+      "Finance data entry. Reads the books and records bills and expenses; cannot approve, pay, void, configure, or see salaries unless a super admin or finance admin grants it. Created by a super admin or a finance admin.",
   },
   CONTENT_ADMIN: {
     kind: "staff",
