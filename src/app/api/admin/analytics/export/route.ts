@@ -11,6 +11,7 @@ import {
   formatAnswerForDisplay,
 } from "@/lib/survey-tasks";
 import { csvCell, csvResponse, toCsv } from "@/lib/csv";
+import { COMPLETED_STATUSES } from "@/lib/submission-status";
 
 export async function GET(request: NextRequest) {
   try {
@@ -353,7 +354,7 @@ export async function GET(request: NextRequest) {
               }),
               prisma.taskSubmission.count({
                 where: {
-                  status: "APPROVED",
+                  status: { in: COMPLETED_STATUSES },
                   createdAt: { gte: dayStart, lte: dayEnd },
                 },
               }),

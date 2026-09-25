@@ -1,106 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
-import { audienceWhereResolved, type AudienceCriteria } from "@/lib/audience";
+import { estimateAudience, targetFromRequest } from "@/lib/broadcast";
 
 /**
  * POST /api/admin/notifications/estimate
  *
- * Returns the count of users matching a notification segment.
- * Used by the Send Notification form to show "Estimated Reach" live.
+ * The "Estimated reach" on the send form.
+ *
+ * Goes through exactly the same `targetFromRequest` → `estimateAudience` path
+ * as the send itself. It used to build its own filter, which approximated
+ * "minimum tasks completed" as "at least one approval", dropped it whenever any
+ * other filter was set, and counted "specific users" by the length of the list
+ * rather than by who still exists — so the reach shown and the people reached
+ * were different sets.
  */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
     if (!(await can(session.user.id, "notifications.send"))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const {
-      target,
-      packageFilter,
-      userIds,
-      // Segment criteria
-      packages,
-      minLevel,
-      maxLevel,
-      country,
-      activeWithinDays,
-      minTasksCompleted,
-      criteria,
-    }: {
-      target: "all" | "package" | "specific" | "segment";
-      packageFilter?: string[];
-      userIds?: string[];
-      packages?: string[];
-      minLevel?: number;
-      maxLevel?: number;
-      country?: string;
-      activeWithinDays?: number;
-      minTasksCompleted?: number;
-      criteria?: AudienceCriteria;
-    } = body;
-
-    if (target === "all") {
-      const count = await prisma.user.count({ where: { status: "ACTIVE" } });
-      return NextResponse.json({ count });
+    const target = targetFromRequest(await request.json().catch(() => ({})));
+    if (!target) return NextResponse.json({ count: 0 });
+    if (target.targetKind === "SPECIFIC" && target.userIds.length === 0) {
+      return NextResponse.json({ count: 0 });
+    }
+    if (target.targetKind === "PACKAGE" && target.packages.length === 0) {
+      return NextResponse.json({ count: 0 });
     }
 
-    if (target === "specific") {
-      return NextResponse.json({ count: userIds?.length ?? 0 });
-    }
-
-    let where: Prisma.UserWhereInput = { status: "ACTIVE" };
-
-    if (target === "package" && packageFilter?.length) {
-      // packageFilter is an array of plan slugs (e.g. ["pro-monthly", "vip"]).
-      where.package = { slug: { in: packageFilter as string[] } };
-    }
-
-    if (target === "segment" && criteria && Object.keys(criteria).length > 0) {
-      where = await audienceWhereResolved(criteria);
-    } else if (target === "segment") {
-      if (packages && packages.length > 0) {
-        where.package = { slug: { in: packages as string[] } };
-      }
-      if (typeof minLevel === "number" && minLevel > 0) {
-        where.level = { ...(where.level as object), gte: minLevel };
-      }
-      if (typeof maxLevel === "number" && maxLevel > 0) {
-        where.level = { ...(where.level as object), lte: maxLevel };
-      }
-      if (country && country.trim()) {
-        where.country = { contains: country.trim(), mode: "insensitive" };
-      }
-      if (typeof activeWithinDays === "number" && activeWithinDays > 0) {
-        const since = new Date();
-        since.setDate(since.getDate() - activeWithinDays);
-        where.lastLoginAt = { gte: since };
-      }
-      if (typeof minTasksCompleted === "number" && minTasksCompleted > 0) {
-        where.taskSubmissions = {
-          some: { status: "APPROVED" },
-        };
-        // Note: counting approved submissions ≥ N requires a different approach;
-        // we approximate by requiring at least one approval. Sharper filtering
-        // happens in send route via groupBy.
-      }
-    }
-
-    const count = await prisma.user.count({ where });
-    return NextResponse.json({ count });
+    return NextResponse.json({ count: await estimateAudience(target) });
   } catch (error) {
     console.error("Error estimating reach:", error);
-    return NextResponse.json(
-      { error: "Failed to estimate reach" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to estimate reach" }, { status: 500 });
   }
 }

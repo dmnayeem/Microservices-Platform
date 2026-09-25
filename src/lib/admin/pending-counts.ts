@@ -56,9 +56,18 @@ const COUNTERS: Record<string, () => Promise<number>> = {
       where: { status: { in: ["OPEN", "IN_REVIEW", "ESCALATED"] } },
       cacheStrategy: CACHE,
     }),
+  // Work for an admin: a dispute, or a mediated deal whose money is still held.
+  // `adminMediated` is set when the deal is created and never cleared, so
+  // counting it alone kept every released, refunded and cancelled mediated deal
+  // in this badge for ever. The deals PAGE still lists them all, as history.
   mktDeals: () =>
     prisma.marketplaceDeal.count({
-      where: { OR: [{ adminMediated: true }, { status: "DISPUTED" }] },
+      where: {
+        OR: [
+          { status: "DISPUTED" },
+          { adminMediated: true, status: { in: ["FUNDED", "DELIVERED"] } },
+        ],
+      },
       cacheStrategy: CACHE,
     }),
   courses: () => prisma.course.count({ where: { status: "PENDING_REVIEW" }, cacheStrategy: CACHE }),

@@ -9,9 +9,8 @@ import {
   deliverBroadcast,
   estimateAudience,
   emailBudget,
-  type BroadcastTargetKind,
+  targetFromRequest,
 } from "@/lib/broadcast";
-import type { AudienceCriteria } from "@/lib/audience";
 import { isNotificationStyle } from "@/lib/notification-styles";
 import type { NotificationType } from "@/generated/prisma/client";
 
@@ -48,7 +47,8 @@ interface SendNotificationBody {
   country?: string;
   activeWithinDays?: number;
   /** Full demographic / location segmentation (preferred). */
-  criteria?: AudienceCriteria;
+  criteria?: Record<string, unknown>;
+  minTasksCompleted?: number;
 
   priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   /** Visual template — URGENT, OFFER, UPDATE … see lib/notification-styles.ts. */
@@ -85,12 +85,6 @@ const VALID_TYPES = [
   "MESSAGE",
 ];
 
-const TARGET_KIND: Record<string, BroadcastTargetKind> = {
-  all: "ALL",
-  package: "PACKAGE",
-  specific: "SPECIFIC",
-  segment: "SEGMENT",
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -108,14 +102,6 @@ export async function POST(request: NextRequest) {
       title,
       message,
       target,
-      packageFilter,
-      userIds,
-      packages,
-      minLevel,
-      maxLevel,
-      country,
-      activeWithinDays,
-      criteria,
       priority = "NORMAL",
       style = "PLAIN",
       kicker,
@@ -148,39 +134,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Pick at least one channel" }, { status: 400 });
     }
 
-    const targetKind = TARGET_KIND[target];
-    if (!targetKind) {
+    // The same function the reach estimate uses — see targetFromRequest.
+    const target_ = targetFromRequest(body);
+    if (!target_) {
       return NextResponse.json({ error: "Unknown target" }, { status: 400 });
     }
-    if (targetKind === "SPECIFIC" && !userIds?.length) {
+    const { targetKind } = target_;
+    if (targetKind === "SPECIFIC" && !target_.userIds.length) {
       return NextResponse.json({ error: "Pick at least one user" }, { status: 400 });
     }
-    if (targetKind === "PACKAGE" && !packageFilter?.length) {
+    if (targetKind === "PACKAGE" && !target_.packages.length) {
       return NextResponse.json({ error: "Pick at least one package" }, { status: 400 });
     }
-
-    // The legacy flat fields are folded into AudienceCriteria here rather than
-    // being carried through the pipeline, so there is one audience language.
-    let resolvedCriteria: AudienceCriteria | null =
-      criteria && Object.keys(criteria).length > 0 ? criteria : null;
-    if (targetKind === "SEGMENT" && !resolvedCriteria) {
-      resolvedCriteria = {
-        ...(packages?.length ? { packages } : {}),
-        ...(typeof minLevel === "number" && minLevel > 0 ? { minLevel } : {}),
-        ...(typeof maxLevel === "number" && maxLevel > 0 ? { maxLevel } : {}),
-        ...(country?.trim() ? { countries: [country.trim()] } : {}),
-        ...(typeof activeWithinDays === "number" && activeWithinDays > 0
-          ? { activeWithinDays }
-          : {}),
-      };
-    }
-
-    const target_ = {
-      targetKind,
-      criteria: resolvedCriteria,
-      userIds: targetKind === "SPECIFIC" ? (userIds ?? []) : [],
-      packages: targetKind === "PACKAGE" ? (packageFilter ?? []) : [],
-    };
 
     // Refuse before writing anything if the audience is empty — an admin who
     // picks an impossible filter should be told, not handed a broadcast that
@@ -217,7 +182,6 @@ export async function POST(request: NextRequest) {
       channels: { inApp: sendInApp !== false, push: !!sendPush, email: !!sendEmail },
       important: !!important,
       ...target_,
-      criteria: resolvedCriteria,
       scheduledFor: when,
     });
 
@@ -226,8 +190,8 @@ export async function POST(request: NextRequest) {
       action: broadcast.status === "SCHEDULED" ? "BROADCAST_SCHEDULED" : "BROADCAST_SENT",
       entity: "Broadcast",
       entityId: broadcast.id,
-      ...(targetKind === "SPECIFIC" && userIds?.length === 1
-        ? { targetUserId: userIds[0] }
+      ...(targetKind === "SPECIFIC" && target_.userIds.length === 1
+        ? { targetUserId: target_.userIds[0] }
         : {}),
       summary:
         broadcast.status === "SCHEDULED"

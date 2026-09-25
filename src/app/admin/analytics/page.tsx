@@ -9,6 +9,7 @@ import Link from "next/link";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ExportDropdown } from "./_components/ExportDropdown";
 import { AnalyticsCharts } from "@/components/admin/analytics/analytics-charts";
+import { COMPLETED_STATUSES } from "@/lib/submission-status";
 
 interface PageProps {
   searchParams: Promise<{
@@ -93,15 +94,17 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       where: { createdAt: { gte: previousStartDate, lt: previousEndDate } },
     }),
     prisma.task.count({ where: { status: "ACTIVE" } }),
+    // APPROVED alone missed auto-approvals — 45 of the 54 completions in one
+    // 30-day window. See lib/submission-status.ts.
     prisma.taskSubmission.count({
       where: {
-        status: "APPROVED",
+        status: { in: COMPLETED_STATUSES },
         createdAt: { gte: startDate },
       },
     }),
     prisma.taskSubmission.count({
       where: {
-        status: "APPROVED",
+        status: { in: COMPLETED_STATUSES },
         createdAt: { gte: previousStartDate, lt: previousEndDate },
       },
     }),
@@ -168,7 +171,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         }),
         prisma.taskSubmission.count({
           where: {
-            status: "APPROVED",
+            status: { in: COMPLETED_STATUSES },
             createdAt: { gte: dayStart, lte: dayEnd },
           },
         }),

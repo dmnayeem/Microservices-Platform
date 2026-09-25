@@ -210,6 +210,71 @@ export async function broadcastWhere(b: {
   return { status: "ACTIVE" };
 }
 
+export type BroadcastTarget = {
+  targetKind: BroadcastTargetKind;
+  criteria: AudienceCriteria | null;
+  userIds: string[];
+  packages: string[];
+};
+
+/**
+ * The send form's request body → one audience.
+ *
+ * BOTH the reach estimate and the send go through this, so the number an admin
+ * is shown and the set of people who receive the message cannot drift apart
+ * again. They had: the form's legacy flat fields (level, country, "minimum
+ * tasks completed") were folded one way by the estimate route and another by
+ * the send route, and "minimum tasks completed" was honoured by neither.
+ */
+export function targetFromRequest(body: {
+  target?: string;
+  packageFilter?: string[];
+  userIds?: string[];
+  packages?: string[];
+  minLevel?: number;
+  maxLevel?: number;
+  country?: string;
+  activeWithinDays?: number;
+  minTasksCompleted?: number;
+  criteria?: AudienceCriteria;
+}): BroadcastTarget | null {
+  const kind: Record<string, BroadcastTargetKind> = {
+    all: "ALL",
+    package: "PACKAGE",
+    specific: "SPECIFIC",
+    segment: "SEGMENT",
+  };
+  const targetKind = kind[body.target ?? ""];
+  if (!targetKind) return null;
+
+  let criteria: AudienceCriteria | null = null;
+  if (targetKind === "SEGMENT") {
+    const legacy: AudienceCriteria = {
+      ...(body.packages?.length ? { packages: body.packages } : {}),
+      ...(typeof body.minLevel === "number" && body.minLevel > 0 ? { minLevel: body.minLevel } : {}),
+      ...(typeof body.maxLevel === "number" && body.maxLevel > 0 ? { maxLevel: body.maxLevel } : {}),
+      ...(body.country?.trim() ? { countries: [body.country.trim()] } : {}),
+      ...(typeof body.activeWithinDays === "number" && body.activeWithinDays > 0
+        ? { activeWithinDays: body.activeWithinDays }
+        : {}),
+    };
+    // The structured criteria win where both say something; the flat fields
+    // fill in what the structured object leaves out. "Minimum tasks completed"
+    // only ever arrives flat, and is applied either way.
+    criteria = { ...legacy, ...(body.criteria ?? {}) };
+    if (typeof body.minTasksCompleted === "number" && body.minTasksCompleted > 0) {
+      criteria.minTasksCompleted = body.minTasksCompleted;
+    }
+  }
+
+  return {
+    targetKind,
+    criteria,
+    userIds: targetKind === "SPECIFIC" ? (body.userIds ?? []) : [],
+    packages: targetKind === "PACKAGE" ? (body.packageFilter ?? []) : [],
+  };
+}
+
 /** How many users a target currently matches — the number the admin previews. */
 export async function estimateAudience(b: {
   targetKind: string;

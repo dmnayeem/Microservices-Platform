@@ -27,6 +27,14 @@ export interface AudienceCriteria {
   verifiedOnly?: boolean;
   activeWithinDays?: number;
   minAccountAgeDays?: number; // account must be at least this old
+  /**
+   * At least this many COMPLETED tasks (approved or auto-approved).
+   *
+   * Only honoured by `audienceWhereResolved` — a count cannot be expressed as a
+   * plain column filter, so the synchronous `audienceWhere` ignores it. Every
+   * send path uses the resolved one.
+   */
+  minTasksCompleted?: number;
 }
 
 const ci = (vals?: string[]) =>
@@ -55,14 +63,37 @@ const ci = (vals?: string[]) =>
 export async function audienceWhereResolved(
   c: AudienceCriteria = {}
 ): Promise<Prisma.UserWhereInput> {
-  if (!c.countries?.length) return audienceWhere(c);
-  try {
-    const { countryMatchAliases } = await import("@/lib/country-codes");
-    const countries = await countryMatchAliases(c.countries);
-    return audienceWhere({ ...c, countries });
-  } catch {
-    return audienceWhere(c);
+  let base: Prisma.UserWhereInput;
+  if (!c.countries?.length) {
+    base = audienceWhere(c);
+  } else {
+    try {
+      const { countryMatchAliases } = await import("@/lib/country-codes");
+      const countries = await countryMatchAliases(c.countries);
+      base = audienceWhere({ ...c, countries });
+    } catch {
+      base = audienceWhere(c);
+    }
   }
+
+  // "At least N completed tasks" — resolved to ids, because Prisma cannot
+  // filter a relation by count. It used to be approximated as "at least ONE
+  // approval" on the estimate, dropped entirely whenever any other filter was
+  // set, and ignored by the send route altogether — so the reach an admin was
+  // shown and the people who received the message were different sets.
+  const n = Math.floor(Number(c.minTasksCompleted) || 0);
+  if (n > 0) {
+    const { prisma } = await import("@/lib/prisma");
+    const { COMPLETED_STATUSES } = await import("@/lib/submission-status");
+    const groups = (await prisma.taskSubmission.groupBy({
+      by: ["userId"],
+      where: { status: { in: COMPLETED_STATUSES } },
+      _count: { _all: true },
+    })) as unknown as { userId: string; _count: { _all: number } }[];
+    const ids = groups.filter((g) => g._count._all >= n).map((g) => g.userId);
+    return { AND: [base, { id: { in: ids } }] };
+  }
+  return base;
 }
 
 export function audienceWhere(c: AudienceCriteria = {}): Prisma.UserWhereInput {

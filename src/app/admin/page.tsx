@@ -16,6 +16,7 @@ import { RecentActivityFeed, type ActivityLogEntry } from "@/components/admin/re
 import { getEffectivePermissions } from "@/lib/permissions";
 import { getPendingSources } from "@/lib/admin/pending-counts";
 import { format, startOfDay, subDays, startOfMonth } from "date-fns";
+import { AWAITING_REVIEW_WHERE, completedBetween } from "@/lib/submission-status";
 
 // Auto-revalidate every 30 seconds (matches PROTOTYPE_ADMIN.md §38 spec)
 export const revalidate = 30;
@@ -137,13 +138,11 @@ export default async function AdminDashboardPage() {
     }),
 
     prisma.task.count(),
-    prisma.taskSubmission.count({
-      where: { status: "APPROVED", reviewedAt: { gte: todayStart } },
-    }),
-    prisma.taskSubmission.count({
-      where: { status: "APPROVED", reviewedAt: { gte: monthStart } },
-    }),
-    prisma.taskSubmission.count({ where: { status: "PENDING" } }),
+    // Auto-approved completions are the majority here and were being left
+    // out; see lib/submission-status.ts.
+    prisma.taskSubmission.count({ where: completedBetween(todayStart) }),
+    prisma.taskSubmission.count({ where: completedBetween(monthStart) }),
+    prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }),
 
 
     prisma.withdrawal.aggregate({

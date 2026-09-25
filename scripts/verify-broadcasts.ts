@@ -24,6 +24,7 @@ import {
   estimateAudience,
   emailBudget,
   runBroadcastSweep,
+  targetFromRequest,
 } from "../src/lib/broadcast";
 import { readPayload, notificationStyle } from "../src/lib/notification-styles";
 
@@ -96,6 +97,29 @@ async function main() {
       packages: [],
     });
     check("ALL means every active user", all === everyone, `${all} vs ${everyone}`);
+
+    console.log("\n'Minimum tasks completed' is honoured, the same way everywhere");
+    // The form sent this, the estimate approximated it as "at least one
+    // approval" (and dropped it whenever another filter was set), and the send
+    // ignored it — so the reach shown and the people reached differed.
+    const groups = (await prisma.taskSubmission.groupBy({
+      by: ["userId"],
+      where: { status: { in: ["APPROVED", "AUTO_APPROVED"] } },
+      _count: { _all: true },
+    })) as unknown as { userId: string; _count: { _all: number } }[];
+    const activeIds = new Set(
+      (await prisma.user.findMany({ where: { status: "ACTIVE" }, select: { id: true } })).map((u) => u.id)
+    );
+    for (const n of [1, 3]) {
+      const truth = groups.filter((g) => g._count._all >= n && activeIds.has(g.userId)).length;
+      const viaForm = targetFromRequest({ target: "segment", minTasksCompleted: n });
+      const got = viaForm ? await estimateAudience(viaForm) : -1;
+      check(`${n}+ completed tasks selects exactly those users`, got === truth, `${got} vs ${truth}`);
+      // With another filter set as well — the case the old estimate dropped it in.
+      const withLevel = targetFromRequest({ target: "segment", minTasksCompleted: n, criteria: { minLevel: 1 } });
+      const got2 = withLevel ? await estimateAudience(withLevel) : -1;
+      check(`...and still with another filter set`, got2 === truth, `${got2} vs ${truth}`);
+    }
 
     console.log("\nDelivery resumes instead of repeating");
     const b = await createBroadcast({

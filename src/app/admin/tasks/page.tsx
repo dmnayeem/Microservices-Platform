@@ -33,6 +33,7 @@ import { taskDisplayId } from "@/lib/display-id";
 import { Prisma } from "@/generated/prisma/client";
 import { TaskActions } from "@/components/admin/task-actions";
 import { TaskReviewActions } from "@/components/admin/task-review-actions";
+import { AWAITING_REVIEW_WHERE } from "@/lib/submission-status";
 
 interface PageProps {
   searchParams: Promise<{
@@ -185,7 +186,9 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     // "All" needs its own count: `totalCount` is the count of the CURRENT
     // filter, so it would read as whatever tab is open.
     prisma.task.count(),
-    prisma.taskSubmission.count({ where: { status: "PENDING" } }),
+    // Sent in and waiting — not every task someone merely opened. This button
+    // said 408 while the queue it opens held 52.
+    prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }),
     prisma.task.count({ where: { status: "PENDING_REVIEW" } }),
   ]);
 
