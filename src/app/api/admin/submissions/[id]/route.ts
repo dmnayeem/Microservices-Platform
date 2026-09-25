@@ -11,6 +11,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
 import { getBuyerSettings } from "@/lib/buyer-settings";
 import { bumpTrust, TRUST_APPROVE, TRUST_REJECT } from "@/lib/trust";
+import { addFraudRisk } from "@/lib/fraud-risk";
 import { notifyUser } from "@/lib/notify";
 import { recordUserAction } from "@/lib/goal-progress";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
@@ -93,6 +94,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       body.pointsOverride != null && Number.isFinite(Number(body.pointsOverride))
         ? Math.max(0, Math.round(Number(body.pointsOverride)))
         : null;
+    // "Reject as cheating": adds the reviewer's verdict to the user's fraud
+    // risk (src/lib/fraud-risk.ts). An ordinary rejection — a blurry
+    // screenshot, a missed step — adds nothing, so honest mistakes never
+    // walk anyone toward suspension.
+    const markFraud = body.markFraud === true;
     const penaltyPoints: number =
       body.penaltyPoints != null && Number.isFinite(Number(body.penaltyPoints))
         ? Math.max(0, Math.round(Number(body.penaltyPoints)))
@@ -417,6 +423,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         await bumpTrust(existingSubmission.userId, TRUST_REJECT, {
           strike: true,
         });
+        if (markFraud) {
+          await addFraudRisk({
+            userId: existingSubmission.userId,
+            signal: "ADMIN_FRAUD_REJECT",
+            dedupeKey: `adminreject:${existingSubmission.id}`,
+            actorId: session.user.id,
+            details: { taskId: existingSubmission.taskId, submissionId: existingSubmission.id, reason: rejectionReason ?? null },
+          });
+        }
       }
 
       // Process referral commissions (after transaction completes) — skip
@@ -557,6 +572,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       // Reputation: a rejection lowers trust + counts a fraud strike.
       await bumpTrust(existingSubmission.userId, TRUST_REJECT, { strike: true });
+      if (markFraud) {
+        await addFraudRisk({
+          userId: existingSubmission.userId,
+          signal: "ADMIN_FRAUD_REJECT",
+          dedupeKey: `adminreject:${existingSubmission.id}`,
+          actorId: session.user.id,
+          details: { taskId: existingSubmission.taskId, submissionId: existingSubmission.id, reason: rejectionReason ?? null },
+        });
+      }
 
       // Notify user (in-app + push + email), deep-linked to the task.
       await notifyUser({

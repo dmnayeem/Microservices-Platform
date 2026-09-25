@@ -60,8 +60,9 @@ function LoginForm() {
           otp: needsOtp ? otp : undefined,
         }),
       });
-      const { reason } = (await checkRes.json().catch(() => ({}))) as {
+      const { reason, appealToken } = (await checkRes.json().catch(() => ({}))) as {
         reason?: string;
+        appealToken?: string;
       };
 
       if (reason === "EMAIL_NOT_VERIFIED") {
@@ -71,6 +72,11 @@ function LoginForm() {
         return;
       }
       if (reason === "ACCOUNT_DISABLED") {
+        // A suspended account can appeal; the link is signed for this person.
+        if (appealToken) {
+          router.push(`/appeal?t=${encodeURIComponent(appealToken)}`);
+          return;
+        }
         setError("Your account has been disabled. Please contact support.");
         return;
       }

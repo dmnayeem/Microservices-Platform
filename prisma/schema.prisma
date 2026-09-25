@@ -1036,6 +1036,11 @@ model FraudEvent {
   id           String        @id @default(cuid())
   userId       String?
   eventType    String // MULTIPLE_ACCOUNTS, VPN_DETECTED, etc.
+  // Set by fraud-risk signals: one event (and one risk bump) per offence, so a
+  // retried request cannot add the same points twice.
+  dedupeKey    String?       @unique
+  // Risk points this event added to the user's `fraudRisk` (0 for telemetry).
+  riskPoints   Int           @default(0)
   severity     FraudSeverity @default(MEDIUM)
   details      Json?
   ipAddress    String?
@@ -1487,6 +1492,15 @@ model User {
   // auto-approvable submissions (see src/lib/trust.ts).
   trustScore                        Int                          @default(50)
   fraudStrikes                      Int                          @default(0)
+  // Task-fraud risk, 0–100 (src/lib/fraud-risk.ts). Each caught attempt adds
+  // the admin-set points for its kind; reaching the auto-suspend bar suspends
+  // the account, which can then appeal (SuspensionAppeal).
+  fraudRisk                         Int                          @default(0)
+  // Why and when the account was last suspended — shown on the appeal page and
+  // to the admin reviewing the appeal. Cleared on reactivation.
+  suspendedReason                   String?                      @db.Text
+  suspendedAt                       DateTime?
+  suspensionAppeals                 SuspensionAppeal[]
   packageId                         String?
   package                           Package?                     @relation(fields: [packageId], references: [id], onDelete: SetNull)
   packageExpiresAt                  DateTime?
@@ -1840,6 +1854,28 @@ model KYCAppeal {
   @@index([kycDocumentId])
   @@index([status])
   @@index([createdAt])
+}
+
+/// A suspended user asking to be let back in. Filed from /appeal with a
+/// signed link (login or the suspension email), because a suspended account
+/// cannot sign in. One PENDING appeal per user at a time.
+model SuspensionAppeal {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message      String    @db.Text
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  // The risk and reason at the moment of appeal, so the reviewer sees what the
+  // user was suspended for even if an admin has edited the account since.
+  riskAtAppeal Int       @default(0)
+  reasonAtAppeal String? @db.Text
+  adminNote    String?   @db.Text
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status, createdAt])
 }
 
 model Task {

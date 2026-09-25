@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { evaluateLogin } from "@/lib/auth/services";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { signAppealToken } from "@/lib/fraud-risk";
 
 const schema = z.object({
   email: z.string().email(),
@@ -30,6 +31,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       reason: result.ok ? "OK" : result.reason,
+      // Only after a correct password, and only for a suspended account.
+      ...(!result.ok && result.suspendedUserId
+        ? { appealToken: signAppealToken(result.suspendedUserId, 60 * 60) }
+        : {}),
     });
   } catch (error) {
     console.error("login-check error:", error);

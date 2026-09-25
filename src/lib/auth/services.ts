@@ -45,7 +45,7 @@ export interface LoginUser {
 
 export type LoginResult =
   | { ok: true; user: LoginUser }
-  | { ok: false; reason: LoginReason };
+  | { ok: false; reason: LoginReason; suspendedUserId?: string };
 
 /**
  * Single source of truth for credential login. Both the NextAuth `authorize`
@@ -77,7 +77,13 @@ export async function evaluateLogin(
   }
 
   if (user.status === "BANNED" || user.status === "SUSPENDED") {
-    return { ok: false, reason: "ACCOUNT_DISABLED" };
+    // A suspended account (not a banned one) may appeal. The password was
+    // verified above, so login-check can hand this person a signed appeal link.
+    return {
+      ok: false,
+      reason: "ACCOUNT_DISABLED",
+      ...(user.status === "SUSPENDED" ? { suspendedUserId: user.id } : {}),
+    };
   }
 
   if (user.twoFactorEnabled && user.twoFactorSecret) {

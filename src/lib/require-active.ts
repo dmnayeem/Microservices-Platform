@@ -37,7 +37,7 @@ const MESSAGES: Record<string, string> = {
   BANNED:
     "Your account has been banned. Contact support if you believe this is a mistake.",
   SUSPENDED:
-    "Your account is suspended, so this action isn't available. Contact support for details.",
+    "Your account is suspended, so this action isn't available. You can appeal at /appeal.",
   PENDING_VERIFICATION:
     "Please verify your email address before continuing.",
 };

@@ -97,6 +97,8 @@ export const authConfig: NextAuthConfig = {
         "/login",
         "/register",
         "/forgot-password",
+        // A suspended user appeals here with a signed link — no session.
+        "/appeal",
         "/reset-password",
         "/verify-email",
         "/privacy",

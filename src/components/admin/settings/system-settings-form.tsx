@@ -21,7 +21,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { ProfileGateStandard, ProfileGateFeatures } from "@/components/admin/settings/profile-gate-settings";
+import { RiskPointsEditor } from "@/components/admin/settings/risk-points-editor";
+import { ProfileGateStandard, ProfileGateFeatures, ProfileGatePercent } from "@/components/admin/settings/profile-gate-settings";
 import { cn, usd } from "@/lib/utils";
 import {
   NotActiveBadge,
@@ -157,6 +158,10 @@ const DEFAULTS: SettingsBag = {
   "antifraud.auto_approve_min_trust": 0,
   "antifraud.spot_check_percent": 0,
   "antifraud.block_duplicate_proof": false,
+  "antifraud.risk_enabled": true,
+  "antifraud.auto_suspend_enabled": true,
+  "antifraud.auto_suspend_at": 100,
+  "antifraud.risk_points": {},
   "antifraud.max_users_per_ip": 0,
   "antifraud.vpn_block_enabled": false,
   "antifraud.vpn_ranges": "",
@@ -171,6 +176,7 @@ const DEFAULTS: SettingsBag = {
   "ui.require_profile_completion": false,
   "profile_gate.mode": "ESSENTIALS",
   "profile_gate.features": ["tasks", "missions"],
+  "profile_gate.min_percent": 100,
   "ui.require_kyc_for_withdrawal": true,
   "ui.groups_enabled": false,
   // Dark, and users may choose — the behaviour before these settings existed,
@@ -1329,6 +1335,39 @@ export function SystemSettingsForm({
               disabled={!canEdit}
             />
 
+            <Section title="Fraud risk & auto-suspension">
+              <Toggle settingKey="antifraud.risk_enabled"
+                checked={values["antifraud.risk_enabled"] !== false}
+                onChange={(v) => set("antifraud.risk_enabled", v)}
+                disabled={!canEdit}
+                tone="red"
+              />
+              <Toggle settingKey="antifraud.auto_suspend_enabled"
+                checked={values["antifraud.auto_suspend_enabled"] !== false}
+                onChange={(v) => set("antifraud.auto_suspend_enabled", v)}
+                disabled={!canEdit}
+                tone="red"
+              />
+              <Field settingKey="antifraud.auto_suspend_at">
+                <input
+                  type="number"
+                  min={10}
+                  max={100}
+                  value={Number(values["antifraud.auto_suspend_at"] ?? 100)}
+                  onChange={(e) => set("antifraud.auto_suspend_at", parseInt(e.target.value) || 100)}
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+              <Field settingKey="antifraud.risk_points">
+                <RiskPointsEditor
+                  value={(values["antifraud.risk_points"] as Record<string, number> | undefined) ?? {}}
+                  onChange={(v) => set("antifraud.risk_points", v)}
+                  disabled={!canEdit}
+                />
+              </Field>
+            </Section>
+
             <Section title="Network anti-abuse">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field settingKey="antifraud.max_users_per_ip">
@@ -1468,11 +1507,21 @@ export function SystemSettingsForm({
                 <ProfileGateStandard
                   on={values["ui.require_profile_completion"] === true}
                   mode={String(values["profile_gate.mode"] ?? "ESSENTIALS")}
+                  minPercent={Number(values["profile_gate.min_percent"] ?? 100)}
                   features={gateFeatures}
                   onMode={(v) => set("profile_gate.mode", v)}
                   disabled={!canEdit}
                 />
               </Field>
+              {values["profile_gate.mode"] === "FULL" && (
+                <Field settingKey="profile_gate.min_percent">
+                  <ProfileGatePercent
+                    value={Number(values["profile_gate.min_percent"] ?? 100)}
+                    onChange={(v) => set("profile_gate.min_percent", v)}
+                    disabled={!canEdit}
+                  />
+                </Field>
+              )}
               <Field settingKey="profile_gate.features">
                 <ProfileGateFeatures
                   features={gateFeatures}

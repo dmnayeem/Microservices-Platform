@@ -79,6 +79,8 @@ export const PENDING_SOURCES: PendingSourceMeta[] = [
   { key: "adsChangesRequested", group: "advertising", label: "Ads Needing Changes", icon: "Megaphone", tone: "amber", permission: "ads.view", href: "/admin/ads?tab=changes", moduleHref: "/admin/ads" },
   // Support
   { key: "supportMessages", group: "support", label: "Support Messages", icon: "MessageSquare", tone: "indigo", permission: "support.view", href: "/admin/support", moduleHref: "/admin/support" },
+  // A suspended user waiting for an answer — they cannot sign in until one comes.
+  { key: "suspensionAppeals", group: "support", label: "Suspension Appeals", icon: "FileWarning", tone: "amber", permission: "fraud.view", href: "/admin/fraud", moduleHref: "/admin/fraud" },
   { key: "fraudOpen", group: "support", label: "Open Fraud Alerts", icon: "ShieldAlert", tone: "red", permission: "fraud.view", href: "/admin/fraud", moduleHref: "/admin/fraud" },
 ];
 

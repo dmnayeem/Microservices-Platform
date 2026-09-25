@@ -74,6 +74,7 @@ import {
 } from "@/lib/link-preview";
 import { getSetting } from "@/lib/system-settings";
 import { bumpTrust, TRUST_APPROVE } from "@/lib/trust";
+import { addFraudRisk } from "@/lib/fraud-risk";
 import {
   perceptualHash,
   hammingDistance,
@@ -423,6 +424,14 @@ export async function POST(
           keyRow.claimedByUserId &&
           keyRow.claimedByUserId !== session.user.id
         ) {
+          // Someone else's key — the one way to hold it is to have been given
+          // it. One offence per key, however often it is retried.
+          await addFraudRisk({
+            userId: session.user.id,
+            signal: "KEY_OF_ANOTHER_USER",
+            dedupeKey: `keytheft:${keyRow.id}:${session.user.id}`,
+            details: { taskId: task.id, submissionId: submission.id, keyOwner: keyRow.claimedByUserId },
+          });
           return NextResponse.json(
             { error: "This key was claimed by another user" },
             { status: 400 }
@@ -1196,6 +1205,26 @@ export async function POST(
     if (task.type === "VIDEO" && videoStepProofs.length > 0) {
       submissionMetadata.videoSteps = videoStepProofs;
     }
+    // Fraud risk: proof that matches another user's, or a wrong article key,
+    // adds to the user's risk score (src/lib/fraud-risk.ts). Once per
+    // submission — a resubmission of the same attempt is the same offence.
+    if (Array.isArray(submissionMetadata.fraudFlags) && submissionMetadata.fraudFlags.length > 0) {
+      await addFraudRisk({
+        userId: session.user.id,
+        signal: "DUPLICATE_PROOF",
+        dedupeKey: `dup:${submission.id}`,
+        details: { taskId: task.id, submissionId: submission.id, flags: submissionMetadata.fraudFlags },
+      });
+    }
+    if (uniqueKeyMismatch) {
+      await addFraudRisk({
+        userId: session.user.id,
+        signal: "WRONG_UNIQUE_KEY",
+        dedupeKey: `wrongkey:${submission.id}`,
+        details: { taskId: task.id, submissionId: submission.id },
+      });
+    }
+
     // Hard-block duplicate proof (admin opt-in): if this SOCIAL submission
     // matched another user's proof (URL / username / re-uploaded screenshot) and
     // the admin turned blocking on, reject instead of just flagging.

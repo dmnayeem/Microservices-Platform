@@ -23,8 +23,8 @@ import {
   getFraudConfig,
   isVpnIp,
   accountsOnIp,
-  recordFraudEvent,
 } from "@/lib/fraud";
+import { addFraudRisk } from "@/lib/fraud-risk";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 
 const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
@@ -77,11 +77,14 @@ export async function POST(
         .catch(() => {});
     }
     // VPN/proxy block (best-effort heuristic).
+    // One offence per user per day: every retry of a blocked start used to
+    // write another event, and now each one would also add risk.
+    const today = new Date().toISOString().slice(0, 10);
     if (isVpnIp(ip, fraud)) {
-      await recordFraudEvent({
+      await addFraudRisk({
         userId: session.user.id,
-        eventType: "VPN_DETECTED",
-        severity: "HIGH",
+        signal: "VPN_DETECTED",
+        dedupeKey: `vpn:${session.user.id}:${today}`,
         ipAddress: ip,
         userAgent: ua,
       });
@@ -98,10 +101,10 @@ export async function POST(
     if (fraud.maxUsersPerIp > 0) {
       const n = await accountsOnIp(ip, session.user.id);
       if (n >= fraud.maxUsersPerIp) {
-        await recordFraudEvent({
+        await addFraudRisk({
           userId: session.user.id,
-          eventType: "MULTIPLE_ACCOUNTS",
-          severity: "HIGH",
+          signal: "MULTIPLE_ACCOUNTS",
+          dedupeKey: `multiacct:${session.user.id}:${today}`,
           ipAddress: ip,
           userAgent: ua,
           details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp },

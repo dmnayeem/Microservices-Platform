@@ -80,6 +80,8 @@ const COUNTERS: Record<string, () => Promise<number>> = {
   supportMessages: () =>
     prisma.contactMessage.count({ where: { status: "NEW" }, cacheStrategy: CACHE }),
   fraudOpen: () => prisma.fraudEvent.count({ where: { status: "OPEN" }, cacheStrategy: CACHE }),
+  suspensionAppeals: () =>
+    prisma.suspensionAppeal.count({ where: { status: "PENDING" }, cacheStrategy: CACHE }),
 };
 
 /**

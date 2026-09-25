@@ -68,6 +68,13 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
     label: "Ad credit bonus",
     why: "It is a percentage.",
   },
+  "antifraud.auto_suspend_at": {
+    min: 10,
+    max: 100,
+    integer: true,
+    label: "Auto-suspend at",
+    why: "It is a percentage of fraud risk. Below 10 one slip would suspend an honest user.",
+  },
   "antifraud.max_users_per_ip": {
     min: 1,
     max: 10_000,

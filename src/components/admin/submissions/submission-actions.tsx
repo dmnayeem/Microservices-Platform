@@ -46,6 +46,8 @@ export function SubmissionActions({
   const [score, setScore] = useState("");
   const [points, setPoints] = useState("");
   const [penalty, setPenalty] = useState("");
+  // Reject as cheating → adds to the user's fraud risk (auto-suspends at the bar).
+  const [markFraud, setMarkFraud] = useState(false);
 
   const review = async (action: "approved" | "rejected" | "revision_requested") => {
     setBusy(true);
@@ -64,6 +66,7 @@ export function SubmissionActions({
         body.rejectionReason = reasonLabel;
         body.feedback = adminNote || undefined;
         if (penalty.trim() !== "") body.penaltyPoints = Number(penalty);
+        if (markFraud) body.markFraud = true;
       } else {
         body.feedback = adminNote || undefined;
       }
@@ -256,6 +259,21 @@ export function SubmissionActions({
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:border-red-500"
                 />
               </div>
+              <label className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <input
+                  type="checkbox"
+                  checked={markFraud}
+                  onChange={(e) => setMarkFraud(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-semibold">This was cheating</span>
+                  <span className="block text-xs text-red-300/80">
+                    Adds to the user&apos;s fraud risk. At the auto-suspend bar the account is suspended. Leave off
+                    for honest mistakes.
+                  </span>
+                </span>
+              </label>
             </div>
             <div className="flex gap-3 px-6 py-4 border-t border-slate-700">
               <button

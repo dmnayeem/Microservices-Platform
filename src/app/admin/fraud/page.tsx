@@ -7,8 +7,11 @@ import {
   AlertTriangle,
   AlertOctagon,
   Activity,
-  Eye,
+  Gauge,
+  Scale,
 } from "lucide-react";
+import { getRiskConfig, FRAUD_SIGNALS, type FraudSignal } from "@/lib/fraud-risk";
+import { AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fraud/fraud-actions";
 import Link from "next/link";
 import { format } from "date-fns";
 import { AdminTable } from "@/components/admin/ui/admin-table";
@@ -24,8 +27,9 @@ export default async function FraudMonitorPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "fraud.view"))) redirect("/admin");
+  const canManage = await can(session.user.id, "fraud.manage");
 
-  const [criticalCount, highCount, mediumCount, lowCount, events] =
+  const [criticalCount, highCount, mediumCount, lowCount, events, riskCfg, atRisk, appealRows] =
     await Promise.all([
       prisma.fraudEvent.count({ where: { severity: "CRITICAL", status: "OPEN" } }),
       prisma.fraudEvent.count({ where: { severity: "HIGH", status: "OPEN" } }),
@@ -36,7 +40,37 @@ export default async function FraudMonitorPage() {
         orderBy: [{ severity: "asc" }, { createdAt: "desc" }],
         take: 50,
       }),
+      getRiskConfig(),
+      prisma.user.findMany({
+        where: { fraudRisk: { gt: 0 } },
+        orderBy: [{ fraudRisk: "desc" }, { updatedAt: "desc" }],
+        take: 50,
+        select: { id: true, name: true, email: true, status: true, fraudRisk: true, role: true },
+      }),
+      prisma.suspensionAppeal.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" },
+        take: 50,
+        select: {
+          id: true,
+          message: true,
+          riskAtAppeal: true,
+          reasonAtAppeal: true,
+          createdAt: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      }),
     ]);
+
+  // The nested `user` select is lost in the Promise.all tuple's inference.
+  const appeals = appealRows as unknown as Array<{
+    id: string;
+    message: string;
+    riskAtAppeal: number;
+    reasonAtAppeal: string | null;
+    createdAt: Date;
+    user: { id: string; name: string | null; email: string };
+  }>;
 
   // Resolve user info for each event
   const userIds = Array.from(
@@ -90,35 +124,99 @@ export default async function FraudMonitorPage() {
         />
       </div>
 
-      {/* Detection rules — read-only summary */}
+      {/* Appeals from suspended users */}
+      {appeals.length > 0 && (
+        <div className="bg-slate-900 rounded-xl border border-amber-500/30 p-5">
+          <h2 className="text-sm font-semibold text-white mb-3 inline-flex items-center gap-2">
+            <Scale className="w-4 h-4 text-amber-400" />
+            Suspension appeals waiting ({appeals.length})
+          </h2>
+          <div className="space-y-3">
+            {appeals.map((a) => (
+              <div key={a.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <Link href={`/admin/users/${a.user.id}`} className="text-sm font-semibold text-blue-400 hover:underline">
+                    {a.user.name ?? a.user.email}
+                  </Link>
+                  <span className="text-xs text-slate-500">
+                    {format(a.createdAt, "MMM d, HH:mm")} · risk {a.riskAtAppeal}%
+                  </span>
+                </div>
+                {a.reasonAtAppeal && <p className="mt-1 text-xs text-slate-500">{a.reasonAtAppeal}</p>}
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-200">{a.message}</p>
+                <AppealDecision appealId={a.id} canManage={canManage} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Users by fraud risk */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
-        <h2 className="text-sm font-semibold text-white mb-3">
-          Detection Rules
-        </h2>
-        <p className="text-xs text-slate-500 mb-3">
-          Edit thresholds in <code className="text-slate-300">/admin/settings → Security</code>.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          {[
-            "Duplicate IP detection (≥ 3 accounts)",
-            "VPN / Proxy auto-block",
-            "Rapid task completion (< 15s)",
-            "High withdrawal frequency (> 3/day)",
-            "Same device multi-accounts (≥ 2)",
-            "Bot-like behavior pattern (AI)",
-          ].map((rule) => (
-            <div
-              key={rule}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-950/50 border border-slate-800"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-slate-300">{rule}</span>
+        <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+          <h2 className="text-sm font-semibold text-white inline-flex items-center gap-2">
+            <Gauge className="w-4 h-4 text-red-400" />
+            Users by fraud risk
+          </h2>
+          <p className="text-xs text-slate-500">
+            {!riskCfg.enabled
+              ? "Risk scoring is OFF — offences are recorded but add nothing."
+              : riskCfg.autoSuspend
+                ? `Warned at 50% and 80% · suspended automatically at ${riskCfg.suspendAt}%`
+                : "Warned at 50% and 80% · auto-suspension is OFF"}
+          </p>
+        </div>
+        {atRisk.length === 0 ? (
+          <p className="text-sm text-slate-500">No user has any fraud risk.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {atRisk.map((u) => (
+              <div key={u.id} className="flex items-center gap-3 rounded-lg bg-slate-950/50 border border-slate-800 px-3 py-2">
+                <Link href={`/admin/users/${u.id}`} className="w-28 shrink-0 truncate text-sm text-blue-400 hover:underline sm:w-56">
+                  {u.name ?? u.email}
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className={`h-full ${u.fraudRisk >= riskCfg.suspendAt ? "bg-red-500" : u.fraudRisk >= 80 ? "bg-red-400" : u.fraudRisk >= 50 ? "bg-orange-400" : "bg-amber-400"}`}
+                      style={{ width: `${u.fraudRisk}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums text-white">{u.fraudRisk}%</span>
+                <span className={`hidden w-24 shrink-0 text-xs sm:block ${u.status === "ACTIVE" ? "text-slate-500" : "text-red-400 font-semibold"}`}>
+                  {u.status === "ACTIVE" ? (u.role === "USER" ? "Active" : "Staff") : u.status.toLowerCase()}
+                </span>
+                <ResetRisk userId={u.id} canManage={canManage} />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs">
+          {(Object.keys(FRAUD_SIGNALS) as FraudSignal[]).map((k) => (
+            <div key={k} className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-slate-950/50 border border-slate-800">
+              <span className="text-slate-400">{FRAUD_SIGNALS[k].label}</span>
+              <span className="shrink-0 font-semibold tabular-nums text-slate-200">+{riskCfg.enabled ? riskCfg.points[k] : 0}%</span>
             </div>
           ))}
         </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Change the points and the bar in{" "}
+          <Link href="/admin/settings" className="text-blue-400 hover:underline">Settings → Limits → Fraud risk</Link>.
+        </p>
       </div>
 
       {/* Flagged events */}
+      {events.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-white">Open events</h2>
+          <ResolveEvents
+            eventIds={events.map((e) => e.id)}
+            label={`Mark all ${events.length} shown reviewed`}
+            canManage={canManage}
+          />
+        </div>
+      )}
       {events.length === 0 ? (
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-16 text-center">
           <ShieldAlert className="w-12 h-12 mx-auto mb-4 text-slate-600" />
@@ -136,9 +234,20 @@ export default async function FraudMonitorPage() {
               key: "event",
               header: "Event",
               primary: true,
-              cell: (e) => (
-                <p className="font-mono text-xs text-white">{e.eventType}</p>
-              ),
+              cell: (e) => {
+                const d = (e.details ?? {}) as { label?: string; riskAfter?: number };
+                return (
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs text-white">{e.eventType}</p>
+                    {d.label && <p className="text-xs text-slate-500 truncate">{d.label}</p>}
+                    {e.riskPoints > 0 && (
+                      <p className="text-xs text-red-300">
+                        +{e.riskPoints}% risk{typeof d.riskAfter === "number" ? ` → ${d.riskAfter}%` : ""}
+                      </p>
+                    )}
+                  </div>
+                );
+              },
             },
             {
               key: "user",
@@ -191,14 +300,7 @@ export default async function FraudMonitorPage() {
             {
               key: "actions",
               header: "Actions",
-              cell: () => (
-                <button
-                  className="p-1.5 rounded hover:bg-slate-700 text-blue-400"
-                  title="View details"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-              ),
+              cell: (e) => <ResolveEvents eventIds={[e.id]} canManage={canManage} />,
             },
           ]}
         />
