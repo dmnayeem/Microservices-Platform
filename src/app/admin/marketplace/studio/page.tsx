@@ -5,9 +5,14 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, Store } from "lucide-react";
 import { CATEGORIES } from "@/lib/marketplace-categories";
-import { STUDIO_IMAGE_MODELS, STUDIO_VIDEO_MODELS } from "@/lib/marketplace-studio";
+import {
+  STUDIO_IMAGE_MODELS,
+  STUDIO_VIDEO_MODELS,
+  STUDIO_SHAPES,
+} from "@/lib/marketplace-studio";
 import { isMagnificConfigured } from "@/lib/magnific";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { isOpenAIConfigured } from "@/lib/openai-images";
 import { StudioClient } from "./_components/StudioClient";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +22,7 @@ export default async function StockStudioPage() {
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "marketplace.manage"))) redirect("/admin/marketplace");
 
-  const [brands, magnificReady, geminiReady] = await Promise.all([
+  const [brands, magnificReady, geminiReady, openaiReady] = await Promise.all([
     prisma.marketplaceBrand.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
@@ -25,7 +30,17 @@ export default async function StockStudioPage() {
     }),
     isMagnificConfigured(),
     isGeminiConfigured(),
+    isOpenAIConfigured(),
   ]);
+
+  // Which providers have a key decides which models the picker can offer. Sent
+  // per model rather than as three booleans the client re-derives, so adding a
+  // fourth provider never needs a matching change in the browser.
+  const providerReady: Record<string, boolean> = {
+    MAGNIFIC: magnificReady,
+    GEMINI: geminiReady,
+    OPENAI: openaiReady,
+  };
 
   const categories = CATEGORIES.map((c) => ({
     assetType: c.assetType as string,
@@ -62,10 +77,17 @@ export default async function StockStudioPage() {
       <StudioClient
         brands={brands}
         categories={categories}
-        models={STUDIO_IMAGE_MODELS.map((m) => ({ id: m.id, label: m.label, hint: m.hint }))}
+        models={STUDIO_IMAGE_MODELS.map((m) => ({
+          id: m.id,
+          label: m.label,
+          hint: m.hint,
+          ready: providerReady[m.provider] ?? false,
+        }))}
+        shapes={STUDIO_SHAPES}
         videoModels={STUDIO_VIDEO_MODELS.map((m) => ({ id: m.id, label: m.label, hint: m.hint }))}
         magnificReady={magnificReady}
         geminiReady={geminiReady}
+        anyImageProviderReady={magnificReady || geminiReady || openaiReady}
       />
     </div>
   );

@@ -24,7 +24,8 @@ type Category = {
   deliverableKind: string | null;
   subTypes: { slug: string; label: string }[];
 };
-type Model = { id: string; label: string; hint: string };
+type Model = { id: string; label: string; hint: string; ready?: boolean };
+type Shape = { id: string; label: string };
 
 type Asset = {
   fileUrl: string;
@@ -33,6 +34,8 @@ type Asset = {
   width: number | null;
   height: number | null;
   bytes: number;
+  /** Set when the watermarked preview could not be produced. */
+  previewError?: string;
 };
 type Metadata = {
   title: string;
@@ -74,16 +77,20 @@ export function StudioClient({
   brands,
   categories,
   models,
+  shapes,
   videoModels,
   magnificReady,
   geminiReady,
+  anyImageProviderReady,
 }: {
   brands: Brand[];
   categories: Category[];
   models: Model[];
+  shapes: Shape[];
   videoModels: Model[];
   magnificReady: boolean;
   geminiReady: boolean;
+  anyImageProviderReady: boolean;
 }) {
   const router = useRouter();
 
@@ -95,9 +102,14 @@ export function StudioClient({
   const [license, setLicense] = useState(LICENSES[0]);
 
   // AI source
-  const [model, setModel] = useState(models[0]?.id ?? "fluxDev");
+  // Start on a model that can actually run. Defaulting to the first in the
+  // list picks a Magnific model even on an account with only a Gemini key, and
+  // the first thing the admin sees is then a 503.
+  const [model, setModel] = useState(
+    (models.find((m) => m.ready) ?? models[0])?.id ?? "fluxDev"
+  );
   const [prompt, setPrompt] = useState("");
-  const [aspect, setAspect] = useState("square_1_1");
+  const [aspect, setAspect] = useState(shapes[0]?.id ?? "square_1_1");
 
   // Stock source
   const [kind, setKind] = useState<"resources" | "icons" | "videos">("resources");
@@ -154,6 +166,7 @@ export function StudioClient({
       setMeta(r.metadata ?? blankMeta(prompt.trim()));
       setSubject(r.subject ?? prompt.trim());
       setAiGenerated(true);
+      if (r.asset?.previewError) toast.error(r.asset.previewError);
       if (r.metadataError) toast.error(r.metadataError);
       else toast.success("Generated — review and publish");
     } catch (e) {
@@ -200,6 +213,7 @@ export function StudioClient({
       setMeta(r.metadata ?? blankMeta(item.title));
       setSubject(r.subject ?? item.title);
       setAiGenerated(false);
+      if (r.asset?.previewError) toast.error(r.asset.previewError);
       if (r.metadataError) toast.error(r.metadataError);
       else toast.success("Imported — review and publish");
     } catch (e) {
@@ -225,6 +239,7 @@ export function StudioClient({
       setMeta(json.metadata ?? blankMeta(file.name));
       setSubject(json.subject ?? file.name);
       setAiGenerated(false);
+      if (json.asset?.previewError) toast.error(json.asset.previewError);
       if (json.metadataError) toast.error(json.metadataError);
       else toast.success("Uploaded — review and publish");
     } catch (e) {
@@ -385,15 +400,24 @@ export function StudioClient({
 
   /* ---------------- render ---------------- */
 
-  const disabled = !magnificReady;
+  // Generation works off whichever provider has a key; only the stock library
+  // is Magnific's alone.
+  const disabled = !anyImageProviderReady;
+  const stockDisabled = !magnificReady;
 
   return (
     <div className="space-y-5">
-      {!magnificReady && (
+      {!anyImageProviderReady && (
         <Banner tone="warn">
-          <strong>MAGNIFIC_API_KEY is not set.</strong> Generation and stock import are off
-          until you add it to <code>.env</code> or Settings → Integrations. Uploading your
-          own file still works.
+          <strong>No image AI key is set.</strong> Paste a Magnific, Gemini or OpenAI key in{" "}
+          Settings → Integrations → AI and generation turns on straight away — no redeploy.
+          Uploading your own file works regardless.
+        </Banner>
+      )}
+      {anyImageProviderReady && !magnificReady && (
+        <Banner tone="info">
+          <strong>MAGNIFIC_API_KEY is not set.</strong> Generation still works through your
+          other key; only the stock library and video generation are Magnific&apos;s.
         </Banner>
       )}
       {!geminiReady && (
@@ -514,8 +538,9 @@ export function StudioClient({
                 className="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"
               >
                 {models.map((m) => (
-                  <option key={m.id} value={m.id}>
+                  <option key={m.id} value={m.id} disabled={m.ready === false}>
                     {m.label}
+                    {m.ready === false ? " — no API key" : ""}
                   </option>
                 ))}
               </select>
@@ -530,10 +555,11 @@ export function StudioClient({
                 onChange={(e) => setAspect(e.target.value)}
                 className="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"
               >
-                <option value="square_1_1">Square</option>
-                <option value="widescreen_16_9">Widescreen 16:9</option>
-                <option value="social_story_9_16">Portrait 9:16</option>
-                <option value="classic_4_3">Classic 4:3</option>
+                {shapes.map((sh) => (
+                  <option key={sh.id} value={sh.id}>
+                    {sh.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
@@ -654,7 +680,7 @@ export function StudioClient({
             />
             <button
               onClick={search}
-              disabled={disabled || searching}
+              disabled={stockDisabled || searching}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg text-white text-sm"
             >
               {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -762,8 +788,11 @@ export function StudioClient({
                     className="w-full h-full object-contain"
                   />
                 ) : (
-                  <span className="text-gray-600 text-xs px-3 text-center">
-                    No image preview — add a cover image after publishing
+                  <span className="text-amber-300/80 text-[11px] px-3 text-center">
+                    {/* The reason, not just the absence. Publishing needs a
+                        preview, so a blank box with no explanation left the
+                        admin guessing at a 400 they could not act on. */}
+                    {asset.previewError ?? "No image preview for this file type"}
                   </span>
                 )}
               </div>

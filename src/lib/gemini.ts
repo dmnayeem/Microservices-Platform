@@ -267,7 +267,8 @@ function safeJson(text: string): Record<string, unknown> | null {
  * when the key lacks access the API's message is passed through in `error`.
  */
 export async function generateImage(
-  prompt: string
+  prompt: string,
+  opts: { aspectRatio?: string } = {}
 ): Promise<{ success: boolean; imageBase64?: string; mimeType?: string; error?: string }> {
   if (!(await geminiKey()))
     return { success: false, error: "GEMINI_API_KEY not set" };
@@ -278,7 +279,13 @@ export async function generateImage(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["IMAGE"] },
+        generationConfig: {
+          responseModalities: ["IMAGE"],
+          // Shape is a nested config here, not a top-level field. Omitted
+          // entirely when the caller does not ask, because sending an empty
+          // imageConfig makes the endpoint reject the whole request.
+          ...(opts.aspectRatio ? { imageConfig: { aspectRatio: opts.aspectRatio } } : {}),
+        },
       }),
     });
     if (!res.ok) {

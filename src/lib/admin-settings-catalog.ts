@@ -220,6 +220,9 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
 
   // ── Integrations ──
   { key: "gemini_api_key", group: "integrations", label: "Gemini API Key", description: "Powers every AI feature — caption generation, KYC document reading. Stored encrypted." },
+  { key: "openai_api_key", group: "integrations", label: "OpenAI API Key", description: "ChatGPT image generation in the Stock Studio. Billed by OpenAI, separately from the others." },
+  { key: "magnific_api_key", group: "integrations", label: "Magnific API Key", description: "Magnific (ex-Freepik): the stock library, its image models, and video generation. The env var MAGNIFIC_API_KEY wins when it is set." },
+  { key: "magnific_webhook_secret", group: "integrations", label: "Magnific Webhook Secret", description: "Only needed if you switch Magnific to push results. The scheduler polls instead, so this can stay empty." },
   { key: "bkash.appKey", group: "integrations", label: "bKash app key", description: "bKash merchant credential for taka deposits. Stored encrypted." },
   { key: "bkash.appSecret", group: "integrations", label: "bKash app secret", description: "bKash merchant credential for taka deposits. Stored encrypted." },
   { key: "bkash.username", group: "integrations", label: "bKash username", description: "bKash merchant credential for taka deposits. Stored encrypted." },

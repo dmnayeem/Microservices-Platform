@@ -18,7 +18,8 @@
  * (`api/marketplace/listings/[id]/download`). Putting the sellable file in
  * `images[]` would give the whole catalogue away for free.
  */
-import { generateJson } from "@/lib/gemini";
+import { generateJson, generateImage } from "@/lib/gemini";
+import { generateOpenAIImage, type OpenAIImageSize } from "@/lib/openai-images";
 import {
   runTask,
   startTask,
@@ -33,29 +34,71 @@ import { getCategory, ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
 
 export type StudioSource = "AI_IMAGE" | "STOCK_IMPORT" | "UPLOAD";
 
-/**
- * Image models the studio offers, cheapest-and-fastest first.
- *
- * Deliberately a short list rather than every model Magnific exposes: an admin
- * filling a catalogue wants "good and cheap" or "best quality", not a research
- * menu. `mystic` is the quality option; `fluxDev` is the volume option.
- */
-export const STUDIO_IMAGE_MODELS: {
-  id: MagnificFeature;
+export type StudioImageProvider = "MAGNIFIC" | "GEMINI" | "OPENAI";
+
+export type StudioImageModel = {
+  id: string;
+  provider: StudioImageProvider;
+  /** Only set for MAGNIFIC — the endpoint the feature maps to. */
+  feature?: MagnificFeature;
   label: string;
   hint: string;
-}[] = [
-  { id: "fluxDev", label: "Flux Dev — fast", hint: "Cheapest. Good for filling a catalogue." },
-  { id: "hyperflux", label: "Hyperflux — fastest", hint: "Lowest latency, slightly softer detail." },
-  { id: "mystic", label: "Mystic — best quality", hint: "Highest fidelity. Costs the most per image." },
-  { id: "seedream", label: "Seedream 4.5", hint: "Strong at graphic and illustrated styles." },
-  { id: "textToIcon", label: "Icon", hint: "Flat icon on a transparent background." },
+};
+
+/**
+ * Three providers, not one.
+ *
+ * One provider is one point of failure and one bill: when the Magnific key runs
+ * out of credits the studio stops producing anything at all, and from the admin
+ * screen an empty wallet and a broken pipeline look identical. Gemini and
+ * OpenAI keys are billed separately, so either can carry the catalogue while
+ * the other is out.
+ *
+ * A model the account has no key for is still listed — greyed out with the
+ * reason — rather than hidden, because a missing option reads as a missing
+ * feature and sends the owner looking for a bug instead of for a settings box.
+ */
+export const STUDIO_IMAGE_MODELS: StudioImageModel[] = [
+  { id: "fluxDev", provider: "MAGNIFIC", feature: "fluxDev", label: "Flux Dev — fast", hint: "Cheapest. Good for filling a catalogue." },
+  { id: "hyperflux", provider: "MAGNIFIC", feature: "hyperflux", label: "Hyperflux — fastest", hint: "Lowest latency, slightly softer detail." },
+  { id: "mystic", provider: "MAGNIFIC", feature: "mystic", label: "Mystic — best quality", hint: "Highest fidelity. Costs the most per image." },
+  { id: "seedream", provider: "MAGNIFIC", feature: "seedream", label: "Seedream 4.5", hint: "Strong at graphic and illustrated styles." },
+  { id: "textToIcon", provider: "MAGNIFIC", feature: "textToIcon", label: "Icon", hint: "Flat icon on a transparent background." },
+  { id: "gemini", provider: "GEMINI", label: "Gemini — Google", hint: "Uses your Gemini key. Strong at photographic scenes and text in image." },
+  { id: "openai", provider: "OPENAI", label: "ChatGPT — OpenAI", hint: "Uses your OpenAI key. Best prompt-following of the three." },
 ];
 
-const IMAGE_MODEL_IDS = new Set(STUDIO_IMAGE_MODELS.map((m) => m.id));
+const IMAGE_MODEL_BY_ID = new Map(STUDIO_IMAGE_MODELS.map((m) => [m.id, m]));
 
-export function isStudioImageModel(id: string): id is MagnificFeature {
-  return IMAGE_MODEL_IDS.has(id as MagnificFeature);
+export function studioImageModel(id: string): StudioImageModel | undefined {
+  return IMAGE_MODEL_BY_ID.get(id);
+}
+
+/**
+ * The shape names each provider speaks.
+ *
+ * The studio offers one set of four shapes; the providers each take a different
+ * spelling, and OpenAI has no 4:3 at all. Translating here keeps that out of
+ * the request handler, and an unmapped value falls back to square rather than
+ * being sent through and rejected after the credits are committed.
+ */
+const SHAPES: Record<string, { magnific: string; gemini: string; openai: string }> = {
+  square_1_1: { magnific: "square_1_1", gemini: "1:1", openai: "1024x1024" },
+  widescreen_16_9: { magnific: "widescreen_16_9", gemini: "16:9", openai: "1536x1024" },
+  social_story_9_16: { magnific: "social_story_9_16", gemini: "9:16", openai: "1024x1536" },
+  classic_4_3: { magnific: "classic_4_3", gemini: "4:3", openai: "1024x1024" },
+};
+
+export const STUDIO_SHAPES = [
+  { id: "square_1_1", label: "Square" },
+  { id: "widescreen_16_9", label: "Widescreen 16:9" },
+  { id: "social_story_9_16", label: "Portrait 9:16" },
+  { id: "classic_4_3", label: "Classic 4:3" },
+];
+
+function shapeFor(provider: StudioImageProvider, aspect?: string) {
+  const row = SHAPES[aspect ?? ""] ?? SHAPES.square_1_1;
+  return provider === "GEMINI" ? row.gemini : provider === "OPENAI" ? row.openai : row.magnific;
 }
 
 /**
@@ -188,6 +231,16 @@ export type StoredAsset = {
   height: number | null;
   /** Bytes of the deliverable, for the size hint on the review screen. */
   bytes: number;
+  /**
+   * Why `previewUrl` is empty, when it is.
+   *
+   * This started as a silent `if (ok) previewUrl = url`, and that silence cost
+   * a day: the bundler was rewriting jimp's font paths into a folder that does
+   * not exist, every watermark threw "fetch failed", and the only symptom an
+   * admin ever saw was a blank preview box and a publish refused for a missing
+   * "Watermarked preview" — with nothing anywhere naming the real cause.
+   */
+  previewError?: string;
 };
 
 /**
@@ -222,8 +275,13 @@ export async function storeStockAsset(input: {
   const size = input.previewable === false ? null : await readImageSize(input.bytes);
 
   let previewUrl = "";
+  let previewError: string | undefined;
+  if (!size && input.previewable !== false) {
+    previewError = "Could not read that file as an image — add a cover image instead";
+  }
   if (size) {
     const wm = await makeWatermarkedPreview(input.bytes, input.watermarkAs);
+    if (!wm.success) previewError = `Watermarking failed: ${wm.error}`;
     if (wm.success) {
       // Under `media/` on purpose: that is one of the three prefixes both the
       // `/api/media` proxy route and `mediaSrc()` agree to serve, and the
@@ -235,10 +293,14 @@ export async function storeStockAsset(input: {
       );
       const pUp = await uploadFile(previewKey, wm.buffer, "image/jpeg");
       // A missing preview is recoverable (the admin can upload a cover), a
-      // missing deliverable is not — so this failure is not fatal.
+      // missing deliverable is not — so this failure is not fatal. It is
+      // reported, though: see `previewError`.
       if (pUp.success && pUp.url) previewUrl = pUp.url;
+      else previewError = `Could not store the preview: ${pUp.error ?? "upload failed"}`;
     }
   }
+
+  if (previewError) console.error("[studio] preview not produced —", previewError);
 
   return {
     success: true,
@@ -249,6 +311,7 @@ export async function storeStockAsset(input: {
       width: size?.width ?? null,
       height: size?.height ?? null,
       bytes: input.bytes.length,
+      previewError,
     },
   };
 }
@@ -260,27 +323,51 @@ export async function storeStockAsset(input: {
  * immediately rather than recorded as a link.
  */
 export async function generateStockImage(input: {
-  model: MagnificFeature;
+  model: string;
   prompt: string;
   watermarkAs: string;
   aspectRatio?: string;
 }): Promise<MagnificResult<StoredAsset & { sourceUrl: string }>> {
-  const body: Record<string, unknown> = { prompt: input.prompt };
-  if (input.aspectRatio) body.aspect_ratio = input.aspectRatio;
+  const chosen = studioImageModel(input.model);
+  if (!chosen) return { success: false, error: "Pick a generation model" };
 
-  const task = await runTask(input.model, body, { timeoutMs: 120_000 });
-  if (!task.success) return task;
+  const shape = shapeFor(chosen.provider, input.aspectRatio);
 
-  const sourceUrl = task.data.generated[0];
-  if (!sourceUrl) return { success: false, error: "The model returned no image" };
+  let bytes: Buffer;
+  let contentType: string;
+  let sourceUrl = "";
 
-  const res = await fetch(sourceUrl, { cache: "no-store" });
-  if (!res.ok) {
-    return { success: false, error: `Could not download the result (HTTP ${res.status})` };
+  if (chosen.provider === "GEMINI") {
+    const g = await generateImage(input.prompt, { aspectRatio: shape });
+    if (!g.success || !g.imageBase64) {
+      return { success: false, error: g.error ?? "Gemini returned no image" };
+    }
+    bytes = Buffer.from(g.imageBase64, "base64");
+    contentType = g.mimeType ?? "image/png";
+  } else if (chosen.provider === "OPENAI") {
+    const o = await generateOpenAIImage(input.prompt, { size: shape as OpenAIImageSize });
+    if (!o.success) return { success: false, error: o.error };
+    bytes = o.bytes;
+    contentType = o.mime;
+  } else {
+    const body: Record<string, unknown> = { prompt: input.prompt, aspect_ratio: shape };
+    const task = await runTask(chosen.feature as MagnificFeature, body, { timeoutMs: 120_000 });
+    if (!task.success) return task;
+
+    sourceUrl = task.data.generated[0];
+    if (!sourceUrl) return { success: false, error: "The model returned no image" };
+
+    // Magnific's result URLs expire within the hour, so the bytes are pulled
+    // now rather than recorded as a link.
+    const res = await fetch(sourceUrl, { cache: "no-store" });
+    if (!res.ok) {
+      return { success: false, error: `Could not download the result (HTTP ${res.status})` };
+    }
+    bytes = Buffer.from(await res.arrayBuffer());
+    contentType = res.headers.get("content-type") || "image/jpeg";
   }
-  const bytes = Buffer.from(await res.arrayBuffer());
-  const contentType = res.headers.get("content-type") || "image/jpeg";
-  const ext = contentType.includes("png") ? "png" : "jpg";
+
+  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
 
   const stored = await storeStockAsset({
     bytes,

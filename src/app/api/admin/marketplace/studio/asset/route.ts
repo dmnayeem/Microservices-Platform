@@ -4,11 +4,12 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { isMagnificConfigured } from "@/lib/magnific";
 import { isGeminiConfigured } from "@/lib/gemini";
+import { isOpenAIConfigured } from "@/lib/openai-images";
 import {
   generateStockImage,
   importStockResource,
   generateListingMetadata,
-  isStudioImageModel,
+  studioImageModel,
 } from "@/lib/marketplace-studio";
 import { z } from "zod";
 
@@ -37,7 +38,11 @@ const schema = z.object({
   // AI_IMAGE
   model: z.string().optional(),
   prompt: z.string().max(2000).optional(),
-  aspectRatio: z.string().max(12).optional(),
+  // Long enough for every shape id the studio offers. It was max(12),
+  // which "widescreen_16_9" (15) and "social_story_9_16" (17) both exceed —
+  // so every shape but Square answered "Invalid input" before a single call
+  // was made.
+  aspectRatio: z.string().max(40).optional(),
   // STOCK_IMPORT
   resourceId: z.union([z.string(), z.number()]).optional(),
   kind: z.enum(["resources", "icons", "videos"]).optional(),
@@ -51,12 +56,6 @@ export async function POST(request: NextRequest) {
   }
   if (!(await can(session.user.id, "marketplace.manage"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (!(await isMagnificConfigured())) {
-    return NextResponse.json(
-      { error: "MAGNIFIC_API_KEY is not set — add it in Settings → Integrations" },
-      { status: 503 }
-    );
   }
 
   const body = await request.json().catch(() => ({}));
@@ -94,11 +93,32 @@ export async function POST(request: NextRequest) {
     if (prompt.length < 3) {
       return NextResponse.json({ error: "Describe what to generate" }, { status: 400 });
     }
-    if (!d.model || !isStudioImageModel(d.model)) {
+    const chosen = d.model ? studioImageModel(d.model) : undefined;
+    if (!chosen) {
       return NextResponse.json({ error: "Pick a generation model" }, { status: 400 });
     }
+    // Check the key for the provider actually picked, not for Magnific
+    // regardless — a Gemini-only account could otherwise never generate at all.
+    const ready =
+      chosen.provider === "GEMINI"
+        ? await isGeminiConfigured()
+        : chosen.provider === "OPENAI"
+          ? await isOpenAIConfigured()
+          : await isMagnificConfigured();
+    if (!ready) {
+      const envName =
+        chosen.provider === "GEMINI"
+          ? "GEMINI_API_KEY"
+          : chosen.provider === "OPENAI"
+            ? "OPENAI_API_KEY"
+            : "MAGNIFIC_API_KEY";
+      return NextResponse.json(
+        { error: `${envName} is not set — add it in Settings → Integrations → AI` },
+        { status: 503 }
+      );
+    }
     const gen = await generateStockImage({
-      model: d.model,
+      model: chosen.id,
       prompt,
       watermarkAs: brandName,
       aspectRatio: d.aspectRatio,
@@ -109,6 +129,12 @@ export async function POST(request: NextRequest) {
     asset = gen.data;
     subject = prompt;
   } else {
+    if (!(await isMagnificConfigured())) {
+      return NextResponse.json(
+        { error: "MAGNIFIC_API_KEY is not set — the stock library is Magnific's" },
+        { status: 503 }
+      );
+    }
     if (d.resourceId === undefined) {
       return NextResponse.json({ error: "Pick an item to import" }, { status: 400 });
     }
