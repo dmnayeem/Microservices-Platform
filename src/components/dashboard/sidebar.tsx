@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useNavCounts, badgeText } from "@/hooks/use-nav-counts";
 import { useState } from "react";
 import { Avatar } from "@/components/user/primitives/avatar";
 import {
@@ -193,6 +194,15 @@ interface SidebarContentProps {
 }
 
 function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hiddenPaths, avatar }: SidebarContentProps) {
+  // What is still waiting on these pages, like the notification bell's count:
+  // it goes down as the user completes tasks and claims rewards.
+  const navCounts = useNavCounts();
+  const countFor: Record<string, number> = {
+    "/daily-mission": navCounts.dailyMission,
+    "/missions": navCounts.missions,
+    "/events": navCounts.events,
+    "/lottery": navCounts.lottery,
+  };
   const hidden = new Set(hiddenPaths ?? []);
   const visible = (item: NavItem) =>
     (!item.feature || !features || features.includes(item.feature)) &&
@@ -342,6 +352,14 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
                     >
                       <item.icon className="w-4.5 h-4.5 shrink-0" />
                       <span className="min-w-0 truncate">{item.name}</span>
+                      {(countFor[item.href] ?? 0) > 0 && (
+                        <span
+                          aria-label={`${countFor[item.href]} waiting`}
+                          className="ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-5 text-center"
+                        >
+                          {badgeText(countFor[item.href])}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Home, ListTodo, Wallet, Target, Menu } from "lucide-react";
+import { useNavCounts, badgeText } from "@/hooks/use-nav-counts";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
@@ -40,6 +41,11 @@ export function BottomTabBar({
 }) {
   const pathname = usePathname();
   const setMenuOpen = useMobileNav((s) => s.setOpen);
+  // Daily mission's count sits on its own tab; missions and events live in the
+  // menu, so the menu button carries a dot for them (its number is already
+  // the unread-notification count, and one badge must mean one thing).
+  const navCounts = useNavCounts();
+  const menuHasGoals = navCounts.missions + navCounts.events + navCounts.lottery > 0;
   const [unread, setUnread] = useState(0);
   // This bar is `md:hidden` — above that it's not visible, so skip its poll
   // entirely (the Header already polls notifications). Halves the poll volume
@@ -149,7 +155,7 @@ export function BottomTabBar({
       ref={navRef}
       aria-label="Primary"
       data-chrome="bottom"
-      className="app-chrome md:hidden fixed bottom-0 inset-x-0 z-40 rounded-none border-0 border-t border-(--shell-border)"
+      className="app-chrome app-chrome-bar md:hidden fixed bottom-0 inset-x-0 z-40 rounded-none border-0 border-t border-(--shell-bar-border)"
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingLeft: "env(safe-area-inset-left)",
@@ -207,7 +213,17 @@ export function BottomTabBar({
                   <tab.icon className="w-6 h-6" />
                 </span>
               ) : (
-                <tab.icon className="w-5.5 h-5.5" />
+                <span className="relative">
+                  <tab.icon className="w-5.5 h-5.5" />
+                  {tab.href === "/daily-mission" && navCounts.dailyMission > 0 && (
+                    <span
+                      aria-label={`${navCounts.dailyMission} left today`}
+                      className="absolute -top-1.5 -right-2 px-1 min-w-4.5 h-4.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-4.5 text-center ring-2 ring-(--shell-bar-bg)"
+                    >
+                      {badgeText(navCounts.dailyMission)}
+                    </span>
+                  )}
+                </span>
               )}
               <span className={cn(primary && "mt-0.5")}>{tab.name}</span>
             </Link>
@@ -225,10 +241,17 @@ export function BottomTabBar({
         >
           <span className="relative">
             <Menu className="w-5.5 h-5.5" />
-            {unread > 0 && (
-              <span className="absolute -top-1.5 -right-2 px-1 min-w-4.5 h-4.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-4.5 text-center ring-2 ring-(--shell-bg)">
+            {unread > 0 ? (
+              <span className="absolute -top-1.5 -right-2 px-1 min-w-4.5 h-4.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-4.5 text-center ring-2 ring-(--shell-bar-bg)">
                 {unread > 9 ? "9+" : unread}
               </span>
+            ) : (
+              menuHasGoals && (
+                <span
+                  aria-hidden
+                  className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-(--app-badge) ring-2 ring-(--shell-bar-bg)"
+                />
+              )
             )}
           </span>
           Menu

@@ -1,5 +1,6 @@
 "use client";
 
+import { refreshNavCounts } from "@/hooks/use-nav-counts";
 import { useCallback, useEffect, useState } from "react";
 import {
   Target,
@@ -95,6 +96,7 @@ export function MissionsView() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Couldn't claim");
       await runInterstitial();
+      refreshNavCounts();
       toast.success(
         `Reward claimed — +${d.rewardPoints} points${d.rewardXp ? ` / +${d.rewardXp} XP` : ""}!`
       );

@@ -1,5 +1,6 @@
 "use client";
 
+import { refreshNavCounts } from "@/hooks/use-nav-counts";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -103,6 +104,7 @@ export function DailyMissionView() {
         title: "Daily mission claimed!",
         description: `+${d.xp} XP · Streak: ${d.streak} day${d.streak === 1 ? "" : "s"} 🔥`,
       });
+      refreshNavCounts();
       await load();
     } catch (err) {
       notifyCenter.error(

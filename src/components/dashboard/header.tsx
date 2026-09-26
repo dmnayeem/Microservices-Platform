@@ -179,7 +179,7 @@ export function Header({ user, avatar }: HeaderProps) {
         * `app-chrome`, so that class cannot say which is which. */}
       <header
         data-chrome="top"
-        className="app-chrome sticky top-0 z-30 border-0 border-b border-(--shell-border) rounded-none safe-t"
+        className="app-chrome app-chrome-bar sticky top-0 z-30 border-0 border-b border-(--shell-bar-border) rounded-none safe-t"
       >
         {/* Seven controls in one row is what "crowded" meant: a logo, a search
             box, a theme toggle, a Reports link, a points pill, a bell and an
@@ -327,7 +327,7 @@ export function Header({ user, avatar }: HeaderProps) {
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 flex items-center justify-center px-1 text-[10px] font-extrabold text-(--app-on-accent) bg-(--app-badge) rounded-full ring-2 ring-(--shell-bg)">
+                  <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 flex items-center justify-center px-1 text-[10px] font-extrabold text-(--app-on-accent) bg-(--app-badge) rounded-full ring-2 ring-(--shell-bar-bg)">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}

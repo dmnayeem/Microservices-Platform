@@ -1,5 +1,6 @@
 "use client";
 
+import { refreshNavCounts } from "@/hooks/use-nav-counts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -131,6 +132,7 @@ export function ActiveEventsCard({ className }: { className?: string }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Couldn't claim");
       await runInterstitial();
+      refreshNavCounts();
       toast.success(
         `Reward claimed — +${d.rewardPoints} points${
           d.rewardXp ? ` / +${d.rewardXp} XP` : ""

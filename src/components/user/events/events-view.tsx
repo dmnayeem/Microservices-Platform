@@ -1,5 +1,6 @@
 "use client";
 
+import { refreshNavCounts } from "@/hooks/use-nav-counts";
 import { useCallback, useEffect, useState } from "react";
 import { Sparkles, Clock, Coins, Loader2, CheckCircle2, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,7 @@ export function EventsView() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Couldn't claim");
       await runInterstitial();
+      refreshNavCounts();
       toast.success(
         `Reward claimed — +${d.rewardPoints} points${d.rewardXp ? ` / +${d.rewardXp} XP` : ""}!`
       );
