@@ -1,4 +1,5 @@
-import { usd } from "@/lib/utils";
+import { usd, pts } from "@/lib/utils";
+import { getPointsPerUsd } from "@/lib/economy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -9,7 +10,7 @@ import Link from "next/link";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ExportDropdown } from "./_components/ExportDropdown";
 import { AnalyticsCharts } from "@/components/admin/analytics/analytics-charts";
-import { COMPLETED_STATUSES } from "@/lib/submission-status";
+import { COMPLETED_STATUSES, completedBetween } from "@/lib/submission-status";
 
 interface PageProps {
   searchParams: Promise<{
@@ -39,6 +40,13 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   if (!(await can(session.user.id, "analytics.view"))) {
     redirect("/admin");
   }
+  // Withdrawals are finance: shown only with `finance.view` (super admin,
+  // finance admin, or a named grant). Everyone else sees task points paid in
+  // their place — task-related income is theirs to see, the company's cash is
+  // not. The withdrawal figures are not even queried for them, so nothing
+  // reaches the browser.
+  const seesMoney = await can(session.user.id, "finance.view");
+  const pointsPerUsd = await getPointsPerUsd();
 
   const params = await searchParams;
   const period = params.period || "7d";
@@ -108,21 +116,35 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         createdAt: { gte: previousStartDate, lt: previousEndDate },
       },
     }),
-    prisma.withdrawal.aggregate({
-      where: {
-        status: "COMPLETED",
-        createdAt: { gte: startDate },
-      },
-      _sum: { amount: true },
-      _count: { id: true },
-    }),
-    prisma.withdrawal.aggregate({
-      where: {
-        status: "COMPLETED",
-        createdAt: { gte: previousStartDate, lt: previousEndDate },
-      },
-      _sum: { amount: true },
-    }),
+    // Finance sees withdrawals; everyone else, task points paid in the same
+    // windows. Same shape ({ _sum.amount, _count.id }) so the card below reads
+    // one value either way.
+    seesMoney
+      ? prisma.withdrawal.aggregate({
+          where: {
+            status: "COMPLETED",
+            createdAt: { gte: startDate },
+          },
+          _sum: { amount: true },
+          _count: { id: true },
+        })
+      : prisma.taskSubmission
+          .aggregate({ where: { AND: [completedBetween(startDate)] }, _sum: { pointsEarned: true }, _count: { id: true } })
+          .then((a) => {
+            const x = a as unknown as { _sum: { pointsEarned: number | null }; _count: { id: number } };
+            return { _sum: { amount: x._sum.pointsEarned ?? 0 }, _count: { id: x._count.id } };
+          }),
+    seesMoney
+      ? prisma.withdrawal.aggregate({
+          where: {
+            status: "COMPLETED",
+            createdAt: { gte: previousStartDate, lt: previousEndDate },
+          },
+          _sum: { amount: true },
+        })
+      : prisma.taskSubmission
+          .aggregate({ where: { AND: [completedBetween(previousStartDate, previousEndDate)] }, _sum: { pointsEarned: true } })
+          .then((a) => ({ _sum: { amount: (a as unknown as { _sum: { pointsEarned: number | null } })._sum.pointsEarned ?? 0 } })),
     prisma.referralEarning.aggregate({
       where: { createdAt: { gte: startDate } },
       _sum: { amount: true },
@@ -175,20 +197,27 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
             createdAt: { gte: dayStart, lte: dayEnd },
           },
         }),
-        prisma.withdrawal.aggregate({
-          where: {
-            status: "COMPLETED",
-            createdAt: { gte: dayStart, lte: dayEnd },
-          },
-          _sum: { amount: true },
-        }),
+        seesMoney
+          ? prisma.withdrawal.aggregate({
+              where: {
+                status: "COMPLETED",
+                createdAt: { gte: dayStart, lte: dayEnd },
+              },
+              _sum: { amount: true },
+            })
+          : prisma.taskSubmission.aggregate({
+              where: { AND: [completedBetween(dayStart, dayEnd)] },
+              _sum: { pointsEarned: true },
+            }),
       ]);
 
+      const sum = (withdrawals as unknown as { _sum: { amount?: unknown; pointsEarned?: number | null } })._sum;
       return {
         date: format(date, "MMM d"),
         users,
         tasks,
-        withdrawals: toNum(withdrawals._sum.amount),
+        // USD withdrawn for finance; task points paid for everyone else.
+        withdrawals: seesMoney ? toNum(sum.amount as Parameters<typeof toNum>[0]) : Number(sum.pointsEarned ?? 0),
       };
     })
   );
@@ -318,7 +347,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
             Monitor platform performance and user activity
           </p>
         </div>
-        {canExport && <ExportDropdown period={period} />}
+        {canExport && <ExportDropdown period={period} seesMoney={seesMoney} />}
       </div>
 
       {/* Period Selector */}
@@ -410,11 +439,13 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
             </span>
           </div>
           <p className="text-3xl font-bold text-white">
-            {usd(totalWithdrawals._sum.amount ?? 0)}
+            {seesMoney
+              ? usd(totalWithdrawals._sum.amount ?? 0)
+              : pts(Number(totalWithdrawals._sum.amount ?? 0))}
           </p>
-          <p className="text-sm text-gray-500 mt-1">Withdrawals</p>
+          <p className="text-sm text-gray-500 mt-1">{seesMoney ? "Withdrawals" : "Task points paid"}</p>
           <p className="text-xs text-gray-600 mt-2">
-            {totalWithdrawals._count.id} transactions
+            {totalWithdrawals._count.id} {seesMoney ? "transactions" : "approved tasks"}
           </p>
         </div>
 
@@ -486,7 +517,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Charts — Recharts (now incl. traffic trend + real task-type pie) */}
-      <AnalyticsCharts daily={dailyData} traffic={trafficDaily} taskBreakdown={taskBreakdown} />
+      <AnalyticsCharts daily={dailyData} traffic={trafficDaily} taskBreakdown={taskBreakdown} moneyMode={seesMoney} />
 
       {/* Top pages + Top task pages */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -592,7 +623,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
                 </div>
               </div>
               <p className="font-semibold text-emerald-400">
-                {usd(user.totalEarnings)}
+                {seesMoney ? usd(user.totalEarnings) : `${pts(Math.round(toNum(user.totalEarnings) * pointsPerUsd))} pts`}
               </p>
             </div>
           ))}

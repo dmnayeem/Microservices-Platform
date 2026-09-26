@@ -1,4 +1,5 @@
-import { usd } from "@/lib/utils";
+import { usd, pts } from "@/lib/utils";
+import { getPointsPerUsd } from "@/lib/economy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
@@ -72,6 +73,11 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   if (!(await can(session.user.id, "users.view"))) {
     redirect("/admin");
   }
+  // A user's cash is finance: their wallet, withdrawals and the dollar side of
+  // their ledger show only with `finance.view` (super admin, finance admin, or
+  // a named grant). Points — what tasks pay — stay visible to every admin.
+  const seesMoney = await can(session.user.id, "finance.view");
+  const pointsPerUsd = await getPointsPerUsd();
 
   const { id } = await params;
   const {
@@ -265,7 +271,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     { id: "transactions", label: "Transactions", count: counts._count.transactions },
     { id: "tasks", label: "Tasks", count: counts._count.taskSubmissions },
     { id: "referrals", label: "Referrals", count: counts._count.referrals },
-    { id: "withdrawals", label: "Withdrawals", count: counts._count.withdrawals },
+    ...(seesMoney ? [{ id: "withdrawals", label: "Withdrawals", count: counts._count.withdrawals }] : []),
   ];
 
   // Conditionally fetch tab-specific data so we don't pay the cost on every tab.
@@ -637,7 +643,9 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
             <Wallet className="w-4 h-4 text-emerald-400" />
             <span className="text-xs text-gray-500">Cash Balance</span>
           </div>
-          <p className="text-xl font-bold text-white">{usd(user.cashBalance)}</p>
+          <p className="text-xl font-bold text-white">
+            {seesMoney ? usd(user.cashBalance) : <span className="text-sm font-medium text-gray-500">Finance only</span>}
+          </p>
           <div className="flex gap-1 mt-1">
             <AdjustBalanceButton userId={id} type="cash" action="add" canAdjust={await can(session.user.id, "users.adjust_balance")} />
             <AdjustBalanceButton userId={id} type="cash" action="deduct" canAdjust={await can(session.user.id, "users.adjust_balance")} />
@@ -827,7 +835,10 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
         {tab === "activity" && (
           <div className="p-6">
-            <UserActivityTimeline events={activityEvents} />
+            {/* Cash amounts are finance; the timeline keeps points for everyone. */}
+            <UserActivityTimeline
+              events={seesMoney ? activityEvents : activityEvents.map((e) => ({ ...e, amount: undefined }))}
+            />
           </div>
         )}
 
@@ -839,11 +850,15 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <p className="text-sm text-gray-400">Total Earned</p>
-                  <p className="text-xl font-bold text-emerald-400">{usd(user.totalEarnings)}</p>
+                  <p className="text-xl font-bold text-emerald-400">
+                    {seesMoney ? usd(user.totalEarnings) : `${pts(Math.round(toNum(user.totalEarnings) * pointsPerUsd))} pts`}
+                  </p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   <p className="text-sm text-gray-400">Total Withdrawn</p>
-                  <p className="text-xl font-bold text-amber-400">{usd(user.totalWithdrawals)}</p>
+                  <p className="text-xl font-bold text-amber-400">
+                    {seesMoney ? usd(user.totalWithdrawals) : <span className="text-sm font-medium text-gray-500">Finance only</span>}
+                  </p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-4">
                   {/* This is EVERY submission (pending + rejected included) —
@@ -893,7 +908,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                           {tx.points > 0 ? "+" : ""}{tx.points.toLocaleString()} pts
                         </p>
                       )}
-                      {tx.amount !== 0 && (
+                      {seesMoney && tx.amount !== 0 && (
                         <p className={`text-sm font-medium ${tx.amount > 0 ? "text-emerald-400" : "text-red-400"}`}>
                           {tx.amount > 0 ? "+" : ""}{usd(tx.amount)}
                         </p>
@@ -1135,7 +1150,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                 header: "Amount",
                 cell: (tx) => (
                   <span className={`font-medium ${tx.amount > 0 ? "text-emerald-400" : tx.amount < 0 ? "text-red-400" : "text-gray-400"}`}>
-                    {tx.amount !== 0 ? `${tx.amount > 0 ? "+" : ""}${usd(tx.amount)}` : "-"}
+                    {!seesMoney ? "—" : tx.amount !== 0 ? `${tx.amount > 0 ? "+" : ""}${usd(tx.amount)}` : "-"}
                   </span>
                 ),
               },
@@ -1253,7 +1268,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           />
         )}
 
-        {tab === "withdrawals" && (
+        {tab === "withdrawals" && seesMoney && (
           <AdminTable<(typeof user.withdrawals)[number]>
             bare
             rows={user.withdrawals}

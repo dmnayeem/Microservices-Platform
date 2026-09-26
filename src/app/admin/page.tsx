@@ -299,6 +299,26 @@ export default async function AdminDashboardPage() {
   const kycVerifiedRate =
     totalUsers > 0 ? (verifiedKycCount / totalUsers) * 100 : 0;
 
+  // Task economy — shown to every staff member who can open the dashboard.
+  // The owner's rule: managers and admins see TASK-related points and income;
+  // the company's cash (revenue, deposits, withdrawals, wallets) is finance.
+  const [taskPtsToday, taskPts30d, taskFee30d] = (await Promise.all([
+    prisma.taskSubmission.aggregate({ where: completedBetween(todayStart), _sum: { pointsEarned: true } }),
+    prisma.taskSubmission.aggregate({ where: completedBetween(thirtyDaysAgo), _sum: { pointsEarned: true } }),
+    // The platform's commission when a buyer funds a task (ADMIN_FEE,
+    // `task_fee_` reference — see src/lib/tx-sources.ts). Written negative on
+    // the buyer's ledger, so its magnitude is the income.
+    prisma.transaction.aggregate({
+      where: { type: "ADMIN_FEE", reference: { startsWith: "task_fee_" }, createdAt: { gte: thirtyDaysAgo } },
+      _sum: { amount: true },
+      _count: true,
+    }),
+  ])) as unknown as [
+    { _sum: { pointsEarned: number | null } },
+    { _sum: { pointsEarned: number | null } },
+    { _sum: { amount: MoneyInput | null }; _count: number },
+  ];
+
   const growthSeries = buildGrowthSeries(last7DaysUsers);
   const revenueSeries = buildRevenueSeries(last30DaysRevenue);
 
@@ -354,6 +374,45 @@ export default async function AdminDashboardPage() {
           href="/admin/withdrawals"
         />
         </>)}
+      </div>
+
+      {/* Task economy — for everyone with the dashboard. */}
+      <div>
+        <h2 className="mb-2 text-sm font-bold text-white">Task economy</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard
+            title="Task points paid today"
+            value={(taskPtsToday._sum.pointsEarned ?? 0).toLocaleString()}
+            subtext={`${completionsToday} tasks completed`}
+            icon={ListTodo}
+            tone="green"
+            href="/admin/submissions"
+          />
+          <StatCard
+            title="Task points paid (30 days)"
+            value={(taskPts30d._sum.pointsEarned ?? 0).toLocaleString()}
+            subtext="approved + auto-approved"
+            icon={CheckCircle}
+            tone="blue"
+            href="/admin/tasks"
+          />
+          <StatCard
+            title="Task commission (30 days)"
+            value={usd(Math.abs(toNum(taskFee30d._sum.amount)))}
+            subtext={`${taskFee30d._count} buyer-funded task${taskFee30d._count === 1 ? "" : "s"}`}
+            icon={TrendingUp}
+            tone="purple"
+            href="/admin/buyers"
+          />
+          <StatCard
+            title="Tasks this month"
+            value={completionsMonth.toLocaleString()}
+            subtext="completed"
+            icon={ClipboardCheck}
+            tone="orange"
+            href="/admin/tasks"
+          />
+        </div>
       </div>
 
       {/* Stats row 2 — money only */}

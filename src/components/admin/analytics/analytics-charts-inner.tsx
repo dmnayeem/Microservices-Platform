@@ -37,6 +37,8 @@ interface TrafficPoint {
 
 export interface AnalyticsChartsProps {
   daily: DailyPoint[];
+  /** Finance viewers see withdrawals (USD); everyone else task points paid. */
+  moneyMode?: boolean;
   taskBreakdown?: TaskBreakdown[];
   traffic?: TrafficPoint[];
 }
@@ -60,6 +62,7 @@ const TOOLTIP_STYLE = {
 };
 
 export function AnalyticsChartsInner({
+  moneyMode = false,
   daily,
   taskBreakdown,
   traffic,
@@ -143,7 +146,7 @@ export function AnalyticsChartsInner({
 
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
           <h3 className="text-sm font-semibold text-white mb-3">
-            Withdrawals (USD)
+            {moneyMode ? "Withdrawals (USD)" : "Task points paid"}
           </h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart
@@ -161,12 +164,14 @@ export function AnalyticsChartsInner({
                 stroke="rgb(100 116 139)"
                 fontSize={11}
                 tickLine={false}
-                tickFormatter={(v: number) => `$${v}`}
+                tickFormatter={(v: number) => (moneyMode ? `$${v}` : `${v}`)}
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
                 cursor={{ fill: "rgb(30 41 59 / 0.4)" }}
-                formatter={(v) => [`${usd(Number(v))}`, "Withdrawn"]}
+                formatter={(v) =>
+                  moneyMode ? [`${usd(Number(v))}`, "Withdrawn"] : [`${Number(v).toLocaleString()} pts`, "Task points"]
+                }
               />
               <Bar
                 dataKey="withdrawals"

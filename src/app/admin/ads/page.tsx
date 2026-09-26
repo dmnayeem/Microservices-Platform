@@ -30,7 +30,10 @@ export default async function AdsAdminPage() {
         </span>
       </Link>
 
-      <AdManagerView canManage={await can(session.user.id, "ads.manage")} />
+      <AdManagerView
+        canManage={await can(session.user.id, "ads.manage")}
+        seesMoney={await can(session.user.id, "finance.view")}
+      />
     </div>
   );
 }

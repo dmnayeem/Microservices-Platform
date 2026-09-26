@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
   if (!session?.user || !(await can(session.user.id, "ads.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  // Ad revenue is finance: `finance.view` (super admin, finance admin, or a
+  // named grant) — `ads.view` alone runs the ads, it does not see the money.
+  if (!(await can(session.user.id, "finance.view"))) {
+    return NextResponse.json({ error: "Ad revenue reports are finance-only — ask a super admin." }, { status: 403 });
+  }
 
   const sp = new URL(request.url).searchParams;
   const days = Math.min(365, Math.max(1, Number(sp.get("days")) || 30));

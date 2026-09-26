@@ -16,7 +16,11 @@ import {
 
 interface ExportDropdownProps {
   period: string;
+  /** Finance viewers only: the withdrawal and transaction reports. */
+  seesMoney?: boolean;
 }
+
+const MONEY_REPORTS = new Set(["withdrawals", "transactions"]);
 
 const EXPORT_OPTIONS = [
   {
@@ -57,7 +61,7 @@ const EXPORT_OPTIONS = [
   },
 ];
 
-export function ExportDropdown({ period }: ExportDropdownProps) {
+export function ExportDropdown({ period, seesMoney = false }: ExportDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -129,7 +133,7 @@ export function ExportDropdown({ period }: ExportDropdownProps) {
             </div>
 
             <div className="p-2 space-y-1">
-              {EXPORT_OPTIONS.map((option) => {
+              {EXPORT_OPTIONS.filter((o) => seesMoney || !MONEY_REPORTS.has(o.type)).map((option) => {
                 const Icon = option.icon;
                 const isLoading = loading === option.type;
 

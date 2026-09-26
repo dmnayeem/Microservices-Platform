@@ -63,7 +63,9 @@ export async function GET() {
   // price is ever suggested — what a space is worth is the owner's call — but
   // "this space earned $0.00 from 4,100 impressions" and "this one earned
   // $3.20 from 900" are the two facts that decision needs.
-  const window = await adRevenueLastDays(30).catch(() => null);
+  // Revenue per space is finance; without it the figure is not sent at all.
+  const seesMoney = await can(session.user.id, "finance.view");
+  const window = seesMoney ? await adRevenueLastDays(30).catch(() => null) : null;
 
   const withStats = placements.map((p) => {
     const earned = window?.byPlacementId.get(p.id);
@@ -80,7 +82,7 @@ export async function GET() {
       /** Billable revenue and traffic for this space over the last 30 days. */
       recent: {
         days: 30,
-        usd: earned?.usd ?? 0,
+        usd: seesMoney ? (earned?.usd ?? 0) : null,
         impressions: earned?.impressions ?? 0,
         clicks: earned?.clicks ?? 0,
       },

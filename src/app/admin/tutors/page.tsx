@@ -14,6 +14,8 @@ export default async function AdminTutorsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "tutor.applications.review"))) redirect("/admin");
+  // What tutors have been paid is finance.
+  const seesMoney = await can(session.user.id, "finance.view");
 
   const [tutorsRaw, pendingApps, totalTutors, suspendedTutors] = await Promise.all([
     prisma.tutorProfile.findMany({
@@ -165,7 +167,7 @@ export default async function AdminTutorsPage() {
             header: "Earnings",
             cell: (t) => (
               <span className="text-emerald-300 tabular-nums">
-                {usd((t.totalEarningsCents / 100))}
+                {seesMoney ? usd(t.totalEarningsCents / 100) : "—"}
               </span>
             ),
           },

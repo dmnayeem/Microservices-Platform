@@ -29,6 +29,18 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get("period") || "30d";
     const reportType = searchParams.get("type") || "summary";
 
+    // Money is finance. `analytics.export` is held by every admin, and this
+    // route handed any of them a CSV of every withdrawal and every ledger
+    // transaction, and a summary with withdrawal amounts. Those now need
+    // `finance.view` (super admin, finance admin, or a named grant).
+    const seesMoney = await can(session.user.id, "finance.view");
+    if ((reportType === "withdrawals" || reportType === "transactions") && !seesMoney) {
+      return NextResponse.json(
+        { error: "Money reports are finance-only — ask a super admin for finance access." },
+        { status: 403 }
+      );
+    }
+
     // Calculate date range
     const now = new Date();
     let startDate: Date;
@@ -358,18 +370,22 @@ export async function GET(request: NextRequest) {
                   createdAt: { gte: dayStart, lte: dayEnd },
                 },
               }),
-              prisma.withdrawal.aggregate({
-                where: {
-                  status: "COMPLETED",
-                  createdAt: { gte: dayStart, lte: dayEnd },
-                },
-                _sum: { amount: true },
-                _count: { id: true },
-              }),
-              prisma.referralEarning.aggregate({
-                where: { createdAt: { gte: dayStart, lte: dayEnd } },
-                _sum: { amount: true },
-              }),
+              seesMoney
+                ? prisma.withdrawal.aggregate({
+                    where: {
+                      status: "COMPLETED",
+                      createdAt: { gte: dayStart, lte: dayEnd },
+                    },
+                    _sum: { amount: true },
+                    _count: { id: true },
+                  })
+                : Promise.resolve({ _sum: { amount: 0 }, _count: { id: 0 } }),
+              seesMoney
+                ? prisma.referralEarning.aggregate({
+                    where: { createdAt: { gte: dayStart, lte: dayEnd } },
+                    _sum: { amount: true },
+                  })
+                : Promise.resolve({ _sum: { amount: 0 } }),
             ]);
 
           return {
@@ -385,11 +401,15 @@ export async function GET(request: NextRequest) {
         })
       );
 
-      csvContent = "Date,New Users,Completed Tasks,Withdrawal Count,Withdrawal Amount,Referral Earnings\n";
+      // Without finance access the summary is people and tasks only.
+      csvContent = seesMoney
+        ? "Date,New Users,Completed Tasks,Withdrawal Count,Withdrawal Amount,Referral Earnings\n"
+        : "Date,New Users,Completed Tasks\n";
       csvContent += dailyData
-        .map(
-          (d) =>
-            `${d.date},${d.newUsers},${d.completedTasks},${d.withdrawalCount},${d.withdrawalAmount},${d.referralEarnings}`
+        .map((d) =>
+          seesMoney
+            ? `${d.date},${d.newUsers},${d.completedTasks},${d.withdrawalCount},${d.withdrawalAmount},${d.referralEarnings}`
+            : `${d.date},${d.newUsers},${d.completedTasks}`
         )
         .join("\n");
     }

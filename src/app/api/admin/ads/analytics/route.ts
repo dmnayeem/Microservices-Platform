@@ -12,6 +12,9 @@ export async function GET(req: NextRequest) {
   if (!session?.user || !(await can(session.user.id, "ads.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  // Ad revenue is finance: `finance.view` (super admin, finance admin, or a
+  // named grant) — `ads.view` alone runs the ads, it does not see the money.
+  const seesMoney = await can(session.user.id, "finance.view");
   const days = Math.min(
     Math.max(parseInt(req.nextUrl.searchParams.get("days") || "14"), 7),
     90
@@ -132,7 +135,7 @@ export async function GET(req: NextRequest) {
       clicks: lifetimeClicks,
       ctr: lifetimeImpr > 0 ? (lifetimeClicks / lifetimeImpr) * 100 : 0,
     },
-    revenue: {
+    revenue: !seesMoney ? null : {
       /** Billed spend in the selected window. */
       windowSpend,
       /** Lifetime billed spend across every non-house campaign. */

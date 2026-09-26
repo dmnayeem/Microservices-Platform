@@ -81,7 +81,8 @@ interface Placement {
   _count?: { ads: number };
   stats?: PlacementStats;
   /** Billable revenue and traffic for this space over the last 30 days. */
-  recent?: { days: number; usd: number; impressions: number; clicks: number };
+  /** `usd` is null for a viewer without finance access. */
+  recent?: { days: number; usd: number | null; impressions: number; clicks: number };
   /** What a click here costs today — own rate, or the global one. */
   effectiveCpcUsd?: number;
   usesGlobalRate?: boolean;
@@ -173,7 +174,7 @@ const PLACEMENT_ICON: Record<string, LucideIcon> = {
   VIDEO_INTERSTITIAL: Film,
 };
 
-export function AdManagerView({ canManage }: { canManage: boolean }) {
+export function AdManagerView({ canManage, seesMoney = false }: { canManage: boolean; seesMoney?: boolean }) {
   const [tab, setTab] = useState<TabId>("ads");
   const [ads, setAds] = useState<Ad[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -610,7 +611,9 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
       </div>
 
       <div className="flex gap-1 border-b border-slate-800 overflow-x-auto">
-        {TABS.map((t) => (
+        {/* Invoices and revenue Analytics are finance — hidden without it
+            (their APIs refuse too). */}
+        {TABS.filter((t) => seesMoney || (t.id !== "invoices" && t.id !== "analytics")).map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -999,9 +1002,9 @@ export function AdManagerView({ canManage }: { canManage: boolean }) {
             />
           )}
 
-          {tab === "invoices" && <InvoicesTab canManage={canManage} />}
+          {tab === "invoices" && seesMoney && <InvoicesTab canManage={canManage} />}
 
-          {tab === "analytics" && <AnalyticsTab />}
+          {tab === "analytics" && seesMoney && <AnalyticsTab />}
         </>
       )}
 
@@ -1369,7 +1372,7 @@ function AdSpaceCard({
             <p className="text-[11px] text-slate-300">
               Last {p.recent?.days ?? 30} days:{" "}
               <span className="font-bold text-white tabular-nums">
-                {usd(p.recent?.usd ?? 0)}
+                {p.recent?.usd == null ? "—" : usd(p.recent.usd)}
               </span>{" "}
               <span className="text-slate-500">
                 from {(p.recent?.impressions ?? 0).toLocaleString()} impressions ·{" "}

@@ -46,6 +46,9 @@ export default async function UserActivityPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (!(await can(session.user.id, "users.view"))) redirect("/admin");
+  // Points are task income and visible to all; the cash side of a row is
+  // finance only.
+  const seesMoney = await can(session.user.id, "finance.view");
 
   const params = await searchParams;
   const page = parsePage(params.page);
@@ -225,7 +228,7 @@ export default async function UserActivityPage({ searchParams }: PageProps) {
                           {pts > 0 ? "+" : ""}{pts.toLocaleString()} pts
                         </span>
                       )}
-                      {cash !== 0 && (
+                      {seesMoney && cash !== 0 && (
                         <span className={`block ${cash > 0 ? "text-emerald-400" : "text-red-400"}`}>
                           {cash > 0 ? "+" : ""}{usd(Math.abs(cash))}
                         </span>

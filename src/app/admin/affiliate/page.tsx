@@ -14,6 +14,10 @@ export default async function AdminAffiliatePage() {
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
   const canManage = await can(session.user.id, "marketplace.manage");
+  // Commission paid is the company's money — finance only. Counts (clicks,
+  // conversions, affiliates) stay for everyone who runs the programme.
+  const seesMoney = await can(session.user.id, "finance.view");
+  const money = (v: number) => (seesMoney ? usd(v) : "—");
 
   const affiliateConfig = await getAffiliateConfig();
 
@@ -83,7 +87,7 @@ export default async function AdminAffiliatePage() {
       {canManage && <AffiliateConfigForm initial={affiliateConfig} />}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <Stat icon={<Coins className="w-5 h-5" />} label="Total paid" value={`${usd(totalPaid)}`} tone="text-emerald-400" />
+        <Stat icon={<Coins className="w-5 h-5" />} label="Total paid" value={seesMoney ? `${usd(totalPaid)}` : "Finance only"} tone="text-emerald-400" />
         <Stat icon={<TrendingUp className="w-5 h-5" />} label="Commissions" value={conversions.toLocaleString()} tone="text-indigo-400" />
         <Stat icon={<Users className="w-5 h-5" />} label="Affiliates joined" value={activeAffiliates.toLocaleString()} tone="text-amber-400" />
       </div>
@@ -125,7 +129,7 @@ export default async function AdminAffiliatePage() {
                     <p className="text-[11px] text-slate-500">{a._count._all} sales</p>
                   </Link>
                   <span className="text-sm font-bold text-emerald-400 tabular-nums">
-                    {usd(toNum(a._sum.commissionAmount ?? 0))}
+                    {money(toNum(a._sum.commissionAmount ?? 0))}
                   </span>
                 </div>
               );
@@ -147,11 +151,11 @@ export default async function AdminAffiliatePage() {
                     {r.sourceType === "COURSE" ? "Course" : "Product"} · {userMap.get(r.affiliateUserId)?.name ?? r.affiliateUserId.slice(0, 8)}
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    {new Date(r.createdAt).toLocaleDateString()} · sale {usd(toNum(r.saleAmount))}
+                    {new Date(r.createdAt).toLocaleDateString()} · sale {money(toNum(r.saleAmount))}
                   </p>
                 </div>
                 <span className="text-sm font-bold text-emerald-400 tabular-nums">
-                  +{usd(toNum(r.commissionAmount))}
+                  {seesMoney ? `+${usd(toNum(r.commissionAmount))}` : "—"}
                 </span>
               </div>
             ))

@@ -76,7 +76,8 @@ const createSchema = z.object({
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || !(await can(session.user.id, "ads.view"))) {
+  // Invoices are billing — finance, on top of the ads permission.
+  if (!session?.user || !(await can(session.user.id, "ads.view")) || !(await can(session.user.id, "finance.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const sp = new URL(request.url).searchParams;
@@ -138,7 +139,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
+  // Invoices are billing — finance, on top of the ads permission.
+  if (!session?.user || !(await can(session.user.id, "ads.manage")) || !(await can(session.user.id, "finance.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json().catch(() => ({}));

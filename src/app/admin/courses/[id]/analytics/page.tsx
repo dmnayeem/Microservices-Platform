@@ -28,6 +28,9 @@ export default async function CourseAnalyticsPage({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
+  // Course revenue is finance — the course list page already hides it; this
+  // per-course page did not.
+  const seesMoney = await can(session.user.id, "finance.view");
 
   const { id } = await params;
   const course = await prisma.course.findUnique({
@@ -157,7 +160,7 @@ export default async function CourseAnalyticsPage({
 
       {/* Conversion + revenue */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Stat icon={<Wallet />} tone="text-emerald-300" label="Revenue" value={`${usd(revenue)}`} />
+        <Stat icon={<Wallet />} tone="text-emerald-300" label="Revenue" value={seesMoney ? `${usd(revenue)}` : "Finance only"} />
         <Stat icon={<BarChart3 />} tone="text-indigo-300" label="View → enrol" value={`${conversionRate.toFixed(1)}%`} />
         <Stat icon={<BarChart3 />} tone="text-cyan-300" label="Enrol → complete" value={`${completionRate.toFixed(1)}%`} />
       </div>
@@ -231,7 +234,7 @@ export default async function CourseAnalyticsPage({
                   </p>
                 </div>
                 <span className="text-xs text-emerald-300 tabular-nums whitespace-nowrap">
-                  {usd(e.pricePaid)}
+                  {seesMoney ? usd(e.pricePaid) : "—"}
                 </span>
               </li>
             ))}

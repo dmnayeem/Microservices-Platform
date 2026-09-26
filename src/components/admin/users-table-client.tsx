@@ -40,7 +40,8 @@ interface UserRow {
   kycStatus: string;
   package: { slug: string; name: string; badgeColor: string | null } | null;
   pointsBalance: number;
-  cashBalance: number;
+  /** Null when the viewer has no finance access. */
+  cashBalance: number | null;
   level: number;
   country: string | null;
   /** Who brought this account in. Null = signed up directly. */
@@ -387,7 +388,7 @@ export function UsersTableClient({
                       <td className="py-4 px-4">
                         <div className="text-sm">
                           <p className="text-white tabular-nums">
-                            {usd(u.cashBalance)}
+                            {u.cashBalance === null ? "—" : usd(u.cashBalance)}
                           </p>
                           <p className="text-xs text-slate-500 tabular-nums">
                             {u.pointsBalance.toLocaleString()} pts
@@ -594,7 +595,7 @@ export function UsersTableClient({
                   )}
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <p className="text-sm text-white tabular-nums">
-                      {usd(u.cashBalance)}
+                      {u.cashBalance === null ? "—" : usd(u.cashBalance)}
                       <span className="text-xs text-slate-500 ml-1.5">
                         {u.pointsBalance.toLocaleString()} pts
                       </span>

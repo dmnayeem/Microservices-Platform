@@ -49,6 +49,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
 
   const userRole = session.user.role as UserRole | undefined;
   if (!(await can(session.user.id, "users.view"))) redirect("/admin");
+  const seesMoney = await can(session.user.id, "finance.view");
 
   const params = await searchParams;
   const page = parsePage(params.page);
@@ -429,7 +430,8 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         users={
           allUsers.map((u) => ({
             ...u,
-            cashBalance: toNum(u.cashBalance),
+            // Cash is finance — not even sent to the browser without it.
+            cashBalance: seesMoney ? toNum(u.cashBalance) : null,
           })) as unknown as Parameters<typeof UsersTableClient>[0]["users"]
         }
         totalCount={totalCount}

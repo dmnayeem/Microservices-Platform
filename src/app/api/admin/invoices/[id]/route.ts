@@ -22,7 +22,8 @@ interface RouteParams {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
-  if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
+  // Invoices are billing — finance, on top of the ads permission.
+  if (!session?.user || !(await can(session.user.id, "ads.manage")) || !(await can(session.user.id, "finance.view"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
