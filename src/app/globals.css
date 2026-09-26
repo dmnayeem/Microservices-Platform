@@ -253,7 +253,10 @@ html[data-accent="silver"] {
      at L* 88.2 and a real shadow (white-on-white needs an edge, not a tint).
      Measured on the chrome: gray-400 6.9:1, gray-500 5.2:1 (dark) /
      7.6:1 and 5.8:1 (light) — every shell label clears 4.5:1 in both. */
-  --shell-bg: #031d12;
+  /* Deep, low-saturation green: #031d12 was ~80% saturated and read as a
+     bright green slab behind the sidebar and header. Same hue, darker, far
+     less chroma — the accent green stays the one bright green on screen. */
+  --shell-bg: #0a1511;
   --shell-border: #202f28;
   --shell-hover: #172820;
   --shell-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.7);
@@ -1957,22 +1960,26 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8da699; 
   --app-glow-cta: 0 0 16px rgba(16, 185, 129, 0.35);
   --app-ring-focus: 0 0 0 3px rgba(16, 185, 129, 0.15);
   /* Frosted layers: modals, command bars, sticky earning headers. */
-  --app-field-bg: #031d12;
-  --app-glass: rgba(19, 46, 37, 0.75);
+  --app-field-bg: #09140f;
+  --app-glass: rgba(15, 29, 23, 0.78);
   --app-glass-blur: 16px;
 
   /* Card chrome, so `.app-card` never has to guess. */
   /* Obsidian Kinetic's luminance stack, verbatim. Elevation in this design is
      not a shadow — a black shadow is invisible on slate — it is a brighter
      tint per layer, so these four values ARE the depth model:
-       canvas #08120d -> card #072116 -> elevated #0a261a -> overlay #0f2e21
+       (was) canvas #08120d -> card #072116 -> elevated #0a261a -> overlay #0f2e21
      The hue moved from slate-blue to the emerald the CTA already used;
      saturation and lightness are unchanged, so the depth stack above is
      exactly the one this comment has always described. */
-  --app-page: #08120d;
-  --app-surface: #072116;
-  --app-surface-hover: #0a261a;
-  --app-surface-2: #0f2e21;
+  /* Surfaces de-saturated (the owner: "too green"). Hue kept, chroma cut
+     roughly in half, and each layer still a step brighter than the one under
+     it, so the depth model above is unchanged:
+       canvas #070f0b -> card #0d1a15 -> elevated #11201a -> overlay #162821 */
+  --app-page: #070f0b;
+  --app-surface: #0d1a15;
+  --app-surface-hover: #11201a;
+  --app-surface-2: #162821;
   --app-line-subtle: rgba(255, 255, 255, 0.06);
   --app-line: rgba(255, 255, 255, 0.08);
   --app-line-strong: rgba(255, 255, 255, 0.16);

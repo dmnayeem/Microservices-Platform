@@ -308,8 +308,15 @@ export function SocialFeedView({
             that it could. `pr-2` keeps the cards clear of the 8px track.
 
             `overscroll-contain` stops a flick at the end of the rail carrying on
-            into the page behind it. */}
-        <div className="sticky top-20 space-y-3 max-h-[calc(100vh-6rem-var(--anchor-ad-h,0px))] overflow-y-auto overscroll-contain pr-2">
+            into the page behind it.
+
+            The anchor ad's height is padding INSIDE the scroll area, not taken
+            off the box. Taken off the box, the rail stopped a full ad-height
+            above the bottom of the screen and left an empty dark strip beside
+            the ad — which read as a black bar behind it. Now the rail runs to
+            the bottom and passes beside the ad, and the padding still lets its
+            last widget scroll up clear of it. */}
+        <div className="sticky top-20 space-y-3 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain pr-2 pb-[var(--anchor-ad-h,0px)]">
           {railContent}
         </div>
       </aside>
