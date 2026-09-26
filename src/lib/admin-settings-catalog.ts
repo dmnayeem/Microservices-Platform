@@ -211,6 +211,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
 
   // ── Notifications ──
   { key: "push_notifications_enabled", group: "notifications", label: "Push Notifications", description: "Web push (VAPID). Off here mutes push for everyone, whatever each user has chosen." },
+  { key: "celebrate.achievement_min_points", group: "notifications", label: "Big achievement popup — from (points)", description: "An achievement worth at least this many points also shows a celebration popup, not only a bell notification. 0 = every achievement with a reward." },
   { key: "notify_new_task", group: "notifications", label: "New Task Available", description: "Notify users when a task they are eligible for is published" },
   { key: "notify_withdrawal", group: "notifications", label: "Withdrawal Status Updates", description: "Notify a user when their withdrawal is approved, paid or rejected" },
   { key: "notify_referral", group: "notifications", label: "New Referral", description: "Notify a user when someone signs up through their referral link" },

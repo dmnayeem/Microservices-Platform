@@ -132,6 +132,7 @@ const DEFAULTS: SettingsBag = {
   notify_withdrawal: true,
   notify_referral: true,
   notify_level_up: true,
+  "celebrate.achievement_min_points": 200,
   // Integrations
   gemini_api_key: "",
   openai_api_key: "",
@@ -978,6 +979,16 @@ export function SystemSettingsForm({
               onChange={(v) => set("push_notifications_enabled", v)}
               disabled={!canEdit}
             />
+            <Field settingKey="celebrate.achievement_min_points">
+              <input
+                type="number"
+                min={0}
+                value={Number(values["celebrate.achievement_min_points"] ?? 200)}
+                onChange={(e) => set("celebrate.achievement_min_points", Math.max(0, parseInt(e.target.value) || 0))}
+                disabled={!canEdit}
+                className={inp}
+              />
+            </Field>
             <div className="border-t border-slate-800 pt-3 mt-3 space-y-3">
               <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">
                 Auto-notify users on
