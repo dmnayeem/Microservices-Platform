@@ -4,6 +4,7 @@ import {
   MarketingBlobs,
 } from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
+import { publicLanding, sectionOn } from "@/lib/landing-content";
 import { AutoAds } from "@/components/providers/auto-ads";
 
 // Shared chrome for public marketing pages (About, Careers, Blog, Press, Help,
@@ -16,7 +17,7 @@ export default async function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const content = await getLandingContent();
+  const content = publicLanding(await getLandingContent());
   const { theme, animations } = content.appearance;
   return (
     <main
@@ -31,9 +32,9 @@ export default async function MarketingLayout({
       <AutoAds />
       {animations && <MarketingBlobs />}
       <div className="relative z-10">
-        <Navbar {...content.navbar} />
-        <div className="pt-16 lg:pt-20">{children}</div>
-        <Footer {...content.footer} />
+        {sectionOn(content, "navbar") && <Navbar {...content.navbar} />}
+        <div className={sectionOn(content, "navbar") ? "pt-16 lg:pt-20" : ""}>{children}</div>
+        {sectionOn(content, "footer") && <Footer {...content.footer} />}
       </div>
     </main>
   );

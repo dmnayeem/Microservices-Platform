@@ -6,11 +6,15 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface NavLink {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   label: string;
   href: string;
 }
 
 export interface NavbarContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   nav_links: NavLink[];
   cta_signin_label: string;
   cta_signin_href: string;
@@ -19,12 +23,16 @@ export interface NavbarContent {
 }
 
 export interface HeroStat {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   iconKey: string;
   value: string;
   label: string;
 }
 
 export interface HeroContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   title_line1: string;
   title_line2: string;
@@ -37,6 +45,8 @@ export interface HeroContent {
 }
 
 export interface FeatureItem {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   iconKey: string;
   title: string;
   description: string;
@@ -46,6 +56,8 @@ export interface FeatureItem {
 }
 
 export interface FeaturesContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   heading_line1: string;
   heading_line2: string;
@@ -54,6 +66,8 @@ export interface FeaturesContent {
 }
 
 export interface HowItWorksStep {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   iconKey: string;
   step_number: string;
   title: string;
@@ -62,6 +76,8 @@ export interface HowItWorksStep {
 }
 
 export interface HowItWorksContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   heading_line1: string;
   heading_line2: string;
@@ -70,6 +86,8 @@ export interface HowItWorksContent {
 }
 
 export interface CalculatorPlan {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   name: "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP" | string;
   per_task: number;
   multiplier: number;
@@ -78,6 +96,8 @@ export interface CalculatorPlan {
 }
 
 export interface CalculatorContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   heading: string;
   subheading: string;
@@ -91,6 +111,8 @@ export interface CalculatorContent {
 }
 
 export interface PackagePlan {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   iconKey: string;
   name: string;
   price: string;
@@ -103,6 +125,8 @@ export interface PackagePlan {
 }
 
 export interface PackagesContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   heading_line1: string;
   heading_line2: string;
@@ -112,6 +136,8 @@ export interface PackagesContent {
 }
 
 export interface TestimonialItem {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   name: string;
   avatar: string;
   country: string;
@@ -122,6 +148,8 @@ export interface TestimonialItem {
 }
 
 export interface TestimonialsContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   heading_line1: string;
   heading_line2: string;
@@ -130,20 +158,28 @@ export interface TestimonialsContent {
 }
 
 export interface TrustBadgeItem {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   iconKey: string;
   label: string;
 }
 
 export interface TrustBadgesContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   items: TrustBadgeItem[];
 }
 
 export interface FaqItem {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   question: string;
   answer: string;
 }
 
 export interface FaqContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   badge: string;
   heading_line1: string;
   heading_line2: string;
@@ -155,6 +191,8 @@ export interface FaqContent {
 }
 
 export interface CtaContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   heading_line1: string;
   heading_line2: string;
   subheading: string;
@@ -164,11 +202,15 @@ export interface CtaContent {
 }
 
 export interface FooterLinkGroup {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
   title: string;
   links: NavLink[];
 }
 
 export interface FooterContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
   brand_description: string;
   payment_methods: string[];
   payment_methods_label: string;
@@ -795,5 +837,45 @@ export function withEarnCardLinks(features: FeaturesContent): FeaturesContent {
     items: features.items.map((it) =>
       it.href?.trim() ? it : { ...it, href: EARN_CARD_LINKS[it.title] }
     ),
+  };
+}
+
+
+// ── Show / hide without deleting ───────────────────────────────────────────
+// Every section can be switched off and every list item hidden from the
+// editor; nothing is deleted. The public pages read the content through
+// `publicLanding`, so no section component needs to know about either flag.
+
+/** Sections with an on/off switch — every visible one (Appearance is settings). */
+export const TOGGLEABLE_SECTIONS: SectionKey[] = [
+  "navbar", "hero", "features", "how_it_works", "calculator", "packages",
+  "testimonials", "trust_badges", "faq", "cta", "footer",
+];
+
+/** Is this section switched on? A section that has never been toggled is on. */
+export function sectionOn(content: LandingContent, key: SectionKey): boolean {
+  return (content[key] as { enabled?: boolean } | undefined)?.enabled !== false;
+}
+
+const visible = <T,>(xs: T[] | undefined): T[] =>
+  (xs ?? []).filter((x) => !(x as { hidden?: boolean }).hidden);
+
+/** The content as the public sees it: every hidden item removed. */
+export function publicLanding(c: LandingContent): LandingContent {
+  return {
+    ...c,
+    navbar: { ...c.navbar, nav_links: visible(c.navbar.nav_links) },
+    hero: { ...c.hero, stats: visible(c.hero.stats) },
+    features: { ...c.features, items: visible(c.features.items) },
+    how_it_works: { ...c.how_it_works, steps: visible(c.how_it_works.steps) },
+    calculator: { ...c.calculator, plans: visible(c.calculator.plans) },
+    packages: { ...c.packages, plans: visible(c.packages.plans) },
+    testimonials: { ...c.testimonials, items: visible(c.testimonials.items) },
+    trust_badges: { ...c.trust_badges, items: visible(c.trust_badges.items) },
+    faq: { ...c.faq, items: visible(c.faq.items) },
+    footer: {
+      ...c.footer,
+      link_groups: visible(c.footer.link_groups).map((g) => ({ ...g, links: visible(g.links) })),
+    },
   };
 }

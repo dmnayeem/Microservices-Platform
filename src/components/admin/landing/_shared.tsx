@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export const inp =
@@ -95,19 +95,43 @@ export function RepeatingList<T>({
   const add = () => {
     onChange([...items, newItem()]);
   };
+  // Hide without deleting: the item stays here, but the site does not show
+  // it (publicLanding drops it). Save the section to apply.
+  const isHidden = (it: T) => !!(it as { hidden?: boolean }).hidden;
+  const toggleHidden = (idx: number) =>
+    update(idx, { hidden: !isHidden(items[idx]) } as unknown as Partial<T>);
 
   return (
     <div className="space-y-2">
       {items.map((item, i) => (
         <div
           key={i}
-          className="rounded-lg border border-slate-800 bg-slate-950 p-3"
+          className={
+            "rounded-lg border p-3 " +
+            (isHidden(item) ? "border-dashed border-slate-700 bg-slate-950/40" : "border-slate-800 bg-slate-950")
+          }
         >
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               {itemTitle ? itemTitle(item, i) : `#${i + 1}`}
+              {isHidden(item) && (
+                <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">Hidden</span>
+              )}
             </span>
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => toggleHidden(i)}
+                disabled={disabled}
+                className={
+                  "p-1 disabled:opacity-30 disabled:cursor-not-allowed " +
+                  (isHidden(item) ? "text-amber-400 hover:text-amber-300" : "text-slate-500 hover:text-white")
+                }
+                title={isHidden(item) ? "Hidden on the site — click to show" : "Shown on the site — click to hide"}
+                aria-label={isHidden(item) ? "Show this item" : "Hide this item"}
+              >
+                {isHidden(item) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
               <button
                 type="button"
                 onClick={() => move(i, -1)}
@@ -141,7 +165,9 @@ export function RepeatingList<T>({
               </button>
             </div>
           </div>
-          {render(item, (patch) => update(i, patch), i)}
+          <div className={isHidden(item) ? "opacity-50" : undefined}>
+            {render(item, (patch) => update(i, patch), i)}
+          </div>
         </div>
       ))}
       <button

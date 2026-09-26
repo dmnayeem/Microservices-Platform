@@ -24,6 +24,8 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   LANDING_SECTIONS,
+  TOGGLEABLE_SECTIONS,
+  sectionOn,
   type LandingContent,
   type SectionKey,
 } from "@/lib/landing-content";
@@ -73,13 +75,13 @@ export function LandingEditor({ initial, canEdit }: Props) {
     setDirty((d) => ({ ...d, [key]: true }));
   };
 
-  const save = async (key: SectionKey) => {
+  const save = async (key: SectionKey, value?: LandingContent[SectionKey]) => {
     setBusy(key);
     try {
       const res = await fetch(`/api/admin/landing-page/${key}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(content[key]),
+        body: JSON.stringify(value ?? content[key]),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -99,6 +101,17 @@ export function LandingEditor({ initial, canEdit }: Props) {
   };
 
   const activeMeta = LANDING_SECTIONS.find((s) => s.key === active)!;
+
+  // Switch a whole section off (or back on) without deleting it. Saved at
+  // once — a switch that needs a second "Save" click is a switch people
+  // think they flipped and did not. Any unsaved edits in the section go
+  // with it.
+  const isOn = (key: SectionKey) => sectionOn(content, key);
+  const toggleSection = (key: SectionKey) => {
+    const next = { ...(content[key] as object), enabled: !isOn(key) } as LandingContent[SectionKey];
+    setContent((prev) => ({ ...prev, [key]: next }));
+    void save(key, next);
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -122,7 +135,12 @@ export function LandingEditor({ initial, canEdit }: Props) {
                   )}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1 min-w-0 truncate font-medium">{s.label}</span>
+                  <span className={cn("flex-1 min-w-0 truncate font-medium", !isOn(s.key) && "line-through opacity-60")}>
+                    {s.label}
+                  </span>
+                  {TOGGLEABLE_SECTIONS.includes(s.key) && !isOn(s.key) && (
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">Off</span>
+                  )}
                   {isDirty && (
                     <span
                       className="w-1.5 h-1.5 rounded-full bg-amber-400"
@@ -164,6 +182,38 @@ export function LandingEditor({ initial, canEdit }: Props) {
               {activeMeta.description}
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+          {canEdit && TOGGLEABLE_SECTIONS.includes(active) && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isOn(active)}
+              onClick={() => toggleSection(active)}
+              disabled={busy !== null}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50",
+                isOn(active)
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-300"
+              )}
+              title={isOn(active) ? "Shown on the site — click to switch off" : "Switched off — click to show"}
+            >
+              <span
+                className={cn(
+                  "relative inline-block h-4 w-7 rounded-full transition-colors",
+                  isOn(active) ? "bg-emerald-500" : "bg-slate-600"
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all",
+                    isOn(active) ? "left-3.5" : "left-0.5"
+                  )}
+                />
+              </span>
+              {isOn(active) ? "Shown on site" : "Switched off"}
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -179,7 +229,18 @@ export function LandingEditor({ initial, canEdit }: Props) {
               Save {activeMeta.label}
             </button>
           )}
+          </div>
         </div>
+
+        {TOGGLEABLE_SECTIONS.includes(active) && !isOn(active) && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            This section is switched off — nothing in it shows on the site. Its content is kept; switch it on to bring it back.
+          </div>
+        )}
+        <p className="text-xs text-slate-500">
+          Tip: the <Eye className="inline w-3.5 h-3.5 -mt-0.5" /> on each item hides just that item without deleting it —
+          then save the section.
+        </p>
 
         {!canEdit && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">

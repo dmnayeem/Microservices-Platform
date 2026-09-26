@@ -16,6 +16,7 @@ import {
   MarketingBlobs,
 } from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
+import { publicLanding, sectionOn } from "@/lib/landing-content";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 
@@ -34,9 +35,12 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const content = await getLandingContent();
+  // Hidden items dropped, switched-off sections skipped — set in the editor
+  // without deleting anything.
+  const content = publicLanding(await getLandingContent());
+  const on = (k: Parameters<typeof sectionOn>[1]) => sectionOn(content, k);
   const { theme, animations } = content.appearance;
-  const faqItems = (content.faq?.items ?? []).filter(
+  const faqItems = (on("faq") ? content.faq?.items ?? [] : []).filter(
     (f: { question?: string; answer?: string }) => f.question && f.answer
   );
 
@@ -65,17 +69,17 @@ export default async function Home() {
       {animations && <MarketingBlobs />}
 
       <div className="relative z-10">
-        <Navbar {...content.navbar} />
-        <Hero {...content.hero} />
-        <Features {...content.features} />
-        <HowItWorks {...content.how_it_works} />
-        <EarningsCalculator {...content.calculator} />
-        <Packages {...content.packages} />
-        <Testimonials {...content.testimonials} />
-        <TrustBadges {...content.trust_badges} />
-        <FAQ {...content.faq} />
-        <CTA {...content.cta} />
-        <Footer {...content.footer} />
+        {on("navbar") && <Navbar {...content.navbar} />}
+        {on("hero") && <Hero {...content.hero} />}
+        {on("features") && <Features {...content.features} />}
+        {on("how_it_works") && <HowItWorks {...content.how_it_works} />}
+        {on("calculator") && <EarningsCalculator {...content.calculator} />}
+        {on("packages") && <Packages {...content.packages} />}
+        {on("testimonials") && <Testimonials {...content.testimonials} />}
+        {on("trust_badges") && <TrustBadges {...content.trust_badges} />}
+        {on("faq") && <FAQ {...content.faq} />}
+        {on("cta") && <CTA {...content.cta} />}
+        {on("footer") && <Footer {...content.footer} />}
       </div>
     </main>
   );
