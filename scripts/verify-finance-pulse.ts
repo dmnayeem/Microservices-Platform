@@ -49,16 +49,25 @@ console.log("\nverify-finance-pulse\n");
    an earning. */
 check(
   "points earned goes through the sign-resolution helpers",
-  /magnitudePoints/.test(pulse) && /direction\(r\)/.test(pulse),
+  /magnitudePoints/.test(pulse) && /isPointsEarned\(r\)/.test(pulse),
   "a raw _sum of Transaction.points adds a withdrawal to an earning"
 );
+// The row rule now lives in ONE place, `isPointsEarned` (signing.ts), shared
+// with the Points tab so the card and the breakdown cannot disagree. These
+// read that rule where it is defined.
+const signing = fs.readFileSync(path.join(process.cwd(), "src/lib/finance/signing.ts"), "utf8");
+const rule = signing.slice(signing.indexOf("export function isPointsEarned"));
 check(
   "only rows the platform PAID count as user earnings",
-  /direction\(r\) !== "cost"\) continue/.test(pulse)
+  /if \(!isPointsEarned\(r\)\) continue/.test(pulse) && /direction\(row\) === "cost"/.test(rule)
 );
 check(
   "unsettled rows are skipped",
-  /if \(!isSettled\(r\)\) continue/.test(pulse)
+  /isSettled\(row\)/.test(rule)
+);
+check(
+  "a PENALTY (points taken back) is not counted as points earned",
+  /row\.type !== "PENALTY"/.test(rule)
 );
 check(
   "the Decimal is narrowed before the helpers see it",

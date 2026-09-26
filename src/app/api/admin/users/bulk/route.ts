@@ -158,6 +158,9 @@ export async function POST(request: NextRequest) {
               // adjustments to one user don't collide on the (userId, reference)
               // unique (batch-size was collision-prone).
               reference: `admin_adjust_${uid}_${Date.now()}`,
+              // Who granted it — the finance console names the admin behind
+              // every hand grant. The single-user edit already recorded this.
+              metadata: { adminId, via: "bulk" },
             },
           }),
         ]);

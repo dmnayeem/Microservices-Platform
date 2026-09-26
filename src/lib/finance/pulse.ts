@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
-import { direction, isSettled, magnitudePoints } from "@/lib/finance/signing";
+import { isPointsEarned, magnitudePoints } from "@/lib/finance/signing";
 
 /**
  * Today, and the periods around it.
@@ -142,11 +142,10 @@ export async function getFinancePulse(): Promise<FinancePulse> {
         amount: Number(row.amount ?? 0),
         points: row.points ?? 0,
       };
-      if (!isSettled(r)) continue;
-      // A user earning is money the platform paid out.
-      if (direction(r) !== "cost") continue;
+      // One rule, shared with the points breakdown (signing.ts) — which is
+      // also what stops a PENALTY (points taken back) adding to this figure.
+      if (!isPointsEarned(r)) continue;
       const pts = magnitudePoints(r);
-      if (pts === 0) continue;
       const at = row.createdAt;
       earned.year += pts;
       if (at >= monthStart) earned.month += pts;

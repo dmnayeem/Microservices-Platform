@@ -196,3 +196,21 @@ export function amountIsUserValue(row: LedgerRow): boolean {
 export function pointsDenominated(row: LedgerRow): boolean {
   return Math.abs(Number(row.amount ?? 0)) < 1e-9 && Math.abs(Number(row.points ?? 0)) > 0;
 }
+
+/**
+ * Points a USER EARNED — the one rule behind "Points earned today" and the
+ * points breakdown, so the two cannot disagree.
+ *
+ * A settled row the platform paid out (`cost`) that actually carries points.
+ * PENALTY is `cost` in `direction()` (it is a platform-side adjustment) but it
+ * is points TAKEN BACK from a user: summed by magnitude it used to ADD to the
+ * points-earned figure. It is reported separately as a deduction.
+ */
+export function isPointsEarned(row: LedgerRow): boolean {
+  return isSettled(row) && row.type !== "PENALTY" && direction(row) === "cost" && magnitudePoints(row) > 0;
+}
+
+/** Points taken back from a user (admin debit or task penalty). */
+export function isPointsDeducted(row: LedgerRow): boolean {
+  return isSettled(row) && row.type === "PENALTY" && magnitudePoints(row) > 0;
+}

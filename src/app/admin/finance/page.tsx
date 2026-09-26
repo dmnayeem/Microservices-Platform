@@ -39,6 +39,11 @@ import {
 import { getRevenueBreakdown } from "@/lib/finance/revenue";
 import { getDailySeries, getLedgerTotals } from "@/lib/finance/series";
 import { getFinancePulse } from "@/lib/finance/pulse";
+import { getPointsBreakdown } from "@/lib/finance/points-breakdown";
+import { POINT_SOURCE_META } from "@/lib/finance/points-source";
+import { PointsTab } from "@/components/admin/finance/points-tab";
+import { getCashFlow, getMoneyByFeature } from "@/lib/finance/by-feature";
+import { CashInOut, MoneyByFeature } from "@/components/admin/finance/money-by-feature";
 import { getPayrollExpense, lastClosedPeriod } from "@/lib/payroll/run";
 
 export const revalidate = 60;
@@ -58,12 +63,16 @@ export const revalidate = 60;
 
 const TABS = [
   { id: "overview", label: "Overview" },
+  // Where the points came from and who got them — the question the "Points
+  // earned today" card raised and nothing on the page could answer.
+  { id: "points", label: "Points" },
   { id: "sources", label: "Sources" },
   { id: "ledger", label: "Ledger" },
   { id: "users", label: "Users" },
 ] as const;
 
 const RANGES = [
+  { id: "today", label: "Today", days: 1 },
   { id: "7d", label: "7 days", days: 7 },
   { id: "30d", label: "30 days", days: 30 },
   { id: "90d", label: "90 days", days: 90 },
@@ -119,6 +128,24 @@ export default async function AdminFinancePage({
     getSetting<string>("billing.seller_name", ""),
     getSetting<string>("billing.tax_id", ""),
   ]);
+
+  // Points by source: the Points tab's own range, and today's for the Overview
+  // card, so the card can say what today's number is mostly made of. Only
+  // loaded by the tab that shows it.
+  const endOfToday = new Date();
+  endOfToday.setUTCHours(24, 0, 0, 0);
+  const startOfToday = new Date(endOfToday.getTime() - 86_400_000);
+  const points =
+    tab === "points"
+      ? await getPointsBreakdown(from ?? new Date(Date.UTC(2000, 0, 1)), endOfToday)
+      : tab === "overview"
+        ? await getPointsBreakdown(startOfToday, endOfToday)
+        : null;
+  // Money by feature + cash in/out, for the Sources tab only.
+  const [byFeature, cash] =
+    tab === "sources"
+      ? await Promise.all([getMoneyByFeature(revenue, from, endOfToday), getCashFlow(from)])
+      : [null, null];
 
   const billingIncomplete = !String(sellerName || "").trim() || !String(taxId || "").trim();
 
@@ -210,11 +237,20 @@ export default async function AdminFinancePage({
           payroll={payroll}
           pulse={pulse}
           rangeLabel={range.label}
+          todayPoints={points}
         />
       )}
 
+      {tab === "points" && points && <PointsTab data={points} rangeLabel={range.label} />}
+
       {tab === "sources" && (
-        <SourcesTab revenue={revenue} totals={totals} rangeLabel={range.label} />
+        <div className="space-y-4">
+          {byFeature && (
+            <MoneyByFeature rows={byFeature.rows} unassignedOutUsd={byFeature.unassignedOutUsd} rangeLabel={range.label} />
+          )}
+          {cash && <CashInOut cash={cash} rangeLabel={range.label} />}
+          <SourcesTab revenue={revenue} totals={totals} rangeLabel={range.label} />
+        </div>
       )}
 
       {tab === "ledger" && <LedgerTab days={range.days} />}
@@ -237,6 +273,7 @@ function OverviewTab({
   payroll,
   pulse,
   rangeLabel,
+  todayPoints,
 }: {
   revenue: Awaited<ReturnType<typeof getRevenueBreakdown>>;
   totals: Awaited<ReturnType<typeof getLedgerTotals>>;
@@ -246,7 +283,9 @@ function OverviewTab({
   payroll: Awaited<ReturnType<typeof getPayrollExpense>>;
   pulse: Awaited<ReturnType<typeof getFinancePulse>>;
   rangeLabel: string;
+  todayPoints: Awaited<ReturnType<typeof getPointsBreakdown>> | null;
 }) {
+  const topToday = todayPoints?.bySource[0];
   // Payroll lands in the ledger as a BONUS row, so it is ALREADY inside
   // `totals.costUsd` and the net below is right as it stands. What would be
   // wrong is showing it as money paid to users: it is the platform's own wage
@@ -319,9 +358,13 @@ function OverviewTab({
           <StatCard
             title="Points earned today"
             value={pts(pulse.pointsEarned.day)}
-            subtext={`${usd(pulse.pointsEarned.dayUsd)} · ${pts(
-              pulse.pointsEarned.week
-            )} this week`}
+            // What today's number is mostly made of, and one click to the rest.
+            subtext={
+              topToday && todayPoints && todayPoints.totalPoints > 0
+                ? `${Math.round((topToday.points / todayPoints.totalPoints) * 100)}% ${POINT_SOURCE_META[topToday.source].label.toLowerCase()} · see all →`
+                : `${usd(pulse.pointsEarned.dayUsd)} · ${pts(pulse.pointsEarned.week)} this week`
+            }
+            href="/admin/finance?tab=points&range=today"
             icon={Coins}
             tone="green"
           />
