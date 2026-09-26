@@ -433,6 +433,10 @@ export const FINANCE_PERMISSIONS: Permission[] = [
   "payment_methods.view", "payment_methods.manage",
   "packages.view", "packages.edit",
   "referrals.view", "referrals.configure",
+  // Adding or removing points / cash on a user by hand. It was an ADMIN
+  // permission, and 260,000 points were added that way — money is money
+  // whichever form it is typed into.
+  "users.adjust_balance",
 ];
 
 // admins.manage (editing roles / custom roles / per-user overrides) and
@@ -483,7 +487,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   // finance + admins.manage as a hard backstop). Custom-role users share this base.
   ADMIN: [
     "dashboard.view",
-    "users.view", "users.edit", "users.ban", "users.delete", "users.adjust_balance",
+    "users.view", "users.edit", "users.ban", "users.delete",
+    // (users.adjust_balance is finance now — granted by a super admin by name.)
     "kyc.view", "kyc.approve", "kyc.reject",
     "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
     ...TASK_CREATE_PERMISSIONS,
@@ -527,6 +532,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "finance.staff",
     "payroll.view", "payroll.manage",
     "users.view",
+    "users.adjust_balance",
     "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
     "payment_methods.view", "payment_methods.manage",
     "packages.view", "packages.edit",
@@ -1681,6 +1687,9 @@ export const ROLE_META: Record<
   UserRole,
   { description: string; kind: "staff" | "client" }
 > = {
+  // Listed in the order Admin Control shows them: the line of command first
+  // (Super Admin → Manager → Admin → Moderator), then the specialist roles,
+  // then finance — which sits apart from that line — then the client roles.
   SUPER_ADMIN: {
     kind: "staff",
     description:
@@ -1689,22 +1698,17 @@ export const ROLE_META: Record<
   MANAGER: {
     kind: "staff",
     description:
-      "Runs the other staff: creates admins, suspends them, changes their roles and tunes their permissions. Cannot see or touch money, and cannot reach a Finance Admin, another Manager, or a Super Admin.",
+      "Second after the Super Admin. Runs the other staff: creates admins and moderators, suspends them, changes their roles and tunes their permissions. Sees task points and task income, never the company's money (revenue, deposits, withdrawals, wallets) unless a Super Admin grants finance by name. Cannot reach a Finance Admin, another Manager, or a Super Admin.",
   },
   ADMIN: {
     kind: "staff",
     description:
-      "General day-to-day admin — users, tasks, submissions, content. Never money, and cannot administer other staff.",
+      "Below the Manager. Day-to-day admin — users, tasks, submissions, content. Sees task points and task income, never the company's money unless a Super Admin grants finance by name, and cannot administer other staff.",
   },
-  FINANCE_ADMIN: {
+  MODERATOR: {
     kind: "staff",
     description:
-      "The only role besides Super Admin that can see the books: withdrawals, payment methods, packages, referral payouts, company expenses, HR and tax. Can create Finance Moderators, and no other staff.",
-  },
-  FINANCE_MODERATOR: {
-    kind: "staff",
-    description:
-      "Finance data entry. Reads the books and records bills and expenses; cannot approve, pay, void, configure, or see salaries unless a super admin or finance admin grants it. Created by a super admin or a finance admin.",
+      "Below the Admin. Front-line moderation: approves or rejects submissions and removes reported posts.",
   },
   CONTENT_ADMIN: {
     kind: "staff",
@@ -1721,15 +1725,20 @@ export const ROLE_META: Record<
     description:
       "Runs campaigns, announcements, push notifications, SEO and promotional content.",
   },
-  MODERATOR: {
-    kind: "staff",
-    description:
-      "Front-line moderation: approves or rejects submissions and removes reported posts.",
-  },
   AD_MANAGER: {
     kind: "staff",
     description:
       "Staff role for the Ads Manager. Holds ads.manage over EVERY advertiser's campaigns — it is not the role for a customer who wants to run their own ads. For that, grant the 'Run Ads (advertiser)' feature instead.",
+  },
+  FINANCE_ADMIN: {
+    kind: "staff",
+    description:
+      "Separate from the Manager → Admin → Moderator line. The only role besides Super Admin that sees the money: revenue, withdrawals, deposits, payment methods, packages, referral payouts, balances, company expenses, HR and tax. Can create Finance Moderators, and no other staff.",
+  },
+  FINANCE_MODERATOR: {
+    kind: "staff",
+    description:
+      "Finance data entry. Reads the books and records bills and expenses; cannot approve, pay, void, configure, or see salaries unless a super admin or finance admin grants it. Created by a super admin or a finance admin.",
   },
   AGENCY: {
     kind: "client",

@@ -476,6 +476,16 @@ export async function PATCH(
     // would be invisible in the user's transaction history.
     const settingPoints = data.pointsBalance !== undefined;
     const settingCash = data.cashBalance !== undefined;
+    // Setting a balance is money, not profile editing. This route used to
+    // need only `users.edit`, so any admin could mint points from the edit
+    // form and step around `users.adjust_balance` — which is finance, held by
+    // the super admin, the finance admin, or someone granted it by name.
+    if ((settingPoints || settingCash) && !(await can(session.user.id, "users.adjust_balance"))) {
+      return NextResponse.json(
+        { error: "Changing a balance needs the balance permission — ask a super admin." },
+        { status: 403 }
+      );
+    }
     const priorBal =
       settingPoints || settingCash
         ? await prisma.user.findUnique({

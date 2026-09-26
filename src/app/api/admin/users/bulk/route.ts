@@ -53,8 +53,14 @@ export async function POST(request: NextRequest) {
       if (!(await can(session.user.id, "users.delete"))) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+    } else if (action === "adjustPoints") {
+      // Adding or removing points is money — the same finance permission the
+      // single-user balance route needs, not plain `users.edit`.
+      if (!(await can(session.user.id, "users.adjust_balance"))) {
+        return NextResponse.json({ error: "Adjusting points needs the balance permission — ask a super admin." }, { status: 403 });
+      }
     } else if (!(await can(session.user.id, "users.edit"))) {
-      // sendEmail / adjustPoints / changeTier
+      // sendEmail / changeTier
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
