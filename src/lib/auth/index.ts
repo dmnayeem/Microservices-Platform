@@ -160,6 +160,17 @@ export const {
         if (s.image) token.picture = s.image;
       }
 
+      // Keep the role current. It was written into the token at sign-in and
+      // never again, and the token lives 30 days — so a user a super admin
+      // promoted to MANAGER kept a USER token: no "Admin Panel" link, and
+      // /admin sent them back to the feed until they logged out and in. The
+      // role is re-read from the database (memoised ~30s per instance), so a
+      // promotion or demotion takes effect within half a minute.
+      if (!user && typeof token.id === "string") {
+        const fresh = await currentRole(token.id);
+        if (fresh) token.role = fresh;
+      }
+
       return token;
     },
   },
@@ -173,6 +184,18 @@ export const {
     },
   },
 });
+
+const roleMemo = new Map<string, { role: string; at: number }>();
+/** The user's role as the database has it now, memoised for ~30s. */
+async function currentRole(userId: string): Promise<string | null> {
+  const hit = roleMemo.get(userId);
+  if (hit && Date.now() - hit.at < 30_000) return hit.role;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } }).catch(() => null);
+  if (!u) return null;
+  if (roleMemo.size > 5_000) roleMemo.clear();
+  roleMemo.set(userId, { role: u.role, at: Date.now() });
+  return u.role;
+}
 
 /**
  * Resilient wrapper around `auth()`. A stale/corrupt session cookie makes

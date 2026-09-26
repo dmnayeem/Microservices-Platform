@@ -14,20 +14,6 @@ export const REFERRAL_COOKIE = "eg_ref";
 export const ONBOARDING_PATH = "/welcome";
 export const ONBOARDED_COOKIE = "eg_onb";
 
-// Admin roles that can access /admin routes
-// Must match ADMIN_ROLE_STRINGS in @/lib/rbac
-const ADMIN_ROLES = [
-  "SUPER_ADMIN",
-  "MANAGER",
-  "ADMIN",
-  "FINANCE_ADMIN",
-  "CONTENT_ADMIN",
-  "SUPPORT_ADMIN",
-  "MARKETING_ADMIN",
-  "MODERATOR",
-  "AD_MANAGER",
-] as const;
-
 // Reserved: schema for credentials validation when `authorize` is wired up.
 const _loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -168,14 +154,12 @@ export const authConfig: NextAuthConfig = {
         return false;
       }
 
-      // Check admin role for admin routes
-      if (isAdminRoute) {
-        const userRole = auth?.user?.role as string;
-        const isAdminUser = ADMIN_ROLES.includes(userRole as typeof ADMIN_ROLES[number]);
-        if (!isAdminUser) {
-          return Response.redirect(new URL("/social", nextUrl));
-        }
-      }
+      // Admin routes: signed in is all the edge checks. The ROLE is decided
+      // by the admin layout on the server, which reads it fresh from the
+      // database. This runs on Edge with no database, so it could only read
+      // the role baked into the token at sign-in — and it bounced a user who
+      // had just been made a MANAGER back to the feed until they logged in
+      // again. Every admin page and API still checks permissions itself.
 
       // ── First-login handle picker ──────────────────────────────────────────
       // Google users never see the register form, so they've never chosen a
