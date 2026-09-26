@@ -57,6 +57,15 @@ export async function POST(request: NextRequest) {
   if (!pkg) {
     return NextResponse.json({ error: "Package not found" }, { status: 404 });
   }
+  // A draft (isActive = false) is not for sale. The plans page already hid
+  // it, but this route never checked, so its id alone was enough to buy it.
+  // Someone already on the plan may still renew it.
+  if (!pkg.isActive) {
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { packageId: true } });
+    if (me?.packageId !== pkg.id) {
+      return NextResponse.json({ error: "This plan is not available." }, { status: 404 });
+    }
+  }
   // Free/default plan: activate directly — no charge, no payment step, no
   // admin verification. This is the self-serve "Switch to Free" / activation path.
   if (toNum(pkg.priceMonthly) === 0 && pkg.priceYearly == null) {

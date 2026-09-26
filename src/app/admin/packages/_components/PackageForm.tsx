@@ -175,7 +175,7 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
       data.features.filter((_, i) => i !== idx)
     );
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, publish?: boolean) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -187,8 +187,11 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
       const method = isCreate ? "POST" : "PUT";
 
       // Strip the id field from the payload — server doesn't want it.
-      const { id: _id, ...payload } = data;
+      const { id: _id, ...rest } = data;
       void _id;
+      // "Save as draft" / "Publish" decide the status; plain "Save changes"
+      // keeps whatever the Status control says.
+      const payload = publish === undefined ? rest : { ...rest, isActive: publish };
 
       const res = await fetch(url, {
         method,
@@ -199,7 +202,16 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Failed to save");
       }
-      toast.success(isCreate ? "Plan created" : "Plan updated");
+      const live = publish ?? data.isActive;
+      toast.success(
+        isCreate
+          ? live
+            ? "Plan published — users can see and buy it"
+            : "Plan saved as a draft — hidden from users"
+          : live
+            ? "Plan updated"
+            : "Plan updated — it is a draft, hidden from users"
+      );
       router.push("/admin/packages");
       router.refresh();
     } catch (err) {
@@ -250,16 +262,43 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
             <input id="order" type="number" min={0} value={data.order} onChange={(e) => setField("order", parseInt(e.target.value) || 0)} className={inputCls} />
           </Field>
 
-          <div className="flex items-center gap-3">
-            <input id="isActive" type="checkbox" checked={data.isActive} onChange={(e) => setField("isActive", e.target.checked)} disabled={data.isDefault} className="w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" />
-            <label htmlFor="isActive" className={"text-sm inline-flex items-center gap-1.5 " + (data.isDefault ? "text-gray-500" : "text-gray-300")}>
-              Active
+          {/* Status — Live or Draft. A draft is hidden from the plans page and
+              cannot be bought; people already on it keep it. This was a small
+              "Active" checkbox, and a new plan went live the moment it was
+              created, with no way to prepare one first. */}
+          <div className={isCreate ? "hidden" : "sm:col-span-2"}>
+            <p className="mb-1.5 text-sm text-gray-300 inline-flex items-center gap-1.5">
+              Status
               {data.isDefault && (
-                <span className="inline-flex items-center gap-1 text-amber-400 text-[11px]" title="The default plan cannot be deactivated">
-                  <Lock className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-amber-400 text-[11px]" title="The default plan is always live">
+                  <Lock className="w-3 h-3" /> the default plan is always live
                 </span>
               )}
-            </label>
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { live: true, title: "Live", sub: "Users can see and buy it" },
+                { live: false, title: "Draft", sub: "Hidden from users — nobody can buy it" },
+              ].map((o) => (
+                <button
+                  key={o.title}
+                  type="button"
+                  disabled={data.isDefault && !o.live}
+                  onClick={() => setField("isActive", o.live)}
+                  className={
+                    "rounded-lg border px-3 py-2 text-left disabled:opacity-40 disabled:cursor-not-allowed " +
+                    (data.isActive === o.live
+                      ? o.live
+                        ? "border-emerald-500/60 bg-emerald-500/10"
+                        : "border-amber-500/60 bg-amber-500/10"
+                      : "border-gray-700 hover:border-gray-500")
+                  }
+                >
+                  <span className="block text-sm font-semibold text-white">{o.title}</span>
+                  <span className="block text-xs text-gray-400">{o.sub}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <input id="isDefault" type="checkbox" checked={data.isDefault} onChange={(e) => setField("isDefault", e.target.checked)} className="w-5 h-5 rounded border-gray-700 bg-gray-800 text-amber-500" />
@@ -462,10 +501,33 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
           <X className="w-5 h-5" />
           Cancel
         </button>
-        <button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50">
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-          {isCreate ? "Create Plan" : "Save Changes"}
-        </button>
+        {isCreate ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={(e) => handleSubmit(e, false)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-600 hover:border-gray-400 text-white rounded-lg disabled:opacity-50"
+            >
+              <Save className="w-5 h-5" />
+              Save as draft
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={(e) => handleSubmit(e, true)}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              Publish plan
+            </button>
+          </div>
+        ) : (
+          <button type="submit" disabled={loading} className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+            Save Changes
+          </button>
+        )}
       </div>
     </form>
   );

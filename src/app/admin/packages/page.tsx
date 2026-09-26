@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { PackagePublishToggle } from "./_components/PackagePublishToggle";
 
 export default async function AdminPackagesPage() {
   const session = await auth();
@@ -242,11 +243,11 @@ export default async function AdminPackagesPage() {
               pkg.isActive ? (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
                   <CheckCircle2 className="w-3 h-3" />
-                  Active
+                  Live
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 text-[10px] font-bold">
-                  Inactive
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[10px] font-bold" title="Hidden from users; nobody can buy it">
+                  Draft
                 </span>
               ),
           },
@@ -256,13 +257,16 @@ export default async function AdminPackagesPage() {
             className: "text-right",
             cell: (pkg) =>
               canEdit ? (
-                <Link
-                  href={`/admin/packages/${pkg.id}/edit`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-md text-xs font-semibold"
-                >
-                  <Edit className="w-3 h-3" />
-                  Edit
-                </Link>
+                <div className="inline-flex items-center gap-1.5">
+                  {!pkg.isDefault && <PackagePublishToggle id={pkg.id} live={pkg.isActive} />}
+                  <Link
+                    href={`/admin/packages/${pkg.id}/edit`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-md text-xs font-semibold"
+                  >
+                    <Edit className="w-3 h-3" />
+                    Edit
+                  </Link>
+                </div>
               ) : null,
           },
         ]}
