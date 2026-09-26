@@ -16,6 +16,7 @@ import { invalidateSettingsCache } from "@/lib/system-settings";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { NON_STAFF_WHERE } from "@/lib/staff";
 import { calculateLevel } from "@/lib/level";
+import { cycleWindow, topUsersInWindow } from "@/lib/leaderboard-window";
 
 /**
  * ONE leaderboard payout, used by both the admin button and the cron.
@@ -664,12 +665,15 @@ export async function runLeaderboardReset(
       };
     }
 
-    const ranked = await topUsers(metric, winnerCount, eligibleSet);
+    // Ranked on what was done IN this cycle. `topUsers` ranks all-time totals
+    // (it is what the public board shows), and paying from it handed the
+    // daily prize to the all-time leader every day — see leaderboard-window.ts.
+    const ranked = await topUsersInWindow(metric, winnerCount, eligibleSet, cycleWindow(period, at));
     if (ranked.length === 0) {
       return {
         ...base,
         error:
-          "No eligible users found. Check the eligible-plans list in Settings — none of the top performers qualify.",
+          "No eligible user did anything in this period (tasks completed, XP earned or referrals), so there is no winner and no prize. If people were active, check the eligible-plans list in Settings.",
         status: 400,
       };
     }
