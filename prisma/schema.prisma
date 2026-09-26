@@ -2231,6 +2231,13 @@ model Withdrawal {
   processedAt     DateTime?
   transactionId   String?
   rejectionReason String?
+  // Recorded when the admin marks it paid, and shown to the user in their
+  // withdrawal history and in the payment email:
+  // a note to the user, the account the money was sent from, and screenshots
+  // of the payment.
+  adminNote       String?          @db.Text
+  paidFrom        String?
+  paymentProof    String[]         @default([])
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 

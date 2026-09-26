@@ -8,6 +8,7 @@ import { getWithdrawalConfig } from "@/lib/withdrawal";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { ProfileGate } from "@/components/user/profile/profile-gate";
 import { getProfileGateState } from "@/lib/profile-gate-server";
+import { MyWithdrawals } from "@/components/user/wallet/my-withdrawals";
 
 export default async function WithdrawalPage() {
   const session = await auth();
@@ -15,7 +16,7 @@ export default async function WithdrawalPage() {
   const gate = await getProfileGateState(session.user.id, "withdrawals");
   if (gate.locked) return <ProfileGate progress={gate.progress} surface="withdrawals" />;
 
-  const [user, methods, toggles, pointsPerUsd, wcfg] = await Promise.all([
+  const [user, methods, toggles, pointsPerUsd, wcfg, mine] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -32,6 +33,26 @@ export default async function WithdrawalPage() {
     getPointsPerUsd(),
     // Admin-configured limits + fee (Financial settings ∪ the user's package).
     getWithdrawalConfig(session.user.id),
+    prisma.withdrawal.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        amount: true,
+        fee: true,
+        netAmount: true,
+        method: true,
+        status: true,
+        createdAt: true,
+        processedAt: true,
+        transactionId: true,
+        paidFrom: true,
+        adminNote: true,
+        paymentProof: true,
+        rejectionReason: true,
+      },
+    }),
   ]);
 
   return (
@@ -56,6 +77,14 @@ export default async function WithdrawalPage() {
         label: m.accountName ?? `${m.method} · ${m.accountNumber}`,
         isDefault: m.isDefault,
       }))}
+      />
+      <MyWithdrawals
+        items={mine.map((w) => ({
+          ...w,
+          amount: Number(w.amount),
+          fee: Number(w.fee),
+          netAmount: Number(w.netAmount),
+        }))}
       />
     </>
   );

@@ -68,6 +68,15 @@ export async function deliverToUser(opts: {
   title: string;
   message: string;
   link?: string;
+  /**
+   * A service notice about the user's own money (a payout, a refund): emailed
+   * even when they turned notification emails off, and sent while the master
+   * marketing-email switch is off. A payment receipt is not marketing, and a
+   * user must not be left unsure whether they were paid.
+   */
+  transactional?: boolean;
+  /** Template id from `lib/notification-styles.ts`, for the email's band. */
+  style?: string;
 }) {
   try {
     const user = await prisma.user.findUnique({
@@ -76,13 +85,14 @@ export async function deliverToUser(opts: {
     });
     if (!user) return;
     if (
-      user.emailNotifications &&
+      (user.emailNotifications || opts.transactional) &&
       user.email &&
       !user.email.endsWith("@deleted.local")
     ) {
-      sendNotificationEmail(user.email, opts.title, opts.message, opts.link).catch(
-        () => {}
-      );
+      sendNotificationEmail(user.email, opts.title, opts.message, opts.link, {
+        transactional: opts.transactional === true,
+        ...(opts.style ? { style: opts.style } : {}),
+      }).catch(() => {});
     }
     if (user.pushNotifications && (await pushAllowed()) && ensureVapid()) {
       const subs = await prisma.pushSubscription.findMany({

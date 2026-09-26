@@ -11,6 +11,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 
 interface WithdrawalActionsProps {
   withdrawalId: string;
@@ -49,6 +50,9 @@ export function WithdrawalActions({
   const [showReject, setShowReject] = useState(false);
   const [transactionId, setTransactionId] = useState(existingTransactionId ?? "");
   const [adminNote, setAdminNote] = useState("");
+  // Recorded with the payment and shown to the user (email + wallet history).
+  const [paidFrom, setPaidFrom] = useState("");
+  const [proofs, setProofs] = useState<string[]>([""]);
   const [reasonKey, setReasonKey] = useState(REJECTION_REASONS[0].value);
   const [otherReason, setOtherReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -79,7 +83,14 @@ export function WithdrawalActions({
   };
 
   const approve = () => post({ action: "approve", transactionId: transactionId || undefined, adminNote });
-  const markPaid = () => post({ action: "mark_paid", transactionId, adminNote });
+  const markPaid = () =>
+    post({
+      action: "mark_paid",
+      transactionId,
+      adminNote,
+      paidFrom,
+      proofUrls: proofs.filter((p) => p.trim()),
+    });
   const reject = () => {
     const reasonLabel =
       reasonKey === "other"
@@ -163,14 +174,15 @@ export function WithdrawalActions({
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Admin Note
+              Note to the user
+              <span className="text-slate-600 ml-2">Included in their email — optional</span>
             </label>
             <textarea
               rows={2}
               value={adminNote}
               onChange={(e) => setAdminNote(e.target.value)}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
-              placeholder="Internal note"
+              placeholder="e.g. Sent to your bKash personal number"
             />
           </div>
           <div className="flex gap-2">
@@ -219,16 +231,62 @@ export function WithdrawalActions({
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Admin Note
+              Note to the user
+              <span className="text-slate-600 ml-2">Included in their email — optional</span>
             </label>
             <textarea
               rows={2}
               value={adminNote}
               onChange={(e) => setAdminNote(e.target.value)}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
-              placeholder="Internal note"
+              placeholder="e.g. Sent to your bKash personal number"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Sent from
+              <span className="text-slate-600 ml-2">The account you paid from — shown to the user</span>
+            </label>
+            <input
+              type="text"
+              value={paidFrom}
+              onChange={(e) => setPaidFrom(e.target.value)}
+              maxLength={200}
+              placeholder="e.g. bKash merchant 01XXXXXXXXX"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Payment screenshot
+              <span className="text-slate-600 ml-2">Optional, up to 5 — the user sees it in their wallet history</span>
+            </label>
+            <div className="space-y-2">
+              {proofs.map((p, i) => (
+                <ImageUploadField
+                  key={i}
+                  value={p}
+                  onChange={(url) => setProofs((xs) => xs.map((x, j) => (j === i ? url : x)))}
+                  title="Payment screenshot"
+                  previewSize="md"
+                  hideUrlFallback
+                />
+              ))}
+              {proofs.length < 5 && proofs[proofs.length - 1]?.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setProofs((xs) => [...xs, ""])}
+                  className="text-xs font-semibold text-blue-400 hover:underline"
+                >
+                  + Add another screenshot
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Marking it paid emails the user the amount, the reference, where it was sent from, your note, and that
+            a screenshot is attached — even if they turned notification emails off.
+          </p>
           <div className="flex gap-2">
             <button
               onClick={markPaid}

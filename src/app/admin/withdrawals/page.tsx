@@ -1,4 +1,5 @@
 import { parsePage } from "@/lib/paginate";
+import { FraudRiskChip } from "@/components/admin/fraud/fraud-risk-chip";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -105,6 +106,7 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
             avatar: true,
             level: true,
             kycStatus: true,
+            fraudRisk: true,
             package: { select: { slug: true, name: true } },
             createdAt: true,
           },
@@ -146,6 +148,7 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
       avatar: string | null;
       level: number;
       kycStatus: string;
+      fraudRisk: number;
       package: { slug: string; name: string } | null;
       createdAt: Date;
     };
@@ -415,6 +418,13 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
                       </span>
                     );
                   },
+                },
+                {
+                  // The user's task-fraud risk — what they have been caught doing
+                  // on tasks, separate from the payout-pattern Risk column.
+                  key: "fraud",
+                  header: "Fraud",
+                  cell: (r) => <FraudRiskChip risk={r.withdrawal.user.fraudRisk} withLabel={false} />,
                 },
                 {
                   key: "status",

@@ -22,6 +22,8 @@ import {
 import Link from "next/link";
 import { format, differenceInDays } from "date-fns";
 import { WithdrawalActions } from "./_components/WithdrawalActions";
+import { mediaSrc } from "@/lib/media-url";
+import { FraudRiskChip } from "@/components/admin/fraud/fraud-risk-chip";
 import { assessWithdrawalRisk } from "@/lib/withdrawal-risk";
 
 interface PageProps {
@@ -73,6 +75,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
           totalEarnings: true,
           totalWithdrawals: true,
           kycStatus: true,
+          fraudRisk: true,
           package: { select: { slug: true, name: true } },
           createdAt: true,
           country: true,
@@ -105,6 +108,7 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
       totalEarnings: number;
       totalWithdrawals: number;
       kycStatus: string;
+      fraudRisk: number;
       package: { slug: string; name: string } | null;
       createdAt: Date;
       country: string | null;
@@ -236,6 +240,32 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
                   <span className="text-white font-mono">{withdrawal.transactionId}</span>
                 </div>
               )}
+              {/* What was recorded with the payment — the same the user sees. */}
+              {withdrawal.paidFrom && (
+                <div className="flex items-center justify-between gap-3 py-3 border-b border-gray-800">
+                  <span className="text-gray-400">Sent from</span>
+                  <span className="text-white text-right">{withdrawal.paidFrom}</span>
+                </div>
+              )}
+              {withdrawal.adminNote && (
+                <div className="py-3 border-b border-gray-800">
+                  <span className="block text-gray-400">Note to the user</span>
+                  <p className="mt-1 whitespace-pre-wrap text-white">{withdrawal.adminNote}</p>
+                </div>
+              )}
+              {withdrawal.paymentProof.length > 0 && (
+                <div className="py-3 border-b border-gray-800">
+                  <span className="block text-gray-400 mb-2">Payment screenshot</span>
+                  <div className="flex flex-wrap gap-2">
+                    {withdrawal.paymentProof.map((u) => (
+                      <a key={u} href={mediaSrc(u)} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={mediaSrc(u)} alt="Payment screenshot" className="h-24 w-auto rounded-lg border border-gray-700" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -267,7 +297,15 @@ export default async function WithdrawalDetailPage({ params }: PageProps) {
                     withdrawal.user.kycStatus === "PENDING" ? "text-amber-400" :
                     "text-gray-400"
                   }`}>KYC: {withdrawal.user.kycStatus}</span>
+                  <span className="text-gray-600">|</span>
+                  <FraudRiskChip risk={withdrawal.user.fraudRisk} />
                 </div>
+                {withdrawal.user.fraudRisk >= 50 && (
+                  <p className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                    This account is at <b>{withdrawal.user.fraudRisk}% fraud risk</b> from cheating caught on tasks.
+                    Check the offences on the Fraud Monitor before paying.
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid md:grid-cols-4 gap-4">

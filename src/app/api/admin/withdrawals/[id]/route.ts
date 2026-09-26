@@ -8,6 +8,33 @@ import { toNum } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { deliverToUser } from "@/lib/notify";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { ownMediaKey } from "@/lib/media-url";
+
+/** A file in this platform's own media store — never an arbitrary link. */
+function isOwnMediaUrl(u: string): boolean {
+  return ownMediaKey(u) !== null || /^\/api\/media\/(media|task-proofs)\/[\w./-]+$/.test(u);
+}
+
+const METHOD_LABEL: Record<string, string> = {
+  BKASH: "bKash",
+  NAGAD: "Nagad",
+  ROCKET: "Rocket",
+  BINANCE: "Binance",
+  BITGET: "Bitget",
+  PAYPAL: "PayPal",
+};
+const methodLabel = (m: string) => METHOD_LABEL[m] ?? m.replace(/_/g, " ").toLowerCase();
+
+/** " ending 4321", from whatever the account details hold — never the full number. */
+function accountTail(details: unknown): string {
+  const d = (details ?? {}) as Record<string, unknown>;
+  const raw = [d.accountNumber, d.number, d.phone, d.account, d.address, d.email].find(
+    (v) => typeof v === "string" && v.trim()
+  );
+  if (typeof raw !== "string") return "";
+  const t = raw.replace(/\s+/g, "");
+  return t.length > 4 ? ` ending ${t.slice(-4)}` : "";
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -91,6 +118,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
     const { action, transactionId, rejectionReason, adminNote } = body;
+    // Recorded with a payment and shown to the user: the account the money was
+    // sent from, and up to five screenshots of the payment. Screenshots must be
+    // files uploaded to this platform (the media library), never an arbitrary
+    // link that would be put in front of the user.
+    const paidFrom =
+      typeof body.paidFrom === "string" && body.paidFrom.trim() ? body.paidFrom.trim().slice(0, 200) : null;
+    const note = typeof adminNote === "string" && adminNote.trim() ? adminNote.trim().slice(0, 2000) : null;
+    const proofIn: unknown[] = Array.isArray(body.proofUrls) ? body.proofUrls : [];
+    const proofUrls = proofIn
+      .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+      .map((u) => u.trim());
+    if (proofUrls.length > 5 || proofUrls.some((u) => !isOwnMediaUrl(u))) {
+      return NextResponse.json(
+        { error: "Payment screenshots must be up to 5 files uploaded here (use the upload button)." },
+        { status: 400 }
+      );
+    }
 
     // Check if withdrawal exists
     const existingWithdrawal = await prisma.withdrawal.findUnique({
@@ -140,6 +184,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         meta: { adminNote: adminNote ?? null, transactionId: transactionId ?? null },
       });
 
+      void deliverToUser({
+        userId: existingWithdrawal.userId,
+        title: "Your withdrawal is being processed",
+        message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} to ${methodLabel(existingWithdrawal.method)} was approved. We will send the payment and email you the reference when it is done.`,
+        link: "/withdrawal#history",
+        transactional: true,
+        style: "UPDATE",
+      });
+
       return NextResponse.json({
         success: true,
         withdrawal,
@@ -177,6 +230,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             processedBy: session.user.id,
             processedAt: new Date(),
             transactionId,
+            adminNote: note,
+            paidFrom,
+            paymentProof: proofUrls,
           },
         });
         if (claimed.count === 0) return null;
@@ -224,14 +280,30 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         entityId: id,
         targetUserId: existingWithdrawal.userId,
         summary: `Marked a ${usd(toNum(existingWithdrawal.netAmount))} withdrawal as paid`,
-        meta: { transactionId, adminNote: adminNote ?? null },
+        meta: { transactionId, adminNote: note, paidFrom, proofCount: proofUrls.length },
       });
 
+      // The payment receipt. Transactional: it goes out even to a user who
+      // turned notification emails off — they need to know they were paid, and
+      // with what reference, to find the money in their own account.
       void deliverToUser({
         userId: existingWithdrawal.userId,
-        title: "Withdrawal completed",
-        message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} via ${existingWithdrawal.method} has been paid.`,
-        link: "/wallet",
+        title: "Your withdrawal has been paid",
+        message: [
+          `We sent ${usd(existingWithdrawal.netAmount)} to your ${methodLabel(existingWithdrawal.method)} account${accountTail(existingWithdrawal.accountDetails)}.`,
+          `Payment reference: ${String(transactionId).trim()}`,
+          paidFrom ? `Sent from: ${paidFrom}` : null,
+          toNum(existingWithdrawal.fee) > 0
+            ? `Requested ${usd(existingWithdrawal.amount)} − fee ${usd(existingWithdrawal.fee)} = ${usd(existingWithdrawal.netAmount)}.`
+            : null,
+          note ? `Note from our team: ${note}` : null,
+          proofUrls.length ? "A screenshot of the payment is attached to this withdrawal under My withdrawals." : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        link: "/withdrawal#history",
+        transactional: true,
+        style: "SUCCESS",
       });
 
       // A cut to whoever invited them, if the admin has that on. Paid on the
@@ -337,6 +409,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         targetUserId: existingWithdrawal.userId,
         summary: `Rejected & refunded a ${usd(toNum(existingWithdrawal.amount))} withdrawal`,
         meta: { rejectionReason: rejectionReason ?? null, adminNote: adminNote ?? null },
+      });
+
+      // Rejection is a service notice too: their money came back and they
+      // should know why.
+      void deliverToUser({
+        userId: existingWithdrawal.userId,
+        title: "Your withdrawal was not paid — money returned",
+        message: [
+          `Your withdrawal of ${usd(existingWithdrawal.amount)} to ${methodLabel(existingWithdrawal.method)} was rejected, and the full amount is back in your wallet.`,
+          rejectionReason ? `Reason: ${rejectionReason}` : null,
+          note ? `Note from our team: ${note}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        link: "/withdrawal#history",
+        transactional: true,
+        style: "IMPORTANT",
       });
 
       return NextResponse.json({
