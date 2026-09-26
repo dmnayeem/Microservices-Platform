@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { countryOfIp } from "@/lib/geo";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/require-active";
@@ -25,6 +26,7 @@ import {
   accountsOnIp,
 } from "@/lib/fraud";
 import { addFraudRisk } from "@/lib/fraud-risk";
+import { accountsOnDevice, flagOnce, readDevice, recordDevice } from "@/lib/device";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 
 const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
@@ -73,7 +75,7 @@ export async function POST(
     // Record the most-recent IP (best-effort) for the per-IP account cap.
     if (ip && ip !== "unknown") {
       void prisma.user
-        .update({ where: { id: session.user.id }, data: { lastIp: ip } })
+        .update({ where: { id: session.user.id }, data: { lastIp: ip, lastCountry: countryOfIp(ip) } })
         .catch(() => {});
     }
     // VPN/proxy block (best-effort heuristic).
@@ -97,26 +99,66 @@ export async function POST(
         { status: 403 }
       );
     }
-    // Per-IP account/worker cap.
-    if (fraud.maxUsersPerIp > 0) {
-      const n = await accountsOnIp(ip, session.user.id);
-      if (n >= fraud.maxUsersPerIp) {
+    // Accounts per DEVICE — the real multi-account signal. Several accounts
+    // working from one browser is what account farming looks like; it adds
+    // fraud risk (once a day) and, by default, stops the task.
+    const seen = await readDevice();
+    void recordDevice(session.user.id, { ...seen, ip: ip && ip !== "unknown" ? ip : seen.ip });
+    if (fraud.maxAccountsPerDevice > 0 && seen.deviceId) {
+      const n = await accountsOnDevice(seen.deviceId);
+      if (n > fraud.maxAccountsPerDevice) {
         await addFraudRisk({
           userId: session.user.id,
           signal: "MULTIPLE_ACCOUNTS",
-          dedupeKey: `multiacct:${session.user.id}:${today}`,
+          dedupeKey: `multidev:${session.user.id}:${today}`,
           ipAddress: ip,
           userAgent: ua,
-          details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp },
+          details: { accountsOnDevice: n, cap: fraud.maxAccountsPerDevice, deviceId: seen.deviceId },
         });
-        return NextResponse.json(
-          {
-            error:
-              "Too many accounts are working from this network. Only a limited number are allowed per connection.",
-            code: "IP_LIMIT",
-          },
-          { status: 403 }
-        );
+        if (fraud.deviceLimitAction === "block") {
+          return NextResponse.json(
+            {
+              error: `This device is used by ${n} accounts — the limit is ${fraud.maxAccountsPerDevice}. Work from your own account on your own device.`,
+              code: "DEVICE_LIMIT",
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Accounts per IP. A home or office WiFi puts many honest people behind
+    // one IP, so by default ("flag") this is recorded once a day for review
+    // and adds NO fraud risk — with risk points, a 20-person office would
+    // have been auto-suspended in ten days. "block" refuses, as it used to.
+    if (fraud.maxUsersPerIp > 0) {
+      const n = await accountsOnIp(ip, session.user.id);
+      if (n >= fraud.maxUsersPerIp) {
+        if (fraud.ipLimitAction === "block") {
+          await addFraudRisk({
+            userId: session.user.id,
+            signal: "MULTIPLE_ACCOUNTS",
+            dedupeKey: `multiacct:${session.user.id}:${today}`,
+            ipAddress: ip,
+            userAgent: ua,
+            details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp },
+          });
+          return NextResponse.json(
+            {
+              error:
+                "Too many accounts are working from this network. Only a limited number are allowed per connection.",
+              code: "IP_LIMIT",
+            },
+            { status: 403 }
+          );
+        }
+        await flagOnce(`ipflag:${session.user.id}:${today}`, {
+          userId: session.user.id,
+          eventType: "SHARED_IP",
+          ipAddress: ip,
+          userAgent: ua,
+          details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp, note: "review only — shared WiFi is normal" },
+        });
       }
     }
 

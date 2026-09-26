@@ -1161,6 +1161,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "CORE",
   },
   {
+    name: "Progress Report",
+    href: "/admin/progress",
+    icon: "TrendingUp",
+    permissions: ["analytics.view"],
+    category: "CORE",
+  },
+  {
     name: "Users",
     href: "/admin/users",
     icon: "Users",
@@ -1171,6 +1178,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     name: "User Activity",
     href: "/admin/user-activity",
     icon: "Activity",
+    permissions: ["users.view"],
+    category: "CORE",
+  },
+  {
+    name: "Returning Users",
+    href: "/admin/users/returning",
+    icon: "CalendarCheck",
     permissions: ["users.view"],
     category: "CORE",
   },
@@ -1507,6 +1521,15 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/monetization",
     icon: "DollarSign",
     permissions: ["ads.view"],
+    category: "MARKETING",
+  },
+  {
+    // Site name, logo, favicon, search appearance, verification tags, the
+    // Knowledge Panel entity, analytics / pixels and custom code.
+    name: "SEO & Tracking",
+    href: "/admin/seo",
+    icon: "Globe",
+    permissions: ["settings.view"],
     category: "MARKETING",
   },
   {

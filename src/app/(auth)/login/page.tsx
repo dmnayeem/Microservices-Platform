@@ -30,6 +30,8 @@ function LoginForm() {
   const [devVerifyUrl, setDevVerifyUrl] = useState<string | null>(null);
 
   const verified = searchParams.get("verified") === "true";
+  // Set when Google sign-up is refused by the device / network account limit.
+  const accountLimit = searchParams.get("error") === "AccountLimit";
   const callbackUrl = searchParams.get("callbackUrl") || "/social";
 
   const {
@@ -192,6 +194,12 @@ function LoginForm() {
         {verified && (
           <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
             Email verified successfully! You can now log in.
+          </div>
+        )}
+        {accountLimit && (
+          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            A new account can&apos;t be created from this device — it already has the maximum number of accounts. Sign in
+            to your existing account instead.
           </div>
         )}
 

@@ -116,6 +116,11 @@ export async function createGoogleAccount(
     onboarded: false,
     source: "google",
   });
+  // The device they signed up on — counted by the per-device account limit.
+  {
+    const { readDevice, recordDevice } = await import("@/lib/device");
+    await recordDevice(created.id, await readDevice());
+  }
 
   await completeSignupRewards(created.id, {
     referredById: created.referredById,

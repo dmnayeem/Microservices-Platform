@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { countryOfIp } from "@/lib/geo";
 import speakeasy from "speakeasy";
 import { prisma } from "@/lib/prisma";
 import { generateReferralCode } from "@/lib/utils";
@@ -253,6 +254,10 @@ export async function provisionUser(input: ProvisionUserInput) {
           packageId: defaultPkgId,
           packageExpiresAt: null,
           signupIp: input.signupIp ?? null,
+          // Where they signed up from — offline IP → country (lib/geo).
+          signupCountry: countryOfIp(input.signupIp),
+          lastIp: input.signupIp ?? null,
+          lastCountry: countryOfIp(input.signupIp),
           onboardedAt: input.onboarded ? new Date() : null,
           googleLinkedAt: input.source === "google" ? new Date() : null,
         },

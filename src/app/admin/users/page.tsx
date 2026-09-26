@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { CountryFlag } from "@/components/admin/ui/country-flag";
+import { countryName } from "@/lib/country";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -74,12 +76,20 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
     // Filter by Package.slug (e.g. ?package=pro-monthly).
     where.package = { slug: params.package };
   }
-  if (params.country && params.country.trim()) {
-    where.country = {
-      contains: params.country.trim(),
-      mode: "insensitive",
-    };
-  }
+  // Country: a 2-letter code matches where the account's IP is (last seen or
+  // sign-up), the reliable signal; anything else matches the profile country
+  // the user typed, as before. Only 8 of 167 users ever typed one.
+  const countryParam = (params.country ?? "").trim();
+  const countryWhere: Prisma.UserWhereInput | null = countryParam
+    ? /^[A-Za-z]{2}$/.test(countryParam)
+      ? {
+          OR: [
+            { lastCountry: countryParam.toUpperCase() },
+            { lastCountry: null, signupCountry: countryParam.toUpperCase() },
+          ],
+        }
+      : { country: { contains: countryParam, mode: "insensitive" } }
+    : null;
   if (params.gender && params.gender !== "all") {
     where.gender = params.gender;
   }
@@ -96,8 +106,12 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
       { name: { contains: params.search, mode: "insensitive" } },
       { email: { contains: params.search, mode: "insensitive" } },
       { username: { contains: params.search, mode: "insensitive" } },
+      // An IP pasted into the search box finds the accounts on it.
+      { lastIp: { startsWith: params.search.trim() } },
+      { signupIp: { startsWith: params.search.trim() } },
     ];
   }
+  if (countryWhere) where.AND = [countryWhere];
 
   // Fetch users and stats
   const [
@@ -127,6 +141,10 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         cashBalance: true,
         level: true,
         country: true,
+        lastIp: true,
+        signupIp: true,
+        lastCountry: true,
+        signupCountry: true,
         // Who brought them in. The list could filter on "has referrals"
         // (downstream) but never showed the upstream side, so there was no way
         // to see that a run of new accounts all came from one person.
@@ -142,6 +160,15 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
     prisma.user.count({ where: { kycStatus: "PENDING" } }),
   ]);
 
+  // Where users come from — by the country of their IP (last seen, else
+  // sign-up). Regular users only: staff are not the audience.
+  const geoRows = (await prisma.$queryRaw<Array<{ code: string | null; n: number }>>`
+    SELECT COALESCE("lastCountry", "signupCountry") AS code, COUNT(*)::int AS n
+    FROM "User" WHERE role = 'USER'
+    GROUP BY 1 ORDER BY n DESC`) as Array<{ code: string | null; n: number }>;
+  const geoKnown = geoRows.filter((g) => g.code);
+  const geoUnknown = geoRows.find((g) => !g.code)?.n ?? 0;
+  const geoTotal = geoRows.reduce((a, g) => a + g.n, 0);
   // Build base query string (without page) for client pagination
   const baseQueryParams = new URLSearchParams();
   if (params.status) baseQueryParams.set("status", params.status);
@@ -172,7 +199,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   if (params.package && params.package !== "all")
     chips.push({ key: "package", label: "Package", value: params.package });
   if (params.country)
-    chips.push({ key: "country", label: "Country", value: params.country });
+    chips.push({
+      key: "country",
+      label: "Country",
+      value: /^[A-Za-z]{2}$/.test(params.country.trim()) ? countryName(params.country.trim()) : params.country,
+    });
   if (params.gender && params.gender !== "all")
     chips.push({ key: "gender", label: "Gender", value: params.gender });
   if (params.studyLevel && params.studyLevel !== "all")
@@ -424,6 +455,43 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
 
       {/* Active filter chips */}
       <ActiveFilterChips chips={chips} />
+
+      {/* Where users come from */}
+      {geoKnown.length > 0 && (
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-white">Where users come from</h2>
+            <p className="text-xs text-slate-500">
+              {geoKnown.length} countries · by IP address{geoUnknown ? ` · ${geoUnknown} unknown` : ""} · click to filter
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {geoKnown.slice(0, 12).map((g) => {
+              const active = countryParam.toUpperCase() === g.code;
+              return (
+                <Link
+                  key={g.code}
+                  href={active ? "/admin/users" : `/admin/users?country=${g.code}`}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
+                    active
+                      ? "border-indigo-500/60 bg-indigo-500/15 text-white"
+                      : "border-slate-800 bg-slate-950/50 text-slate-200 hover:border-slate-600"
+                  }`}
+                >
+                  <CountryFlag code={g.code} showName />
+                  <span className="tabular-nums font-semibold">{g.n}</span>
+                  <span className="text-xs tabular-nums text-slate-500">{Math.round((g.n / geoTotal) * 100)}%</span>
+                </Link>
+              );
+            })}
+            {geoKnown.length > 12 && (
+              <span className="inline-flex items-center rounded-lg border border-dashed border-slate-800 px-2.5 py-1.5 text-xs text-slate-500">
+                +{geoKnown.length - 12} more: {geoKnown.slice(12).map((g) => g.code).join(" ")}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Users Table — client component for selection / bulk actions */}
       <UsersTableClient

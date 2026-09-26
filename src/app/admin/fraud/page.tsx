@@ -9,7 +9,10 @@ import {
   Activity,
   Gauge,
   Scale,
+  Download,
+  Smartphone,
 } from "lucide-react";
+import { describeUserAgent } from "@/lib/user-agent";
 import { getRiskConfig, FRAUD_SIGNALS, type FraudSignal } from "@/lib/fraud-risk";
 import { AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fraud/fraud-actions";
 import Link from "next/link";
@@ -62,6 +65,40 @@ export default async function FraudMonitorPage() {
       }),
     ]);
 
+  // Devices several accounts have used — the strongest multi-account signal.
+  const sharedGroups = (await prisma.userDevice.groupBy({
+    by: ["deviceId"],
+    _count: { userId: true },
+    having: { userId: { _count: { gt: 1 } } },
+    orderBy: { _count: { userId: "desc" } },
+    take: 20,
+  })) as unknown as Array<{ deviceId: string; _count: { userId: number } }>;
+  const sharedRows = sharedGroups.length
+    ? await prisma.userDevice.findMany({
+        where: { deviceId: { in: sharedGroups.map((g) => g.deviceId) } },
+        select: {
+          deviceId: true,
+          userAgent: true,
+          lastIp: true,
+          country: true,
+          lastSeenAt: true,
+          user: { select: { id: true, name: true, email: true, status: true } },
+        },
+        orderBy: { lastSeenAt: "desc" },
+      })
+    : [];
+  const sharedDevices = sharedGroups.map((g) => {
+    const rows = (sharedRows as unknown as Array<{
+      deviceId: string;
+      userAgent: string | null;
+      lastIp: string | null;
+      country: string | null;
+      lastSeenAt: Date;
+      user: { id: string; name: string | null; email: string; status: string };
+    }>).filter((r) => r.deviceId === g.deviceId);
+    return { deviceId: g.deviceId, count: g._count.userId, ua: rows[0]?.userAgent ?? null, rows };
+  });
+
   // The nested `user` select is lost in the Promise.all tuple's inference.
   const appeals = appealRows as unknown as Array<{
     id: string;
@@ -94,6 +131,13 @@ export default async function FraudMonitorPage() {
         <p className="text-slate-400 text-sm mt-1">
           Detected fraud events across the platform.
         </p>
+        <a
+          href="/api/admin/fraud/devices"
+          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export users&apos; IPs, devices &amp; countries (CSV)
+        </a>
       </div>
 
       {/* Severity stat cards */}
@@ -150,6 +194,52 @@ export default async function FraudMonitorPage() {
           </div>
         </div>
       )}
+
+      {/* Devices shared by several accounts */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">
+        <h2 className="text-sm font-semibold text-white mb-1 inline-flex items-center gap-2">
+          <Smartphone className="w-4 h-4 text-orange-400" />
+          Devices used by more than one account
+        </h2>
+        <p className="mb-3 text-xs text-slate-500">
+          The same browser/device signing in to several accounts — unlike a shared IP, this is rarely innocent. Family
+          members sharing one phone are the usual honest case.
+        </p>
+        {sharedDevices.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            None so far. Devices are recorded as people use the site, so this fills in over the coming days.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {sharedDevices.map((d) => (
+              <div key={d.deviceId} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm font-semibold text-white">{d.count} accounts on one device</span>
+                  <span className="text-xs text-slate-500">
+                    {describeUserAgent(d.ua)} · <span className="font-mono">{d.deviceId.slice(0, 10)}…</span>
+                  </span>
+                </div>
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {d.rows.map((r) => (
+                    <li key={r.user.id}>
+                      <Link
+                        href={`/admin/users/${r.user.id}`}
+                        className={`inline-flex items-center gap-1 rounded bg-slate-800 px-2 py-0.5 text-xs hover:bg-slate-700 ${
+                          r.user.status === "ACTIVE" ? "text-slate-200" : "text-red-300"
+                        }`}
+                        title={`${r.user.email} · last IP ${r.lastIp ?? "—"}${r.country ? ` · ${r.country}` : ""}`}
+                      >
+                        {r.user.name || r.user.email}
+                        {r.country && <span className="text-slate-500">{r.country}</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Users by fraud risk */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-5">

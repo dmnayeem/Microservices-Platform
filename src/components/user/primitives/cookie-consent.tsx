@@ -48,6 +48,8 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
   const persist = (p: Prefs) => {
     const previous = localStorage.getItem(STORAGE_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    // Tracking tags (SiteTracking) wait for this to load without a reload.
+    window.dispatchEvent(new Event("eg-consent"));
     setShow(false);
     setShowModal(false);
     // Ad slots read the marketing preference once, before their first request.

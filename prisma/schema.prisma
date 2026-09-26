@@ -1501,6 +1501,8 @@ model User {
   suspendedReason                   String?                      @db.Text
   suspendedAt                       DateTime?
   suspensionAppeals                 SuspensionAppeal[]
+  devices                           UserDevice[]
+  activeDays                        UserActiveDay[]
   packageId                         String?
   package                           Package?                     @relation(fields: [packageId], references: [id], onDelete: SetNull)
   packageExpiresAt                  DateTime?
@@ -1536,6 +1538,11 @@ model User {
   // cap + VPN/proxy heuristic). @@index on signupIp for the per-IP count.
   signupIp                          String?
   lastIp                            String?
+  // ISO country code of those IPs (src/lib/geo.ts) — where the account signed
+  // up from and where it was last seen. Not the profile country the user
+  // typed; the two disagreeing is itself worth an admin's attention.
+  signupCountry                     String?
+  lastCountry                       String?
   // When the user last changed a field that decides which targeted tasks they
   // are served (country/region/division/district/subDistrict/postalCode/gender/
   // dateOfBirth). All nine were freely editable with no limit and no trail, so
@@ -1700,6 +1707,8 @@ model User {
   @@index([status])
   @@index([role])
   @@index([signupIp])
+  @@index([lastCountry])
+  @@index([signupCountry])
   @@index([totalEarnings])
   @@index([referredById, createdAt])
   @@index([packageId])
@@ -1856,6 +1865,49 @@ model KYCAppeal {
   @@index([kycDocumentId])
   @@index([status])
   @@index([createdAt])
+}
+
+/// A browser / device a user has been seen on (src/lib/device.ts).
+///
+/// `deviceId` is a random id the site keeps in a first-party cookie and in
+/// localStorage — the reliable "same device" signal. `fpHash` is a coarse
+/// browser fingerprint that survives a cookie clear on the same browser, but
+/// identical office laptops can share one, so it only ever flags, never blocks.
+/// IPs are kept as history because one person's IP changes (home WiFi, office
+/// WiFi, mobile data) and many honest people share one.
+/// One row per account per UTC day it opened the app — what "returning" and
+/// "comes daily" are read from (/admin/users/returning). Written once a day by
+/// the DeviceBeacon; `lastLoginAt` alone only knows the latest day.
+model UserActiveDay {
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  firstSeenAt DateTime @default(now())
+
+  @@id([userId, date])
+  @@index([date])
+}
+
+model UserDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId    String
+  fpHash      String?
+  userAgent   String?  @db.Text
+  lastIp      String?
+  /// Distinct IPs this device has used for this user, newest first (max 10).
+  ips         String[] @default([])
+  country     String?
+  seenCount   Int      @default(1)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([userId, deviceId])
+  @@index([deviceId])
+  @@index([fpHash])
+  @@index([lastIp])
+  @@index([lastSeenAt])
 }
 
 /// A suspended user asking to be let back in. Filed from /appeal with a

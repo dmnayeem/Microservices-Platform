@@ -10,6 +10,7 @@ import { getHiddenPaths } from "@/lib/page-visibility-server";
 import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
+import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { maintenanceFor } from "@/lib/maintenance";
 import { MaintenanceScreen } from "@/components/dashboard/maintenance-screen";
 
@@ -136,6 +137,10 @@ export default async function MainLayout({
       {/* Lottery wins, leaderboard prizes, big achievements, payments — shown
           once as a popup the next time the user opens the app. */}
       <CelebrationHost />
+
+      {/* Device id + fingerprint for the multi-account rules; reports this
+          device (IP, country, browser) once per session. */}
+      <DeviceBeacon report />
     </div>
   );
 }

@@ -124,6 +124,13 @@ export const {
         ) {
           return false;
         }
+        // A NEW account through Google meets the same device / IP rules as
+        // the email form. Google sign-up used to skip them entirely.
+        if (!existing) {
+          const { readDevice, checkSignup } = await import("@/lib/device");
+          const verdict = await checkSignup(await readDevice(), user.email.toLowerCase());
+          if (!verdict.ok) return "/login?error=AccountLimit";
+        }
       }
       return true;
     },

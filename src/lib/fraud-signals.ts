@@ -22,7 +22,7 @@ export const FRAUD_SIGNALS = {
   },
   MULTIPLE_ACCOUNTS: {
     points: 10,
-    label: "Worked from an IP over the accounts-per-IP limit (once a day)",
+    label: "More accounts on one device than allowed — or over the IP limit when that is set to block (once a day)",
   },
   VPN_DETECTED: {
     points: 5,
