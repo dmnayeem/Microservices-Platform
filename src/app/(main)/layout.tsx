@@ -9,6 +9,7 @@ import { getEffectiveFeatures } from "@/lib/packages";
 import { getHiddenPaths } from "@/lib/page-visibility-server";
 import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
+import { CelebrationHost } from "@/components/user/primitives/celebration-host";
 import { maintenanceFor } from "@/lib/maintenance";
 import { MaintenanceScreen } from "@/components/dashboard/maintenance-screen";
 
@@ -131,6 +132,10 @@ export default async function MainLayout({
           UNDER the nav (z-30 vs z-40) and suppresses itself on incentivised
           pages; see anchor-ad-bar.tsx. */}
       <AnchorAdBar />
+
+      {/* Lottery wins, leaderboard prizes, big achievements, payments — shown
+          once as a popup the next time the user opens the app. */}
+      <CelebrationHost />
     </div>
   );
 }

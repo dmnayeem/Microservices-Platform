@@ -1,4 +1,5 @@
 import { randomInt, createHash } from "crypto";
+import { publicName, type CelebrationPayload } from "@/lib/celebration";
 import { prisma } from "@/lib/prisma";
 import { creditPoints, type LedgerDb } from "@/lib/ledger";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
@@ -219,6 +220,19 @@ export async function drawLottery(
           percent: a.percent,
         }));
 
+        // Who won what, by display name, for every winner's celebration popup.
+        const winnerUsers = await tx.user.findMany({
+          where: { id: { in: [...new Set(winners.map((w) => w.userId))] } },
+          select: { id: true, name: true, username: true },
+        });
+        const nameOf = new Map(winnerUsers.map((u) => [u.id, publicName(u)]));
+        const board = winners.map((w) => ({
+          rank: w.position,
+          name: nameOf.get(w.userId) ?? "A member",
+          prize: `${w.amount.toLocaleString()} points`,
+          userId: w.userId,
+        }));
+
         for (const [i, w] of winners.entries()) {
           await tx.lotteryTicket.update({
             where: { id: w.ticketId },
@@ -241,7 +255,20 @@ export async function drawLottery(
               type: "LOTTERY",
               title: `You Won ${awards[i].description}!`,
               message: `Congratulations! You won ${w.amount.toLocaleString()} points in the "${l.title}" lottery!`,
-              data: { lotteryId, position: w.position, prizeAmount: w.amount },
+              popup: true,
+              data: {
+                lotteryId,
+                position: w.position,
+                prizeAmount: w.amount,
+                popup: {
+                  kind: "lottery",
+                  headline: `You won in "${l.title}"!`,
+                  amount: `${w.amount.toLocaleString()} points`,
+                  sub: awards[i].description,
+                  winners: board.map(({ userId, ...b }) => ({ ...b, you: userId === w.userId })),
+                  cta: { label: "See the lottery", href: "/lottery" },
+                } satisfies CelebrationPayload,
+              } as object,
             },
           });
         }

@@ -248,7 +248,13 @@ export async function runAchievementCheck(userId: string): Promise<void> {
     const unlocked = await evaluateAchievements(userId);
     if (unlocked.length === 0) return;
     const { notifyUser } = await import("@/lib/notify");
+    const { getSetting } = await import("@/lib/system-settings");
+    // A "big" achievement also gets a celebration popup; the small first-step
+    // ones stay a quiet bell notification. Admin-set; 200 points by default
+    // (Task Beginner, Task Pro, Referral Star — not "First Task").
+    const bigAt = Math.max(0, Number(await getSetting<number>("celebrate.achievement_min_points", 200)) || 0);
     for (const a of unlocked) {
+      const big = a.pointsReward >= bigAt && a.pointsReward > 0;
       await notifyUser({
         userId,
         type: "SYSTEM",
@@ -258,6 +264,17 @@ export async function runAchievementCheck(userId: string): Promise<void> {
             ? `You unlocked "${a.name}". Claim your ${a.pointsReward} points on the achievements page.`
             : `You unlocked "${a.name}".`,
         link: "/achievements",
+        ...(big
+          ? {
+              popup: {
+                kind: "achievement" as const,
+                headline: `Achievement unlocked: ${a.name}`,
+                amount: `${a.pointsReward.toLocaleString()} points`,
+                sub: "Claim it on the achievements page.",
+                cta: { label: "Claim it", href: "/achievements" },
+              },
+            }
+          : {}),
       }).catch(() => {});
     }
   } catch (err) {

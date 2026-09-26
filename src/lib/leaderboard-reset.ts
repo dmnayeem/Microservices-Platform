@@ -17,6 +17,7 @@ import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { NON_STAFF_WHERE } from "@/lib/staff";
 import { calculateLevel } from "@/lib/level";
 import { cycleWindow, topUsersInWindow } from "@/lib/leaderboard-window";
+import type { CelebrationPayload } from "@/lib/celebration";
 
 /**
  * ONE leaderboard payout, used by both the admin button and the cron.
@@ -454,8 +455,10 @@ async function payWinner(args: {
   metric: Metric;
   cycleId: string;
   pointsPerUsd: number;
+  /** The whole frozen list, for the "who won what" celebration popup. */
+  all: FrozenWinner[];
 }): Promise<"paid" | "skipped" | "nothing"> {
-  const { w, period, metric, cycleId, pointsPerUsd } = args;
+  const { w, period, metric, cycleId, pointsPerUsd, all } = args;
   const points = Math.max(0, Math.round(w.prize));
   const xp = Math.max(0, Math.round(w.xp));
   if (points <= 0 && xp <= 0) return "nothing";
@@ -520,7 +523,31 @@ async function payWinner(args: {
                 .filter(Boolean)
                 .join(" + ") +
               `!`,
-            data: { period, rank: w.rank, points, xp, cycleId },
+            popup: true,
+            data: {
+              period,
+              rank: w.rank,
+              points,
+              xp,
+              cycleId,
+              popup: {
+                kind: "leaderboard",
+                headline: `#${w.rank} on the ${period} leaderboard!`,
+                amount: [points > 0 ? `${points.toLocaleString()} points` : null, xp > 0 ? `${xp} XP` : null]
+                  .filter(Boolean)
+                  .join(" + "),
+                winners: all.map((x) => ({
+                  rank: x.rank,
+                  // Frozen names are the ranking's own; "Anonymous" stays as is.
+                  name: (x.name || "A member").slice(0, 40),
+                  prize: [x.prize > 0 ? `${Math.round(x.prize).toLocaleString()} pts` : null, x.xp > 0 ? `${Math.round(x.xp)} XP` : null]
+                    .filter(Boolean)
+                    .join(" + ") || "—",
+                  you: x.userId === w.userId,
+                })),
+                cta: { label: "See the leaderboard", href: "/leaderboard" },
+              } satisfies CelebrationPayload,
+            } as object,
           },
         });
         return "paid" as const;
@@ -742,7 +769,7 @@ export async function runLeaderboardReset(
   let totalXp = 0;
   let giftsAwarded = 0;
   for (const w of frozen) {
-    const outcome = await payWinner({ w, period, metric, cycleId, pointsPerUsd });
+    const outcome = await payWinner({ w, period, metric, cycleId, pointsPerUsd, all: frozen });
     if (outcome === "paid") {
       paid++;
       totalDistributed += Math.max(0, Math.round(w.prize));

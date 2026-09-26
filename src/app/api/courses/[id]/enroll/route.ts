@@ -382,6 +382,17 @@ export async function POST(
             commissionAmount: affiliateAmount,
           },
         });
+        // The affiliate is told, in the same transaction as the money — a
+        // commission used to arrive in the wallet with no notification at all.
+        await tx.notification.create({
+          data: {
+            userId: affiliateId,
+            type: "WALLET",
+            title: "Affiliate commission earned 💰",
+            message: `+${usd(affiliateAmount)} from a sale of "${course.title}" through your link.`,
+            data: { link: "/affiliate", source: "course" },
+          },
+        });
       }
 
       // Course counters

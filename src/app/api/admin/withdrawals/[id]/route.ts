@@ -9,6 +9,7 @@ import { can } from "@/lib/permissions";
 import { deliverToUser } from "@/lib/notify";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { ownMediaKey } from "@/lib/media-url";
+import type { CelebrationPayload } from "@/lib/celebration";
 
 /** A file in this platform's own media store — never an arbitrary link. */
 function isOwnMediaUrl(u: string): boolean {
@@ -260,6 +261,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             type: "WALLET",
             title: "Withdrawal completed",
             message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} via ${existingWithdrawal.method} has been paid. Reference: ${transactionId}`,
+            // "Payment received" is a moment worth a popup, not only a bell row.
+            popup: true,
+            data: {
+              withdrawalId: id,
+              popup: {
+                kind: "payment",
+                headline: "Payment sent to you",
+                amount: usd(existingWithdrawal.netAmount),
+                sub: `via ${methodLabel(existingWithdrawal.method)} · Ref ${String(transactionId).trim()}`,
+                cta: { label: "See the details", href: "/withdrawal#history" },
+              } satisfies CelebrationPayload,
+            } as object,
           },
         });
         return tx.withdrawal.findUnique({ where: { id } });

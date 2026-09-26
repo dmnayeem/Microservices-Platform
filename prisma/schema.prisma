@@ -4062,9 +4062,16 @@ model Notification {
   data      Json?
   isRead    Boolean          @default(false)
   readAt    DateTime?
+  // A celebration popup (lottery win, leaderboard prize, big achievement,
+  // payment received): shown once over the app the next time the user opens
+  // it, with `data.popup` as its content. Seen is separate from read — opening
+  // the bell must not swallow the celebration, and vice versa.
+  popup       Boolean   @default(false)
+  popupSeenAt DateTime?
   createdAt DateTime         @default(now())
 
   @@index([userId])
+  @@index([userId, popup, popupSeenAt])
   @@index([isRead])
   @@index([createdAt])
   @@index([userId, isRead])

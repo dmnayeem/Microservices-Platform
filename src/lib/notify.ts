@@ -1,4 +1,5 @@
 import webpush from "web-push";
+import type { CelebrationPayload } from "@/lib/celebration";
 import { prisma } from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/email";
 import { NotificationType } from "@/generated/prisma/client";
@@ -133,6 +134,11 @@ export interface NotifyOptions {
   data?: Record<string, unknown>;
   /** Deep link opened when the notification is clicked. */
   link?: string;
+  /**
+   * Also show it as a celebration popup the next time the user opens the app
+   * (src/lib/celebration.ts). For big moments only.
+   */
+  popup?: CelebrationPayload;
 }
 
 /**
@@ -151,7 +157,13 @@ export async function notifyUser(opts: NotifyOptions) {
       type,
       title,
       message,
-      data: data ? JSON.parse(JSON.stringify({ ...data, link })) : link ? { link } : undefined,
+      data:
+        data || opts.popup
+          ? JSON.parse(JSON.stringify({ ...(data ?? {}), ...(link ? { link } : {}), ...(opts.popup ? { popup: opts.popup } : {}) }))
+          : link
+            ? { link }
+            : undefined,
+      ...(opts.popup ? { popup: true } : {}),
     },
   });
 

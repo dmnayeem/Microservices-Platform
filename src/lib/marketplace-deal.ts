@@ -497,6 +497,17 @@ export async function releaseDeal(opts: {
             commissionAmount: affiliateAmount,
           },
         });
+        // The affiliate is told, in the same transaction as the money — a
+        // commission used to arrive in the wallet with no notification at all.
+        await tx.notification.create({
+          data: {
+            userId: deal.affiliateUserId,
+            type: "WALLET",
+            title: "Affiliate commission earned 💰",
+            message: `+${usd(affiliateAmount)} from a sale of "${deal.listing.title}" through your link.`,
+            data: { link: "/affiliate", source: "deal" },
+          },
+        });
       }
 
       await systemMessage(
