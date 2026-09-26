@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Store, Power, Trash2, ExternalLink, Pencil, X } from "lucide-react";
@@ -136,15 +137,19 @@ export function BrandsClient({ initial }: { initial: BrandRow[] }) {
           className="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"
         />
       </label>
-      <label className="text-sm sm:col-span-2">
-        <span className="text-gray-400">Logo URL (optional)</span>
-        <input
-          value={draft.logo}
-          onChange={(e) => setDraft({ ...draft, logo: e.target.value })}
-          placeholder="https://…/logo.png"
-          className="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white"
-        />
-      </label>
+      <div className="text-sm sm:col-span-2">
+        <span className="text-gray-400">Logo (optional)</span>
+        {/* Upload or pick from the media library — it was a bare URL box. */}
+        <div className="mt-1">
+          <ImageUploadField
+            value={draft.logo ?? ""}
+            onChange={(url) => setDraft({ ...draft, logo: url })}
+            title="Brand logo"
+            previewSize="square"
+            urlPlaceholder="…or paste a logo URL"
+          />
+        </div>
+      </div>
       <label className="text-sm sm:col-span-2">
         <span className="text-gray-400">Short bio (optional)</span>
         <textarea

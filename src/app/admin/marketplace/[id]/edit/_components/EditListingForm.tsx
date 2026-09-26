@@ -1,5 +1,6 @@
 "use client";
 
+import { uploadUserFile } from "@/lib/user-upload";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, X, Loader2, Package, Image as ImageIcon, Trash2, Plus, ArrowLeft, Upload } from "lucide-react";
@@ -48,6 +49,22 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   });
   const [imageUrl, setImageUrl] = useState("");
   const [fileUrl, setFileUrl] = useState("");
+  const [uploadingFile, setUploadingFile] = useState(false);
+  // The product file itself — uploaded to the private "marketplace" folder, as
+  // the seller's own form does, never to the public media library: a paid
+  // download must not be reachable without buying it.
+  const uploadProductFile = async (file: File) => {
+    setUploadingFile(true);
+    try {
+      const url = await uploadUserFile(file, "marketplace");
+      setFormData((f) => ({ ...f, files: [...f.files, url] }));
+      toast.success("File uploaded");
+    } catch (err) {
+      toast.error("Upload failed", { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setUploadingFile(false);
+    }
+  };
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
 
   const handleMediaPick = (media: MediaItem | MediaItem[]) => {
@@ -346,7 +363,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             <Package className="w-4 h-4 inline mr-1" />
-            Files (URLs) - Optional
+            Files — Optional (upload, or paste a link)
           </label>
           <div className="space-y-2">
             <div className="flex gap-2">
@@ -361,8 +378,25 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                   }
                 }}
                 className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="https://example.com/file.zip"
+                placeholder="…or paste a file URL"
               />
+              <label
+                className="inline-flex cursor-pointer items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold"
+                title="Upload the file buyers receive"
+              >
+                {uploadingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                Upload
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={uploadingFile}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void uploadProductFile(f);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
               <button
                 type="button"
                 onClick={handleAddFile}
