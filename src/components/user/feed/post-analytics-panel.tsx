@@ -30,7 +30,7 @@ interface AnalyticsResp {
   sparkline: { date: string; count: number }[];
 }
 
-export function PostAnalyticsPanel({ postId }: { postId: string }) {
+export function PostAnalyticsPanel({ postId, hasLink = false }: { postId: string; hasLink?: boolean }) {
   const [data, setData] = useState<AnalyticsResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +108,9 @@ export function PostAnalyticsPanel({ postId }: { postId: string }) {
         />
       </div>
 
-      {(post.linkClicksCount > 0 || post.uniqueLinkClicksCount > 0) && (
+      {/* Always shown for a post with a link - this panel is where link
+          clicks live now; they are no longer a counter in the post's row. */}
+      {(hasLink || post.linkClicksCount > 0 || post.uniqueLinkClicksCount > 0) && (
         <div className="grid grid-cols-2 gap-2">
           <Stat
             icon={<MousePointerClick className="w-3.5 h-3.5 text-amber-400" />}

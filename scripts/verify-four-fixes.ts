@@ -70,11 +70,13 @@ async function main() {
     // alone is what let a 64px space render 138px tall.
     check(
       "the strip caps the whole card, not just its media",
-      /maxHeight: spec\.maxHeightPx \}\}/.test(s)
+      // A fixed `height` since 2026-09-26: the media's `h-full` needs a
+      // definite box, and under `maxHeight` a photo rendered at natural size.
+      /height: spec\.maxHeightPx \}\}/.test(s)
     );
     check(
       "the strip lays the media beside the text, not above it",
-      /flex items-stretch/.test(s) && /h-full w-auto shrink-0/.test(s)
+      /flex items-stretch/.test(s) && /h-full w-auto max-w-\[45%\] shrink-0/.test(s)
     );
     // The spaces that must qualify, read from the real catalogue.
     for (const p of ["ANCHOR_BOTTOM", "VIDEO_OVERLAY", "FEED_POST_BELOW"]) {

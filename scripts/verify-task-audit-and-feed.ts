@@ -445,7 +445,8 @@ check(
 check(
   "the icons are big enough to aim at",
   !/<MessageCircle className="w-4 h-4"/.test(card) &&
-    /<MessageCircle className="w-5 h-5"/.test(card)
+    // `shrink-0` since the row stopped squeezing its icons on narrow phones.
+    /<MessageCircle className="w-5 h-5[ "]/.test(card)
 );
 check(
   "the per-emoji breakdown is gone with the picker",

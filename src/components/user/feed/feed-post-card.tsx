@@ -11,7 +11,6 @@ import {
   MoreHorizontal,
   Sparkles,
   BarChart3,
-  MousePointerClick,
   CheckCircle,
   Bookmark,
   Flag,
@@ -823,7 +822,15 @@ export const FeedPostCard = memo(function FeedPostCard({
           `touch-manipulation` (part of `app-tap`) drops the browser's own
           double-tap-zoom wait, so the first tap registers immediately instead
           of ~300ms later. */}
-      <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 border-t border-(--app-line)">
+      {/* No control in this row may shrink. On a narrow phone the flex row
+          used to squeeze its children, and an SVG squeezed in a flex item
+          renders smaller than its neighbours - the icons came out at
+          different sizes. Every button and icon is `shrink-0`, icons are all
+          20px, and the side padding tightens below `sm` instead. On the very
+          narrowest phones, with Boost showing, the right-hand group wraps to
+          a line of its own (still right-aligned) rather than being squeezed
+          or pushed out of reach. */}
+      <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1.5 border-t border-(--app-line)">
         <ReactionButton
           reacted={post.isLiked}
           disabled={busy}
@@ -833,16 +840,16 @@ export const FeedPostCard = memo(function FeedPostCard({
             the tap-to-break-down popover has been removed rather than left as a
             control that shows the same number a second time. */}
         {post.likesCount > 0 && (
-          <span className="text-sm text-(--app-ink-3) tabular-nums font-bold -ml-1 mr-0.5">
+          <span className="shrink-0 text-sm text-(--app-ink-3) tabular-nums font-bold -ml-1 mr-0.5">
             {post.likesCount}
           </span>
         )}
         <button
           onClick={() => setShowComments((v) => !v)}
           aria-label="Comments"
-          className="app-tap app-press inline-flex items-center justify-center gap-1.5 px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+          className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
         >
-          <MessageCircle className="w-5 h-5" />
+          <MessageCircle className="w-5 h-5 shrink-0" />
           <span className="tabular-nums font-bold">
             {post.commentsCount}
           </span>
@@ -850,9 +857,9 @@ export const FeedPostCard = memo(function FeedPostCard({
         <button
           onClick={() => setShareOpen(true)}
           aria-label="Share"
-          className="app-tap app-press inline-flex items-center justify-center gap-1.5 px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+          className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
         >
-          <Share2 className="w-5 h-5" />
+          <Share2 className="w-5 h-5 shrink-0" />
           <span className="hidden sm:inline">Share</span>
         </button>
         {/* Saved is a state, not a warning — it was amber, the same colour the
@@ -864,49 +871,46 @@ export const FeedPostCard = memo(function FeedPostCard({
           aria-label={post.isSaved ? "Remove from saved" : "Save post"}
           title={post.isSaved ? "Saved" : "Save"}
           className={cn(
-            "app-tap app-press inline-flex items-center justify-center px-3 rounded-(--app-r-chip) text-sm hover:bg-(--app-surface-2)",
+            "shrink-0 app-tap app-press inline-flex items-center justify-center px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm hover:bg-(--app-surface-2)",
             post.isSaved
               ? "text-(--app-accent-ink)"
               : "text-(--app-ink-3) hover:text-white"
           )}
         >
-          <Bookmark className={cn("w-5 h-5", post.isSaved && "fill-current")} />
+          <Bookmark className={cn("w-5 h-5 shrink-0", post.isSaved && "fill-current")} />
         </button>
         {post.isOwner &&
           canBoost &&
           !(post.boostedUntil && new Date(post.boostedUntil) > new Date()) && (
             <button
               onClick={() => setBoostOpen(true)}
-              className="app-tap app-press ml-auto inline-flex items-center gap-1.5 px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+              aria-label="Boost this post"
+              className="shrink-0 app-tap app-press ml-auto inline-flex items-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
             >
-              <Megaphone className="w-4 h-4" />
-              Boost
+              <Megaphone className="w-5 h-5 shrink-0" />
+              <span className="hidden sm:inline">Boost</span>
             </button>
           )}
         {post.boostedUntil && new Date(post.boostedUntil) > new Date() && (
-          <span className="app-chip app-chip-warn ml-auto">
-            <Megaphone className="w-3.5 h-3.5" />
-            Boosted
+          <span className="app-chip app-chip-warn ml-auto shrink-0" title="Boosted">
+            <Megaphone className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Boosted</span>
           </span>
         )}
         {post.isOwner && (
-          <div className="ml-auto flex items-center gap-1">
-            {!!(post.linkPreview || findFirstUrl(post.content)) && (
-              <span
-                className="app-tap-row inline-flex items-center gap-1.5 px-2 text-sm text-(--app-ink-3)"
-                title="Link clicks (total)"
-              >
-                <MousePointerClick className="w-4 h-4" />
-                <span className="tabular-nums text-xs font-bold">{post.linkClicksCount ?? 0}</span>
-              </span>
-            )}
+          <div className="ml-auto flex shrink-0 items-center">
+            {/* Link clicks live INSIDE the stats panel now (tap this). As a
+                separate counter they were one control too many for a narrow
+                phone's row. */}
             <button
               onClick={() => setShowAnalytics((v) => !v)}
-              className="app-tap app-press inline-flex items-center justify-center gap-1.5 px-3 rounded-(--app-r-chip) text-sm text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
-              title="View analytics"
+              aria-expanded={showAnalytics}
+              aria-label="View post stats - views, reactions and link clicks"
+              className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-(--app-r-chip) text-sm text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+              title="View stats"
             >
-              <BarChart3 className="w-4 h-4" />
-              <span className="tabular-nums text-xs font-bold">{post.viewsCount ?? 0}</span>
+              <BarChart3 className="w-5 h-5 shrink-0" />
+              <span className="tabular-nums text-sm font-bold">{post.viewsCount ?? 0}</span>
             </button>
           </div>
         )}
@@ -928,7 +932,10 @@ export const FeedPostCard = memo(function FeedPostCard({
       )}
 
       {showAnalytics && post.isOwner && (
-        <PostAnalyticsPanel postId={post.id} />
+        <PostAnalyticsPanel
+          postId={post.id}
+          hasLink={!!(post.linkPreview || findFirstUrl(post.content))}
+        />
       )}
 
       {showComments && (

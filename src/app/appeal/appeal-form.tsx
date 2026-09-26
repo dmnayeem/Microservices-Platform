@@ -35,7 +35,7 @@ export function AppealForm({ token }: { token: string | null }) {
   const short = message.trim().length < 20;
   return (
     <div className="rounded-2xl border border-(--app-line) bg-(--app-surface) p-5 space-y-3">
-      <label htmlFor="appeal-msg" className="block text-sm font-semibold text-white">
+      <label htmlFor="appeal-msg" className="block text-sm font-semibold text-(--app-ink)">
         Appeal this suspension
       </label>
       <textarea
@@ -45,7 +45,7 @@ export function AppealForm({ token }: { token: string | null }) {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Explain what happened. If you believe this is a mistake, say why."
-        className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-white placeholder:text-(--app-ink-3) focus:outline-none focus:border-blue-500 resize-none"
+        className="w-full rounded-lg border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) placeholder:text-(--app-ink-3) focus:outline-none focus:border-blue-500 resize-none"
       />
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button

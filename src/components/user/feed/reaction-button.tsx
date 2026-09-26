@@ -47,7 +47,7 @@ export function ReactionButton({
         // target has to survive whatever the neighbouring content does to it.
         // It is on the button itself and not inherited from the row, which is
         // the whole history of this control.
-        "app-tap app-press inline-flex items-center justify-center gap-1.5 px-3 rounded-(--app-r-chip)",
+        "shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip)",
         "text-sm select-none hover:bg-(--app-surface-2)",
         // Rose is kept, and it is the ONE decorative hue left in the post card:
         // a heart that turns grey when you press it is not a heart. Everything
@@ -58,7 +58,7 @@ export function ReactionButton({
     >
       <span
         className={cn(
-          "inline-grid place-items-center w-5 h-5 transition-transform",
+          "inline-grid shrink-0 place-items-center w-5 h-5 transition-transform",
           bump && "animate-pop-in"
         )}
       >
