@@ -1,4 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { getSeoSettings, seoImage, sameAsList } from "@/lib/seo-settings";
+import { parseCustomCode } from "@/lib/custom-code";
+import { SiteTracking, CustomCode } from "@/components/providers/site-tracking";
+import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { JsonLd } from "@/components/seo/json-ld";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -40,67 +44,72 @@ import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "EarnGPT - Earn Money Online",
-    template: "%s | EarnGPT",
-  },
-  description: "Complete tasks, watch videos, and earn real money with EarnGPT. Join our community and start earning today!",
-  keywords: [
-    "earn money online",
-    "make money online",
-    "online earning",
-    "paid tasks",
-    "watch videos for money",
-    "rewards",
-    "cashout",
-    "referral program",
-    "affiliate program",
-    "micro tasks",
-    "surveys for money",
-    "GPT site",
-  ],
-  authors: [{ name: "EarnGPT Team" }],
-  creator: "EarnGPT",
-  publisher: "EarnGPT",
-  alternates: { canonical: "/" },
-  manifest: "/manifest.json",
-  icons: {
-    icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "EarnGPT",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: SITE_URL,
-    siteName: "EarnGPT",
-    title: "EarnGPT - Earn Money Online",
-    description: "Complete tasks, watch videos, and earn real money with EarnGPT.",
-    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "EarnGPT" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "EarnGPT - Earn Money Online",
-    description: "Complete tasks, watch videos, and earn real money with EarnGPT.",
-    images: ["/icon-512.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+/**
+ * Title, description, icons, share image, verification tags and indexing all
+ * come from /admin/seo (src/lib/seo-settings.ts). They were hard-coded here;
+ * the defaults are exactly what was hard-coded, so nothing changes until the
+ * owner edits them.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const s = await getSeoSettings();
+  const name = s["seo.site_name"] || "EarnGPT";
+  const title = s["seo.default_title"] || name;
+  const description = s["seo.description"];
+  const og = seoImage(s["seo.og_image_url"], "/icon-512.png");
+  const favicon = seoImage(s["seo.favicon_url"], "/icon-192.png");
+  const other: Record<string, string> = {};
+  if (s["seo.verify_bing"]) other["msvalidate.01"] = s["seo.verify_bing"];
+  if (s["seo.verify_facebook"]) other["facebook-domain-verification"] = s["seo.verify_facebook"];
+  if (s["seo.verify_pinterest"]) other["p:domain_verify"] = s["seo.verify_pinterest"];
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: title,
+      template: s["seo.title_template"].includes("%s") ? s["seo.title_template"] : `%s | ${name}`,
+    },
+    description,
+    keywords: s["seo.keywords"].split(",").map((k) => k.trim()).filter(Boolean),
+    authors: [{ name: `${name} Team` }],
+    creator: name,
+    publisher: name,
+    alternates: { canonical: "/" },
+    manifest: "/manifest.json",
+    icons: {
+      icon: [{ url: favicon }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }],
+      apple: seoImage(s["seo.apple_icon_url"], "/apple-touch-icon.png"),
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: name,
+    },
+    formatDetection: {
+      telephone: false,
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: SITE_URL,
+      siteName: name,
+      title,
+      description,
+      images: [{ url: og, alt: name }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [og],
+      ...(s["seo.twitter_handle"] ? { site: `@${s["seo.twitter_handle"].replace(/^@/, "")}` } : {}),
+    },
+    robots: s["seo.indexing"] ? { index: true, follow: true } : { index: false, follow: false },
+    verification: {
+      ...(s["seo.verify_google"] ? { google: s["seo.verify_google"] } : {}),
+      ...(s["seo.verify_yandex"] ? { yandex: s["seo.verify_yandex"] } : {}),
+      ...(Object.keys(other).length ? { other } : {}),
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -133,10 +142,11 @@ export default async function RootLayout({
   // nothing, it cannot throw, and nobody looking at a page ever waits for it.
   kickScheduler();
 
-  const [ui, levelCurve, googleCmp] = await Promise.all([
+  const [ui, levelCurve, googleCmp, seo] = await Promise.all([
     getUiToggles(),
     getLevelCurve(),
     getSetting<boolean>("ads.google_cmp_enabled", false),
+    getSeoSettings(),
   ]);
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
@@ -145,19 +155,43 @@ export default async function RootLayout({
             sitelinks search box, entity/E-E-A-T + GEO signals. */}
         <JsonLd
           data={[
+            // The Knowledge Panel entity — name, logo, description, contact,
+            // address and the official social profiles (sameAs) Google uses
+            // to tie them together. All from /admin/seo.
             {
               "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "EarnGPT",
+              "@type": seo["seo.org_type"] || "Organization",
+              name: seo["seo.site_name"],
+              ...(seo["seo.org_legal_name"] ? { legalName: seo["seo.org_legal_name"] } : {}),
               url: SITE_URL,
-              logo: `${SITE_URL}/icon-512.png`,
-              description:
-                "Complete tasks, watch videos, take surveys and courses, and earn real money with EarnGPT.",
+              logo: new URL(seoImage(seo["seo.logo_url"], "/icon-512.png"), SITE_URL).toString(),
+              description: seo["seo.org_description"],
+              ...(seo["seo.org_founding_date"] ? { foundingDate: seo["seo.org_founding_date"] } : {}),
+              ...(sameAsList(seo["seo.org_same_as"]).length ? { sameAs: sameAsList(seo["seo.org_same_as"]) } : {}),
+              ...(seo["seo.org_email"] || seo["seo.org_phone"]
+                ? {
+                    contactPoint: {
+                      "@type": "ContactPoint",
+                      contactType: "customer support",
+                      ...(seo["seo.org_email"] ? { email: seo["seo.org_email"] } : {}),
+                      ...(seo["seo.org_phone"] ? { telephone: seo["seo.org_phone"] } : {}),
+                    },
+                  }
+                : {}),
+              ...(seo["seo.org_address"]
+                ? {
+                    address: {
+                      "@type": "PostalAddress",
+                      streetAddress: seo["seo.org_address"],
+                      ...(seo["seo.org_country"] ? { addressCountry: seo["seo.org_country"] } : {}),
+                    },
+                  }
+                : {}),
             },
             {
               "@context": "https://schema.org",
               "@type": "WebSite",
-              name: "EarnGPT",
+              name: seo["seo.site_name"],
               url: SITE_URL,
               potentialAction: {
                 "@type": "SearchAction",
@@ -209,6 +243,26 @@ export default async function RootLayout({
           {children}
           <PageViewTracker />
           <ServiceWorkerRegister />
+          {/* Sets the device id before sign-up, so the per-device account
+              limit can see it (reporting happens in the signed-in app). */}
+          <DeviceBeacon />
+          {/* Analytics / pixels and the owner's custom code (/admin/seo).
+              With our cookie banner on they wait for the visitor's consent. */}
+          <SiteTracking
+            ga4={seo["tracking.ga4_id"]}
+            gtm={seo["tracking.gtm_id"]}
+            ads={seo["tracking.google_ads_id"]}
+            fb={seo["tracking.fb_pixel_id"]}
+            pinterest={seo["tracking.pinterest_tag_id"]}
+            tiktok={seo["tracking.tiktok_pixel_id"]}
+            scope={seo["tracking.scope"]}
+            requireConsent={ui.cookiesPopup && !googleCmp}
+          />
+          <CustomCode
+            tags={[...parseCustomCode(seo["code.head"]).tags, ...parseCustomCode(seo["code.body"]).tags]}
+            scope={seo["code.scope"]}
+            requireConsent={ui.cookiesPopup && !googleCmp}
+          />
           <SplashScreen />
           <CookieConsent enabled={ui.cookiesPopup && !googleCmp} />
           <PushPermissionPrompt enabled={ui.notificationPopup} />

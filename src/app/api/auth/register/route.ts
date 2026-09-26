@@ -38,11 +38,8 @@ export async function POST(request: NextRequest) {
 
     // Anti-fraud: cap accounts per IP (admin-toggleable).
     const { clientIp } = await import("@/lib/rate-limit");
-    const { getFraudConfig, accountsOnIp, recordFraudEvent } = await import(
-      "@/lib/fraud"
-    );
+    const { recordFraudEvent } = await import("@/lib/fraud");
     const ip = clientIp(request);
-    const fraud = await getFraudConfig();
 
     // An automated signup, recorded before the account exists.
     //
@@ -72,24 +69,14 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-    if (fraud.maxUsersPerIp > 0) {
-      const existing = await accountsOnIp(ip);
-      if (existing >= fraud.maxUsersPerIp) {
-        await recordFraudEvent({
-          eventType: "MULTIPLE_ACCOUNTS",
-          severity: "HIGH",
-          ipAddress: ip,
-          userAgent: request.headers.get("user-agent"),
-          details: { accountsOnIp: existing, cap: fraud.maxUsersPerIp, at: "signup" },
-        });
-        return NextResponse.json(
-          {
-            error:
-              "Too many accounts have been created from this network. Please try from a different connection.",
-          },
-          { status: 429 }
-        );
-      }
+    // Device and IP limits (src/lib/device.ts). The device is the real
+    // multi-account signal; an IP is shared by a whole home or office WiFi,
+    // so by default it only flags for review — see `ipLimitAction`.
+    const { readDevice, checkSignup, recordDevice } = await import("@/lib/device");
+    const seen = { ...(await readDevice()), ip: ip && ip !== "unknown" ? ip : null };
+    const verdict = await checkSignup(seen, validatedData.email);
+    if (!verdict.ok) {
+      return NextResponse.json({ error: verdict.error }, { status: 429 });
     }
 
     // The IP goes in with the insert now rather than as a follow-up update, so
@@ -98,6 +85,8 @@ export async function POST(request: NextRequest) {
       ...validatedData,
       signupIp: ip && ip !== "unknown" ? ip : null,
     });
+    // The device the account was made on — counted by the per-device limit.
+    await recordDevice(result.user.id, seen);
 
     // Dev fallback: when SMTP isn't configured we surface the verification link
     // so the developer/tester can finish the flow without a real inbox.

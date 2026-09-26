@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   // made publishing impossible ("Watermarked preview is required"). Left
   // external, the paths stay real and Next traces the font files into the
   // serverless output.
-  serverExternalPackages: ["jimp"],
+  serverExternalPackages: ["jimp", "geoip-country"],
   images: {
     // Only our own storage hosts are run through the Next image optimizer
     // (`/_next/image`). Uploaded media serves from CloudFront/S3; Google OAuth

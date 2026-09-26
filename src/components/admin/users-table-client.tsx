@@ -1,5 +1,6 @@
 "use client";
 
+import { CountryFlag } from "@/components/admin/ui/country-flag";
 import { promptDialog } from "@/lib/confirm";
 
 import { useState } from "react";
@@ -44,6 +45,11 @@ interface UserRow {
   cashBalance: number | null;
   level: number;
   country: string | null;
+  lastIp: string | null;
+  signupIp: string | null;
+  /** ISO code of the IP's country (lib/geo) — last seen / at sign-up. */
+  lastCountry: string | null;
+  signupCountry: string | null;
   /** Who brought this account in. Null = signed up directly. */
   referredBy: { id: string; name: string | null; username: string | null } | null;
   createdAt: Date;
@@ -249,16 +255,13 @@ export function UsersTableClient({
                     aria-label="Select all on this page"
                   />
                 </th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">User</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Status</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Role</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">KYC</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Package</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Balance</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Country</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Referred by</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Joined</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-slate-400">Actions</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">User</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Account</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Location</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Plan &amp; balance</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Referred by</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Activity</th>
+                <th className="text-right py-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -312,93 +315,58 @@ export function UsersTableClient({
                           </div>
                         </Link>
                       </td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            u.status === "ACTIVE"
-                              ? "bg-emerald-500/10 text-emerald-400"
-                              : u.status === "PENDING_VERIFICATION"
-                              ? "bg-amber-500/10 text-amber-400"
-                              : u.status === "SUSPENDED"
-                              ? "bg-orange-500/10 text-orange-400"
-                              : "bg-red-500/10 text-red-400"
-                          )}
-                        >
-                          {u.status.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
+                      <td className="py-3 px-3">
                         <div className="flex flex-col items-start gap-1">
                           <span
                             className={cn(
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              roleConfig.bgColor,
-                              roleConfig.color
+                              "px-2 py-0.5 rounded-full text-[11px] font-semibold",
+                              u.status === "ACTIVE"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : u.status === "PENDING_VERIFICATION"
+                                ? "bg-amber-500/10 text-amber-400"
+                                : u.status === "SUSPENDED"
+                                ? "bg-orange-500/10 text-orange-400"
+                                : "bg-red-500/10 text-red-400"
                             )}
                           >
+                            {u.status === "PENDING_VERIFICATION" ? "Unverified" : u.status.charAt(0) + u.status.slice(1).toLowerCase()}
+                          </span>
+                          <span className={cn("px-2 py-0.5 rounded-full text-[11px] font-medium", roleConfig.bgColor, roleConfig.color)}>
                             {roleConfig.label}
                           </span>
-                          {(() => {
-                            const badge =
-                              ACCOUNT_TYPE_BADGE[accountTypeOf(u.role)];
-                            return (
-                              <span
-                                title={badge.title}
-                                className={cn(
-                                  "px-1.5 py-0.5 rounded border text-[10px] font-medium uppercase tracking-wide",
-                                  badge.className
-                                )}
-                              >
-                                {badge.label}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            u.kycStatus === "APPROVED"
-                              ? "bg-emerald-500/10 text-emerald-400"
-                              : u.kycStatus === "PENDING"
-                              ? "bg-amber-500/10 text-amber-400"
-                              : u.kycStatus === "REJECTED"
-                              ? "bg-red-500/10 text-red-400"
-                              : "bg-slate-500/10 text-slate-400"
-                          )}
-                        >
-                          {u.kycStatus.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
-                        {u.package ? (
-                          <PackageBadge
-                            tier={u.package.slug}
-                            name={u.package.name}
-                            size="sm"
-                          />
-                        ) : (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400">
-                            —
+                          <span
+                            className={cn(
+                              "text-[10px] font-medium",
+                              u.kycStatus === "APPROVED"
+                                ? "text-emerald-400"
+                                : u.kycStatus === "PENDING"
+                                ? "text-amber-400"
+                                : u.kycStatus === "REJECTED"
+                                ? "text-red-400"
+                                : "text-slate-500"
+                            )}
+                          >
+                            KYC {u.kycStatus === "NOT_SUBMITTED" ? "not submitted" : u.kycStatus.toLowerCase()}
                           </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="text-sm">
-                          <p className="text-white tabular-nums">
-                            {u.cashBalance === null ? "—" : usd(u.cashBalance)}
-                          </p>
-                          <p className="text-xs text-slate-500 tabular-nums">
-                            {u.pointsBalance.toLocaleString()} pts
-                          </p>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-400">
-                        {u.country || "—"}
+                      <td className="py-3 px-3">
+                        <LocationCell u={u} />
                       </td>
-                      <td className="py-4 px-4 text-sm">
+                      <td className="py-3 px-3">
+                        <div className="flex flex-col items-start gap-1">
+                          {u.package ? (
+                            <PackageBadge tier={u.package.slug} name={u.package.name} size="sm" />
+                          ) : (
+                            <span className="text-xs text-slate-500">No plan</span>
+                          )}
+                          <span className="text-xs tabular-nums text-slate-400">
+                            {u.pointsBalance.toLocaleString()} pts
+                            {u.cashBalance !== null && <span className="text-slate-500"> · {usd(u.cashBalance)}</span>}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-sm">
                         {u.referredBy ? (
                           <Link
                             href={`/admin/users/${u.referredBy.id}`}
@@ -410,13 +378,13 @@ export function UsersTableClient({
                           <span className="text-slate-600">Direct</span>
                         )}
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-400">
-                        <p>
-                          {formatDistanceToNow(u.createdAt, { addSuffix: true })}
+                      <td className="py-3 px-3 text-sm text-slate-400">
+                        <p className="whitespace-nowrap">
+                          Joined {formatDistanceToNow(u.createdAt, { addSuffix: true })}
                         </p>
                         {u.lastLoginAt && (
-                          <p className="text-xs text-slate-600">
-                            Last:{" "}
+                          <p className="text-xs text-slate-600 whitespace-nowrap">
+                            Active{" "}
                             {formatDistanceToNow(u.lastLoginAt, {
                               addSuffix: true,
                             })}
@@ -485,7 +453,7 @@ export function UsersTableClient({
                 })
               ) : (
                 <tr>
-                  <td colSpan={10} className="py-16 text-center text-slate-500">
+                  <td colSpan={8} className="py-16 text-center text-slate-500">
                     <UsersIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p className="font-medium">No users found</p>
                     <p className="text-sm mt-1">Try adjusting your filters</p>
@@ -535,6 +503,9 @@ export function UsersTableClient({
                         </p>
                       </div>
                     </Link>
+                    <div className="ml-auto shrink-0 text-right">
+                      <LocationCell u={u} />
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <span
@@ -701,5 +672,36 @@ export function UsersTableClient({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Where the account is: the country of its IP (last seen, else sign-up), with
+ * the flag and the IP itself. Flags two things an admin should look at: a
+ * profile country that does not match the IP, and an account that signed up
+ * in one country and now logs in from another.
+ */
+function LocationCell({ u }: { u: UserRow }) {
+  const ipCountry = u.lastCountry ?? u.signupCountry;
+  const ip = u.lastIp ?? u.signupIp;
+  const profile = u.country && /^[A-Za-z]{2}$/.test(u.country) ? u.country.toUpperCase() : null;
+  const mismatch = profile && ipCountry && profile !== ipCountry;
+  const moved = u.signupCountry && u.lastCountry && u.signupCountry !== u.lastCountry;
+  if (!ipCountry && !ip) return <span className="text-xs text-slate-600">Not seen yet</span>;
+  return (
+    <div className="min-w-0 max-w-[11rem] text-sm">
+      <CountryFlag code={ipCountry} showName className="text-slate-200" />
+      {ip && <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500" title={ip}>{ip}</p>}
+      {mismatch && (
+        <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400" title="The country in the profile does not match where the IP is">
+          Profile says <CountryFlag code={profile} />
+        </p>
+      )}
+      {!mismatch && moved && (
+        <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-slate-500" title="Signed up from a different country">
+          joined from <CountryFlag code={u.signupCountry} />
+        </p>
+      )}
+    </div>
   );
 }

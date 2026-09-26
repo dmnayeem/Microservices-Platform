@@ -164,6 +164,9 @@ const DEFAULTS: SettingsBag = {
   "antifraud.auto_suspend_at": 100,
   "antifraud.risk_points": {},
   "antifraud.max_users_per_ip": 0,
+  "antifraud.ip_limit_action": "flag",
+  "antifraud.max_accounts_per_device": 3,
+  "antifraud.device_limit_action": "block",
   "antifraud.vpn_block_enabled": false,
   "antifraud.vpn_ranges": "",
   "antifraud.adblock_gate_enabled": true,
@@ -1380,7 +1383,51 @@ export function SystemSettingsForm({
             </Section>
 
             <Section title="Network anti-abuse">
+              <div className="rounded-lg border border-sky-500/25 bg-sky-500/5 p-3 text-xs text-sky-100/90 space-y-1">
+                <p>
+                  <b>Device first, IP second.</b> Many honest people share one IP — everyone on a home or office WiFi —
+                  and one person&apos;s mobile data changes IP all day. Several accounts on the <i>same device</i> is
+                  what multi-accounting actually looks like.
+                </p>
+                <p>
+                  Recommended: accounts per device <b>2–3</b>, action <b>Block</b>. Accounts per IP <b>10–20</b>,
+                  action <b>Flag only</b> — hits go to the Fraud Monitor for review, nobody on shared WiFi is locked
+                  out, and they add no fraud risk.
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
+                <Field settingKey="antifraud.max_accounts_per_device">
+                  <input
+                    type="number"
+                    min={0}
+                    value={Number(values["antifraud.max_accounts_per_device"] ?? 3)}
+                    onChange={(e) => set("antifraud.max_accounts_per_device", Math.max(0, parseInt(e.target.value) || 0))}
+                    disabled={!canEdit}
+                    className={inp}
+                  />
+                </Field>
+                <Field settingKey="antifraud.device_limit_action">
+                  <select
+                    value={String(values["antifraud.device_limit_action"] ?? "block")}
+                    onChange={(e) => set("antifraud.device_limit_action", e.target.value)}
+                    disabled={!canEdit}
+                    className={inp}
+                  >
+                    <option value="block">Block — refuse the sign-up / task</option>
+                    <option value="flag">Flag only — allow, report to Fraud Monitor</option>
+                  </select>
+                </Field>
+                <Field settingKey="antifraud.ip_limit_action">
+                  <select
+                    value={String(values["antifraud.ip_limit_action"] ?? "flag")}
+                    onChange={(e) => set("antifraud.ip_limit_action", e.target.value)}
+                    disabled={!canEdit}
+                    className={inp}
+                  >
+                    <option value="flag">Flag only — allow, report to Fraud Monitor (recommended)</option>
+                    <option value="block">Block — refuse (locks out shared WiFi)</option>
+                  </select>
+                </Field>
                 <Field settingKey="antifraud.max_users_per_ip">
                   <input
                     type="number"

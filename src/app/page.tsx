@@ -17,6 +17,7 @@ import {
 } from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
 import { publicLanding, sectionOn } from "@/lib/landing-content";
+import { getSeoSettings } from "@/lib/seo-settings";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 
@@ -27,12 +28,16 @@ import type { Metadata } from "next";
 // that the public home page is not a database query per visitor.
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "EarnGPT — Earn Money Online with Tasks, Videos, Surveys & Courses",
-  description:
-    "Earn real money online with EarnGPT: complete micro-tasks, watch videos, take surveys, sell in the marketplace, learn with courses, and earn from referrals & affiliates. Join free and cash out.",
-  alternates: { canonical: "/" },
-};
+// The home page's title and description are the site's own (/admin/seo) —
+// they were hard-coded here, overriding whatever the settings said.
+export async function generateMetadata(): Promise<Metadata> {
+  const s = await getSeoSettings();
+  return {
+    title: { absolute: s["seo.default_title"] },
+    description: s["seo.description"],
+    alternates: { canonical: "/" },
+  };
+}
 
 export default async function Home() {
   // Hidden items dropped, switched-off sections skipped — set in the editor

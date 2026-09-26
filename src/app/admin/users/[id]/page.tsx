@@ -1,4 +1,7 @@
 import { usd, pts } from "@/lib/utils";
+import { CountryFlag } from "@/components/admin/ui/country-flag";
+import { describeUserAgent } from "@/lib/user-agent";
+import { countryOfIp } from "@/lib/geo";
 import { getPointsPerUsd } from "@/lib/economy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -181,6 +184,25 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   }
 
   // Type assertion needed due to Prisma Accelerate extension type inference issues
+  // Devices this account has used, and who else used each one — the strongest
+  // multi-account signal (src/lib/device.ts).
+  const devices = await prisma.userDevice.findMany({
+    where: { userId: id },
+    orderBy: { lastSeenAt: "desc" },
+    take: 10,
+  });
+  const sharers = devices.length
+    ? await prisma.userDevice.findMany({
+        where: { deviceId: { in: devices.map((d) => d.deviceId) }, userId: { not: id } },
+        select: { deviceId: true, user: { select: { id: true, name: true, email: true } } },
+      })
+    : [];
+  const sharedBy = new Map<string, Array<{ id: string; name: string | null; email: string }>>();
+  for (const s of sharers as unknown as Array<{ deviceId: string; user: { id: string; name: string | null; email: string } }>) {
+    if (!sharedBy.has(s.deviceId)) sharedBy.set(s.deviceId, []);
+    sharedBy.get(s.deviceId)!.push(s.user);
+  }
+
   const user = userData as typeof userData & {
     transactions: Array<{
       id: string;
@@ -544,10 +566,15 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
                 )}
               </span>
             )}
-            {user.country && (
-              <span className="inline-flex items-center gap-1.5">
+            {(user.lastCountry || user.signupCountry) && (
+              <span className="inline-flex items-center gap-1.5" title="Where the account's IP address is">
                 <MapPin className="w-3.5 h-3.5 text-rose-400" />
-                {user.country}
+                <CountryFlag code={user.lastCountry ?? user.signupCountry} showName />
+              </span>
+            )}
+            {user.country && user.country.toUpperCase() !== (user.lastCountry ?? user.signupCountry ?? user.country).toUpperCase() && (
+              <span className="inline-flex items-center gap-1.5 text-amber-400" title="The profile country does not match the IP">
+                Profile says {user.country}
               </span>
             )}
             <span className="inline-flex items-center gap-1.5">
@@ -844,6 +871,77 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
         {tab === "overview" && (
           <div className="p-6 space-y-6">
+            {/* Location & devices */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Location &amp; devices</h3>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { label: "Signed up from", ip: user.signupIp, c: user.signupCountry },
+                  { label: "Last seen from", ip: user.lastIp, c: user.lastCountry },
+                ].map((x) => (
+                  <div key={x.label} className="rounded-lg bg-gray-800/50 p-4">
+                    <p className="text-sm text-gray-400">{x.label}</p>
+                    <div className="mt-1 text-white">
+                      {x.c ? <CountryFlag code={x.c} showName /> : <span className="text-gray-500">Unknown</span>}
+                    </div>
+                    <p className="mt-0.5 font-mono text-xs text-gray-500">{x.ip ?? "—"}</p>
+                  </div>
+                ))}
+                <div className="rounded-lg bg-gray-800/50 p-4">
+                  <p className="text-sm text-gray-400">Profile country (typed by the user)</p>
+                  <p className="mt-1 text-white">{user.country || <span className="text-gray-500">Not set</span>}</p>
+                  {user.country &&
+                    (user.lastCountry ?? user.signupCountry) &&
+                    user.country.toUpperCase() !== (user.lastCountry ?? user.signupCountry)!.toUpperCase() && (
+                      <p className="mt-0.5 text-xs text-amber-400">Does not match the IP&apos;s country</p>
+                    )}
+                </div>
+              </div>
+              {devices.length === 0 ? (
+                <p className="mt-3 text-sm text-gray-500">
+                  No devices recorded yet — they are recorded as the user uses the site.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {devices.map((d) => {
+                    const others = sharedBy.get(d.deviceId) ?? [];
+                    return (
+                      <li key={d.id} className="rounded-lg border border-gray-800 p-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <span className="text-sm font-medium text-white">{describeUserAgent(d.userAgent) || "Unknown browser"}</span>
+                          <span className="text-xs text-gray-500">
+                            seen {d.seenCount}× · first {format(d.firstSeenAt, "MMM d, yyyy")} · last{" "}
+                            {formatDistanceToNow(d.lastSeenAt, { addSuffix: true })}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {d.ips.map((ip) => (
+                            <span key={ip} className="inline-flex items-center gap-1 rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[11px] text-gray-300">
+                              <CountryFlag code={countryOfIp(ip)} />
+                              {ip}
+                            </span>
+                          ))}
+                        </div>
+                        {others.length > 0 && (
+                          <p className="mt-2 text-xs text-red-300">
+                            Also used by {others.length} other account{others.length === 1 ? "" : "s"}:{" "}
+                            {others.map((o, i) => (
+                              <span key={o.id}>
+                                {i > 0 && ", "}
+                                <Link href={`/admin/users/${o.id}`} className="underline hover:text-white">
+                                  {o.name || o.email}
+                                </Link>
+                              </span>
+                            ))}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
             {/* Earnings Summary */}
             <div>
               <h3 className="text-lg font-semibold text-white mb-4">Earnings Summary</h3>
