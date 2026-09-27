@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { invalidateSettingsCache, primeSetting } from "@/lib/system-settings";
 import { ID_FORMATS, SEO_DEFAULTS, SEO_KEYS, SUPER_ONLY_KEYS, type SeoKey } from "@/lib/seo-settings";
+import { logoHeight } from "@/lib/logo-size";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,9 @@ export async function PUT(request: NextRequest) {
         { error: `That does not look like a valid ${key.replace(/^[a-z]+\./, "").replace(/_/g, " ")} — expected something like ${fmt.example}.` },
         { status: 400 }
       );
+    }
+    if (key === "seo.logo_height_site" || key === "seo.logo_height_app") {
+      v = String(logoHeight(v, key));
     }
     if (key === "seo.title_template" && v && !v.includes("%s")) {
       return NextResponse.json({ error: "The title template must contain %s (where each page's own title goes)." }, { status: 400 });

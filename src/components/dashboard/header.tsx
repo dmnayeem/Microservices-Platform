@@ -210,7 +210,7 @@ export function Header({ user, avatar }: HeaderProps) {
               <Menu className="w-6 h-6" />
             </button>
             <Link href="/social" aria-label="Home" className="app-press flex items-center">
-              <BrandLockup className="h-9">
+              <BrandLockup area="app">
                 <span className="app-icon app-icon-accent h-9 w-9 rounded-(--app-r-control)">
                   <BrandMark iconClassName="w-4.5 h-4.5" />
                 </span>

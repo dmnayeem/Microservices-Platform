@@ -37,7 +37,7 @@ export function Navbar({ themeToggle = true, ...props }: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link href="/" className="flex items-center gap-2">
-            <BrandLockup className="h-10">
+            <BrandLockup>
               <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center shadow-sm shadow-(--app-cta)/20">
                 <BrandMark iconClassName="w-5 h-5 text-white" />
               </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { LOGO_HEIGHT_RANGE, logoHeight } from "@/lib/logo-size";
+import { mediaSrc } from "@/lib/media-url";
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Loader2, Lock, Save, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
@@ -123,6 +125,44 @@ export function SeoSettingsForm({
           <Row label="Apple / home-screen icon" hint="180×180 PNG, no transparency.">
             <ImageUploadField value={str("seo.apple_icon_url")} onChange={(u) => set("seo.apple_icon_url", u)} title="Apple touch icon" previewSize="square" />
           </Row>
+        </div>
+        {/* Logo size — the uploaded logo read small in the app. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {(
+            [
+              ["seo.logo_height_site", "Logo size — website", "Landing page, sign-in and legal pages."],
+              ["seo.logo_height_app", "Logo size — app", "Sidebar and the top bar. Stops at 52px: the top bar is 56px tall."],
+            ] as const
+          ).map(([key, label, hint]) => {
+            const r = LOGO_HEIGHT_RANGE[key];
+            const h = logoHeight(str(key), key);
+            return (
+              <Row key={key} label={`${label}: ${h}px`} hint={hint}>
+                <input
+                  type="range"
+                  min={r.min}
+                  max={r.max}
+                  step={2}
+                  value={h}
+                  onChange={(e) => set(key, e.target.value)}
+                  className="w-full accent-indigo-500"
+                />
+                <div className="mt-2 flex h-24 items-center rounded-lg border border-slate-800 bg-slate-950 px-3">
+                  {str("seo.logo_url") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={mediaSrc(str("seo.logo_url"))}
+                      alt="Logo preview"
+                      style={{ height: h, maxWidth: h * 6 }}
+                      className="w-auto object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-500">Upload a logo above to preview it.</span>
+                  )}
+                </div>
+              </Row>
+            );
+          })}
         </div>
       </Section>
 

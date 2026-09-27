@@ -25,6 +25,10 @@ export const SEO_DEFAULTS = {
   "seo.favicon_url": "/icon-192.png",
   "seo.apple_icon_url": "/apple-touch-icon.png",
   "seo.og_image_url": "/icon-512.png",
+  // Logo height in px — the marketing site (navbar, footer, sign-in, legal)
+  // and the app (sidebar, top bar). Bounds in LOGO_HEIGHT_RANGE.
+  "seo.logo_height_site": "44",
+  "seo.logo_height_app": "40",
   "seo.twitter_handle": "",
   "seo.indexing": true,
 

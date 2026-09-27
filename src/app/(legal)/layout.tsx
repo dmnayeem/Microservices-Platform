@@ -23,7 +23,7 @@ export default async function LegalLayout({ children }: { children: ReactNode })
       <header className="border-b border-(--mk-border) bg-(--mk-nav) backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <Link href="/" className="inline-flex items-center gap-2">
-            <BrandLockup className="h-9">
+            <BrandLockup>
               <div className="w-9 h-9 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center">
                 <BrandMark iconClassName="w-4.5 h-4.5 text-white" />
               </div>
