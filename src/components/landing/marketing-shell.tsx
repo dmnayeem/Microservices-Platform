@@ -3,9 +3,9 @@
 // The marketing surface has its OWN theme, isolated from the app dashboard theme:
 // `data-mk-theme` on #mk-root drives the --mk-* CSS tokens (see globals.css). SSR
 // renders the admin default; this pre-paint script corrects it to the visitor's
-// saved choice (localStorage key `earngpt-landing-theme`) before first paint.
+// saved choice (localStorage key `revtype-landing-theme`) before first paint.
 
-const MK_THEME_BOOT = `(function(){try{var el=document.getElementById('mk-root');if(!el)return;var t=localStorage.getItem('earngpt-landing-theme');if(t==='light'||t==='dark')el.setAttribute('data-mk-theme',t);}catch(e){}})();`;
+const MK_THEME_BOOT = `(function(){try{var el=document.getElementById('mk-root');if(!el)return;var t=localStorage.getItem('revtype-landing-theme');if(t==='light'||t==='dark')el.setAttribute('data-mk-theme',t);}catch(e){}})();`;
 
 /** Inline pre-paint script — render as the first child of #mk-root.
  *  With the visitor switch turned off by the admin the stored choice is not

@@ -42,7 +42,7 @@ export function ServiceWorkerRegister() {
                 .then((keys) =>
                   Promise.all(
                     keys
-                      .filter((k) => k.startsWith("earngpt-"))
+                      .filter((k) => k.startsWith("revtype-") || k.startsWith("earngpt-"))
                       .map((k) => caches.delete(k))
                   )
                 )

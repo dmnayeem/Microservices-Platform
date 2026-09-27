@@ -217,7 +217,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `try{var d=document.documentElement;var D=${JSON.stringify(
               ui.themeDefault
-            )};var C=${ui.themeUserChoice};var t=C?(localStorage.getItem('earngpt-theme')||D):D;var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var AC=${ui.accentUserChoice};var a=localStorage.getItem('earngpt-accent');if(a){if(AC)d.setAttribute('data-accent',a);}}catch(e){}`,
+            )};var C=${ui.themeUserChoice};var t=C?(localStorage.getItem('revtype-theme')||D):D;var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var AC=${ui.accentUserChoice};var a=localStorage.getItem('revtype-accent');if(a){if(AC)d.setAttribute('data-accent',a);}}catch(e){}`,
           }}
         />
         {/* The level curve, before any app code runs.
@@ -248,7 +248,7 @@ export default async function RootLayout({
         <NetworkScripts />
         <ThemeProvider
           defaultTheme={ui.themeDefault}
-          storageKey="earngpt-theme"
+          storageKey="revtype-theme"
           allowUserChoice={ui.themeUserChoice}
           allowAccentChoice={ui.accentUserChoice}
         >

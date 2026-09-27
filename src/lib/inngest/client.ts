@@ -6,7 +6,7 @@ import { Inngest } from "inngest";
  * INNGEST_EVENT_KEY + INNGEST_SIGNING_KEY (from the Inngest dashboard).
  */
 export const inngest = new Inngest({
-  id: "earngpt",
+  id: "revtype",
   // Dev mode locally (works without keys / with the Inngest Dev Server); cloud
   // mode in production, which uses INNGEST_SIGNING_KEY / INNGEST_EVENT_KEY.
   isDev: process.env.NODE_ENV !== "production",

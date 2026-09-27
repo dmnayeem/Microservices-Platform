@@ -33,7 +33,7 @@ async function main() {
   // Users to create with their roles
   const users = [
     {
-      email: "superadmin@earngpt.com",
+      email: "superadmin@revtype.com",
       name: "Super Admin",
       username: "superadmin",
       referralCode: "SUPER001",
@@ -44,7 +44,7 @@ async function main() {
       level: 100,
     },
     {
-      email: "finance@earngpt.com",
+      email: "finance@revtype.com",
       name: "Finance Admin",
       username: "financeadmin",
       referralCode: "FINANCE01",
@@ -55,7 +55,7 @@ async function main() {
       level: 50,
     },
     {
-      email: "content@earngpt.com",
+      email: "content@revtype.com",
       name: "Content Admin",
       username: "contentadmin",
       referralCode: "CONTENT01",
@@ -66,7 +66,7 @@ async function main() {
       level: 50,
     },
     {
-      email: "support@earngpt.com",
+      email: "support@revtype.com",
       name: "Support Admin",
       username: "supportadmin",
       referralCode: "SUPPORT01",
@@ -77,7 +77,7 @@ async function main() {
       level: 50,
     },
     {
-      email: "marketing@earngpt.com",
+      email: "marketing@revtype.com",
       name: "Marketing Admin",
       username: "marketingadmin",
       referralCode: "MARKET01",
@@ -88,7 +88,7 @@ async function main() {
       level: 50,
     },
     {
-      email: "moderator@earngpt.com",
+      email: "moderator@revtype.com",
       name: "Moderator",
       username: "moderator",
       referralCode: "MOD00001",
@@ -99,7 +99,7 @@ async function main() {
       level: 25,
     },
     {
-      email: "user@earngpt.com",
+      email: "user@revtype.com",
       name: "Demo User",
       username: "demouser",
       referralCode: "USER0001",
@@ -361,25 +361,25 @@ async function main() {
   console.log("\n Test Accounts:");
   console.log("----------------------------------------");
   console.log(" SUPER_ADMIN:");
-  console.log("   Email: superadmin@earngpt.com");
+  console.log("   Email: superadmin@revtype.com");
   console.log("");
   console.log(" FINANCE_ADMIN:");
-  console.log("   Email: finance@earngpt.com");
+  console.log("   Email: finance@revtype.com");
   console.log("");
   console.log(" CONTENT_ADMIN:");
-  console.log("   Email: content@earngpt.com");
+  console.log("   Email: content@revtype.com");
   console.log("");
   console.log(" SUPPORT_ADMIN:");
-  console.log("   Email: support@earngpt.com");
+  console.log("   Email: support@revtype.com");
   console.log("");
   console.log(" MARKETING_ADMIN:");
-  console.log("   Email: marketing@earngpt.com");
+  console.log("   Email: marketing@revtype.com");
   console.log("");
   console.log(" MODERATOR:");
-  console.log("   Email: moderator@earngpt.com");
+  console.log("   Email: moderator@revtype.com");
   console.log("");
   console.log(" USER:");
-  console.log("   Email: user@earngpt.com");
+  console.log("   Email: user@revtype.com");
   console.log("----------------------------------------");
 }
 

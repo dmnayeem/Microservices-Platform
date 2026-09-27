@@ -1,10 +1,10 @@
 // RevType service worker — web-push notifications + minimal offline shell +
 // runtime asset caching for offline depth.
-const CACHE = "earngpt-shell-v4";
+const CACHE = "revtype-shell-v4";
 // Separate cache for hashed static assets / images / fonts served
 // stale-while-revalidate. Kept apart from the shell so a shell bump doesn't
 // throw away already-fetched bundles.
-const RUNTIME = "earngpt-runtime-v4";
+const RUNTIME = "revtype-runtime-v4";
 // Soft cap so the runtime cache can't grow unbounded on a long session.
 const RUNTIME_MAX_ENTRIES = 160;
 const OFFLINE_URL = "/";

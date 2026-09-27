@@ -1993,8 +1993,8 @@ function main() {
         const boot = read("src/app/layout.tsx");
         check(
           "the pre-paint script only sets data-accent when the user chose one",
-          /getItem\('earngpt-accent'\);if\(a\)\{/.test(boot) &&
-            !/earngpt-accent'\)\|\|'/.test(boot),
+          /getItem\('revtype-accent'\);if\(a\)\{/.test(boot) &&
+            !/revtype-accent'\)\|\|'/.test(boot),
           "a literal fallback here overrides the default for everyone, forever"
         );
         const provider = read("src/components/providers/theme-provider.tsx");

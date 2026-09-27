@@ -226,7 +226,7 @@ console.log("1. Every path resolves to a real Response");
   );
   check(
     "the cache version was bumped so the broken entries are dropped",
-    /earngpt-shell-v4/.test(swSource) && /earngpt-runtime-v4/.test(swSource)
+    /revtype-shell-v4/.test(swSource) && /revtype-runtime-v4/.test(swSource)
   );
 
   const reg = fs.readFileSync(
@@ -240,7 +240,7 @@ console.log("1. Every path resolves to a real Response");
   );
   check(
     "…and clears its caches",
-    /startsWith\("earngpt-"\)/.test(reg) && /caches\.delete/.test(reg)
+    /startsWith\("revtype-"\)/.test(reg) && /caches\.delete/.test(reg)
   );
   check(
     "…only outside production",

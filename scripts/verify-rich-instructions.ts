@@ -61,7 +61,7 @@ const chatgpt = [
   "1. Open [revtype.com](https://revtype.com)",
   "2. Copy the *exact* caption",
   "",
-  "> Use #earngpt as the first hashtag",
+  "> Use #revtype as the first hashtag",
   "",
   "- Screenshot the post",
   "- Submit the URL",
@@ -88,7 +88,7 @@ check("*italic* becomes <em>", html.includes("<em>exact</em>"));
 check("a quote becomes <blockquote>", html.includes("<blockquote>"));
 check(
   "a hashtag inside the text stays text",
-  html.includes("#earngpt"),
+  html.includes("#revtype"),
   "only the leading-# HEADING syntax converts; a hashtag is content"
 );
 
