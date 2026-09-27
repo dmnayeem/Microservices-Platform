@@ -43,7 +43,7 @@ export function SocialTasksView({
 } = {}) {
   const [status, setStatus] = useState<Status>("available");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
-  const [tasks, setTasks] = useState<(SocialTaskView & { locked?: boolean })[]>(
+  const [tasks, setTasks] = useState<(SocialTaskView & { locked?: boolean; inProgress?: boolean })[]>(
     []
   );
   const [loading, setLoading] = useState(true);
@@ -192,6 +192,11 @@ export function SocialTasksView({
                         +{t.items.length - 3}
                       </span>
                     )}
+                    {status === "available" && t.inProgress && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/15 text-amber-400">
+                        In progress
+                      </span>
+                    )}
                     {hasAi && (
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-500/15 text-purple-400 inline-flex items-center gap-0.5">
                         <Sparkles className="w-2.5 h-2.5" />
@@ -214,7 +219,7 @@ export function SocialTasksView({
                     href={`/social-tasks/${t.id}`}
                     className="w-full inline-flex items-center justify-center gap-1 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
                   >
-                    {status === "available" ? "Start task" : "View task"}
+                    {status === "available" ? (t.inProgress ? "Continue task" : "Start task") : "View task"}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 )}

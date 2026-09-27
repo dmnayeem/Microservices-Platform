@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncCountryMode } from "@/lib/country-mode";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TaskType } from "@/generated/prisma/client";
@@ -9,6 +10,7 @@ import { getTaskChainState } from "@/lib/task-sequence";
 import { visibleTaskWhere } from "@/lib/task-visibility";
 
 export async function GET(request: NextRequest) {
+  await syncCountryMode(); // country targeting: profile+IP or IP only
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -36,6 +38,9 @@ export async function GET(request: NextRequest) {
       division: true,
       district: true,
       subDistrict: true,
+      // IP country — the fallback when the profile has none (lib/effective-country).
+      lastCountry: true,
+      signupCountry: true,
       postalCode: true,
       gender: true,
       dateOfBirth: true,
@@ -91,18 +96,25 @@ export async function GET(request: NextRequest) {
 
   const accessLevel = userPackage?.accessLevel ?? 0;
 
-  // Hide tasks the user has already started or finished — they belong in the
-  // In Progress / Submitted / Approved tabs, not "Available" (was showing a
-  // "Start" button on already-submitted tasks).
+  // Hide tasks the user has already SUBMITTED or been paid for — they belong in
+  // the Submitted / Approved tabs (this list once showed "Start" on a submitted
+  // task). A task that is started but not yet submitted stays HERE, first, as
+  // "Continue": it used to vanish into the In Progress tab the moment the user
+  // opened it, and people who left to make the post could not find it again.
   const actedSubs = await prisma.taskSubmission.findMany({
     where: {
       userId: user.id,
       task: { type: TaskType.SOCIAL },
       status: { in: ["PENDING", "APPROVED", "AUTO_APPROVED"] },
     },
-    select: { taskId: true },
+    select: { taskId: true, status: true, submittedAt: true },
   });
-  const excludeTaskIds = [...new Set(actedSubs.map((s) => s.taskId))];
+  const inProgressIds = new Set(
+    actedSubs.filter((s) => s.status === "PENDING" && s.submittedAt === null).map((s) => s.taskId)
+  );
+  const excludeTaskIds = [
+    ...new Set(actedSubs.filter((s) => !inProgressIds.has(s.taskId)).map((s) => s.taskId)),
+  ];
 
   const tasks = await prisma.task.findMany({
     where: {
@@ -128,8 +140,11 @@ export async function GET(request: NextRequest) {
       .map((t) => ({
         ...mapSocialTaskRow(t),
         locked: lockedTaskIds.has(t.id),
+        inProgress: inProgressIds.has(t.id),
       }))
       .filter(matchesKind)
+      // Unfinished ones first — they are the ones the user came back for.
+      .sort((a, b) => Number(b.inProgress) - Number(a.inProgress))
       .slice(0, 100),
   });
 }
