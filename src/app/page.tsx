@@ -70,11 +70,11 @@ export default async function Home() {
           }}
         />
       )}
-      <MarketingThemeScript />
+      <MarketingThemeScript allowToggle={content.appearance.themeToggle !== false} />
       {animations && <MarketingBlobs />}
 
       <div className="relative z-10">
-        {on("navbar") && <Navbar {...content.navbar} />}
+        {on("navbar") && <Navbar {...content.navbar} themeToggle={content.appearance.themeToggle !== false} />}
         {on("hero") && <Hero {...content.hero} />}
         {on("features") && <Features {...content.features} />}
         {on("how_it_works") && <HowItWorks {...content.how_it_works} />}

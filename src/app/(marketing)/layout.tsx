@@ -26,13 +26,13 @@ export default async function MarketingLayout({
       data-mk-anim={animations ? "on" : "off"}
       className="relative min-h-screen bg-(--mk-bg) text-(--mk-text) overflow-x-hidden"
     >
-      <MarketingThemeScript />
+      <MarketingThemeScript allowToggle={content.appearance.themeToggle !== false} />
       {/* Auto ads on the public pages only — NEVER inside (main), where every
           screen is incentivised and Google ads are not permitted. */}
       <AutoAds />
       {animations && <MarketingBlobs />}
       <div className="relative z-10">
-        {sectionOn(content, "navbar") && <Navbar {...content.navbar} />}
+        {sectionOn(content, "navbar") && <Navbar {...content.navbar} themeToggle={content.appearance.themeToggle !== false} />}
         <div className={sectionOn(content, "navbar") ? "pt-16 lg:pt-20" : ""}>{children}</div>
         {sectionOn(content, "footer") && <Footer {...content.footer} />}
       </div>

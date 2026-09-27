@@ -187,6 +187,7 @@ const DEFAULTS: SettingsBag = {
   // so an install with no rows saved is unchanged.
   "ui.theme_default": "dark",
   "ui.theme_user_choice": true,
+  "ui.accent_user_choice": true,
   analytics_pageviews_enabled: true,
 };
 
@@ -1619,6 +1620,12 @@ export function SystemSettingsForm({
             <Toggle settingKey="ui.theme_user_choice"
               checked={values["ui.theme_user_choice"] !== false}
               onChange={(v) => set("ui.theme_user_choice", v)}
+              disabled={!canEdit}
+              tone="emerald"
+            />
+            <Toggle settingKey="ui.accent_user_choice"
+              checked={values["ui.accent_user_choice"] !== false}
+              onChange={(v) => set("ui.accent_user_choice", v)}
               disabled={!canEdit}
               tone="emerald"
             />

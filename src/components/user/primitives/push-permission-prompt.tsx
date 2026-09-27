@@ -59,7 +59,7 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)]">
-      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-(--app-cta)/10 backdrop-blur-xl p-3 shadow-xl">
+      <div className="rounded-2xl border border-(--app-accent-edge)/30 bg-[color-mix(in_oklab,var(--app-cta)_8%,var(--app-page))] backdrop-blur-xl p-3 shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-(--app-cta) flex items-center justify-center text-(--app-on-cta) shrink-0">
             <Bell className="w-5 h-5" />

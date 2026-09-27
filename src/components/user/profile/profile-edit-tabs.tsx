@@ -572,7 +572,7 @@ export function ThemeTab({
   preferences: { theme: string; themeAccent: string; notifications: { enabled: boolean; email: boolean; push: boolean } };
   patch: (body: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const { setTheme, setAccent, accentIsDefault, canChangeTheme } = useTheme();
+  const { setTheme, setAccent, accentIsDefault, canChangeTheme, canChangeAccent } = useTheme();
 
   const applyTheme = (mode: Theme) => {
     setTheme(mode); // provider resolves "system" (OS-reactive) + persists
@@ -586,6 +586,8 @@ export function ThemeTab({
 
   return (
     <div className="space-y-4">
+      {/* Nothing to choose when the admin has switched off both. */}
+      {(canChangeTheme || canChangeAccent) && (
       <Card title="Appearance">
         <p
           className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold mb-2"
@@ -624,11 +626,11 @@ export function ThemeTab({
           ))}
         </div>
 
-        <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold mt-4 mb-2">Accent Color</p>
+        <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold mt-4 mb-2" hidden={!canChangeAccent}>Accent Color</p>
         {/* Same Default entry as Settings — the two pickers must offer the
           * same choices, or clearing one's accent would depend on which
           * screen the user happened to open. */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" hidden={!canChangeAccent}>
           <button
             onClick={() => applyAccent(null)}
             className={cn(
@@ -658,6 +660,7 @@ export function ThemeTab({
           ))}
         </div>
       </Card>
+      )}
 
       <Card title="Notifications">
         <Toggle

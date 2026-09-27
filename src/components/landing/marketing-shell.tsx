@@ -7,8 +7,11 @@
 
 const MK_THEME_BOOT = `(function(){try{var el=document.getElementById('mk-root');if(!el)return;var t=localStorage.getItem('earngpt-landing-theme');if(t==='light'||t==='dark')el.setAttribute('data-mk-theme',t);}catch(e){}})();`;
 
-/** Inline pre-paint script — render as the first child of #mk-root. */
-export function MarketingThemeScript() {
+/** Inline pre-paint script — render as the first child of #mk-root.
+ *  With the visitor switch turned off by the admin the stored choice is not
+ *  read, so everyone gets the admin's theme. */
+export function MarketingThemeScript({ allowToggle = true }: { allowToggle?: boolean }) {
+  if (!allowToggle) return null;
   return <script dangerouslySetInnerHTML={{ __html: MK_THEME_BOOT }} />;
 }
 

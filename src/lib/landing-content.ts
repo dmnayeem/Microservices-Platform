@@ -224,6 +224,12 @@ export interface AppearanceContent {
   theme: "light" | "dark";
   /** Master switch for landing background blobs + hover-zoom animations. */
   animations: boolean;
+  /**
+   * Show the visitor light/dark switch in the navbar. Off: the switch is
+   * hidden and every visitor sees `theme`, even one who had picked the other.
+   * Missing (content saved before this existed) = on.
+   */
+  themeToggle?: boolean;
 }
 
 export interface LandingContent {
@@ -264,7 +270,7 @@ export const LANDING_SECTIONS: ReadonlyArray<{
   { key: "faq",          label: "FAQ",          description: "Frequently asked questions", icon: "HelpCircle" },
   { key: "cta",          label: "Final CTA",    description: "Closing call-to-action card", icon: "Rocket" },
   { key: "footer",       label: "Footer",       description: "Brand, link groups, payment methods", icon: "PanelBottom" },
-  { key: "appearance",   label: "Appearance",   description: "Default light/dark theme + animations", icon: "Palette" },
+  { key: "appearance",   label: "Appearance",   description: "Default light/dark theme, visitor switch + animations", icon: "Palette" },
 ] as const;
 
 export const SECTION_KEYS = LANDING_SECTIONS.map((s) => s.key) as readonly SectionKey[];
@@ -758,6 +764,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   appearance: {
     theme: "dark",
     animations: true,
+    themeToggle: true,
   },
 };
 
