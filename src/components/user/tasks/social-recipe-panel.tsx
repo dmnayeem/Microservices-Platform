@@ -71,6 +71,12 @@ export function SocialRecipePanel({
   const firstRole = steps[0]?.role;
   const imageFirst = firstRole === "image" || firstRole === "imagePrompt";
 
+  // When the image prompt is already shown in the guide above, the admin's
+  // image-prompt step below would be the same text a second time — two
+  // "image prompts" on one task, and users could not tell which to use.
+  const imageGuideShown = diyOpen && !!splitPrompts;
+  const shownSteps = imageGuideShown ? steps.filter((s) => s.role !== "imagePrompt") : steps;
+
   if (!canGenerate && !showDiyUpfront && steps.length === 0) return null;
 
   return (
@@ -132,14 +138,16 @@ export function SocialRecipePanel({
           <DiyPromptBlock prompt={diyPrompt} platformLabel={platformLabel} />
         ) : null)}
 
-      {steps.length > 0 && (
+      {shownSteps.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] text-(--app-ink-3) font-semibold">
-            {imageFirst
+            {imageGuideShown
+              ? `Then copy these into ${platformLabel}:`
+              : imageFirst
               ? `Start with the image — ${platformLabel} will not let you publish without one, so make and upload it before you fill anything else. Then work down:`
               : `Copy each item below, then create your ${platformLabel} post:`}
           </p>
-          {steps.map((step) => (
+          {shownSteps.map((step) => (
             <RecipeStep
               key={step.key}
               step={step}

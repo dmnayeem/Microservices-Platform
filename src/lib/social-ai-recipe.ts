@@ -176,6 +176,10 @@ export function buildDiyContentPrompt(
   ctx: RecipeAiContext,
   keys: string[]
 ): string {
+  // The admin wrote the whole prompt: hand it over exactly as written. Wrapping
+  // it in our own ("Write me a … post … The post is about …") meant the user
+  // never saw the prompt the admin actually set.
+  if (isFullAdminPrompt(ctx.extraGuidance)) return ctx.extraGuidance;
   const fixed = fixedSteps(ctx, keys);
   const lines: string[] = [
     `Write me a ${ctx.platformLabel} post I can publish today.`,
@@ -244,6 +248,16 @@ export function isImageFirstRecipe(ctx: RecipeAiContext): boolean {
  * in a second time before they had anything to upload. This one is addressed
  * to an image model directly: paste it, get a picture, download it.
  */
+/**
+ * Did the admin write a complete prompt, or a short note to fold into ours?
+ * A real prompt is long or spans lines ("You are a Pinterest SEO expert…
+ * INPUT: … TASK: …"); a note is a phrase ("summer colours").
+ */
+export function isFullAdminPrompt(text: string | null | undefined): text is string {
+  const t = (text ?? "").trim();
+  return t.length >= 200 || t.includes("\n");
+}
+
 export function buildDiyImagePrompt(ctx: RecipeAiContext): string {
   const lines: string[] = [
     `Create an image I can upload as a ${ctx.platformLabel} pin.`,
@@ -257,6 +271,10 @@ export function buildDiyImagePrompt(ctx: RecipeAiContext): string {
     .filter((s) => s.role === "imagePrompt")
     .map((s) => (ctx.fields[s.key] ?? "").trim())
     .find(Boolean);
+  // A whole prompt from the admin is used exactly as written — it was being
+  // wrapped in ours AND repeated as a step below it, so the task showed two
+  // image prompts. A short note is still folded in as direction.
+  if (adminImage && isFullAdminPrompt(adminImage)) return adminImage;
   if (adminImage) lines.push(`Follow this direction: ${adminImage}`);
 
   lines.push(
