@@ -25,6 +25,7 @@ import {
 import { AD_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { BUYER_TASK_TYPES, BUYER_TASK_TYPE_META } from "@/lib/buyer-task-types";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
 /**
  * Public explainer for advertisers.
@@ -48,25 +49,13 @@ const SELLABLE = AD_PLACEMENTS.filter((p) => p.name !== "REWARDED_VIDEO");
 const SLOT_COUNT = SELLABLE.length;
 const NETWORK_SPACES = SELLABLE.filter((p) => placementSpec(p.name).networkAllowed);
 
-export function generateMetadata(): Metadata {
+export function generateMetadata(): Promise<Metadata> {
   const title = "Advertise — Reach an Audience That Is Already Paying Attention";
   const description =
     `Run ads across ${SLOT_COUNT} placements on ${COMPANY_NAME}, sponsor a space ` +
     `outright, or pay real people to complete tasks for your brand. Every space, ` +
     `every format and every control, explained.`;
-  return {
-    title,
-    description,
-    alternates: { canonical: "/advertise" },
-    openGraph: {
-      title,
-      description,
-      url: "/advertise",
-      type: "website",
-      siteName: COMPANY_NAME,
-    },
-    twitter: { card: "summary_large_image", title, description },
-  };
+  return pageMeta({ title, description, path: "/advertise" });
 }
 
 const BENEFITS = [

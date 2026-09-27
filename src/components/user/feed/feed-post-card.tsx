@@ -17,6 +17,8 @@ import {
   X,
   Globe,
   Users,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
@@ -516,15 +518,14 @@ export const FeedPostCard = memo(function FeedPostCard({
             />
           </Link>
           <div className="flex-1 min-w-0">
-            {/* `min-w-0` and `truncate`, because this row is squeezed from
-              * both sides — a level chip and a Follow button — and without
-              * them a two-word name wrapped mid-name on a phone: "Super" on
-              * one line, "Admin" on the next. A name that is too long is
-              * shortened with an ellipsis; it never becomes two lines. */}
+            {/* The FULL name, as on Facebook: it may take two lines, broken
+              * between words, never mid-word. Truncating cut long names to
+              * "Mohammad Mahedi…" on a phone. The level chip and the Follow
+              * label give way on narrow screens so the name gets the room. */}
             <div className="flex min-w-0 items-center gap-1.5">
               <Link
                 href={post.user ? profileHref(post.user) : "#"}
-                className="t-card-title truncate text-white hover:text-(--app-accent-ink) transition-colors"
+                className="t-card-title line-clamp-2 min-w-0 text-white hover:text-(--app-accent-ink) transition-colors"
               >
                 {post.user?.name ?? "Anonymous"}
               </Link>
@@ -540,8 +541,9 @@ export const FeedPostCard = memo(function FeedPostCard({
               {/* Was an amber pill. A level is not a warning, and on a feed
                   where a third of authors are level 10+ it was a wall of amber
                   next to a blue tick and a blue Follow button. */}
+              {/* Hidden on the narrowest phones: there the name needs the room. */}
               {post.user && post.user.level >= 10 && (
-                <span className="app-chip uppercase tracking-wider">
+                <span className="app-chip hidden shrink-0 uppercase tracking-wider min-[380px]:inline-flex">
                   Lvl {post.user.level}
                 </span>
               )}
@@ -559,8 +561,11 @@ export const FeedPostCard = memo(function FeedPostCard({
               {/* The author's own posts say who they went out to. An author who
                   cannot see what they published cannot correct it. */}
               {post.isOwner && post.audience && (
+                /* Never two lines: on a narrow phone "Members only" wrapped and
+                   broke the whole card. The icon always shows; the words only
+                   where they fit on one line. */
                 <span
-                  className="inline-flex items-center gap-1 text-(--app-ink-3)"
+                  className="inline-flex min-w-0 items-center gap-1 whitespace-nowrap text-(--app-ink-3)"
                   title={
                     post.audience === "PUBLIC"
                       ? "Anyone on the internet can read this post."
@@ -573,7 +578,9 @@ export const FeedPostCard = memo(function FeedPostCard({
                   ) : (
                     <Users className="w-3 h-3" />
                   )}
-                  {post.audience === "PUBLIC" ? "Public" : "Members only"}
+                  <span className="hidden truncate min-[400px]:inline">
+                    {post.audience === "PUBLIC" ? "Public" : "Members only"}
+                  </span>
                 </span>
               )}
             </p>
@@ -589,7 +596,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                  outlined control now: still the only button in the post header,
                  still obviously pressable, no longer shouting twenty times. */
               className={cn(
-                "app-press app-tap-row shrink-0 px-3.5 rounded-(--app-r-chip) text-xs font-extrabold border disabled:opacity-50",
+                "app-press app-tap-row inline-flex shrink-0 items-center justify-center px-2.5 min-[400px]:px-3.5 rounded-(--app-r-chip) text-xs font-extrabold border disabled:opacity-50",
                 post.isFollowingAuthor
                   ? "bg-(--app-surface-2) text-(--app-ink-2) border-(--app-line)"
                   : "bg-transparent text-(--app-accent-ink) border-(--app-accent-edge) hover:bg-(--app-nav-wash)"
@@ -597,15 +604,24 @@ export const FeedPostCard = memo(function FeedPostCard({
             >
               {followBusy ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : post.isFollowingAuthor ? (
-                "Following"
               ) : (
-                "Follow"
+                /* An icon on the narrowest phones, so the author's name — not
+                   the button — gets the width. */
+                <>
+                  {post.isFollowingAuthor ? (
+                    <UserCheck className="w-4 h-4 min-[400px]:hidden" aria-hidden />
+                  ) : (
+                    <UserPlus className="w-4 h-4 min-[400px]:hidden" aria-hidden />
+                  )}
+                  <span className="sr-only min-[400px]:not-sr-only">
+                    {post.isFollowingAuthor ? "Following" : "Follow"}
+                  </span>
+                </>
               )}
             </button>
           )}
           {(post.isOwner || isAdmin) && (
-            <div className="relative" ref={menuRef}>
+            <div className="relative shrink-0" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((v) => !v)}
                 className="app-tap app-press inline-flex items-center justify-center rounded-(--app-r-chip) text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"

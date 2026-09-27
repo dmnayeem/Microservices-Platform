@@ -1,5 +1,6 @@
 "use client";
 
+import { isStandaloneApp } from "@/lib/standalone";
 import { useEffect, useState } from "react";
 import { TaskInstructions } from "@/components/user/tasks/task-instructions";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -762,9 +763,16 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
   } | null>(null);
 
   const start = async () => {
+    // In the installed app a new tab opens in the Chrome browser, outside the
+    // app — the whole journey and the key redirect back to
+    // /article-tasks/complete then happened in Chrome, and the app never saw
+    // it. The article journey is tracked on the server, so the app can simply
+    // go there itself: the redirect back then lands inside the app.
+    const inApp = isStandaloneApp();
     if (articleUrl) {
       // Already have the link — a plain open, still inside the click.
-      window.open(articleUrl, "_blank");
+      if (inApp) window.location.assign(articleUrl);
+      else window.open(articleUrl, "_blank");
       return;
     }
     // Open the tab NOW, while the browser still counts this as the user's
@@ -773,7 +781,7 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
     // stops it and the reader gets a permission prompt instead of the
     // article. So the tab is opened blank up-front and navigated once the
     // URL exists.
-    const tab = window.open("", "_blank");
+    const tab = inApp ? null : window.open("", "_blank");
     // Cut the article site's handle back to this tab. We keep ours, which is
     // the direction that matters, and lose the one that lets a third-party
     // page touch this one.
@@ -805,6 +813,10 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
         : ((data.firstPageUrl as string | undefined) ?? "");
       if (!url) throw new Error("Missing destination for this task");
       setArticleUrl(url);
+      if (inApp) {
+        window.location.assign(url);
+        return;
+      }
       if (tab && !tab.closed) {
         tab.location.replace(url);
         setOpened(true);
@@ -947,7 +959,7 @@ function KeyPoolStartCard({ taskId }: { taskId: string }) {
           </p>
           <a
             href={articleUrl}
-            target="_blank"
+            target={isStandaloneApp() ? "_self" : "_blank"}
             rel="noopener noreferrer"
             onClick={() => setOpened(true)}
             className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/20 px-2.5 py-1.5 font-semibold text-amber-100 hover:bg-amber-500/30"

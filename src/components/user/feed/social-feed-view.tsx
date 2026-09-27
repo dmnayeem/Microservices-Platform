@@ -170,7 +170,7 @@ export function SocialFeedView({
               return (
                 <button
                   key={t.key}
-                  onClick={() => setTab(t.key)}
+                  onClick={() => (isActive ? scrollToTop() : setTab(t.key))}
                   className={cn(
                     "app-tap-row app-press inline-flex shrink-0 items-center gap-1.5 rounded-(--app-r-chip) px-3 text-sm font-bold",
                     isActive
@@ -218,7 +218,8 @@ export function SocialFeedView({
               {(["recent", "trending"] as const).map((s) => (
                 <button
                   key={s}
-                  onClick={() => setSort(s)}
+                  // Tapping the one already chosen goes back to the top — as on Facebook.
+                  onClick={() => (sort === s ? scrollToTop() : setSort(s))}
                   aria-pressed={sort === s}
                   className={cn(
                     "app-press inline-flex h-10 items-center gap-1.5 rounded-[calc(var(--app-r-chip)-2px)] px-3 text-xs font-bold",
@@ -334,6 +335,7 @@ export function SocialFeedView({
       >
         {railOpen && <div className="space-y-3 pb-2">{railContent}</div>}
       </BottomSheet>
+      <BackToTop />
     </div>
   );
 }
@@ -717,5 +719,42 @@ function FeedTab({
         </div>
       )}
     </div>
+  );
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/**
+ * "Back to top", after a long scroll. Deep in the feed there was no way up
+ * but scrolling all the way back. Shows past ~1.5 screens down; sits above
+ * the phone tab bar and the anchor ad.
+ */
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setShow(window.scrollY > window.innerHeight * 1.5));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+  if (!show) return null;
+  return (
+    <button
+      type="button"
+      onClick={scrollToTop}
+      aria-label="Back to top"
+      title="Back to top"
+      className="app-press fixed right-4 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink) shadow-(--app-e3) hover:text-white bottom-[calc(var(--bottom-nav-h,0px)+var(--anchor-ad-h,0px)+1rem)] md:bottom-[calc(var(--anchor-ad-h,0px)+1.5rem)] md:right-6"
+    >
+      <ArrowUp className="h-5 w-5" />
+    </button>
   );
 }

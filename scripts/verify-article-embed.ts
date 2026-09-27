@@ -427,7 +427,9 @@ function main() {
     // file would compare against one of theirs.
     const card = src.slice(src.indexOf("function KeyPoolStartCard"));
     const body = card.slice(0, card.indexOf("\n  return ("));
-    const openAt = body.indexOf('const tab = window.open("", "_blank")');
+    // In a browser the blank tab still opens during the click; in the
+    // installed app there is no tab (the journey stays in the app window).
+    const openAt = body.indexOf('const tab = inApp ? null : window.open("", "_blank")');
     check(
       "the tab is opened during the click, before the token round-trip",
       openAt >= 0 && openAt < body.indexOf("await fetch("),

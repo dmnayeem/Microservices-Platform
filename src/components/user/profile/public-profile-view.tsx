@@ -572,7 +572,13 @@ interface ApiPost {
  * background the feed gives them rather than as empty rectangles, so a profile
  * of text posts still looks like something.
  */
-function PostsTab({ userId }: { userId: string }) {
+export function PostsTab({
+  userId,
+  emptyText = "Anything they share publicly will show up here.",
+}: {
+  userId: string;
+  emptyText?: string;
+}) {
   const [items, setItems] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<ApiPost | null>(null);
@@ -613,7 +619,7 @@ function PostsTab({ userId }: { userId: string }) {
       <div className="rounded-xl border border-dashed border-(--app-line) p-10 text-center">
         <p className="text-sm text-(--app-ink-3) font-semibold">No posts yet</p>
         <p className="text-xs text-(--app-glyph) mt-1">
-          Anything they share publicly will show up here.
+          {emptyText}
         </p>
       </div>
     );

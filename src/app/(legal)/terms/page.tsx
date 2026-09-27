@@ -7,12 +7,16 @@ import {
   LEGAL_GOVERNING,
   LEGAL_ENTITY,
 } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Terms of Service · RevType",
-  description:
-    "The terms, end-user licence agreement, and community standards for using RevType.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Terms of Service",
+    description:
+      "The terms, end-user licence agreement, and community standards for using RevType.",
+    path: "/terms",
+  });
+}
 
 export default function TermsPage() {
   return (

@@ -350,11 +350,16 @@ function main() {
         /object-contain/.test(card),
         "cropping somebody's screenshot to tidy the feed is not ours to decide"
       );
-      // The header rows are squeezed from both sides; without these a two-word
-      // name wrapped mid-name and "2 months ago" broke across two lines.
+      // The header rows are squeezed from both sides. The owner wants the FULL
+      // name (2026-09-27): at most two lines, broken between words — truncating
+      // cut long names to "Mohammad Mahedi…" on a phone.
       check(
-        "the author name truncates instead of wrapping",
-        /t-card-title truncate/.test(card) && /flex min-w-0 items-center gap-1\.5/.test(card)
+        "the author name shows in full on at most two lines",
+        /t-card-title line-clamp-2 min-w-0/.test(card) && /flex min-w-0 items-center gap-1\.5/.test(card)
+      );
+      check(
+        "the audience label never wraps (icon-only on the narrowest phones)",
+        /min-w-0 items-center gap-1 whitespace-nowrap/.test(card)
       );
       check(
         "the post age stays on one line",
@@ -672,13 +677,16 @@ function main() {
       check(`${p.route} exports a page component`, /export default function/.test(src));
       check(
         `${p.route} declares its own metadata`,
-        /export function generateMetadata\(\): Metadata/.test(src)
+        /export function generateMetadata\(\): (Promise<)?Metadata/.test(src)
       );
       check(
         `${p.route} sets a canonical URL`,
-        new RegExp(`alternates:\\s*\\{\\s*canonical:\\s*"${p.route}"`).test(src)
+        // Directly, or through pageMeta() — which sets the canonical and the
+        // og card from `path` (src/lib/seo/page-meta.ts).
+        new RegExp(`alternates:\\s*\\{\\s*canonical:\\s*"${p.route}"`).test(src) ||
+          new RegExp(`pageMeta\\(\\{[^}]*path:\\s*"${p.route}"`).test(src)
       );
-      check(`${p.route} has an og card`, /openGraph:\s*\{/.test(src));
+      check(`${p.route} has an og card`, /openGraph:\s*\{/.test(src) || /pageMeta\(/.test(src));
 
       // No rate, price or percentage may be written into a marketing page.
       // Every reward and every ad price on this platform is a SystemSetting the

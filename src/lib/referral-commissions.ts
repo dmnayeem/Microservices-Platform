@@ -61,7 +61,10 @@ export async function processReferralCommissions(
     // self-referral pays nobody.
     const visited = new Set<string>([userId]);
 
-    for (let level = 1; level <= Math.min(10, referralLevels.length); level++) {
+    // Walk to the DEEPEST active level, not to the number of active levels:
+    // with only levels 1 and 5 on, the count is 2, so level 5 never paid.
+    const deepest = Math.min(10, Math.max(...referralLevels.map((r) => r.level)));
+    for (let level = 1; level <= deepest; level++) {
       if (!currentUser?.referredById) break;
       if (visited.has(currentUser.referredById)) {
         console.error(

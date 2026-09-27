@@ -101,6 +101,14 @@ export const authConfig: NextAuthConfig = {
         "/help",
         "/contact",
         "/status",
+        // Public marketing pages that were missing here — logged-out
+        // visitors and search engines were sent to /login.
+        "/microtask",
+        "/advertise",
+        "/referral",
+        // A shared post. The page itself decides what a logged-out reader
+        // may see (lib/public-post.ts).
+        "/post",
       ];
 
       // Admin routes that require admin role

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Heart, MessageCircle, Share2, BadgeCheck } from "lucide-react";
 import {
   absoluteMediaUrl,
@@ -103,6 +104,25 @@ export default async function PublicPostPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-(--app-page) text-(--app-ink)">
+      {/* The post as structured data: author, date, text, image and its
+          reactions — what search and AI answers read to cite a post. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SocialMediaPosting",
+          url,
+          datePublished: post.createdAt.toISOString(),
+          headline: post.content.slice(0, 110) || `A post by ${post.author.name}`,
+          text: post.content,
+          author: { "@type": "Person", name: post.author.name, ...(post.author.username ? { alternateName: `@${post.author.username}` } : {}) },
+          ...(post.images.length ? { image: post.images.map((i) => absoluteMediaUrl(i)) } : {}),
+          interactionStatistic: [
+            { "@type": "InteractionCounter", interactionType: "https://schema.org/LikeAction", userInteractionCount: post.likesCount },
+            { "@type": "InteractionCounter", interactionType: "https://schema.org/CommentAction", userInteractionCount: post.commentsCount },
+            { "@type": "InteractionCounter", interactionType: "https://schema.org/ShareAction", userInteractionCount: post.sharesCount },
+          ],
+        }}
+      />
       {/* Header — the only navigation a stranger gets, and it points at the
           product rather than at the app shell they cannot enter. */}
       <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/85 backdrop-blur">

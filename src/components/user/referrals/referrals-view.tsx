@@ -1,5 +1,4 @@
 "use client";
-import { STAT_VALUE_CLASS } from "@/components/user/primitives/stat-card";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,11 +8,16 @@ import {
   Share2,
   QrCode,
   Download,
-  CheckCircle,
   TrendingUp,
   Coins,
   Sparkles,
-  X,
+  Search,
+  Wallet,
+  UserPlus,
+  Gift,
+  Trophy,
+  Layers,
+  Activity,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { notifyCenter } from "@/lib/notify-center";
@@ -22,7 +26,6 @@ import { newIdempotencyKey } from "@/lib/idempotency-key";
 // the initial referrals-page chunk — see QrPanel below.
 import { format } from "date-fns";
 import { ShareModal } from "@/components/user/primitives/share-modal";
-import { FilterChips } from "@/components/user/primitives/filter-chips";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { cn, usd } from "@/lib/utils";
@@ -32,44 +35,58 @@ export interface ReferralUser {
   id: string;
   name: string | null;
   avatar: string | null;
-  level: 1 | 2 | 3;
+  level: number;
   joinedAt: string;
   earnings: number;
   isActive: boolean;
 }
 
+/** The referral bonuses the admin has switched on (referral_bonus_config). */
+export interface ReferralBonusInfo {
+  /** One line per active bonus: "Friend signs up" → "+500 pts". */
+  perks: Array<{ label: string; reward: string }>;
+  milestones: Array<{ id: string; label: string; referrals: number; reward: string }>;
+  /** Active referrals counted toward the milestones; null when milestones are off. */
+  milestoneProgress: number | null;
+  /** How "active" is judged for milestones, in words. */
+  activeRule: string | null;
+}
+
 export interface ReferralsViewProps {
   referralCode: string;
   shareUrl: string;
-  l1Count: number;
-  l2Count: number;
-  l3Count: number;
-  l1Earned: number;
-  l2Earned: number;
-  l3Earned: number;
+  /** The levels the admin set (rate, members, commission earned) — lib/team.ts. */
+  levels: Array<{ level: number; rateLabel: string; count: number; earnedUsd: number }>;
+  totalEarned: number;
   thisMonthEarned: number;
   team: ReferralUser[];
+  bonuses: ReferralBonusInfo;
 }
 
 const HASHTAGS = "#RevType #MakeMoneyOnline #ReferralProgram #PassiveIncome";
+const PAGE = 30;
 
+/**
+ * My Team. Top to bottom in the order people use it: what I have earned →
+ * how to invite → what I get for it → the commission per level → who is in
+ * my team. Nothing scrolls sideways — every filter wraps onto the next line.
+ */
 export function ReferralsView({
   referralCode,
   shareUrl,
-  l1Count,
-  l2Count,
-  l3Count,
-  l1Earned,
-  l2Earned,
-  l3Earned,
+  levels,
+  totalEarned,
   thisMonthEarned,
   team,
+  bonuses,
 }: ReferralsViewProps) {
-  const totalCount = l1Count + l2Count + l3Count;
-  const totalEarned = l1Earned + l2Earned + l3Earned;
+  const totalCount = levels.reduce((a, l) => a + l.count, 0);
+  const activeCount = team.filter((m) => m.isActive).length;
   const [showQr, setShowQr] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [filter, setFilter] = useState<"ALL" | "L1" | "L2" | "L3">("ALL");
+  const [filter, setFilter] = useState<number | "ALL">("ALL");
+  const [query, setQuery] = useState("");
+  const [shown, setShown] = useState(PAGE);
   const [dailyClaim, setDailyClaim] = useState<{
     points: number;
     perReferral: number;
@@ -113,23 +130,21 @@ export function ReferralsView({
         title: "Referral bonus claimed!",
         description: `${d.referralCount} referrals × ${d.perReferral} pts`,
       });
-      // Refresh status
       const sRes = await fetch("/api/referrals/daily-claim");
       if (sRes.ok) setDailyClaim(await sRes.json());
     } catch (err) {
-      notifyCenter.error(
-        "Couldn't claim",
-        err instanceof Error ? err.message : "Try again"
-      );
+      notifyCenter.error("Couldn't claim", err instanceof Error ? err.message : "Try again");
     } finally {
       setClaimingDaily(false);
     }
   };
 
   const filteredTeam = useMemo(() => {
-    if (filter === "ALL") return team;
-    return team.filter((m) => `L${m.level}` === filter);
-  }, [filter, team]);
+    const q = query.trim().toLowerCase();
+    return team.filter(
+      (m) => (filter === "ALL" || m.level === filter) && (!q || (m.name ?? "").toLowerCase().includes(q))
+    );
+  }, [filter, query, team]);
 
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(
@@ -138,257 +153,363 @@ export function ReferralsView({
     );
   };
 
-  // Referral commissions are auto-credited to the wallet at the time the
-  // referred user earns. There is no separate "claim" action — direct users
-  // to their wallet to see the balance.
+  // "3% on each of 10 levels" when the admin set one rate everywhere.
+  const sameRate = levels.length > 1 && levels.every((l) => l.rateLabel === levels[0].rateLabel);
+  const rateSummary = levels.length
+    ? sameRate
+      ? `${levels[0].rateLabel} on each of ${levels.length} levels`
+      : `${levels[0].rateLabel} on level 1${levels.length > 1 ? `, up to ${levels.length} levels deep` : ""}`
+    : "";
+
+  const nextMilestone =
+    bonuses.milestoneProgress !== null
+      ? bonuses.milestones.find((m) => m.referrals > (bonuses.milestoneProgress ?? 0)) ?? null
+      : null;
+
+  const chip = (active: boolean) =>
+    cn(
+      "app-press inline-flex items-center gap-1.5 rounded-(--app-r-chip) border px-3 py-1.5 text-xs font-bold",
+      active
+        ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
+        : "border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink)"
+    );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-(--app-gap)">
       <header>
-        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Users className="w-6 h-6 text-purple-400" />
+        <h1 className="t-title text-white inline-flex items-center gap-2.5">
+          <Users className="w-6 h-6 text-(--app-ink-3)" />
           My Team
         </h1>
-        <p className="text-(--app-ink-3) text-sm mt-0.5">
-          Invite friends, build a team, earn passive commission for life.
+        <p className="t-body text-(--app-ink-3) mt-1">
+          Invite friends and earn from what they earn{rateSummary ? ` — ${rateSummary}` : ""}.
         </p>
       </header>
 
-      {/* Total earnings header card */}
-      <div className="rounded-2xl bg-linear-to-r from-(--app-rail-a)/25 to-(--app-rail-b)/15 border border-(--app-accent-edge)/40 backdrop-blur-xl p-5">
-        <p className="text-xs uppercase tracking-widest font-bold text-purple-200">
-          Total Referral Earnings
-        </p>
-        <p className="text-4xl font-extrabold text-white tabular-nums mt-1">
-          {usd(totalEarned)}
-        </p>
-        <div className="flex items-center gap-3 text-xs text-purple-200/80 mt-2">
-          <span className="inline-flex items-center gap-1">
-            <Users className="w-3.5 h-3.5" />
-            {totalCount} {totalCount === 1 ? "referral" : "referrals"}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5" />
-            +{usd(thisMonthEarned)} this month
-          </span>
+      {/* ── Earnings ─────────────────────────────────────────────────────── */}
+      <section className="rounded-(--app-r-card) bg-(image:--app-grad) p-5 text-white shadow-(--app-grad-glow)">
+        <p className="text-xs font-bold uppercase tracking-wider text-white/80">Total team earnings</p>
+        <p className="mt-1 text-4xl font-extrabold tabular-nums">{usd(totalEarned)}</p>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {[
+            { label: "Team members", value: totalCount.toLocaleString(), icon: Users },
+            { label: "Active this week", value: activeCount.toLocaleString(), icon: Activity },
+            { label: "This month", value: usd(thisMonthEarned), icon: TrendingUp },
+          ].map((s) => (
+            <div key={s.label} className="min-w-0 rounded-(--app-r-control) bg-white/10 px-2.5 py-2">
+              <s.icon className="h-4 w-4 text-white/80" />
+              <p className="mt-1 truncate text-base font-extrabold tabular-nums">{s.value}</p>
+              <p className="truncate text-[10px] text-white/75">{s.label}</p>
+            </div>
+          ))}
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {dailyClaim && dailyClaim.referralCount > 0 && (
             <button
               onClick={claimDaily}
-              disabled={
-                claimingDaily ||
-                !dailyClaim.canClaim ||
+              disabled={claimingDaily || !dailyClaim.canClaim || dailyClaim.claimed}
+              className={cn(
+                "app-press inline-flex items-center gap-1.5 rounded-(--app-r-control) px-4 py-2 text-sm font-bold",
                 dailyClaim.claimed
-              }
-              className={
-                dailyClaim.claimed
-                  ? "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-400 text-sm font-bold cursor-default"
+                  ? "bg-white/15 text-white cursor-default"
                   : dailyClaim.canClaim
-                  ? "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) text-sm font-bold disabled:opacity-50"
-                  : "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-(--app-surface-2) text-(--app-ink-2) text-sm font-bold cursor-not-allowed"
-              }
-              title={
-                dailyClaim.claimed
-                  ? "Already claimed today"
-                  : dailyClaim.missionRequired && !dailyClaim.missionComplete
-                  ? "Complete today's daily mission first"
-                  : "Claim today's bonus"
-              }
+                    ? "bg-white text-(--app-grad-a) disabled:opacity-50"
+                    : "bg-black/20 text-white/85 cursor-not-allowed"
+              )}
             >
               <Coins className="w-4 h-4" />
               {dailyClaim.claimed
-                ? "Daily Bonus Claimed ✓"
+                ? "Daily bonus claimed ✓"
                 : dailyClaim.canClaim
-                ? `Claim ${dailyClaim.points} pts`
-                : "Mission Required 🔒"}
+                  ? `Claim ${dailyClaim.points} pts`
+                  : "Daily mission first"}
             </button>
           )}
           <Link
-            href="/wallet"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-500/20 text-white text-sm font-bold border border-purple-500/40 hover:bg-purple-500/30"
+            href="/wallet?tab=referral"
+            className="app-press inline-flex items-center gap-1.5 rounded-(--app-r-control) border border-white/30 px-4 py-2 text-sm font-bold text-white hover:bg-white/10"
           >
+            <Wallet className="w-4 h-4" />
             View in Wallet
           </Link>
         </div>
-        {dailyClaim?.missionRequired && !dailyClaim.missionComplete && !dailyClaim.claimed && (
-          <p className="text-[11px] text-amber-300 mt-2 inline-flex items-center gap-1">
+        {dailyClaim?.missionRequired && !dailyClaim.missionComplete && !dailyClaim.claimed && dailyClaim.referralCount > 0 && (
+          <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-white/85">
             <Sparkles className="w-3 h-3" />
-            <Link href="/daily-mission" className="underline hover:text-amber-200">
+            <Link href="/daily-mission" className="underline">
               Complete today&apos;s daily mission
-            </Link>
-            {" "}to unlock today&apos;s referral bonus.
+            </Link>{" "}
+            to unlock today&apos;s team bonus.
           </p>
         )}
-        <p className="text-[11px] text-purple-200/70 mt-2">
-          L2/L3 commissions auto-credit to your wallet. Daily bonus = referrals × your tier rate.
-        </p>
-      </div>
-
-      {/* 3-level commission cards */}
-      <section>
-        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2">
-          Commission Structure
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          <CommissionCard
-            level={1}
-            pct={10}
-            count={l1Count}
-            earned={l1Earned}
-            tone="emerald"
-          />
-          <CommissionCard
-            level={2}
-            pct={5}
-            count={l2Count}
-            earned={l2Earned}
-            tone="purple"
-          />
-          <CommissionCard
-            level={3}
-            pct={2}
-            count={l3Count}
-            earned={l3Earned}
-            tone="amber"
-          />
-        </div>
       </section>
 
-      {/* Referral link & code */}
-      <section className="glass rounded-xl p-4 space-y-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
-            Your Code
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-amber-400 font-mono font-bold tracking-widest text-center">
-              {referralCode}
-            </code>
-            <button
-              onClick={() => copyText(referralCode, "Code")}
-              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2)"
-              aria-label="Copy code"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
+      {/* ── Invite ───────────────────────────────────────────────────────── */}
+      <section className="app-card space-y-3">
+        <h2 className="t-section text-white">Invite friends</h2>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className="t-meta mb-1 text-(--app-ink-3)">Your code</p>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-(--app-r-control) border border-(--app-line) bg-(--app-page) px-3 py-2 text-center font-mono font-bold tracking-widest text-amber-400">
+                {referralCode}
+              </code>
+              <button
+                onClick={() => copyText(referralCode, "Code")}
+                className="app-press app-tap shrink-0 inline-flex items-center justify-center rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink-2) hover:text-white"
+                aria-label="Copy code"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <p className="t-meta mb-1 text-(--app-ink-3)">Your link</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="min-w-0 flex-1 rounded-(--app-r-control) border border-(--app-line) bg-(--app-page) px-3 py-2 text-sm text-(--app-ink) focus:outline-none"
+              />
+              <button
+                onClick={() => copyText(shareUrl, "Link")}
+                className="app-press app-tap shrink-0 inline-flex items-center justify-center rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink-2) hover:text-white"
+                aria-label="Copy link"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-1.5">
-            Share Link
-          </p>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={shareUrl}
-              readOnly
-              className="flex-1 px-3 py-2 rounded-lg bg-(--app-page) border border-(--app-line) text-(--app-ink) text-sm focus:outline-none"
-            />
-            <button
-              onClick={() => copyText(shareUrl, "Link")}
-              className="p-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink-2)"
-              aria-label="Copy link"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowQr((v) => !v)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
-          >
-            <QrCode className="w-4 h-4" />
-            {showQr ? "Hide QR" : "Show QR"}
-          </button>
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setShowShare(true)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) text-white text-sm font-bold hover:scale-[1.02] transition-transform"
+            className="app-accent app-press app-tap-row inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) text-sm font-extrabold"
           >
             <Share2 className="w-4 h-4" />
             Share
           </button>
+          <button
+            onClick={() => setShowQr((v) => !v)}
+            className="app-press app-tap-row inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) text-sm font-bold text-(--app-ink)"
+          >
+            <QrCode className="w-4 h-4" />
+            {showQr ? "Hide QR" : "QR code"}
+          </button>
         </div>
-
         {showQr && <QrPanel url={shareUrl} />}
+
+        {/* How it works */}
+        <ol className="grid gap-2 border-t border-(--app-line) pt-3 sm:grid-cols-3">
+          {[
+            { icon: Share2, title: "Share your link", text: "Send it to friends or post it anywhere." },
+            { icon: UserPlus, title: "They join and earn", text: "They sign up with your code and complete tasks." },
+            {
+              icon: Coins,
+              title: "You earn with them",
+              text: rateSummary ? `You get ${rateSummary} — paid to your wallet automatically.` : "Commission is paid to your wallet automatically.",
+            },
+          ].map((s, i) => (
+            <li key={s.title} className="flex items-start gap-2.5">
+              <span className="app-icon shrink-0">
+                <s.icon className="w-4 h-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white">
+                  {i + 1}. {s.title}
+                </p>
+                <p className="text-xs text-(--app-ink-3)">{s.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      {/* Team list */}
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-bold text-white">Your Team</h2>
-          <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
-            {filteredTeam.length} of {team.length}
-          </p>
+      {/* ── Bonuses + milestones (only what the admin has switched on) ─────── */}
+      {(bonuses.perks.length > 0 || bonuses.milestones.length > 0) && (
+        <section className="app-card space-y-3">
+          <h2 className="t-section inline-flex items-center gap-2 text-white">
+            <Gift className="w-4 h-4 text-amber-400" />
+            Referral bonuses
+          </h2>
+          {bonuses.perks.length > 0 && (
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {bonuses.perks.map((p) => (
+                <li key={p.label} className="flex items-center justify-between gap-2 rounded-(--app-r-control) bg-(--app-surface-2) px-3 py-2 text-sm">
+                  <span className="min-w-0 truncate text-(--app-ink-2)">{p.label}</span>
+                  <span className="shrink-0 font-extrabold tabular-nums text-amber-300">{p.reward}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {bonuses.milestones.length > 0 && (
+            <div>
+              <p className="t-meta mb-2 inline-flex items-center gap-1.5 text-(--app-ink-3)">
+                <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                Milestones{bonuses.activeRule ? ` · ${bonuses.activeRule}` : ""}
+              </p>
+              {nextMilestone && bonuses.milestoneProgress !== null && (
+                <div className="mb-2 rounded-(--app-r-control) border border-(--app-line) p-3">
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="font-bold text-white">
+                      {nextMilestone.referrals - bonuses.milestoneProgress} more to {nextMilestone.label}
+                    </span>
+                    <span className="text-xs tabular-nums text-(--app-ink-3)">
+                      {bonuses.milestoneProgress}/{nextMilestone.referrals}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-(--app-surface-2)">
+                    <div
+                      className="h-full bg-(image:--app-rail)"
+                      style={{ width: `${Math.min(100, (bonuses.milestoneProgress / nextMilestone.referrals) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              <ul className="space-y-1">
+                {bonuses.milestones.map((m) => {
+                  const done = bonuses.milestoneProgress !== null && bonuses.milestoneProgress >= m.referrals;
+                  return (
+                    <li key={m.id} className="flex items-center gap-3 px-1 py-1.5 text-sm">
+                      <span
+                        className={cn(
+                          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold",
+                          done ? "bg-(--app-cta) text-(--app-on-cta)" : "bg-(--app-surface-2) text-(--app-ink-3)"
+                        )}
+                      >
+                        {done ? "✓" : m.referrals}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-(--app-ink-2)">
+                        <span className="font-bold text-white">{m.label}</span> · {m.referrals} active referrals
+                      </span>
+                      <span className="shrink-0 font-bold text-amber-300">{m.reward}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Commission per level — the admin's rates ──────────────────────── */}
+      <section className="app-card">
+        <div className="mb-2">
+          <h2 className="t-section inline-flex items-center gap-2 text-white">
+            <Layers className="w-4 h-4 text-(--app-ink-3)" />
+            Commission by level
+          </h2>
+          {rateSummary && <p className="t-meta mt-0.5 text-(--app-ink-3)">You earn {rateSummary}</p>}
         </div>
-        <FilterChips
-          value={filter}
-          onChange={(v) => setFilter(v as typeof filter)}
-          options={[
-            { value: "ALL", label: "All", count: team.length },
-            { value: "L1", label: "L1", count: l1Count },
-            { value: "L2", label: "L2", count: l2Count },
-            { value: "L3", label: "L3", count: l3Count },
-          ]}
-        />
+        <div className="overflow-hidden rounded-(--app-r-control) border border-(--app-line)">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 bg-(--app-surface-2) px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
+            <span>Level</span>
+            <span className="text-right">Rate</span>
+            <span className="text-right">Members</span>
+            <span className="w-16 text-right">Earned</span>
+          </div>
+          {levels.map((l) => (
+            <div
+              key={l.level}
+              className={cn(
+                "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-4 border-t border-(--app-line) px-3 py-2 text-sm",
+                l.count === 0 && "text-(--app-ink-3)"
+              )}
+            >
+              <span className="font-bold text-white">
+                Level {l.level}
+                {l.level === 1 && <span className="ml-1.5 text-[10px] font-semibold text-(--app-ink-3)">direct</span>}
+              </span>
+              <span className="text-right font-bold tabular-nums text-(--app-accent-ink)">{l.rateLabel}</span>
+              <span className="text-right tabular-nums">{l.count.toLocaleString()}</span>
+              <span className="w-16 text-right font-bold tabular-nums">{usd(l.earnedUsd)}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Team list ────────────────────────────────────────────────────── */}
+      <section className="app-card">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="t-section text-white">Your team</h2>
+          <span className="t-meta text-(--app-ink-3)">
+            {filteredTeam.length} of {team.length}
+          </span>
+        </div>
+        {team.length > 0 && (
+          <>
+            <div className="relative mb-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--app-ink-3)" />
+              <input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setShown(PAGE);
+                }}
+                placeholder="Search your team"
+                className="w-full rounded-(--app-r-control) border border-(--app-line) bg-(--app-page) py-2 pl-9 pr-3 text-sm text-(--app-ink) focus:border-(--app-accent-edge) focus:outline-none"
+              />
+            </div>
+            {/* Wraps — never a sideways scroll with levels hidden off-screen. */}
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              <button className={chip(filter === "ALL")} onClick={() => setFilter("ALL")}>
+                All <span className="tabular-nums opacity-70">{team.length}</span>
+              </button>
+              {levels
+                .filter((l) => l.count > 0)
+                .map((l) => (
+                  <button key={l.level} className={chip(filter === l.level)} onClick={() => { setFilter(l.level); setShown(PAGE); }}>
+                    L{l.level} <span className="tabular-nums opacity-70">{l.count}</span>
+                  </button>
+                ))}
+            </div>
+          </>
+        )}
 
         {filteredTeam.length === 0 ? (
           <EmptyState
             icon={Users}
-            title={team.length === 0 ? "No referrals yet" : "No matches"}
-            description={
-              team.length === 0
-                ? "Share your link to start building your team."
-                : "Try a different level filter."
-            }
+            title={team.length === 0 ? "No one in your team yet" : "No matches"}
+            description={team.length === 0 ? "Share your link above — everyone who joins with it shows up here." : "Try another level or name."}
           />
         ) : (
-          <div className="glass rounded-xl divide-y divide-(--app-line) mt-2">
-            {filteredTeam.slice(0, 50).map((m) => {
-              const tone =
-                m.level === 1
-                  ? "bg-emerald-500/15 text-emerald-400"
-                  : m.level === 2
-                    ? "bg-purple-500/15 text-purple-400"
-                    : "bg-amber-500/15 text-amber-400";
-              return (
-                <div
-                  key={m.id}
-                  className="flex items-center gap-3 px-3 py-2.5"
-                >
-                  <Avatar
-                    src={m.avatar}
-                    name={m.name}
-                    fallbackText={m.name ? undefined : "?"}
-                    size={36}
-                    className="shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">
-                      {m.name ?? "Anonymous"}
-                    </p>
-                    <p className="text-[10px] text-(--app-ink-3)">
-                      Joined {format(new Date(m.joinedAt), "MMM d, yyyy")}
+          <>
+            <ul className="divide-y divide-(--app-line)">
+              {filteredTeam.slice(0, shown).map((m) => (
+                <li key={m.id} className="flex items-center gap-3 py-2.5">
+                  <div className="relative shrink-0">
+                    <Avatar src={m.avatar} name={m.name} fallbackText={m.name ? undefined : "?"} size={36} />
+                    <span
+                      className={cn(
+                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-(--app-surface)",
+                        m.isActive ? "bg-emerald-400" : "bg-(--app-ink-3)"
+                      )}
+                      title={m.isActive ? "Active this week" : "Not seen this week"}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">{m.name ?? "Anonymous"}</p>
+                    <p className="text-[11px] text-(--app-ink-3)">
+                      Level {m.level} · joined {format(new Date(m.joinedAt), "MMM d, yyyy")}
                     </p>
                   </div>
-                  <span
-                    className={cn(
-                      "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                      tone
-                    )}
-                  >
-                    L{m.level}
-                  </span>
-                  <span className="text-sm font-bold text-emerald-400 tabular-nums w-16 text-right">
-                    {usd(m.earnings)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-bold tabular-nums text-(--app-accent-ink)">{usd(m.earnings)}</p>
+                    <p className="text-[10px] text-(--app-ink-3)">earned you</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {filteredTeam.length > shown && (
+              <button
+                onClick={() => setShown((n) => n + PAGE)}
+                className="app-press app-tap-row mt-2 w-full rounded-(--app-r-control) border border-(--app-line) text-sm font-bold text-(--app-ink-2) hover:text-white"
+              >
+                Show more ({filteredTeam.length - shown})
+              </button>
+            )}
+          </>
         )}
       </section>
 
@@ -404,47 +525,6 @@ export function ReferralsView({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CommissionCard({
-  level,
-  pct,
-  count,
-  earned,
-  tone,
-}: {
-  level: number;
-  pct: number;
-  count: number;
-  earned: number;
-  tone: "emerald" | "purple" | "amber";
-}) {
-  const tones = {
-    emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-    purple: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-    amber: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  } as const;
-  return (
-    <div
-      className={cn(
-        "rounded-xl border backdrop-blur-xl p-3",
-        tones[tone]
-      )}
-    >
-      <p className="text-[10px] uppercase tracking-widest font-bold opacity-90">
-        Level {level}
-      </p>
-      <p className={cn(STAT_VALUE_CLASS, "mt-1")}>{pct}%</p>
-      {/* min-w-0 + shrink-0: a 4-figure earnings figure used to collide with
-          the user count in this justify-between row. */}
-      <div className="mt-1.5 flex items-center justify-between gap-1.5 text-[10px]">
-        <span className="text-(--app-ink-3) truncate min-w-0">{count} users</span>
-        <span className="font-bold tabular-nums shrink-0">{usd(earned)}</span>
-      </div>
-    </div>
-  );
-}
 
 function QrPanel({ url }: { url: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -458,10 +538,7 @@ function QrPanel({ url }: { url: string }) {
         mod.default.toDataURL(url, {
           width: 256,
           margin: 1,
-          color: {
-            dark: "#0f172a",
-            light: "#ffffff",
-          },
+          color: { dark: "#0f172a", light: "#ffffff" },
         })
       )
       .then((d) => {
@@ -489,28 +566,22 @@ function QrPanel({ url }: { url: string }) {
   };
 
   return (
-    <div className="rounded-xl border border-(--app-accent-edge)/30 bg-(--app-cta)/5 p-4 flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 rounded-(--app-r-control) border border-(--app-line) bg-(--app-page) p-4">
       {loading ? (
-        <div className="w-48 h-48 rounded-xl bg-white/5 animate-pulse" />
+        <div className="h-48 w-48 animate-pulse rounded-xl bg-white/5" />
       ) : dataUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={dataUrl}
-          alt="Referral QR code"
-          className="w-48 h-48 rounded-xl bg-white"
-        />
+        <img src={dataUrl} alt="Referral QR code" className="h-48 w-48 rounded-xl bg-white" />
       ) : (
-        <div className="w-48 h-48 rounded-xl bg-(--app-surface-2) flex items-center justify-center text-(--app-ink-3) text-xs">
+        <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-(--app-surface-2) text-xs text-(--app-ink-3)">
           QR generation failed
         </div>
       )}
-      <p className="text-xs text-(--app-accent-ink)/80 text-center">
-        Scan to open the referral link
-      </p>
+      <p className="text-center text-xs text-(--app-ink-3)">Scan to open your invite link</p>
       <button
         onClick={download}
         disabled={!dataUrl}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold disabled:opacity-50"
+        className="app-press inline-flex items-center gap-1.5 rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface-2) px-3 py-1.5 text-xs font-bold text-(--app-ink) disabled:opacity-50"
       >
         <Download className="w-3.5 h-3.5" />
         Download QR
@@ -518,8 +589,3 @@ function QrPanel({ url }: { url: string }) {
     </div>
   );
 }
-
-// Avoid noisy unused-import warnings
-void CheckCircle;
-void Sparkles;
-void X;

@@ -4,6 +4,11 @@ import { notFound } from "next/navigation";
 import { Clock, ArrowLeft } from "lucide-react";
 import { Section, PrimaryButton } from "@/components/marketing/ui";
 import { BLOG_POSTS, getBlogPost, formatBlogDate } from "@/lib/blog-posts";
+import { pageMeta } from "@/lib/seo/page-meta";
+import { JsonLd } from "@/components/seo/json-ld";
+import { COMPANY_NAME } from "@/config/company";
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
 export function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
@@ -16,7 +21,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const post = getBlogPost((await params).slug);
   if (!post) return { title: "Article" };
-  return { title: post.title, description: post.excerpt };
+  return pageMeta({
+    title: post.title,
+    description: post.excerpt,
+    path: `/blog/${post.slug}`,
+    type: "article",
+    publishedTime: post.date,
+    modifiedTime: post.date,
+    authors: [post.author],
+  });
 }
 
 export default async function BlogArticlePage({
@@ -29,8 +42,39 @@ export default async function BlogArticlePage({
 
   const more = BLOG_POSTS.filter((p) => p.slug !== post.slug).slice(0, 3);
 
+  const url = `${SITE_URL}/blog/${post.slug}`;
   return (
     <Section width="narrow">
+      {/* Article + breadcrumb structured data: who wrote it, who publishes
+          it, and when — the signals search and AI answers weigh (E-E-A-T). */}
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            headline: post.title,
+            description: post.excerpt,
+            articleSection: post.category,
+            datePublished: post.date,
+            dateModified: post.date,
+            timeRequired: `PT${post.readMinutes}M`,
+            inLanguage: "en",
+            mainEntityOfPage: { "@type": "WebPage", "@id": url },
+            url,
+            author: { "@type": "Organization", name: post.author || `The ${COMPANY_NAME} Team`, url: `${SITE_URL}/about` },
+            publisher: { "@type": "Organization", name: COMPANY_NAME, url: SITE_URL, logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` } },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+              { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+              { "@type": "ListItem", position: 3, name: post.title, item: url },
+            ],
+          },
+        ]}
+      />
       <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-(--mk-muted) hover:text-(--mk-text)">
         <ArrowLeft className="h-4 w-4" /> All articles
       </Link>

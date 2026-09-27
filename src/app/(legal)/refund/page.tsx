@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalHeader, LegalSection, LEGAL_CONTACT } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Refund & Cancellation Policy · RevType",
-  description:
-    "How refunds, subscription cancellations, and disputes are handled on RevType.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Refund & Cancellation Policy",
+    description:
+      "How refunds, subscription cancellations, and disputes are handled on RevType.",
+    path: "/refund",
+  });
+}
 
 export default function RefundPolicyPage() {
   return (

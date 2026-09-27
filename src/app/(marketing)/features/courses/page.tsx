@@ -24,11 +24,15 @@ import {
   BadgePill,
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Online Courses — Learn Skills or Teach & Earn",
-  description: `Take expert-led courses and earn certificates on ${COMPANY_NAME}, or become a tutor and sell your own courses and live classes to students worldwide.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Online Courses — Learn Skills or Teach & Earn",
+    description: `Take expert-led courses and earn certificates on ${COMPANY_NAME}, or become a tutor and sell your own courses and live classes to students worldwide.`,
+    path: "/features/courses",
+  });
+}
 
 const STATS = [
   { value: "Certificates", label: "Earn on completion" },

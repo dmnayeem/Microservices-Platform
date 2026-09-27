@@ -8,11 +8,15 @@ import {
   PrimaryButton,
 } from "@/components/marketing/ui";
 import { COMPANY_NAME, COMPANY_LEGAL, FOUNDED_YEAR, PRESS_EMAIL, COMPANY_BOILERPLATE } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Press Kit",
-  description: `Media resources, brand assets, and fast facts about ${COMPANY_NAME}.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Press Kit",
+    description: `Media resources, brand assets, and fast facts about ${COMPANY_NAME}.`,
+    path: "/press",
+  });
+}
 
 const FACTS = [
   { k: "Company", v: COMPANY_LEGAL },

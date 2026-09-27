@@ -29,6 +29,7 @@ import {
 import { SOCIAL_PLATFORMS } from "@/lib/social-tasks";
 import { BUYER_TASK_TYPES, BUYER_TASK_TYPE_META } from "@/lib/buyer-task-types";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
 /**
  * Public explainer for the micro-task side of the platform.
@@ -48,25 +49,13 @@ import { COMPANY_NAME } from "@/config/company";
 const PLATFORM_COUNT = SOCIAL_PLATFORMS.length;
 const ACTION_COUNT = SOCIAL_PLATFORMS.reduce((n, p) => n + p.actions.length, 0);
 
-export function generateMetadata(): Metadata {
+export function generateMetadata(): Promise<Metadata> {
   const title = "Micro Tasks — Every Small Job You Can Get Paid For";
   const description =
     `See every kind of micro task on ${COMPANY_NAME}: social actions across ` +
     `${PLATFORM_COUNT} platforms, video watching, surveys, articles, quizzes, ` +
     `app installs, offerwalls and daily missions — and exactly how each one pays.`;
-  return {
-    title,
-    description,
-    alternates: { canonical: "/microtask" },
-    openGraph: {
-      title,
-      description,
-      url: "/microtask",
-      type: "website",
-      siteName: COMPANY_NAME,
-    },
-    twitter: { card: "summary_large_image", title, description },
-  };
+  return pageMeta({ title, description, path: "/microtask" });
 }
 
 /** The task types on the platform, as the TaskType enum actually defines them. */

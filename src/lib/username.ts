@@ -37,7 +37,7 @@ export function slugifyUsername(input: string): string {
 export const RESERVED_USERNAMES = new Set([
   "admin", "administrator", "root", "superadmin", "sysadmin", "moderator", "mod",
   "support", "help", "helpdesk", "contact", "info", "team", "staff", "official",
-  "revtype", "system", "security", "billing", "payments", "payment", "finance",
+  "earngpt", "revtype", "system", "security", "billing", "payments", "payment", "finance",
   "api", "app", "www", "mail", "email", "login", "signin", "signup", "register",
   "logout", "auth", "oauth", "verify", "password", "reset", "settings", "profile",
   "dashboard", "wallet", "withdraw", "withdrawal", "deposit", "referral", "refer",

@@ -25,6 +25,7 @@ import {
   BadgePill,
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
 /**
  * Public explainer for the referral programme. Deliberately NOT in the nav —
@@ -136,25 +137,13 @@ const STEPS = [
   },
 ];
 
-export function generateMetadata(): Metadata {
+export function generateMetadata(): Promise<Metadata> {
   const title = "Referral Program — Every Way Inviting People Pays";
   const description =
     `${COMPANY_NAME} runs ${MODELS.length} different referral models, from a ` +
     `two-way welcome bonus to commission ten levels deep, plus a share of what ` +
     `the people you invite deposit and withdraw. Here is how each one works.`;
-  return {
-    title,
-    description,
-    alternates: { canonical: "/referral" },
-    openGraph: {
-      title,
-      description,
-      url: "/referral",
-      type: "website",
-      siteName: COMPANY_NAME,
-    },
-    twitter: { card: "summary_large_image", title, description },
-  };
+  return pageMeta({ title, description, path: "/referral" });
 }
 
 export default function ReferralPage() {

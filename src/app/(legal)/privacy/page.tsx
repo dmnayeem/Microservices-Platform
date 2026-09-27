@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalHeader, LegalSection, LEGAL_CONTACT } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy · RevType",
-  description:
-    "How RevType collects, uses, shares, and protects your personal information.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Privacy Policy",
+    description:
+      "How RevType collects, uses, shares, and protects your personal information.",
+    path: "/privacy",
+  });
+}
 
 export default function PrivacyPolicyPage() {
   return (

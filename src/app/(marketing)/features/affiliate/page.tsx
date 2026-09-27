@@ -24,11 +24,15 @@ import {
   BadgePill,
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Affiliate Program — Earn Commission on Every Sale",
-  description: `Promote marketplace products and courses with your personal link on ${COMPANY_NAME} and earn the seller-set commission on every sale — paid straight to your wallet.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Affiliate Program — Earn Commission on Every Sale",
+    description: `Promote marketplace products and courses with your personal link on ${COMPANY_NAME} and earn the seller-set commission on every sale — paid straight to your wallet.`,
+    path: "/features/affiliate",
+  });
+}
 
 const STATS = [
   { value: "Per-sale", label: "Commission on every order" },

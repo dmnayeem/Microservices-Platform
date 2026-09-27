@@ -72,7 +72,9 @@ export async function generateMetadata(): Promise<Metadata> {
     authors: [{ name: `${name} Team` }],
     creator: name,
     publisher: name,
-    alternates: { canonical: "/" },
+    // No site-wide canonical. It was "/", and every page without its own
+    // inherited it — telling Google each of them was a copy of the home page.
+    // Pages set their own (lib/seo/page-meta.ts).
     manifest: "/manifest.json",
     icons: {
       icon: [{ url: favicon }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }],
@@ -193,11 +195,10 @@ export default async function RootLayout({
               "@type": "WebSite",
               name: seo["seo.site_name"],
               url: SITE_URL,
-              potentialAction: {
-                "@type": "SearchAction",
-                target: `${SITE_URL}/marketplace?search={search_term_string}`,
-                "query-input": "required name=search_term_string",
-              },
+              inLanguage: "en",
+              // No SearchAction: its target (/marketplace search) is behind the
+              // login, so a sitelinks search box would land searchers there.
+              publisher: { "@type": seo["seo.org_type"] || "Organization", name: seo["seo.site_name"], url: SITE_URL },
             },
           ]}
         />
@@ -234,6 +235,16 @@ export default async function RootLayout({
         />
         {/* Google's ad tags — one per page, and only when a publisher id is
             configured. Renders nothing at all until then. */}
+        {/* Android's install offer, caught before React loads.
+            Chrome fires `beforeinstallprompt` once, early — usually before
+            hydration — and the install prompt only started listening after
+            it, so the event was missed and "Install" never worked. Held
+            here and handed over by PwaInstallPrompt. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__egBip=e;window.dispatchEvent(new Event('eg-bip'));});window.addEventListener('appinstalled',function(){window.__egBip=null;});`,
+          }}
+        />
         <NetworkScripts />
         <ThemeProvider
           defaultTheme={ui.themeDefault}

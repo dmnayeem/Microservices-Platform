@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { LegalHeader, LegalSection, LEGAL_CONTACT, LEGAL_ENTITY } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Cookie Policy · RevType",
-  description: "How RevType uses cookies and similar technologies, and how you can control them.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Cookie Policy",
+    description: "How RevType uses cookies and similar technologies, and how you can control them.",
+    path: "/cookies",
+  });
+}
 
 export default function CookiePolicyPage() {
   return (

@@ -2,7 +2,8 @@
 // marketing pages, legal pages, and footer so the platform reads as one
 // consistent, trustworthy global company.
 //
-// NOTE (owner): the app historically mixed `revtype.com` and `revtype.com`.
+// NOTE (owner): the app historically mixed `earngpt.app` and `earngpt.com`;
+// on 2026-09-27 the brand became RevType, on `revtype.com`.
 // The public support address is standardized to `.com` here — update every
 // value below to your real details (email, socials, address) before launch.
 
