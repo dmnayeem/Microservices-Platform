@@ -1,11 +1,12 @@
 "use client";
 
+import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lock, CheckCircle, Sparkles, AlertCircle } from "lucide-react";
+import { Lock, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { resetPasswordSchema, type ResetPasswordInput } from "@/lib/validations/auth";
@@ -116,12 +117,14 @@ function ResetPasswordContent() {
         {/* Logo & Header */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
-              RevType
-            </span>
+            <BrandLockup className="h-10">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center">
+                <BrandMark iconClassName="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
+                RevType
+              </span>
+            </BrandLockup>
           </Link>
           <h1 className="text-2xl font-bold text-white">
             Set new password

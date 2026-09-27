@@ -1,8 +1,9 @@
 "use client";
 
+import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import type { NavbarContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { ThemeToggle } from "./theme-toggle";
@@ -36,12 +37,14 @@ export function Navbar({ themeToggle = true, ...props }: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center shadow-sm shadow-(--app-cta)/20">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              RevType
-            </span>
+            <BrandLockup className="h-10">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center shadow-sm shadow-(--app-cta)/20">
+                <BrandMark iconClassName="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
+                RevType
+              </span>
+            </BrandLockup>
           </Link>
 
           {/* gap-4 until xl: the bar carries eight links now, and at exactly

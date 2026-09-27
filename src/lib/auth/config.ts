@@ -109,6 +109,8 @@ export const authConfig: NextAuthConfig = {
         // A shared post. The page itself decides what a logged-out reader
         // may see (lib/public-post.ts).
         "/post",
+        // Home-screen icons, fetched by the browser without cookies.
+        "/app-icon",
       ];
 
       // Admin routes that require admin role

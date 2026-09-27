@@ -1,7 +1,8 @@
 "use client";
 
+import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useEffect, useState } from "react";
-import { X, ChevronRight, Sparkles } from "lucide-react";
+import { X, ChevronRight } from "lucide-react";
 import type { SplashConfig } from "@/lib/splash";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -12,12 +13,14 @@ const SEEN_KEY = "splash_seen_v1";
 function BrandLogo() {
   return (
     <div className="flex flex-col items-center justify-center gap-4">
-      <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center shadow-lg shadow-(--app-cta)/30">
-        <Sparkles className="w-12 h-12 text-white" />
-      </div>
-      <span className="text-2xl font-black bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
-        RevType
-      </span>
+      <BrandLockup className="h-20">
+        <div className="w-24 h-24 rounded-3xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center shadow-lg shadow-(--app-cta)/30">
+          <BrandMark iconClassName="w-12 h-12 text-white" />
+        </div>
+        <span className="text-2xl font-black bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
+          RevType
+        </span>
+      </BrandLockup>
     </div>
   );
 }
