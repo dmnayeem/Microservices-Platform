@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalHeader, LegalSection, LEGAL_CONTACT } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy · EarnGPT",
-  description:
-    "How EarnGPT collects, uses, shares, and protects your personal information.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Privacy Policy",
+    description:
+      "How RevType collects, uses, shares, and protects your personal information.",
+    path: "/privacy",
+  });
+}
 
 export default function PrivacyPolicyPage() {
   return (
     <article>
       <LegalHeader
         title="Privacy Policy"
-        intro="This Privacy Policy explains what information EarnGPT (“we”, “us”, the “Platform”) collects when you use our website and apps, how we use and share it, and the choices and rights you have. By using EarnGPT you agree to this Policy."
+        intro="This Privacy Policy explains what information RevType (“we”, “us”, the “Platform”) collects when you use our website and apps, how we use and share it, and the choices and rights you have. By using RevType you agree to this Policy."
       />
 
       <LegalSection id="who" title="1. Who this applies to">
         <p>
-          EarnGPT is intended only for users who are <strong>18 years or older</strong>.
+          RevType is intended only for users who are <strong>18 years or older</strong>.
           We do not knowingly collect information from anyone under 18. If you
           believe a minor has provided us information, contact us at{" "}
           <a className="text-(--mk-accent)" href={`mailto:${LEGAL_CONTACT}`}>
@@ -29,7 +33,7 @@ export default function PrivacyPolicyPage() {
       </LegalSection>
 
       <LegalSection id="collect" title="2. Information we collect">
-        <p>Depending on how you use EarnGPT, we may collect:</p>
+        <p>Depending on how you use RevType, we may collect:</p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>
             <strong>Account information</strong> — name, username, email, phone

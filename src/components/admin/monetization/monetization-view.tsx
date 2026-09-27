@@ -668,7 +668,7 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
               value={billing.sellerName}
               onChange={(e) => setBilling((b) => ({ ...b, sellerName: e.target.value }))}
               disabled={!canManage}
-              placeholder="EarnGPT"
+              placeholder="RevType"
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
             />
           </div>

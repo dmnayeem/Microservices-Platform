@@ -238,7 +238,7 @@ export function VideoTaskBuilder({ value, onChange }: Props) {
               onChange={(e) =>
                 onChange({ ...value, uniqueKey: e.target.value })
               }
-              placeholder="e.g. EARNGPT-123"
+              placeholder="e.g. REVTYPE-123"
               className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 font-mono"
             />
             <p className="text-[11px] text-gray-500 mt-1">

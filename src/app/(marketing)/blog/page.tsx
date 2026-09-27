@@ -4,11 +4,15 @@ import { Clock, ArrowRight } from "lucide-react";
 import { MarketingHero, Section } from "@/components/marketing/ui";
 import { BLOG_POSTS, formatBlogDate } from "@/lib/blog-posts";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description: `Guides, tips, and stories from ${COMPANY_NAME} on earning online safely and getting the most from the platform.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Blog",
+    description: `Guides, tips, and stories from ${COMPANY_NAME} on earning online safely and getting the most from the platform.`,
+    path: "/blog",
+  });
+}
 
 export default function BlogIndexPage() {
   const [featured, ...rest] = BLOG_POSTS;

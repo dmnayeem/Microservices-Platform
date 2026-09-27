@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalHeader, LegalSection, LEGAL_CONTACT } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Refund & Cancellation Policy · EarnGPT",
-  description:
-    "How refunds, subscription cancellations, and disputes are handled on EarnGPT.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Refund & Cancellation Policy",
+    description:
+      "How refunds, subscription cancellations, and disputes are handled on RevType.",
+    path: "/refund",
+  });
+}
 
 export default function RefundPolicyPage() {
   return (
     <article>
       <LegalHeader
         title="Refund &amp; Cancellation Policy"
-        intro="This policy explains when payments on EarnGPT can be refunded or cancelled. It forms part of, and should be read together with, our Terms of Service."
+        intro="This policy explains when payments on RevType can be refunded or cancelled. It forms part of, and should be read together with, our Terms of Service."
       />
 
       <LegalSection id="deposits" title="1. Wallet deposits">
         <p>
-          Money you add to your EarnGPT wallet is credited to your balance for use
+          Money you add to your RevType wallet is credited to your balance for use
           on the Platform. Because deposited funds can be spent immediately (for
           example on packages or fees), deposits are generally{" "}
           <strong>non-refundable</strong> once credited. If a deposit failed,

@@ -118,7 +118,7 @@ export function SurveyResponsesView({ taskId, taskTitle, canExport }: Props) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `earngpt-survey-${taskId}-responses-${format(new Date(), "yyyy-MM-dd")}.csv`;
+      a.download = `revtype-survey-${taskId}-responses-${format(new Date(), "yyyy-MM-dd")}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

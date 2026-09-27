@@ -4,8 +4,9 @@ import {
   publicAudienceEpochMs,
   publicSharingEnabled,
 } from "@/lib/public-post";
+import { BLOG_POSTS } from "@/lib/blog-posts";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -27,8 +28,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/help",
     "/contact",
     "/blog",
-    "/courses",
-    "/marketplace",
+    "/status",
+    // Trust pages — search engines weigh them, and they were missing.
+    "/privacy",
+    "/terms",
+    "/refund",
+    "/cookies",
+    // Not listed: /courses and /marketplace. Both sit behind the login, so a
+    // crawler following them only ever reached /login.
   ];
   const staticEntries: MetadataRoute.Sitemap = staticPaths.map((p) => ({
     url: `${SITE_URL}${p}`,
@@ -37,23 +44,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: p === "" ? 1 : 0.7,
   }));
 
-  // Dynamic: published courses + active listings. Best-effort — a DB blip must
-  // not break the sitemap.
-  const [courses, listings, posts] = await Promise.all([
-    prisma.course
-      .findMany({
-        where: { status: "PUBLISHED", slug: { not: null } },
-        select: { slug: true, updatedAt: true },
-        take: 5000,
-      })
-      .catch(() => [] as { slug: string | null; updatedAt: Date }[]),
-    prisma.marketplaceListing
-      .findMany({
-        where: { status: "ACTIVE" },
-        select: { id: true, updatedAt: true },
-        take: 5000,
-      })
-      .catch(() => [] as { id: string; updatedAt: Date }[]),
+  // Blog articles — never listed before, so Google had to find them itself.
+  const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.map((p) => ({
+    url: `${SITE_URL}/blog/${p.slug}`,
+    lastModified: new Date(p.date),
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
+  // Dynamic: shared public posts. Best-effort — a DB blip must not break the
+  // sitemap.
+  const [posts] = await Promise.all([
     // Public feed posts. The WHERE clause here is the same rule as
     // `isPubliclyVisible` in src/lib/public-post-gate.ts, and it has to stay
     // that way: listing a post in the sitemap that /post/[id] then refuses
@@ -88,21 +89,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ),
   ]);
 
-  const courseEntries: MetadataRoute.Sitemap = courses
-    .filter((c): c is { slug: string; updatedAt: Date } => !!c.slug)
-    .map((c) => ({
-      url: `${SITE_URL}/courses/${c.slug}`,
-      lastModified: c.updatedAt,
-      changeFrequency: "weekly",
-      priority: 0.6,
-    }));
-  const listingEntries: MetadataRoute.Sitemap = listings.map((l) => ({
-    url: `${SITE_URL}/marketplace/${l.id}`,
-    lastModified: l.updatedAt,
-    changeFrequency: "weekly",
-    priority: 0.5,
-  }));
-
   const postEntries: MetadataRoute.Sitemap = posts.map((p) => ({
     url: `${SITE_URL}/post/${p.id}`,
     lastModified: p.updatedAt,
@@ -110,5 +96,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
-  return [...staticEntries, ...courseEntries, ...listingEntries, ...postEntries];
+  return [...staticEntries, ...blogEntries, ...postEntries];
 }

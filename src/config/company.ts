@@ -2,19 +2,20 @@
 // marketing pages, legal pages, and footer so the platform reads as one
 // consistent, trustworthy global company.
 //
-// NOTE (owner): the app historically mixed `earngpt.app` and `earngpt.com`.
+// NOTE (owner): the app historically mixed `earngpt.app` and `earngpt.com`;
+// on 2026-09-27 the brand became RevType, on `revtype.com`.
 // The public support address is standardized to `.com` here — update every
 // value below to your real details (email, socials, address) before launch.
 
-export const COMPANY_NAME = "EarnGPT";
+export const COMPANY_NAME = "RevType";
 /** Legal/operating entity shown on legal + about pages. */
-export const COMPANY_LEGAL = "EarnGPT Global";
+export const COMPANY_LEGAL = "RevType Global";
 export const FOUNDED_YEAR = 2021;
 
-export const SUPPORT_EMAIL = "support@earngpt.com";
-export const PRESS_EMAIL = "press@earngpt.com";
-export const CAREERS_EMAIL = "careers@earngpt.com";
-export const LEGAL_EMAIL = "legal@earngpt.com";
+export const SUPPORT_EMAIL = "support@revtype.com";
+export const PRESS_EMAIL = "press@revtype.com";
+export const CAREERS_EMAIL = "careers@revtype.com";
+export const LEGAL_EMAIL = "legal@revtype.com";
 
 /** Neutral, remote-first global framing (no fabricated registration data). */
 export const COMPANY_TAGLINE = "The global platform for earning online.";
@@ -27,11 +28,11 @@ export const COMPANY_BOILERPLATE =
 
 /** Owner-claimable brand handles — replace with your real profile URLs. */
 export const SOCIALS: Array<{ name: string; href: string }> = [
-  { name: "X", href: "https://x.com/earngpt" },
-  { name: "LinkedIn", href: "https://www.linkedin.com/company/earngpt" },
-  { name: "Facebook", href: "https://www.facebook.com/earngpt" },
-  { name: "Instagram", href: "https://www.instagram.com/earngpt" },
-  { name: "YouTube", href: "https://www.youtube.com/@earngpt" },
+  { name: "X", href: "https://x.com/revtype" },
+  { name: "LinkedIn", href: "https://www.linkedin.com/company/revtype" },
+  { name: "Facebook", href: "https://www.facebook.com/revtype" },
+  { name: "Instagram", href: "https://www.instagram.com/revtype" },
+  { name: "YouTube", href: "https://www.youtube.com/@revtype" },
 ];
 
 /** Headline markets we operate in (name + flag emoji), used on About / trust strips. */

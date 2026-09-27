@@ -1,4 +1,4 @@
-// EarnGPT service worker — web-push notifications + minimal offline shell +
+// RevType service worker — web-push notifications + minimal offline shell +
 // runtime asset caching for offline depth.
 const CACHE = "earngpt-shell-v4";
 // Separate cache for hashed static assets / images / fonts served
@@ -145,9 +145,9 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (e) {
-    data = { title: "EarnGPT", body: event.data ? event.data.text() : "" };
+    data = { title: "RevType", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "EarnGPT";
+  const title = data.title || "RevType";
   const options = {
     body: data.body || "",
     icon: "/icon-192.png",

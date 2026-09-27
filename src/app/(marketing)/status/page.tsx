@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import { CheckCircle2, Activity } from "lucide-react";
 import { Section } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "System Status",
-  description: `Live operational status for ${COMPANY_NAME} services.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "System Status",
+    description: `Live operational status for ${COMPANY_NAME} services.`,
+    path: "/status",
+  });
+}
 
 const COMPONENTS = [
   { name: "Website & app", uptime: "99.99%" },

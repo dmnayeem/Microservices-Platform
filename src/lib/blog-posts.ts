@@ -26,7 +26,7 @@ export const BLOG_POSTS: BlogPost[] = [
     category: "Guides",
     date: "2026-07-20",
     readMinutes: 7,
-    author: "The EarnGPT Team",
+    author: "The RevType Team",
     emoji: "🛡️",
     body: [
       { paragraphs: ["The internet is full of “earn money online” promises, and most of them don't pay. The good news: legitimate online earning is very real — you just need to know how to separate the trustworthy from the traps. Here's how."] },
@@ -44,7 +44,7 @@ export const BLOG_POSTS: BlogPost[] = [
     category: "Growth",
     date: "2026-07-06",
     readMinutes: 6,
-    author: "The EarnGPT Team",
+    author: "The RevType Team",
     emoji: "🤝",
     body: [
       { paragraphs: ["Task earnings are active income — you work, you earn. Referrals are different: build a network once, and you earn a share of their activity for the long run. Done right, it's the most durable income on the platform."] },
@@ -61,7 +61,7 @@ export const BLOG_POSTS: BlogPost[] = [
     category: "Guides",
     date: "2026-06-22",
     readMinutes: 5,
-    author: "The EarnGPT Team",
+    author: "The RevType Team",
     emoji: "⏱️",
     body: [
       { paragraphs: ["You don't need a side hustle that eats your evenings. A few focused minutes here and there add up. Five approachable ways to earn in the gaps of your day:"] },
@@ -80,7 +80,7 @@ export const BLOG_POSTS: BlogPost[] = [
     category: "Payments",
     date: "2026-06-08",
     readMinutes: 6,
-    author: "The EarnGPT Team",
+    author: "The RevType Team",
     emoji: "💸",
     body: [
       { paragraphs: ["Getting paid should be the easiest part. Here's exactly how payouts work, so there are no surprises when you cash out."] },
@@ -97,7 +97,7 @@ export const BLOG_POSTS: BlogPost[] = [
     category: "Trust & Safety",
     date: "2026-05-25",
     readMinutes: 5,
-    author: "The EarnGPT Team",
+    author: "The RevType Team",
     emoji: "🔒",
     body: [
       { paragraphs: ["Trust is the whole product. If you can't rely on getting paid and keeping your data safe, nothing else matters. Here's how we protect you."] },

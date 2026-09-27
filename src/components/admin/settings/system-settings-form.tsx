@@ -75,7 +75,7 @@ type TabId = SettingGroupId;
 
 const DEFAULTS: SettingsBag = {
   // General
-  platform_name: "EarnGPT",
+  platform_name: "RevType",
   maintenance_mode: false,
   maintenance_message: "",
   // Financial
@@ -119,10 +119,10 @@ const DEFAULTS: SettingsBag = {
   // Email
   smtp_host: "smtp.gmail.com",
   smtp_port: 587,
-  smtp_username: "noreply@earngpt.com",
+  smtp_username: "noreply@revtype.com",
   smtp_password: "",
-  email_from_address: "noreply@earngpt.com",
-  email_from_name: "EarnGPT Team",
+  email_from_address: "noreply@revtype.com",
+  email_from_name: "RevType Team",
   email_notifications_enabled: true,
   email_daily_cap: 500,
   email_per_minute: 60,

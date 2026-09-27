@@ -58,7 +58,7 @@ const chatgpt = [
   "",
   "Follow these steps **carefully**:",
   "",
-  "1. Open [earngpt.com](https://earngpt.com)",
+  "1. Open [revtype.com](https://revtype.com)",
   "2. Copy the *exact* caption",
   "",
   "> Use #earngpt as the first hashtag",
@@ -82,7 +82,7 @@ check("a numbered list becomes <ol>", /<ol>[\s\S]*Open/.test(html));
 check("a bullet list becomes <ul>", /<ul>[\s\S]*Screenshot/.test(html));
 check(
   "a link becomes a real link",
-  html.includes('<a href="https://earngpt.com">earngpt.com</a>')
+  html.includes('<a href="https://revtype.com">revtype.com</a>')
 );
 check("*italic* becomes <em>", html.includes("<em>exact</em>"));
 check("a quote becomes <blockquote>", html.includes("<blockquote>"));

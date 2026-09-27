@@ -45,7 +45,7 @@ function ensureVapid(): boolean {
   if (vapidReady !== null) return vapidReady;
   const pub = process.env.VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:support@earngpt.com";
+  const subject = process.env.VAPID_SUBJECT || "mailto:support@revtype.com";
   if (pub && priv) {
     try {
       webpush.setVapidDetails(subject, pub, priv);

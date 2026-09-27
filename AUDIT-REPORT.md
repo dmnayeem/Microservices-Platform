@@ -1,4 +1,4 @@
-# EarnGPT ("Microservices-Platform") — Deep Code Audit
+# RevType ("Microservices-Platform") — Deep Code Audit
 **Date:** July 23, 2026 · Full codebase review (~700 source files, 109 Prisma models)
 
 ---

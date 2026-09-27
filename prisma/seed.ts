@@ -167,7 +167,7 @@ async function main() {
     data: [
       {
         title: "Watch Introduction Video",
-        description: "Watch our welcome video to learn how EarnGPT works and start earning points!",
+        description: "Watch our welcome video to learn how RevType works and start earning points!",
         type: "VIDEO",
         status: "ACTIVE",
         pointsReward: 50,
@@ -197,7 +197,7 @@ async function main() {
         totalLimit: 1,
         socialPlatform: "Twitter",
         socialAction: "follow",
-        socialUrl: "https://twitter.com/earngpt",
+        socialUrl: "https://twitter.com/revtype",
       },
       {
         title: "Read Article: Crypto Basics",

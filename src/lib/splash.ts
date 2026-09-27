@@ -24,7 +24,7 @@ export const DEFAULT_SPLASH: SplashConfig = {
   durationMs: 3500,
   frequency: "once",
   slides: [
-    { title: "Welcome to EarnGPT", content: "Complete tasks and earn real rewards.", imageUrl: "" },
+    { title: "Welcome to RevType", content: "Complete tasks and earn real rewards.", imageUrl: "" },
     { title: "Do Tasks, Earn Points", content: "Watch videos, take surveys, engage on social.", imageUrl: "" },
     { title: "Learn & Grow", content: "Take courses and level up your skills.", imageUrl: "" },
     { title: "Invite & Multiply", content: "Refer friends and earn multi-level commissions.", imageUrl: "" },

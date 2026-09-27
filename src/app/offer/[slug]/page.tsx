@@ -26,6 +26,8 @@ export async function generateMetadata({
   return {
     title: offer.title,
     description: offer.description ?? undefined,
+    // Its own address — without it the page inherited no canonical at all.
+    alternates: { canonical: `/offer/${slug}` },
     openGraph: {
       title: offer.title,
       description: offer.description ?? undefined,
@@ -70,7 +72,7 @@ export default async function OfferPage({ params, searchParams }: PageProps) {
           href="/"
           className="text-xs text-(--app-ink-3) hover:text-(--app-ink-2)"
         >
-          Powered by EarnGPT
+          Powered by RevType
         </Link>
       </footer>
     </main>

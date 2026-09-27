@@ -35,7 +35,6 @@ import { deriveSource } from "@/lib/tx-sources";
 import { History } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import { runInterstitial } from "@/lib/reward-interstitial";
-import { ScrollFadeRow } from "@/components/user/primitives/scroll-fade-row";
 
 export interface WalletTransaction {
   id: string;
@@ -49,13 +48,18 @@ export interface WalletTransaction {
 }
 
 export interface ReferralStats {
-  l1Count: number;
-  l2Count: number;
-  l3Count: number;
-  l1Earned: number;
-  l2Earned: number;
-  l3Earned: number;
+  /** The levels and rates the admin set (lib/team.ts). */
+  levels: Array<{ level: number; rateLabel: string; count: number; earnedUsd: number }>;
+  totalCount: number;
   totalEarned: number;
+}
+
+/** Points earned by source, last 30 days (lib/dashboard-earnings.ts). */
+export interface EarningSource {
+  key: string;
+  label: string;
+  color: string;
+  value: number;
 }
 
 export interface WalletDeposit {
@@ -82,6 +86,9 @@ export interface WalletViewProps {
   todayReferralBonus?: number;
   packageTier: string;
   transactions: WalletTransaction[];
+  earningSources: EarningSource[];
+  /** Points earned today / last 7 days / last 30 days. */
+  earnPeriods: { today: number; week: number; month: number };
   deposits?: WalletDeposit[];
   referralStats: ReferralStats;
   pendingWithdrawals: number;
@@ -138,44 +145,43 @@ export function WalletView(props: WalletViewProps) {
         taskCredit={props.taskCreditPoints}
         packageTier={props.packageTier}
         pointsPerUsd={pointsPerUsd}
+        addFundsHref="/deposit"
+        withdrawHref="/withdrawal"
       />
 
-      <ConvertCard
-        points={props.pointsBalance}
-        threshold={props.convertThreshold ?? 10000}
-        pointsPerUsd={pointsPerUsd}
-      />
-
-      {/* Add funds was a solid emerald button next to a grey one. Emerald is
-          money IN here, which is nearly right — but on a screen whose hero is
-          already a gradient panel with a white Withdraw button on it, a third
-          filled button in a fourth colour is one claim too many. Both are
-          outlined; the money verbs are already in the panel above. */}
-      <div className="flex gap-2">
-        <Link
-          href="/deposit"
-          className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-(--app-ink) text-sm font-extrabold"
+      {props.pendingWithdrawals > 0 && (
+        <button
+          type="button"
+          onClick={() => setTab("withdraw")}
+          className="app-card app-press flex w-full items-center gap-3 text-left"
         >
-          <Plus className="w-4 h-4 text-(--app-in)" />
-          Add funds
-        </Link>
-        <Link
-          href="/withdrawal"
-          className="app-press app-tap-row flex-1 inline-flex items-center justify-center gap-1.5 rounded-(--app-r-control) bg-(--app-surface) border border-(--app-line) hover:border-(--app-line-strong) text-(--app-ink) text-sm font-extrabold"
-        >
-          <ArrowUpRight className="w-4 h-4 text-(--app-ink-3)" />
-          Withdraw
-        </Link>
-      </div>
+          <span className="app-icon shrink-0">
+            <Clock className="w-4 h-4 text-amber-400" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-white">
+              {props.pendingWithdrawals} withdrawal{props.pendingWithdrawals === 1 ? "" : "s"} being processed
+            </span>
+            <span className="block text-xs text-(--app-ink-3)">We&apos;ll notify you when it is paid.</span>
+          </span>
+          <span className="t-meta shrink-0 font-extrabold text-(--app-accent-ink)">View</span>
+        </button>
+      )}
 
       {/* Tabs */}
-      <ScrollFadeRow innerClassName="flex gap-1 border-b border-(--app-line)" ariaLabel="Wallet tabs">
+      {/* All five in view at every width — they used to sit in a row that
+          scrolled sideways, and "Team" and "Withdraw" were off-screen where
+          nobody found them. */}
+      <nav
+        aria-label="Wallet tabs"
+        className="grid grid-cols-5 gap-1 rounded-(--app-r-card) border border-(--app-line) bg-(--app-surface) p-1"
+      >
         {(
           [
-            { key: "balance", label: "Balance", icon: Coins },
+            { key: "balance", label: "Overview", icon: Coins },
             { key: "history", label: "History", icon: History },
             { key: "deposits", label: "Deposits", icon: Banknote },
-            { key: "referral", label: "Referral", icon: Users },
+            { key: "referral", label: "Team", icon: Users },
             { key: "withdraw", label: "Withdraw", icon: ArrowUpRight },
           ] as const
         ).map((t) => {
@@ -186,18 +192,18 @@ export function WalletView(props: WalletViewProps) {
               onClick={() => setTab(t.key)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "app-tap-row app-press shrink-0 inline-flex items-center gap-1.5 px-4 text-sm font-bold border-b-2 -mb-px",
+                "app-press flex min-w-0 flex-col items-center justify-center gap-1 rounded-(--app-r-control) px-1 py-2 text-[11px] font-bold",
                 isActive
-                  ? "text-white border-(--app-rail-a)"
-                  : "text-(--app-ink-3) border-transparent hover:text-(--app-ink)"
+                  ? "bg-(--app-nav-wash) text-(--app-nav-on)"
+                  : "text-(--app-ink-3) hover:text-(--app-ink)"
               )}
             >
-              <t.icon className="w-4 h-4" />
-              {t.label}
+              <t.icon className="h-4.5 w-4.5" />
+              <span className="max-w-full truncate">{t.label}</span>
             </button>
           );
         })}
-      </ScrollFadeRow>
+      </nav>
 
       {tab === "balance" && (
         <BalanceTab
@@ -206,6 +212,12 @@ export function WalletView(props: WalletViewProps) {
           monthlyIncome={props.monthlyIncome}
           todayReferralBonus={props.todayReferralBonus}
           transactions={props.transactions}
+          earningSources={props.earningSources}
+          earnPeriods={props.earnPeriods}
+          points={props.pointsBalance}
+          convertThreshold={props.convertThreshold ?? 10000}
+          pointsPerUsd={pointsPerUsd}
+          onSeeAll={() => setTab("history")}
         />
       )}
 
@@ -369,100 +381,95 @@ function BalanceTab({
   monthlyIncome = 0,
   todayReferralBonus = 0,
   transactions,
+  earningSources,
+  earnPeriods,
+  points,
+  convertThreshold,
+  pointsPerUsd,
+  onSeeAll,
 }: {
   totalEarnings: number;
   totalWithdrawn: number;
   monthlyIncome?: number;
   todayReferralBonus?: number;
   transactions: WalletTransaction[];
+  earningSources: EarningSource[];
+  earnPeriods: { today: number; week: number; month: number };
+  points: number;
+  convertThreshold: number;
+  pointsPerUsd: number;
+  onSeeAll: () => void;
 }) {
   // Aggregate earnings by type for the breakdown chart. Social credits are
   // generic EARNING rows tagged with a `social_` reference — split them out so
   // "social earn points" get their own slice; anything else lands in "Other".
+  // Classified on the server with the admin console's rules — the old
+  // client-side version filed every EARNING (leaderboard prizes included)
+  // under "Task Earnings", and only looked at the last 50 rows.
   const breakdown = useMemo(() => {
-    // Every earning source is itemised. Spend / payout / deposit / refund types
-    // are NOT earnings and are skipped even though they carry positive `points`.
-    const SPEND = new Set([
-      "WITHDRAWAL", "PURCHASE", "PENALTY", "COURSE_PURCHASE",
-      "DEPOSIT", "REFUND", "COURSE_REFUND",
-    ]);
-    // Display order + styling for each earning source. `OTHER` is a forward-safe
-    // catch-all so any future credit type still shows up (never silently lost).
-    const META: { key: string; label: string; color: string }[] = [
-      { key: "TASK", label: "Task Earnings", color: "bg-(--app-cta)" },
-      { key: "SOCIAL", label: "Social Earnings", color: "bg-rose-500" },
-      { key: "REFERRAL", label: "Referral Earnings", color: "bg-purple-500" },
-      { key: "BONUS", label: "Bonuses", color: "bg-amber-500" },
-      { key: "LOTTERY_WIN", label: "Lottery", color: "bg-pink-500" },
-      { key: "CHECKIN", label: "Check-ins", color: "bg-emerald-500" },
-      { key: "GIFT", label: "Gifts", color: "bg-teal-500" },
-      { key: "COURSE_TUTOR_EARNING", label: "Course Earnings", color: "bg-sky-500" },
-      { key: "OTHER", label: "Other", color: "bg-(--app-glyph)" },
-    ];
-    const buckets: Record<string, number> = Object.fromEntries(
-      META.map((m) => [m.key, 0])
-    );
-    for (const tx of transactions) {
-      if (tx.status !== "COMPLETED") continue;
-      if (tx.points <= 0) continue;
-      if (SPEND.has(tx.type)) continue;
-      if (tx.type === "EARNING") {
-        // Social credits are EARNING rows tagged with a `social_` reference.
-        if (tx.reference?.startsWith("social_")) buckets.SOCIAL += tx.points;
-        else buckets.TASK += tx.points;
-      } else if (tx.type in buckets) {
-        buckets[tx.type] += tx.points;
-      } else {
-        buckets.OTHER += tx.points;
-      }
-    }
-    const total = Object.values(buckets).reduce((a, b) => a + b, 0);
+    const total = earningSources.reduce((a, b) => a + b.value, 0);
     if (total === 0) return [];
-    return META.map((m) => ({ ...m, value: buckets[m.key] }))
-      .filter((b) => b.value > 0)
-      .map((b) => ({ ...b, pct: (b.value / total) * 100 }));
-  }, [transactions]);
+    return earningSources.map((b) => ({ ...b, pct: (b.value / total) * 100 }));
+  }, [earningSources]);
 
   return (
     <div className="space-y-4">
+      <ConvertCard points={points} threshold={convertThreshold} pointsPerUsd={pointsPerUsd} />
+
+      {/* Points earned — the same three windows as the dashboard. */}
+      <div className="app-card">
+        <p className="t-section mb-2 text-white">Points earned</p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "Today", pts: earnPeriods.today },
+            { label: "7 days", pts: earnPeriods.week },
+            { label: "30 days", pts: earnPeriods.month },
+          ].map((p) => (
+            <div key={p.label} className="app-tile min-w-0">
+              <p className="t-meta text-(--app-ink-3)">{p.label}</p>
+              <p className="t-figure-sm mt-1 truncate text-white">{p.pts.toLocaleString()}</p>
+              <p className="t-meta text-(--app-ink-3)">≈ {usd(p.pts / (pointsPerUsd || 1))}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Earnings dashboard — lifetime + this-month + today at a glance.
           These were four hand-rolled tiles with `text-2xl … truncate` in a
           ~134px box, so a 5-figure balance clipped ($12,345.67 needs ~144px).
           StatCard is the one tile that handles that. */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatCard
-          label="Total Earn"
+          label="Total earned"
           value={usd(totalEarnings)}
           icon={<TrendingUp className="w-5 h-5" />}
           tone="green"
         />
         <StatCard
-          label="Total Income"
+          label="Total withdrawn"
           value={usd(totalWithdrawn)}
           icon={<ArrowUpRight className="w-5 h-5" />}
           tone="purple"
         />
         <StatCard
-          label="Monthly Income"
+          label="Withdrawn this month"
           value={usd(monthlyIncome)}
           icon={<Calendar className="w-5 h-5" />}
           tone="blue"
         />
         <StatCard
-          label="Today's Referral"
+          label="Team bonus today"
           value={usd(todayReferralBonus)}
           icon={<Gift className="w-5 h-5" />}
           tone="amber"
         />
       </div>
 
-      {/* Clarifier — answers "where do converted points show in Total Earn?" */}
-      <p className="text-[11px] leading-relaxed text-(--app-ink-3) -mt-1">
-        <span className="font-semibold text-(--app-ink-2)">Total Earn</span> is the $
-        value of everything you&apos;ve earned — points count the moment you earn
-        them, so converting points to cash doesn&apos;t change it.{" "}
-        <span className="font-semibold text-(--app-ink-2)">Total Income</span> is what
-        you&apos;ve withdrawn.
+      <p className="-mt-1 text-[11px] leading-relaxed text-(--app-ink-3)">
+        <span className="font-semibold text-(--app-ink-2)">Total earned</span> counts
+        points the moment you earn them, so converting them to cash does not change
+        it. <span className="font-semibold text-(--app-ink-2)">Withdrawn</span> is
+        what has been paid out to you.
       </p>
 
       {/* Earnings Breakdown bar — always shown (empty-state when no points yet) */}
@@ -483,7 +490,7 @@ function BalanceTab({
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-white">Earnings Breakdown</p>
             <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider">
-              From {transactions.filter((t) => t.points > 0).length} tx
+              Last 30 days
             </p>
           </div>
           {/* Segmented bar */}
@@ -517,12 +524,14 @@ function BalanceTab({
       {/* Recent transactions */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-bold text-white">Recent Transactions</p>
-          {transactions.length > 10 && (
-            <span className="text-[11px] text-(--app-ink-3)">
-              Showing latest 10
-            </span>
-          )}
+          <p className="text-sm font-bold text-white">Recent transactions</p>
+          <button
+            type="button"
+            onClick={onSeeAll}
+            className="app-press app-tap-row inline-flex items-center px-2.5 -mr-2 rounded-(--app-r-chip) t-meta font-extrabold text-(--app-accent-ink) hover:bg-(--app-nav-wash)"
+          >
+            See all
+          </button>
         </div>
 
         {transactions.length === 0 ? (
@@ -533,7 +542,7 @@ function BalanceTab({
           />
         ) : (
           <div className="space-y-1.5">
-            {transactions.slice(0, 10).map((tx) => {
+            {transactions.slice(0, 8).map((tx) => {
               const isOutflow =
                 tx.type === "WITHDRAWAL" ||
                 tx.type === "PURCHASE" ||
@@ -645,110 +654,69 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ReferralTab({ stats }: { stats: ReferralStats }) {
-  const totalCount = stats.l1Count + stats.l2Count + stats.l3Count;
+  const totalCount = stats.totalCount;
+  const sameRate =
+    stats.levels.length > 1 && stats.levels.every((l) => l.rateLabel === stats.levels[0].rateLabel);
 
   return (
     <div className="space-y-4">
-      {/* Header earnings card */}
-      <div className="rounded-2xl bg-linear-to-r from-(--app-rail-a)/20 to-(--app-rail-b)/10 border border-(--app-accent-edge)/30 backdrop-blur-xl p-5">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-purple-400" />
-          <p className="text-xs uppercase tracking-wider text-purple-300 font-bold">
-            Total Referral Earnings
+      <div className="app-card flex items-center gap-4">
+        <span className="app-icon shrink-0">
+          <Users className="w-5 h-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="t-meta text-(--app-ink-3)">Team commission earned</p>
+          <p className="text-2xl font-extrabold tabular-nums text-white">{usd(stats.totalEarned)}</p>
+          <p className="t-meta text-(--app-ink-3)">
+            {totalCount} {totalCount === 1 ? "member" : "members"} · {stats.levels.length}{" "}
+            {stats.levels.length === 1 ? "level" : "levels"}
+            {sameRate ? ` · ${stats.levels[0].rateLabel} each` : ""}
           </p>
         </div>
-        <p className="text-4xl font-extrabold text-white tabular-nums mt-2">
-          {usd(stats.totalEarned)}
-        </p>
-        <p className="text-xs text-purple-200/80 mt-1">
-          From {totalCount} {totalCount === 1 ? "referral" : "referrals"} across
-          3 levels
-        </p>
         <Link
           href="/referrals"
-          className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold"
+          className="app-accent app-press app-tap-row shrink-0 inline-flex items-center gap-1.5 rounded-(--app-r-control) px-3 text-xs font-extrabold"
         >
           <Send className="w-3.5 h-3.5" />
-          Open Referral Page
+          Invite
         </Link>
       </div>
 
-      {/* L1 / L2 / L3 cards */}
-      <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-(--app-ink-3) font-bold">
-          Commission By Level
-        </p>
-        {(
-          [
-            {
-              level: 1,
-              label: "Level 1 (Direct)",
-              pct: 10,
-              count: stats.l1Count,
-              earned: stats.l1Earned,
-              tone: "emerald",
-            },
-            {
-              level: 2,
-              label: "Level 2",
-              pct: 5,
-              count: stats.l2Count,
-              earned: stats.l2Earned,
-              tone: "purple",
-            },
-            {
-              level: 3,
-              label: "Level 3",
-              pct: 2,
-              count: stats.l3Count,
-              earned: stats.l3Earned,
-              tone: "amber",
-            },
-          ] as const
-        ).map((row) => {
-          const tones = {
-            emerald: "border-emerald-500/30 bg-emerald-500/10",
-            purple: "border-purple-500/30 bg-purple-500/10",
-            amber: "border-amber-500/30 bg-amber-500/10",
-          } as const;
-          const dotTones = {
-            emerald: "bg-emerald-500 text-(--app-on-bright)",
-            purple: "bg-purple-500 text-(--app-on-bright)",
-            amber: "bg-amber-500 text-(--app-on-bright)",
-          } as const;
-          return (
-            <div
-              key={row.level}
-              className={cn(
-                "rounded-xl border backdrop-blur-xl p-3 flex items-center gap-3",
-                tones[row.tone]
-              )}
-            >
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold",
-                  dotTones[row.tone]
-                )}
-              >
-                {row.level}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">{row.label}</p>
-                <p className="text-[11px] text-(--app-ink-3)">
-                  {row.pct}% commission · {row.count}{" "}
-                  {row.count === 1 ? "user" : "users"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-base font-extrabold text-white tabular-nums">
-                  {usd(row.earned)}
-                </p>
-                <p className="text-[10px] text-(--app-ink-3)">earned</p>
-              </div>
-            </div>
-          );
-        })}
+      {/* Compact table — the admin's levels and rates. Ten identical cards
+          took a whole screen to say "3%" ten times. */}
+      <div className="overflow-hidden rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface)">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 bg-(--app-surface-2) px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
+          <span>Level</span>
+          <span className="text-right">Rate</span>
+          <span className="text-right">Members</span>
+          <span className="w-16 text-right">Earned</span>
+        </div>
+        {stats.levels.map((l) => (
+          <div
+            key={l.level}
+            className={cn(
+              "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-4 border-t border-(--app-line) px-3 py-2 text-sm",
+              l.count === 0 && "text-(--app-ink-3)"
+            )}
+          >
+            <span className="font-bold text-white">
+              Level {l.level}
+              {l.level === 1 && <span className="ml-1.5 text-[10px] font-semibold text-(--app-ink-3)">direct</span>}
+            </span>
+            <span className="text-right font-bold tabular-nums text-(--app-accent-ink)">{l.rateLabel}</span>
+            <span className="text-right tabular-nums">{l.count.toLocaleString()}</span>
+            <span className="w-16 text-right font-bold tabular-nums">{usd(l.earnedUsd)}</span>
+          </div>
+        ))}
       </div>
+      <p className="text-[11px] text-(--app-ink-3)">
+        Commission is paid into your wallet automatically whenever someone in your
+        team earns. See who is in your team on{" "}
+        <Link href="/referrals" className="font-semibold text-(--app-accent-ink) hover:underline">
+          My Team
+        </Link>
+        .
+      </p>
     </div>
   );
 }

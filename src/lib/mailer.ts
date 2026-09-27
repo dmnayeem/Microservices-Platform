@@ -79,7 +79,7 @@ export async function getMailConfig(): Promise<MailConfig> {
   );
   const name = str(
     fromName,
-    str(platformName, process.env.NEXT_PUBLIC_APP_NAME ?? "EarnGPT")
+    str(platformName, process.env.NEXT_PUBLIC_APP_NAME ?? "RevType")
   );
 
   return {

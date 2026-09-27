@@ -112,7 +112,7 @@ export function SeoSettingsForm({
 
       <Section title="Brand" hint="The name and images the site uses everywhere — browser tab, home-screen icon, search results.">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Row label="Site name">{text("seo.site_name", "EarnGPT")}</Row>
+          <Row label="Site name">{text("seo.site_name", "RevType")}</Row>
           <div />
           <Row label="Logo" hint="Square, at least 512×512. Used by Google next to your name.">
             <ImageUploadField value={str("seo.logo_url")} onChange={(u) => set("seo.logo_url", u)} title="Logo" previewSize="square" />
@@ -128,7 +128,7 @@ export function SeoSettingsForm({
 
       <Section title="Search appearance" hint="What Google shows for the site, and the card Facebook, WhatsApp and X show when a link is shared.">
         <Row label="Title" hint={`${title.length}/60 — keep it under 60 so Google does not cut it.`}>{text("seo.default_title")}</Row>
-        <Row label="Title template for inner pages" hint='%s is replaced by the page name, e.g. "Wallet | EarnGPT".'>{text("seo.title_template", "%s | EarnGPT")}</Row>
+        <Row label="Title template for inner pages" hint='%s is replaced by the page name, e.g. "Wallet | RevType".'>{text("seo.title_template", "%s | RevType")}</Row>
         <Row label="Description" hint={`${desc.length}/160 — Google shows about 155–160 characters.`}>
           <textarea rows={3} value={desc} onChange={(e) => set("seo.description", e.target.value)} disabled={!canEdit} className={inp} />
         </Row>
@@ -145,7 +145,7 @@ export function SeoSettingsForm({
           <Row label="Share image (Open Graph)" hint="1200×630. Shown when a link to the site is shared.">
             <ImageUploadField value={str("seo.og_image_url")} onChange={(u) => set("seo.og_image_url", u)} title="Share image" previewSize="lg" />
           </Row>
-          <Row label="X (Twitter) handle" hint="Without the @, e.g. earngpt.">{text("seo.twitter_handle", "earngpt")}</Row>
+          <Row label="X (Twitter) handle" hint="Without the @, e.g. revtype.">{text("seo.twitter_handle", "revtype")}</Row>
         </div>
         <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-sm text-slate-200">
           <input type="checkbox" checked={v["seo.indexing"] !== false} onChange={(e) => set("seo.indexing", e.target.checked)} disabled={!canEdit} className="mt-0.5" />

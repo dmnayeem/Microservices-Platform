@@ -13,6 +13,8 @@ import { getPointsPerUsd, getPointsConvertThreshold } from "@/lib/economy";
 import { getWithdrawalConfig } from "@/lib/withdrawal";
 import { toNum } from "@/lib/money";
 import { resolveUserTimezone, localStartOfDayUtc } from "@/lib/user-day";
+import { getTeamSummary } from "@/lib/team";
+import { summarizeEarnings } from "@/lib/dashboard-earnings";
 
 export default async function WalletPage() {
   const session = await auth();
@@ -22,11 +24,10 @@ export default async function WalletPage() {
 
   const [
     user,
-    transactions,
+    ledger30,
     pendingWithdrawalsCount,
     withdrawnAgg,
-    refEarningsByLevel,
-    l1Users,
+    teamSummary,
     deposits,
     kycPrompt,
     pointsPerUsd,
@@ -45,10 +46,13 @@ export default async function WalletPage() {
           package: { select: { slug: true, name: true } },
         },
       }),
+      // The last 30 days of the ledger, read once: the earnings breakdown
+      // (same rules as the dashboard and the admin console) and the recent
+      // list both come from it.
       prisma.transaction.findMany({
-        where: { userId },
+        where: { userId, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
         orderBy: { createdAt: "desc" },
-        take: 50,
+        take: 1000,
       }),
       prisma.withdrawal.count({
         where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
@@ -60,17 +64,9 @@ export default async function WalletPage() {
         where: { userId, status: "COMPLETED" },
         _sum: { amount: true },
       }),
-      prisma.referralEarning.groupBy({
-        by: ["level"],
-        where: { userId },
-        _sum: { amount: true },
-      }) as unknown as Promise<
-        { level: number; _sum: { amount: unknown } }[]
-      >,
-      prisma.user.findMany({
-        where: { referredById: userId },
-        select: { id: true },
-      }),
+      // The team at the depth and rates the admin set (lib/team.ts) — this
+      // used to load every direct referral's id and stop at level 3.
+      getTeamSummary(userId),
       prisma.deposit.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
@@ -118,40 +114,20 @@ export default async function WalletPage() {
   // Today's referral bonus (USD) — referral earnings credited since local midnight.
   const todayReferralBonus = toNum(todayRefAgg._sum.amount ?? 0);
 
-  // Compute L2 (children of L1 users) and L3 (grandchildren) counts
-  const l1Ids = l1Users.map((u) => u.id);
-  const l2Users = l1Ids.length
-    ? await prisma.user.findMany({
-        where: { referredById: { in: l1Ids } },
-        select: { id: true },
-      })
-    : [];
-  const l2Ids = l2Users.map((u) => u.id);
-  const l3UsersCount = l2Ids.length
-    ? await prisma.user.count({
-        where: { referredById: { in: l2Ids } },
-      })
-    : 0;
-
-  // Aggregate referral earnings by level
   const stats: ReferralStats = {
-    l1Count: l1Ids.length,
-    l2Count: l2Ids.length,
-    l3Count: l3UsersCount,
-    l1Earned: 0,
-    l2Earned: 0,
-    l3Earned: 0,
-    totalEarned: 0,
+    levels: teamSummary.levels,
+    totalCount: teamSummary.totalCount,
+    totalEarned: teamSummary.totalEarnedUsd,
   };
-  for (const r of refEarningsByLevel) {
-    const amt = toNum((r._sum.amount ?? 0) as never);
-    if (r.level === 1) stats.l1Earned += amt;
-    else if (r.level === 2) stats.l2Earned += amt;
-    else if (r.level === 3) stats.l3Earned += amt;
-    stats.totalEarned += amt;
-  }
+  const earned = summarizeEarnings(ledger30);
+  const earningSources = earned.sources.map((x) => ({
+    key: x.source,
+    label: x.label,
+    color: x.swatch,
+    value: x.points,
+  }));
 
-  const txList: WalletTransaction[] = transactions.map((tx) => ({
+  const txList: WalletTransaction[] = ledger30.slice(0, 50).map((tx) => ({
     id: tx.id,
     type: tx.type,
     status: tx.status,
@@ -189,6 +165,8 @@ export default async function WalletPage() {
         todayReferralBonus={todayReferralBonus}
         packageTier={user.package?.slug ?? "default"}
         transactions={txList}
+        earningSources={earningSources}
+        earnPeriods={{ today: earned.today, week: earned.week, month: earned.month }}
         deposits={depositList}
         referralStats={stats}
         pendingWithdrawals={pendingWithdrawalsCount}

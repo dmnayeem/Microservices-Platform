@@ -8,11 +8,15 @@ import {
   PrimaryButton,
 } from "@/components/marketing/ui";
 import { COMPANY_NAME, CAREERS_EMAIL } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Careers",
-  description: `Join ${COMPANY_NAME} — a remote-first team building the global platform for earning online.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Careers",
+    description: `Join ${COMPANY_NAME} — a remote-first team building the global platform for earning online.`,
+    path: "/careers",
+  });
+}
 
 const PERKS = [
   { icon: Globe2, title: "Remote-first, worldwide", body: "Work from anywhere. We hire across timezones and optimize for async, not attendance." },
@@ -50,7 +54,7 @@ export default function CareersPage() {
       />
 
       <Section>
-        <SectionHeading badge="Why us" tone="purple" title="Life at EarnGPT" />
+        <SectionHeading badge="Why us" tone="purple" title="Life at RevType" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PERKS.map((p) => (
             <GlassCard key={p.title}>

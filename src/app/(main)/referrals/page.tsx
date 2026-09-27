@@ -6,6 +6,9 @@ import {
   type ReferralUser,
 } from "@/components/user/referrals/referrals-view";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { getTeamSummary } from "@/lib/team";
+import { getReferralBonusConfig, qualifiedReferralCount } from "@/lib/referral-bonus";
+import type { ReferralBonusInfo } from "@/components/user/referrals/referrals-view";
 
 export const metadata = { title: "My Team" };
 
@@ -22,7 +25,7 @@ export default async function ReferralsPage() {
 
   const code =
     user.referralCode ?? `EARN${user.id.slice(0, 6).toUpperCase()}`;
-  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app"}/register?ref=${code}`;
+  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com"}/register?ref=${code}`;
 
   // Build the 3-level team.
   //
@@ -30,125 +33,86 @@ export default async function ReferralsPage() {
   // needs ids (a user with 5,000 invitees used to load 5,000 full rows, and then
   // their invitees, and theirs), while the DISPLAY list is capped — nobody
   // scrolls a 25,000-row table. Counts stay exact via count().
-  const ID_CAP = 5_000; // walk ceiling per level; beyond this the count is a floor
-  const SHOW = 100; // rows rendered per level
-
-  const l1Ids = (
-    await prisma.user.findMany({
-      // ACTIVE only — the same population the daily claim pays for.
-      where: { referredById: userId, status: "ACTIVE" },
-      select: { id: true },
-      take: ID_CAP,
-    })
-  ).map((u) => u.id);
-
-  const l2Ids = l1Ids.length
-    ? (
-        await prisma.user.findMany({
-          where: { referredById: { in: l1Ids } },
-          select: { id: true },
-          take: ID_CAP,
-        })
-      ).map((u) => u.id)
-    : [];
-
-  const TEAM_SELECT = {
-    id: true,
-    name: true,
-    avatar: true,
-    createdAt: true,
-    lastLoginAt: true,
-  } as const;
-
-  const [l1, l2, l3, l1Total, l2Total, l3Total] = await Promise.all([
-    prisma.user.findMany({
-      where: { referredById: userId, status: "ACTIVE" },
-      select: TEAM_SELECT,
-      orderBy: { createdAt: "desc" },
-      take: SHOW,
-    }),
-    l1Ids.length
-      ? prisma.user.findMany({
-          where: { referredById: { in: l1Ids } },
-          select: TEAM_SELECT,
-          orderBy: { createdAt: "desc" },
-          take: SHOW,
-        })
-      : Promise.resolve([]),
-    l2Ids.length
-      ? prisma.user.findMany({
-          where: { referredById: { in: l2Ids } },
-          select: TEAM_SELECT,
-          orderBy: { createdAt: "desc" },
-          take: SHOW,
-        })
-      : Promise.resolve([]),
-    prisma.user.count({ where: { referredById: userId, status: "ACTIVE" } }),
-    l1Ids.length
-      ? prisma.user.count({
-          where: { referredById: { in: l1Ids }, status: "ACTIVE" },
-        })
-      : Promise.resolve(0),
-    l2Ids.length
-      ? prisma.user.count({ where: { referredById: { in: l2Ids } } })
-      : Promise.resolve(0),
+  // The team to the depth the admin configured (up to 10 levels), with each
+  // level's rate — one recursive query instead of a walk per level.
+  const SHOW = 100; // members listed per level
+  const [summary, bonusCfg] = await Promise.all([
+    getTeamSummary(userId, { membersPerLevel: SHOW }),
+    getReferralBonusConfig(),
   ]);
+  const memberIds = summary.members.map((m) => m.id);
 
-  // Earnings via ReferralEarning + this-month total.
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-  const [allEarnings, thisMonthEarnings] = await Promise.all([
-    prisma.referralEarning.findMany({
-      where: { userId },
-      select: { level: true, amount: true, referredUserId: true },
-    }),
+  // Sums, not rows: this used to load every referral-earning row the user
+  // ever had just to add them up.
+  const [perMember, thisMonthEarnings] = await Promise.all([
+    memberIds.length
+      ? (prisma.referralEarning.groupBy({
+          by: ["referredUserId"],
+          where: { userId, referredUserId: { in: memberIds } },
+          _sum: { amount: true },
+        }) as unknown as Promise<Array<{ referredUserId: string; _sum: { amount: unknown } }>>)
+      : Promise.resolve([]),
     prisma.referralEarning.aggregate({
       where: { userId, createdAt: { gte: monthStart } },
       _sum: { amount: true },
     }),
   ]);
-
-  const earningsByUser = new Map<string, number>();
-  let l1Earned = 0;
-  let l2Earned = 0;
-  let l3Earned = 0;
-  for (const e of allEarnings) {
-    const amt = Number(e.amount ?? 0);
-    if (e.level === 1) l1Earned += amt;
-    else if (e.level === 2) l2Earned += amt;
-    else if (e.level === 3) l3Earned += amt;
-    earningsByUser.set(
-      e.referredUserId,
-      (earningsByUser.get(e.referredUserId) ?? 0) + amt
-    );
-  }
+  const earningsByUser = new Map(perMember.map((e) => [e.referredUserId, Number(e._sum.amount ?? 0)]));
 
   const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-  // eslint-disable-next-line react-hooks/purity
+  // eslint-disable-next-line react-hooks/purity -- async Server Component: runs once per request, never hydrated.
   const nowMs = Date.now();
-  const isActive = (lastLogin: Date | null) =>
-    lastLogin ? nowMs - new Date(lastLogin).getTime() < ACTIVE_WINDOW_MS : false;
+  const team: ReferralUser[] = summary.members.map((u) => ({
+    id: u.id,
+    name: u.name,
+    avatar: u.avatar,
+    level: u.level,
+    joinedAt: u.createdAt.toISOString(),
+    earnings: earningsByUser.get(u.id) ?? 0,
+    isActive: u.lastLoginAt ? nowMs - new Date(u.lastLoginAt).getTime() < ACTIVE_WINDOW_MS : false,
+  }));
 
-  const buildTeam = (
-    rows: typeof l1,
-    level: 1 | 2 | 3
-  ): ReferralUser[] =>
-    rows.map((u) => ({
-      id: u.id,
-      name: u.name,
-      avatar: u.avatar,
-      level,
-      joinedAt: u.createdAt.toISOString(),
-      earnings: earningsByUser.get(u.id) ?? 0,
-      isActive: isActive(u.lastLoginAt),
-    }));
-
-  const team: ReferralUser[] = [
-    ...buildTeam(l1, 1),
-    ...buildTeam(l2, 2),
-    ...buildTeam(l3, 3),
-  ];
+  // The bonuses the admin has switched on — only those, in plain words.
+  const pts = (n: number) => `+${n.toLocaleString()} pts`;
+  const on = bonusCfg.enabled;
+  const perks: ReferralBonusInfo["perks"] = on
+    ? [
+        bonusCfg.signupEnabled && bonusCfg.signupPoints > 0 && { label: "A friend signs up", reward: pts(bonusCfg.signupPoints) },
+        bonusCfg.inviteeEnabled && bonusCfg.inviteePoints > 0 && { label: "Your friend gets on joining", reward: pts(bonusCfg.inviteePoints) },
+        bonusCfg.purchaseEnabled && bonusCfg.purchasePoints > 0 && { label: "A friend buys a plan", reward: pts(bonusCfg.purchasePoints) },
+        bonusCfg.subscriptionEnabled && bonusCfg.subscriptionPoints > 0 && { label: "A friend subscribes", reward: pts(bonusCfg.subscriptionPoints) },
+        bonusCfg.depositEnabled && bonusCfg.depositPercent > 0 && { label: "A friend adds funds", reward: `${bonusCfg.depositPercent}%` },
+        bonusCfg.withdrawalEnabled && bonusCfg.withdrawalPercent > 0 && { label: "A friend withdraws", reward: `${bonusCfg.withdrawalPercent}%` },
+        bonusCfg.monthlyEnabled && bonusCfg.monthlyPoints > 0 && { label: "A friend stays active all month", reward: pts(bonusCfg.monthlyPoints) },
+      ].filter((x): x is { label: string; reward: string } => Boolean(x))
+    : [];
+  const ladder = on && bonusCfg.milestonesEnabled ? bonusCfg.milestones : [];
+  const subIds = ladder.filter((m) => m.rewardType === "SUBSCRIPTION").map((m) => m.packageId);
+  const [milestoneProgress, plans] = await Promise.all([
+    ladder.length ? qualifiedReferralCount(userId, bonusCfg.milestoneActivity) : Promise.resolve(null),
+    subIds.length
+      ? prisma.package.findMany({ where: { id: { in: subIds } }, select: { id: true, name: true } })
+      : Promise.resolve([] as Array<{ id: string; name: string }>),
+  ]);
+  const planName = new Map(plans.map((p) => [p.id, p.name]));
+  const minDays = bonusCfg.milestoneActivity?.minActiveDays ?? 0;
+  const bonuses: ReferralBonusInfo = {
+    perks,
+    milestones: ladder.map((m) => ({
+      id: m.id,
+      label: m.label || `${m.referrals} referrals`,
+      referrals: m.referrals,
+      reward:
+        m.rewardType === "SUBSCRIPTION"
+          ? `${m.months} month${m.months === 1 ? "" : "s"} ${planName.get(m.packageId) ?? "plan"}`
+          : pts(m.points),
+    })),
+    milestoneProgress,
+    activeRule: minDays > 0 ? `a friend counts once active on ${minDays} days in ${bonusCfg.milestoneActivity.windowDays}` : null,
+  };
 
   return (
     <>
@@ -156,14 +120,11 @@ export default async function ReferralsPage() {
       <ReferralsView
       referralCode={code}
       shareUrl={shareUrl}
-      l1Count={l1Total}
-      l2Count={l2Total}
-      l3Count={l3Total}
-      l1Earned={l1Earned}
-      l2Earned={l2Earned}
-      l3Earned={l3Earned}
+      levels={summary.levels}
+      totalEarned={summary.totalEarnedUsd}
       thisMonthEarned={Number(thisMonthEarnings._sum.amount ?? 0)}
       team={team}
+      bonuses={bonuses}
       />
     </>
   );

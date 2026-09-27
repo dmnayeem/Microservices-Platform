@@ -13,12 +13,12 @@ import { mediaSrc } from "@/lib/media-url";
  */
 
 export const SEO_DEFAULTS = {
-  "seo.site_name": "EarnGPT",
+  "seo.site_name": "RevType",
   // The home page's title and description — what Google shows for the site.
-  "seo.default_title": "EarnGPT — Earn Money Online with Tasks, Videos, Surveys & Courses",
-  "seo.title_template": "%s | EarnGPT",
+  "seo.default_title": "RevType — Earn Money Online with Tasks, Videos, Surveys & Courses",
+  "seo.title_template": "%s | RevType",
   "seo.description":
-    "Earn real money online with EarnGPT: complete micro-tasks, watch videos, take surveys, sell in the marketplace, learn with courses, and earn from referrals & affiliates. Join free and cash out.",
+    "Earn real money online with RevType: complete micro-tasks, watch videos, take surveys, sell in the marketplace, learn with courses, and earn from referrals & affiliates. Join free and cash out.",
   "seo.keywords":
     "earn money online, make money online, online earning, paid tasks, watch videos for money, rewards, cashout, referral program, affiliate program, micro tasks, surveys for money, GPT site",
   "seo.logo_url": "/icon-512.png",
@@ -36,7 +36,7 @@ export const SEO_DEFAULTS = {
 
   "seo.org_type": "Organization",
   "seo.org_legal_name": "",
-  "seo.org_description": "Complete tasks, watch videos, take surveys and courses, and earn real money with EarnGPT.",
+  "seo.org_description": "Complete tasks, watch videos, take surveys and courses, and earn real money with RevType.",
   "seo.org_founding_date": "",
   "seo.org_email": "",
   "seo.org_phone": "",

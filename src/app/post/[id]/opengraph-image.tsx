@@ -19,7 +19,7 @@ import { getPublicPost, postSummary } from "@/lib/public-post";
  * as the page itself, just harder to notice.
  */
 
-export const alt = "Post on EarnGPT";
+export const alt = "Post on RevType";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -63,11 +63,11 @@ export default async function OgImage({
             maxWidth: 1000,
           }}
         >
-          {body || "Join the EarnGPT community"}
+          {body || "Join the RevType community"}
         </div>
 
         <div style={{ display: "flex", fontSize: 28, color: "#cbd5e1" }}>
-          {author ? `${author} · earngpt.app` : "earngpt.app"}
+          {author ? `${author} · revtype.com` : "revtype.com"}
         </div>
       </div>
     ),

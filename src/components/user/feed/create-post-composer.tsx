@@ -811,7 +811,7 @@ export function CreatePostComposer({
                 key: "MEMBERS" as const,
                 Icon: Users,
                 title: "Members only",
-                detail: "Signed-in EarnGPT members. Not readable without an account.",
+                detail: "Signed-in RevType members. Not readable without an account.",
               },
               {
                 key: "PUBLIC" as const,

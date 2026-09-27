@@ -656,7 +656,7 @@ const REFERRAL: ArticleEntryConfig = {
     "the freshness window is long enough for a real multi-page read",
     /const ARTICLE_KEY_FRESH_MINUTES = (\d+)/.test(submit) &&
       Number(submit.match(/const ARTICLE_KEY_FRESH_MINUTES = (\d+)/)?.[1]) >= 60,
-    "dwell gates plus several pages plus walking back to EarnGPT is not a five-minute errand"
+    "dwell gates plus several pages plus walking back to RevType is not a five-minute errand"
   );
 }
 

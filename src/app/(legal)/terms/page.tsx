@@ -7,25 +7,29 @@ import {
   LEGAL_GOVERNING,
   LEGAL_ENTITY,
 } from "@/components/legal/legal-ui";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Terms of Service · EarnGPT",
-  description:
-    "The terms, end-user licence agreement, and community standards for using EarnGPT.",
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Terms of Service",
+    description:
+      "The terms, end-user licence agreement, and community standards for using RevType.",
+    path: "/terms",
+  });
+}
 
 export default function TermsPage() {
   return (
     <article>
       <LegalHeader
         title="Terms of Service"
-        intro="These Terms (including the End-User Licence Agreement and Community Standards below) are a legal agreement between you and EarnGPT. By creating an account or using the Platform, you agree to them. If you do not agree, do not use EarnGPT."
+        intro="These Terms (including the End-User Licence Agreement and Community Standards below) are a legal agreement between you and RevType. By creating an account or using the Platform, you agree to them. If you do not agree, do not use RevType."
       />
 
       <LegalSection id="eligibility" title="1. Eligibility">
         <p>
           You must be at least <strong>18 years old</strong> and legally able to
-          enter a contract to use EarnGPT. Some features (such as prize draws or
+          enter a contract to use RevType. Some features (such as prize draws or
           withdrawals) may be restricted or unavailable in certain countries; you
           are responsible for complying with your local laws.
         </p>
@@ -43,14 +47,14 @@ export default function TermsPage() {
 
       <LegalSection id="earnings" title="3. Earnings are not guaranteed">
         <p>
-          EarnGPT lets you earn points and rewards for completing activities.
+          RevType lets you earn points and rewards for completing activities.
           <strong>
             {" "}
             Any earnings figures, calculators, or projections shown are
             illustrative estimates only and are not a promise of income.
           </strong>{" "}
           Actual results depend on your activity, available tasks, your plan, and
-          other factors, and may be zero. EarnGPT is not an investment, and
+          other factors, and may be zero. RevType is not an investment, and
           participation should not be treated as a source of guaranteed income.
         </p>
       </LegalSection>
@@ -90,7 +94,7 @@ export default function TermsPage() {
       <LegalSection id="referrals" title="6. Referral program">
         <p>
           You may earn referral rewards for inviting others in line with the rules
-          shown in-app. Referral rewards are funded by EarnGPT and are for genuine
+          shown in-app. Referral rewards are funded by RevType and are for genuine
           referrals only. Self-referrals, fake accounts, spam, purchased traffic,
           or any manipulation of the referral system are prohibited and may lead
           to reversal of rewards and account suspension.
@@ -103,9 +107,9 @@ export default function TermsPage() {
         title="7. User content &amp; community standards (EULA)"
       >
         <p>
-          EarnGPT includes social features where users can post content and
+          RevType includes social features where users can post content and
           interact. You are solely responsible for what you post. By posting, you
-          grant EarnGPT a licence to host and display your content within the
+          grant RevType a licence to host and display your content within the
           Platform.
         </p>
         <p className="font-semibold text-(--mk-text)">
@@ -148,7 +152,7 @@ export default function TermsPage() {
 
       <LegalSection id="ip" title="9. Intellectual property">
         <p>
-          EarnGPT and its logos, software, and content (excluding user content)
+          RevType and its logos, software, and content (excluding user content)
           are owned by us or our licensors and may not be copied or used without
           permission.
         </p>
@@ -157,7 +161,7 @@ export default function TermsPage() {
       <LegalSection id="disclaimer" title="10. Disclaimers &amp; liability">
         <p>
           The Platform is provided “as is” without warranties of any kind. To the
-          maximum extent permitted by law, EarnGPT is not liable for indirect or
+          maximum extent permitted by law, RevType is not liable for indirect or
           consequential losses, lost earnings, or issues caused by third-party
           providers. Nothing limits liability that cannot be excluded by law.
         </p>
@@ -166,14 +170,14 @@ export default function TermsPage() {
       <LegalSection id="termination" title="11. Suspension &amp; termination">
         <p>
           We may suspend or terminate your account for breach of these Terms,
-          suspected fraud, or legal reasons. You may stop using EarnGPT and delete
+          suspected fraud, or legal reasons. You may stop using RevType and delete
           your account at any time from Settings.
         </p>
       </LegalSection>
 
       <LegalSection id="law" title="12. Governing law &amp; changes">
         <p>
-          EarnGPT is a global service operated by {LEGAL_ENTITY}. These Terms are
+          RevType is a global service operated by {LEGAL_ENTITY}. These Terms are
           governed by {LEGAL_GOVERNING}. Nothing here removes rights you cannot
           waive under the laws of your country of residence.
         </p>

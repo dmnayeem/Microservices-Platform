@@ -94,8 +94,13 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder files
+     * - public folder files, and the metadata routes (robots.txt,
+     *   sitemap.xml, llms.txt, ads.txt, manifest.json, sw.js). Only images
+     *   used to be skipped, so a logged-out visitor — and Google, and the
+     *   browser fetching the PWA manifest, which it does WITHOUT cookies —
+     *   was sent to /login instead: the sitemap and robots.txt were never
+     *   readable, and the app could not be installed.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|js|txt|xml|webmanifest|woff2?)$).*)",
   ],
 };

@@ -41,6 +41,8 @@ import { getEffectiveFeatures } from "@/lib/packages";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { ProfileCompletionBanner } from "@/components/user/primitives/profile-completion-banner";
 import { getKycPromptState } from "@/lib/kyc-prompt-server";
+import { summarizeEarnings } from "@/lib/dashboard-earnings";
+import { EarningsOverview } from "@/components/user/dashboard/earnings-overview";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 
 /* Four shortcuts, previously indigo / emerald / amber / pink, above six more
@@ -76,10 +78,11 @@ export default async function DashboardPage() {
   // run as a single parallel round-trip instead of two serial phases.
   const [
     userData,
-    tasksCompleted,
+    submissionsByStatus,
     referralsCount,
     availableTasks,
-    recentTx,
+    ledger30,
+    pendingWithdrawals,
     pointsPerUsd,
     gate,
     kycPrompt,
@@ -102,14 +105,13 @@ export default async function DashboardPage() {
           referralCode: true,
         },
       }),
-      prisma.taskSubmission.count({
-        // AUTO_APPROVED counts too — quiz, video and every autoApprove task
-        // credits with that status, so counting "APPROVED" alone showed 0 to
-        // users who had genuinely completed work.
-        where: {
-          userId: session.user.id,
-          status: { in: ["APPROVED", "AUTO_APPROVED"] },
-        },
+      // One groupBy instead of a count: approved (AUTO_APPROVED too — quiz,
+      // video and every autoApprove task credits with that status), in review
+      // and rejected all come from the same query.
+      prisma.taskSubmission.groupBy({
+        by: ["status"],
+        where: { userId: session.user.id },
+        _count: { _all: true },
       }),
       prisma.user.count({
         where: { referredById: session.user.id },
@@ -119,10 +121,14 @@ export default async function DashboardPage() {
       // task that /api/tasks/[id]/start refuses (hidden, expired, wrong plan,
       // or outside their audience).
       getVisibleTaskPreview(session.user.id, 6),
+      // The last 30 days of the ledger, read ONCE: the earnings summary (today,
+      // 7 and 30 days, the chart, the sources) and the recent-activity list
+      // below are all computed from this one query.
       prisma.transaction.findMany({
-        where: { userId: session.user.id },
+        // eslint-disable-next-line react-hooks/purity -- async Server Component: runs once per request, never hydrated.
+        where: { userId: session.user.id, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
         orderBy: { createdAt: "desc" },
-        take: 5,
+        take: 1000,
         select: {
           id: true,
           type: true,
@@ -133,6 +139,11 @@ export default async function DashboardPage() {
           description: true,
           createdAt: true,
         },
+      }),
+      prisma.withdrawal.aggregate({
+        where: { userId: session.user.id, status: { in: ["PENDING", "PROCESSING"] } },
+        _sum: { amount: true },
+        _count: { _all: true },
       }),
       getPointsPerUsd(),
       getProfileGateState(session.user.id),
@@ -145,6 +156,17 @@ export default async function DashboardPage() {
     ]);
 
   const user = session.user;
+  const subCount = (...st: string[]) =>
+    (submissionsByStatus as unknown as Array<{ status: string; _count: { _all: number } }>)
+      .filter((g) => st.includes(g.status))
+      .reduce((a, g) => a + g._count._all, 0);
+  const tasksCompleted = subCount("APPROVED", "AUTO_APPROVED");
+  const recentTx = ledger30.slice(0, 5);
+  const pendingW = pendingWithdrawals as unknown as {
+    _count: { _all: number };
+    _sum: { amount: unknown };
+  };
+  const earnings = summarizeEarnings(ledger30);
   const points = userData?.pointsBalance ?? 0;
   const cash = toNum(userData?.cashBalance ?? 0);
   const adCredit = toNum(userData?.adCreditBalance ?? 0);
@@ -224,6 +246,21 @@ export default async function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Earnings + activity */}
+      <EarningsOverview
+        e={earnings}
+        pointsPerUsd={pointsPerUsd}
+        tasks={{
+          approved: tasksCompleted,
+          pending: subCount("PENDING", "REVISION_REQUESTED"),
+          rejected: subCount("REJECTED"),
+        }}
+        pendingWithdrawal={{
+          count: pendingW._count._all,
+          amount: toNum(pendingW._sum.amount as Parameters<typeof toNum>[0]),
+        }}
+      />
 
       {/* Convert-points nudge — points become withdrawable cash at the threshold */}
       {canConvertPoints && (

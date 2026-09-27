@@ -7,7 +7,7 @@ export interface TrendingHashtag {
 
 // Shown when no hashtags exist in recent posts yet (demo/fallback).
 const DEMO_HASHTAGS: TrendingHashtag[] = [
-  { tag: "#EarnGPT", count: 128 },
+  { tag: "#RevType", count: 128 },
   { tag: "#PassiveIncome", count: 96 },
   { tag: "#DailyMission", count: 74 },
   { tag: "#Referrals", count: 61 },

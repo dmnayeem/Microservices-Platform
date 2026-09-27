@@ -428,7 +428,7 @@ export async function ensureHouseFallback(
           : housePromo(spot.headline, spot.body, spot.color),
         targetUrl: spot.url,
         headline: spot.headline,
-        brandName: "EarnGPT",
+        brandName: "RevType",
         ctaLabel: spot.cta,
         size: placementSizeKey(spot.placement),
         targeting: Prisma.JsonNull, // everyone

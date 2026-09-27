@@ -27,11 +27,15 @@ import {
   BadgePill,
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export const metadata: Metadata = {
-  title: "Digital Marketplace — Sell & Buy Digital Products",
-  description: `Sell templates, graphics, ebooks, stock photos, and music to buyers worldwide on ${COMPANY_NAME} — or shop thousands of ready-made digital assets. Secure escrow, instant delivery, your price.`,
-};
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "Digital Marketplace — Sell & Buy Digital Products",
+    description: `Sell templates, graphics, ebooks, stock photos, and music to buyers worldwide on ${COMPANY_NAME} — or shop thousands of ready-made digital assets. Secure escrow, instant delivery, your price.`,
+    path: "/features/marketplace",
+  });
+}
 
 const STATS = [
   { value: "180+", label: "Countries you can sell to" },

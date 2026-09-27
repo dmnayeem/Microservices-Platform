@@ -676,7 +676,7 @@ const ARRIVAL_MODES = [
     id: "direct" as const,
     label: "Direct link",
     blurb:
-      "We hand the worker a link and they click it. The publisher sees EarnGPT as the traffic source.",
+      "We hand the worker a link and they click it. The publisher sees RevType as the traffic source.",
   },
   {
     id: "search" as const,

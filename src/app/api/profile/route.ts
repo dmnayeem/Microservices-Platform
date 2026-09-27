@@ -339,7 +339,7 @@ export async function GET() {
       },
       referral: {
         code: u.referralCode,
-        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app"}/register?ref=${u.referralCode}`,
+        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com"}/register?ref=${u.referralCode}`,
       },
       verification: {
         kycStatus: u.kycStatus,

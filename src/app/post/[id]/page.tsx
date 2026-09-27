@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Heart, MessageCircle, Share2, BadgeCheck } from "lucide-react";
 import {
   absoluteMediaUrl,
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // which is exactly the leak this page exists to avoid.
   if (!post) {
     return {
-      title: "Post not found · EarnGPT",
+      title: "Post not found · RevType",
       robots: { index: false, follow: false },
     };
   }
@@ -52,8 +53,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const url = publicPostUrl(post.id);
   const description =
     postSummary(post.content) ||
-    `A post by ${post.author.name} on EarnGPT.`;
-  const title = `${post.author.name} on EarnGPT`;
+    `A post by ${post.author.name} on RevType.`;
+  const title = `${post.author.name} on RevType`;
 
   // Only a real post image is set here. When there is none, this key is left
   // undefined so Next's file convention (`opengraph-image.tsx`, next door) fills
@@ -70,7 +71,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       type: "article",
       url,
-      siteName: "EarnGPT",
+      siteName: "RevType",
       title,
       description,
       images,
@@ -103,6 +104,25 @@ export default async function PublicPostPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-(--app-page) text-(--app-ink)">
+      {/* The post as structured data: author, date, text, image and its
+          reactions — what search and AI answers read to cite a post. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SocialMediaPosting",
+          url,
+          datePublished: post.createdAt.toISOString(),
+          headline: post.content.slice(0, 110) || `A post by ${post.author.name}`,
+          text: post.content,
+          author: { "@type": "Person", name: post.author.name, ...(post.author.username ? { alternateName: `@${post.author.username}` } : {}) },
+          ...(post.images.length ? { image: post.images.map((i) => absoluteMediaUrl(i)) } : {}),
+          interactionStatistic: [
+            { "@type": "InteractionCounter", interactionType: "https://schema.org/LikeAction", userInteractionCount: post.likesCount },
+            { "@type": "InteractionCounter", interactionType: "https://schema.org/CommentAction", userInteractionCount: post.commentsCount },
+            { "@type": "InteractionCounter", interactionType: "https://schema.org/ShareAction", userInteractionCount: post.sharesCount },
+          ],
+        }}
+      />
       {/* Header — the only navigation a stranger gets, and it points at the
           product rather than at the app shell they cannot enter. */}
       <header className="sticky top-0 z-30 border-b border-(--app-line) bg-(--app-page)/85 backdrop-blur">
@@ -276,12 +296,12 @@ export default async function PublicPostPage({ params }: PageProps) {
           </div>
         </article>
 
-        <PublicPostShare url={url} title={`${post.author.name} on EarnGPT`} text={postSummary(post.content, 120)} />
+        <PublicPostShare url={url} title={`${post.author.name} on RevType`} text={postSummary(post.content, 120)} />
 
         <section className="mt-4 rounded-2xl border border-(--app-accent-edge)/30 bg-(--app-cta)/10 p-5 text-center">
           <h2 className="text-lg font-bold text-white">Join the conversation</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm text-(--app-ink-2)">
-            Create a free EarnGPT account to react, comment and start earning
+            Create a free RevType account to react, comment and start earning
             from what you post.
           </p>
           <Link
@@ -300,7 +320,7 @@ export default async function PublicPostPage({ params }: PageProps) {
             Terms
           </Link>
           <a href={SITE_URL} className="hover:text-white">
-            © {new Date().getFullYear()} EarnGPT
+            © {new Date().getFullYear()} RevType
           </a>
         </footer>
       </main>

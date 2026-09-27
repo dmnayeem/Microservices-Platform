@@ -40,7 +40,7 @@ export function Navbar({ themeToggle = true, ...props }: Props) {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              EarnGPT
+              RevType
             </span>
           </Link>
 

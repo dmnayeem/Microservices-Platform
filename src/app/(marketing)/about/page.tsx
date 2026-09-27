@@ -10,12 +10,26 @@ import {
   PrimaryButton,
   GhostButton,
 } from "@/components/marketing/ui";
-import { COMPANY_NAME, COMPANY_LEGAL, FOUNDED_YEAR, GLOBAL_COUNTRIES } from "@/config/company";
+import {
+  COMPANY_NAME,
+  COMPANY_LEGAL,
+  COMPANY_BOILERPLATE,
+  FOUNDED_YEAR,
+  GLOBAL_COUNTRIES,
+  SUPPORT_EMAIL,
+} from "@/config/company";
+import { JsonLd } from "@/components/seo/json-ld";
 
-export const metadata: Metadata = {
-  title: "About Us",
-  description: `${COMPANY_NAME} is a global rewards platform helping people in 180+ countries earn online and cash out securely.`,
-};
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
+import { pageMeta } from "@/lib/seo/page-meta";
+
+export function generateMetadata(): Promise<Metadata> {
+  return pageMeta({
+    title: "About Us",
+    description: `${COMPANY_NAME} is a global rewards platform helping people in 180+ countries earn online and cash out securely.`,
+    path: "/about",
+  });
+}
 
 const STATS = [
   { value: "100K+", label: "Active members" },
@@ -41,6 +55,24 @@ const MILESTONES = [
 export default function AboutPage() {
   return (
     <>
+      {/* Who runs the site — the core trust (E-E-A-T) signal. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "AboutPage",
+          url: `${SITE_URL}/about`,
+          mainEntity: {
+            "@type": "Organization",
+            name: COMPANY_NAME,
+            legalName: COMPANY_LEGAL,
+            url: SITE_URL,
+            logo: `${SITE_URL}/icon-512.png`,
+            foundingDate: String(FOUNDED_YEAR),
+            description: COMPANY_BOILERPLATE,
+            email: SUPPORT_EMAIL,
+          },
+        }}
+      />
       <MarketingHero
         badge="About us"
         title="Earning online, made"
