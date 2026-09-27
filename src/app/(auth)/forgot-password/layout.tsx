@@ -5,7 +5,7 @@ import { pageMeta } from "@/lib/seo/page-meta";
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "Forgot Password",
-    description: "Reset your EarnGPT password.",
+    description: "Reset your RevType password.",
     path: "/forgot-password",
     noindex: true,
   });

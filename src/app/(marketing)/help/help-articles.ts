@@ -10,7 +10,7 @@ export const HELP_CATEGORIES: Array<{ title: string; articles: Array<{ q: string
       { q: "How do I create an account?", a: "Tap Sign Up, enter your email, and verify it — that's it. Creating an account is free and takes under a minute." },
       { q: "How do I earn?", a: "Complete simple tasks, paid surveys, watch-and-engage activities, and offers. You can also earn by referring people you trust and from daily bonuses." },
       { q: "Is it really free?", a: "Yes. It's free to join and free to earn. We never ask you to pay to withdraw — legitimate platforms pay you, not the other way around." },
-      { q: "Which countries is it available in?", a: "EarnGPT works in 180+ countries. Some payout methods and offers vary by region, and you'll always see what's available to you." },
+      { q: "Which countries is it available in?", a: "RevType works in 180+ countries. Some payout methods and offers vary by region, and you'll always see what's available to you." },
     ],
   },
   {

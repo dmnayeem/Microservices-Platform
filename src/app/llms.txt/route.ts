@@ -26,7 +26,7 @@ export async function GET() {
       .catch(() => null),
     getSetting<number>("min_withdrawal", 5).catch(() => 5),
   ]);
-  const name = seo?.["seo.site_name"] || "EarnGPT";
+  const name = seo?.["seo.site_name"] || "RevType";
   const summary = seo?.["seo.description"] || COMPANY_BOILERPLATE;
   const faq = (landing?.faq?.items ?? []).filter((f) => !f.hidden && f.question && f.answer);
   const u = (p: string) => `${SITE_URL}${p}`;

@@ -5,7 +5,7 @@ import { pageMeta } from "@/lib/seo/page-meta";
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "Log In",
-    description: "Log in to your EarnGPT account to complete tasks, track your earnings and withdraw.",
+    description: "Log in to your RevType account to complete tasks, track your earnings and withdraw.",
     path: "/login",
   });
 }

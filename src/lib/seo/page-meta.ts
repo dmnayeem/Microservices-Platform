@@ -14,7 +14,7 @@ import { getSeoSettings, seoImage } from "@/lib/seo-settings";
  *    (Next replaces nested metadata objects, it does not merge them), so
  *    its shares showed no picture.
  *
- * Titles go through the root template ("%s | EarnGPT"), so a title here must
+ * Titles go through the root template ("%s | RevType"), so a title here must
  * NOT carry the brand again.
  */
 export async function pageMeta(o: {
@@ -33,7 +33,7 @@ export async function pageMeta(o: {
   noindex?: boolean;
 }): Promise<Metadata> {
   const s = await getSeoSettings().catch(() => null);
-  const siteName = s?.["seo.site_name"] || "EarnGPT";
+  const siteName = s?.["seo.site_name"] || "RevType";
   const image = o.image ?? seoImage(s?.["seo.og_image_url"] ?? "", "/icon-512.png");
   return {
     title: o.title,
