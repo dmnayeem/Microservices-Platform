@@ -211,6 +211,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "ui.groups_enabled", group: "ui_toggles", label: "Groups", description: "Show the Groups tab on the social feed. When off the tab is hidden AND the group pages and API are blocked, so the feature is genuinely off. Existing groups and their members are kept and come back when you turn this on." },
   { key: "ui.theme_default", group: "ui_toggles", label: "Default theme", description: "The theme everyone gets: Dark or Light. Users who have never chosen — and every user, when the switch below is off — see this one." },
   { key: "ui.theme_user_choice", group: "ui_toggles", label: "Let users choose their theme", description: "On: the light/dark switch appears in the header and in Settings. Off: the switch is hidden everywhere and everyone sees the default theme above, including users who had already picked the other one." },
+  { key: "ui.accent_user_choice", group: "ui_toggles", label: "Let users choose their accent colour", description: "On: users can pick their own accent colour in Profile and Settings. Off: the colour swatches are hidden and every user sees the platform colour, even those who had picked another one." },
 
   // ── Notifications ──
   { key: "push_notifications_enabled", group: "notifications", label: "Push Notifications", description: "Web push (VAPID). Off here mutes push for everyone, whatever each user has chosen." },

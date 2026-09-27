@@ -8,9 +8,12 @@ import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { ThemeToggle } from "./theme-toggle";
 import { MarketingNavLink } from "./marketing-link";
 
-type Props = Partial<NavbarContent>;
+type Props = Partial<NavbarContent> & {
+  /** Admin switch (Landing → Appearance). Off hides the visitor light/dark toggle. */
+  themeToggle?: boolean;
+};
 
-export function Navbar(props: Props) {
+export function Navbar({ themeToggle = true, ...props }: Props) {
   const v: NavbarContent = { ...DEFAULT_LANDING_CONTENT.navbar, ...props };
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -56,7 +59,7 @@ export function Navbar(props: Props) {
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
-            <ThemeToggle />
+            {themeToggle && <ThemeToggle />}
             <Link
               href={v.cta_signin_href}
               className="text-(--mk-muted) hover:text-(--mk-text) transition-colors text-sm font-medium"
@@ -82,7 +85,7 @@ export function Navbar(props: Props) {
             >
               {v.cta_signup_label}
             </Link>
-            <ThemeToggle />
+            {themeToggle && <ThemeToggle />}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="inline-flex items-center justify-center w-11 h-11 rounded-xl text-(--mk-muted) hover:text-(--mk-text) hover:bg-(--mk-surface-2)"

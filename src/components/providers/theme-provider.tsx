@@ -46,6 +46,8 @@ type ThemeContextType = {
   setAccent: (accent: Accent | null) => void;
   /** True when no accent has been chosen, so the platform's own is showing. */
   accentIsDefault: boolean;
+  /** False when the admin has switched off accent choice — hide the swatches. */
+  canChangeAccent: boolean;
   /** Admin switch: whether this user may change the theme at all. */
   canChangeTheme: boolean;
 };
@@ -73,6 +75,7 @@ export function ThemeProvider({
   defaultTheme = "dark",
   storageKey = "earngpt-theme",
   allowUserChoice = true,
+  allowAccentChoice = true,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
@@ -84,6 +87,12 @@ export function ThemeProvider({
    * the switch.
    */
   allowUserChoice?: boolean;
+  /**
+   * Admin switch for the accent colour. Off: the stored colour is not read
+   * (here or in the pre-paint script) and `setAccent` does nothing, so
+   * everyone sees the platform's own colour.
+   */
+  allowAccentChoice?: boolean;
 }) {
   // Start from defaults on BOTH server and first client render so the tree
   // renders identically (no hydration mismatch) — then hydrate the stored
@@ -110,9 +119,11 @@ export function ThemeProvider({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(storedTheme);
     }
-    const storedAccent = localStorage.getItem(ACCENT_KEY) as Accent | null;
+    const storedAccent = allowAccentChoice
+      ? (localStorage.getItem(ACCENT_KEY) as Accent | null)
+      : null;
     if (storedAccent && ACCENTS.includes(storedAccent)) setAccentState(storedAccent);
-  }, [storageKey, allowUserChoice]);
+  }, [storageKey, allowUserChoice, allowAccentChoice]);
 
   const setTheme = (next: Theme) => {
     if (!allowUserChoice) return;
@@ -131,6 +142,7 @@ export function ThemeProvider({
    * the platform's own colour again, whatever it was changed to.
    */
   const setAccent = (next: Accent | null) => {
+    if (!allowAccentChoice) return;
     setAccentState(next ?? (DEFAULT_ACCENT as Accent));
     if (typeof window === "undefined") return;
     if (next) localStorage.setItem(ACCENT_KEY, next);
@@ -144,7 +156,8 @@ export function ThemeProvider({
 
   /** True when the accent on screen is the platform's, not a choice. */
   const accentIsDefault =
-    typeof window !== "undefined" && !localStorage.getItem(ACCENT_KEY);
+    !allowAccentChoice ||
+    (typeof window !== "undefined" && !localStorage.getItem(ACCENT_KEY));
 
   // Apply the resolved theme; when "system", follow OS changes live. The inline
   // script in layout.tsx already set the correct data-theme before first paint,
@@ -168,18 +181,19 @@ export function ThemeProvider({
   const accentInited = useRef(false);
   useEffect(() => {
     if (accentInited.current) {
-      document.documentElement.setAttribute("data-accent", accent);
+      // With choice off nothing may stamp a colour over the platform's.
+      if (allowAccentChoice) document.documentElement.setAttribute("data-accent", accent);
     } else {
       accentInited.current = true;
     }
-  }, [accent]);
+  }, [accent, allowAccentChoice]);
 
   // NOTE: intentionally NO `if (!hasMounted) return null` gate — that blanked the
   // entire app (page + loading skeleton) until the client bundle hydrated,
   // defeating SSR streaming. Children now render on the server and stream in.
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, accent, setAccent, accentIsDefault, canChangeTheme: allowUserChoice }}
+      value={{ theme, setTheme, accent, setAccent, accentIsDefault, canChangeTheme: allowUserChoice, canChangeAccent: allowAccentChoice }}
     >
       {children}
     </ThemeContext.Provider>

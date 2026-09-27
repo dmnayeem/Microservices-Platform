@@ -28,7 +28,11 @@ export function AppearanceEditor({ value, onChange, disabled }: Props) {
     >
       <Field
         label="Default theme"
-        hint="What first-time visitors see. Visitors can switch with the toggle in the navbar; their choice is remembered."
+        hint={
+          value.themeToggle !== false
+            ? "What first-time visitors see. Visitors can switch with the toggle in the navbar; their choice is remembered."
+            : "What every visitor sees — the visitor switch is off, so this is the only theme."
+        }
       >
         <div className="grid grid-cols-2 gap-2 max-w-xs">
           {themes.map((t) => {
@@ -53,6 +57,40 @@ export function AppearanceEditor({ value, onChange, disabled }: Props) {
             );
           })}
         </div>
+      </Field>
+
+      <Field
+        label="Visitor light/dark switch"
+        hint="On: a sun/moon button in the navbar lets visitors switch theme. Off: the button is hidden and everyone sees the default theme above, even visitors who had picked the other one."
+      >
+        <button
+          type="button"
+          onClick={() => set("themeToggle", !(value.themeToggle !== false))}
+          disabled={disabled}
+          role="switch"
+          aria-checked={value.themeToggle !== false}
+          className={`inline-flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-60 ${
+            value.themeToggle !== false
+              ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/40"
+              : "bg-slate-950 text-slate-400 border-slate-700"
+          }`}
+        >
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              value.themeToggle !== false ? "bg-emerald-500" : "bg-slate-600"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                value.themeToggle !== false ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Sun className="w-4 h-4" />
+            {value.themeToggle !== false ? "Visitors can switch" : "Switch hidden"}
+          </span>
+        </button>
       </Field>
 
       <Field

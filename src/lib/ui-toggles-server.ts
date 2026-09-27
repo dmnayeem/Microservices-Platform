@@ -29,6 +29,12 @@ export interface UiToggles {
    * preference — a user who had picked light sees the admin's default instead.
    */
   themeUserChoice: boolean;
+  /**
+   * Whether a user may pick their own accent colour (profile / Settings →
+   * Accent Color). Off hides the swatches and ignores any stored choice, so
+   * everyone sees the platform's own colour.
+   */
+  accentUserChoice: boolean;
 }
 
 const KEYS = {
@@ -41,6 +47,7 @@ const KEYS = {
   groupsEnabled: "ui.groups_enabled",
   themeDefault: "ui.theme_default",
   themeUserChoice: "ui.theme_user_choice",
+  accentUserChoice: "ui.accent_user_choice",
 } as const;
 
 const DEFAULTS: UiToggles = {
@@ -64,6 +71,8 @@ const DEFAULTS: UiToggles = {
   // `SystemSetting` is unchanged by this feature.
   themeDefault: "dark",
   themeUserChoice: true,
+  // On — users could always pick a colour, so no saved row changes nothing.
+  accentUserChoice: true,
 };
 
 function asTheme(v: unknown, fallback: "dark" | "light"): "dark" | "light" {
@@ -141,6 +150,10 @@ export async function getUiToggles(): Promise<UiToggles> {
       themeUserChoice: asBool(
         map.get(KEYS.themeUserChoice),
         DEFAULTS.themeUserChoice
+      ),
+      accentUserChoice: asBool(
+        map.get(KEYS.accentUserChoice),
+        DEFAULTS.accentUserChoice
       ),
     };
     _cache = { value, ts: Date.now() };

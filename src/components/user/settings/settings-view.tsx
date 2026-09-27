@@ -90,7 +90,7 @@ export function SettingsView({
   language: languageInit,
 }: Props) {
   const router = useRouter();
-  const { theme, setTheme, accent, setAccent, accentIsDefault, canChangeTheme } =
+  const { theme, setTheme, accent, setAccent, accentIsDefault, canChangeTheme, canChangeAccent } =
     useTheme();
   const [emailNotif, setEmailNotif] = useState(emailNotifInit);
   const [pushNotif, setPushNotif] = useState(pushNotifInit);
@@ -450,7 +450,7 @@ export function SettingsView({
           <div id="preferences">
             <Section title="Preferences" description="Customize your experience">
               <div className="space-y-4">
-                <div className="space-y-3">
+                <div className="space-y-3" hidden={!canChangeTheme && !canChangeAccent}>
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-(--app-surface-2) rounded-lg">
                       <Moon className="w-5 h-5 text-(--app-ink-3)" />
@@ -489,8 +489,9 @@ export function SettingsView({
                       </button>
                     ))}
                   </div>
-                  {/* Accent swatches */}
-                  <div>
+                  {/* Accent swatches — hidden when the admin has switched off
+                      accent choice; everyone then wears the platform colour. */}
+                  <div hidden={!canChangeAccent}>
                     <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold mb-2">
                       Accent Color
                     </p>
