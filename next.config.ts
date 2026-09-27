@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
   // external, the paths stay real and Next traces the font files into the
   // serverless output.
   serverExternalPackages: ["jimp", "geoip-country"],
+  // geoip-country reads its data files from a directory it builds at run
+  // time, which the deploy's file tracing cannot see — so they would be left
+  // out of every server function. Shipped explicitly (≈8 MB); src/lib/geo.ts
+  // also survives their absence.
+  outputFileTracingIncludes: {
+    "/**": [
+      "./node_modules/geoip-country/package.json",
+      "./node_modules/geoip-country/data/*.dat",
+    ],
+  },
   images: {
     // Only our own storage hosts are run through the Next image optimizer
     // (`/_next/image`). Uploaded media serves from CloudFront/S3; Google OAuth
