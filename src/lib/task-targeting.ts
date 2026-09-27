@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { effectiveCountry } from "@/lib/effective-country";
 
 /**
  * Task audience targeting — the task-side mirror of the Ads audience system
@@ -18,6 +19,9 @@ import type { Prisma } from "@/generated/prisma/client";
 /** The viewer attributes a task targets on. */
 export interface TaskAudienceUser {
   country?: string | null;
+  /** IP countries (ISO2) — used when the profile has no country. */
+  lastCountry?: string | null;
+  signupCountry?: string | null;
   region?: string | null;
   division?: string | null;
   district?: string | null;
@@ -94,7 +98,7 @@ export function taskAudienceWhere<T = Prisma.TaskWhereInput>(
   const clauses: Record<string, unknown>[] = [];
 
   for (const { field, userKey } of ARRAY_DIMENSIONS) {
-    const value = (user[userKey] as string | null | undefined) ?? "";
+    const value = viewerValue(user, userKey);
     if (value) {
       // Untargeted (empty) OR the viewer's value is in the target set.
       clauses.push({
@@ -119,6 +123,15 @@ export function taskAudienceWhere<T = Prisma.TaskWhereInput>(
   return clauses as T[];
 }
 
+/**
+ * The viewer's value for one dimension. Country is the profile country, or —
+ * when the user never set one — the country of their IP (effective-country).
+ */
+function viewerValue(user: TaskAudienceUser, key: keyof TaskAudienceUser): string {
+  if (key === "country") return effectiveCountry(user) ?? "";
+  return (user[key] as string | null | undefined) ?? "";
+}
+
 /** Imperative STRICT check — true when the viewer may see/start the task. */
 export function matchesTaskAudience(
   task: TaskAudience,
@@ -127,7 +140,7 @@ export function matchesTaskAudience(
   for (const { field, userKey } of ARRAY_DIMENSIONS) {
     const targets = task[field];
     if (targets && targets.length > 0) {
-      const value = (user[userKey] as string | null | undefined) ?? "";
+      const value = viewerValue(user, userKey);
       if (!value || !targets.includes(value)) return false;
     }
   }

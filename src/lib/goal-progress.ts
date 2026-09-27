@@ -1,4 +1,5 @@
 import "server-only";
+import { syncCountryMode } from "@/lib/country-mode";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import type { EventActionType, Prisma } from "@/generated/prisma/client";
@@ -276,8 +277,9 @@ async function getActiveGoalIndex(): Promise<ActiveGoal[]> {
  * request. Only called when a targeted mission actually wants the action —
  * an untargeted mission costs nothing.
  */
-const getGoalViewer = cache(async (userId: string) =>
-  prisma.user.findUnique({
+const getGoalViewer = cache(async (userId: string) => {
+  await syncCountryMode(); // country targeting: profile+IP or IP only
+  return prisma.user.findUnique({
     where: { id: userId },
     select: {
       level: true,
@@ -286,12 +288,15 @@ const getGoalViewer = cache(async (userId: string) =>
       division: true,
       district: true,
       subDistrict: true,
+      // IP country — the fallback when the profile has none (lib/effective-country).
+      lastCountry: true,
+      signupCountry: true,
       postalCode: true,
       gender: true,
       dateOfBirth: true,
     },
   })
-);
+});
 
 export interface RecordUserActionArgs {
   /** Who earns the progress. For referrals this is the REFERRER. */

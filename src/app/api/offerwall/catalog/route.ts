@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { syncCountryMode } from "@/lib/country-mode";
+import { effectiveCountry } from "@/lib/effective-country";
 import crypto from "crypto";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +15,7 @@ import {
 // their country-eligible offers, each tagged locked / available / done, plus
 // the active embedded provider walls for the "Featured walls" row.
 export async function GET() {
+  await syncCountryMode(); // country targeting: profile+IP or IP only
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = session.user.id;
@@ -21,8 +24,12 @@ export async function GET() {
     return NextResponse.json({ error: "Offerwall isn't enabled for your account.", locked: true }, { status: 403 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });
-  const country = user?.country ?? null;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { country: true, lastCountry: true, signupCountry: true },
+  });
+  // Profile country, or the IP country when the profile has none.
+  const country = effectiveCountry(user);
 
   const [categories, offers, completions, chain, providers] = await Promise.all([
     prisma.offerwallCategory.findMany({

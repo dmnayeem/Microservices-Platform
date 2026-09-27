@@ -172,7 +172,7 @@ function VerifyEmailContent() {
         {/* Logo & Header */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <BrandLockup className="h-10">
+            <BrandLockup>
               <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--app-grad-a) to-(--app-grad-b) flex items-center justify-center">
                 <BrandMark iconClassName="w-6 h-6 text-white" />
               </div>

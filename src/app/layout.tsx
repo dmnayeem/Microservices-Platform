@@ -3,6 +3,7 @@ import { isWideLogo } from "@/lib/brand-logo-shape";
 import type { Metadata, Viewport } from "next";
 import { customFavicon, homeIconUrl, logoSrc } from "@/lib/brand-icons";
 import { getSeoSettings, seoImage, sameAsList } from "@/lib/seo-settings";
+import { logoHeight } from "@/lib/logo-size";
 import { parseCustomCode } from "@/lib/custom-code";
 import { SiteTracking, CustomCode } from "@/components/providers/site-tracking";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
@@ -269,7 +270,15 @@ export default async function RootLayout({
           allowUserChoice={ui.themeUserChoice}
           allowAccentChoice={ui.accentUserChoice}
         >
-          <BrandProvider logoUrl={brandLogo} wide={brandLogoWide} name={seo["seo.site_name"] || "RevType"}>
+          <BrandProvider
+            logoUrl={brandLogo}
+            wide={brandLogoWide}
+            name={seo["seo.site_name"] || "RevType"}
+            heights={{
+              site: logoHeight(seo["seo.logo_height_site"], "seo.logo_height_site"),
+              app: logoHeight(seo["seo.logo_height_app"], "seo.logo_height_app"),
+            }}
+          >
           {children}
           <PageViewTracker />
           <ServiceWorkerRegister />

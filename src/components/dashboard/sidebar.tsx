@@ -252,7 +252,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           the gradient is allowed); the word is now solid foreground. */}
       <div className="flex h-16 shrink-0 items-center gap-2.5 px-5 border-b border-(--shell-border)">
         <Link href="/social" className="app-press flex items-center gap-2.5">
-          <BrandLockup className="h-9">
+          <BrandLockup area="app">
             <span className="app-icon app-icon-accent h-9 w-9 rounded-(--app-r-control)">
               <BrandMark iconClassName="w-4.5 h-4.5" />
             </span>

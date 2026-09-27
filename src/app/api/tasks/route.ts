@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncCountryMode } from "@/lib/country-mode";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TaskType } from "@/generated/prisma";
@@ -12,6 +13,7 @@ import {
 
 // GET /api/tasks - Fetch available tasks for user
 export async function GET(request: NextRequest) {
+  await syncCountryMode(); // country targeting: profile+IP or IP only
   try {
     const session = await auth();
 
@@ -37,6 +39,9 @@ export async function GET(request: NextRequest) {
         division: true,
         district: true,
         subDistrict: true,
+        // IP country — the fallback when the profile has none (lib/effective-country).
+        lastCountry: true,
+        signupCountry: true,
         postalCode: true,
         gender: true,
         dateOfBirth: true,

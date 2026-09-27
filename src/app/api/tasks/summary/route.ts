@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isPostCreationAction, mapSocialTaskRow, type SocialTaskRow } from "@/lib/social-tasks";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserDayContext } from "@/lib/user-day";
@@ -39,7 +40,7 @@ export async function GET() {
     // Eligible active tasks per type + total earnable XP; the board aggregate
     // (board-only tasks, any type); standalone published quizzes; active
     // offerwalls — all in parallel.
-    const [grouped, boardAgg, quizzes, offerwalls, doneToday, doneEver] =
+    const [grouped, boardAgg, quizzes, offerwalls, doneToday, doneEver, socialRows] =
       await Promise.all([
       prisma.task.groupBy({
         by: ["type"],
@@ -86,10 +87,12 @@ export async function GET() {
           createdAt: { gte: day.startOfDayUtc },
         },
         select: {
+          taskId: true,
           task: { select: { type: true, isBoardOnly: true, boardId: true } },
         },
       }) as unknown as Promise<
         {
+          taskId: string;
           task: {
             type: string;
             isBoardOnly: boolean;
@@ -110,10 +113,12 @@ export async function GET() {
         },
         distinct: ["taskId"],
         select: {
+          taskId: true,
           task: { select: { type: true, isBoardOnly: true, boardId: true } },
         },
       }) as unknown as Promise<
         {
+          taskId: string;
           task: {
             type: string;
             isBoardOnly: boolean;
@@ -121,6 +126,28 @@ export async function GET() {
           } | null;
         }[]
       >,
+      // The SOCIAL tasks, split the way the two lists split them: "Social
+      // Posts" (/social-posts, kind=create) and "Social Tasks" (/social-tasks,
+      // kind=engage). The tile for posts had no numbers at all, and the one for
+      // social counted the post tasks too.
+      prisma.task.findMany({
+        where: { ...eligible, type: "SOCIAL" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          pointsReward: true,
+          xpReward: true,
+          difficulty: true,
+          socialPlatform: true,
+          socialAction: true,
+          socialUrl: true,
+          socialConfig: true,
+          instructions: true,
+          instructionVideoUrl: true,
+        },
+        take: 500,
+      }) as unknown as Promise<(SocialTaskRow & { xpReward: number })[]>,
     ]);
 
     // Tally today's completions per type (+ board) in JS (Prisma can't groupBy
@@ -161,6 +188,28 @@ export async function GET() {
         earnablePoints: g._sum.pointsReward ?? 0,
       };
     }
+
+    // Social Posts / Social Tasks, with the SAME rule as the two lists
+    // (api/tasks/social `matchesKind`), so a tile never promises a task its
+    // list does not show. A task mixing both kinds is in both lists, and so
+    // in both tiles.
+    const doneEverIds = new Set(doneEver.map((d) => d.taskId));
+    const doneTodayIds = doneToday.map((d) => d.taskId);
+    const socialSet = (keep: (actions: string[]) => boolean) => {
+      // mapSocialTaskRow, not the raw config: older tasks keep their one
+      // action in the legacy columns, and the lists read them through it.
+      const rows = socialRows.filter((t) => keep(mapSocialTaskRow(t).items.map((i) => i.action)));
+      const ids = new Set(rows.map((t) => t.id));
+      return {
+        available: rows.length,
+        completedToday: doneTodayIds.filter((id) => ids.has(id)).length,
+        completed: rows.filter((t) => doneEverIds.has(t.id)).length,
+        earnableXp: rows.reduce((a, t) => a + (t.xpReward ?? 0), 0),
+        earnablePoints: rows.reduce((a, t) => a + (t.pointsReward ?? 0), 0),
+      };
+    };
+    summary.SOCIAL_POSTS = socialSet((a) => a.some(isPostCreationAction));
+    summary.SOCIAL_ENGAGE = socialSet((a) => !a.every(isPostCreationAction));
 
     const board = {
       available: boardAgg._count._all,

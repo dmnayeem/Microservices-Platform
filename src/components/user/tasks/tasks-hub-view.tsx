@@ -219,6 +219,10 @@ export function TasksHubView({
   ];
 
   const progressFor = (cat: Category): SummaryRow | null => {
+    // Social is split the way its two lists are: posts you WRITE, and
+    // like/follow/comment work. Social Posts had no numbers at all.
+    if (cat.key === "social-posts") return data.summary.SOCIAL_POSTS ?? null;
+    if (cat.key === "social") return data.summary.SOCIAL_ENGAGE ?? data.summary[cat.taskType!] ?? null;
     if (cat.kind === "type") return data.summary[cat.taskType!] ?? null;
     if (cat.kind === "board") return data.board;
     return null;
@@ -298,6 +302,10 @@ export function TasksHubView({
               const Icon = cat.icon;
               const row = progressFor(cat);
               const hasProgress = !!row && row.available > 0;
+              // A task category with nothing in it right now keeps the same
+              // card shape ("0 tasks") instead of switching to a bare
+              // "Explore", which read as if the numbers were missing.
+              const isTaskCategory = cat.kind === "type" || cat.kind === "board" || cat.key === "social-posts";
               // The bar tracks how much of this type is FINISHED, not how much
               // was finished today. A user who cleared nineteen of twenty
               // article tasks last week saw an empty bar and "0/20 done today",
@@ -357,6 +365,16 @@ export function TasksHubView({
                           ? ` · ${row!.completedToday} today`
                           : ""}
                       </p>
+                    </div>
+                  ) : isTaskCategory ? (
+                    <div className="mt-auto pt-4">
+                      <div className="flex items-center justify-between t-meta mb-1.5">
+                        <span className="text-(--app-ink-3)">
+                          <span className="text-white font-bold">0</span> tasks
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-(--app-surface-2)" />
+                      <p className="t-meta text-(--app-ink-3) mt-1.5">No tasks right now — check back soon</p>
                     </div>
                   ) : (
                     <span className="mt-auto pt-4 inline-flex items-center gap-1 text-xs font-bold text-(--app-ink-3)">
