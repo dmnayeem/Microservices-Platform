@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncCountryMode } from "@/lib/country-mode";
+import { effectiveCountry } from "@/lib/effective-country";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { userCanFeature } from "@/lib/packages";
@@ -16,6 +18,7 @@ interface RouteParams {
 // POST /api/offerwall/offers/[id]/start — begin an offer: creates the click
 // (subid) + a STARTED completion, then returns the tracking URL to open.
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  await syncCountryMode(); // country targeting: profile+IP or IP only
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const profileGated = await profileGateResponse(session.user.id, "offerwalls");
@@ -30,8 +33,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!offer || !offer.isActive)
     return NextResponse.json({ error: "Offer not found" }, { status: 404 });
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });
-  if (!offerAllowsCountry(offer.countries, user?.country))
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { country: true, lastCountry: true, signupCountry: true },
+  });
+  // Same country the catalog listed the offer for (profile, else IP).
+  if (!offerAllowsCountry(offer.countries, effectiveCountry(user)))
     return NextResponse.json({ error: "This offer isn't available in your country." }, { status: 403 });
 
   // Sequential unlock within the category.

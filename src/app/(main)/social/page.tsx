@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { syncCountryMode } from "@/lib/country-mode";
 import { bannerMatches } from "@/lib/banner-audience";
 import { redirect } from "next/navigation";
 import { prisma, safeRead } from "@/lib/prisma";
@@ -166,6 +167,9 @@ export default async function SocialPage() {
             division: true,
             district: true,
             subDistrict: true,
+            // IP country — the fallback when the profile has none (lib/effective-country).
+            lastCountry: true,
+            signupCountry: true,
             postalCode: true,
             gender: true,
             dateOfBirth: true,
@@ -209,6 +213,7 @@ export default async function SocialPage() {
     level: r.level,
   }));
 
+  await syncCountryMode();
   // Only the banners aimed at this viewer (country, district, upazila,
   // gender, age, KYC — set per banner at /admin/banners).
   const myBanners = bannerRows.filter((b) => bannerMatches(b, me ?? {}));

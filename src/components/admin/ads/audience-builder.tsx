@@ -126,6 +126,8 @@ export function AudienceBuilder({
         </p>
       </div>
 
+      <p className="text-xs text-slate-500">Countries: Matched on the country in the user&apos;s profile — or, if they never set one, the country of their IP address.</p>
+
       <div className="grid grid-cols-2 gap-2">
         <MultiSelect
           label="Countries"

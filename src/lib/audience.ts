@@ -1,3 +1,4 @@
+import { isCountryIpOnly } from "@/lib/effective-country";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -64,6 +65,10 @@ export async function audienceWhereResolved(
   c: AudienceCriteria = {}
 ): Promise<Prisma.UserWhereInput> {
   let base: Prisma.UserWhereInput;
+  if (c.countries?.length) {
+    const { syncCountryMode } = await import("@/lib/country-mode");
+    await syncCountryMode();
+  }
   if (!c.countries?.length) {
     base = audienceWhere(c);
   } else {
@@ -99,7 +104,27 @@ export async function audienceWhereResolved(
 export function audienceWhere(c: AudienceCriteria = {}): Prisma.UserWhereInput {
   const where: Prisma.UserWhereInput = { status: "ACTIVE" };
 
-  if (c.countries?.length) where.country = { in: c.countries, mode: "insensitive" };
+  // Country: the profile country; or, for a user who never set one, the
+  // country of their IP (lastCountry, else signupCountry — ISO2). Most users
+  // have no profile country, so a country segment used to skip them all.
+  if (c.countries?.length) {
+    const codes = [...new Set(c.countries.filter((x) => /^[A-Za-z]{2}$/.test(x)).map((x) => x.toUpperCase()))];
+    const noProfileCountry: Prisma.UserWhereInput = { OR: [{ country: null }, { country: "" }] };
+    const byIp: Prisma.UserWhereInput[] = codes.length
+      ? [{ lastCountry: { in: codes } }, { lastCountry: null, signupCountry: { in: codes } }]
+      : [];
+    where.AND = [
+      isCountryIpOnly()
+        ? // "Match country targeting by IP only": the profile country is ignored.
+          { OR: byIp.length ? byIp : [{ id: "__none__" }] }
+        : {
+            OR: [
+              { country: { in: c.countries, mode: "insensitive" } },
+              ...byIp.map((b) => ({ AND: [noProfileCountry, b] })),
+            ],
+          },
+    ];
+  }
   if (c.regions?.length) where.region = ci(c.regions);
   if (c.divisions?.length) where.division = ci(c.divisions);
   if (c.districts?.length) where.district = ci(c.districts);

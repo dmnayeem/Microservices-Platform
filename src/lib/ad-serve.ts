@@ -1,4 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
+import { effectiveCountry, isCountryIpOnly } from "@/lib/effective-country";
+import { syncCountryMode } from "@/lib/country-mode";
 import { prisma } from "@/lib/prisma";
 import { getEffectivePackage } from "@/lib/packages";
 import { getActiveBooking, getPlacementClickCost } from "@/lib/ad-rate-card";
@@ -107,6 +109,9 @@ const VIEWER_SELECT = {
   division: true,
   district: true,
   subDistrict: true,
+  // IP country — the fallback when the profile has none (lib/effective-country).
+  lastCountry: true,
+  signupCountry: true,
   postalCode: true,
   city: true,
   gender: true,
@@ -227,7 +232,11 @@ async function serveAdInner(opts: {
     if (pkg?.adFree && !interstitial) return SUPPRESSED; // Watch & Earn is unaffected
     houseOnly = !!pkg?.adFree;
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
-    viewer.country = await normalizeViewerCountry(u?.country);
+    // Profile country, or the IP country when the profile has none.
+    await syncCountryMode();
+    viewer.country = isCountryIpOnly()
+      ? effectiveCountry(u)
+      : (await normalizeViewerCountry(u?.country)) || effectiveCountry(u) || null;
   }
 
   // Full-screen frequency cap. Checked before the placement lookup so a capped
@@ -498,7 +507,11 @@ export async function serveFeedAds(opts: {
     ]);
     if (pkg?.adFree) return [];
     viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
-    viewer.country = await normalizeViewerCountry(u?.country);
+    // Profile country, or the IP country when the profile has none.
+    await syncCountryMode();
+    viewer.country = isCountryIpOnly()
+      ? effectiveCountry(u)
+      : (await normalizeViewerCountry(u?.country)) || effectiveCountry(u) || null;
   }
 
   const placement = await prisma.adPlacement.findFirst({

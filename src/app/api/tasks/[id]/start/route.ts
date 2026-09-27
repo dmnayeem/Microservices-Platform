@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncCountryMode } from "@/lib/country-mode";
 import { countryOfIp } from "@/lib/geo";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +47,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await syncCountryMode(); // country targeting: profile+IP or IP only
   try {
     const session = await auth();
 
@@ -208,6 +210,9 @@ export async function POST(
         division: true,
         district: true,
         subDistrict: true,
+        // IP country — the fallback when the profile has none (lib/effective-country).
+        lastCountry: true,
+        signupCountry: true,
         postalCode: true,
         avatar: true,
         firstName: true,

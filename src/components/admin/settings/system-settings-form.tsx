@@ -167,6 +167,7 @@ const DEFAULTS: SettingsBag = {
   "antifraud.ip_limit_action": "flag",
   "antifraud.max_accounts_per_device": 3,
   "antifraud.device_limit_action": "block",
+  "targeting.country_ip_only": false,
   "antifraud.vpn_block_enabled": false,
   "antifraud.vpn_ranges": "",
   "antifraud.adblock_gate_enabled": true,
@@ -1418,6 +1419,12 @@ export function SystemSettingsForm({
                     <option value="flag">Flag only — allow, report to Fraud Monitor</option>
                   </select>
                 </Field>
+                <Toggle settingKey="targeting.country_ip_only"
+                  checked={values["targeting.country_ip_only"] === true}
+                  onChange={(v) => set("targeting.country_ip_only", v)}
+                  disabled={!canEdit}
+                  tone="amber"
+                />
                 <Field settingKey="antifraud.ip_limit_action">
                   <select
                     value={String(values["antifraud.ip_limit_action"] ?? "flag")}

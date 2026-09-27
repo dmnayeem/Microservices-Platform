@@ -1,4 +1,5 @@
 import "server-only";
+import { syncCountryMode } from "@/lib/country-mode";
 import type { Prisma } from "@/generated/prisma/client";
 import { TaskStatus, TaskType } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +46,9 @@ export const TASK_VIEWER_SELECT = {
   division: true,
   district: true,
   subDistrict: true,
+  // IP country — the fallback when the profile has none (lib/effective-country).
+  lastCountry: true,
+  signupCountry: true,
   postalCode: true,
   gender: true,
   dateOfBirth: true,
@@ -121,6 +125,7 @@ export async function getTaskViewerContext(
   const [user, pkg] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: TASK_VIEWER_SELECT }),
     getEffectivePackage(userId),
+    syncCountryMode(),
   ]);
   if (!user) return null;
 

@@ -40,6 +40,10 @@ interface Props {
   disabled?: boolean;
 }
 
+/** How a country rule is matched — see src/lib/effective-country.ts. */
+const HINT_COUNTRY =
+  "Matched on the country in the user's profile — or, if they never set one, the country of their IP address.";
+
 const fieldCls =
   "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 disabled:opacity-50";
 
@@ -81,6 +85,7 @@ export function TaskAudienceTargeting({ value, onChange, disabled }: Props) {
         <label className="flex text-sm font-medium text-gray-300 mb-2 items-center gap-1.5">
           <Globe className="w-4 h-4 text-gray-500" /> Countries
         </label>
+        <p className="-mt-1 mb-2 text-xs text-gray-500">{HINT_COUNTRY}</p>
         {value.countries.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {value.countries.map((c) => {
