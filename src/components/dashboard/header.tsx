@@ -1,9 +1,10 @@
 "use client";
 
+import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Menu, Bell, Search, Wallet, Sparkles, Settings, LogOut, User, ChevronDown, FileText, Check, ChevronLeft, Flame } from "lucide-react";
+import { Menu, Bell, Search, Wallet, Settings, LogOut, User, ChevronDown, FileText, Check, ChevronLeft, Flame } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
@@ -209,9 +210,11 @@ export function Header({ user, avatar }: HeaderProps) {
               <Menu className="w-6 h-6" />
             </button>
             <Link href="/social" aria-label="Home" className="app-press flex items-center">
-              <span className="app-icon app-icon-accent h-9 w-9 rounded-(--app-r-control)">
-                <Sparkles className="w-4.5 h-4.5" />
-              </span>
+              <BrandLockup className="h-9">
+                <span className="app-icon app-icon-accent h-9 w-9 rounded-(--app-r-control)">
+                  <BrandMark iconClassName="w-4.5 h-4.5" />
+                </span>
+              </BrandLockup>
             </Link>
           </div>
 

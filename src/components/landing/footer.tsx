@@ -1,7 +1,8 @@
 "use client";
 
+import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+
 import type { FooterContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { MarketingNavLink } from "./marketing-link";
@@ -20,10 +21,12 @@ export function Footer(props: Props) {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-12">
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center shadow-sm shadow-(--app-cta)/20">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-(--mk-text)">RevType</span>
+              <BrandLockup className="h-10">
+                <div className="w-10 h-10 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center shadow-sm shadow-(--app-cta)/20">
+                  <BrandMark iconClassName="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold text-(--mk-text)">RevType</span>
+              </BrandLockup>
             </Link>
             <p className="text-(--mk-muted) mb-6 max-w-sm leading-relaxed">
               {v.brand_description}

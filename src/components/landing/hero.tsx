@@ -134,9 +134,13 @@ export function Hero(props: Props) {
             return (
               <div
                 key={i}
-                className="mk-card mk-press group min-w-0 rounded-2xl p-4 sm:p-5 hover:border-(--mk-border-strong)"
+                /* One axis. The icon was centred and the figure and label
+                   were not, so each card read as two different layouts. */
+                className="mk-card mk-press group min-w-0 rounded-2xl p-4 sm:p-5 text-center hover:border-(--mk-border-strong)"
               >
-                <Icon className="w-5 h-5 text-(--mk-accent) mx-auto mb-2.5" />
+                <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent-soft) text-(--mk-accent)">
+                  <Icon className="w-5 h-5" />
+                </span>
                 <div className="mk-figure text-2xl sm:text-3xl text-(--mk-text)">
                   {stat.value}
                 </div>

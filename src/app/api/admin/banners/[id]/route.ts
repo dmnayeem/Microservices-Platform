@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasAudienceKeys, sanitizeTaskAudience } from "@/lib/task-targeting";
+import { sanitizeKycAudience } from "@/lib/banner-audience";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +33,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     data.startsAt = body.startsAt ? new Date(body.startsAt) : null;
   if (body.endsAt !== undefined)
     data.endsAt = body.endsAt ? new Date(body.endsAt) : null;
+  // Audience: replaced whole, and only when the body carries it — a PATCH
+  // that only toggles `isActive` must not wipe the targeting.
+  if (hasAudienceKeys(body)) Object.assign(data, sanitizeTaskAudience(body));
+  if (body.kycAudience !== undefined) data.kycAudience = sanitizeKycAudience(body.kycAudience);
 
   const updated = await prisma.banner.update({ where: { id }, data });
   await prisma.auditLog.create({

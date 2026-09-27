@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { sanitizeTaskAudience } from "@/lib/task-targeting";
+import { sanitizeKycAudience } from "@/lib/banner-audience";
 
 const schema = z.object({
   title: z.string().min(2).max(120),
@@ -64,6 +66,9 @@ export async function POST(request: NextRequest) {
       startsAt: data.startsAt ? new Date(data.startsAt) : null,
       endsAt: data.endsAt ? new Date(data.endsAt) : null,
       createdById: session.user.id,
+      // Who sees it: the task audience columns + KYC status.
+      ...sanitizeTaskAudience(body as Record<string, unknown>),
+      kycAudience: sanitizeKycAudience((body as Record<string, unknown>).kycAudience),
     },
   });
   await prisma.auditLog.create({

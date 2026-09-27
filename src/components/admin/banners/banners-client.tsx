@@ -1,5 +1,7 @@
 "use client";
 
+import { hasAudienceTargeting } from "@/lib/task-targeting";
+import { TaskAudienceTargeting, type TaskAudienceValue } from "@/components/admin/tasks/task-audience-targeting";
 import { confirmDialog } from "@/lib/confirm";
 
 import { useEffect, useState } from "react";
@@ -37,6 +39,16 @@ interface Banner {
   isActive: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
+  countries: string[];
+  genders: string[];
+  regions: string[];
+  divisions: string[];
+  districts: string[];
+  subDistricts: string[];
+  postalCodes: string[];
+  minAge: number | null;
+  maxAge: number | null;
+  kycAudience: string;
 }
 
 interface Props {
@@ -200,6 +212,14 @@ export function BannersClient({ initial, canManage }: Props) {
                     <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300">
                       {b.location}
                     </span>
+                    {(hasAudienceTargeting(b) || (b.kycAudience && b.kycAudience !== "ANY")) && (
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs bg-indigo-500/15 text-indigo-300"
+                        title="Shown only to the users it targets"
+                      >
+                        Targeted
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">
                       Order: {b.order}
                     </span>
@@ -306,6 +326,16 @@ function EditBannerModal({
     isActive: banner.isActive,
     startsAt: toIsoLocal(banner.startsAt),
     endsAt: toIsoLocal(banner.endsAt),
+    countries: banner.countries ?? [],
+    genders: banner.genders ?? [],
+    regions: banner.regions ?? [],
+    divisions: banner.divisions ?? [],
+    districts: banner.districts ?? [],
+    subDistricts: banner.subDistricts ?? [],
+    postalCodes: banner.postalCodes ?? [],
+    minAge: banner.minAge ?? null,
+    maxAge: banner.maxAge ?? null,
+    kycAudience: banner.kycAudience ?? "ANY",
   });
 
   const submit = async () => {
@@ -425,6 +455,7 @@ function EditBannerModal({
               placeholder="/lottery  or  https://…"
             />
           </Field>
+          <BannerAudienceFields form={form} setForm={setForm} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Starts At">
               <DateField
@@ -513,6 +544,7 @@ function CreateBannerModal({
     location: "HOME",
     order: 0,
     isActive: true,
+    ...EMPTY_BANNER_AUDIENCE,
   });
 
   const submit = async () => {
@@ -629,6 +661,7 @@ function CreateBannerModal({
               placeholder="/lottery  or  https://…"
             />
           </Field>
+          <BannerAudienceFields form={form} setForm={setForm} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Order">
               <input
@@ -761,6 +794,58 @@ function Field({
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+const EMPTY_BANNER_AUDIENCE = {
+  countries: [] as string[],
+  genders: [] as string[],
+  regions: [] as string[],
+  divisions: [] as string[],
+  districts: [] as string[],
+  subDistricts: [] as string[],
+  postalCodes: [] as string[],
+  minAge: null as number | null,
+  maxAge: null as number | null,
+  kycAudience: "ANY",
+};
+
+type AudienceForm = TaskAudienceValue & { kycAudience: string };
+
+/**
+ * Who sees the banner — the same audience picker tasks use (country, region,
+ * division, district, upazila, gender, age) plus KYC status. Nothing set =
+ * everyone. Matching is strict: a user whose profile has no district does not
+ * see a banner aimed at a district.
+ */
+function BannerAudienceFields<F extends AudienceForm>({
+  form,
+  setForm,
+}: {
+  form: F;
+  setForm: (f: F) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-900/40 p-3">
+      <div>
+        <p className="text-sm font-semibold text-white">Who sees this banner</p>
+        <p className="text-xs text-slate-400">
+          Leave everything empty to show it to everyone. A user must match every rule you set.
+        </p>
+      </div>
+      <Field label="KYC status">
+        <select
+          value={form.kycAudience}
+          onChange={(e) => setForm({ ...form, kycAudience: e.target.value })}
+          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white"
+        >
+          <option value="ANY">Everyone</option>
+          <option value="VERIFIED">Only KYC-verified users</option>
+          <option value="NOT_VERIFIED">Only users who have not done KYC</option>
+        </select>
+      </Field>
+      <TaskAudienceTargeting value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
     </div>
   );
 }

@@ -356,6 +356,20 @@ model Banner {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  /// Audience — the same nine columns (and STRICT matching) as tasks, via
+  /// src/lib/task-targeting.ts. Empty array / null age = no constraint.
+  countries    String[] @default([])
+  genders      String[] @default([])
+  regions      String[] @default([])
+  divisions    String[] @default([])
+  districts    String[] @default([])
+  subDistricts String[] @default([])
+  postalCodes  String[] @default([])
+  minAge       Int?
+  maxAge       Int?
+  /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED" (anything else).
+  kycAudience  String   @default("ANY")
+
   @@index([location])
   @@index([isActive])
   @@index([order])

@@ -1,4 +1,7 @@
+import { BrandProvider } from "@/components/providers/brand";
+import { isWideLogo } from "@/lib/brand-logo-shape";
 import type { Metadata, Viewport } from "next";
+import { customFavicon, homeIconUrl, logoSrc } from "@/lib/brand-icons";
 import { getSeoSettings, seoImage, sameAsList } from "@/lib/seo-settings";
 import { parseCustomCode } from "@/lib/custom-code";
 import { SiteTracking, CustomCode } from "@/components/providers/site-tracking";
@@ -75,10 +78,21 @@ export async function generateMetadata(): Promise<Metadata> {
     // No site-wide canonical. It was "/", and every page without its own
     // inherited it — telling Google each of them was a copy of the home page.
     // Pages set their own (lib/seo/page-meta.ts).
-    manifest: "/manifest.json",
+    // The manifest is src/app/manifest.ts (built from these settings); Next
+    // links it itself.
     icons: {
-      icon: [{ url: favicon }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }],
-      apple: seoImage(s["seo.apple_icon_url"], "/apple-touch-icon.png"),
+      // An uploaded favicon is the ONLY tab icon. It used to be listed next to
+      // the stock /icon-512.png, and browsers pick the larger file — so the
+      // uploaded one never showed. (src/app/favicon.ico, which Next injects
+      // on its own, moved to public/ for the same reason.)
+      icon: customFavicon(s)
+        ? [{ url: favicon }]
+        : [
+            { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+            { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          ],
+      // The home-screen icon, resized to the exact size iOS asks for.
+      apple: homeIconUrl(s, 180),
     },
     appleWebApp: {
       capable: true,
@@ -150,6 +164,9 @@ export default async function RootLayout({
     getSetting<boolean>("ads.google_cmp_enabled", false),
     getSeoSettings(),
   ]);
+  // The uploaded logo, and whether it is a wordmark (see providers/brand.tsx).
+  const brandLogo = logoSrc(seo);
+  const brandLogoWide = await isWideLogo(brandLogo);
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
@@ -252,6 +269,7 @@ export default async function RootLayout({
           allowUserChoice={ui.themeUserChoice}
           allowAccentChoice={ui.accentUserChoice}
         >
+          <BrandProvider logoUrl={brandLogo} wide={brandLogoWide} name={seo["seo.site_name"] || "RevType"}>
           {children}
           <PageViewTracker />
           <ServiceWorkerRegister />
@@ -297,6 +315,7 @@ export default async function RootLayout({
               },
             }}
           />
+          </BrandProvider>
         </ThemeProvider>
       </body>
     </html>

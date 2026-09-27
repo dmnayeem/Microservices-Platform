@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { bannerMatches } from "@/lib/banner-audience";
 import { redirect } from "next/navigation";
 import { prisma, safeRead } from "@/lib/prisma";
 import { SocialFeedView } from "@/components/user/feed/social-feed-view";
@@ -156,7 +157,20 @@ export default async function SocialPage() {
       prisma.user
         .findUnique({
           where: { id: userId },
-          select: { avatar: true },
+          // The avatar, and the profile the banners are targeted on — the
+          // same row, so targeting costs no extra query.
+          select: {
+            avatar: true,
+            country: true,
+            region: true,
+            division: true,
+            district: true,
+            subDistrict: true,
+            postalCode: true,
+            gender: true,
+            dateOfBirth: true,
+            kycStatus: true,
+          },
           cacheStrategy: { ttl: 10, swr: 30 },
         })
         .catch(() => null),
@@ -195,7 +209,10 @@ export default async function SocialPage() {
     level: r.level,
   }));
 
-  const promoRow = bannerRows[0];
+  // Only the banners aimed at this viewer (country, district, upazila,
+  // gender, age, KYC — set per banner at /admin/banners).
+  const myBanners = bannerRows.filter((b) => bannerMatches(b, me ?? {}));
+  const promoRow = myBanners[0];
   const promo = promoRow
     ? {
         title: promoRow.title,
@@ -205,7 +222,7 @@ export default async function SocialPage() {
       }
     : null;
 
-  const banners: BannerSlide[] = bannerRows.map((b) => ({
+  const banners: BannerSlide[] = myBanners.map((b) => ({
     id: b.id,
     title: b.title,
     subtitle: b.subtitle ?? undefined,

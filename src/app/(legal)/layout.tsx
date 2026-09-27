@@ -1,5 +1,6 @@
+import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { MarketingThemeScript } from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
@@ -22,10 +23,12 @@ export default async function LegalLayout({ children }: { children: ReactNode })
       <header className="border-b border-(--mk-border) bg-(--mk-nav) backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-(--mk-text)">RevType</span>
+            <BrandLockup className="h-9">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center">
+                <BrandMark iconClassName="w-4.5 h-4.5 text-white" />
+              </div>
+              <span className="text-lg font-bold text-(--mk-text)">RevType</span>
+            </BrandLockup>
           </Link>
           <Link
             href="/"
