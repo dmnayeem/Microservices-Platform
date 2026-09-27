@@ -65,7 +65,7 @@ export function TutorShell({ user, children }: Props) {
                 Tutor Hub
               </p>
               <p className="text-[10px] text-(--app-ink-3) uppercase tracking-wider">
-                EarnGPT
+                RevType
               </p>
             </div>
           </Link>

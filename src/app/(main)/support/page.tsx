@@ -23,7 +23,7 @@ const SECTIONS: Section[] = [
     articles: [
       {
         id: "earn",
-        q: "How do I earn points on EarnGPT?",
+        q: "How do I earn points on RevType?",
         a: "Complete tasks (manual, quiz, social, video, surveys), refer friends for 10/5/2% commissions, win in lottery, and unlock daily check-in bonuses.",
       },
       {
@@ -97,7 +97,7 @@ const SECTIONS: Section[] = [
       {
         id: "login",
         q: "I can't log in",
-        a: "Try resetting your password at /forgot-password. If that fails, contact support@earngpt.com.",
+        a: "Try resetting your password at /forgot-password. If that fails, contact support@revtype.com.",
       },
       {
         id: "delete",

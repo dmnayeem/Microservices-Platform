@@ -70,7 +70,7 @@ export default async function OfferPage({ params, searchParams }: PageProps) {
           href="/"
           className="text-xs text-(--app-ink-3) hover:text-(--app-ink-2)"
         >
-          Powered by EarnGPT
+          Powered by RevType
         </Link>
       </footer>
     </main>

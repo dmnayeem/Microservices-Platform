@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
         })
         .join("\n");
 
-      exportFilename = `earngpt-survey-${taskId}-responses-${format(now, "yyyy-MM-dd")}.csv`;
+      exportFilename = `revtype-survey-${taskId}-responses-${format(now, "yyyy-MM-dd")}.csv`;
     } else if (reportType === "users") {
       // User analytics export
       const users = await prisma.user.findMany({
@@ -417,7 +417,7 @@ export async function GET(request: NextRequest) {
     // Return CSV file
     const filename =
       exportFilename ??
-      `earngpt-${reportType}-report-${format(now, "yyyy-MM-dd")}.csv`;
+      `revtype-${reportType}-report-${format(now, "yyyy-MM-dd")}.csv`;
 
     // csvResponse adds the UTF-8 BOM. Without it Excel reads the file as the
     // local codepage and every Bengali name in it comes out as mojibake.

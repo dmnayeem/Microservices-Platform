@@ -149,7 +149,7 @@ export async function GET() {
     };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
   return NextResponse.json({
     balance: {

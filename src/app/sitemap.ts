@@ -5,7 +5,7 @@ import {
   publicSharingEnabled,
 } from "@/lib/public-post";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

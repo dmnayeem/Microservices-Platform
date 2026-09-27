@@ -60,7 +60,7 @@ function genCredentials(task: ProxyTask): SessionCredentials {
   const rand = Math.random().toString(36).slice(2, 10);
   const cc = (task.country || "ww").toLowerCase().replace(/[^a-z]/g, "").slice(0, 2) || "ww";
   return {
-    host: task.serverHost || `proxy-${cc}.earngpt.io`,
+    host: task.serverHost || `proxy-${cc}.revtype.io`,
     port: task.serverPort || 8080,
     username: `eg_${rand}`,
     password: Math.random().toString(36).slice(2, 14),

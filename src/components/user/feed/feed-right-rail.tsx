@@ -701,7 +701,7 @@ export function FeedRightRail({
           <Link href="/privacy" className="hover:text-(--app-ink-2)">Privacy</Link>
           <Link href="/terms" className="hover:text-(--app-ink-2)">Terms</Link>
           <Link href="/refund" className="hover:text-(--app-ink-2)">Refunds</Link>
-          <span>© {new Date().getFullYear()} EarnGPT</span>
+          <span>© {new Date().getFullYear()} RevType</span>
         </div>
       )}
     </div>

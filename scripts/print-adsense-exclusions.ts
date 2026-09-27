@@ -16,7 +16,7 @@ import { INCENTIVISED_PREFIXES } from "../src/lib/ad-placements";
  * Run: npx tsx --tsconfig tsconfig.script.json scripts/print-adsense-exclusions.ts
  */
 
-const site = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+const site = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 const host = site.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 console.log(`

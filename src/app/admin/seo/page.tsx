@@ -32,7 +32,7 @@ export default async function AdminSeoPage() {
         canEdit={canEdit}
         isSuper={session.user.role === "SUPER_ADMIN"}
         adsenseClient={network.adsenseClient}
-        siteUrl={process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app"}
+        siteUrl={process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com"}
       />
     </div>
   );

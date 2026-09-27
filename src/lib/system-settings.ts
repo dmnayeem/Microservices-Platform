@@ -111,5 +111,5 @@ export async function getSecret(
 export async function getPlatformName(): Promise<string> {
   const v = await getSetting<string>("platform_name", "");
   const s = typeof v === "string" ? v.trim() : "";
-  return s || process.env.NEXT_PUBLIC_APP_NAME || "EarnGPT";
+  return s || process.env.NEXT_PUBLIC_APP_NAME || "RevType";
 }

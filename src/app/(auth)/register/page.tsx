@@ -132,7 +132,7 @@ function RegisterForm() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
-              EarnGPT
+              RevType
             </span>
           </Link>
           <h1 className="text-2xl font-bold text-white">
@@ -286,7 +286,7 @@ function RegisterForm() {
         {/* Benefits */}
         <div className="p-4 rounded-lg bg-(--app-surface) border border-(--app-line)">
           <h3 className="text-sm font-medium text-white mb-3">
-            Start earning with EarnGPT:
+            Start earning with RevType:
           </h3>
           <ul className="space-y-2 text-sm text-(--app-ink-3)">
             <li className="flex items-center gap-2">

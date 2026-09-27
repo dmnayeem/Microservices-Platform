@@ -51,7 +51,7 @@ export interface ReferralsViewProps {
   team: ReferralUser[];
 }
 
-const HASHTAGS = "#EarnGPT #MakeMoneyOnline #ReferralProgram #PassiveIncome";
+const HASHTAGS = "#RevType #MakeMoneyOnline #ReferralProgram #PassiveIncome";
 
 export function ReferralsView({
   referralCode,
@@ -396,7 +396,7 @@ export function ReferralsView({
         open={showShare}
         onOpenChange={setShowShare}
         url={shareUrl}
-        title="Join me on EarnGPT"
+        title="Join me on RevType"
         text={`Sign up with my code ${referralCode} and start earning! ${HASHTAGS}`}
       />
     </div>
@@ -482,7 +482,7 @@ function QrPanel({ url }: { url: string }) {
     if (!dataUrl) return;
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = "earngpt-referral-qr.png";
+    a.download = "revtype-referral-qr.png";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

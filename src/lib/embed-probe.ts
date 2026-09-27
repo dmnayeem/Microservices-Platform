@@ -55,7 +55,7 @@ export async function probeEmbed(url: string): Promise<EmbedProbeResult> {
       headers: {
         // Some hosts vary their framing headers by client; ask as a browser would.
         "User-Agent":
-          "Mozilla/5.0 (compatible; EarnGPT-EmbedProbe/1.0; +https://earngpt.example)",
+          "Mozilla/5.0 (compatible; RevType-EmbedProbe/1.0; +https://revtype.example)",
         Accept: "text/html,application/xhtml+xml",
       },
     });

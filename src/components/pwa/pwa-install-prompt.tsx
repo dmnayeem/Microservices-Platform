@@ -111,11 +111,11 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/icon-192.png"
-            alt="EarnGPT"
+            alt="RevType"
             className="w-11 h-11 rounded-xl shrink-0 border border-white/10"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white">Install EarnGPT</p>
+            <p className="text-sm font-bold text-white">Install RevType</p>
             <p className="text-xs text-(--app-ink-2) mt-0.5">
               Add the app to your home screen for a faster, full-screen
               experience.

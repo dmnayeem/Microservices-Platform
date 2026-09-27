@@ -21,7 +21,7 @@ This happens when:
 
 ```bash
 AWS_REGION="ap-southeast-1"
-AWS_S3_BUCKET_NAME="earngpt"
+AWS_S3_BUCKET_NAME="revtype"
 AWS_ACCESS_KEY_ID="…"
 AWS_SECRET_ACCESS_KEY="…"
 AWS_CLOUDFRONT_DOMAIN="dxxxxxx.cloudfront.net"   # optional
@@ -65,12 +65,12 @@ The IAM user behind `AWS_ACCESS_KEY_ID` needs (at minimum):
         "s3:AbortMultipartUpload",
         "s3:ListMultipartUploadParts"
       ],
-      "Resource": "arn:aws:s3:::earngpt/*"
+      "Resource": "arn:aws:s3:::revtype/*"
     },
     {
       "Effect": "Allow",
       "Action": ["s3:ListBucket", "s3:ListBucketMultipartUploads"],
-      "Resource": "arn:aws:s3:::earngpt"
+      "Resource": "arn:aws:s3:::revtype"
     }
   ]
 }

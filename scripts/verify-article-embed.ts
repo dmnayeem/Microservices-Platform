@@ -308,17 +308,17 @@ function main() {
 
     const FALLBACK = "https://from-the-request.example";
     const cases: Array<[string, string | undefined, string]> = [
-      ["a configured production URL wins", "https://earngpt.app", "https://earngpt.app"],
-      ["a trailing slash is trimmed", "https://earngpt.app/", "https://earngpt.app"],
-      ["surrounding whitespace is tolerated", "  https://earngpt.app  ", "https://earngpt.app"],
+      ["a configured production URL wins", "https://revtype.com", "https://revtype.com"],
+      ["a trailing slash is trimmed", "https://revtype.com/", "https://revtype.com"],
+      ["surrounding whitespace is tolerated", "  https://revtype.com  ", "https://revtype.com"],
       // Each of these would produce a link worse than the fallback, so the
       // fallback has to win rather than the env being trusted blindly.
       ["an unset env falls back", undefined, FALLBACK],
       ["an empty env falls back", "", FALLBACK],
       ["a localhost env falls back", "http://localhost:3000", FALLBACK],
       ["a 127.0.0.1 env falls back", "http://127.0.0.1:3000", FALLBACK],
-      ["a non-http scheme falls back", "ftp://earngpt.app", FALLBACK],
-      ["an unparseable value falls back", "earngpt.app", FALLBACK],
+      ["a non-http scheme falls back", "ftp://revtype.com", FALLBACK],
+      ["an unparseable value falls back", "revtype.com", FALLBACK],
     ];
     for (const [label, env, want] of cases) {
       const got = makeResolver(env)(FALLBACK);
@@ -470,7 +470,7 @@ function main() {
     const verdict = (path: string, signedIn = false) => {
       const r = authorized!({
         auth: signedIn ? { user: { id: "u1" } } : null,
-        request: { nextUrl: new URL(`https://earngpt.app${path}`) },
+        request: { nextUrl: new URL(`https://revtype.com${path}`) },
       });
       return r === true ? "allow" : r === false ? "deny" : "redirect";
     };

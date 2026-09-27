@@ -1,4 +1,4 @@
-# EarnGPT — Completion Report
+# RevType — Completion Report
 
 **Date:** 2026-07-27 · **Branch:** master · all work committed & pushed.
 **Verification standard applied to every change:** `npx tsc --noEmit` clean · `eslint` clean ·

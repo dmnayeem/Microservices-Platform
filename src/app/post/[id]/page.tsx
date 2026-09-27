@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // which is exactly the leak this page exists to avoid.
   if (!post) {
     return {
-      title: "Post not found · EarnGPT",
+      title: "Post not found · RevType",
       robots: { index: false, follow: false },
     };
   }
@@ -52,8 +52,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const url = publicPostUrl(post.id);
   const description =
     postSummary(post.content) ||
-    `A post by ${post.author.name} on EarnGPT.`;
-  const title = `${post.author.name} on EarnGPT`;
+    `A post by ${post.author.name} on RevType.`;
+  const title = `${post.author.name} on RevType`;
 
   // Only a real post image is set here. When there is none, this key is left
   // undefined so Next's file convention (`opengraph-image.tsx`, next door) fills
@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       type: "article",
       url,
-      siteName: "EarnGPT",
+      siteName: "RevType",
       title,
       description,
       images,
@@ -276,12 +276,12 @@ export default async function PublicPostPage({ params }: PageProps) {
           </div>
         </article>
 
-        <PublicPostShare url={url} title={`${post.author.name} on EarnGPT`} text={postSummary(post.content, 120)} />
+        <PublicPostShare url={url} title={`${post.author.name} on RevType`} text={postSummary(post.content, 120)} />
 
         <section className="mt-4 rounded-2xl border border-(--app-accent-edge)/30 bg-(--app-cta)/10 p-5 text-center">
           <h2 className="text-lg font-bold text-white">Join the conversation</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm text-(--app-ink-2)">
-            Create a free EarnGPT account to react, comment and start earning
+            Create a free RevType account to react, comment and start earning
             from what you post.
           </p>
           <Link
@@ -300,7 +300,7 @@ export default async function PublicPostPage({ params }: PageProps) {
             Terms
           </Link>
           <a href={SITE_URL} className="hover:text-white">
-            © {new Date().getFullYear()} EarnGPT
+            © {new Date().getFullYear()} RevType
           </a>
         </footer>
       </main>

@@ -30,7 +30,7 @@ import { NextRequest } from "next/server";
  *
  * API calls must go back to whoever served this script — that is the origin
  * holding the session and answering CORS, and it is what keeps a local test
- * talking to a local server. But the "Submit on EarnGPT" link is a place a
+ * talking to a local server. But the "Submit on RevType" link is a place a
  * person goes to log in, so it has to be the site's real address. Two things
  * make the request's own origin wrong for that: an admin testing on localhost
  * hands the reader a localhost link, and behind a proxy or CDN `nextUrl.origin`
@@ -66,7 +66,7 @@ export function GET(req: NextRequest) {
 }
 
 function buildScript(origin: string, appOrigin: string): string {
-  return `/* EarnGPT article-task embed v3 — built ${new Date().toISOString()} */
+  return `/* RevType article-task embed v3 — built ${new Date().toISOString()} */
 (function() {
   'use strict';
   var ORIGIN = ${JSON.stringify(origin)};
@@ -87,8 +87,8 @@ function buildScript(origin: string, appOrigin: string): string {
   // cases apart from outside.
   function log(msg, extra) {
     try {
-      if (extra === undefined) console.info('[EarnGPT article task] ' + msg);
-      else console.info('[EarnGPT article task] ' + msg, extra);
+      if (extra === undefined) console.info('[RevType article task] ' + msg);
+      else console.info('[RevType article task] ' + msg, extra);
     } catch (e) { /* console missing (old embedded webviews) */ }
   }
 
@@ -131,7 +131,7 @@ function buildScript(origin: string, appOrigin: string): string {
       p.style.cssText = 'margin-top:4px;font-weight:400;color:#9ca3af';
       var a = document.createElement('a');
       a.href = APP_ORIGIN + '/article-tasks';
-      a.textContent = 'Back to EarnGPT';
+      a.textContent = 'Back to RevType';
       a.style.cssText = 'display:inline-block;margin-top:10px;color:#a5b4fc;text-decoration:none';
       box.appendChild(h); box.appendChild(p); box.appendChild(a);
       (document.body || document.documentElement).appendChild(box);
@@ -207,7 +207,7 @@ function buildScript(origin: string, appOrigin: string): string {
         }
         if (d.mode === 'direct') {
           log('no "eg" token in the page URL, so this is an ordinary reader and ' +
-              'the article is left alone. To test, start the task from EarnGPT — ' +
+              'the article is left alone. To test, start the task from RevType — ' +
               'that is what adds ?eg=... to the link.');
           return;
         }
@@ -216,7 +216,7 @@ function buildScript(origin: string, appOrigin: string): string {
           // how a worker concludes the task is broken.
           showNotice(
             d.mode === 'search' ? 'Open this from a search result' : 'Open this from the post',
-            d.message || 'Go back and follow the steps on EarnGPT.'
+            d.message || 'Go back and follow the steps on RevType.'
           );
           return;
         }
@@ -305,7 +305,7 @@ function buildScript(origin: string, appOrigin: string): string {
               ? 'This article link has expired'
               : 'This task could not be loaded',
             res.status === 401
-              ? 'Start the task again on EarnGPT to get a fresh link.'
+              ? 'Start the task again on RevType to get a fresh link.'
               : why
           );
           return;
@@ -320,7 +320,7 @@ function buildScript(origin: string, appOrigin: string): string {
       .catch(function(e) {
         log('could not reach ' + ORIGIN + ' for the embed config.', e);
         maybeNotice(
-          'Could not reach EarnGPT',
+          'Could not reach RevType',
           'Check your connection and reload this page.'
         );
       });
@@ -919,7 +919,7 @@ function buildScript(origin: string, appOrigin: string): string {
           '<span class="__eg_at_btn_label">Copy Key</span>' +
         '</button>' +
         '<a class="__eg_at_btn_submit" target="_blank" rel="noopener">' +
-          '<span>Submit on EarnGPT</span>' +
+          '<span>Submit on RevType</span>' +
           '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>' +
           '</svg>' +

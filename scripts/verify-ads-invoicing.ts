@@ -362,7 +362,7 @@ async function main() {
       paymentRef: "TRX-1",
       notes: "Thanks for your business",
       seller: {
-        name: "EarnGPT",
+        name: "RevType",
         addressLines: ["Dhaka, Bangladesh"],
         email: "billing@example.com",
         phone: "+880",

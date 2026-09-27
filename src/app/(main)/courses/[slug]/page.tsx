@@ -31,7 +31,7 @@ export default async function CourseLandingPage({
     "@type": "Course",
     name: c.title,
     description: c.seoDescription ?? c.subtitle ?? undefined,
-    provider: { "@type": "Organization", name: "EarnGPT" },
+    provider: { "@type": "Organization", name: "RevType" },
     ...(c.avgRating && reviewCount > 0
       ? {
           aggregateRating: {

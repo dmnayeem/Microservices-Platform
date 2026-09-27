@@ -106,8 +106,8 @@ console.log("1. Every path resolves to a real Response");
 (async () => {
   // THE BUG: nothing cached, network down.
   {
-    const sw = loadSw({ hostname: "earngpt.com", cached: undefined, fetchImpl: netFails });
-    const res = await sw.staleWhileRevalidate({ url: "https://earngpt.com/a.js" });
+    const sw = loadSw({ hostname: "revtype.com", cached: undefined, fetchImpl: netFails });
+    const res = await sw.staleWhileRevalidate({ url: "https://revtype.com/a.js" });
     check(
       "cache MISS + network down still returns a Response",
       res instanceof Response,
@@ -123,8 +123,8 @@ console.log("1. Every path resolves to a real Response");
   // The normal offline win: we have a copy, so serve it.
   {
     const cached = new Response("stale", { status: 200 });
-    const sw = loadSw({ hostname: "earngpt.com", cached, fetchImpl: netFails });
-    const res = await sw.staleWhileRevalidate({ url: "https://earngpt.com/a.js" });
+    const sw = loadSw({ hostname: "revtype.com", cached, fetchImpl: netFails });
+    const res = await sw.staleWhileRevalidate({ url: "https://revtype.com/a.js" });
     check(
       "cache HIT + network down serves the cached copy",
       res === cached,
@@ -134,8 +134,8 @@ console.log("1. Every path resolves to a real Response");
 
   // Cache miss, network fine.
   {
-    const sw = loadSw({ hostname: "earngpt.com", cached: undefined, fetchImpl: netOk });
-    const res = await sw.staleWhileRevalidate({ url: "https://earngpt.com/a.js" });
+    const sw = loadSw({ hostname: "revtype.com", cached: undefined, fetchImpl: netOk });
+    const res = await sw.staleWhileRevalidate({ url: "https://revtype.com/a.js" });
     check(
       "cache MISS + network up returns the fresh response",
       res instanceof Response && (await (res as Response).clone().text()) === "fresh"
@@ -150,12 +150,12 @@ console.log("1. Every path resolves to a real Response");
     };
     process.on("unhandledRejection", onUnhandled);
     const sw = loadSw({
-      hostname: "earngpt.com",
+      hostname: "revtype.com",
       cached: undefined,
       fetchImpl: netOk,
       putThrows: true,
     });
-    const res = await sw.staleWhileRevalidate({ url: "https://earngpt.com/a.js" });
+    const res = await sw.staleWhileRevalidate({ url: "https://revtype.com/a.js" });
     await new Promise((r) => setTimeout(r, 50));
     process.off("unhandledRejection", onUnhandled);
     check(
@@ -187,21 +187,21 @@ console.log("1. Every path resolves to a real Response");
     check("127.0.0.1 too", sw.IS_DEV_HOST);
   }
   {
-    const sw = loadSw({ hostname: "earngpt.com", fetchImpl: netOk });
+    const sw = loadSw({ hostname: "revtype.com", fetchImpl: netOk });
     check("a real host is not a dev host", !sw.IS_DEV_HOST);
     check(
       "production chunks ARE runtime-cached",
-      sw.isRuntimeAsset(new URL("https://earngpt.com/_next/static/chunks/x.js"), req),
+      sw.isRuntimeAsset(new URL("https://revtype.com/_next/static/chunks/x.js"), req),
       "offline depth still has to work where it matters"
     );
     check(
       "API responses are never cached",
-      !sw.isRuntimeAsset(new URL("https://earngpt.com/api/tasks"), req),
+      !sw.isRuntimeAsset(new URL("https://revtype.com/api/tasks"), req),
       "stale money/task data is worse than no data"
     );
     check(
       "range requests are left alone",
-      !sw.isRuntimeAsset(new URL("https://earngpt.com/a.mp4"), {
+      !sw.isRuntimeAsset(new URL("https://revtype.com/a.mp4"), {
         headers: new Headers({ range: "bytes=0-" }),
       }),
       "caching a partial response breaks video seeking"
@@ -226,7 +226,7 @@ console.log("1. Every path resolves to a real Response");
   );
   check(
     "the cache version was bumped so the broken entries are dropped",
-    /earngpt-shell-v4/.test(swSource) && /earngpt-runtime-v4/.test(swSource)
+    /revtype-shell-v4/.test(swSource) && /revtype-runtime-v4/.test(swSource)
   );
 
   const reg = fs.readFileSync(
@@ -240,7 +240,7 @@ console.log("1. Every path resolves to a real Response");
   );
   check(
     "…and clears its caches",
-    /startsWith\("earngpt-"\)/.test(reg) && /caches\.delete/.test(reg)
+    /startsWith\("revtype-"\)/.test(reg) && /caches\.delete/.test(reg)
   );
   check(
     "…only outside production",

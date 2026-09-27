@@ -560,7 +560,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         earned: "$2,450",
         rating: 5,
         quote:
-          "I was skeptical at first, but EarnGPT actually pays. Withdrew to PayPal three times already with zero issues.",
+          "I was skeptical at first, but RevType actually pays. Withdrew to PayPal three times already with zero issues.",
         gradient: "from-pink-500 to-rose-500",
       },
       {
@@ -670,7 +670,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     subheading: "Everything you want to know — and a few you didn't.",
     contact_prompt: "Still have questions?",
     contact_label: "Contact our support team →",
-    contact_email: "support@earngpt.com",
+    contact_email: "support@revtype.com",
     items: [
       {
         question: "How much can I realistically earn?",
@@ -683,9 +683,9 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "The minimum withdrawal is 5,000 points (≈ $5). Most withdrawals to PayPal, bank transfer, Wise, Payoneer, crypto, or gift cards are processed within 24–48 hours.",
       },
       {
-        question: "Is EarnGPT available worldwide?",
+        question: "Is RevType available worldwide?",
         answer:
-          "Yes — EarnGPT works in 180+ countries. Some tasks are region-specific, but every plan has plenty of global tasks plus referral commission that works everywhere.",
+          "Yes — RevType works in 180+ countries. Some tasks are region-specific, but every plan has plenty of global tasks plus referral commission that works everywhere.",
       },
       {
         question: "How does the referral program work?",
@@ -693,7 +693,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "When friends sign up with your code, you earn passive commission on their activity: 10% from Level 1 (direct), 5% from Level 2, and 2% from Level 3. Build a team once, earn forever.",
       },
       {
-        question: "Is EarnGPT legit and safe to use?",
+        question: "Is RevType legit and safe to use?",
         answer:
           "Yes. Every account is protected with SSL encryption, we follow GDPR & CCPA data standards, and withdrawals are reviewed by a real team before payout. You never share your bank or card details to earn — you only add a payout method when you're ready to cash out.",
       },
@@ -758,7 +758,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         ],
       },
     ],
-    copyright_notice: "© {year} EarnGPT. All rights reserved.",
+    copyright_notice: "© {year} RevType. All rights reserved.",
     tagline: "",
   },
   appearance: {

@@ -102,7 +102,7 @@ check(
 );
 check(
   "with choice off it does not read the stored preference at all",
-  /C\?\(localStorage\.getItem\('earngpt-theme'\)\|\|D\):D/.test(script),
+  /C\?\(localStorage\.getItem\('revtype-theme'\)\|\|D\):D/.test(script),
   "reading it and then overriding would paint the user's theme first, then flip"
 );
 check(

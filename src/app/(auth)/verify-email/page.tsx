@@ -175,7 +175,7 @@ function VerifyEmailContent() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
-              EarnGPT
+              RevType
             </span>
           </Link>
           <h1 className="text-2xl font-bold text-white">

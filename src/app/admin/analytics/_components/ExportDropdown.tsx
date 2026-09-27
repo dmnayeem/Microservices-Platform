@@ -86,7 +86,7 @@ export function ExportDropdown({ period, seesMoney = false }: ExportDropdownProp
       const contentDisposition = response.headers.get("content-disposition");
       const filename = contentDisposition
         ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
-        : `earngpt-${type}-report.csv`;
+        : `revtype-${type}-report.csv`;
 
       a.download = filename;
       document.body.appendChild(a);

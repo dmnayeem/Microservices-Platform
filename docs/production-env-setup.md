@@ -102,7 +102,7 @@ you are not billed.
 1. Go to **https://sentry.io/signup/** and create an account (sign in with GitHub or
    Google is fastest). Free plan is selected by default.
 2. When it asks what you are building, choose **Next.js** as the platform, and name
-   the project (e.g. `earngpt`).
+   the project (e.g. `revtype`).
 3. Sentry then shows an install wizard. **Skip it — the code is already wired up**
    (`sentry.server.config.ts`, `sentry.edge.config.ts`, `sentry.client.config.ts`,
    `src/instrumentation.ts`). You only need the DSN.

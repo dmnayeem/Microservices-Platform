@@ -255,7 +255,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
             <Sparkles className="w-4.5 h-4.5" />
           </span>
           <span className="text-lg font-extrabold tracking-tight text-(--app-ink)">
-            EarnGPT
+            RevType
           </span>
         </Link>
       </div>

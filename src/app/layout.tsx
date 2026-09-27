@@ -42,7 +42,7 @@ import { getLevelCurve } from "@/lib/level-curve-server";
 import { kickScheduler } from "@/lib/scheduler/run";
 import "./globals.css";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
 /**
  * Title, description, icons, share image, verification tags and indexing all
@@ -52,7 +52,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
  */
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSeoSettings();
-  const name = s["seo.site_name"] || "EarnGPT";
+  const name = s["seo.site_name"] || "RevType";
   const title = s["seo.default_title"] || name;
   const description = s["seo.description"];
   const og = seoImage(s["seo.og_image_url"], "/icon-512.png");
@@ -216,7 +216,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `try{var d=document.documentElement;var D=${JSON.stringify(
               ui.themeDefault
-            )};var C=${ui.themeUserChoice};var t=C?(localStorage.getItem('earngpt-theme')||D):D;var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var AC=${ui.accentUserChoice};var a=localStorage.getItem('earngpt-accent');if(a){if(AC)d.setAttribute('data-accent',a);}}catch(e){}`,
+            )};var C=${ui.themeUserChoice};var t=C?(localStorage.getItem('revtype-theme')||D):D;var r=t==='system'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;d.setAttribute('data-theme',r);var AC=${ui.accentUserChoice};var a=localStorage.getItem('revtype-accent');if(a){if(AC)d.setAttribute('data-accent',a);}}catch(e){}`,
           }}
         />
         {/* The level curve, before any app code runs.
@@ -237,7 +237,7 @@ export default async function RootLayout({
         <NetworkScripts />
         <ThemeProvider
           defaultTheme={ui.themeDefault}
-          storageKey="earngpt-theme"
+          storageKey="revtype-theme"
           allowUserChoice={ui.themeUserChoice}
           allowAccentChoice={ui.accentUserChoice}
         >

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getSetting } from "@/lib/system-settings";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   // "Allow search engines" off at /admin/seo (e.g. while the site is being

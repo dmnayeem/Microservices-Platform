@@ -328,7 +328,7 @@ export function AdvertiserDashboard() {
         <EmptyState
           icon={Target}
           title="No campaigns yet"
-          description="Create your first campaign to advertise on EarnGPT."
+          description="Create your first campaign to advertise on RevType."
           action={{ label: "Create Campaign", onClick: () => setCreating(true) }}
         />
       )}

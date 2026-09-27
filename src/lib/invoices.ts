@@ -70,7 +70,7 @@ export async function getSellerConfig(): Promise<SellerConfig> {
     getSetting<string>("billing.seller_phone", ""),
   ]);
   return {
-    name: String(name || process.env.NEXT_PUBLIC_APP_NAME || "EarnGPT"),
+    name: String(name || process.env.NEXT_PUBLIC_APP_NAME || "RevType"),
     addressLines: String(address || "")
       .split("\n")
       .map((l) => l.trim())

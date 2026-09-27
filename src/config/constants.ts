@@ -1,8 +1,8 @@
-// EarnGPT Configuration Constants
+// RevType Configuration Constants
 
-export const APP_NAME = "EarnGPT";
+export const APP_NAME = "RevType";
 export const APP_TAGLINE = "Unlock Your Earning Potential";
-export const APP_DESCRIPTION = "Complete tasks, earn rewards, and grow your income with EarnGPT";
+export const APP_DESCRIPTION = "Complete tasks, earn rewards, and grow your income with RevType";
 
 // Economy
 export const DEFAULT_POINTS_TO_USD_RATE = 1000; // 1000 points = $1

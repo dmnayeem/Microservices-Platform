@@ -54,7 +54,7 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const ACCENT_KEY = "earngpt-accent";
+const ACCENT_KEY = "revtype-accent";
 
 /** Resolve the raw theme preference to the concrete "dark"/"light" applied. */
 function resolveTheme(theme: Theme): "dark" | "light" {
@@ -73,7 +73,7 @@ function resolveTheme(theme: Theme): "dark" | "light" {
 export function ThemeProvider({
   children,
   defaultTheme = "dark",
-  storageKey = "earngpt-theme",
+  storageKey = "revtype-theme",
   allowUserChoice = true,
   allowAccentChoice = true,
 }: {

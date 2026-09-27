@@ -25,7 +25,7 @@ export default async function LegalLayout({ children }: { children: ReactNode })
             <div className="w-9 h-9 rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) flex items-center justify-center">
               <Sparkles className="w-4.5 h-4.5 text-white" />
             </div>
-            <span className="text-lg font-bold text-(--mk-text)">EarnGPT</span>
+            <span className="text-lg font-bold text-(--mk-text)">RevType</span>
           </Link>
           <Link
             href="/"
@@ -41,7 +41,7 @@ export default async function LegalLayout({ children }: { children: ReactNode })
 
       <footer className="border-t border-(--mk-border)">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 flex flex-wrap items-center justify-between gap-4 text-sm text-(--mk-subtle)">
-          <p>© {new Date().getFullYear()} EarnGPT. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} RevType. All rights reserved.</p>
           <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/privacy" className="hover:text-(--mk-text) transition-colors">
               Privacy

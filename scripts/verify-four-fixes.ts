@@ -91,7 +91,7 @@ async function main() {
   /* ── 2. Post images ── */
   console.log("\n2. Post images resolve through the proxy");
   {
-    const S3 = "https://earngpt.s3.ap-southeast-1.amazonaws.com";
+    const S3 = "https://revtype.s3.ap-southeast-1.amazonaws.com";
     check(
       "a posts/ URL is rewritten to the proxy",
       mediaSrc(`${S3}/posts/u1/123_abc.webp`) === "/api/media/posts/u1/123_abc.webp"

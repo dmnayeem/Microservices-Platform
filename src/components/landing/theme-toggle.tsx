@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
-const STORAGE_KEY = "earngpt-landing-theme";
+const STORAGE_KEY = "revtype-landing-theme";
 
 /** Visitor-facing light/dark toggle for the marketing surface. Flips
  *  `data-mk-theme` on #mk-root and remembers the choice — isolated from the

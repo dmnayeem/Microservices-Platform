@@ -564,7 +564,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                   title={
                     post.audience === "PUBLIC"
                       ? "Anyone on the internet can read this post."
-                      : "Only signed-in EarnGPT members can read this post."
+                      : "Only signed-in RevType members can read this post."
                   }
                 >
                   <span aria-hidden>·</span>
@@ -982,7 +982,7 @@ export const FeedPostCard = memo(function FeedPostCard({
            that does not exist: every link this button has ever produced landed
            on a 404. */
         url={`${typeof window !== "undefined" ? window.location.origin : ""}/post/${post.id}`}
-        title={post.user?.name ? `Post by ${post.user.name}` : "EarnGPT post"}
+        title={post.user?.name ? `Post by ${post.user.name}` : "RevType post"}
         text={post.content.slice(0, 200)}
         onShare={async (channel) => {
           try {

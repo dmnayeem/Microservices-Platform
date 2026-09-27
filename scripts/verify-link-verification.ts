@@ -73,21 +73,21 @@ console.log("1. Reading the page");
 const POST_HTML = `
 <html><head>
   <title>My blog — new post</title>
-  <meta property="og:title" content="I tried EarnGPT for a week" />
-  <meta property="og:description" content="Sign up at https://earngpt.com/start and use #EarnGPT — thanks @earngpt!" />
+  <meta property="og:title" content="I tried RevType for a week" />
+  <meta property="og:description" content="Sign up at https://revtype.com/start and use #RevType — thanks @revtype!" />
   <script>var tracking = "secretkeyword and #NotReallyPosted";</script>
   <style>.x { content: "hiddenword"; }</style>
 </head><body>
   <nav>Home About</nav>
-  <p>Full write-up below. Visit <a href="https://www.earngpt.com/start?utm_source=fb">our page</a>.</p>
+  <p>Full write-up below. Visit <a href="https://www.revtype.com/start?utm_source=fb">our page</a>.</p>
 </body></html>`;
 
 const page = toPageContent(POST_HTML);
 
 check(
   "the caption is read out of the OG card",
-  page.text.includes("i tried earngpt for a week") &&
-    page.text.includes("thanks @earngpt")
+  page.text.includes("i tried revtype for a week") &&
+    page.text.includes("thanks @revtype")
 );
 check(
   "script contents are NOT part of the corpus",
@@ -97,7 +97,7 @@ check(
 check("style contents are not either", !page.text.includes("hiddenword"));
 check(
   "links are collected from anchors, and from bare URLs in the text",
-  page.links.some((l) => l.includes("earngpt.com/start"))
+  page.links.some((l) => l.includes("revtype.com/start"))
 );
 check(
   "a normal post is not mistaken for a login wall",
@@ -138,38 +138,38 @@ check(
 
 check(
   "a required link matches through tracking parameters",
-  matchesUrl(["https://www.earngpt.com/start?utm_source=fb&fbclid=xyz"], "https://earngpt.com/start"),
+  matchesUrl(["https://www.revtype.com/start?utm_source=fb&fbclid=xyz"], "https://revtype.com/start"),
   "a real post carries junk the admin never typed"
 );
 check(
   "…and through http/https, www and a trailing slash",
-  matchesUrl(["http://earngpt.com/start/"], "https://www.earngpt.com/start")
+  matchesUrl(["http://revtype.com/start/"], "https://www.revtype.com/start")
 );
 check(
   "a DIFFERENT host does not match",
-  !matchesUrl(["https://earngpt.com.evil.co/start"], "https://earngpt.com/start"),
+  !matchesUrl(["https://revtype.com.evil.co/start"], "https://revtype.com/start"),
   "host is compared exactly — a lookalike domain must not pass"
 );
 check(
   "a deeper path under the required one counts",
-  matchesUrl(["https://earngpt.com/start/now"], "https://earngpt.com/start")
+  matchesUrl(["https://revtype.com/start/now"], "https://revtype.com/start")
 );
 check(
   "a different path does not",
-  !matchesUrl(["https://earngpt.com/other"], "https://earngpt.com/start")
+  !matchesUrl(["https://revtype.com/other"], "https://revtype.com/start")
 );
 check(
   "normaliseUrl survives a value that is not a URL at all",
-  normaliseUrl("earngpt.com/start/") === "earngpt.com/start"
+  normaliseUrl("revtype.com/start/") === "revtype.com/start"
 );
 
-check("a hashtag matches with or without the #", matchesHashtag("post #earngpt here", "earngpt"));
+check("a hashtag matches with or without the #", matchesHashtag("post #revtype here", "revtype"));
 check(
   "a hashtag does NOT match a longer one that starts the same",
   !matchesHashtag("i am #running today", "#run"),
   "a task that asked for one campaign tag must not pass on a different one"
 );
-check("a username matches with or without the @", matchesUsername("thanks @earngpt", "earngpt"));
+check("a username matches with or without the @", matchesUsername("thanks @revtype", "revtype"));
 check(
   "a username the user declared on the submission counts",
   matchesUsername("nothing here", "myhandle", "@myhandle"),
@@ -177,7 +177,7 @@ check(
 );
 check(
   "a username does not match a longer handle",
-  !matchesUsername("thanks @earngptpro", "@earngpt")
+  !matchesUsername("thanks @revtypepro", "@revtype")
 );
 
 /* ─────────────────────────────────────────────────────────── */
@@ -185,9 +185,9 @@ console.log("\n3. Verdicts");
 
 const allRules = rules({
   criteria: [
-    { kind: "url", value: "https://earngpt.com/start" },
-    { kind: "text", value: "tried EarnGPT" },
-    { kind: "hashtag", value: "#EarnGPT" },
+    { kind: "url", value: "https://revtype.com/start" },
+    { kind: "text", value: "tried RevType" },
+    { kind: "hashtag", value: "#RevType" },
   ],
 });
 
@@ -196,7 +196,7 @@ check("a page that satisfies everything is verified", good.verdict === "verified
 check("…and every rule is reported as matched", good.results.every((r) => r.matched));
 
 const missingTag = evaluateContentRules(
-  toPageContent(POST_HTML.replace("#EarnGPT", "#Other")),
+  toPageContent(POST_HTML.replace("#RevType", "#Other")),
   allRules
 );
 check(
@@ -217,7 +217,7 @@ check(
 check(
   "matchMode 'any' passes on a single match",
   evaluateContentRules(
-    toPageContent(POST_HTML.replace("#EarnGPT", "#Other")),
+    toPageContent(POST_HTML.replace("#RevType", "#Other")),
     rules({ ...allRules, matchMode: "any" })
   ).verdict === "verified"
 );
@@ -492,7 +492,7 @@ console.log("\nJS shells are unverifiable, never failed");
 {
   const shellRules = {
     ...defaultContentRules(),
-    criteria: [{ kind: "url" as const, value: "https://earngpt.com/promo" }],
+    criteria: [{ kind: "url" as const, value: "https://revtype.com/promo" }],
     onMismatch: "reject" as const,
   };
 
@@ -553,7 +553,7 @@ console.log("\nJS shells are unverifiable, never failed");
       toPageContent(
         realHtml.replace(
           "</article>",
-          "<a href='https://earngpt.com/promo?utm_source=x&fbclid=y'>promo</a></article>"
+          "<a href='https://revtype.com/promo?utm_source=x&fbclid=y'>promo</a></article>"
         )
       ),
       shellRules,

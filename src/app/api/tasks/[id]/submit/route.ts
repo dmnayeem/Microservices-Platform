@@ -24,7 +24,7 @@ import {
 
 /* How long an anonymously-issued key stays fresh. Generous on purpose: a
    multi-page journey with dwell gates is not quick, and a worker may finish
-   the reading before coming back to EarnGPT to paste the key. Past it the
+   the reading before coming back to RevType to paste the key. Past it the
    submission is HELD, never refused. */
 const ARTICLE_KEY_FRESH_MINUTES = 120;
 import {

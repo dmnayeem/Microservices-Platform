@@ -50,7 +50,7 @@ export default function CareersPage() {
       />
 
       <Section>
-        <SectionHeading badge="Why us" tone="purple" title="Life at EarnGPT" />
+        <SectionHeading badge="Why us" tone="purple" title="Life at RevType" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PERKS.map((p) => (
             <GlassCard key={p.title}>

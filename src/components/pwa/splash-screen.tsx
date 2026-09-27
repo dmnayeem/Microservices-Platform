@@ -16,7 +16,7 @@ function BrandLogo() {
         <Sparkles className="w-12 h-12 text-white" />
       </div>
       <span className="text-2xl font-black bg-linear-to-r from-(--app-rail-a) to-(--app-rail-b) bg-clip-text text-transparent">
-        EarnGPT
+        RevType
       </span>
     </div>
   );

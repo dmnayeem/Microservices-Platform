@@ -1,4 +1,4 @@
-# EarnGPT ("Microservices-Platform") — Deep Code Audit
+# RevType ("Microservices-Platform") — Deep Code Audit
 **Date:** July 23, 2026 · Full codebase review (~700 source files, 109 Prisma models)
 
 ---
@@ -180,7 +180,7 @@ the 2.7k/2.9k-line client files, remaining raw admin-table → `AdminTable` migr
 
 ## 1. What the project is
 
-Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `earngpt`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.
+Despite the folder name, this is **not** a microservices system — it's a single **Next.js 16 (App Router) monolith** called `revtype`, deployed on **Vercel**, backed by **PostgreSQL via Prisma 7 + Prisma Accelerate**. It's a Bangladeshi social-earning platform (PWA) where users earn points by completing tasks and withdraw real money.
 
 **Stack:** Next.js 16 · React 19 · NextAuth v5 (JWT sessions, no DB sessions) · Prisma 7 + Accelerate · Tailwind 4 · Zustand · Inngest (background jobs) · AWS S3 + Rekognition (KYC) · Google Gemini (AI) · web-push + OneSignal · SSLCommerz + bKash (payments) · Upstash Redis (installed but unused).
 

@@ -713,7 +713,7 @@ export function SendNotificationForm() {
                   onChange={(e) =>
                     setFormData({ ...formData, actionUrl: e.target.value })
                   }
-                  placeholder="https://earngpt.com/…"
+                  placeholder="https://revtype.com/…"
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>

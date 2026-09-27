@@ -150,7 +150,7 @@ export async function getPublicPost(id: string): Promise<PublicPost | null> {
     sharesCount: row.sharesCount,
     linkPreview: preview,
     author: {
-      name: row.user.name || "EarnGPT member",
+      name: row.user.name || "RevType member",
       username: row.user.username,
       avatar: avatarPublic ? row.user.avatar : null,
       isBlueVerified: row.user.isBlueVerified,
@@ -160,7 +160,7 @@ export async function getPublicPost(id: string): Promise<PublicPost | null> {
 
 /** The site origin, for canonical + absolute og: URLs. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || "https://earngpt.app"
+  process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com"
 ).replace(/\/+$/, "");
 
 /** The canonical, shareable address of a post. */
