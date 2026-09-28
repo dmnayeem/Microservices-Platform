@@ -1,5 +1,7 @@
 "use client";
 
+import { PrizeSplitBar } from "@/components/admin/shared/prize-split-bar";
+import { allocated, remainingAfterEach } from "@/lib/prize-split";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DateField } from "@/components/ui/date-field";
@@ -116,6 +118,19 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
           { position: 3, amount: 2500, description: "Third Prize" },
         ]
   );
+  // The budget planner (fixed prizes): what the admin means to give away in
+  // total. Not stored — it opens at the sum of the prizes, and is how "1,000
+  // between 10" and "600 still to give" are worked out.
+  const [budget, setBudget] = useState<number>(() => allocated((lottery?.prizes ?? []).map((p) => p.amount)) || 17500);
+  const resizePrizes = (count: number) => {
+    const n = Math.min(50, Math.max(1, Math.floor(count) || 1));
+    setPrizes((cur) => {
+      const next = cur.slice(0, n);
+      while (next.length < n) next.push({ position: next.length + 1, amount: 0, description: `Prize ${next.length + 1}` });
+      return next.map((p, i) => ({ ...p, position: i + 1 }));
+    });
+  };
+  const prizeLeft = remainingAfterEach(budget, prizes.map((p) => p.amount));
   const [tiers, setTiers] = useState<PrizeTier[]>(
     lottery?.prizeTiers?.length
       ? lottery.prizeTiers
@@ -171,6 +186,11 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
     }
     if (!isPool && prizes.length === 0) {
       return setError("Add at least one prize.");
+    }
+    if (!isPool && !frozen && allocated(prizes.map((p) => p.amount)) > budget) {
+      return setError(
+        `The prizes add up to ${allocated(prizes.map((p) => p.amount)).toLocaleString()} pts — ${(allocated(prizes.map((p) => p.amount)) - budget).toLocaleString()} more than the ${budget.toLocaleString()} pts budget. Lower a prize or raise the budget.`
+      );
     }
     if (form.shortfallAction === "ROLLOVER" && !form.rolloverTargetId) {
       return setError("Pick the lottery the pot should roll over into.");
@@ -407,6 +427,38 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
 
         {!isPool ? (
           <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Total prize budget (pts)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={budget}
+                  disabled={frozen}
+                  onChange={(e) => setBudget(Math.max(0, Number(e.target.value) || 0))}
+                  className={inp}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Number of winners</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={prizes.length}
+                  disabled={frozen}
+                  onChange={(e) => resizePrizes(Number(e.target.value))}
+                  className={inp}
+                />
+              </div>
+            </div>
+            <PrizeSplitBar
+              total={budget}
+              count={prizes.length}
+              amounts={prizes.map((p) => p.amount)}
+              disabled={frozen}
+              onSplit={(amounts) => setPrizes((cur) => cur.map((p, i) => ({ ...p, amount: amounts[i] ?? 0 })))}
+            />
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-400">
                 Total prize pool:{" "}
@@ -450,6 +502,11 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
                     }}
                     className={inp}
                   />
+                  {budget > 0 && (
+                    <p className={`mt-0.5 text-[10px] tabular-nums ${prizeLeft[i] < 0 ? "text-red-400" : "text-gray-500"}`}>
+                      {prizeLeft[i] < 0 ? `${Math.abs(prizeLeft[i]).toLocaleString()} over budget` : `${prizeLeft[i].toLocaleString()} left`}
+                    </p>
+                  )}
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-500 mb-1">Label</label>
