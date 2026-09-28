@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { announceBalanceChange, BALANCE_EVENT } from "@/lib/header-data";
+import { announceBalanceChange, BALANCE_EVENT, ENGAGED_EVENT } from "@/lib/header-data";
 
 /**
  * Keeps every balance on screen current without a manual refresh.
@@ -57,6 +57,11 @@ export function BalanceSync() {
           if (url.origin === window.location.origin && url.pathname.startsWith("/api/") && !IGNORE.some((r) => r.test(url.pathname))) {
             if (timer) clearTimeout(timer);
             timer = setTimeout(() => announceBalanceChange(), 400);
+            // Starting a task is the moment to ask for notifications / install
+            // (push-permission-prompt.tsx, pwa-install-prompt.tsx listen).
+            if (/^\/api\/(tasks|article-tasks)\/[^/]+\/start$/.test(url.pathname)) {
+              window.dispatchEvent(new Event(ENGAGED_EVENT));
+            }
           }
         }
       } catch {

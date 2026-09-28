@@ -33,10 +33,8 @@ import { NetworkScripts } from "@/components/providers/network-scripts";
 import { getSetting } from "@/lib/system-settings";
 import { Toaster } from "sonner";
 import { CookieConsent } from "@/components/user/primitives/cookie-consent";
-import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SplashScreen } from "@/components/pwa/splash-screen";
-import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { ConfirmHost } from "@/components/providers/confirm-host";
 import { NotifyCenterHost } from "@/components/providers/notify-center-host";
 import { RewardInterstitialHost } from "@/components/providers/reward-interstitial-host";
@@ -305,8 +303,6 @@ export default async function RootLayout({
           />
           <SplashScreen />
           <CookieConsent enabled={ui.cookiesPopup && !googleCmp} />
-          <PushPermissionPrompt enabled={ui.notificationPopup} />
-          <PwaInstallPrompt enabled={ui.pwaInstallPrompt} />
           <ConfirmHost />
           <NotifyCenterHost />
           {/* Admin popups (/admin/popups) — every page, visitors included. */}

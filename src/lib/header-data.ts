@@ -36,3 +36,6 @@ export function announceBalanceChange(): void {
   last = null; // the next fetchHeaderData() goes to the server
   if (typeof window !== "undefined") window.dispatchEvent(new Event(BALANCE_EVENT));
 }
+
+/** A task was just started — the moment to ask for notifications / install. */
+export const ENGAGED_EVENT = "rt:engaged";

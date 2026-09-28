@@ -1,5 +1,6 @@
 "use client";
 
+import { ENGAGED_EVENT } from "@/lib/header-data";
 import { useEffect, useState } from "react";
 import { Download, Share, Plus, X, MoreVertical } from "lucide-react";
 
@@ -104,6 +105,26 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
       window.removeEventListener("beforeinstallprompt", onBIP);
       window.removeEventListener("appinstalled", onInstalled);
       if (timer) clearTimeout(timer);
+    };
+  }, [enabled]);
+
+  // Starting a task: offer the app too, a little after the notification ask
+  // so the two never open on top of each other.
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const onEngaged = () => {
+      if (isStandalone()) return;
+      const snoozed = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+      if (Date.now() - snoozed < SNOOZE_MS) return;
+      if (window.__egBip) setDeferred(window.__egBip);
+      if (t) clearTimeout(t);
+      t = setTimeout(() => setShow(true), 15000);
+    };
+    window.addEventListener(ENGAGED_EVENT, onEngaged);
+    return () => {
+      window.removeEventListener(ENGAGED_EVENT, onEngaged);
+      if (t) clearTimeout(t);
     };
   }, [enabled]);
 

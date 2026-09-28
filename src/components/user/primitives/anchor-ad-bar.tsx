@@ -109,7 +109,10 @@ export function AnchorAdBar() {
       // z-30 keeps this UNDER the bottom nav (z-40). Offset by the nav's height
       // plus the notch inset on mobile; flush to the bottom on lg, where the nav
       // is `lg:hidden`.
-      className="fixed inset-x-0 z-30 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] lg:bottom-0 lg:pl-72"
+      // Sits on the nav's MEASURED top edge (`--bottom-nav-h`, published by
+      // BottomTabBar and including the raised Home tab). A flat 3.5rem put the
+      // ad's lower half behind that raised tab on phones.
+      className="fixed inset-x-0 z-30 bottom-[var(--bottom-nav-h,calc(3.5rem+env(safe-area-inset-bottom)))] lg:bottom-0 lg:pl-72"
     >
       <div className="mx-auto max-w-3xl px-3 pb-1">
         {/* Shrink-wrapped to the ad, so the close button sits on the AD's
