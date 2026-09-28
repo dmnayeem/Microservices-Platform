@@ -1,4 +1,5 @@
 import { cookies, headers } from "next/headers";
+import { writeAudit } from "@/lib/audit";
 import { NotificationType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notify";
@@ -242,17 +243,27 @@ export async function linkGoogleAccount(
     await notifyUser({
       userId: dbUser.id,
       type: NotificationType.SYSTEM,
-      title: "Your password was removed",
+      title: "Account secured with Google",
       message:
-        "You signed in with Google, which proves you own this email address. " +
-        "The password that was previously set on this account has been removed " +
-        "for your safety. If this wasn't you, contact support immediately. To " +
-        'use a password again, choose "Forgot password" on the login page.',
+        "You now sign in with Google. Because this email had never been " +
+        "verified, the old password on the account was switched off to keep it " +
+        'safe. To use a password as well, choose "Forgot password" on the login ' +
+        "page and set a new one.",
       link: "/settings",
     }).catch(() => {});
-    void recordFraud(dbUser.id, "OAUTH_LINK_PASSWORD_REVOKED", "HIGH", {
-      reason: "password existed on an unverified account",
-    });
+    // A protective step taken FOR the owner — Google just proved they own the
+    // inbox — not suspicious behaviour BY them. It was filed as a HIGH fraud
+    // event against the very person it protected, so every honest "registered
+    // by email, later clicked Continue with Google" user landed in the fraud
+    // queue. It is recorded in the admin log instead.
+    await writeAudit({
+      actorId: dbUser.id,
+      action: "ACCOUNT_PASSWORD_REVOKED_GOOGLE_LINK",
+      entity: "User",
+      entityId: dbUser.id,
+      targetUserId: dbUser.id,
+      summary: "Unverified password and 2FA removed when the owner linked Google (proves inbox ownership)",
+    }).catch(() => {});
   }
 
   // The 2FA bypass is a known, accepted gap: TOTP is only checked on the

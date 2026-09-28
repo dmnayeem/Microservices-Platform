@@ -48,8 +48,11 @@ function sourceWhere(source: SourceKey): Prisma.TransactionWhereInput | null {
     // `payroll_` rows to their own bucket.
     case "bonus":
       return {
-        type: { in: ["BONUS", "GIFT"] },
-        NOT: { reference: { startsWith: "payroll_" } },
+        OR: [
+          { type: { in: ["BONUS", "GIFT"] }, NOT: { reference: { startsWith: "payroll_" } } },
+          // Leaderboard prizes (tx-sources.ts files them under bonus).
+          { type: "EARNING", reference: { startsWith: "leaderboard_" } },
+        ],
       };
     case "payroll":
       return { type: "BONUS", reference: { startsWith: "payroll_" } };
@@ -78,7 +81,13 @@ function sourceWhere(source: SourceKey): Prisma.TransactionWhereInput | null {
     case "task":
       return {
         type: "EARNING",
-        NOT: { OR: [{ reference: { startsWith: "social_" } }, { reference: { startsWith: "daily_" } }] },
+        NOT: {
+          OR: [
+            { reference: { startsWith: "social_" } },
+            { reference: { startsWith: "daily_" } },
+            { reference: { startsWith: "leaderboard_" } },
+          ],
+        },
       };
     default:
       return null; // "other" — no clean server filter
