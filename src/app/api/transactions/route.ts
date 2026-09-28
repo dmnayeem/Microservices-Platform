@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forUser, HIDDEN_FROM_USER_PREFIX, userVisibleLedger } from "@/lib/ledger-display";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
@@ -163,6 +164,9 @@ export async function GET(request: NextRequest) {
       // A source chip is more specific than the kind, so it wins: picking
       // "Tasks" while on the money view should show tasks, not nothing.
       ...(!source ? kindWhere(kind) ?? {} : {}),
+      // A correction is shown folded into the prize it corrects, not as its
+      // own line (lib/ledger-display.ts).
+      AND: [userVisibleLedger],
     };
 
     const [transactions, total] = await Promise.all([
@@ -186,6 +190,26 @@ export async function GET(request: NextRequest) {
       type: TransactionType;
       _sum: { points: number | null; amount: Prisma.Decimal | null };
     }[];
+
+    // The hidden corrections still count in the period totals — they are real
+    // — but as part of the earnings they corrected, not as a penalty line, so
+    // the breakdown matches the rows the user can see.
+    const hidden = await prisma.transaction.aggregate({
+      where: { ...rangeWhere, reference: { startsWith: HIDDEN_FROM_USER_PREFIX } },
+      _sum: { points: true, amount: true },
+    });
+    const hiddenPts = hidden._sum.points ?? 0;
+    if (hiddenPts !== 0) {
+      const move = (t: TransactionType, pts: number, amt: number) => {
+        let g = grouped.find((x) => x.type === t);
+        if (!g) grouped.push((g = { type: t, _sum: { points: 0, amount: null } }));
+        g._sum.points = (g._sum.points ?? 0) + pts;
+        g._sum.amount = new Prisma.Decimal(toNum(g._sum.amount ?? 0) + amt);
+      };
+      const hiddenAmt = toNum(hidden._sum.amount ?? 0);
+      move("PENALTY" as TransactionType, -hiddenPts, -hiddenAmt);
+      move("EARNING" as TransactionType, hiddenPts, hiddenAmt);
+    }
 
     const bySource: Record<string, { points: number; amount: number }> = {};
     for (const g of grouped) {
@@ -218,7 +242,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
-      transactions: transactions.map((tx) => ({
+      transactions: transactions.map(forUser).map((tx) => ({
         id: tx.id,
         type: tx.type,
         status: tx.status,

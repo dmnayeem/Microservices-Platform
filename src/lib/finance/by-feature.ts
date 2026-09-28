@@ -76,11 +76,15 @@ export async function getMoneyByFeature(
   const outBySource = new Map<PointSource, number>();
   for (const row of ledger) {
     const r = { type: row.type, status: row.status, reference: row.reference, amount: Number(row.amount ?? 0), points: row.points ?? 0 };
-    if (!isSettled(r) || r.type === "PENALTY" || direction(r) !== "cost") continue;
+    if (!isSettled(r) || direction(r) !== "cost") continue;
     if ((r.reference ?? "").toLowerCase().startsWith("payroll_")) continue;
     const usdValue = pointsDenominated(r) ? magnitudePoints(r) / pointsPerUsd : magnitudeUsd(r);
     const src = pointSourceOf(r);
-    outBySource.set(src, (outBySource.get(src) ?? 0) + usdValue);
+    // A PENALTY takes points back from the source it names (a corrected
+    // leaderboard prize comes off "Leaderboard"), so it is netted, not skipped
+    // — the Overview's "Paid to users" nets it the same way.
+    const signed = r.type === "PENALTY" ? -usdValue : usdValue;
+    outBySource.set(src, (outBySource.get(src) ?? 0) + signed);
   }
   const inByStream = new Map(revenue.streams.map((s) => [s.key, s.usd]));
 
