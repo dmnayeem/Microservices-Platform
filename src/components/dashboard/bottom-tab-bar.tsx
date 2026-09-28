@@ -1,6 +1,6 @@
 "use client";
 
-import { fetchHeaderData } from "@/lib/header-data";
+import { BALANCE_EVENT, fetchHeaderData } from "@/lib/header-data";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -79,6 +79,12 @@ export function BottomTabBar({
   }, [loadUnread, isMobile]);
 
   useAutoRefresh(loadUnread, { enabled: isMobile, intervalMs: 60000 });
+  useEffect(() => {
+    if (!isMobile) return;
+    const on = () => void loadUnread();
+    window.addEventListener(BALANCE_EVENT, on);
+    return () => window.removeEventListener(BALANCE_EVENT, on);
+  }, [loadUnread, isMobile]);
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);

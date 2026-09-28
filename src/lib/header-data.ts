@@ -23,3 +23,19 @@ export function fetchHeaderData(): Promise<HeaderData | null> {
   last = { at: Date.now(), p };
   return p;
 }
+
+/**
+ * "The balance may have changed" — fired after any successful write to the
+ * API (a bonus claimed, a check-in, a task submitted, points converted), so the
+ * header, the tab bar and balance pages update at once instead of on the next
+ * 60-second poll or a manual refresh. See components/providers/balance-sync.
+ */
+export const BALANCE_EVENT = "rt:balance-changed";
+
+export function announceBalanceChange(): void {
+  last = null; // the next fetchHeaderData() goes to the server
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(BALANCE_EVENT));
+}
+
+/** A task was just started — the moment to ask for notifications / install. */
+export const ENGAGED_EVENT = "rt:engaged";

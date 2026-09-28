@@ -190,8 +190,8 @@ async function main() {
         !/z-4\d/.test(code("components/user/primitives/anchor-ad-bar.tsx"))
     );
     check(
-      "it clears the nav height plus the notch inset on mobile",
-      /bottom-\[calc\(3\.5rem\+env\(safe-area-inset-bottom\)\)\]/.test(s)
+      "it clears the nav's measured height (raised Home tab included), with nav + notch as the fallback",
+      /bottom-\[var\(--bottom-nav-h,calc\(3\.5rem\+env\(safe-area-inset-bottom\)\)\)\]/.test(s)
     );
     check(
       "it can be dismissed, and the dismissal lasts the session",

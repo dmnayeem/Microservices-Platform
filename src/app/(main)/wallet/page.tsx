@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { ledgerForUser } from "@/lib/ledger-display";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -24,7 +25,7 @@ export default async function WalletPage() {
 
   const [
     user,
-    ledger30,
+    ledgerRaw,
     pendingWithdrawalsCount,
     withdrawnAgg,
     teamSummary,
@@ -119,6 +120,8 @@ export default async function WalletPage() {
     totalCount: teamSummary.totalCount,
     totalEarned: teamSummary.totalEarnedUsd,
   };
+  // Corrections folded into the rows they correct (lib/ledger-display.ts).
+  const ledger30 = ledgerForUser(ledgerRaw);
   const earned = summarizeEarnings(ledger30);
   const earningSources = earned.sources.map((x) => ({
     key: x.source,

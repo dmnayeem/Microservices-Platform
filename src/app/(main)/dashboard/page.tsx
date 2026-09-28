@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { ledgerForUser } from "@/lib/ledger-display";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -81,7 +82,7 @@ export default async function DashboardPage() {
     submissionsByStatus,
     referralsCount,
     availableTasks,
-    ledger30,
+    ledgerRaw,
     pendingWithdrawals,
     pointsPerUsd,
     gate,
@@ -137,6 +138,7 @@ export default async function DashboardPage() {
           amount: true,
           reference: true,
           description: true,
+          metadata: true,
           createdAt: true,
         },
       }),
@@ -161,6 +163,8 @@ export default async function DashboardPage() {
       .filter((g) => st.includes(g.status))
       .reduce((a, g) => a + g._count._all, 0);
   const tasksCompleted = subCount("APPROVED", "AUTO_APPROVED");
+  // Corrections folded into the rows they correct (lib/ledger-display.ts).
+  const ledger30 = ledgerForUser(ledgerRaw);
   const recentTx = ledger30.slice(0, 5);
   const pendingW = pendingWithdrawals as unknown as {
     _count: { _all: number };

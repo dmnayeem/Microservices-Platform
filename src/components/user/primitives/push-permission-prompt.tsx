@@ -1,5 +1,6 @@
 "use client";
 
+import { ENGAGED_EVENT } from "@/lib/header-data";
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -33,6 +34,21 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
     if (Date.now() - dismissed < 7 * 24 * 60 * 60 * 1000) return;
     const t = setTimeout(() => setShow(true), 6000);
     return () => clearTimeout(t);
+  }, [enabled]);
+
+  // Starting a task is when a notification is worth most ("your task was
+  // approved"), so ask right then — even on a task page, and after one day
+  // rather than seven since the last "Not now".
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined" || !("Notification" in window)) return;
+    const onEngaged = () => {
+      if (Notification.permission !== "default") return;
+      const dismissed = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
+      if (Date.now() - dismissed < 24 * 60 * 60 * 1000) return;
+      setShow(true);
+    };
+    window.addEventListener(ENGAGED_EVENT, onEngaged);
+    return () => window.removeEventListener(ENGAGED_EVENT, onEngaged);
   }, [enabled]);
 
   const enable = async () => {

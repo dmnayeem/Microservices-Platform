@@ -82,6 +82,8 @@ export function deriveSource(type: string, reference?: string | null): SourceKey
       return isMarketplaceRef ? "marketplace" : "purchase";
     case "EARNING":
       if (ref.startsWith("social_")) return "social";
+      // A leaderboard prize is a bonus, not task income — it was tagged "Tasks".
+      if (ref.startsWith("leaderboard_")) return "bonus";
       if (ref.startsWith("daily_")) return "checkin";
       if (isMarketplaceRef) return "marketplace";
       return "task";

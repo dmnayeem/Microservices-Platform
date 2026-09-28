@@ -1,4 +1,8 @@
 import { redirect } from "next/navigation";
+import { getUiToggles } from "@/lib/ui-toggles-server";
+import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
+import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
+import { BalanceSync } from "@/components/providers/balance-sync";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -41,7 +45,7 @@ export default async function MainLayout({
   //  - maintenanceFor: the admin's Maintenance Mode switch. It joins this
   //    Promise.all rather than sitting in front of it so a platform that is UP
   //    — every request but the rare one — pays nothing extra for the check.
-  const [{ enabled }, hiddenPaths, dbUser, maintenance] = await Promise.all([
+  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui] = await Promise.all([
     getEffectiveFeatures(session.user.id),
     getHiddenPaths(session.user.id),
     prisma.user
@@ -57,6 +61,7 @@ export default async function MainLayout({
       active: false,
       message: "",
     })),
+    getUiToggles().catch(() => null),
   ]);
 
   // Closed for everyone but staff, who need to be able to see the fix land.
@@ -137,6 +142,13 @@ export default async function MainLayout({
       {/* Lottery wins, leaderboard prizes, big achievements, payments — shown
           once as a popup the next time the user opens the app. */}
       <CelebrationHost />
+      {/* Balances update after a claim/reward without a manual refresh. */}
+      <BalanceSync />
+      {/* "Allow notifications" and "Install the app" — signed-in users only
+          (a visitor on the landing page has nothing to be notified about),
+          and asked again at the moment it matters: starting a task. */}
+      <PushPermissionPrompt enabled={ui?.notificationPopup ?? true} />
+      <PwaInstallPrompt enabled={ui?.pwaInstallPrompt ?? true} />
 
       {/* Device id + fingerprint for the multi-account rules; reports this
           device (IP, country, browser) once per session. */}
