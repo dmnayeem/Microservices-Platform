@@ -169,6 +169,10 @@ export async function POST(request: NextRequest) {
 
     const pointsPerUsd = await getPointsPerUsd();
     const priceNum = toNum(listing.price);
+    // A price of zero or below would pay the seller out of nothing.
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      return NextResponse.json({ error: "This listing has no valid price" }, { status: 400 });
+    }
     const totalCost = Math.ceil(priceNum * pointsPerUsd); // Convert to points
     // The fee is admin-set, resolved at ORDER time through the same path the
     // other three checkout routes use. This one carried its own hardcoded 5%,

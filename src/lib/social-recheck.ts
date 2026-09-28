@@ -141,7 +141,9 @@ export async function recheckPendingSocialSubmissions(opts?: {
         lte: new Date(now - minAgeSec * 1000),
         gte: new Date(now - maxAgeHours * 3600 * 1000),
       },
-      task: { type: "SOCIAL" },
+      // Board tasks are scored by the board, never paid in points; this
+      // re-check approved and credited them like ordinary tasks.
+      task: { type: "SOCIAL", boardId: null },
       ...(opts?.submissionId ? { id: opts.submissionId } : {}),
       // Ownership is part of the QUERY, not a check afterwards — there is then
       // no path where a mistaken id reaches somebody else's submission.

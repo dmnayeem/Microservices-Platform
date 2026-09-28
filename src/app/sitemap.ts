@@ -4,7 +4,7 @@ import {
   publicAudienceEpochMs,
   publicSharingEnabled,
 } from "@/lib/public-post";
-import { BLOG_POSTS } from "@/lib/blog-posts";
+import { getArticles } from "@/lib/blog";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
 
@@ -45,12 +45,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Blog articles — never listed before, so Google had to find them itself.
-  const blogEntries: MetadataRoute.Sitemap = BLOG_POSTS.map((p) => ({
-    url: `${SITE_URL}/blog/${p.slug}`,
-    lastModified: new Date(p.date),
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }));
+  // Written at /admin/blog; an article marked "hide from search" stays out.
+  const blogEntries: MetadataRoute.Sitemap = (await getArticles())
+    .filter((a) => !a.noindex && !a.canonicalUrl)
+    .map((a) => ({
+      url: `${SITE_URL}/blog/${a.slug}`,
+      lastModified: new Date(a.updatedAt),
+      changeFrequency: "monthly",
+      priority: 0.6,
+      ...(a.coverImage ? { images: [new URL(a.coverImage, SITE_URL).toString()] } : {}),
+    }));
 
   // Dynamic: shared public posts. Best-effort — a DB blip must not break the
   // sitemap.

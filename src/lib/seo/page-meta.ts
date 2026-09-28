@@ -31,6 +31,10 @@ export async function pageMeta(o: {
   image?: string;
   /** Keep out of search results (still followed). */
   noindex?: boolean;
+  /** A canonical URL other than `path` (an article first published elsewhere). */
+  canonical?: string;
+  /** Search keywords (articles: focus keyword + tags). */
+  keywords?: string[];
 }): Promise<Metadata> {
   const s = await getSeoSettings().catch(() => null);
   const siteName = s?.["seo.site_name"] || "RevType";
@@ -38,7 +42,8 @@ export async function pageMeta(o: {
   return {
     title: o.title,
     description: o.description,
-    alternates: { canonical: o.path },
+    alternates: { canonical: o.canonical || o.path },
+    ...(o.keywords?.length ? { keywords: o.keywords } : {}),
     openGraph: {
       type: o.type ?? "website",
       url: o.path,

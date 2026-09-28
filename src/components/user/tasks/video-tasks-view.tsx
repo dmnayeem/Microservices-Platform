@@ -189,7 +189,7 @@ export function VideoTasksView() {
                 }
                 thumbnail={t.thumbnailUrl ?? undefined}
                 status={t.locked ? "LOCKED" : ((t.userStatus ?? "AVAILABLE") as never)}
-                actionLabel={t.locked ? "🔒 Locked" : "Watch & Earn"}
+                actionLabel={t.locked ? "Locked" : "Watch & Earn"}
                 onAction={
                   t.locked ? undefined : () => router.push(`/video-tasks/${t.id}`)
                 }

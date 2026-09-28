@@ -84,6 +84,10 @@ export function LeaderboardStandings({ settings }: Props) {
   const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
   const [data, setData] = useState<LBResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  // The board answers 403 while it is switched off. That body has no
+  // `leaderboard` or `metadata`, and rendering it as if it did crashed the
+  // whole admin section ("This admin section failed to load").
+  const [boardOff, setBoardOff] = useState(false);
   const [previous, setPrevious] = useState<PreviousCycle[]>([]);
   const [previousLoading, setPreviousLoading] = useState(true);
 
@@ -91,9 +95,11 @@ export function LeaderboardStandings({ settings }: Props) {
     let cancel = false;
     setLoading(true);
     fetch(`/api/leaderboard?type=combined&limit=50`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancel) setData(d as LBResponse);
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (cancel) return;
+        if (r.status === 403) setBoardOff(true);
+        if (r.ok && d && Array.isArray(d.leaderboard)) setData(d as LBResponse);
       })
       .catch(() => {})
       .finally(() => {
@@ -110,7 +116,7 @@ export function LeaderboardStandings({ settings }: Props) {
     fetch("/api/admin/leaderboard/history")
       .then((r) => r.json())
       .then((d) => {
-        if (!cancel) setPrevious((d.cycles ?? []) as PreviousCycle[]);
+        if (!cancel) setPrevious(Array.isArray(d?.cycles) ? (d.cycles as PreviousCycle[]) : []);
       })
       .catch(() => {})
       .finally(() => {
@@ -179,7 +185,7 @@ export function LeaderboardStandings({ settings }: Props) {
           <div className="text-[11px] text-slate-500 inline-flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5">
               <Trophy className="w-3.5 h-3.5" />
-              {data?.metadata.totalParticipants?.toLocaleString() ?? "—"}{" "}
+              {data?.metadata?.totalParticipants?.toLocaleString() ?? "—"}{" "}
               participants
             </span>
             <span className="inline-flex items-center gap-1.5">
@@ -244,6 +250,15 @@ export function LeaderboardStandings({ settings }: Props) {
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading…
           </div>
+        ) : boardOff ? (
+          <div className="p-10 text-center text-sm">
+            <p className="font-semibold text-amber-300">The leaderboard is switched off.</p>
+            <p className="mt-1 text-slate-400">
+              Live standings are hidden while it is off. Turn it on under{" "}
+              <Link href="?tab=settings" className="text-blue-400 underline">Settings</Link>.
+              Previous winners are below.
+            </p>
+          </div>
         ) : !data || data.leaderboard.length === 0 ? (
           <div className="p-10 text-center text-slate-500 text-sm">
             No participants yet.
@@ -290,7 +305,7 @@ export function LeaderboardStandings({ settings }: Props) {
                 Score
               </p>
               <p className="text-base font-extrabold text-white tabular-nums">
-                {data.currentUser.score.toFixed(1)}
+                {Number(data.currentUser.score ?? 0).toFixed(1)}
               </p>
             </div>
           </div>
@@ -404,7 +419,7 @@ function LeaderboardRow({ row }: { row: CombinedRow }) {
 
       <div className="text-right shrink-0">
         <p className="text-base font-extrabold text-white tabular-nums">
-          {row.score.toFixed(1)}
+          {Number(row.score ?? 0).toFixed(1)}
         </p>
         <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
           Score
@@ -606,10 +621,10 @@ function PreviousWinnersSection({
                       })}
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      {c.metric.replace(/_/g, " ").toLowerCase()} ·{" "}
-                      {c.winners.length} winners ·{" "}
+                      {String(c.metric ?? "").replace(/_/g, " ").toLowerCase()} ·{" "}
+                      {(c.winners ?? []).length} winners ·{" "}
                       <span className="text-amber-300">
-                        {c.totalPrize.toLocaleString()} pts
+                        {Number(c.totalPrize ?? 0).toLocaleString()} pts
                       </span>
                     </p>
                   </div>
@@ -620,7 +635,7 @@ function PreviousWinnersSection({
               </summary>
               <div className="px-4 sm:px-5 pb-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {c.winners.slice(0, 12).map((w) => (
+                  {(c.winners ?? []).slice(0, 12).map((w) => (
                     <Link
                       key={`${c.cycleId}-${w.rank}`}
                       href={`/admin/users/${w.userId}`}
@@ -634,9 +649,9 @@ function PreviousWinnersSection({
                           {w.name}
                         </p>
                         <p className="text-[10px] text-slate-500 tabular-nums">
-                          {w.value.toLocaleString()} ·{" "}
+                          {Number(w.value ?? 0).toLocaleString()} ·{" "}
                           <span className="text-amber-300">
-                            {w.prize.toLocaleString()} pts
+                            {Number(w.prize ?? 0).toLocaleString()} pts
                           </span>
                         </p>
                       </div>

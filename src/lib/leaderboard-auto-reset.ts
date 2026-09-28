@@ -201,6 +201,8 @@ export async function runLeaderboardAutoReset(opts?: {
     }
     if (out.alreadyCompleted) {
       ran.push({ period, cycleId: out.cycleId, status: "already-settled" });
+    } else if (!out.ok && /switched off/.test(out.error ?? "")) {
+      ran.push({ period, cycleId: out.cycleId, status: "switched-off" });
     } else if (!out.ok) {
       ran.push({
         period,

@@ -41,3 +41,13 @@ export function homeIconUrl(s: S, size: 180 | 192 | 512): string {
   const src = homeIconSource(s);
   return src ? `/app-icon/${size}?v=${versionOf(src)}` : STOCK[size];
 }
+
+/**
+ * The Android "maskable" icon: the same mark with a safe margin, because the
+ * launcher crops the outer ~20% into a circle or squircle. Serving the
+ * full-bleed icon here cut the edges of the logo off on the home screen.
+ */
+export function maskableIconUrl(s: S): string {
+  const src = homeIconSource(s);
+  return src ? `/app-icon/512m?v=${versionOf(src)}` : "/icon-512-maskable.png";
+}

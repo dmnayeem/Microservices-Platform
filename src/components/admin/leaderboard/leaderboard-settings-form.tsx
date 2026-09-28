@@ -1,5 +1,8 @@
 "use client";
 
+import { PrizeSplitBar } from "@/components/admin/shared/prize-split-bar";
+import { allocated, remainingAfterEach } from "@/lib/prize-split";
+import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/lib/confirm";
 import { AdminTableShell } from "@/components/admin/ui/admin-table-shell";
 
@@ -82,6 +85,10 @@ const DEFAULTS = {
     | "TASKS_COMPLETED"
     | "REFERRALS"
     | "XP_EARNED",
+  // Each period can be switched off on its own: no automatic or manual payout.
+  daily_enabled: true,
+  weekly_enabled: true,
+  monthly_enabled: true,
   daily_prize: 5000,
   weekly_prize: 25000,
   monthly_prize: 100000,
@@ -173,6 +180,19 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
   }, []);
 
   const save = async () => {
+    // A per-rank list that adds up to more than the pool would pay more than
+    // the pool. Say so before saving instead of finding out at payout.
+    for (const period of ["daily", "weekly", "monthly"] as const) {
+      const pool = Number(v[`${period}_prize` as keyof Values] ?? 0);
+      const count = Number(v[`${period}_winners` as keyof Values] ?? 1);
+      const given = allocated(((v[`${period}_distribution` as keyof Values] as number[]) ?? []).slice(0, count));
+      if (given > pool) {
+        toast.error(`${period[0].toUpperCase() + period.slice(1)}: the ranks add up to ${given.toLocaleString()} pts`, {
+          description: `That is ${(given - pool).toLocaleString()} more than the ${pool.toLocaleString()} pts pool. Lower a rank or raise the pool.`,
+        });
+        return;
+      }
+    }
     setBusy(true);
     try {
       const settings: Record<string, unknown> = {};
@@ -254,12 +274,23 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
     const sized = [...distribution];
     while (sized.length < winnerCount) sized.push(0);
     sized.length = winnerCount;
+    const pool = Number(v[`${period}_prize` as keyof Values] ?? 0);
+    const left = remainingAfterEach(pool, sized);
     return (
       <div className="space-y-2">
         <p className="text-xs font-medium text-slate-400">
           {kind === "xp" ? "Per-rank XP bonus" : "Per-rank distribution"} (
           {winnerCount} rank{winnerCount === 1 ? "" : "s"}):
         </p>
+        {kind === "points" && (
+          <PrizeSplitBar
+            total={pool}
+            count={winnerCount}
+            amounts={sized}
+            onSplit={updated}
+            disabled={!canEdit}
+          />
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {sized.map((amt, i) => (
             <div key={i} className="relative">
@@ -278,6 +309,11 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
                 disabled={!canEdit}
                 className="w-full pl-8 pr-2 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-60"
               />
+              {kind === "points" && pool > 0 && (
+                <p className={cn("mt-0.5 text-[10px] tabular-nums", left[i] < 0 ? "text-red-400" : "text-slate-500")}>
+                  {left[i] < 0 ? `${Math.abs(left[i]).toLocaleString()} over` : `${left[i].toLocaleString()} left`}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -289,9 +325,8 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
             at 0 for no XP bonus.
           </p>
         ) : (
-          <p className="text-[11px] text-slate-500 tabular-nums">
-            Sum: {sized.reduce((a, b) => a + b, 0).toLocaleString()} pts (target pool:{" "}
-            {Number(v[`${period}_prize` as keyof Values] ?? 0).toLocaleString()} pts)
+          <p className="text-[11px] text-slate-500">
+            Winners are paid exactly these amounts. Use a split button to fill them from the pool, or type each rank.
           </p>
         )}
       </div>
@@ -351,10 +386,22 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
               key={period}
               className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 space-y-3"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-bold text-white capitalize">
                   {period} Leaderboard
                 </h3>
+                <label className="inline-flex items-center gap-2 text-xs font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={v[`${period}_enabled` as keyof Values] !== false}
+                    onChange={(e) => set(`${period}_enabled` as never, e.target.checked as never)}
+                    disabled={!canEdit}
+                    className="h-4 w-4"
+                  />
+                  <span className={v[`${period}_enabled` as keyof Values] !== false ? "text-emerald-300" : "text-slate-500"}>
+                    {v[`${period}_enabled` as keyof Values] !== false ? "On" : "Off — no winners, no payout"}
+                  </span>
+                </label>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Field label="Total Prize Pool (pts)">
@@ -754,7 +801,7 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
                       <tr className="text-[10px] uppercase tracking-wider text-slate-500">
                         <th className="text-left pb-2">Rank</th>
                         <th className="text-left pb-2">User</th>
-                        <th className="text-right pb-2">{c.metric.replace(/_/g, " ")}</th>
+                        <th className="text-right pb-2">{String(c.metric ?? "").replace(/_/g, " ")}</th>
                         <th className="text-right pb-2">Prize</th>
                       </tr>
                     </thead>
@@ -766,10 +813,10 @@ export function LeaderboardSettingsForm({ initial, canEdit, packages }: Props) {
                           </td>
                           <td className="py-1.5 text-white">{w.name}</td>
                           <td className="py-1.5 text-right text-slate-400 tabular-nums">
-                            {w.value.toLocaleString()}
+                            {Number(w.value ?? 0).toLocaleString()}
                           </td>
                           <td className="py-1.5 text-right text-emerald-400 font-semibold tabular-nums">
-                            +{w.prize.toLocaleString()}
+                            +{Number(w.prize ?? 0).toLocaleString()}
                           </td>
                         </tr>
                       ))}

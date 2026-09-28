@@ -131,7 +131,7 @@ export function ArticleTasksView() {
               durationMin={t.duration ?? undefined}
               thumbnail={t.thumbnailUrl ?? undefined}
               status={t.locked ? "LOCKED" : ((t.userStatus ?? "AVAILABLE") as never)}
-              actionLabel={t.locked ? "🔒 Locked" : "Read & Submit"}
+              actionLabel={t.locked ? "Locked" : "Read & Submit"}
               onAction={
                 t.locked ? undefined : () => router.push(`/article-tasks/${t.id}`)
               }

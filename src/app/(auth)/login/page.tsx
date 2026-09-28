@@ -93,6 +93,10 @@ function LoginForm() {
         setError("Invalid 2FA code. Try again.");
         return;
       }
+      if (reason === "TOO_MANY_ATTEMPTS") {
+        setError("Too many failed attempts. Wait 15 minutes, or reset your password.");
+        return;
+      }
       if (reason !== "OK") {
         setError("Invalid email or password");
         return;

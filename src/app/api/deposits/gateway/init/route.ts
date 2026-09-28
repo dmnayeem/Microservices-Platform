@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -37,7 +38,8 @@ export async function POST(request: NextRequest) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const tranId = `dep_${session.user.id.slice(0, 8)}_${Date.now()}`;
+  // Unguessable: the callback looks the deposit up by this id.
+  const tranId = `dep_${randomBytes(12).toString("hex")}`;
 
   const deposit = await prisma.deposit.create({
     data: {

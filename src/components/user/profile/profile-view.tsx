@@ -389,34 +389,36 @@ export function ProfileView() {
             </button>
           </div>
 
-          {/* Inline social stats — compact Facebook-style counter row */}
+          {/* Inline social stats — compact Facebook-style counter row. On a
+              phone the number sits above its label: side by side, "12,840
+              Followers" needed ~95px in an ~80px column and overlapped. */}
           <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-(--app-line)">
             <button
               onClick={() => setPrimaryTab("posts")}
-              className="flex items-baseline justify-center gap-1.5 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
+              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
             >
-              <span className="text-base font-bold text-white tabular-nums">
+              <span className="text-base font-bold text-white tabular-nums leading-tight">
                 {stats.postsCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-(--app-ink-3) font-medium">Posts</span>
+              <span className="text-[11px] text-(--app-ink-3) font-medium whitespace-nowrap">Posts</span>
             </button>
             <button
               onClick={() => setPrimaryTab("followers")}
-              className="flex items-baseline justify-center gap-1.5 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors border-x border-(--app-line)"
+              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors border-x border-(--app-line)"
             >
-              <span className="text-base font-bold text-white tabular-nums">
+              <span className="text-base font-bold text-white tabular-nums leading-tight">
                 {stats.followersCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-(--app-ink-3) font-medium">Followers</span>
+              <span className="text-[11px] text-(--app-ink-3) font-medium whitespace-nowrap">Followers</span>
             </button>
             <button
               onClick={() => setPrimaryTab("following")}
-              className="flex items-baseline justify-center gap-1.5 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
+              className="flex flex-col items-center justify-center gap-0 sm:flex-row sm:items-baseline sm:gap-1.5 min-w-0 hover:bg-(--app-surface-2)/50 rounded-lg py-1.5 transition-colors"
             >
-              <span className="text-base font-bold text-white tabular-nums">
+              <span className="text-base font-bold text-white tabular-nums leading-tight">
                 {stats.followingCount.toLocaleString()}
               </span>
-              <span className="text-[11px] text-(--app-ink-3) font-medium">Following</span>
+              <span className="text-[11px] text-(--app-ink-3) font-medium whitespace-nowrap">Following</span>
             </button>
           </div>
 

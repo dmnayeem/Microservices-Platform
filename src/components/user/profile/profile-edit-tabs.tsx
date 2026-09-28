@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { toast } from "@/lib/toast";
 import {
   Shield,
   Loader2,
@@ -554,12 +553,14 @@ export function PrivacyTab({
         >
           ⬇️ Download My Data
         </a>
-        <button
-          onClick={() => toast.info("Account deletion request goes to support — open a ticket from /support.")}
+        {/* Deletion lives in Settings (with its typed confirmation); this
+            button only showed a toast pointing somewhere else. */}
+        <a
+          href="/settings"
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold border border-red-500/30"
         >
           🗑 Delete Account
-        </button>
+        </a>
       </div>
     </Card>
   );

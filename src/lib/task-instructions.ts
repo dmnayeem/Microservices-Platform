@@ -14,6 +14,7 @@
  * Client-safe: no server imports, so the admin editor and the user-facing
  * renderers share one definition.
  */
+import { sanitizeRichHtml } from "@/lib/rich-html";
 
 /**
  * Does this value carry markup?
@@ -76,15 +77,9 @@ export function instructionsToEditorHtml(
  * than inventing a second, differently-wrong list.
  */
 export function sanitizeInstructionsHtml(html: string): string {
-  return String(html || "")
-    .replace(/<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi, "")
-    .replace(/<\s*script\b[^>]*\/?\s*>/gi, "")
-    .replace(/<\s*(iframe|object|embed|form|input|button)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
-    .replace(/<\s*(iframe|object|embed|form|input|button)\b[^>]*\/?\s*>/gi, "")
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
-    .replace(/javascript\s*:/gi, "");
+  // Shared with the blog and popups (lib/rich-html.ts). It also keeps a
+  // YouTube embed from the editor's video button, rebuilt from its src.
+  return sanitizeRichHtml(html);
 }
 
 /** Is there anything at all to show? */

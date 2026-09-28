@@ -116,7 +116,7 @@ export function BalanceCard({
               <p className="t-figure-sm whitespace-nowrap text-white">
                 {pts(taskCredit)}
               </p>
-              <p className="t-meta text-white/90 truncate">{TASK_CREDIT.blurb}</p>
+              <p className="t-meta text-white/90 line-clamp-2">{TASK_CREDIT.blurb}</p>
             </div>
             <Link
               href="/buy-points"
@@ -137,7 +137,7 @@ export function BalanceCard({
               <p className="t-figure-sm whitespace-nowrap text-white">
                 {usd(adCredit)}
               </p>
-              <p className="t-meta text-white/90 truncate">
+              <p className="t-meta text-white/90 line-clamp-2">
                 Funds ad campaigns · non-withdrawable
               </p>
             </div>

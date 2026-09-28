@@ -92,7 +92,7 @@ export function NotificationCard({
       // the glow and the pulse without three places to keep in step.
       style={{ ["--notif-accent" as string]: def.mail.accent }}
       className={cn(
-        "rounded-xl border p-4 transition-colors",
+        "rounded-xl border p-3 sm:p-4 transition-colors",
         def.web.ring,
         decorated && !isRead ? def.web.surface : "",
         isRead && "opacity-75",
@@ -100,14 +100,19 @@ export function NotificationCard({
         className
       )}
     >
-      <div className="flex items-start gap-3">
+      {/* The icon sits beside the title only. The message, image and buttons
+          run the card's full width below it (indented to the title from
+          `sm` up). On a 320px phone the message used to share its row with
+          the icon AND the mark-read/delete buttons, which left it ~84px —
+          two words to a line. */}
+      <div className="flex items-start gap-2.5 sm:gap-3">
         <div
           className={cn(
-            "w-10 h-10 rounded-xl grid place-items-center shrink-0",
+            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl grid place-items-center shrink-0",
             def.web.iconWrap
           )}
         >
-          <Icon className="w-5 h-5" />
+          <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -144,43 +149,46 @@ export function NotificationCard({
           >
             {title}
           </h3>
-
-          <p className="mt-1 text-sm text-(--app-ink-3) whitespace-pre-line break-words">
-            {message}
-          </p>
-
-          {payload.imageUrl && (
-            // Arbitrary admin-supplied artwork, so a plain <img> through the
-            // media proxy — the bucket is private and a raw URL renders blank.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={mediaSrc(payload.imageUrl)}
-              alt=""
-              loading="lazy"
-              className="mt-3 w-full max-h-52 object-cover rounded-lg border border-(--app-line)"
-            />
-          )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            {payload.actionUrl && (
-              <Link
-                href={payload.actionUrl}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition",
-                  def.web.button
-                )}
-              >
-                {payload.actionLabel || "Open"}
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            )}
-            {createdAtLabel && (
-              <span className="text-xs text-(--app-ink-3)">{createdAtLabel}</span>
-            )}
-          </div>
         </div>
+      </div>
 
-        {children && <div className="flex items-center gap-2 shrink-0">{children}</div>}
+      <div className="sm:pl-13">
+        <p className="mt-2 text-sm leading-relaxed text-(--app-ink-3) whitespace-pre-line break-words">
+          {message}
+        </p>
+
+        {payload.imageUrl && (
+          // Arbitrary admin-supplied artwork, so a plain <img> through the
+          // media proxy — the bucket is private and a raw URL renders blank.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mediaSrc(payload.imageUrl)}
+            alt=""
+            loading="lazy"
+            className="mt-3 w-full max-h-52 object-cover rounded-lg border border-(--app-line)"
+          />
+        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          {payload.actionUrl && (
+            <Link
+              href={payload.actionUrl}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition",
+                def.web.button
+              )}
+            >
+              {payload.actionLabel || "Open"}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
+          {createdAtLabel && (
+            <span className="text-xs text-(--app-ink-3)">{createdAtLabel}</span>
+          )}
+          {/* Row actions (mark read, delete) share the time's line instead
+              of taking a column of their own beside the text. */}
+          {children && <div className="ml-auto flex items-center gap-1 shrink-0">{children}</div>}
+        </div>
       </div>
     </div>
   );

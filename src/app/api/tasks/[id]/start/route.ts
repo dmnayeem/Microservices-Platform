@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openSubmission } from "@/lib/open-submission";
+import { taskStartFraudGate, taskStartPlanGate } from "@/lib/task-start-gates";
 import { syncCountryMode } from "@/lib/country-mode";
-import { countryOfIp } from "@/lib/geo";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/require-active";
@@ -15,19 +16,6 @@ import { getUserDayContext } from "@/lib/user-day";
 import { getTaskChainState } from "@/lib/task-sequence";
 import { matchesTaskAudience } from "@/lib/task-targeting";
 import { stripUniqueKey, toPlayerQuestions } from "@/lib/task-player-view";
-import {
-  getActiveMissionForUser,
-  buildDailyProgress,
-  resolveTaskTypeBucket,
-} from "@/lib/daily-mission-progress";
-import { clientIp } from "@/lib/rate-limit";
-import {
-  getFraudConfig,
-  isVpnIp,
-  accountsOnIp,
-} from "@/lib/fraud";
-import { addFraudRisk } from "@/lib/fraud-risk";
-import { accountsOnDevice, flagOnce, readDevice, recordDevice } from "@/lib/device";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 
 const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
@@ -70,99 +58,9 @@ export async function POST(
       );
     }
 
-    // ── Anti-fraud gate (all admin-toggleable) ──────────────────────────────
-    const ip = clientIp(request);
-    const ua = request.headers.get("user-agent");
-    const fraud = await getFraudConfig();
-    // Record the most-recent IP (best-effort) for the per-IP account cap.
-    if (ip && ip !== "unknown") {
-      void prisma.user
-        .update({ where: { id: session.user.id }, data: { lastIp: ip, lastCountry: countryOfIp(ip) } })
-        .catch(() => {});
-    }
-    // VPN/proxy block (best-effort heuristic).
-    // One offence per user per day: every retry of a blocked start used to
-    // write another event, and now each one would also add risk.
-    const today = new Date().toISOString().slice(0, 10);
-    if (isVpnIp(ip, fraud)) {
-      await addFraudRisk({
-        userId: session.user.id,
-        signal: "VPN_DETECTED",
-        dedupeKey: `vpn:${session.user.id}:${today}`,
-        ipAddress: ip,
-        userAgent: ua,
-      });
-      return NextResponse.json(
-        {
-          error:
-            "Please turn off your VPN/proxy to work on tasks.",
-          code: "VPN_BLOCKED",
-        },
-        { status: 403 }
-      );
-    }
-    // Accounts per DEVICE — the real multi-account signal. Several accounts
-    // working from one browser is what account farming looks like; it adds
-    // fraud risk (once a day) and, by default, stops the task.
-    const seen = await readDevice();
-    void recordDevice(session.user.id, { ...seen, ip: ip && ip !== "unknown" ? ip : seen.ip });
-    if (fraud.maxAccountsPerDevice > 0 && seen.deviceId) {
-      const n = await accountsOnDevice(seen.deviceId);
-      if (n > fraud.maxAccountsPerDevice) {
-        await addFraudRisk({
-          userId: session.user.id,
-          signal: "MULTIPLE_ACCOUNTS",
-          dedupeKey: `multidev:${session.user.id}:${today}`,
-          ipAddress: ip,
-          userAgent: ua,
-          details: { accountsOnDevice: n, cap: fraud.maxAccountsPerDevice, deviceId: seen.deviceId },
-        });
-        if (fraud.deviceLimitAction === "block") {
-          return NextResponse.json(
-            {
-              error: `This device is used by ${n} accounts — the limit is ${fraud.maxAccountsPerDevice}. Work from your own account on your own device.`,
-              code: "DEVICE_LIMIT",
-            },
-            { status: 403 }
-          );
-        }
-      }
-    }
-
-    // Accounts per IP. A home or office WiFi puts many honest people behind
-    // one IP, so by default ("flag") this is recorded once a day for review
-    // and adds NO fraud risk — with risk points, a 20-person office would
-    // have been auto-suspended in ten days. "block" refuses, as it used to.
-    if (fraud.maxUsersPerIp > 0) {
-      const n = await accountsOnIp(ip, session.user.id);
-      if (n >= fraud.maxUsersPerIp) {
-        if (fraud.ipLimitAction === "block") {
-          await addFraudRisk({
-            userId: session.user.id,
-            signal: "MULTIPLE_ACCOUNTS",
-            dedupeKey: `multiacct:${session.user.id}:${today}`,
-            ipAddress: ip,
-            userAgent: ua,
-            details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp },
-          });
-          return NextResponse.json(
-            {
-              error:
-                "Too many accounts are working from this network. Only a limited number are allowed per connection.",
-              code: "IP_LIMIT",
-            },
-            { status: 403 }
-          );
-        }
-        await flagOnce(`ipflag:${session.user.id}:${today}`, {
-          userId: session.user.id,
-          eventType: "SHARED_IP",
-          ipAddress: ip,
-          userAgent: ua,
-          details: { accountsOnIp: n + 1, cap: fraud.maxUsersPerIp, note: "review only — shared WiFi is normal" },
-        });
-      }
-    }
+    // Anti-fraud gate (all admin-toggleable) — see lib/task-start-gates.ts.
+    const fraudBlocked = await taskStartFraudGate(request, session.user.id);
+    if (fraudBlocked) return fraudBlocked;
 
     const { id } = await params;
 
@@ -304,58 +202,9 @@ export async function POST(
     // computed once and reused (both the plan-wide and per-task daily limits).
     const { startOfDayUtc: dayStart } = await getUserDayContext(session.user.id);
 
-    // Daily-mission cap: the user's daily mission defines their per-type task
-    // allowance. A type not in the mission, or one whose target is already met,
-    // is upgrade-gated. Only applies when an active qualifying mission exists.
-    const mission = await getActiveMissionForUser(session.user.id);
-    if (mission && mission.items.length > 0) {
-      const bucket = task.boardId ? "BOARD" : resolveTaskTypeBucket(task.type);
-      const item = mission.items.find(
-        (it) => resolveTaskTypeBucket(it.taskType) === bucket
-      );
-      if (!item) {
-        return NextResponse.json(
-          {
-            error:
-              "This task isn't part of your daily mission. Upgrade your plan to unlock more tasks.",
-            code: "UPGRADE_REQUIRED",
-          },
-          { status: 403 }
-        );
-      }
-      const countByType = await buildDailyProgress(
-        session.user.id,
-        mission.items
-      );
-      if ((countByType[bucket] ?? 0) >= item.targetCount) {
-        return NextResponse.json(
-          {
-            error: `You've finished today's ${task.type.toLowerCase()} tasks in your daily mission. Upgrade your plan for more.`,
-            code: "UPGRADE_REQUIRED",
-          },
-          { status: 403 }
-        );
-      }
-    }
-
-    // Plan-level dailyTaskLimit (across all tasks today).
-    if (userPackage && userPackage.dailyTaskLimit !== -1) {
-      const totalToday = await prisma.taskSubmission.count({
-        where: {
-          userId: session.user.id,
-          createdAt: { gte: dayStart },
-          status: { in: ["APPROVED", "AUTO_APPROVED", "PENDING"] },
-        },
-      });
-      if (totalToday >= userPackage.dailyTaskLimit) {
-        return NextResponse.json(
-          {
-            error: `Daily task limit reached for your plan (${userPackage.dailyTaskLimit}/day).`,
-          },
-          { status: 400 }
-        );
-      }
-    }
+    // Daily mission + plan cap — see lib/task-start-gates.ts.
+    const planBlocked = await taskStartPlanGate(session.user.id, task, userPackage, dayStart);
+    if (planBlocked) return planBlocked;
 
     // Total task limit (global across all users)
     if (task.totalLimit && task.completedCount >= task.totalLimit) {
@@ -565,13 +414,7 @@ export async function POST(
       });
     }
 
-    const submission = await prisma.taskSubmission.create({
-      data: {
-        taskId: id,
-        userId: session.user.id,
-        status: SubmissionStatus.PENDING,
-      },
-    });
+    const submission = await openSubmission(id, session.user.id);
 
     return NextResponse.json({
       submission: {
@@ -594,8 +437,10 @@ export async function POST(
         socialAction: task.socialAction,
         socialUrl: task.socialUrl,
         socialConfig: task.socialConfig,
-        videoConfig: task.videoConfig,
-        questions: task.questions,
+        // Sanitised like the two branches above. This (the first-start) branch
+        // sent the raw answer key and the video's proof code to the browser.
+        videoConfig: stripUniqueKey(task.videoConfig),
+        questions: toPlayerQuestions(task.questions),
         autoApprove: task.autoApprove,
       },
       message: "Task started successfully",

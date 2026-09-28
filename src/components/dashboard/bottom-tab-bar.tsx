@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchHeaderData } from "@/lib/header-data";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -67,15 +68,8 @@ export function BottomTabBar({
   // /api/header is two indexed reads; /api/notifications ran three queries
   // (including a findMany) just to read a count off the response.
   const loadUnread = useCallback(async () => {
-    try {
-      const r = await fetch("/api/header", {
-        cache: "no-store",
-      });
-      const d = await r.json();
-      setUnread(d.unreadCount || 0);
-    } catch {
-      /* ignore */
-    }
+    const d = await fetchHeaderData();
+    if (d) setUnread(d.unreadCount || 0);
   }, []);
 
   useEffect(() => {

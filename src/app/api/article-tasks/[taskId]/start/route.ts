@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openSubmission } from "@/lib/open-submission";
+import { taskStartFraudGate, taskStartPlanGate } from "@/lib/task-start-gates";
+import { getEffectivePackage } from "@/lib/packages";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/require-active";
@@ -30,7 +33,7 @@ import { profileGateResponse } from "@/lib/profile-gate-server";
  *   4. Return the page-1 URL with `?eg=<token>` appended.
  */
 export async function POST(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   const session = await auth();
@@ -52,6 +55,9 @@ export async function POST(
       { status: active.httpStatus }
     );
   }
+
+  const fraudBlocked = await taskStartFraudGate(request, session.user.id);
+  if (fraudBlocked) return fraudBlocked;
 
   const { taskId } = await params;
 
@@ -169,6 +175,15 @@ export async function POST(
       );
     }
 
+    // The daily mission / plan allowance, as on every other task.
+    const planBlocked = await taskStartPlanGate(
+      session.user.id,
+      task,
+      await getEffectivePackage(session.user.id),
+      todayStart
+    );
+    if (planBlocked) return planBlocked;
+
     // cooldownMinutes (per user, since last submission of any status)
     if (task.cooldownMinutes > 0) {
       const cooldownTime = new Date(
@@ -199,13 +214,7 @@ export async function POST(
       }
     }
 
-    submission = await prisma.taskSubmission.create({
-      data: {
-        taskId: task.id,
-        userId: session.user.id,
-        status: SubmissionStatus.PENDING,
-      },
-    });
+    submission = await openSubmission(task.id, session.user.id);
   }
 
   const token = signArticleTaskToken({

@@ -8,7 +8,11 @@ export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
 
-    if (!token) {
+    // The token must be the exact string we issue (32 random bytes, hex). It
+    // went into the Prisma filter as-is, so a body of {"token":{"not":""}}
+    // matched ANY live impersonation token and signed the caller in as that
+    // user — no login needed. Anything that is not that shape is refused.
+    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
       return NextResponse.json(
         { error: "Token is required" },
         { status: 400 }

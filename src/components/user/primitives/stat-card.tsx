@@ -81,10 +81,14 @@ export function StatCard({
       : value;
 
   return (
-    <div className={cn("app-card", className)}>
-      <div className="flex items-center gap-3 min-w-0">
+    // A container, so the tile lays itself out by the room it actually has:
+    // below ~8.5rem of content (a 2-up grid on a 320–360px phone) the icon
+    // moves above the text and the text gets the tile's full width. Beside
+    // the icon, "Total withdrawn" had 54px and broke into three lines.
+    <div className={cn("app-card @container", className)}>
+      <div className="flex items-center gap-3 min-w-0 @max-[8.5rem]:flex-col @max-[8.5rem]:items-start @max-[8.5rem]:gap-2">
         {icon && <div className={TONE_CLASSES[tone]}>{icon}</div>}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 @max-[8.5rem]:w-full">
           <p
             className={STAT_VALUE_CLASS}
             title={`${shown}${sub ?? ""}${unit ? ` ${unit}` : ""}`}

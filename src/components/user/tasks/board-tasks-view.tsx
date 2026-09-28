@@ -119,7 +119,7 @@ const TASK_TYPE_ROUTE: Record<string, string> = {
   QUIZ: "/quiz-tasks",
   SOCIAL: "/social-tasks",
   PROXY: "/proxy-tasks",
-  MANUAL: "/manual-tasks",
+  MANUAL: "/custom-tasks",
 };
 
 export function BoardTasksView() {

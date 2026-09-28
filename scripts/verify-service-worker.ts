@@ -226,7 +226,9 @@ console.log("1. Every path resolves to a real Response");
   );
   check(
     "the cache version was bumped so the broken entries are dropped",
-    /revtype-shell-v4/.test(swSource) && /revtype-runtime-v4/.test(swSource)
+    // v4 dropped the broken entries; later bumps (v5: the rebranded icons)
+    // must not fail this check.
+    /revtype-shell-v([4-9]|\d{2,})"/.test(swSource) && /revtype-runtime-v([4-9]|\d{2,})"/.test(swSource)
   );
 
   const reg = fs.readFileSync(

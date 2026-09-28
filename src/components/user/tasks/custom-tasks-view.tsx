@@ -93,7 +93,7 @@ export function CustomTasksView() {
               thumbnail={t.thumbnailUrl ?? undefined}
               href={taskRunHref("CUSTOM", t.id)}
               status={t.locked ? "LOCKED" : t.userStatus ?? "AVAILABLE"}
-              actionLabel={t.locked ? "🔒 Locked" : undefined}
+              actionLabel={t.locked ? "Locked" : undefined}
             />
           ))}
         </div>

@@ -493,11 +493,9 @@ export function ProfileTabBody({
                 icon={<Phone className="w-4 h-4" />}
                 label="Phone"
                 ok={verification.isPhoneVerified}
-                action={
-                  verification.isPhoneVerified
-                    ? null
-                    : { label: "Verify", href: "/verify-phone" }
-                }
+                // No action: there is no phone-verification page yet (see
+                // lib/profile-completion.ts), and the button led to a 404.
+                action={null}
               />
               <VerifTile
                 icon={<Shield className="w-4 h-4" />}

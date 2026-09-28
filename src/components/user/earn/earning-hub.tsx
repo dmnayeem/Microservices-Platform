@@ -72,7 +72,7 @@ const QA_CHIP: Record<string, string> = {
 const QUICK_ACCESS = [
   { name: "Daily Mission", href: "/daily-mission", icon: Award, tone: "indigo" },
   { name: "Lottery", href: "/lottery", icon: Ticket, tone: "violet" },
-  { name: "Manual Tasks", href: "/manual-tasks", icon: ClipboardList, tone: "indigo" },
+  { name: "Custom Tasks", href: "/custom-tasks", icon: ClipboardList, tone: "indigo" },
   { name: "Quiz Tasks", href: "/quiz-tasks", icon: Brain, tone: "emerald" },
   { name: "Social Tasks", href: "/social-tasks", icon: Send, tone: "cyan" },
   { name: "Proxy", href: "/proxy-tasks", icon: Globe, tone: "rose" },
@@ -326,7 +326,7 @@ export function LearnTab() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-white">Available Courses</h2>
         <Link
-          href="/course-creator"
+          href="/tutor/courses/new"
           className="inline-flex items-center gap-1 text-xs font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
         >
           <Sparkles className="w-3.5 h-3.5" />

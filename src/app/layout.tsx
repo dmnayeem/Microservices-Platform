@@ -1,4 +1,5 @@
 import { BrandProvider } from "@/components/providers/brand";
+import { PopupHost } from "@/components/providers/popup-host";
 import { isWideLogo } from "@/lib/brand-logo-shape";
 import type { Metadata, Viewport } from "next";
 import { customFavicon, homeIconUrl, logoSrc } from "@/lib/brand-icons";
@@ -308,6 +309,8 @@ export default async function RootLayout({
           <PwaInstallPrompt enabled={ui.pwaInstallPrompt} />
           <ConfirmHost />
           <NotifyCenterHost />
+          {/* Admin popups (/admin/popups) — every page, visitors included. */}
+          <PopupHost />
           <RewardInterstitialHost />
           <AdblockHost />
           <Toaster

@@ -388,7 +388,9 @@ export default async function CoursesAdminPage({ searchParams }: PageProps) {
                 cell: (c) => (
                   <div className="flex items-center gap-1">
                     <Link
-                      href={`/admin/courses/${c.id}`}
+                      // /admin/courses/[id] has no page of its own (only
+                      // /edit and /analytics); the course page takes an id.
+                      href={`/courses/${c.id}`}
                       className="p-1.5 rounded hover:bg-slate-700 text-blue-400"
                       title="View"
                     >

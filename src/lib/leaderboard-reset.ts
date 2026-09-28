@@ -1,4 +1,5 @@
 import "server-only";
+import { splitBudget } from "@/lib/prize-split";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import {
@@ -202,22 +203,18 @@ export function distributePrizes(
   count: number,
   custom: number[] | null
 ) {
+  // A saved per-rank list is paid exactly as typed — zeros included, which is
+  // how an admin pays nothing for a period. (The form's split buttons fill the
+  // list from the pool; the Off switch stops a period outright.)
   if (custom && custom.length > 0) {
     const sliced = custom.slice(0, count);
     while (sliced.length < count) sliced.push(0);
     return sliced.map((n) => Math.max(0, Math.round(n)));
   }
   if (count <= 0 || total <= 0) return [];
-  // Default weighted distribution: rank 1 gets 50%, rank 2 30%, rank 3 15%, rest split
-  const weights =
-    count === 1
-      ? [1]
-      : count === 2
-      ? [0.65, 0.35]
-      : count === 3
-      ? [0.5, 0.3, 0.2]
-      : [0.5, 0.25, 0.15, ...Array(count - 3).fill(0.1 / (count - 3))];
-  return weights.map((w) => Math.round(total * w));
+  // Default: rank 1 gets 50%, rank 2 25%, rank 3 15%, the rest share 10% —
+  // exact to the point (lib/prize-split.ts puts the rounding on 1st place).
+  return splitBudget(total, count, "top");
 }
 
 /**
@@ -666,6 +663,16 @@ export async function runLeaderboardReset(
   );
 
   if (!frozen || frozen.length === 0) {
+    // Switched off for this period (Settings → On/Off): no new cycle is ranked
+    // or paid. A cycle already frozen above is still finished — its winners
+    // were chosen while it was on.
+    if ((await readSetting(`lb_${period}_enabled`)) === false) {
+      return {
+        ...base,
+        error: `The ${period} leaderboard is switched off in Settings, so there is no ${period} winner or payout.`,
+        status: 400,
+      };
+    }
     // Fresh cycle: rank, size the prizes, and FREEZE before paying anything.
     const eligiblePackages = await getEligiblePackages();
     const eligibleSet = new Set(eligiblePackages.map((s) => s.toUpperCase()));

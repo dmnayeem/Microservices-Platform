@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         title: u.name ?? u.username ?? "User",
         subtitle: u.username ? `@${u.username}` : undefined,
         imageUrl: u.avatar ?? undefined,
-        href: `/profile/${u.id}`,
+        href: `/u/${u.username ?? u.id}`,
       });
     }
   }

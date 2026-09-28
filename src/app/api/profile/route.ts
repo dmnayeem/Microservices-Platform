@@ -154,27 +154,73 @@ export async function GET() {
       }
     };
 
-    // Counts that aren't direct User relations
-    const [coursesCreatedCount, marketplaceSalesCount, marketplaceTotalSalesAmount] =
-      await Promise.all([
+    // Everything below is independent, so it runs at once. It used to be nine
+    // awaits in a row — nine database round trips through Accelerate before
+    // the profile page could render.
+    const [
+      coursesCreatedCount,
+      marketplaceSalesCount,
+      marketplaceTotalSalesAmount,
+      achievementsCount,
+      socialEarnAgg,
+      pointsPerUsd,
+      todaySubmissions,
+      socialAccounts,
+      xpRank,
+    ] = await Promise.all([
+      // Counts that aren't direct User relations
+      safe(prisma.course.count({ where: { createdById: session.user.id } }), 0),
+      safe(
+        prisma.marketplacePurchase.count({
+          where: { listing: { sellerId: session.user.id } },
+        }),
+        0
+      ),
+      safe(
+        prisma.marketplacePurchase.aggregate({
+          where: { listing: { sellerId: session.user.id }, status: "COMPLETED" },
+          _sum: { sellerAmount: true },
+        }),
+        { _sum: { sellerAmount: null } }
+      ),
+      safe(prisma.userAchievement.count({ where: { userId: session.user.id } }), 0),
+      // Social-earning points = sum of what this user's posts have earned from
+      // engagement (Post.socialEarnings, credited in lib/social-earning.ts).
+      safe(
+        prisma.post.aggregate({
+          where: { userId: session.user.id },
+          _sum: { socialEarnings: true },
+        }),
+        { _sum: { socialEarnings: null } }
+      ),
+      getPointsPerUsd(),
+      // The user's LOCAL midnight — the same boundary daily limits, the daily
+      // mission and the tasks-hub summary use. This route was the only one on
+      // server-local midnight, so "Completed Today" here and on the tasks hub
+      // could disagree while sitting side by side on the same screen.
+      getUserDayContext(session.user.id).then(({ startOfDayUtc: todayStart }) =>
         safe(
-          prisma.course.count({ where: { createdById: session.user.id } }),
-          0
-        ),
-        safe(
-          prisma.marketplacePurchase.count({
-            where: { listing: { sellerId: session.user.id } },
+          prisma.taskSubmission.findMany({
+            where: {
+              userId: session.user.id,
+              createdAt: { gte: todayStart },
+              status: { in: ["APPROVED", "AUTO_APPROVED"] },
+            },
+            select: { pointsEarned: true, xpEarned: true },
           }),
-          0
-        ),
-        safe(
-          prisma.marketplacePurchase.aggregate({
-            where: { listing: { sellerId: session.user.id }, status: "COMPLETED" },
-            _sum: { sellerAmount: true },
-          }),
-          { _sum: { sellerAmount: null } }
-        ),
-      ]);
+          [] as { pointsEarned: number | null; xpEarned: number | null }[]
+        )
+      ),
+      safe(
+        prisma.socialAccount.findMany({
+          where: { userId: session.user.id },
+          orderBy: { connectedAt: "asc" },
+        }),
+        []
+      ),
+      // XP rank — also non-critical; default to 0 (unranked) on failure.
+      safe(getXpRank(u.id, u.xp), 0),
+    ]);
 
     const pkg = u.package;
 
@@ -182,57 +228,13 @@ export async function GET() {
     const xpProgress = u.xp - calculateXpForLevel(u.level);
     const xpNeeded = Math.max(1, xpForNextLevel - calculateXpForLevel(u.level));
 
-    const achievementsCount = await safe(
-      prisma.userAchievement.count({ where: { userId: session.user.id } }),
-      0
-    );
-
-    // Social-earning points = sum of what this user's posts have earned from
-    // engagement (Post.socialEarnings, credited in lib/social-earning.ts).
-    const socialEarnAgg = await safe(
-      prisma.post.aggregate({
-        where: { userId: session.user.id },
-        _sum: { socialEarnings: true },
-      }),
-      { _sum: { socialEarnings: null } }
-    );
     const socialEarningsPoints = socialEarnAgg._sum.socialEarnings ?? 0;
-    const pointsPerUsd = await getPointsPerUsd();
-
-    // The user's LOCAL midnight — the same boundary daily limits, the daily
-    // mission and the tasks-hub summary use. This route was the only one on
-    // server-local midnight, so "Completed Today" here and on the tasks hub
-    // could disagree while sitting side by side on the same screen.
-    const { startOfDayUtc: todayStart } = await getUserDayContext(session.user.id);
-
-    const todaySubmissions = await safe(
-      prisma.taskSubmission.findMany({
-        where: {
-          userId: session.user.id,
-          createdAt: { gte: todayStart },
-          status: { in: ["APPROVED", "AUTO_APPROVED"] },
-        },
-        select: { pointsEarned: true, xpEarned: true },
-      }),
-      [] as { pointsEarned: number | null; xpEarned: number | null }[]
-    );
 
     const todayStats = {
       count: todaySubmissions.length,
       pointsEarned: todaySubmissions.reduce((sum, s) => sum + (s.pointsEarned || 0), 0),
       xpEarned: todaySubmissions.reduce((sum, s) => sum + (s.xpEarned || 0), 0),
     };
-
-    const socialAccounts = await safe(
-      prisma.socialAccount.findMany({
-        where: { userId: session.user.id },
-        orderBy: { connectedAt: "asc" },
-      }),
-      []
-    );
-
-    // XP rank — also non-critical; default to 0 (unranked) on failure.
-    const xpRank = await safe(getXpRank(u.id, u.xp), 0);
 
     const completion = calculateProfileCompletion({
       avatar: u.avatar,

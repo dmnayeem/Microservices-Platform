@@ -36,6 +36,8 @@ async function fetchDeliverableBytes(url: string): Promise<Buffer | null> {
     await assertPublicUrl(url); // files[] is client-supplied → guard SSRF
     const res = await fetch(url, {
       signal: AbortSignal.timeout(20_000),
+      // A redirect would skip the public-URL check above (to 169.254… etc).
+      redirect: "manual",
       headers: { Range: `bytes=0-${PARSE_BYTE_CAP - 1}` },
     });
     if (!res.ok && res.status !== 206) return null;

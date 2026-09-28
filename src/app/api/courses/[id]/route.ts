@@ -124,6 +124,7 @@ export async function POST(
         status: true,
         isFree: true,
         price: true,
+        discountPrice: true,
         tutorId: true,
       },
     });
@@ -132,6 +133,16 @@ export async function POST(
       return NextResponse.json(
         { error: "Course not found" },
         { status: 404 }
+      );
+    }
+
+    // Free courses only. A paid course is bought through /enroll, which
+    // charges the buyer and pays the tutor; this path enrolled anyone for free.
+    const livePrice = Number(course.discountPrice ?? course.price ?? 0);
+    if (!course.isFree && livePrice > 0) {
+      return NextResponse.json(
+        { error: "This course is paid. Enroll from the course page." },
+        { status: 402 }
       );
     }
 

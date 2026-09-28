@@ -173,12 +173,12 @@ export function TaskCard({
           amber 14px next to a purple 12px XP figure and an indigo button:
           three colours, one size, nothing leading. */}
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-(--app-line)">
-        <div className="flex items-baseline gap-2">
-          <span className="t-figure-sm inline-flex items-baseline gap-1 text-white">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="t-figure-sm inline-flex items-baseline gap-1 text-white whitespace-nowrap">
             <Coins className="w-4 h-4 self-center text-(--app-ink-3)" />+{reward}
           </span>
           {xpReward !== undefined && xpReward > 0 && (
-            <span className="t-meta font-bold text-(--app-ink-3) tabular-nums">
+            <span className="t-meta font-bold text-(--app-ink-3) tabular-nums whitespace-nowrap">
               +{xpReward} XP
             </span>
           )}

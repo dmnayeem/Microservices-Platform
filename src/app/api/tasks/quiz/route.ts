@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
+import { getBuyerSettings } from "@/lib/buyer-settings";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { syncUserLevelQuietly } from "@/lib/level-sync";
@@ -395,14 +397,57 @@ export async function POST(request: NextRequest) {
     // too. Otherwise a stranded AUTO_APPROVED row would block the retry
     // ("already completed this quiz today") and the user would lose the day's
     // reward. On a fail there's no credit, so a plain create is fine.
+    // Read outside the transaction (settings lookups inside one eat the 15 s
+    // Accelerate budget).
+    const pointsPerUsd = await getPointsPerUsd();
+    const { feePercent: buyerFeePercent } = passed && task.fundedByUserId
+      ? await getBuyerSettings()
+      : { feePercent: 0 };
+    // Set inside the transaction, sent after it commits.
+    const closed: { v: { buyerId: string; taskTitle: string; reason: "NO_CREDIT" | "DELIVERED" } | null } = { v: null };
+
     const submission = passed
       ? await prisma.$transaction(async (tx) => {
-          const pointsPerUsd = await getPointsPerUsd();
+          // Serialise this user's quiz payouts, then re-check "already done
+          // today" under the lock. The check above is outside any transaction,
+          // so two answers sent at once were both paid.
+          await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${session.user.id} FOR UPDATE`;
+          const dup = await tx.taskSubmission.findFirst({
+            where: { taskId, userId: session.user.id, createdAt: { gte: todayStart } },
+            select: { id: true },
+          });
+          if (dup) throw new Error("QUIZ_ALREADY_DONE");
+
+          // A buyer-funded quiz is paid from the buyer's budget, like every
+          // other funded task. This route minted the reward without charging.
+          if (task.fundedByUserId) {
+            const charge = await chargeTaskCompletion(tx, {
+              taskId: task.id,
+              buyerId: task.fundedByUserId,
+              rewardPoints: pointsEarned,
+              standardReward: task.pointsReward,
+              feePercent: buyerFeePercent,
+              remainingBudget: task.remainingBudget,
+            });
+            if (charge.closeTask) {
+              await tx.task.update({ where: { id: task.id }, data: { status: "COMPLETED" } });
+              closed.v = {
+                buyerId: task.fundedByUserId,
+                taskTitle: task.title,
+                reason: charge.closeReason ?? "DELIVERED",
+              };
+            }
+            // Out of budget: keep the closure, pay nothing.
+            if (!charge.paid) return null;
+          }
+
           const sub = await tx.taskSubmission.create({
             data: {
               taskId,
               userId: session.user.id,
               status: "AUTO_APPROVED",
+              // Graded on the spot: decided when submitted.
+              reviewedAt: new Date(),
               // A decided quiz is a SUBMITTED quiz. Leaving this null read as
               // "still in progress" everywhere that distinction is drawn — the
               // worker's own task list, and the admin's submissions page,
@@ -446,12 +491,21 @@ export async function POST(request: NextRequest) {
             userId: session.user.id,
             status: "REJECTED",
             submittedAt: new Date(),
+            reviewedAt: new Date(),
             answers: answersJson,
             score,
             pointsEarned,
             xpEarned,
           },
         });
+
+    if (closed.v) void notifyTaskClosed(closed.v);
+    if (!submission) {
+      return NextResponse.json(
+        { error: "This quiz has run out of budget." },
+        { status: 400 }
+      );
+    }
 
     // A pass just took a slot — retire the task if that filled its global
     // `totalLimit`. Outside the transaction: the reward is already committed.
@@ -479,6 +533,12 @@ export async function POST(request: NextRequest) {
         : `You scored ${score}%. You need at least 70% to pass. Try again tomorrow!`,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "QUIZ_ALREADY_DONE") {
+      return NextResponse.json(
+        { error: "You have already completed this quiz today" },
+        { status: 400 }
+      );
+    }
     console.error("Error submitting quiz:", error);
     return NextResponse.json(
       { error: "Failed to submit quiz" },

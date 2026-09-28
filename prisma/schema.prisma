@@ -376,6 +376,85 @@ model Banner {
   @@index([isActive, location])
 }
 
+/// Site popups — a notice, an image or an ad shown over the page to the
+/// audience it targets (/admin/popups). Audience columns and matching are the
+/// banner's (src/lib/banner-audience.ts), so a popup and a banner aimed at the
+/// same people reach the same people.
+model SitePopup {
+  id              String    @id @default(cuid())
+  title           String
+  /// NOTICE | IMAGE | AD
+  kind            String    @default("NOTICE")
+  /// Rich HTML from the editor, sanitised when rendered (lib/rich-html.ts).
+  body            String?   @db.Text
+  imageUrl        String?
+  ctaLabel        String?
+  ctaUrl          String?
+  /// ALL | APP (signed-in pages) | SITE (public pages) | PATHS (see `paths`)
+  placement       String    @default("ALL")
+  /// Path prefixes for PATHS, e.g. "/social", "/wallet".
+  paths           String[]  @default([])
+  /// ANY | SIGNED_IN | VISITORS
+  sessionAudience String    @default("ANY")
+  /// ONCE | DAILY | SESSION | ALWAYS
+  frequency       String    @default("ONCE")
+  delaySeconds    Int       @default(2)
+  priority        Int       @default(0)
+  isActive        Boolean   @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  views           Int       @default(0)
+  clicks          Int       @default(0)
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  countries    String[] @default([])
+  genders      String[] @default([])
+  regions      String[] @default([])
+  divisions    String[] @default([])
+  districts    String[] @default([])
+  subDistricts String[] @default([])
+  postalCodes  String[] @default([])
+  minAge       Int?
+  maxAge       Int?
+  /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED"
+  kycAudience  String   @default("ANY")
+
+  @@index([isActive, priority])
+}
+
+/// Blog articles written at /admin/blog and published at /blog/[slug].
+model BlogPost {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  title           String
+  excerpt         String?   @db.Text
+  /// Rich HTML from the editor, sanitised when rendered.
+  content         String    @db.Text
+  coverImage      String?
+  coverAlt        String?
+  category        String?
+  tags            String[]  @default([])
+  authorName      String?
+  /// DRAFT | PUBLISHED (a future `publishedAt` stays hidden until then)
+  status          String    @default("DRAFT")
+  publishedAt     DateTime?
+  /// Search appearance. Blank falls back to the title / excerpt.
+  metaTitle       String?
+  metaDescription String?   @db.Text
+  focusKeyword    String?
+  canonicalUrl    String?
+  noindex         Boolean   @default(false)
+  readingMinutes  Int       @default(1)
+  views           Int       @default(0)
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+}
+
 /// Admin-built marketing "offer" pages, viewable by anyone at /offer/[slug].
 model Offer {
   id           String   @id @default(cuid())
@@ -1037,6 +1116,7 @@ model Deposit {
   @@index([userId])
   @@index([status])
   @@index([status, createdAt])
+  @@index([gatewayRef])
 }
 
 enum FraudSeverity {
@@ -1720,6 +1800,8 @@ model User {
   @@index([referredById])
   @@index([status])
   @@index([role])
+  @@index([createdAt])
+  @@index([lastLoginAt])
   @@index([signupIp])
   @@index([lastCountry])
   @@index([signupCountry])
@@ -1928,19 +2010,19 @@ model UserDevice {
 /// signed link (login or the suspension email), because a suspended account
 /// cannot sign in. One PENDING appeal per user at a time.
 model SuspensionAppeal {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  message      String    @db.Text
-  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message        String    @db.Text
+  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED
   // The risk and reason at the moment of appeal, so the reviewer sees what the
   // user was suspended for even if an admin has edited the account since.
-  riskAtAppeal Int       @default(0)
-  reasonAtAppeal String? @db.Text
-  adminNote    String?   @db.Text
-  reviewedById String?
-  reviewedAt   DateTime?
-  createdAt    DateTime  @default(now())
+  riskAtAppeal   Int       @default(0)
+  reasonAtAppeal String?   @db.Text
+  adminNote      String?   @db.Text
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
 
   @@index([userId])
   @@index([status, createdAt])
@@ -2153,14 +2235,14 @@ model ArticleTaskKey {
   // "unknown" (no referrer at all — indistinguishable from a typed address) or
   // "mismatch". Stored because the referrer is gone by the time the key is
   // submitted, and a verdict that cannot be re-checked has to be kept.
-  entrySource     String?
+  entrySource      String?
   // The raw referrer host and landing URL behind that verdict, so an admin
   // reviewing a held submission can see what was actually seen.
-  entryReferrer   String?
-  entryLandingUrl String?
+  entryReferrer    String?
+  entryLandingUrl  String?
   // When the key left the embed. The submit path refuses a key older than the
   // task's window — a key that sat around is a key that was harvested.
-  issuedAt        DateTime?
+  issuedAt         DateTime?
   // A coarse browser fingerprint hash. Submitting from a different browser is
   // not refused, only held for review: one person legitimately searches on a
   // phone and submits on a laptop.
@@ -2637,17 +2719,14 @@ model MarketplaceListing {
 
 /**
  * A seller's share of one sale, held before it reaches their wallet.
- *
  * Without this the seller is paid the instant a buyer clicks Buy, so a refund
  * has to claw money back out of a balance they may already have withdrawn —
  * the clawback is clamped to whatever is left and the rest is simply lost to
  * the platform. Holding the money for a few days means a refund inside the
  * window reverses an untouched row instead of chasing a spent one.
- *
  * Only created when the admin turns the hold on. With it off the seller is
  * credited immediately exactly as before and no row is written, so the feature
  * leaves no trace when unused.
- *
  * Escrow deals do NOT go through here: `MarketplaceDeal` already holds funds
  * through its own lifecycle, and holding twice would pay the seller late for a
  * sale the buyer had explicitly confirmed.
@@ -2678,7 +2757,6 @@ model MarketplacePayout {
 
 /**
  * A storefront name that listings can be published under.
- *
  * Admin-curated stock (AI-generated or licensed) still needs a real `sellerId`
  * for payouts, escrow and the deliverable-download gate, so a brand is a
  * presentation layer over that account rather than a second seller identity.
@@ -2690,13 +2768,17 @@ model MarketplacePayout {
 model MarketplaceBrand {
   id        String               @id @default(cuid())
   name      String
-  /** URL segment for /marketplace/brand/<slug>. Unique, lowercased. */
+  /**
+   * URL segment for /marketplace/brand/<slug>. Unique, lowercased.
+   */
   slug      String               @unique
   logo      String?
   bio       String?              @db.Text
   website   String?
-  /** Inactive brands stay attached to sold listings but are not offered in the
-   *  publisher or shown as a browsable storefront. */
+  /**
+   * Inactive brands stay attached to sold listings but are not offered in the
+   * publisher or shown as a browsable storefront.
+   */
   isActive  Boolean              @default(true)
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
@@ -4119,22 +4201,22 @@ model UserAchievement {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id])
-  type      NotificationType
-  title     String
-  message   String
-  data      Json?
-  isRead    Boolean          @default(false)
-  readAt    DateTime?
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
   // A celebration popup (lottery win, leaderboard prize, big achievement,
   // payment received): shown once over the app the next time the user opens
   // it, with `data.popup` as its content. Seen is separate from read — opening
   // the bell must not swallow the celebration, and vice versa.
-  popup       Boolean   @default(false)
+  popup       Boolean          @default(false)
   popupSeenAt DateTime?
-  createdAt DateTime         @default(now())
+  createdAt   DateTime         @default(now())
 
   @@index([userId])
   @@index([userId, popup, popupSeenAt])
@@ -4940,12 +5022,12 @@ model Broadcast {
   packages   String[]
 
   /// DRAFT | SCHEDULED | SENDING | PAUSED | DONE | CANCELLED | FAILED
-  status       String    @default("SENDING")
-  scheduledFor DateTime?
+  status        String    @default("SENDING")
+  scheduledFor  DateTime?
   /// False until every recipient row has been written. The audience is resolved
   /// in chunks, so a broadcast can be delivering to the first ten thousand
   /// while the rest are still being enumerated.
-  audienceReady Boolean  @default(false)
+  audienceReady Boolean   @default(false)
   startedAt     DateTime?
   finishedAt    DateTime?
 
@@ -4985,8 +5067,8 @@ model BroadcastRecipient {
   /// silently redirect a message the admin already believes was delivered.
   email String?
 
-  inAppAt DateTime?
-  emailAt DateTime?
+  inAppAt    DateTime?
+  emailAt    DateTime?
   /// Why the email did not go. Kept so "1,203 failed" is a list, not a number.
   emailError String?
   attempts   Int       @default(0)
@@ -5002,7 +5084,6 @@ model BroadcastRecipient {
   // Foreign keys / sort keys the database had no index for.
   @@index([userId])
 }
-
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Company finance & HR
@@ -5139,14 +5220,14 @@ model Employee {
   leaveDate      DateTime?
 
   /// Pay for one cycle, in `salaryCurrency`.
-  salaryAmount   Decimal   @default(0) @db.Decimal(18, 2)
-  salaryCurrency String    @default("BDT")
+  salaryAmount   Decimal  @default(0) @db.Decimal(18, 2)
+  salaryCurrency String   @default("BDT")
   /// MONTHLY | WEEKLY | DAILY
-  salaryCycle    String    @default("MONTHLY")
+  salaryCycle    String   @default("MONTHLY")
   /// Free text for how commission works for this person, plus an optional
   /// percentage for the common case. Commission itself is recorded as entries.
   commissionNote String?
-  commissionPct  Decimal?  @db.Decimal(9, 4)
+  commissionPct  Decimal? @db.Decimal(9, 4)
 
   paymentMethod    String?
   paymentDetails   String?
@@ -5268,13 +5349,13 @@ model RecurringEntry {
   payeeId    String?
   payee      Payee?          @relation(fields: [payeeId], references: [id], onDelete: SetNull)
 
-  title     String
-  amount    Decimal @db.Decimal(18, 2)
-  currency  String  @default("BDT")
-  taxAmount Decimal @default(0) @db.Decimal(18, 2)
-  taxLabel  String?
+  title       String
+  amount      Decimal @db.Decimal(18, 2)
+  currency    String  @default("BDT")
+  taxAmount   Decimal @default(0) @db.Decimal(18, 2)
+  taxLabel    String?
   /// Day of the month it falls due, 1–28. Capped at 28 so February exists.
-  dueDay    Int     @default(1)
+  dueDay      Int     @default(1)
   /// First and last period it applies to. Empty end = open-ended.
   startPeriod String
   endPeriod   String?

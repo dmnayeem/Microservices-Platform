@@ -45,7 +45,7 @@ export function Testimonials(props: Props) {
                   </div>
                   <p className="text-xs text-(--mk-subtle)">
                     {t.country} ·{" "}
-                    <span className="text-(--mk-success) font-bold">
+                    <span className="text-(--mk-success) font-bold whitespace-nowrap">
                       {t.earned} earned
                     </span>
                   </p>

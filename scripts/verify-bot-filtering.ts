@@ -157,7 +157,9 @@ function main() {
     // one's.
     const botBranch = reg.slice(
       reg.indexOf("if (isBotUserAgent(signupUa))"),
-      reg.indexOf("if (fraud.maxUsersPerIp")
+      // The device/IP limits follow the bot branch (moved into
+      // lib/device.ts checkSignup on 2026-09-27).
+      reg.indexOf("// Device and IP limits")
     );
     check(
       "…and it does not refuse the signup",
@@ -167,7 +169,10 @@ function main() {
     // The per-IP cap is a different control and must survive this change.
     check(
       "the per-IP account cap is untouched",
-      /maxUsersPerIp/.test(reg) && /MULTIPLE_ACCOUNTS/.test(reg)
+      // It lives in checkSignup now, which register still calls.
+      /checkSignup\(/.test(reg) &&
+        /maxUsersPerIp/.test(fs.readFileSync(path.join(process.cwd(), "src/lib/device.ts"), "utf8")) &&
+        /MULTIPLE_ACCOUNTS/.test(fs.readFileSync(path.join(process.cwd(), "src/lib/device.ts"), "utf8"))
     );
   }
 

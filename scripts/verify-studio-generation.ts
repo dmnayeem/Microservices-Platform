@@ -17,6 +17,7 @@
  *   - `previewUrl` is non-empty, because an empty one is what made publishing
  *     fail with `"Watermarked preview" is required`.
  */
+import "dotenv/config";
 import { generateStockImage, studioImageModel } from "../src/lib/marketplace-studio";
 import { isGeminiConfigured } from "../src/lib/gemini";
 import { isOpenAIConfigured } from "../src/lib/openai-images";

@@ -151,7 +151,7 @@ export async function resolveReportPreviews(
       images: p.images ?? [],
       hidden: p.isHidden,
       author: p.user ? authorOf(p.user) : null,
-      href: `/social/post/${p.id}`,
+      href: `/post/${p.id}`,
       meta: null,
     });
   }
@@ -164,7 +164,7 @@ export async function resolveReportPreviews(
       hidden: c.isHidden,
       author: c.user ? authorOf(c.user) : null,
       // Comments have no page of their own — link to the post they're on.
-      href: `/social/post/${c.postId}`,
+      href: `/post/${c.postId}`,
       meta: "Comment on a post",
     });
   }

@@ -13,6 +13,7 @@ import { getUiToggles } from "@/lib/ui-toggles-server";
 import { defaultPackage } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getSetting } from "@/lib/system-settings";
+import { dbRateLimit } from "@/lib/rate-limit-db";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -21,6 +22,8 @@ import { v4 as uuidv4 } from "uuid";
  */
 export type LoginReason =
   | "INVALID"
+  /** 10 wrong passwords/codes for this address in 15 minutes. */
+  | "TOO_MANY_ATTEMPTS"
   /**
    * The address exists but has no password — a Google-only account. This is a
    * mild user-enumeration oracle, accepted deliberately: Google's own consent
@@ -48,6 +51,29 @@ export type LoginResult =
   | { ok: true; user: LoginUser }
   | { ok: false; reason: LoginReason; suspendedUserId?: string };
 
+const LOGIN_FAIL_LIMIT = 10;
+const LOGIN_FAIL_WINDOW_MS = 15 * 60_000;
+const loginFailBucket = (email: string) => `login-fail:${email.trim().toLowerCase()}`;
+
+/** Read-only: has this address used up its failed attempts this window? */
+async function tooManyLoginFailures(email: string): Promise<boolean> {
+  try {
+    const row = await prisma.rateLimitHit.findUnique({
+      where: {
+        bucket_window: {
+          bucket: loginFailBucket(email),
+          // Same window id dbRateLimit() writes.
+          window: BigInt(Math.floor(Date.now() / LOGIN_FAIL_WINDOW_MS)),
+        },
+      },
+      select: { count: true },
+    });
+    return (row?.count ?? 0) >= LOGIN_FAIL_LIMIT;
+  } catch {
+    return false; // fail open, like every other limiter here
+  }
+}
+
 /**
  * Single source of truth for credential login. Both the NextAuth `authorize`
  * callback and the `/api/auth/login-check` pre-check call this, so the login
@@ -60,17 +86,26 @@ export async function evaluateLogin(
   password: string,
   otp?: string
 ): Promise<LoginResult> {
+  // Per-address brute-force guard. The only throttle was login-check's
+  // in-memory 10/min per IP, which resets with every serverless instance and
+  // never applied to the sign-in endpoint itself.
+  if (await tooManyLoginFailures(email)) return { ok: false, reason: "TOO_MANY_ATTEMPTS" };
+  const fail = async (reason: "INVALID" | "INVALID_2FA"): Promise<LoginResult> => {
+    await dbRateLimit(loginFailBucket(email), LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW_MS);
+    return { ok: false, reason };
+  };
+
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
   });
 
   // Wrong password or unknown email → same generic answer (no user enumeration).
-  if (!user) return { ok: false, reason: "INVALID" };
+  if (!user) return fail("INVALID");
   // No password at all means an OAuth-only account. Saying so is far better than
   // "invalid password" for a credential the user never set — see OAUTH_ONLY.
   if (!user.password) return { ok: false, reason: "OAUTH_ONLY" };
   const passwordsMatch = await bcrypt.compare(password, user.password);
-  if (!passwordsMatch) return { ok: false, reason: "INVALID" };
+  if (!passwordsMatch) return fail("INVALID");
 
   const { requireEmailVerification } = await getUiToggles();
   if (requireEmailVerification && !user.emailVerified) {
@@ -96,7 +131,7 @@ export async function evaluateLogin(
       token: code,
       window: 2,
     });
-    if (!valid) return { ok: false, reason: "INVALID_2FA" };
+    if (!valid) return fail("INVALID_2FA");
   }
 
   return {

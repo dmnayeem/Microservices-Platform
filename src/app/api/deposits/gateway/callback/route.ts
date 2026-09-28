@@ -55,13 +55,12 @@ export async function POST(request: NextRequest) {
     paidAmount === undefined ||
     Math.abs(Number(paidAmount) - toNum(deposit.amount)) <= 0.01;
 
+  // Never credited, and never written either: this URL is public, so a
+  // failed "verification" is exactly what anyone replaying a transaction id
+  // would produce. Rejecting on it let a stranger void someone's deposit
+  // while the real payment was still going through. A deposit that never
+  // completes simply stays PENDING for the admin.
   if (!success || !amountOk) {
-    if (deposit.status === "PENDING") {
-      await prisma.deposit.update({
-        where: { id: deposit.id },
-        data: { status: "REJECTED", adminNote: "Gateway payment not completed" },
-      });
-    }
     return NextResponse.redirect(`${APP_URL}/wallet?deposit=failed`);
   }
 

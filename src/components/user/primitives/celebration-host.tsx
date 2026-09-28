@@ -147,12 +147,15 @@ export function CelebrationHost() {
             </div>
           )}
 
-          <div className="mt-5 flex gap-2">
+          {/* Each button takes its own width and the pair wraps to two rows
+              when it cannot share one — halving a 320px card left "View
+              leaderboard" 120px and broke it over two lines. */}
+          <div className="mt-5 flex flex-wrap gap-2">
             {current.cta && (
               <Link
                 href={current.cta.href}
                 onClick={close}
-                className="flex-1 rounded-xl border border-(--app-line) px-4 py-2.5 text-sm font-semibold text-(--app-ink) hover:bg-(--app-surface-2)"
+                className="grow basis-auto whitespace-nowrap rounded-xl border border-(--app-line) px-4 py-2.5 text-sm font-semibold text-(--app-ink) hover:bg-(--app-surface-2)"
               >
                 {current.cta.label}
               </Link>
@@ -161,7 +164,7 @@ export function CelebrationHost() {
               ref={btnRef}
               type="button"
               onClick={close}
-              className="app-accent flex-1 rounded-xl px-4 py-2.5 text-sm font-bold"
+              className="app-accent grow basis-auto whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold"
             >
               Nice!
             </button>

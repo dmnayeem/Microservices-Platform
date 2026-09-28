@@ -166,6 +166,13 @@ export default async function LotteryDetailPage({ params }: PageProps) {
             <p className="text-gray-400 mt-1">{typedLottery.description}</p>
           )}
         </div>
+        {/* The edit page existed with nothing linking to it. */}
+        <Link
+          href={`/admin/lottery/${typedLottery.id}/edit`}
+          className="px-3 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-sm text-white transition-colors"
+        >
+          Edit
+        </Link>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
