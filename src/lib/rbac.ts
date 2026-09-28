@@ -1489,6 +1489,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "MARKETING",
   },
   {
+    // Notices / images / ads over the site, targeted like banners.
+    name: "Popups",
+    href: "/admin/popups",
+    icon: "Megaphone",
+    permissions: ["banners.view"],
+    category: "MARKETING",
+  },
+  {
     name: "Offers",
     href: "/admin/offers",
     icon: "Gift",
@@ -1521,6 +1529,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/monetization",
     icon: "DollarSign",
     permissions: ["ads.view"],
+    category: "MARKETING",
+  },
+  {
+    // Articles at /blog, with the SEO checklist; the landing-page permissions.
+    name: "Blog",
+    href: "/admin/blog",
+    icon: "FileText",
+    permissions: ["landing.view"],
     category: "MARKETING",
   },
   {

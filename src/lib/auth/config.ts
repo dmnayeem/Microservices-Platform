@@ -141,6 +141,8 @@ export const authConfig: NextAuthConfig = {
         "/api/splash",
         "/api/config/antifraud",
         "/api/contact", // contact form on the marketing site
+        "/api/popups", // site popups, shown to visitors as well (targeting is server-side)
+        "/api/blog/", // blog read counter (public articles)
         "/api/health",
       ];
       const isPublicApiRoute =

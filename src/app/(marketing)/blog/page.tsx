@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Clock, ArrowRight } from "lucide-react";
 import { MarketingHero, Section } from "@/components/marketing/ui";
-import { BLOG_POSTS, formatBlogDate } from "@/lib/blog-posts";
+import { getArticles, formatArticleDate, type Article } from "@/lib/blog";
+import { mediaSrc } from "@/lib/media-url";
 import { COMPANY_NAME } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
+
+// Articles come from /admin/blog; a new one appears within five minutes, or
+// at once when it is saved (the save revalidates this page).
+export const revalidate = 300;
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
@@ -14,8 +19,23 @@ export function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default function BlogIndexPage() {
-  const [featured, ...rest] = BLOG_POSTS;
+function Cover({ a, className }: { a: Article; className: string }) {
+  if (a.coverImage) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={mediaSrc(a.coverImage)} alt={a.coverAlt || a.title} loading="lazy" className={`${className} object-cover`} />
+    );
+  }
+  return (
+    <div className={`${className} grid place-items-center bg-linear-to-br from-(--mk-grad-a)/20 to-(--mk-rail-b)/20 text-6xl`}>
+      {a.emoji ?? "📝"}
+    </div>
+  );
+}
+
+export default async function BlogIndexPage() {
+  const articles = (await getArticles()).filter((a) => !a.noindex);
+  const [featured, ...rest] = articles;
   return (
     <>
       <MarketingHero
@@ -26,51 +46,53 @@ export default function BlogIndexPage() {
       />
 
       <Section>
-        {/* Featured */}
-        <Link
-          href={`/blog/${featured.slug}`}
-          className="group block rounded-3xl mk-card backdrop-blur-xl overflow-hidden hover:border-blue-500/30 transition-all"
-        >
-          <div className="grid md:grid-cols-2">
-            <div className="grid place-items-center bg-linear-to-br from-(--mk-grad-a)/20 to-(--mk-rail-b)/20 p-12 text-7xl">
-              {featured.emoji}
-            </div>
-            <div className="p-6 sm:p-10">
-              <div className="flex items-center gap-3 text-xs text-(--mk-muted)">
-                <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-(--mk-accent) px-2.5 py-1 font-semibold uppercase tracking-wider">{featured.category}</span>
-                <span>{formatBlogDate(featured.date)}</span>
-                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{featured.readMinutes} min</span>
-              </div>
-              <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-(--mk-text)">{featured.title}</h2>
-              <p className="mt-3 text-(--mk-muted) leading-relaxed">{featured.excerpt}</p>
-              <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-(--mk-accent)">
-                Read article <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </span>
-            </div>
-          </div>
-        </Link>
-
-        {/* Grid */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rest.map((p) => (
+        {!featured ? (
+          <p className="text-center text-(--mk-muted)">No articles yet — check back soon.</p>
+        ) : (
+          <>
             <Link
-              key={p.slug}
-              href={`/blog/${p.slug}`}
-              className="group flex flex-col rounded-2xl mk-card backdrop-blur-xl overflow-hidden hover:border-blue-500/30 transition-all"
+              href={`/blog/${featured.slug}`}
+              className="group block rounded-3xl mk-card backdrop-blur-xl overflow-hidden hover:border-blue-500/30 transition-all"
             >
-              <div className="grid place-items-center bg-linear-to-br from-(--mk-grad-a)/15 to-(--mk-rail-b)/15 py-10 text-5xl">{p.emoji}</div>
-              <div className="flex flex-1 flex-col p-5">
-                <div className="flex items-center gap-2 text-[11px] text-(--mk-muted)">
-                  <span className="rounded-full mk-card px-2 py-0.5">{p.category}</span>
-                  <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{p.readMinutes} min</span>
+              <div className="grid md:grid-cols-2">
+                <Cover a={featured} className="h-56 w-full md:h-full md:min-h-72" />
+                <div className="p-6 sm:p-10">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-(--mk-muted)">
+                    <span className="rounded-full bg-blue-500/10 border border-blue-500/30 text-(--mk-accent) px-2.5 py-1 font-semibold uppercase tracking-wider">{featured.category}</span>
+                    <span>{formatArticleDate(featured.publishedAt)}</span>
+                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{featured.readMinutes} min</span>
+                  </div>
+                  <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-(--mk-text)">{featured.title}</h2>
+                  <p className="mt-3 text-(--mk-muted) leading-relaxed">{featured.excerpt}</p>
+                  <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-(--mk-accent)">
+                    Read article <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </div>
-                <h3 className="mt-3 font-bold text-(--mk-text) leading-snug">{p.title}</h3>
-                <p className="mt-2 text-sm text-(--mk-muted) line-clamp-3">{p.excerpt}</p>
-                <span className="mt-4 text-xs text-(--mk-subtle)">{formatBlogDate(p.date)}</span>
               </div>
             </Link>
-          ))}
-        </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {rest.map((p) => (
+                <Link
+                  key={p.slug}
+                  href={`/blog/${p.slug}`}
+                  className="group flex flex-col rounded-2xl mk-card backdrop-blur-xl overflow-hidden hover:border-blue-500/30 transition-all"
+                >
+                  <Cover a={p} className="h-40 w-full" />
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-(--mk-muted)">
+                      <span className="rounded-full mk-card px-2 py-0.5">{p.category}</span>
+                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{p.readMinutes} min</span>
+                    </div>
+                    <h3 className="mt-3 font-bold text-(--mk-text) leading-snug">{p.title}</h3>
+                    <p className="mt-2 text-sm text-(--mk-muted) line-clamp-3">{p.excerpt}</p>
+                    <span className="mt-4 text-xs text-(--mk-subtle)">{formatArticleDate(p.publishedAt)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
       </Section>
     </>
   );

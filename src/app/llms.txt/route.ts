@@ -2,7 +2,7 @@ import { getLandingContent } from "@/lib/landing-content-server";
 import { publicLanding } from "@/lib/landing-content";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { getSetting } from "@/lib/system-settings";
-import { BLOG_POSTS } from "@/lib/blog-posts";
+import { getArticles } from "@/lib/blog";
 import { COMPANY_BOILERPLATE, SUPPORT_EMAIL } from "@/config/company";
 
 /**
@@ -56,7 +56,7 @@ export async function GET() {
     `- [Status](${u("/status")}): service status`,
     "",
     "## Guides",
-    ...BLOG_POSTS.map((p) => `- [${p.title}](${u(`/blog/${p.slug}`)}): ${p.excerpt}`),
+    ...(await getArticles()).filter((a) => !a.noindex).map((p) => `- [${p.title}](${u(`/blog/${p.slug}`)}): ${p.excerpt}`),
     "",
     "## Policies",
     `- [Terms of Service](${u("/terms")})`,
