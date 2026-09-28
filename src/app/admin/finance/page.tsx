@@ -395,7 +395,7 @@ function OverviewTab({
             }
             icon={BadgeDollarSign}
             tone="amber"
-            href="/admin/subscriptions"
+            href="/admin/packages"
           />
         </div>
       </div>

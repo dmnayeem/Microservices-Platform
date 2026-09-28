@@ -57,8 +57,8 @@ export const TYPE_TO_ROUTE: Record<string, string> = {
   OFFERWALL: "/earn#offerwall",
   APPINSTALL: "/tasks",
   BOARD: "/board-tasks",
-  MANUAL: "/manual-tasks",
-  CUSTOM: "/manual-tasks",
+  MANUAL: "/custom-tasks",
+  CUSTOM: "/custom-tasks",
   // Social-feed engagement goals → the feed
   SOCIAL_LIKE: "/social",
   SOCIAL_COMMENT: "/social",

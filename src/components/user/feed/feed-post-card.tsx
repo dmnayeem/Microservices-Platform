@@ -763,6 +763,9 @@ export const FeedPostCard = memo(function FeedPostCard({
                 key={i}
                 src={mediaSrc(url)}
                 alt=""
+                // Off-screen posts' photos wait until scrolled near.
+                loading="lazy"
+                decoding="async"
                 onClick={(e) => onImageTap(i, e)}
                 onError={(e) => {
                   // Hide broken images so a bad URL doesn't leave a giant empty box.

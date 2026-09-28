@@ -23,7 +23,7 @@ export function taskRunHref(type: string | null | undefined, id: string): string
     case "QUIZ":
       return "/quiz-tasks";
     case "MANUAL":
-      return "/manual-tasks";
+      return "/custom-tasks";
     case "PROXY":
       return "/proxy-tasks";
     case "BOARD":

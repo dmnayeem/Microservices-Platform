@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchHeaderData } from "@/lib/header-data";
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -77,9 +78,8 @@ export function Header({ user, avatar }: HeaderProps) {
   // figure and an unread dot. /api/header is two indexed reads.
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/header", { cache: "no-store" });
-      if (res.ok) {
-        const d = await res.json();
+      const d = await fetchHeaderData();
+      if (d) {
         const next = d.points ?? 0;
         if (prevBalance.current !== null && prevBalance.current !== next) {
           setTick((t) => t + 1);

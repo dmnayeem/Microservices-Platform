@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 import { useEffect, useState } from "react";
@@ -137,13 +138,19 @@ export function MarketplaceView({
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
     fetch(`/api/marketplace/listings?${params}`)
-      .then((r) => (r.ok ? r.json() : { listings: [], facets: { assetTypes: [] } }))
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d) => {
         if (cancelled) return;
         setListings(d.listings ?? []);
         setFacets(d.facets?.assetTypes ?? []);
       })
-      .catch(() => {})
+      // A failed load used to look exactly like an empty marketplace.
+      .catch(() => {
+        if (!cancelled) toast.error("Couldn't load listings. Check your connection and try again.");
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;

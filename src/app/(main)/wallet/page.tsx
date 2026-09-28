@@ -79,10 +79,6 @@ export default async function WalletPage() {
       getPointsConvertThreshold(),
     ]);
 
-  // Effective withdrawal fee % (admin setting − package discount) so the wallet
-  // Withdraw tab can show it too, matching the /withdrawal page.
-  const wcfg = await getWithdrawalConfig(userId);
-
   if (!user) redirect("/login");
 
   const totalWithdrawn = toNum(withdrawnAgg._sum.amount ?? 0);
@@ -99,7 +95,7 @@ export default async function WalletPage() {
   // The two windowed sums need the user's timezone, which is only known after
   // the batch above — so they run as their own parallel pair rather than by
   // filtering a full row set in memory.
-  const [monthlyAgg, todayRefAgg] = await Promise.all([
+  const [monthlyAgg, todayRefAgg, wcfg] = await Promise.all([
     prisma.withdrawal.aggregate({
       where: { userId, status: "COMPLETED", createdAt: { gte: monthStart } },
       _sum: { amount: true },
@@ -108,6 +104,10 @@ export default async function WalletPage() {
       where: { userId, createdAt: { gte: dayStart } },
       _sum: { amount: true },
     }),
+    // Effective withdrawal fee % (admin setting − package discount) so the
+    // wallet Withdraw tab can show it too, matching the /withdrawal page.
+    // Batched here: it was a round trip of its own between the two groups.
+    getWithdrawalConfig(userId),
   ]);
   // Income = money withdrawn. Monthly income = withdrawn this month.
   const monthlyIncome = toNum(monthlyAgg._sum.amount ?? 0);
