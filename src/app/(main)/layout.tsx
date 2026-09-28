@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { BalanceSync } from "@/components/providers/balance-sync";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -137,6 +138,8 @@ export default async function MainLayout({
       {/* Lottery wins, leaderboard prizes, big achievements, payments — shown
           once as a popup the next time the user opens the app. */}
       <CelebrationHost />
+      {/* Balances update after a claim/reward without a manual refresh. */}
+      <BalanceSync />
 
       {/* Device id + fingerprint for the multi-account rules; reports this
           device (IP, country, browser) once per session. */}

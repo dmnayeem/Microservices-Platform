@@ -1,6 +1,6 @@
 "use client";
 
-import { fetchHeaderData } from "@/lib/header-data";
+import { BALANCE_EVENT, fetchHeaderData } from "@/lib/header-data";
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -123,6 +123,12 @@ export function Header({ user, avatar }: HeaderProps) {
   // 30s — this is a badge, and halving the poll rate halves the baseline load
   // that every open tab in the system generates.
   useAutoRefresh(fetchData, { intervalMs: 60000 });
+  // …and at once after anything that can move the balance (balance-sync.tsx).
+  useEffect(() => {
+    const on = () => void fetchData();
+    window.addEventListener(BALANCE_EVENT, on);
+    return () => window.removeEventListener(BALANCE_EVENT, on);
+  }, [fetchData]);
   // Pull-to-refresh anywhere in the app instantly re-pulls balance + notifications.
   useAppRefresh(fetchData);
 
