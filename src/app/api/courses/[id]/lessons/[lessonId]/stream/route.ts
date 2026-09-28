@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getDownloadUrl } from "@/lib/s3";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 
 /**
  * Enrollment-gated video source. Returns a short-lived SIGNED URL for our-hosted
@@ -42,10 +42,9 @@ export async function GET(
   }
 
   // Access: free/preview, tutor/admin, or enrolled.
-  const role = session.user.role as UserRole | undefined;
   const isOwnerOrAdmin =
     lesson.course.tutorId === session.user.id ||
-    hasPermission(role, "courses.manage");
+    (await can(session.user.id, "courses.manage"));
   let allowed = lesson.isPreview || lesson.course.isFree || isOwnerOrAdmin;
   if (!allowed) {
     const enrollment = await prisma.courseEnrollment.findUnique({

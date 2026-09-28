@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resendVerificationEmail } from "@/lib/auth/services";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 
 const resendSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
 export async function POST(request: NextRequest) {
+  // Every call sends a real email, so an open endpoint was a free mail cannon
+  // against any address (and burns the daily send cap).
+  const limited = await enforceDbRateLimit(request, "resend-verification", null, 5, 15 * 60_000);
+  if (limited) return limited;
   try {
     const body = await request.json();
     const { email } = resendSchema.parse(body);
@@ -39,6 +44,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // "User not found" / "Email already verified" told anyone which
+    // addresses have accounts. Both get the same neutral answer.
+    if (error instanceof Error && /not found|already verified/i.test(error.message)) {
+      return NextResponse.json({
+        success: true,
+        emailSent: true,
+        message: "If that account still needs verifying, a new link is on its way.",
+      });
+    }
     if (error instanceof Error) {
       return NextResponse.json(
         { success: false, error: error.message },

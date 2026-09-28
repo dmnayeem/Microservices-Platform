@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validPostImages } from "@/lib/post-images";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
@@ -522,6 +523,9 @@ export async function POST(request: NextRequest) {
         { error: "Post content cannot exceed 2000 characters" },
         { status: 400 }
       );
+    }
+    if (validPostImages(images) === null) {
+      return NextResponse.json({ error: "Invalid images" }, { status: 400 });
     }
 
     // Link/video sharing is an admin-granted capability for normal users. A URL

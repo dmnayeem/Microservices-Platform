@@ -6,6 +6,7 @@ import { toNum, toNumOrNull } from "@/lib/money";
 import { isAffiliateEligible, formatAffiliateReward } from "@/lib/affiliate";
 import { hasPermission } from "@/lib/rbac";
 import type { UserRole } from "@/generated/prisma";
+import { z } from "zod";
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -164,6 +165,16 @@ export async function GET(
   }
 }
 
+// The same limits as creating a listing (listings/route.ts userCreateSchema).
+const updateSchema = z.object({
+  title: z.string().min(3).max(100).optional(),
+  description: z.string().min(10).max(1000).optional(),
+  images: z.array(z.string().url()).max(20).optional(),
+  files: z.array(z.string().url()).max(20).optional(),
+  price: z.number().positive().max(1_000_000).optional(),
+  category: z.string().min(1).max(60).optional(),
+});
+
 // PUT /api/marketplace/listings/:id - Update listing
 export async function PUT(
   request: NextRequest,
@@ -177,7 +188,13 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    const parsed = updateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid listing update" },
+        { status: 400 }
+      );
+    }
 
     // Get listing and verify ownership
     const listing = await prisma.marketplaceListing.findUnique({
@@ -198,10 +215,21 @@ export async function PUT(
       );
     }
 
-    // Extract allowed update fields
-    const { title, description, images, files, price, category } = body;
+    const { title, description, images, files, price, category } = parsed.data;
 
-    // Update listing
+    // Anything a buyer pays for or sees goes back through review. The update
+    // used to be written straight onto a live listing: a seller could set a
+    // negative price and "buy" it from a second account, which paid points
+    // OUT of nowhere on every order.
+    const needsReview =
+      listing.status === MarketplaceListingStatus.ACTIVE &&
+      (title !== undefined ||
+        description !== undefined ||
+        images !== undefined ||
+        files !== undefined ||
+        price !== undefined ||
+        category !== undefined);
+
     const updatedListing = await prisma.marketplaceListing.update({
       where: { id },
       data: {
@@ -211,6 +239,7 @@ export async function PUT(
         ...(files !== undefined && { files }),
         ...(price !== undefined && { price }),
         ...(category !== undefined && { category }),
+        ...(needsReview && { status: MarketplaceListingStatus.PENDING_REVIEW }),
       },
     });
 

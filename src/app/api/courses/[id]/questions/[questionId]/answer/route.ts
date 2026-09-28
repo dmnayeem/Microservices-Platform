@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, type UserRole } from "@/lib/rbac";
+import { can } from "@/lib/permissions";
 import { z } from "zod";
 import { NotificationType } from "@/generated/prisma";
 
@@ -36,9 +36,8 @@ export async function POST(
     if (!course) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    const role = session.user.role as UserRole | undefined;
     const isTutor = course.tutorId === session.user.id;
-    const isAdmin = hasPermission(role, "courses.manage");
+    const isAdmin = !isTutor && (await can(session.user.id, "courses.manage"));
     if (!isTutor && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

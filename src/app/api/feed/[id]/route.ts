@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validPostImages } from "@/lib/post-images";
+import { firstUrl } from "@/lib/link-preview";
+import { isEmbeddableVideoUrl } from "@/lib/video-url";
+import { userCanFeature } from "@/lib/packages";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { publicAudienceEpochMs } from "@/lib/public-post";
@@ -162,11 +166,33 @@ export async function PUT(
     }
 
     // Validate content
-    if (content && content.length > 2000) {
+    if (content !== undefined && (typeof content !== "string" || content.length > 2000)) {
       return NextResponse.json(
         { error: "Post content cannot exceed 2000 characters" },
         { status: 400 }
       );
+    }
+    if (images !== undefined && validPostImages(images) === null) {
+      return NextResponse.json({ error: "Invalid images" }, { status: 400 });
+    }
+
+    // The same link gate as posting. Editing skipped it, so a user without the
+    // link grant could post plain text and then edit a link in.
+    const role = session.user.role;
+    const isPrivileged = !!role && role !== "USER" && role !== "user";
+    const newUrl = !isPrivileged && content ? firstUrl(content.trim()) : null;
+    if (newUrl && newUrl !== firstUrl(post.content ?? "")) {
+      const isVideo = isEmbeddableVideoUrl(newUrl);
+      if (!(await userCanFeature(session.user.id, isVideo ? "shareYouTube" : "shareLinks"))) {
+        return NextResponse.json(
+          {
+            error: isVideo
+              ? "Sharing YouTube/video links isn't enabled for your account. Ask an admin to enable it."
+              : "Sharing links isn't enabled for your account. Ask an admin to enable it.",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // The audience is editable, with one refusal: a post written BEFORE the

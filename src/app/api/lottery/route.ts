@@ -215,8 +215,10 @@ export async function POST(request: NextRequest) {
     const { lotteryId, quantity } = body;
 
     // Validate quantity
-    const ticketCount = quantity || 1;
-    if (ticketCount < 1 || ticketCount > 10) {
+    // A whole number only: 1.5 tickets made 1 ticket row (Array.from floors)
+    // but charged for 1.5.
+    const ticketCount = quantity ?? 1;
+    if (!Number.isInteger(ticketCount) || ticketCount < 1 || ticketCount > 10) {
       return NextResponse.json(
         { error: "You can buy 1-10 tickets at a time" },
         { status: 400 }
@@ -294,11 +296,18 @@ export async function POST(request: NextRequest) {
         }));
 
         await tx.lotteryTicket.createMany({ data: tickets });
-        const updatedUser = await tx.user.update({
-          where: { id: userId },
+        // Conditional debit: the lock above is on the lottery, not the user,
+        // so two buys in different lotteries could both pass the read check
+        // and take the balance below zero.
+        const paid = await tx.user.updateMany({
+          where: { id: userId, pointsBalance: { gte: totalCost } },
           data: { pointsBalance: { decrement: totalCost } },
-          select: { pointsBalance: true },
         });
+        if (paid.count === 0) throw new Error("LOTTERY_INSUFFICIENT");
+        const updatedUser = (await tx.user.findUnique({
+          where: { id: userId },
+          select: { pointsBalance: true },
+        }))!;
         await tx.lottery.update({
           where: { id: lotteryId },
           data: { ticketsSold: { increment: ticketCount } },
@@ -334,7 +343,9 @@ export async function POST(request: NextRequest) {
           newBalance: updatedUser.pointsBalance,
         };
       },
-      { timeout: 20_000, maxWait: 10_000 }
+      // Accelerate refuses any interactive transaction over 15 s (P6005), so
+      // 20 s here failed every purchase before it started.
+      { timeout: 15_000, maxWait: 10_000 }
     );
 
     if (!result.ok) {
@@ -378,6 +389,9 @@ export async function POST(request: NextRequest) {
       newBalance,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "LOTTERY_INSUFFICIENT") {
+      return NextResponse.json({ error: "Insufficient points balance" }, { status: 400 });
+    }
     console.error("Error buying lottery tickets:", error);
     return NextResponse.json(
       { error: "Failed to purchase tickets" },

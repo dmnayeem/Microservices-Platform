@@ -127,8 +127,26 @@ export const authConfig: NextAuthConfig = {
         (route) => pathname === route || pathname.startsWith(`${route}/`)
       );
 
-      // Public API routes
-      const isPublicApiRoute = pathname.startsWith("/api/auth");
+      // API routes that are called WITHOUT a session by design. Only /api/auth
+      // was let through, so each of these got a 307 to /login instead. Every
+      // one does its own check (cron secret, provider signature, gateway
+      // verification, key allowlist) or serves nothing private.
+      const publicApiPrefixes = [
+        "/api/auth/",
+        "/api/cron/", // scheduler / Vercel cron — CRON_SECRET
+        "/api/deposits/gateway/callback", // gateway return: cross-site POST, no Lax cookie
+        "/api/analytics/pageview", // visitor traffic beacon (root layout)
+        "/api/media/", // public post images for logged-out readers
+        "/api/withdrawal-ticker/recent", // landing page ticker
+        "/api/splash",
+        "/api/config/antifraud",
+        "/api/contact", // contact form on the marketing site
+        "/api/health",
+      ];
+      const isPublicApiRoute =
+        publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||
+        // Offerwall S2S postbacks — HMAC-signed by the provider.
+        /^\/api\/offerwall\/[^/]+\/callback$/.test(pathname);
 
       /**
        * The article-task embed, which runs on somebody else's website.
