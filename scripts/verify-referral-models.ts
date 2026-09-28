@@ -379,7 +379,7 @@ async function main() {
     );
     check(
       "it still walks up to 10 levels",
-      /level <= Math\.min\(10, referralLevels\.length\)/.test(comm)
+      /Math\.min\(10, Math\.max\(\.\.\.referralLevels\.map/.test(comm) && /level <= deepest/.test(comm)
     );
     check(
       "the cycle guard is still there",
