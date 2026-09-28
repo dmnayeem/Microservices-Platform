@@ -358,7 +358,7 @@ export default function NotificationsPage() {
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-3 p-3 transition-all",
+                    "flex items-start gap-2 p-2 sm:gap-3 sm:p-3 transition-all",
                     isSelected && "ring-2 ring-inset ring-(--app-accent-edge)"
                   )}
                 >
@@ -366,7 +366,7 @@ export default function NotificationsPage() {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleSelection(notification.id)}
-                    className="mt-4 w-4 h-4 rounded border-(--app-line) bg-(--app-surface) text-(--app-accent-ink) focus:ring-(--app-accent-edge) shrink-0"
+                    className="mt-3.5 sm:mt-4 w-4 h-4 rounded border-(--app-line) bg-(--app-surface) text-(--app-accent-ink) focus:ring-(--app-accent-edge) shrink-0"
                   />
 
                   {/* The card owns the template — colour, motion, image and

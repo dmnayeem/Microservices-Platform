@@ -27,7 +27,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { BalanceCard } from "@/components/user/primitives/balance-card";
-import { StatCard } from "@/components/user/primitives/stat-card";
+import { StatCard, STAT_VALUE_CLASS_SM } from "@/components/user/primitives/stat-card";
 import { TransactionRow } from "@/components/user/primitives/transaction-row";
 import { TransactionHistory } from "@/components/user/wallet/transaction-history";
 import { EmptyState } from "@/components/user/primitives/empty-state";
@@ -192,7 +192,10 @@ export function WalletView(props: WalletViewProps) {
               onClick={() => setTab(t.key)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "app-press flex min-w-0 flex-col items-center justify-center gap-1 rounded-(--app-r-control) px-1 py-2 text-[11px] font-bold",
+                // The label scales with the screen (11px from ~360px up) so
+                // "Overview" and "Withdraw" fit a 320px phone instead of
+                // reading "Overvi…" / "Withd…".
+                "app-press flex min-w-0 flex-col items-center justify-center gap-1 rounded-(--app-r-control) px-0.5 py-2 text-[clamp(9.5px,3.1vw,11px)] font-bold tracking-tight",
                 isActive
                   ? "bg-(--app-nav-wash) text-(--app-nav-on)"
                   : "text-(--app-ink-3) hover:text-(--app-ink)"
@@ -427,8 +430,9 @@ function BalanceTab({
           ].map((p) => (
             <div key={p.label} className="app-tile min-w-0">
               <p className="t-meta text-(--app-ink-3)">{p.label}</p>
-              <p className="t-figure-sm mt-1 truncate text-white">{p.pts.toLocaleString()}</p>
-              <p className="t-meta text-(--app-ink-3)">≈ {usd(p.pts / (pointsPerUsd || 1))}</p>
+              {/* Clamped, not truncated: at 320px "12,450" was cut to "12,4…". */}
+              <p className={cn(STAT_VALUE_CLASS_SM, "mt-1")}>{p.pts.toLocaleString()}</p>
+              <p className="t-meta text-(--app-ink-3) whitespace-nowrap">≈ {usd(p.pts / (pointsPerUsd || 1))}</p>
             </div>
           ))}
         </div>

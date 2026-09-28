@@ -188,13 +188,18 @@ export function Header({ user, avatar }: HeaderProps) {
             profile menu below) and the rest are now ranked by size rather than
             lined up as equals. */}
         <div className="flex h-16 items-center justify-between gap-2 px-3 sm:px-5 lg:px-8">
-          {/* Left: Mobile Back + Menu Button & Logo (mobile only) */}
-          <div className="flex items-center gap-0.5 md:hidden">
+          {/* Left: Mobile Back + Menu Button & Logo (mobile only).
+              `min-w-0` down the chain lets the logo give way on a small phone:
+              at 320px the bar needed ~335px and pushed the account button off
+              the screen. The logo now scales to the room that is left. */}
+          <div className="flex min-w-0 items-center gap-0.5 md:hidden">
             {showBack && (
               <button
                 onClick={() => router.back()}
                 aria-label="Go back"
-                className="app-tap app-press -ml-1.5 inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)"
+                // Below 320px (foldable cover screens) the phone's own back
+                // gesture does this; the bar has no room for it.
+                className="app-tap app-press -ml-1.5 max-[319.98px]:hidden inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -209,7 +214,7 @@ export function Header({ user, avatar }: HeaderProps) {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <Link href="/social" aria-label="Home" className="app-press flex items-center">
+            <Link href="/social" aria-label="Home" className="app-press flex min-w-0 items-center [&_img]:max-w-full! [&_img]:min-w-0">
               <BrandLockup area="app">
                 <span className="app-icon app-icon-accent h-9 w-9 rounded-(--app-r-control)">
                   <BrandMark iconClassName="w-4.5 h-4.5" />
@@ -248,7 +253,7 @@ export function Header({ user, avatar }: HeaderProps) {
               the points pill that already goes there, and the theme toggle is
               a preference rather than an action — both now live in the account
               menu, which is where a phone app puts them. */}
-          <div className="flex items-center gap-0.5 sm:gap-1.5">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
             {/* Search on phones. It had no entry point at all below 1024px —
                 the box was `hidden lg:flex`, so the platform's search simply
                 did not exist on a phone. */}
@@ -380,10 +385,12 @@ export function Header({ user, avatar }: HeaderProps) {
                                 <span className="w-2 h-2 mt-2 rounded-full shrink-0 bg-(--app-cta)" />
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="t-card-title text-(--app-ink) truncate">
+                                {/* Wrapped, not cut: on a phone a one-line
+                                    title lost most of itself to "…". */}
+                                <p className="t-card-title text-(--app-ink) line-clamp-2 break-words">
                                   {notif.title}
                                 </p>
-                                <p className="t-meta text-(--app-ink-3) mt-0.5 line-clamp-2">
+                                <p className="t-body text-(--app-ink-3) mt-0.5 line-clamp-3 break-words">
                                   {notif.message}
                                 </p>
                                 <p className="t-meta text-(--app-ink-3) mt-1">

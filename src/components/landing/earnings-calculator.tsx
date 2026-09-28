@@ -493,7 +493,7 @@ export function EarningsCalculator(props: Props) {
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-5">
                     <div className="min-w-0 rounded-xl mk-card p-2.5 sm:p-3 text-center">
                       <ListChecks className="w-4 h-4 text-(--mk-accent) mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wide leading-tight">
                         From Tasks
                       </p>
                       <p className="text-sm sm:text-base font-bold text-(--mk-text) tabular-nums mt-0.5">
@@ -503,7 +503,7 @@ export function EarningsCalculator(props: Props) {
                     </div>
                     <div className="min-w-0 rounded-xl mk-card p-2.5 sm:p-3 text-center">
                       <Users className="w-4 h-4 text-(--mk-info) mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wide leading-tight">
                         From Team
                       </p>
                       <p className="text-sm sm:text-base font-bold text-(--mk-text) tabular-nums mt-0.5">
@@ -513,7 +513,7 @@ export function EarningsCalculator(props: Props) {
                     </div>
                     <div className="min-w-0 rounded-xl mk-card p-2.5 sm:p-3 text-center">
                       <Coins className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wider">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold text-(--mk-subtle) tracking-wide leading-tight">
                         Daily
                       </p>
                       <p className="text-sm sm:text-base font-bold text-(--mk-text) tabular-nums mt-0.5">

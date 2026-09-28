@@ -3027,3 +3027,55 @@ html[data-theme="light"][data-accent="silver"] {
     opacity: 0;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Small phones (3–4" screens: 320px CSS wide, and the 280–300px foldable
+   cover screens). Every card was laid out for 360px+, so at 320px a 2-up stat
+   tile had ~54px for its text: labels broke into three lines, figures were cut
+   to "12,4…", and the profile's "12,840 Followers" row overlapped itself.
+   Everything in the app is sized in rem, so stepping the root size down
+   shrinks type, padding and gaps together and keeps the proportions; the page
+   gutter tightens too. 360px and wider phones are untouched.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 359.98px) {
+  html {
+    font-size: 15px;
+  }
+  :root {
+    --app-pad: 0.75rem;
+    --app-pad-lg: 1rem;
+    --app-gap: 0.625rem;
+    --app-gutter: 0.75rem;
+    --app-margin: 0.75rem;
+  }
+}
+@media (max-width: 319.98px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Rich-text editor (TipTap): the placeholder on an empty document, and the
+   selected-cell tint inside a table. */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: #64748b;
+}
+.ProseMirror .selectedCell {
+  background: rgb(59 130 246 / 0.18);
+}
+.ProseMirror div[data-youtube-video] iframe {
+  pointer-events: none;
+}
+/* Highlighted text (editor + rendered articles): dark ink on the light
+   highlight colours, whatever colour the surrounding text is. The theme
+   remaps the grays, so this is a literal colour. */
+mark[data-color],
+mark {
+  color: #1f2937 !important;
+  border-radius: 0.2em;
+  padding: 0 0.1em;
+}

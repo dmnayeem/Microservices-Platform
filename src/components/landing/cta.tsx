@@ -37,7 +37,7 @@ export function CTA(props: Props) {
 
             <Link
               href={v.cta_href}
-              className="mk-press inline-flex items-center gap-2 px-8 py-4 bg-white text-(--mk-accent) font-bold rounded-xl hover:bg-(--mk-accent-soft) shadow-lg"
+              className="mk-press inline-flex items-center gap-2 px-6 sm:px-8 py-4 whitespace-nowrap bg-white text-(--mk-accent) font-bold rounded-xl hover:bg-(--mk-accent-soft) shadow-lg"
             >
               {v.cta_label}
               <ArrowRight className="w-5 h-5" />

@@ -42,13 +42,17 @@ export function StatTile({
   trailing?: React.ReactNode;
 }) {
   return (
-    <div className="glass glass-hover p-3 flex items-center gap-3 min-w-0">
+    // Icon above the text when the tile is narrow (3-up on a phone): beside
+    // it, "Followers" had 18px and split into four lines.
+    <div className="@container glass glass-hover p-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0 @max-[8.5rem]:flex-col @max-[8.5rem]:items-start @max-[8.5rem]:gap-2">
       <div className={cn("p-2 rounded-lg shrink-0", TONES[tone])}>{icon}</div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 @max-[8.5rem]:w-full">
         <p className={STAT_LABEL_CLASS}>{label}</p>
         <p className={STAT_VALUE_CLASS_SM}>{value}</p>
       </div>
       {trailing}
+      </div>
     </div>
   );
 }
