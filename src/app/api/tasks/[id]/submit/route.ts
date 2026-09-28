@@ -85,6 +85,7 @@ import { recordUserAction } from "@/lib/goal-progress";
 import {
   proofUrlRule,
   destinationFieldFor,
+  proofHostAllowed,
 } from "@/lib/social-proof-url";
 import { runAchievementCheck } from "@/lib/achievements";
 import { closeTaskIfFull } from "@/lib/task-slots";
@@ -160,6 +161,22 @@ export async function POST(
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    // Start checks these, submit did not: a task the admin paused, retired or
+    // let expire kept accepting (and paying) work begun before the change.
+    if (task.status !== "ACTIVE" || (task.expiresAt && task.expiresAt.getTime() < Date.now())) {
+      return NextResponse.json(
+        { error: "This task is no longer available." },
+        { status: 400 }
+      );
+    }
+    // The proxy page requires a proof URL; the server took an empty one, which
+    // put blank rows in the review queue.
+    if (task.type === "PROXY" && !(typeof proof === "string" && proof.trim())) {
+      return NextResponse.json(
+        { error: "Proof URL is required. Paste the IP-check or session log URL." },
+        { status: 400 }
+      );
     }
 
     // Find the pending submission
@@ -248,7 +265,9 @@ export async function POST(
       videoDuration > 0 &&
       videoDuration < requiredSeconds
     ) {
-      requiredSeconds = videoDuration;
+      // The length is reported by the browser, so it can only lower the target
+      // so far: `videoDuration: 1` used to make the requirement 0 seconds.
+      requiredSeconds = Math.max(videoDuration, Math.min(requiredSeconds, 10));
     }
     // SOCIAL bundles with watch items are gated on SERVER-accrued watch seconds
     // (the /heartbeat route credits only real foreground playback) — the client
@@ -301,14 +320,16 @@ export async function POST(
 
     // Validate quiz answers if it's a quiz task
     let score: number | null = null;
-    if (task.type === "QUIZ" && answers && task.questions) {
+    if (task.type === "QUIZ" && task.questions) {
       // `task.questions` is `Json?` and is a double-encoded STRING on some rows;
       // the old cast-and-forEach threw "not a function" on those, and only ever
       // looked for `correctAnswer` while the seed writes `correct`. See
       // src/lib/quiz-shape.ts.
       const questions = coerceQuizQuestions(task.questions);
       if (questions) {
-        const picks = coerceQuizAnswers(answers);
+        // No answers used to mean no score, and no score paid the FULL reward.
+        // Now it grades as 0 like any other blank answer sheet.
+        const picks = coerceQuizAnswers(answers ?? []);
         score = Math.round((scoreQuiz(questions, picks) / questions.length) * 100);
       }
     }
@@ -1074,6 +1095,9 @@ export async function POST(
                 (socialBundle[i]?.proofUrl as string | undefined) ?? "";
               const expected = verifyCodeFor(task.id, i, session.user.id);
               if (!proofUrl) status = "code_missing";
+              // A page off the platform proves nothing: anyone can publish the
+              // code on a site of their own. To a human reviewer, not rejected.
+              else if (!proofHostAllowed(cfg.platform, proofUrl)) status = "failed";
               else {
                 const html = pageByUrl.get(proofUrl) ?? null;
                 if (html === null) status = "unverifiable";
@@ -1105,7 +1129,8 @@ export async function POST(
                     ],
                   }
                 : (configured ?? defaultContentRules());
-              const html = proofUrl ? (pageByUrl.get(proofUrl) ?? null) : null;
+              const offPlatform = !!proofUrl && !proofHostAllowed(cfg.platform, proofUrl);
+              const html = proofUrl && !offPlatform ? (pageByUrl.get(proofUrl) ?? null) : null;
               const evaluation = evaluateContentRules(
                 html === null ? null : toPageContent(html),
                 rules,
@@ -1450,6 +1475,19 @@ export async function POST(
           });
         }
         if (!charge.paid) {
+          // The row was claimed as approved with the full reward on it; left
+          // like that it reads as paid in the user's history and the admin's
+          // lists. Record what actually happened.
+          await prisma.taskSubmission
+            .update({
+              where: { id: updatedSubmission.id },
+              data: {
+                pointsEarned: 0,
+                xpEarned: 0,
+                feedback: "The advertiser ran out of credit for this task — no reward was paid.",
+              },
+            })
+            .catch(() => {});
           return NextResponse.json({
             submission: updatedSubmission,
             status: "approved",

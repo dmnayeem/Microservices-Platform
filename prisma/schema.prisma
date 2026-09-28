@@ -1037,6 +1037,7 @@ model Deposit {
   @@index([userId])
   @@index([status])
   @@index([status, createdAt])
+  @@index([gatewayRef])
 }
 
 enum FraudSeverity {
@@ -1720,6 +1721,8 @@ model User {
   @@index([referredById])
   @@index([status])
   @@index([role])
+  @@index([createdAt])
+  @@index([lastLoginAt])
   @@index([signupIp])
   @@index([lastCountry])
   @@index([signupCountry])

@@ -113,3 +113,48 @@ export function destinationFieldFor(
   }
   return null;
 }
+
+/**
+ * Where a proof link for each platform can live. Auto-verification fetches the
+ * submitted page and looks for the user's code or the admin's keywords; with
+ * no host check, a page the user wrote themselves (a paste, a gist, their own
+ * site) carrying that text verified — and auto-approved — a post that was
+ * never made. Platforms missing here (WEBSITE, MEDIUM, review sites with many
+ * regional domains) are not restricted.
+ */
+const PROOF_HOSTS: Record<string, string[]> = {
+  FACEBOOK: ["facebook.com", "fb.com", "fb.watch"],
+  FB_GROUP: ["facebook.com", "fb.com"],
+  FACEBOOK_REVIEWS: ["facebook.com", "fb.com"],
+  TWITTER: ["x.com", "twitter.com"],
+  YOUTUBE: ["youtube.com", "youtu.be"],
+  INSTAGRAM: ["instagram.com"],
+  TIKTOK: ["tiktok.com"],
+  LINKEDIN: ["linkedin.com", "lnkd.in"],
+  THREADS: ["threads.net", "threads.com"],
+  REDDIT: ["reddit.com", "redd.it"],
+  QUORA: ["quora.com"],
+  BLUESKY: ["bsky.app"],
+};
+
+function hostMatches(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
+/** False only when the platform has a known home and the link is elsewhere. */
+export function proofHostAllowed(
+  platformKey: string | null | undefined,
+  url: string
+): boolean {
+  if (!platformKey) return true;
+  if (platformKey === "PINTEREST") {
+    const u = parse(url);
+    return !!u && isPinterestHost(u.hostname);
+  }
+  const hosts = PROOF_HOSTS[platformKey];
+  if (!hosts) return true;
+  const u = parse(url);
+  if (!u) return false;
+  const host = u.hostname.toLowerCase();
+  return hosts.some((d) => hostMatches(host, d));
+}

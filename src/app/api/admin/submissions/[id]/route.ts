@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { quizPayout } from "@/lib/quiz-shape";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -187,6 +188,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       let finalStatus: "APPROVED" | "REJECTED" = "APPROVED";
       let metadataUpdate: Prisma.InputJsonValue | undefined;
 
+      // A QUIZ pays on its marks, as both automatic paths do (quiz-shape.ts).
+      // Approving one here paid the full reward whatever the score. An explicit
+      // points override still wins.
+      const quizScore = task.type === "QUIZ" ? (score ?? existingSubmission.score) : null;
+      if (quizScore != null && pointsOverride == null && !isBoardTask) {
+        earnedPoints = quizPayout(quizScore, basePoints);
+        earnedXp = quizPayout(quizScore, baseXp);
+        referralPoints = earnedPoints;
+      }
+
       // SOCIAL per-action approval → award only the approved items' points.
       if (
         task.type === "SOCIAL" &&
@@ -262,6 +273,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         taskTitle: string;
         reason: "NO_CREDIT" | "DELIVERED";
       } | null = null;
+      // Whether the worker was actually credited in this approval. Referral
+      // commission is a share of THAT payment; it was paid even when the
+      // worker got nothing (already paid, or the funder's budget ran dry).
+      let workerPaid = false;
 
       const submission = await prisma.$transaction(async (tx) => {
         const claim = await tx.taskSubmission.updateMany({
@@ -330,6 +345,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             }
           }
           if (credit) {
+            workerPaid = true;
             const credited = await tx.user.update({
               where: { id: existingSubmission.userId },
               data: {
@@ -436,7 +452,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       // Process referral commissions (after transaction completes) — skip
       // for board tasks and when no points were minted.
-      if (awardsPoints && referralPoints > 0) {
+      if (awardsPoints && workerPaid && referralPoints > 0) {
         await processReferralCommissions(
           existingSubmission.userId,
           referralPoints,

@@ -45,6 +45,9 @@ export async function POST(
         taskId: id,
         userId: session.user.id,
         status: SubmissionStatus.PENDING,
+        // Not yet handed in: once submitted the row is under review and its
+        // proof/progress must not change.
+        submittedAt: null,
       },
       select: {
         id: true,
