@@ -145,7 +145,7 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/icon-192.png"
+            src="/app-icon/192"
             alt="RevType"
             className="w-11 h-11 rounded-xl shrink-0 border border-white/10"
           />

@@ -1,10 +1,10 @@
 // RevType service worker — web-push notifications + minimal offline shell +
 // runtime asset caching for offline depth.
-const CACHE = "revtype-shell-v4";
+const CACHE = "revtype-shell-v5";
 // Separate cache for hashed static assets / images / fonts served
 // stale-while-revalidate. Kept apart from the shell so a shell bump doesn't
 // throw away already-fetched bundles.
-const RUNTIME = "revtype-runtime-v4";
+const RUNTIME = "revtype-runtime-v5";
 // Soft cap so the runtime cache can't grow unbounded on a long session.
 const RUNTIME_MAX_ENTRIES = 160;
 const OFFLINE_URL = "/";
@@ -150,10 +150,16 @@ self.addEventListener("push", (event) => {
   const title = data.title || "RevType";
   const options = {
     body: data.body || "",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    // The admin's current home-screen icon. /icon-192.png is the old stock
+    // artwork (a purple sparkle), which every push was still showing.
+    icon: "/app-icon/192",
+    // White-on-transparent mark for the status bar. A full-colour square here
+    // is drawn by Android as a plain white square.
+    badge: "/app-icon/badge",
+    timestamp: Date.now(),
     data: { url: data.url || "/" },
   };
+  if (data.image) options.image = data.image;
   event.waitUntil(self.registration.showNotification(title, options));
 });
 

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSeoSettings } from "@/lib/seo-settings";
-import { homeIconSource, homeIconUrl } from "@/lib/brand-icons";
+import { homeIconSource, homeIconUrl, maskableIconUrl } from "@/lib/brand-icons";
 
 /**
  * The web-app manifest, built from /admin/seo so the name and the home-screen
@@ -19,7 +19,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     ? [
         { src: homeIconUrl(s, 192), sizes: "192x192", type: "image/png", purpose: "any" },
         { src: homeIconUrl(s, 512), sizes: "512x512", type: "image/png", purpose: "any" },
-        { src: homeIconUrl(s, 512), sizes: "512x512", type: "image/png", purpose: "maskable" },
+        { src: maskableIconUrl(s), sizes: "512x512", type: "image/png", purpose: "maskable" },
       ]
     : [
         { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
