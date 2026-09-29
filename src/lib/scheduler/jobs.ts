@@ -33,6 +33,7 @@ import { releaseDueDeals } from "@/lib/marketplace-deal";
 import { drawDueLotteries } from "@/lib/lottery-sweep";
 import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
 import { sweepStaleGameSessions } from "@/lib/game-cron";
+import { releaseDueCpaHolds } from "@/lib/cpa/credit";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -386,6 +387,22 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
       return {
         ok: true,
         summary: `Closed ${r.closed} abandoned session${r.closed === 1 ? "" : "s"}.`,
+        result: r,
+      };
+    },
+  },
+  {
+    name: "cpa-hold-release",
+    label: "Pay held CPA offers",
+    description:
+      "Pays CPA offer conversions that were approved with a hold once the hold time has passed. Nothing is paid before approval, and each conversion is paid at most once however many times this runs.",
+    intervalMs: 15 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const r = await releaseDueCpaHolds();
+      return {
+        ok: true,
+        summary: `Paid ${r.released} of ${r.candidates} due CPA conversion${r.candidates === 1 ? "" : "s"}.`,
         result: r,
       };
     },

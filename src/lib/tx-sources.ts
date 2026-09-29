@@ -30,6 +30,8 @@ export type SourceKey =
   // payroll is the platform's own operating expense, and burying it in the
   // same line as user bonuses makes the profit figure unreadable.
   | "payroll"
+  // CPA offers (src/lib/cpa) — EARNING rows under a `cpa_` reference.
+  | "cpa"
   | "refund"
   | "admin"
   | "other";
@@ -82,6 +84,7 @@ export function deriveSource(type: string, reference?: string | null): SourceKey
       return isMarketplaceRef ? "marketplace" : "purchase";
     case "EARNING":
       if (ref.startsWith("social_")) return "social";
+      if (ref.startsWith("cpa_")) return "cpa";
       // A leaderboard prize is a bonus, not task income — it was tagged "Tasks".
       if (ref.startsWith("leaderboard_")) return "bonus";
       if (ref.startsWith("daily_")) return "checkin";
@@ -123,6 +126,7 @@ export const SOURCE_META: Record<SourceKey, SourceMeta> = {
   taskcredit: { label: "Task Credit", icon: "Sparkles", tone: "bg-violet-500/10 text-violet-400", swatch: "bg-violet-500" },
   payroll: { label: "Payroll", icon: "BadgeDollarSign", tone: "bg-rose-500/10 text-rose-400", swatch: "bg-rose-500", outflow: true },
   purchase: { label: "Purchase", icon: "ShoppingCart", tone: "bg-amber-500/10 text-amber-400", swatch: "bg-amber-500", outflow: true },
+  cpa: { label: "CPA offers", icon: "Target", tone: "bg-lime-500/10 text-lime-400", swatch: "bg-lime-500" },
   refund: { label: "Refund", icon: "Undo2", tone: "bg-green-500/10 text-green-400", swatch: "bg-green-500" },
   admin: { label: "Adjustment", icon: "Shield", tone: "bg-slate-500/10 text-slate-400", swatch: "bg-slate-500" },
   other: { label: "Other", icon: "Coins", tone: "bg-gray-500/10 text-gray-400", swatch: "bg-gray-500" },
@@ -130,7 +134,7 @@ export const SOURCE_META: Record<SourceKey, SourceMeta> = {
 
 /** All source keys in a sensible display order (for filter chips / legends). */
 export const SOURCE_ORDER: SourceKey[] = [
-  "task", "social", "referral", "affiliate", "course", "marketplace",
+  "task", "social", "cpa", "referral", "affiliate", "course", "marketplace",
   "deposit", "convert", "withdraw", "bonus", "lottery", "checkin",
   "adcredit", "taskcredit", "taskfee", "payroll", "purchase", "refund", "admin", "other",
 ];

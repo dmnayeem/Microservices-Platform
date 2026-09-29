@@ -3,6 +3,38 @@ import { TransactionType, TransactionStatus, NotificationType } from "@/generate
 import { notifyUser } from "@/lib/notify";
 import { getPointsPerUsd } from "@/lib/economy";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { getSetting } from "@/lib/system-settings";
+import {
+  REFERRAL_COMMISSION_SOURCES_KEY,
+  allTaskTypesOn,
+  normalizeCommissionSources,
+  taskTypeCommissionOn,
+  type CommissionSourceKey,
+} from "@/lib/referral-commission-sources";
+
+/** The admin's commission-source switches (see referral-commission-sources.ts). */
+export async function getCommissionSources(): Promise<Record<CommissionSourceKey, boolean>> {
+  try {
+    return normalizeCommissionSources(
+      await getSetting<unknown>(REFERRAL_COMMISSION_SOURCES_KEY, null)
+    );
+  } catch {
+    // A settings blip must not change who gets paid: fall back to the defaults,
+    // which are exactly the behaviour before the setting existed.
+    return normalizeCommissionSources(null);
+  }
+}
+
+/** What one earning event is, for the commission rows it produces. */
+interface CommissionEvent {
+  /** `<base>_L<level>` is the ledger + accrual reference: unique per event. */
+  referenceBase: string;
+  sourceType: "TASK" | "CPA" | "OFFERWALL";
+  sourceId: string | null;
+  /** Appended to the ledger description, e.g. " · CPA offer". */
+  label: string;
+  metadata: Record<string, unknown>;
+}
 
 /**
  * Process referral commissions for a user's task completion.
@@ -27,6 +59,88 @@ export async function processReferralCommissions(
    */
   submissionId?: string
 ) {
+  // Commission sources (admin, Referrals → Commission levels). Every task type
+  // is on by default — today's behaviour — and then no task lookup is needed.
+  try {
+    const sources = await getCommissionSources();
+    if (!allTaskTypesOn(sources)) {
+      const task = await prisma.task.findUnique({ where: { id: taskId }, select: { type: true } });
+      if (!taskTypeCommissionOn(sources, task?.type)) {
+        console.log(`[referral-commission] skip task=${taskId} type=${task?.type} reason=source_off`);
+        return;
+      }
+    }
+  } catch (error) {
+    console.error("Error reading referral commission sources:", error);
+    return;
+  }
+  await payReferralChain(userId, pointsEarned, {
+    // Unchanged from before the sources existed, so an event paid under the
+    // old code is still recognised as paid.
+    referenceBase: submissionId ? `referral_${submissionId}` : `referral_${userId}_${taskId}`,
+    sourceType: "TASK",
+    sourceId: taskId,
+    label: "",
+    metadata: { source: "task", sourceTaskId: taskId, sourceSubmissionId: submissionId ?? null },
+  });
+}
+
+/**
+ * My Team commission on an approved (credited) CPA conversion — only when the
+ * admin switched "cpa" on (off by default: CPA never paid commission). Keyed
+ * on the conversion: `referral_cpa_<conversionId>_L<n>`, so a second call pays
+ * nothing more. A conversion is credited at most once (credit.ts), so a retry
+ * after a rejection cannot earn the upline twice either.
+ */
+export async function processCpaReferralCommissions(
+  userId: string,
+  pointsEarned: number,
+  conversionId: string,
+  offerId: string
+) {
+  try {
+    if (!(await getCommissionSources()).cpa) return;
+  } catch {
+    return;
+  }
+  await payReferralChain(userId, pointsEarned, {
+    referenceBase: `referral_cpa_${conversionId}`,
+    sourceType: "CPA",
+    sourceId: offerId,
+    label: " · CPA offer",
+    metadata: { source: "cpa", sourceConversionId: conversionId, sourceOfferId: offerId },
+  });
+}
+
+/**
+ * My Team commission on a credited offerwall completion — only when the admin
+ * switched "offerwall" on (off by default). `eventKey` names the one credit it
+ * is for (a completion id, or the callback's own key for a legacy wall
+ * callback), so every path that credits the same completion shares one
+ * reference: `referral_ow_<eventKey>_L<n>`.
+ */
+export async function processOfferwallReferralCommissions(
+  userId: string,
+  pointsEarned: number,
+  eventKey: string,
+  offerId: string | null
+) {
+  try {
+    if (!(await getCommissionSources()).offerwall) return;
+  } catch {
+    return;
+  }
+  await payReferralChain(userId, pointsEarned, {
+    referenceBase: `referral_ow_${eventKey}`,
+    sourceType: "OFFERWALL",
+    sourceId: offerId,
+    label: " · offerwall",
+    metadata: { source: "offerwall", sourceEventKey: eventKey, sourceOfferId: offerId },
+  });
+}
+
+/** Walk the upline and pay each eligible level for one earning event. */
+async function payReferralChain(userId: string, pointsEarned: number, ev: CommissionEvent) {
   try {
     const referralLevels = await prisma.referralLevel.findMany({
       where: { isActive: true },
@@ -144,9 +258,7 @@ export async function processReferralCommissions(
           // every repeat completion credited real points with no ledger row —
           // silent, unauditable minting — and killed levels 2 and 3 on the way
           // out, even though their references would not have collided.
-          const reference = submissionId
-            ? `referral_${submissionId}_L${level}`
-            : `referral_${userId}_${taskId}_L${level}`;
+          const reference = `${ev.referenceBase}_L${level}`;
 
           try {
             const commission = await prisma.$transaction(async (tx) => {
@@ -186,12 +298,11 @@ export async function processReferralCommissions(
                     referrerConfig.commissionType === "PERCENTAGE"
                       ? `${referrerConfig.commissionValue}%`
                       : `$${referrerConfig.commissionValue}`
-                  })`,
+                  })${ev.label}`,
                   reference,
                   metadata: {
                     referredUserId: userId,
-                    sourceTaskId: taskId,
-                    sourceSubmissionId: submissionId ?? null,
+                    ...ev.metadata,
                     level,
                     commissionType: referrerConfig.commissionType,
                     commissionValue: referrerConfig.commissionValue,
@@ -219,8 +330,8 @@ export async function processReferralCommissions(
                   referredUserId: userId,
                   level,
                   amount: payout / pointsPerUsd,
-                  sourceType: "TASK",
-                  sourceId: taskId,
+                  sourceType: ev.sourceType,
+                  sourceId: ev.sourceId,
                 },
               });
               return payout;

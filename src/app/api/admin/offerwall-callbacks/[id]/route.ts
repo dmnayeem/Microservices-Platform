@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getPointsPerUsd } from "@/lib/economy";
 import { releaseHeldCompletion } from "@/lib/offerwall";
+import { processOfferwallReferralCommissions } from "@/lib/referral-commissions";
 
 const schema = z.object({
   action: z.enum(["APPROVE", "REJECT"]),
@@ -162,6 +163,15 @@ export async function PATCH(
         },
       }),
     ]);
+    // My Team commission (off by default) — keyed on this callback, like its ledger row.
+    if (callback.userPayout > 0) {
+      await processOfferwallReferralCommissions(
+        callback.userId,
+        callback.userPayout,
+        `cb_${callback.id}`,
+        callback.offerId ?? null
+      );
+    }
   } else {
     await prisma.offerwallCallback.update({
       where: { id },

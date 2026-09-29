@@ -144,6 +144,7 @@ export const authConfig: NextAuthConfig = {
         "/api/popups", // site popups, shown to visitors as well (targeting is server-side)
         "/api/blog/", // blog read counter (public articles)
         "/api/health",
+        "/api/cpa/postback", // CPA network S2S postback — HMAC sig / secret key
       ];
       const isPublicApiRoute =
         publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { parseOfferwallConfig } from "@/lib/offerwall";
+import { processOfferwallReferralCommissions } from "@/lib/referral-commissions";
 
 /**
  * Generic offerwall server-to-server postback. Provider-agnostic:
@@ -245,6 +246,12 @@ async function handle(request: NextRequest, provider: string) {
         );
       }
       await prisma.$transaction(ops as never);
+      // My Team commission — only if the admin switched offerwall on (off by
+      // default). Keyed on the completion, the same key the hold release uses,
+      // so a completion pays its upline once whichever path credited it.
+      if (!held && points > 0) {
+        await processOfferwallReferralCommissions(completion.userId, points, completion.id, completion.offerId);
+      }
       return NextResponse.json({ ok: true, credited: held ? 0 : points, held });
     }
 
@@ -268,6 +275,10 @@ async function handle(request: NextRequest, provider: string) {
           },
         }),
       ]);
+      // Commission (off by default) — keyed on the network transaction, like the ledger row.
+      if (points > 0 && transactionId) {
+        await processOfferwallReferralCommissions(userId, points, `tx_${transactionId}`, offerId ?? null);
+      }
     } else {
       await prisma.offerwallCallback.create({
         data: {
