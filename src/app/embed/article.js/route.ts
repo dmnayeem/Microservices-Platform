@@ -6,7 +6,9 @@ import { NextRequest } from "next/server";
  * Cross-domain article-task embed script (v3 — inline text mode).
  *
  *   <script src="https://OUR_ORIGIN/embed/article.js"
- *     data-task="<taskId>" data-page="N" async></script>
+ *     data-task="<taskId>" async></script>
+ *   (data-page="N" is optional: the page is matched from its URL, and a
+ *   snippet pasted twice runs once.)
  *
  * Behavior:
  *   - Self-detects via `document.currentScript` (fallback: last
@@ -161,6 +163,15 @@ function buildScript(origin: string, appOrigin: string): string {
     log('the snippet has no data-task id, so there is nothing to run.');
     return;
   }
+  // The snippet may be pasted more than once on a page (two blocks, a theme
+  // widget plus the post, a copy-paste slip). Only the first copy runs for a
+  // task; a second task's snippet on the same page still runs on its own.
+  var runKey = '__egAtRun_' + taskId;
+  if (window[runKey]) {
+    log('the snippet for this task appears more than once on the page, so it runs once.');
+    return;
+  }
+  window[runKey] = true;
   // Three ways to be on this page.
   //
   //  - with ?eg=   a worker who followed a link we handed them
@@ -286,7 +297,8 @@ function buildScript(origin: string, appOrigin: string): string {
       ? '&token=' + encodeURIComponent(token)
       : '&egv=' + encodeURIComponent(visitToken);
     fetch(ORIGIN + '/api/article-tasks/' + encodeURIComponent(taskId) +
-          '/embed-config?page=' + pageNumber + auth)
+          '/embed-config?page=' + pageNumber + auth +
+          '&url=' + encodeURIComponent(window.location.href))
       .then(function(r) {
         return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; });
       })
@@ -312,6 +324,9 @@ function buildScript(origin: string, appOrigin: string): string {
         }
         window.__egAtLoaded = true;
         state.config = res.data;
+        // The server works out the page from this page's URL; every later
+        // call (progress, next page) must use that number, not data-page.
+        if (res.data.pageNumber) pageNumber = res.data.pageNumber;
         state.clicked = (res.data.progress && res.data.progress.popupsCompleted) || 0;
         injectStyles(res.data.theme || DEFAULT_THEME);
         startEngagementTracking();

@@ -358,6 +358,48 @@ export const ARTICLE_SRC_PARAM = "src";
  * the task's tag attached. Built in one place so the admin UI, the validator
  * and the embed cannot disagree about its shape.
  */
+/**
+ * Which of the task's pages is the reader on? Worked out from the page's own
+ * URL, so the publisher can paste the SAME snippet on every page instead of
+ * numbering each one by hand.
+ *
+ * Matched on host (ignoring "www.") + path (ignoring a trailing slash), so the
+ * query a social network or a tracker adds (?utm_source=…, ?fbclid=…, our own
+ * ?src=…) never breaks it. Two pages that differ only by query are told apart
+ * by which one's own query parameters the visit carries. Null when no page
+ * matches — the caller then falls back to the snippet's data-page.
+ */
+export function matchArticlePageNumber(
+  pages: Array<{ url: string }>,
+  visitUrl: string
+): number | null {
+  const norm = (raw: string) => {
+    try {
+      const u = new URL(raw);
+      const host = u.host.toLowerCase().replace(/^www\./, "");
+      const path = decodeURIComponent(u.pathname).replace(/\/+$/, "").toLowerCase() || "/";
+      return { key: `${host}${path}`, params: u.searchParams };
+    } catch {
+      return null;
+    }
+  };
+  const visit = norm(visitUrl);
+  if (!visit) return null;
+  const candidates: Array<{ n: number; params: URLSearchParams }> = [];
+  pages.forEach((p, i) => {
+    const pn = norm(p.url.trim());
+    if (pn && pn.key === visit.key) candidates.push({ n: i + 1, params: pn.params });
+  });
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0].n;
+  const carries = (c: { params: URLSearchParams }) =>
+    [...c.params.entries()].every(([k, v]) => visit.params.get(k) === v);
+  const best = candidates
+    .filter(carries)
+    .sort((a, b) => [...b.params.keys()].length - [...a.params.keys()].length)[0];
+  return (best ?? candidates[0]).n;
+}
+
 export function buildTaggedLandingUrl(
   landingUrl: string,
   srcTag: string
