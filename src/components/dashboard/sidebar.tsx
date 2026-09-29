@@ -7,45 +7,28 @@ import { useNavCounts, badgeText } from "@/hooks/use-nav-counts";
 import { useState } from "react";
 import { Avatar } from "@/components/user/primitives/avatar";
 import {
-  Home,
-  LayoutDashboard,
-  ListTodo,
-  Gamepad2,
-  Wallet,
-  Users,
-  Trophy,
-  GraduationCap,
-  Store,
-  Ticket,
-  MessageSquare,
-  Settings,
   Sparkles,
   LogOut,
   X,
   Shield,
-  Brain,
-  Pin,
-  Target,
-  Award,
-  Package,
-  Briefcase,
-  ClipboardPlus,
+  GraduationCap,
   ShoppingBag,
-  ArrowUpRight,
-  HelpCircle,
-  Bell,
-  CreditCard,
-  Receipt,
-  Handshake,
-  Coins,
-  Rocket,
-  Bookmark,
   Search,
+  type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
+import { isPathHidden } from "@/lib/page-visibility";
 import { cn } from "@/lib/utils";
 import { isAdmin, isTutor, type UserRole } from "@/lib/rbac";
+import {
+  DEFAULT_SIDEBAR,
+  visibleFor,
+  isExternalHref,
+  type SidebarConfig,
+  type SidebarModeKind,
+} from "@/lib/nav-config";
+import { navIcon } from "@/lib/nav-icons";
 
 interface SidebarProps {
   user: {
@@ -62,101 +45,30 @@ interface SidebarProps {
   hiddenPaths?: string[];
   /** The user's real profile picture (from User.avatar) — session omits it. */
   avatar?: string | null;
+  /** The admin-edited menu (Settings → Navigation → Sidebar), normalised. */
+  menu?: SidebarConfig;
 }
 
 type NavItem = {
+  id: string;
   name: string;
   href: string;
-  icon: typeof Home;
+  icon: LucideIcon;
   feature?: string;
   /** Extra words the filter box matches on (never rendered). */
   keywords?: string;
 };
 
 /* ── Navigation ────────────────────────────────────────────────────────────
-   32 destinations. Nothing was removed — everything that was reachable is
-   still reachable — but the groups now answer "what am I trying to DO?"
-   instead of listing things in the order they were built. Before, "Main" held
-   Courses and Marketplace (browsing surfaces), "Grow" held Lottery and
-   Browse & Earn (both are earning), and "Marketing" held Add Funds (money).
-   A group you can't predict the contents of is the same as no group at all,
-   which is most of what "cluttered" means here.
+   The menu is admin-edited now (Settings → Navigation → Sidebar); its default,
+   in `nav-config.ts` (DEFAULT_SIDEBAR), is the list that used to live here —
+   32 destinations grouped by "what am I trying to DO?" rather than the order
+   they were built in.
 
    `keywords` exist only for the filter box: they are the words a user actually
    types for a page whose label is jargon ("cash out" → Withdrawal, "refer" →
    My Team). */
 type Group = { section: string; items: NavItem[] };
-
-const navigationGroups: Group[] = [
-  {
-    section: "Main",
-    items: [
-      { name: "Home", href: "/social", icon: Home, keywords: "feed social posts" },
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, keywords: "overview stats" },
-      { name: "Wallet", href: "/wallet", icon: Wallet, keywords: "balance points money" },
-      { name: "Saved", href: "/saved", icon: Bookmark, keywords: "bookmarks" },
-      { name: "Leaderboard", href: "/leaderboard", icon: Trophy, keywords: "ranking top" },
-    ],
-  },
-  {
-    section: "Earn & Work",
-    items: [
-      { name: "Daily Mission", href: "/daily-mission", icon: Target, feature: "dailyMission", keywords: "today checklist streak" },
-      // Distinct from Daily Mission on purpose: daily = today's checklist,
-      // Missions = long-run big-prize goals. Both feed off one progress engine.
-      { name: "Missions", href: "/missions", icon: Rocket, keywords: "goals prizes" },
-      { name: "Tasks", href: "/tasks", icon: ListTodo, feature: "tasks", keywords: "jobs work offers" },
-      { name: "Board Tasks", href: "/board-tasks", icon: Pin, feature: "tasks", keywords: "pinned board" },
-      { name: "Browse & Earn", href: "/watch-ads", icon: Coins, keywords: "watch ads passive cpm" },
-      { name: "Quiz Games", href: "/quizzes", icon: Brain, keywords: "trivia questions" },
-      { name: "Games", href: "/games", icon: Gamepad2, feature: "games", keywords: "play arcade" },
-      { name: "Events", href: "/events", icon: Sparkles, keywords: "campaign limited" },
-      { name: "Lottery", href: "/lottery", icon: Ticket, feature: "lottery", keywords: "raffle draw ticket" },
-    ],
-  },
-  {
-    section: "Learn & Shop",
-    items: [
-      { name: "Courses", href: "/courses", icon: GraduationCap, feature: "courses", keywords: "learn lessons lms" },
-      { name: "My Learning", href: "/my-learning", icon: GraduationCap, feature: "courses", keywords: "enrolled progress certificate" },
-      { name: "Marketplace", href: "/marketplace", icon: Store, feature: "marketplace", keywords: "buy sell shop products" },
-    ],
-  },
-  {
-    section: "Network & Grow",
-    items: [
-      { name: "My Team", href: "/referrals", icon: Users, feature: "referrals", keywords: "referral refer invite downline" },
-      { name: "Affiliate", href: "/affiliate", icon: Handshake, keywords: "commission partner links" },
-      { name: "Milestones", href: "/milestones", icon: Target, keywords: "progress rewards" },
-      { name: "Achievements", href: "/achievements", icon: Award, keywords: "badges trophies" },
-    ],
-  },
-  {
-    section: "Promote",
-    items: [
-      { name: "Create Ad", href: "/advertiser", icon: Briefcase, feature: "advertiser", keywords: "advertise campaign banner" },
-      // `/create-task` had no navigation entry anywhere in the app. A user
-      // granted `createTasks` could only reach it from the link inside a task
-      // approval notification — so the permission worked and the page was
-      // effectively unreachable.
-      { name: "Create Task", href: "/create-task", icon: ClipboardPlus, feature: "createTasks", keywords: "post job hire" },
-    ],
-  },
-  {
-    section: "Account & Admin",
-    items: [
-      { name: "Add Funds", href: "/deposit", icon: CreditCard, keywords: "deposit top up recharge pay" },
-      { name: "Withdrawal", href: "/withdrawal", icon: ArrowUpRight, feature: "withdrawals", keywords: "cash out payout redeem" },
-      { name: "Transactions", href: "/transactions", icon: Receipt, keywords: "history statement ledger" },
-      { name: "Packages", href: "/packages", icon: Package, keywords: "plans upgrade subscription" },
-      { name: "My Package", href: "/my-package", icon: Package, keywords: "current plan subscription" },
-      { name: "Notifications", href: "/notifications", icon: Bell, keywords: "alerts" },
-      { name: "Chat", href: "/chat", icon: MessageSquare, keywords: "messages dm inbox" },
-      { name: "Help", href: "/support", icon: HelpCircle, keywords: "support contact ticket faq" },
-      { name: "Settings", href: "/settings", icon: Settings, keywords: "preferences account theme privacy" },
-    ],
-  },
-];
 
 /* Modes you switch INTO, pinned below the main nav. These were three
    near-identical 30-line blocks differing only in a colour; one descriptor
@@ -166,21 +78,21 @@ type ModeSection = {
   items: NavItem[];
 };
 
-const adminNavigation = [
-  { name: "Admin Panel", href: "/admin", icon: Shield },
+const adminNavigation: NavItem[] = [
+  { id: "mode-admin", name: "Admin Panel", href: "/admin", icon: Shield },
 ];
 
-const tutorNavigation = [
-  { name: "Tutor Hub", href: "/tutor/dashboard", icon: GraduationCap },
+const tutorNavigation: NavItem[] = [
+  { id: "mode-tutor", name: "Tutor Hub", href: "/tutor/dashboard", icon: GraduationCap },
 ];
 
 // Same shape as the admin and tutor entries above: a mode you switch INTO,
 // pinned below the main nav rather than buried inside it, because a buyer's
 // work is a different job from earning and mixing them makes both harder to
 // scan. Gated on the `createTasks` capability, not a role.
-const buyerNavigation = [
-  { name: "Buyer Hub", href: "/buyer", icon: ShoppingBag },
-  { name: "Buy Credit", href: "/buy-points", icon: Sparkles },
+const buyerNavigation: NavItem[] = [
+  { id: "mode-buyer", name: "Buyer Hub", href: "/buyer", icon: ShoppingBag },
+  { id: "mode-buy-points", name: "Buy Credit", href: "/buy-points", icon: Sparkles },
 ];
 
 // Extract SidebarContent as a separate component
@@ -192,9 +104,10 @@ interface SidebarContentProps {
   features?: string[];
   hiddenPaths?: string[];
   avatar?: string | null;
+  menu: SidebarConfig;
 }
 
-function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hiddenPaths, avatar }: SidebarContentProps) {
+function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hiddenPaths, avatar, menu }: SidebarContentProps) {
   // What is still waiting on these pages, like the notification bell's count:
   // it goes down as the user completes tasks and claims rewards.
   const navCounts = useNavCounts();
@@ -204,10 +117,9 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
     "/events": navCounts.events,
     "/lottery": navCounts.lottery,
   };
-  const hidden = new Set(hiddenPaths ?? []);
-  const visible = (item: NavItem) =>
-    (!item.feature || !features || features.includes(item.feature)) &&
-    !hidden.has(item.href);
+  // Segment-prefix match, same as the route guards: hiding "/tutor" also
+  // drops "/tutor/courses" from the Teaching section.
+  const visible = (item: NavItem) => visibleFor([item], features, hiddenPaths).length > 0;
 
   // "Hard to find things" in a 32-entry rail is a search problem, not a
   // hierarchy problem — grouping helps you scan, it does not help you jump.
@@ -226,19 +138,44 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
   // avatar and an indigo active row showed four accent colours at once, none of
   // which meant anything. They are one neutral list now; the section heading is
   // what tells them apart, which is the job a heading has.
-  const modeSections: ModeSection[] = [];
-  if (isTutor(user.role as UserRole | undefined)) {
-    modeSections.push({ section: "Teaching", items: tutorNavigation });
-  }
-  if (features?.includes("createTasks") && !hidden.has("/buyer")) {
-    modeSections.push({ section: "Buying", items: buyerNavigation });
-  }
-  if (isAdmin(user.role as UserRole | undefined)) {
-    modeSections.push({ section: "Administration", items: adminNavigation });
-  }
+  //
+  // Their gates are fixed here; the admin only renames and reorders them.
+  const modeItems: Record<SidebarModeKind, NavItem[]> = {
+    teaching: isTutor(user.role as UserRole | undefined)
+      ? tutorNavigation.filter(visible)
+      : [],
+    buying:
+      features?.includes("createTasks") && !isPathHidden("/buyer", hiddenPaths)
+        ? buyerNavigation.filter(visible)
+        : [],
+    admin: isAdmin(user.role as UserRole | undefined) ? adminNavigation : [],
+  };
+  const modeSections: ModeSection[] = menu.modes
+    .map((m) => ({ section: m.title, items: modeItems[m.kind] }))
+    .filter((m) => m.items.length > 0);
 
-  const groups = navigationGroups
-    .map((g) => ({ ...g, items: g.items.filter(visible).filter(matches) }))
+  // The admin's sections: items switched off in the editor never render, and
+  // visibility (hidden pages, missing features) still wins over the menu.
+  const groups: Group[] = menu.sections
+    .map((sec) => ({
+      section: sec.title,
+      items: visibleFor(
+        sec.items.filter((i) => i.visible),
+        features,
+        hiddenPaths
+      )
+        .map(
+          (i): NavItem => ({
+            id: i.id,
+            name: i.label,
+            href: i.href,
+            icon: navIcon(i.icon),
+            feature: i.feature,
+            keywords: i.keywords,
+          })
+        )
+        .filter(matches),
+    }))
     .filter((g) => g.items.length > 0);
   const noResults = q.length > 0 && groups.length === 0;
 
@@ -339,16 +276,17 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
           </p>
         )}
         {groups.map((group) => (
-          <div key={group.section}>
+          <div key={group.section + group.items[0].id}>
             <p className="t-eyebrow px-3 mb-2 text-(--app-ink-3)">{group.section}</p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive =
                   pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
-                  <li key={item.name}>
+                  <li key={item.id}>
                     <Link
                       href={item.href}
+                      {...(isExternalHref(item.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                       onClick={onNavigate}
                       aria-current={isActive ? "page" : undefined}
                       className="app-nav-item app-press"
@@ -386,7 +324,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
                 const isActive =
                   pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
-                  <li key={item.name}>
+                  <li key={item.id}>
                     <Link
                       href={item.href}
                       onClick={onNavigate}
@@ -417,7 +355,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
   );
 }
 
-export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
+export function Sidebar({ user, features, hiddenPaths, avatar, menu = DEFAULT_SIDEBAR }: SidebarProps) {
   const pathname = usePathname();
   // Single shared mobile-drawer signal — opened by BOTH the header hamburger
   // and the bottom-bar Menu button (both write this store). This canonical,
@@ -474,6 +412,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
             features={features}
             hiddenPaths={hiddenPaths}
             avatar={avatar}
+            menu={menu}
           />
         </div>
       </div>
@@ -496,6 +435,7 @@ export function Sidebar({ user, features, hiddenPaths, avatar }: SidebarProps) {
             features={features}
             hiddenPaths={hiddenPaths}
             avatar={avatar}
+            menu={menu}
           />
         </div>
       </div>

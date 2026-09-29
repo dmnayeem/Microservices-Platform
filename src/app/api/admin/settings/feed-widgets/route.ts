@@ -18,16 +18,21 @@ const KEYS = {
 
 const schema = z.object({
   widgets: z.array(z.object({ id: z.string(), enabled: z.boolean() })),
-  quickEarn: z.array(
-    z.object({
-      id: z.string(),
-      label: z.string(),
-      href: z.string(),
-      icon: z.string(),
-      color: z.string(),
-      enabled: z.boolean(),
-    })
-  ),
+  // Optional: the Quick Earn tiles are edited on Settings → Navigation (their
+  // one editor) and the widgets form no longer sends them. Written only when
+  // sent, so saving the widgets can never reset the tiles.
+  quickEarn: z
+    .array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        href: z.string(),
+        icon: z.string(),
+        color: z.string(),
+        enabled: z.boolean(),
+      })
+    )
+    .optional(),
   // Optional so an older client that does not send it cannot silently switch
   // public sharing OFF — or, far worse, default it ON.
   publicSharing: z.boolean().optional(),
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
 
   // Normalize/clean each payload before persisting.
   const customWidgets = normalizeCustomWidgets(v.data.customWidgets);
-  const quickEarn = normalizeQuickEarn(v.data.quickEarn);
+  const quickEarn = v.data.quickEarn ? normalizeQuickEarn(v.data.quickEarn) : undefined;
   const widgets = normalizeWidgetConfig(
     v.data.widgets,
     customWidgets.map((c) => c.id)
@@ -96,9 +101,9 @@ export async function POST(req: NextRequest) {
 
   const writes: Array<[string, unknown]> = [
     [KEYS.widgets, widgets],
-    [KEYS.quickEarn, quickEarn],
     [KEYS.custom, customWidgets],
   ];
+  if (quickEarn) writes.push([KEYS.quickEarn, quickEarn]);
   // Only written when the client actually sent it, so a partial payload leaves
   // the switch exactly as the owner set it.
   if (typeof v.data.publicSharing === "boolean") {

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
 import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
@@ -11,12 +12,14 @@ import { BottomTabBar } from "@/components/dashboard/bottom-tab-bar";
 import { AppRefreshShell } from "@/components/pwa/app-refresh-shell";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { getHiddenPaths } from "@/lib/page-visibility-server";
+import { isPathHidden } from "@/lib/page-visibility";
 import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { maintenanceFor } from "@/lib/maintenance";
 import { MaintenanceScreen } from "@/components/dashboard/maintenance-screen";
+import { getAppNavConfig, DEFAULT_APP_NAV } from "@/lib/nav-config-server";
 
 export default async function MainLayout({
   children,
@@ -45,7 +48,9 @@ export default async function MainLayout({
   //  - maintenanceFor: the admin's Maintenance Mode switch. It joins this
   //    Promise.all rather than sitting in front of it so a platform that is UP
   //    — every request but the rare one — pays nothing extra for the check.
-  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui] = await Promise.all([
+  //  - getAppNavConfig: the admin-edited tab bar / header / sidebar menus
+  //    (Settings -> Navigation). Cached setting reads, in the same batch.
+  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav] = await Promise.all([
     getEffectiveFeatures(session.user.id),
     getHiddenPaths(session.user.id),
     prisma.user
@@ -62,7 +67,19 @@ export default async function MainLayout({
       message: "",
     })),
     getUiToggles().catch(() => null),
+    headers(),
+    getAppNavConfig().catch(() => DEFAULT_APP_NAV),
   ]);
+
+  // Server-side page-visibility guard: a hidden page never renders on a hard
+  // load. `x-pathname` comes from middleware, which does not run in `next dev`
+  // on Next 16 — without it this is skipped and PageAccessGuard (client, and
+  // the only guard on soft navigation, since this layout does not re-render
+  // between its pages) still redirects.
+  const pathname = hdrs.get("x-pathname") ?? "";
+  if (pathname && isPathHidden(pathname, hiddenPaths)) {
+    redirect("/no-access");
+  }
 
   // Closed for everyone but staff, who need to be able to see the fix land.
   if (maintenance.active) {
@@ -82,13 +99,20 @@ export default async function MainLayout({
         features={features}
         avatar={avatar}
         hiddenPaths={hiddenPaths}
+        menu={nav.sidebar}
       />
 
       {/* Main Content */}
       {/* Rail width at each tier: 0 (phone) → 256px (md) → 288px (lg). */}
       <div className="md:pl-[280px]">
         {/* Header */}
-        <Header user={session.user} avatar={avatar} />
+        <Header
+          user={session.user}
+          avatar={avatar}
+          hiddenPaths={hiddenPaths}
+          config={nav.header}
+          tabPaths={nav.bottomTabs.map((t) => t.href)}
+        />
 
         {/* Page Content */}
         {/* scroll-mt keeps in-page anchor jumps clear of the sticky header. */}
@@ -132,7 +156,7 @@ export default async function MainLayout({
       </div>
 
       {/* App-style bottom nav (mobile only) */}
-      <BottomTabBar features={features} hiddenPaths={hiddenPaths} />
+      <BottomTabBar features={features} hiddenPaths={hiddenPaths} tabs={nav.bottomTabs} />
 
       {/* Sticky anchor ad — one mount covers every route tree in the app. Sits
           UNDER the nav (z-30 vs z-40) and suppresses itself on incentivised

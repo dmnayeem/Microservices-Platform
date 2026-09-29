@@ -62,6 +62,14 @@ export const prismaClaimStore: ClaimStore = {
     return res.count;
   },
 
+  async liveJobs(now) {
+    const rows = (await prisma.scheduledJobRun.findMany({
+      where: { state: "running", leaseUntil: { gt: now } },
+      select: { job: true },
+    })) as Array<{ job: string }>;
+    return new Set(rows.map((r) => r.job));
+  },
+
   async finish(job, windowKey, patch) {
     await prisma.scheduledJobRun.updateMany({
       where: { job, windowKey },

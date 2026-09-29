@@ -18,6 +18,19 @@ import { AppealDecision, ResetRisk, ResolveEvents } from "@/components/admin/fra
 import Link from "next/link";
 import { format } from "date-fns";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
+import { FraudSettingsPanel } from "@/components/admin/fraud/fraud-settings-panel";
+import { loadSettingValues } from "@/lib/admin-setting-values";
+import { FRAUD_HOME, keysHomedAt } from "@/lib/admin-settings-catalog";
+
+/**
+ * The monitor, plus every `antifraud.*` setting on its own tab. The settings
+ * used to sit on System Settings → Limits; the keys are unchanged.
+ */
+const TABS = [
+  { id: "monitor", label: "Monitor" },
+  { id: "settings", label: "Settings" },
+];
 
 const SEVERITY_CONFIG = {
   CRITICAL: { color: "text-red-400 bg-red-500/15", border: "border-red-500/50" },
@@ -26,10 +39,41 @@ const SEVERITY_CONFIG = {
   LOW: { color: "text-slate-300 bg-slate-700/40", border: "border-slate-700" },
 };
 
-export default async function FraudMonitorPage() {
+export default async function FraudMonitorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "fraud.view"))) redirect("/admin");
+  const tab = pickTab(TABS, (await searchParams).tab);
+  const tabs = <AdminTabs tabs={TABS} active={tab} basePath="/admin/fraud" />;
+
+  if (tab === "settings") {
+    const [initial, canEditSettings] = await Promise.all([
+      loadSettingValues(keysHomedAt(FRAUD_HOME.href)),
+      // The save goes through POST /api/admin/settings, which is gated on
+      // settings.edit — the same permission these controls needed before.
+      can(session.user.id, "settings.edit"),
+    ]);
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+            <ShieldAlert className="w-6 h-6 text-red-400" />
+            Fraud Monitor
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Anti-fraud rules, fraud risk points and auto-suspension.
+          </p>
+        </div>
+        {tabs}
+        <FraudSettingsPanel initial={initial} canEdit={canEditSettings} />
+      </div>
+    );
+  }
+
   const canManage = await can(session.user.id, "fraud.manage");
 
   const [criticalCount, highCount, mediumCount, lowCount, events, riskCfg, atRisk, appealRows] =
@@ -292,9 +336,11 @@ export default async function FraudMonitorPage() {
         </div>
         <p className="mt-2 text-xs text-slate-500">
           Change the points and the bar in{" "}
-          <Link href="/admin/settings" className="text-blue-400 hover:underline">Settings → Limits → Fraud risk</Link>.
+          <Link href="/admin/fraud?tab=settings" className="text-blue-400 hover:underline">Fraud Monitor → Settings</Link>.
         </p>
       </div>
+
+      {tabs}
 
       {/* Flagged events */}
       {events.length > 0 && (

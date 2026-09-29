@@ -22,7 +22,7 @@ import { usd } from "@/lib/utils";
  * SAME settings the Ad Manager writes (SystemSetting `ads.*` + the AdPlacement
  * table) so the two stay in sync:
  *   - publisher ad-network keys (AdSense client, GAM network code)
- *   - the platform click price (CPC) used to bill advertisers
+ *   - (the click price is edited only in the Ad Manager; this page links to it)
  *   - a live coverage checklist of every ad placement across the app, so an
  *     admin can see at a glance which surfaces are actually earning.
  */
@@ -34,11 +34,17 @@ interface PlacementRow {
   stats: { impressions: number; clicks: number; activeAds: number; totalAds: number };
 }
 
-export function MonetizationView({ canManage }: { canManage: boolean }) {
+export function MonetizationView({
+  canManage,
+  view = "main",
+}: {
+  canManage: boolean;
+  /** Which tab of /admin/monetization is showing. */
+  view?: "main" | "browse-earn";
+}) {
   const [loading, setLoading] = useState(true);
   const [adsenseClient, setAdsenseClient] = useState("");
   const [gamNetworkCode, setGamNetworkCode] = useState("");
-  const [cpcUsd, setCpcUsd] = useState(0.05);
   const [placements, setPlacements] = useState<PlacementRow[]>([]);
   const [networkBusy, setNetworkBusy] = useState(false);
   // Google policy plumbing: certified CMP, auto ads, ads.txt.
@@ -46,7 +52,6 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
   const [autoAds, setAutoAds] = useState(false);
   const [adsTxt, setAdsTxt] = useState("");
   const [adsTxtBusy, setAdsTxtBusy] = useState(false);
-  const [cpcBusy, setCpcBusy] = useState(false);
   const [bonusPct, setBonusPct] = useState(0);
   const [bonusBusy, setBonusBusy] = useState(false);
   // What goes at the top of an invoice, and whether tax applies.
@@ -99,7 +104,6 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         setCmpEnabled(!!d.googleCmpEnabled);
         setAutoAds(!!d.autoAdsEnabled);
         setAdsTxt(d.adsTxt ?? "");
-        if (typeof d.cpcUsd === "number") setCpcUsd(d.cpcUsd);
         if (typeof d.creditBonusPct === "number") setBonusPct(d.creditBonusPct);
         if (d.billing) setBilling((b) => ({ ...b, ...d.billing }));
         setPlacements(Array.isArray(d.placements) ? d.placements : []);
@@ -202,24 +206,6 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
       toast.error("Couldn't save ads.txt");
     } finally {
       setAdsTxtBusy(false);
-    }
-  };
-
-  const saveCpc = async (value: number) => {
-    const v = Math.min(100, Math.max(0.001, value || 0.05));
-    setCpcBusy(true);
-    try {
-      const res = await fetch("/api/admin/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: "ads", settings: { "ads.cpcUsd": v } }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success("Click price saved");
-    } catch {
-      toast.error("Couldn't save click price");
-    } finally {
-      setCpcBusy(false);
     }
   };
 
@@ -326,12 +312,97 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
     (p) => (statByName.get(p.name)?.stats.activeAds ?? 0) > 0
   ).length;
 
+  // Browse & Earn is its own tab of /admin/monetization: it is a user
+  // earning feature with its own payout, not ad-network plumbing.
+  const browseEarn = (
+        <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-white inline-flex items-center gap-1.5">
+                <Coins className="w-4 h-4 text-amber-400" /> Browse &amp; Earn (passive)
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                The <b>/watch-ads</b> page rewards users for keeping ads on screen —
+                you earn CPM on the <b>Browse &amp; Earn</b> placement, they earn
+                points. Add network ads to that slot below.
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 shrink-0 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={beEnabled}
+                disabled={!canManage}
+                onChange={(e) => setBeEnabled(e.target.checked)}
+                className="w-4 h-4 accent-amber-500"
+              />
+              <span className="text-xs font-semibold text-slate-300">Enabled</span>
+            </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Points per interval</label>
+              <input
+                type="number"
+                min={1}
+                value={bePoints}
+                disabled={!canManage}
+                onChange={(e) => setBePoints(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Interval seconds</label>
+              <input
+                type="number"
+                min={10}
+                max={600}
+                value={beSeconds}
+                disabled={!canManage}
+                onChange={(e) => setBeSeconds(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Daily cap (points)</label>
+              <input
+                type="number"
+                min={0}
+                value={beCap}
+                disabled={!canManage}
+                onChange={(e) => setBeCap(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            A viewer earns up to{" "}
+            <b className="text-amber-400">{beCap} pts/day</b> at{" "}
+            {bePoints} pts every {beSeconds}s. Keep the payout below your real ad CPM
+            so the surface stays profitable.
+          </p>
+          {canManage && (
+            <button
+              onClick={saveBrowseEarn}
+              disabled={beBusy}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {beBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Browse &amp; Earn
+            </button>
+          )}
+        </section>
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center py-24">
         <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
       </div>
     );
+  }
+
+  if (view === "browse-earn") {
+    return <div className="max-w-4xl mx-auto space-y-6 p-1">{browseEarn}</div>;
   }
 
   return (
@@ -344,7 +415,7 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-white">Monetization</h1>
           <p className="text-sm text-slate-400">
-            Connect ad networks, set the click price, and see which surfaces are
+            Connect ad networks and see which surfaces are
             earning. Create individual ads in the{" "}
             <Link href="/admin/ads" className="text-emerald-400 hover:underline">
               Ad Manager
@@ -627,29 +698,22 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
         )}
       </section>
 
-      {/* Click price */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-        <div>
+      {/* Click price — edited in ONE place, the Ad Manager, beside the
+          per-space rates that override it. It used to be editable here too. */}
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm font-bold text-white">Advertiser click price (CPC)</p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            What an advertiser is billed per click on a first-party (LOCAL) ad.
+            The default price per click, and each space&apos;s own price, are set in
+            Ad Manager &rarr; Ad Spaces.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-sm">$</span>
-          <input
-            type="number"
-            step={0.01}
-            min={0.001}
-            value={cpcUsd}
-            disabled={!canManage || cpcBusy}
-            onChange={(e) => setCpcUsd(Number(e.target.value))}
-            onBlur={(e) => canManage && saveCpc(Number(e.target.value))}
-            className="w-28 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
-          />
-          <span className="text-xs text-slate-500">per click</span>
-          {cpcBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
-        </div>
+        <Link
+          href="/admin/ads?tab=placements"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+        >
+          Ad Manager <ExternalLink className="h-3 w-3" />
+        </Link>
       </section>
 
       {/* Invoice details */}
@@ -851,84 +915,6 @@ export function MonetizationView({ canManage }: { canManage: boolean }) {
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Browse & Earn — passive CPM reward */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold text-white inline-flex items-center gap-1.5">
-              <Coins className="w-4 h-4 text-amber-400" /> Browse &amp; Earn (passive)
-            </p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              The <b>/watch-ads</b> page rewards users for keeping ads on screen —
-              you earn CPM on the <b>Browse &amp; Earn</b> placement, they earn
-              points. Add network ads to that slot below.
-            </p>
-          </div>
-          <label className="inline-flex items-center gap-2 shrink-0 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={beEnabled}
-              disabled={!canManage}
-              onChange={(e) => setBeEnabled(e.target.checked)}
-              className="w-4 h-4 accent-amber-500"
-            />
-            <span className="text-xs font-semibold text-slate-300">Enabled</span>
-          </label>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Points per interval</label>
-            <input
-              type="number"
-              min={1}
-              value={bePoints}
-              disabled={!canManage}
-              onChange={(e) => setBePoints(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Interval seconds</label>
-            <input
-              type="number"
-              min={10}
-              max={600}
-              value={beSeconds}
-              disabled={!canManage}
-              onChange={(e) => setBeSeconds(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Daily cap (points)</label>
-            <input
-              type="number"
-              min={0}
-              value={beCap}
-              disabled={!canManage}
-              onChange={(e) => setBeCap(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50"
-            />
-          </div>
-        </div>
-        <p className="text-[11px] text-slate-500">
-          A viewer earns up to{" "}
-          <b className="text-amber-400">{beCap} pts/day</b> at{" "}
-          {bePoints} pts every {beSeconds}s. Keep the payout below your real ad CPM
-          so the surface stays profitable.
-        </p>
-        {canManage && (
-          <button
-            onClick={saveBrowseEarn}
-            disabled={beBusy}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {beBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Browse &amp; Earn
-          </button>
-        )}
       </section>
 
       {/* Placement coverage checklist */}

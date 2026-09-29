@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +29,9 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Super-admin page visibility: refuse when /achievements is hidden for this user.
+    const pageHidden = await assertPageVisible(session.user.id, "/achievements");
+    if (pageHidden) return pageHidden;
     const userId = session.user.id;
     const { id } = await params;
 

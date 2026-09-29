@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
@@ -112,6 +113,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /withdrawal is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/withdrawal");
+  if (pageHidden) return pageHidden;
   // Profile gate — see lib/profile-gate-server.ts. Checked on every route
   // that lets a user earn, or a locked user earns through the unchecked one.
   const profileGated = await profileGateResponse(session.user.id, "withdrawals");

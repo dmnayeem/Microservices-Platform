@@ -4,15 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getUserDayContext } from "@/lib/user-day";
 
-// Solo reward unlocks daily once user meets criteria
-const CRITERIA = {
-  tasksToday: 5,
-  earningsToday: 1, // $1
-};
+import { getSoloRewardConfig } from "@/lib/reward-config-server";
 
-const REWARD = {
-  points: 500,
-  xp: 100,
+// Solo reward unlocks daily once user meets criteria. Points, XP and the
+// criteria come from the admin setting `solo_reward.config` (same source as
+// the claim route); the display-only extras below are unchanged.
+const REWARD_EXTRAS = {
   cashUsd: 0,
   boostMultiplier: 2,
   boostHours: 24,
@@ -24,6 +21,9 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = session.user.id;
+  const solo = await getSoloRewardConfig();
+  const CRITERIA = { tasksToday: solo.tasksToday, earningsToday: solo.earningsToday };
+  const REWARD = { points: solo.points, xp: solo.xp, ...REWARD_EXTRAS };
 
   // "Today" is the user's LOCAL day (country-based).
   const { startOfDayUtc: todayStart } = await getUserDayContext(userId);

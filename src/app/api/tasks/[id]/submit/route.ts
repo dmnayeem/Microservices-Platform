@@ -1,3 +1,5 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
+import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -162,6 +164,10 @@ export async function POST(
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    // Super-admin page visibility: the page that runs this task type is
+    // hidden for this user. Refuses only; fails open on a read error.
+    const pageHidden = await assertPageVisible(session.user.id, taskTypePage(task.type));
+    if (pageHidden) return pageHidden;
     // Start checks these, submit did not: a task the admin paused, retired or
     // let expire kept accepting (and paying) work begun before the change.
     if (task.status !== "ACTIVE" || (task.expiresAt && task.expiresAt.getTime() < Date.now())) {

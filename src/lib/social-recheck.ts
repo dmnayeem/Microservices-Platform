@@ -20,6 +20,9 @@ import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
 import { getBuyerSettings } from "@/lib/buyer-settings";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { closeTaskIfFull } from "@/lib/task-slots";
+import { processReferralCommissions } from "@/lib/referral-commissions";
+import { recordUserAction } from "@/lib/goal-progress";
+import { runAchievementCheck } from "@/lib/achievements";
 
 /**
  * Look at a submission again, a little later.
@@ -366,6 +369,19 @@ export async function recheckPendingSocialSubmissions(opts?: {
       // found it. Same placement as everywhere else: after the transaction,
       // quietly, because the reward has already landed.
       await syncUserLevelQuietly(sub.userId);
+
+      // The follow-ups every other approval path runs: the upline's commission,
+      // event/mission progress and achievements. Missing here, a submission this
+      // job approved paid the worker and nobody else, and never counted toward
+      // a "complete N tasks" goal. Each is idempotent on the submission id, so
+      // a race with another path pays and counts once.
+      await processReferralCommissions(sub.userId, points, sub.taskId, sub.id);
+      await recordUserAction({
+        userId: sub.userId,
+        action: "task_approved",
+        targetId: sub.id,
+      });
+      await runAchievementCheck(sub.userId);
 
       await prisma.notification
         .create({

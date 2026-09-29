@@ -5,6 +5,7 @@ import { isSuperAdmin, type UserRole } from "@/lib/rbac";
 import { getPageVisibilityRules } from "@/lib/page-visibility-server";
 import {
   computeHiddenPaths,
+  hiddenSources,
   parsePageOverrides,
 } from "@/lib/page-visibility";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
@@ -92,6 +93,8 @@ export async function GET(
     packageSlug: pkg?.slug ?? null,
     packageName: pkg?.name ?? null,
     inheritedHidden,
+    // Which layer hides each inherited-hidden page: "everyone" | "package" | "role".
+    inheritedSources: hiddenSources(rules, pkg?.slug ?? null, user.role),
     effectiveHidden,
     pageOverrides,
     inheritedFeatures,

@@ -171,7 +171,8 @@ async function main() {
     );
     check(
       "page visibility can still hide it per user",
-      /!hidden\.has\("\/buyer"\)/.test(sidebar) &&
+      // 2026-09-29: the sidebar now uses the shared prefix matcher.
+      /!isPathHidden\("\/buyer", hiddenPaths\)/.test(sidebar) &&
         /"\/buyer"/.test(read("src/lib/page-visibility.ts"))
     );
   }

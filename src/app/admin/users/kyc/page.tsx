@@ -21,6 +21,9 @@ import { ImageZoomGallery } from "@/components/admin/image-zoom-gallery";
 import { KycReviewActions } from "@/components/admin/kyc/kyc-review-actions";
 import { KycAppealsList } from "@/components/admin/users/kyc-appeals-list";
 import { parseDocumentImages } from "@/lib/kyc";
+import { KycSettingsPanel } from "@/components/admin/kyc/kyc-settings-panel";
+import { loadSettingValues } from "@/lib/admin-setting-values";
+import { KYC_HOME, keysHomedAt } from "@/lib/admin-settings-catalog";
 
 interface PageProps {
   searchParams: Promise<{
@@ -36,9 +39,9 @@ export default async function KYCQueuePage({ searchParams }: PageProps) {
   if (!(await can(session.user.id, "kyc.view"))) redirect("/admin");
 
   const params = await searchParams;
-  const tab = (params.tab === "appeals" ? "appeals" : "kyc") as
-    | "kyc"
-    | "appeals";
+  const tab = (
+    params.tab === "appeals" || params.tab === "settings" ? params.tab : "kyc"
+  ) as "kyc" | "appeals" | "settings";
   const statusFilter = params.status || "PENDING";
 
   // Stats — always fetched
@@ -223,7 +226,26 @@ export default async function KYCQueuePage({ searchParams }: PageProps) {
         >
           Verification Appeals
         </Link>
+        <Link
+          href="/admin/users/kyc?tab=settings"
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${
+            tab === "settings"
+              ? "border-blue-500 text-white"
+              : "border-transparent text-slate-400 hover:text-white"
+          }`}
+        >
+          Settings
+        </Link>
       </div>
+
+      {/* SETTINGS TAB — the auto-KYC thresholds, moved from System Settings.
+          Saving goes through POST /api/admin/settings (settings.edit), as before. */}
+      {tab === "settings" && (
+        <KycSettingsPanel
+          initial={await loadSettingValues(keysHomedAt(KYC_HOME.href))}
+          canEdit={await can(session.user.id, "settings.edit")}
+        />
+      )}
 
       {/* APPEALS TAB */}
       {tab === "appeals" && (

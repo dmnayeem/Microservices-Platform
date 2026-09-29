@@ -119,6 +119,10 @@ enum ReferralSourceType {
   COURSE
   SIGNUP
   MONTHLY_BONUS
+  /// My Team commission on an approved CPA conversion (referral.commission_sources.cpa).
+  CPA
+  /// My Team commission on a credited offerwall completion (referral.commission_sources.offerwall).
+  OFFERWALL
 }
 
 enum TransactionStatus {
@@ -852,6 +856,13 @@ model Ad {
   width             Int?
   height            Int?
   weight            Int                  @default(10)
+  /// Full-screen (interstitial) timing for THIS ad, set by the admin.
+  /// skipAfterSeconds: when Skip/Close appears (0–60). Null = the space's
+  /// setting, then 5 — so one space can mix 5s, 10s and 15s ads.
+  skipAfterSeconds  Int?
+  /// showSeconds: close the ad on its own after this long (never before the
+  /// skip time). Null = it stays until the viewer closes it.
+  showSeconds       Int?
   // ACTIVE | PAUSED | INACTIVE | PENDING (awaiting admin review) | CHANGES_REQUESTED | REJECTED
   // Only src/lib/ad-review.ts may write this column — it is the review gate.
   status            String               @default("ACTIVE")
@@ -1553,6 +1564,10 @@ model User {
   customRole                        CustomRole?                  @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
   status                            UserStatus                   @default(PENDING_VERIFICATION)
   pointsBalance                     Int                          @default(0)
+  // Unpaid fraction of referral commission, in thousandths of a point. A 3%
+  // cut of a 30-pt task is 0.9 pts; flooring it paid nothing, ever. The
+  // fraction accrues here and whole points are paid once it reaches 1000.
+  referralCommissionCarryMilli      Int                          @default(0)
   cashBalance                       Decimal                      @default(0) @db.Decimal(18, 6)
   // Non-withdrawable ad-spend wallet (USD, 1 credit = $1). Bought with cash/
   // points or admin-granted; campaign budgets are funded from this.
@@ -1627,6 +1642,10 @@ model User {
   /// writes, and `stripProtectedForRole` honours finance permissions from here
   /// and nowhere else.
   financeGrants                     String[]                     @default([])
+  /// Per-admin admin-PAGE (module) visibility: { [moduleHref]: "show" | "hide" }.
+  /// Super-admin only. "show" also adds that module's permissions (finance and
+  /// staff-admin permissions are still stripped). See src/lib/admin-module-rules.ts.
+  moduleOverrides                   Json?
   pageOverrides                     Json? // per-user page-visibility grants/denials { [path]: boolean } — super-admin page hiding
   // Anti-fraud: IP captured at signup + most recent request IP (per-IP account
   // cap + VPN/proxy heuristic). @@index on signupIp for the per-IP count.
@@ -1720,6 +1739,9 @@ model User {
   kycAppeals                        KYCAppeal[]
   taskSubmissions                   TaskSubmission[]
   transactions                      Transaction[]
+  // CPA offers (separate module — not the Offerwall).
+  cpaClicks                         CpaClick[]
+  cpaConversions                    CpaConversion[]
   withdrawals                       Withdrawal[]
   paymentMethods                    UserPaymentMethod[]
   notifications                     Notification[]
@@ -2539,6 +2561,21 @@ model ReferralLevel {
   isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+}
+
+/// One row per referral-commission EVENT (submission x level), paid or not.
+/// Its unique (userId, reference) is what makes the carry idempotent: a replay
+/// fails on this insert before the carry moves, even when the event paid 0
+/// whole points and so wrote no Transaction row.
+model ReferralCommissionAccrual {
+  id         String   @id @default(cuid())
+  userId     String
+  reference  String
+  milli      Int
+  paidPoints Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, reference])
 }
 
 model ReferralEarning {
@@ -5375,4 +5412,116 @@ model RecurringEntry {
   @@index([categoryId])
   @@index([employeeId])
   @@index([payeeId])
+}
+
+// ─── CPA offers ──────────────────────────────────────────────────────────────
+// A module of its own, deliberately separate from the Offerwall (owner's call,
+// 2026-09-29). Admin adds a network offer with a macro tracking link; the user
+// starts it through /go/cpa/<id> (one CpaClick = the clickId passed to the
+// network) and is paid only when a CpaConversion is approved — by an admin on
+// proof, or by a signed postback. See .claude/plans/cpa-offers-plan.md.
+
+model CpaOffer {
+  id                    String          @id @default(cuid())
+  title                 String
+  network               String
+  category              String?
+  description           String?         @db.Text
+  steps                 String[]        @default([])
+  logoUrl               String?
+  imageUrl              String?
+  /// Destination with macros {username} {userId} {clickId} {country}. Never sent to users.
+  trackingUrl           String          @db.Text
+  points                Int             @default(0)
+  /// What the network pays the platform per conversion (revenue).
+  payoutUsd             Decimal?        @db.Decimal(18, 6)
+  estMinutes            Int?
+  difficulty            String          @default("EASY") // EASY | MEDIUM | HARD
+  completionMode        String          @default("PROOF") // PROOF | POSTBACK
+  autoApproveOnPostback Boolean         @default(false)
+  proofRequired         Boolean         @default(true)
+  proofInstructions     String?         @db.Text
+  /// Hours between approval and the points being credited (0 = at once).
+  holdHours             Int             @default(0)
+  dailyCap              Int?
+  totalCap              Int?
+  /// Conversions claimed against totalCap (claimed at submission, released on rejection).
+  conversionsCount      Int             @default(0)
+  status                String          @default("DRAFT") // DRAFT | ACTIVE | PAUSED | ARCHIVED
+  featured              Boolean         @default(false)
+  order                 Int             @default(0)
+  // Audience — same columns as Task, so src/lib/task-targeting.ts applies as is.
+  countries             String[]        @default([])
+  genders               String[]        @default([])
+  regions               String[]        @default([])
+  divisions             String[]        @default([])
+  districts             String[]        @default([])
+  subDistricts          String[]        @default([])
+  postalCodes           String[]        @default([])
+  minAge                Int?
+  maxAge                Int?
+  createdById           String?
+  clicks                CpaClick[]
+  conversions           CpaConversion[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([status, order])
+  @@index([order])
+}
+
+// One "Start" — its id is the clickId the network echoes back in the postback.
+model CpaClick {
+  id        String   @id @default(cuid())
+  offerId   String
+  offer     CpaOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username  String?
+  country   String?
+  district  String?
+  ip        String?
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([offerId, createdAt])
+  @@index([userId, offerId])
+  @@index([createdAt])
+}
+
+model CpaConversion {
+  id               String    @id @default(cuid())
+  offerId          String
+  /// Restrict: an offer with conversions is archived, never deleted.
+  offer            CpaOffer  @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  userId           String
+  /// Restrict, like TaskSubmission: a conversion can back a real payment.
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  clickId          String?
+  status           String    @default("PENDING") // PENDING | HELD | APPROVED | REJECTED | REVERSED
+  proofImages      String[]  @default([])
+  proofText        String?   @db.Text
+  points           Int       @default(0)
+  payoutUsd        Decimal?  @db.Decimal(18, 6)
+  postbackVerified Boolean   @default(false)
+  txid             String?   @unique
+  reviewedById     String?
+  reviewedAt       DateTime?
+  rejectionReason  String?   @db.Text
+  heldUntil        DateTime?
+  creditedAt       DateTime?
+  reversedAt       DateTime?
+  /// 1 on the first try; +1 each time a REJECTED row is retried (the row is
+  /// reused — one per user per offer). See src/lib/cpa/retry.ts.
+  attempts         Int       @default(1)
+  /// Previous attempts (CpaAttemptRecord[]), oldest first. Null = never retried.
+  history          Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([offerId, userId])
+  @@index([status, createdAt])
+  @@index([offerId, status])
+  @@index([userId, createdAt])
+  @@index([status, heldUntil])
 }

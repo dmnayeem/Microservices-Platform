@@ -60,6 +60,9 @@ function sourceWhere(source: SourceKey): Prisma.TransactionWhereInput | null {
       return { OR: [{ type: "CHECKIN" }, { type: "EARNING", reference: { startsWith: "daily_" } }] };
     case "social":
       return { type: "EARNING", reference: { startsWith: "social_" } };
+    case "cpa":
+      // Credits and their reversals both carry a `cpa_` reference.
+      return { reference: { startsWith: "cpa_" } };
     case "marketplace":
       return {
         OR: [
@@ -86,6 +89,7 @@ function sourceWhere(source: SourceKey): Prisma.TransactionWhereInput | null {
             { reference: { startsWith: "social_" } },
             { reference: { startsWith: "daily_" } },
             { reference: { startsWith: "leaderboard_" } },
+            { reference: { startsWith: "cpa_" } },
           ],
         },
       };

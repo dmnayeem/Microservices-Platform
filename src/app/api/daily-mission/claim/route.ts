@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
@@ -25,6 +26,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /daily-mission is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/daily-mission");
+  if (pageHidden) return pageHidden;
   // Profile gate — see lib/profile-gate-server.ts. Checked on every route
   // that lets a user earn, or a locked user earns through the unchecked one.
   const profileGated = await profileGateResponse(session.user.id, "missions");

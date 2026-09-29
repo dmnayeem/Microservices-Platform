@@ -45,7 +45,12 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = (await prisma.post.findMany({
-    where: { id: { in: ids }, isHidden: false },
+    where: {
+      id: { in: ids },
+      isHidden: false,
+      // Banned / suspended authors' posts drop out of saved lists too.
+      user: { status: { notIn: ["BANNED", "SUSPENDED"] } },
+    },
     select: FEED_POST_SELECT,
   })) as unknown as Parameters<typeof formatFeedPost>[0][];
 

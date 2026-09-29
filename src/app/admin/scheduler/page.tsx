@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import { SCHEDULED_JOBS } from "@/lib/scheduler/jobs";
+import { getJobModes } from "@/lib/scheduler/modes";
+import { latestRunPerJob } from "@/lib/scheduler/latest";
 import {
   SchedulerBoard,
   type RunRow,
@@ -23,6 +25,7 @@ export default async function SchedulerAdminPage() {
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "settings.view"))) redirect("/admin");
 
+  const [modes, latest] = await Promise.all([getJobModes(), latestRunPerJob()]);
   const runs = (await prisma.scheduledJobRun.findMany({
     orderBy: { claimedAt: "desc" },
     take: 60,
@@ -69,6 +72,8 @@ export default async function SchedulerAdminPage() {
         leaseMs: j.leaseMs,
       }))}
       initialRuns={rows}
+      initialModes={modes}
+      initialLatest={latest}
     />
   );
 }

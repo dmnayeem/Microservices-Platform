@@ -15,6 +15,14 @@ interface RouteParams {
 
 const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 
+/** Per-ad full-screen timing: null/"" clears it, else clamped to [min, max]. */
+function parseSeconds(v: unknown, min: number, max: number): number | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : undefined;
+}
+
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user || !(await can(session.user.id, "ads.manage"))) {
@@ -52,6 +60,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.height !== undefined)
     data.height = Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null;
   if (body.weight !== undefined) data.weight = Math.max(1, Number(body.weight) || 10);
+  {
+    const skip = parseSeconds(body.skipAfterSeconds, 0, 60);
+    if (skip !== undefined) data.skipAfterSeconds = skip;
+    const show = parseSeconds(body.showSeconds, 1, 300);
+    if (show !== undefined) data.showSeconds = show;
+  }
   if (body.rewardPoints !== undefined) data.rewardPoints = Math.max(0, Number(body.rewardPoints) || 0);
   if (body.rewardCooldownSec !== undefined)
     data.rewardCooldownSec = clampRewardCooldown(body.rewardCooldownSec);

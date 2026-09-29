@@ -45,7 +45,9 @@ export async function POST(
     const limited = enforceRateLimit(request, "ad-click", 30, 60_000);
     if (limited) return limited;
 
-    const { billed } = await recordClick(id, session.user.id);
+    const { billed } = await recordClick(id, session.user.id, {
+      serveToken: (body as { st?: unknown }).st,
+    });
     return NextResponse.json({ success: true, billed });
   }
 

@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { processOfferwallReferralCommissions } from "@/lib/referral-commissions";
 
 export type OfferSource = "MANUAL" | "PROVIDER";
 export type CompletionMode = "PROOF" | "POSTBACK" | "MANUAL";
@@ -158,10 +159,11 @@ export async function releaseHeldCompletion(
 ): Promise<boolean> {
   const c = (await prisma.offerwallCompletion.findUnique({
     where: { id: completionId },
-    select: { id: true, userId: true, points: true, payoutUsd: true, status: true },
+    select: { id: true, userId: true, offerId: true, points: true, payoutUsd: true, status: true },
   })) as {
     id: string;
     userId: string;
+    offerId: string;
     points: number;
     payoutUsd: unknown;
     status: string;
@@ -170,7 +172,7 @@ export async function releaseHeldCompletion(
 
   const amount = Number(c.payoutUsd ?? 0) || 0;
   try {
-    return await prisma.$transaction(async (tx) => {
+    const paid = await prisma.$transaction(async (tx) => {
       // Guarded: only fires while still PENDING, so two releasers race safely.
       const claimed = await tx.offerwallCompletion.updateMany({
         where: { id: c.id, status: "PENDING" },
@@ -198,6 +200,12 @@ export async function releaseHeldCompletion(
       });
       return true;
     });
+    // My Team commission — only if the admin switched offerwall on (off by
+    // default). Keyed on the completion, as in the callback route.
+    if (paid && c.points > 0) {
+      await processOfferwallReferralCommissions(c.userId, c.points, c.id, c.offerId);
+    }
+    return paid;
   } catch (err) {
     // A concurrent release won the ledger row. Nothing moved here.
     if (isDuplicateLedgerError(err)) return false;

@@ -2,7 +2,7 @@
 
 import { BALANCE_EVENT, fetchHeaderData } from "@/lib/header-data";
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, Bell, Search, Wallet, Settings, LogOut, User, ChevronDown, FileText, Check, ChevronLeft, Flame } from "lucide-react";
@@ -14,6 +14,9 @@ import { useAppRefresh } from "@/hooks/use-app-refresh";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { ThemeSwitch } from "@/components/dashboard/theme-switch";
 import { GlobalSearch } from "@/components/user/primitives/global-search";
+import { isPathHidden } from "@/lib/page-visibility";
+import { DEFAULT_HEADER, isExternalHref, type HeaderConfig } from "@/lib/nav-config";
+import { NavIcon } from "@/lib/nav-icons";
 
 interface HeaderProps {
   user: {
@@ -25,6 +28,12 @@ interface HeaderProps {
   };
   /** The user's real profile picture (from User.avatar) — the session doesn't carry it. */
   avatar?: string | null;
+  /** Pages hidden by super-admin page visibility — their shortcuts drop out. */
+  hiddenPaths?: string[];
+  /** Admin-edited order/visibility of the right-hand cluster + shortcuts. */
+  config?: HeaderConfig;
+  /** The phone tab bar's destinations — top level, so no back arrow there. */
+  tabPaths?: string[];
 }
 
 interface Notification {
@@ -36,7 +45,23 @@ interface Notification {
   createdAt: string;
 }
 
-export function Header({ user, avatar }: HeaderProps) {
+export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tabPaths = [] }: HeaderProps) {
+  const shows = (path: string) => !isPathHidden(path, hiddenPaths);
+  // Right-hand cluster in the admin's order. Hidden items and shortcuts to a
+  // page hidden for this user drop out; the first surviving shortcut is the
+  // only one given room on a phone.
+  const shown = config.items.filter(
+    (i) =>
+      i.visible &&
+      (i.kind !== "shortcut" ||
+        (!!i.href && (isExternalHref(i.href) || shows(i.href))))
+  );
+  const firstShortcutId = shown.find((i) => i.kind === "shortcut")?.id;
+  const rightItems = shown.map((i) => ({
+    ...i,
+    firstShortcut: i.id === firstShortcutId,
+  }));
+  const searchOn = rightItems.some((i) => i.kind === "search");
   // The hamburger opens the shared mobile drawer (rendered by Sidebar, the
   // canonical feature-filtered menu). Also opened by the bottom-bar Menu tab.
   const setIsMobileMenuOpen = useMobileNav((s) => s.setOpen);
@@ -45,6 +70,7 @@ export function Header({ user, avatar }: HeaderProps) {
   // Top-level destinations (bottom-tab + main entries) — no back arrow here.
   // On any deeper page a mobile back arrow appears for one-tap navigation up.
   const ROOT_PATHS = new Set([
+    ...tabPaths,
     "/",
     "/social",
     "/tasks",
@@ -236,7 +262,7 @@ export function Header({ user, avatar }: HeaderProps) {
               /api/search over tasks, users, courses and listings) existed and was
               mounted on exactly one page, /earn. The box is now the trigger for
               that same component: one search, reachable from the whole shell. */}
-          <div className="hidden md:flex flex-1 max-w-md">
+          <div className={cn("hidden flex-1 max-w-md", searchOn && "md:flex")}>
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
@@ -260,6 +286,14 @@ export function Header({ user, avatar }: HeaderProps) {
               a preference rather than an action — both now live in the account
               menu, which is where a phone app puts them. */}
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+            {/* The cluster's order, and which optional controls show, is
+                admin-edited (Settings → Navigation → Header). The account
+                menu is not in that list: it is always last. */}
+            {rightItems.map((item) => {
+              switch (item.kind) {
+              case "search":
+                return (
+                  <Fragment key={item.id}>
             {/* Search on phones. It had no entry point at all below 1024px —
                 the box was `hidden lg:flex`, so the platform's search simply
                 did not exist on a phone. */}
@@ -271,13 +305,18 @@ export function Header({ user, avatar }: HeaderProps) {
             >
               <Search className="w-5 h-5" />
             </button>
-
+                  </Fragment>
+                );
+              case "wallet":
+                return (
+                  <Fragment key={item.id}>
             {/* Wallet balance — the one figure in the shell.
                 ONE line, not two. A stacked 11px label over a 16px number has
                 to fit 29px of text plus padding inside a 44px bar, and it read
                 as squeezed. The number still leads: it is 16px/800 tabular and
                 the unit beside it is 11px and muted, so the eye lands on the
                 money rather than on "PTS". */}
+            {shows("/wallet") && (
             <Link
               href="/wallet"
               aria-label={`Wallet balance: ${walletBalance.toLocaleString()} points`}
@@ -297,8 +336,13 @@ export function Header({ user, avatar }: HeaderProps) {
                 <span className="t-eyebrow text-(--app-ink-3)">PTS</span>
               </span>
             </Link>
-
-            {streak > 0 && (
+            )}
+                  </Fragment>
+                );
+              case "streak":
+                return (
+                  <Fragment key={item.id}>
+            {streak > 0 && shows("/daily-mission") && (
               <Link
                 href="/daily-mission"
                 aria-label={`Current streak: ${streak} ${
@@ -314,7 +358,11 @@ export function Header({ user, avatar }: HeaderProps) {
                 <span className="t-eyebrow hidden lg:inline">Streak</span>
               </Link>
             )}
-
+                  </Fragment>
+                );
+              case "theme":
+                return (
+                  <Fragment key={item.id}>
             {/* Light/dark, back in the row.
                 It was moved into the account menu to thin out a crowded header,
                 but the owner went looking for it here and could not find it —
@@ -322,8 +370,13 @@ export function Header({ user, avatar }: HeaderProps) {
                 where the reflex goes. The menu row is gone so there is only one
                 of them. */}
             <ThemeSwitch />
-
+                  </Fragment>
+                );
+              case "notifications":
+                return (
+                  <Fragment key={item.id}>
             {/* Notifications */}
+            {shows("/notifications") && (
             <div className="relative">
               <button
                 onClick={() => {
@@ -419,6 +472,34 @@ export function Header({ user, avatar }: HeaderProps) {
                 </>
               )}
             </div>
+            )}
+                  </Fragment>
+                );
+              case "shortcut": {
+                const external = isExternalHref(item.href ?? "");
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href ?? "/"}
+                    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    aria-label={item.label}
+                    title={item.label}
+                    className={cn(
+                      "app-tap app-press items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--shell-hover)",
+                      // A 320px phone has no room for a sixth control in this
+                      // row: the first shortcut appears from 360px, any others
+                      // only from 640px, where the row has room to spare.
+                      item.firstShortcut ? "hidden min-[360px]:inline-flex" : "hidden sm:inline-flex"
+                    )}
+                  >
+                    <NavIcon iconKey={item.icon} className="w-5 h-5" />
+                  </Link>
+                );
+              }
+              default:
+                return null;
+              }
+            })}
 
             {/* Profile Dropdown */}
             <div className="relative">
@@ -463,6 +544,7 @@ export function Header({ user, avatar }: HeaderProps) {
                       </div>
                     </div>
                     <div className="p-1.5">
+                      {shows("/profile") && (
                       <Link
                         href="/profile"
                         onClick={() => setIsProfileOpen(false)}
@@ -471,9 +553,11 @@ export function Header({ user, avatar }: HeaderProps) {
                         <User className="w-4.5 h-4.5 shrink-0" />
                         Profile
                       </Link>
+                      )}
                       {/* Moved here from the header row, where it was a third
                           control pointing at /wallet. Same destination, same
                           label, one less thing competing in the top bar. */}
+                      {shows("/wallet") && (
                       <Link
                         href="/wallet"
                         onClick={() => setIsProfileOpen(false)}
@@ -482,6 +566,7 @@ export function Header({ user, avatar }: HeaderProps) {
                         <FileText className="w-4.5 h-4.5 shrink-0" />
                         Reports &amp; Transactions
                       </Link>
+                      )}
                       <Link
                         href="/settings"
                         onClick={() => setIsProfileOpen(false)}

@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getEffectivePackage } from "@/lib/packages";
@@ -9,6 +10,9 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /events is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/events");
+  if (pageHidden) return pageHidden;
   const pkg = await getEffectivePackage(session.user.id).catch(() => null);
   const events = await listEventsForUser(
     session.user.id,

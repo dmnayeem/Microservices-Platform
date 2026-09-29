@@ -23,6 +23,20 @@ import { Prisma } from "@/generated/prisma/client";
 import { WithdrawalRowActions } from "@/components/admin/withdrawals/withdrawal-row-actions";
 import { assessWithdrawalRisk, type RiskLevel } from "@/lib/withdrawal-risk";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
+import { WithdrawalSettingsPanel } from "@/components/admin/withdrawals/withdrawal-settings-panel";
+import { loadSettingValues } from "@/lib/admin-setting-values";
+import { WITHDRAWALS_HOME, keysHomedAt } from "@/lib/admin-settings-catalog";
+
+/**
+ * Requests, plus every platform-wide withdrawal setting on its own tab. The
+ * settings used to be spread over three System Settings tabs; the keys are
+ * unchanged — only the screen moved.
+ */
+const TABS = [
+  { id: "requests", label: "Requests" },
+  { id: "settings", label: "Settings" },
+];
 
 const RISK_BADGE: Record<RiskLevel, { bg: string; text: string; label: string }> = {
   low: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "LOW" },
@@ -36,6 +50,7 @@ interface PageProps {
     status?: string;
     method?: string;
     search?: string;
+    tab?: string;
   }>;
 }
 
@@ -67,6 +82,30 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
   }
 
   const params = await searchParams;
+  const tab = pickTab(TABS, params.tab);
+  const tabs = <AdminTabs tabs={TABS} active={tab} basePath="/admin/withdrawals" />;
+
+  if (tab === "settings") {
+    const [initial, canEditSettings] = await Promise.all([
+      loadSettingValues(keysHomedAt(WITHDRAWALS_HOME.href)),
+      // The save goes through POST /api/admin/settings, which is gated on
+      // settings.edit — the same permission these controls needed before.
+      can(session.user.id, "settings.edit"),
+    ]);
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Withdrawal Management</h1>
+          <p className="text-slate-400 mt-1 text-sm">
+            Limits, fee and switches that apply to every withdrawal request
+          </p>
+        </div>
+        {tabs}
+        <WithdrawalSettingsPanel initial={initial} canEdit={canEditSettings} />
+      </div>
+    );
+  }
+
   const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
@@ -221,6 +260,8 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
           </div>
         </div>
       </div>
+
+      {tabs}
 
       {/* Stats — 4-card row per spec: Pending / Processing / Completed / Rejected */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

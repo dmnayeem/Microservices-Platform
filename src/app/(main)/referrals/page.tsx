@@ -7,7 +7,11 @@ import {
 } from "@/components/user/referrals/referrals-view";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 import { getTeamSummary } from "@/lib/team";
-import { getReferralBonusConfig, qualifiedReferralCount } from "@/lib/referral-bonus";
+import {
+  getReferralBonusConfig,
+  qualifiedReferralCount,
+  awardReferralMilestones,
+} from "@/lib/referral-bonus";
 import type { ReferralBonusInfo } from "@/components/user/referrals/referrals-view";
 
 export const metadata = { title: "My Team" };
@@ -97,6 +101,13 @@ export default async function ReferralsPage() {
       ? prisma.package.findMany({ where: { id: { in: subIds } }, select: { id: true, name: true } })
       : Promise.resolve([] as Array<{ id: string; name: string }>),
   ]);
+  // Milestones are otherwise only checked when a NEW friend signs up — and a
+  // new friend is never "active" yet, so a referrer whose existing friends
+  // became active later was never paid a step the ladder below shows as
+  // reached. Settle here, where they look at it. Idempotent per step.
+  if (milestoneProgress != null && ladder.some((m) => milestoneProgress >= m.referrals)) {
+    await awardReferralMilestones(userId).catch(() => 0);
+  }
   const planName = new Map(plans.map((p) => [p.id, p.name]));
   const minDays = bonusCfg.milestoneActivity?.minActiveDays ?? 0;
   const bonuses: ReferralBonusInfo = {

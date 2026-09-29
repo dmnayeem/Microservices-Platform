@@ -1,8 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Eye, EyeOff, Loader2, Save, Layers, Shield, UserCog } from "lucide-react";
-import { UserVisibilityPanel } from "./user-visibility-panel";
+import { EyeOff, Loader2, Save, Info } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
   USER_PAGES,
@@ -10,76 +9,89 @@ import {
   type PageVisibilityRules,
 } from "@/lib/page-visibility";
 
-// User-facing / mixed roles worth toggling page visibility for.
-const ROLES: { key: string; label: string }[] = [
-  { key: "USER", label: "User" },
-  { key: "TUTOR", label: "Tutor" },
-  { key: "AGENCY", label: "Agency" },
-  { key: "AD_MANAGER", label: "Ad Manager" },
-  { key: "MODERATOR", label: "Moderator" },
-  { key: "SUPPORT_ADMIN", label: "Support Admin" },
-  { key: "CONTENT_ADMIN", label: "Content Admin" },
-  { key: "MARKETING_ADMIN", label: "Marketing Admin" },
-  { key: "FINANCE_ADMIN", label: "Finance Admin" },
-];
+/**
+ * Pages × (Everyone + packages + roles) in ONE table. A checked box means the
+ * page is HIDDEN for that column. Everyone/package/role union together — a
+ * page hidden in any column a user falls into is hidden for them — and a
+ * per-user "Show" (Per user tab) re-opens it for that one person.
+ */
 
-type Tab = "packages" | "roles" | "user";
+type Bucket = "global" | "packages" | "roles";
+type View = "all" | Bucket;
+
+interface Column {
+  bucket: Bucket;
+  key: string;
+  label: string;
+}
 
 interface Props {
   packages: { slug: string; name: string }[];
+  roles: { key: string; label: string }[];
   initialRules: PageVisibilityRules;
 }
 
-export function VisibilityMatrix({ packages, initialRules }: Props) {
-  const [tab, setTab] = useState<Tab>("packages");
+const GLOBAL_KEY = "*";
+
+function hiddenList(rules: PageVisibilityRules, c: Column): string[] {
+  if (c.bucket === "global") return rules.global;
+  return rules[c.bucket][c.key] ?? [];
+}
+
+function withList(
+  rules: PageVisibilityRules,
+  c: Column,
+  list: string[]
+): PageVisibilityRules {
+  const next: PageVisibilityRules = {
+    global: [...rules.global],
+    packages: { ...rules.packages },
+    roles: { ...rules.roles },
+  };
+  if (c.bucket === "global") {
+    next.global = list;
+  } else {
+    const b = next[c.bucket];
+    if (list.length === 0) delete b[c.key];
+    else b[c.key] = list;
+  }
+  return next;
+}
+
+export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
   const [rules, setRules] = useState<PageVisibilityRules>(
     initialRules ?? emptyPageRules()
   );
+  const [view, setView] = useState<View>("all");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  const columns =
-    tab === "packages"
-      ? packages.map((p) => ({ key: p.slug, label: p.name }))
-      : tab === "roles"
-        ? ROLES
-        : [];
+  const allColumns: Column[] = useMemo(
+    () => [
+      { bucket: "global", key: GLOBAL_KEY, label: "Everyone" },
+      ...packages.map((p) => ({ bucket: "packages" as const, key: p.slug, label: p.name })),
+      ...roles.map((r) => ({ bucket: "roles" as const, key: r.key, label: r.label })),
+    ],
+    [packages, roles]
+  );
+  const columns = view === "all" ? allColumns : allColumns.filter((c) => c.bucket === view);
 
-  const bucket = tab === "packages" ? rules.packages : rules.roles;
+  const isHidden = (c: Column, path: string) => hiddenList(rules, c).includes(path);
 
-  // A page is HIDDEN for a column when its path is in that column's array.
-  const isHidden = (colKey: string, path: string) =>
-    (bucket[colKey] ?? []).includes(path);
-
-  const toggle = (colKey: string, path: string) => {
+  const toggle = (c: Column, path: string) => {
     setRules((prev) => {
-      const next: PageVisibilityRules = {
-        packages: { ...prev.packages },
-        roles: { ...prev.roles },
-      };
-      const b = tab === "packages" ? next.packages : next.roles;
-      const cur = new Set(b[colKey] ?? []);
+      const cur = new Set(hiddenList(prev, c));
       if (cur.has(path)) cur.delete(path);
       else cur.add(path);
-      if (cur.size === 0) delete b[colKey];
-      else b[colKey] = Array.from(cur);
-      return next;
+      return withList(prev, c, Array.from(cur));
     });
     setDirty(true);
   };
 
-  // Hide/show an entire column at once.
-  const setColumn = (colKey: string, hideAll: boolean) => {
-    setRules((prev) => {
-      const next: PageVisibilityRules = {
-        packages: { ...prev.packages },
-        roles: { ...prev.roles },
-      };
-      const b = tab === "packages" ? next.packages : next.roles;
-      if (hideAll) b[colKey] = USER_PAGES.map((p) => p.path);
-      else delete b[colKey];
-      return next;
-    });
+  const setColumn = (c: Column, hideAll: boolean) => {
+    setRules((prev) =>
+      withList(prev, c, hideAll ? USER_PAGES.map((p) => p.path) : [])
+    );
     setDirty(true);
   };
 
@@ -114,155 +126,155 @@ export function VisibilityMatrix({ packages, initialRules }: Props) {
     return Array.from(map.entries());
   }, []);
 
+  const bucketHead = (b: Bucket) =>
+    b === "global" ? "" : b === "packages" ? "Package" : "Role";
+
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Eye className="w-6 h-6 text-indigo-400" /> Page Visibility
-        </h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Show or hide user-facing pages per package, per role, or for one named
-          person. A checked box = visible; unchecked = hidden. A per-user setting
-          wins over both of the other two.
+    <div className="space-y-3">
+      <div className="flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-400">
+        <Info className="w-4 h-4 shrink-0 mt-0.5 text-indigo-400" />
+        <p>
+          <b className="text-slate-200">Checked = hidden.</b> A page is hidden
+          for a user when it is checked under <b>Everyone</b>, under their{" "}
+          <b>package</b>, or under their <b>role</b>. A per-user setting (Per
+          user tab) wins over all three — “Show” there re-opens a page even
+          when it is hidden for everyone. Hidden pages drop out of the menus,
+          redirect to “no access”, and their APIs refuse.
         </p>
       </div>
 
-      {/* Tabs + Save */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => setTab("packages")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${
-              tab === "packages"
-                ? "bg-indigo-500 text-white"
-                : "bg-slate-800 text-slate-300"
-            }`}
-          >
-            <Layers className="w-4 h-4" /> By package
-          </button>
-          <button
-            onClick={() => setTab("roles")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${
-              tab === "roles"
-                ? "bg-indigo-500 text-white"
-                : "bg-slate-800 text-slate-300"
-            }`}
-          >
-            <Shield className="w-4 h-4" /> By role
-          </button>
-          <button
-            onClick={() => setTab("user")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold ${
-              tab === "user"
-                ? "bg-indigo-500 text-white"
-                : "bg-slate-800 text-slate-300"
-            }`}
-          >
-            <UserCog className="w-4 h-4" /> By user
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Columns">
+          {(
+            [
+              { v: "all", label: "All columns" },
+              { v: "global", label: "Everyone" },
+              { v: "packages", label: "Packages" },
+              { v: "roles", label: "Roles" },
+            ] as { v: View; label: string }[]
+          ).map((o) => (
+            <button
+              key={o.v}
+              onClick={() => setView(o.v)}
+              aria-pressed={view === o.v}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                view === o.v
+                  ? "bg-indigo-500 text-white"
+                  : "bg-slate-800 text-slate-300 hover:text-white"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
         <button
           onClick={save}
-          hidden={tab === "user"}
           disabled={saving || !dirty}
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
         >
-          {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {dirty ? "Save changes" : "Saved"}
         </button>
       </div>
 
-      {tab === "user" ? (
-        <UserVisibilityPanel />
-      ) : columns.length === 0 ? (
-        <p className="text-sm text-slate-500">No {tab} to configure.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-900">
-                <th className="sticky left-0 z-10 bg-slate-900 text-left px-3 py-2 font-semibold text-slate-300 min-w-[180px]">
-                  Page
-                </th>
-                {columns.map((c) => {
-                  const allHidden =
-                    (bucket[c.key]?.length ?? 0) === USER_PAGES.length;
-                  return (
-                    <th
-                      key={c.key}
-                      className="px-2 py-2 text-center font-semibold text-slate-300 whitespace-nowrap"
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="max-w-[90px] truncate">{c.label}</span>
-                        <button
-                          onClick={() => setColumn(c.key, !allHidden)}
-                          title={allHidden ? "Show all" : "Hide all"}
-                          className="text-[10px] text-slate-500 hover:text-white inline-flex items-center gap-0.5"
-                        >
-                          {allHidden ? (
-                            <>
-                              <EyeOff className="w-3 h-3" /> all
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-3 h-3" /> all
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map(([group, pages]) => (
-                <Fragment key={group}>
-                  <tr className="bg-slate-950/60">
-                    <td
-                      colSpan={columns.length + 1}
-                      className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500"
-                    >
-                      {group}
-                    </td>
-                  </tr>
-                  {pages.map((p) => (
-                    <tr
-                      key={p.path}
-                      className="border-t border-slate-800/60 hover:bg-slate-900/40"
-                    >
-                      <td className="sticky left-0 z-10 bg-slate-950 px-3 py-2 text-white whitespace-nowrap">
-                        {p.label}
-                        <span className="block text-[10px] text-slate-600">
-                          {p.path}
+      <div className="max-w-full overflow-x-auto rounded-xl border border-slate-800">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-slate-900">
+              <th className="sticky left-0 z-20 bg-slate-900 text-left px-3 py-2 font-semibold text-slate-300 min-w-37.5">
+                Page
+              </th>
+              {columns.map((c) => {
+                const count = hiddenList(rules, c).length;
+                const allHidden = count === USER_PAGES.length;
+                return (
+                  <th
+                    key={`${c.bucket}:${c.key}`}
+                    className={`px-2 py-2 text-center font-semibold whitespace-nowrap ${
+                      c.bucket === "global" ? "bg-rose-500/10 text-rose-400" : "text-slate-300"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-0.5">
+                      {bucketHead(c.bucket) && (
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500">
+                          {bucketHead(c.bucket)}
                         </span>
+                      )}
+                      <span className="max-w-24 truncate" title={c.label}>
+                        {c.label}
+                      </span>
+                      <button
+                        onClick={() => setColumn(c, !allHidden)}
+                        title={allHidden ? "Unhide every page in this column" : "Hide every page in this column"}
+                        className="text-[10px] text-slate-500 hover:text-white"
+                      >
+                        {allHidden ? "clear" : count > 0 ? `${count} hidden` : "hide all"}
+                      </button>
+                    </div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map(([group, pages]) => (
+              <Fragment key={group}>
+                <tr className="bg-slate-950/60">
+                  <td className="sticky left-0 z-10 bg-slate-950 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {group}
+                  </td>
+                  <td colSpan={columns.length} />
+                </tr>
+                {pages.map((p) => {
+                  const hiddenEverywhere = rules.global.includes(p.path);
+                  return (
+                    <tr key={p.path} className="border-t border-slate-800/60 hover:bg-slate-900/40">
+                      <td className="sticky left-0 z-10 bg-slate-950 px-3 py-2 text-white whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          {p.label}
+                          {hiddenEverywhere && (
+                            <EyeOff className="w-3 h-3 text-rose-400" aria-label="hidden for everyone" />
+                          )}
+                        </span>
+                        <span className="block text-[10px] text-slate-600">{p.path}</span>
                       </td>
                       {columns.map((c) => {
-                        const hidden = isHidden(c.key, p.path);
+                        const hidden = isHidden(c, p.path);
+                        // Under a global hide the other columns change nothing
+                        // for this page — dim them so that is visible.
+                        const moot = hiddenEverywhere && c.bucket !== "global";
                         return (
-                          <td key={c.key} className="px-2 py-2 text-center">
+                          <td
+                            key={`${c.bucket}:${c.key}`}
+                            className={`px-2 py-2 text-center ${c.bucket === "global" ? "bg-rose-950/20" : ""}`}
+                          >
                             <input
                               type="checkbox"
-                              checked={!hidden}
-                              onChange={() => toggle(c.key, p.path)}
-                              title={hidden ? "Hidden — click to show" : "Visible — click to hide"}
-                              className="w-4 h-4 accent-indigo-500 cursor-pointer"
+                              checked={hidden}
+                              onChange={() => toggle(c, p.path)}
+                              aria-label={`Hide ${p.label} for ${c.label}`}
+                              title={
+                                moot
+                                  ? "Already hidden for everyone"
+                                  : hidden
+                                    ? "Hidden — click to show"
+                                    : "Visible — click to hide"
+                              }
+                              className={`w-4 h-4 cursor-pointer ${
+                                c.bucket === "global" ? "accent-rose-500" : "accent-indigo-500"
+                              } ${moot ? "opacity-30" : ""}`}
                             />
                           </td>
                         );
                       })}
                     </tr>
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  );
+                })}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

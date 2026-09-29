@@ -71,18 +71,36 @@ const TONE: Record<
   },
 };
 
+const NO_ITEMS: NotifyItem[] = [];
+
 export function NotifyCenterHost() {
-  const active = useSyncExternalStore(
+  const queue = useSyncExternalStore(
     subscribeNotify,
     getNotifySnapshot,
-    () => null
+    () => NO_ITEMS
   );
 
-  // `active` is null on the server + first client render, so createPortal /
-  // document is only reached after a notification is triggered (client only).
-  if (!active) return null;
+  // Empty on the server + first client render, so createPortal / document is
+  // only reached after a notification is triggered (client only).
+  if (queue.length === 0) return null;
+  const reward = queue.find((n) => n.kind === "reward");
+  const toasts = queue.filter((n) => n.kind !== "reward");
   return createPortal(
-    <NotifyView key={active.id} item={active} />,
+    <>
+      {toasts.length > 0 && (
+        // Top corner, no backdrop: the page stays sharp and usable while the
+        // message is read. Full width on a phone, a column on the right above.
+        <div
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-10001 flex flex-col items-stretch gap-2 sm:inset-x-auto sm:right-4 sm:top-4 sm:w-96"
+        >
+          {toasts.map((t) => (
+            <ToastCard key={t.id} item={t} />
+          ))}
+        </div>
+      )}
+      {reward && <RewardView key={reward.id} item={reward} />}
+    </>,
     document.body
   );
 }
@@ -93,29 +111,25 @@ function formatAmount(amount: number, unit: "pts" | "USD") {
     : `+${usd(amount)}`;
 }
 
-function NotifyView({ item }: { item: NotifyItem }) {
-  const { id, durationMs } = item;
-
-  // Auto-dismiss after the item's duration.
+function useAutoDismiss(id: number, durationMs: number) {
   useEffect(() => {
     const t = setTimeout(() => dismissNotify(id), durationMs);
     return () => clearTimeout(t);
   }, [id, durationMs]);
+}
 
-  const close = () => dismissNotify(id);
-
+/** A reward is a celebration, so it keeps the centre — dimmed, never blurred. */
+function RewardView({ item }: { item: NotifyItem }) {
+  useAutoDismiss(item.id, item.durationMs);
+  const close = () => dismissNotify(item.id);
   return (
     <div
-      className="fixed inset-0 z-10001 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+      className="fixed inset-0 z-10001 flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) close();
       }}
     >
-      {item.kind === "reward" ? (
-        <RewardCard item={item} onClose={close} />
-      ) : (
-        <SimpleCard item={item} onClose={close} />
-      )}
+      <RewardCard item={item} onClose={close} />
     </div>
   );
 }
@@ -132,67 +146,41 @@ function CountdownBar({ durationMs, tone }: { durationMs: number; tone: string }
   );
 }
 
-function SimpleCard({
-  item,
-  onClose,
-}: {
-  item: NotifyItem;
-  onClose: () => void;
-}) {
+function ToastCard({ item }: { item: NotifyItem }) {
+  useAutoDismiss(item.id, item.durationMs);
   const t = TONE[item.kind as Exclude<NotifyKind, "reward">] ?? TONE.info;
   const Icon = t.icon;
   return (
     <div
-      role="status"
-      onMouseDown={(e) => e.stopPropagation()}
+      role={item.kind === "error" ? "alert" : "status"}
       className={cn(
-        "relative w-full max-w-68 overflow-hidden rounded-3xl border bg-(--app-surface) px-6 pt-8 pb-9 text-center elevate-2 animate-pop-in",
+        "pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-2xl border bg-(--app-surface) py-3 pl-3 pr-10 shadow-xl shadow-black/30 animate-toast-in",
         t.border
       )}
     >
-      {/* Top accent line */}
       <span
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent to-transparent",
-          t.line
+          "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-linear-to-br text-white ring-1 ring-white/15",
+          t.gradient
         )}
-      />
-      {/* Ambient tone glow behind the icon */}
-      <span
-        className={cn(
-          "pointer-events-none absolute left-1/2 -top-10 h-32 w-32 -translate-x-1/2 rounded-full blur-3xl",
-          t.glow
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-sm font-bold leading-snug text-white">{item.title}</p>
+        {item.description && (
+          <p className="mt-0.5 text-xs leading-relaxed text-(--app-ink-2) whitespace-pre-line wrap-break-word">
+            {item.description}
+          </p>
         )}
-      />
-
+      </div>
       <button
-        onClick={onClose}
+        onClick={() => dismissNotify(item.id)}
         aria-label="Dismiss"
-        className="absolute right-3 top-3 rounded-lg p-1.5 text-(--app-ink-3) transition-colors hover:bg-white/5 hover:text-(--app-ink-2)"
+        className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-lg text-(--app-ink-3) transition-colors hover:bg-white/5 hover:text-(--app-ink-2)"
       >
         <X className="h-4 w-4" />
       </button>
-
-      {/* Icon medallion — centered on top */}
-      <div
-        className={cn(
-          "relative mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-linear-to-br text-white shadow-lg ring-1 ring-white/15",
-          t.gradient,
-          t.shadow
-        )}
-      >
-        <Icon className="h-8 w-8" />
-      </div>
-
-      <h2 className="relative text-display text-base text-white">
-        {item.title}
-      </h2>
-      {item.description && (
-        <p className="relative mt-1.5 text-sm text-(--app-ink-2) whitespace-pre-line">
-          {item.description}
-        </p>
-      )}
-
       <CountdownBar durationMs={item.durationMs} tone={t.bar} />
     </div>
   );

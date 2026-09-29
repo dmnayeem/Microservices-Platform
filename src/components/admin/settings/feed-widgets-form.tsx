@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { Reorder, useDragControls } from "framer-motion";
 import {
@@ -18,13 +19,6 @@ import {
 import { cn } from "@/lib/utils";
 import { FEED_WIDGETS, type FeedWidgetConfig } from "@/lib/feed-widgets";
 import {
-  ICON_OPTIONS,
-  COLOR_OPTIONS,
-  QUICK_EARN_ICONS,
-  DEFAULT_QUICK_EARN,
-  type QuickEarnTile,
-} from "@/lib/feed-quick-earn";
-import {
   GRADIENT_OPTIONS,
   type CustomWidget,
 } from "@/lib/feed-custom-widgets";
@@ -36,7 +30,6 @@ const inputCls =
 interface Props {
   initial: {
     widgets: FeedWidgetConfig;
-    quickEarn: QuickEarnTile[];
     customWidgets: CustomWidget[];
     publicSharing: boolean;
   };
@@ -105,121 +98,6 @@ function WidgetRow({
           </>
         )}
       </button>
-    </Reorder.Item>
-  );
-}
-
-// ── Quick Earn tile row ──────────────────────────────────────────────────────
-function TileRow({
-  tile,
-  canEdit,
-  onChange,
-  onRemove,
-}: {
-  tile: QuickEarnTile;
-  canEdit: boolean;
-  onChange: (patch: Partial<QuickEarnTile>) => void;
-  onRemove: () => void;
-}) {
-  const controls = useDragControls();
-  const Icon = QUICK_EARN_ICONS[tile.icon] ?? Zap;
-  return (
-    <Reorder.Item
-      as="div"
-      value={tile}
-      dragListener={false}
-      dragControls={controls}
-      className={cn("rounded-xl glass p-3 space-y-2", !tile.enabled && "opacity-60")}
-    >
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Drag to reorder"
-          onPointerDown={(e) => canEdit && controls.start(e)}
-          disabled={!canEdit}
-          className="shrink-0 cursor-grab touch-none rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300 active:cursor-grabbing disabled:cursor-not-allowed"
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
-        {/* Neutral, because that is how the app renders it. This preview used
-            to be tinted with `tile.color`, so the colour appeared to work here
-            and then did nothing on the feed. */}
-        <Icon className="w-4 h-4 shrink-0 text-slate-300" />
-        <input
-          value={tile.label}
-          onChange={(e) => onChange({ label: e.target.value })}
-          placeholder="Label"
-          disabled={!canEdit}
-          className={cn(inputCls, "flex-1")}
-        />
-        <button
-          type="button"
-          onClick={() => onChange({ enabled: !tile.enabled })}
-          disabled={!canEdit}
-          className={cn(
-            "shrink-0 p-2 rounded-lg text-xs font-bold disabled:opacity-50",
-            tile.enabled ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-400"
-          )}
-          title={tile.enabled ? "Shown" : "Hidden"}
-        >
-          {tile.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={!canEdit}
-          className="shrink-0 p-2 rounded-lg bg-slate-800 text-red-400 hover:bg-slate-700 disabled:opacity-50"
-          title="Remove tile"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-7">
-        <input
-          value={tile.href}
-          onChange={(e) => onChange({ href: e.target.value })}
-          placeholder="/link"
-          disabled={!canEdit}
-          className={cn(inputCls, "sm:col-span-1")}
-        />
-        <select
-          value={tile.icon}
-          onChange={(e) => onChange({ icon: e.target.value })}
-          disabled={!canEdit}
-          className={inputCls}
-        >
-          {ICON_OPTIONS.map((o) => (
-            <option key={o.key} value={o.key}>{o.label}</option>
-          ))}
-        </select>
-        {/* NOT USED. The feed and the sidebar rail render these tiles in the
-            app's neutral style — twelve shortcuts in twelve hues was the thing
-            the redesign removed — so this no longer changes anything a user
-            sees. It stays visible and disabled rather than deleted: the stored
-            value is preserved on save, and an admin can see WHY the control
-            does nothing instead of setting it and waiting for a change that
-            never comes. */}
-        <div className="min-w-0">
-          <select
-            value={tile.color}
-            disabled
-            aria-describedby={`qe-color-note-${tile.id}`}
-            title="Not used — tiles render in the app's neutral style"
-            className={cn(inputCls, "w-full opacity-60 cursor-not-allowed")}
-          >
-            {COLOR_OPTIONS.map((o) => (
-              <option key={o.key} value={o.key}>{o.label}</option>
-            ))}
-          </select>
-          <p
-            id={`qe-color-note-${tile.id}`}
-            className="mt-1 text-[11px] leading-tight text-slate-400"
-          >
-            Colour is no longer used — tiles render in the app&apos;s neutral
-            style.
-          </p>
-        </div>
-      </div>
     </Reorder.Item>
   );
 }
@@ -352,9 +230,6 @@ function CustomWidgetCard({
 export function FeedWidgetsForm({ initial, canEdit }: Props) {
   const router = useRouter();
   const [widgets, setWidgets] = useState<FeedWidgetConfig>(initial.widgets);
-  const [tiles, setTiles] = useState<QuickEarnTile[]>(
-    initial.quickEarn.length ? initial.quickEarn : DEFAULT_QUICK_EARN
-  );
   const [custom, setCustom] = useState<CustomWidget[]>(initial.customWidgets);
   const [publicSharing, setPublicSharing] = useState(initial.publicSharing);
   const [busy, setBusy] = useState(false);
@@ -368,17 +243,6 @@ export function FeedWidgetsForm({ initial, canEdit }: Props) {
     setWidgets((prev) =>
       prev.map((w) => (w.id === id ? { ...w, enabled: !w.enabled } : w))
     );
-
-  // Quick Earn helpers
-  const patchTile = (id: string, patch: Partial<QuickEarnTile>) =>
-    setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-  const removeTile = (id: string) =>
-    setTiles((prev) => prev.filter((t) => t.id !== id));
-  const addTile = () =>
-    setTiles((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), label: "New", href: "/earn", icon: "zap", color: "indigo", enabled: true },
-    ]);
 
   // Custom widget helpers
   const patchCustom = (id: string, patch: Partial<CustomWidget>) =>
@@ -403,8 +267,9 @@ export function FeedWidgetsForm({ initial, canEdit }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // Quick Earn tiles are not sent: they have one editor, on
+          // Settings → Navigation, and this route leaves the key alone.
           widgets,
-          quickEarn: tiles,
           customWidgets: custom,
           publicSharing,
         }),
@@ -487,33 +352,19 @@ export function FeedWidgetsForm({ initial, canEdit }: Props) {
         </Reorder.Group>
       </section>
 
-      {/* Section 2 — Quick Earn tiles */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white inline-flex items-center gap-1.5">
-            <Zap className="w-4 h-4 text-amber-400" /> Quick Earn tiles
-          </h2>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={addTile}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-700"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add tile
-            </button>
-          )}
-        </div>
-        <Reorder.Group as="div" axis="y" values={tiles} onReorder={setTiles} className="space-y-2.5">
-          {tiles.map((tile) => (
-            <TileRow
-              key={tile.id}
-              tile={tile}
-              canEdit={canEdit}
-              onChange={(patch) => patchTile(tile.id, patch)}
-              onRemove={() => removeTile(tile.id)}
-            />
-          ))}
-        </Reorder.Group>
+      {/* Section 2 — Quick Earn tiles live on Settings → Navigation now, with
+          the other navigation menus. One editor per key. */}
+      <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl glass p-3">
+        <p className="text-sm text-slate-300 inline-flex items-center gap-1.5">
+          <Zap className="w-4 h-4 text-amber-400" /> Quick Earn tiles are edited
+          on the Navigation page.
+        </p>
+        <Link
+          href="/admin/settings/navigation"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-700"
+        >
+          Edit Quick Earn tiles
+        </Link>
       </section>
 
       {/* Section 3 — custom widgets */}

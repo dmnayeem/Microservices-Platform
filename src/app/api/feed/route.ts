@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validPostImages } from "@/lib/post-images";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { unstable_cache } from "next/cache";
+import { hiddenAuthorIds } from "@/lib/feed-hidden-authors";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/require-active";
@@ -73,9 +74,17 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get("tag"); // Hashtag feed (without leading '#')
     const search = searchParams.get("search"); // Free-text content search
     const seed = searchParams.get("seed"); // Per-session jitter seed (reshuffle)
+    // The instant page 1 was ranked at. Later pages score against the SAME
+    // instant: scoring against a fresh `now` shifts the order a little, so a
+    // post could move from page 2's range into page 1's after page 1 was
+    // already shown — and then it was on no page at all.
+    const rankedAtParam = Number(searchParams.get("rankedAt"));
     // Read once per request, not per post: the badge on every card is derived
     // from it, and it is a cached SystemSetting read.
-    const feedAudienceEpochMs = await publicAudienceEpochMs();
+    const [feedAudienceEpochMs, hiddenAuthors] = await Promise.all([
+      publicAudienceEpochMs(),
+      hiddenAuthorIds(),
+    ]);
     const skip = (page - 1) * limit;
 
     // Build query
@@ -87,8 +96,16 @@ export async function GET(request: NextRequest) {
       isHidden: false, // agency-moderator soft-hidden posts never surface
     };
 
+    // Banned / suspended authors' posts never surface (see
+    // feed-hidden-authors.ts). Only added when the list is non-empty so the
+    // query — and its Accelerate cache key — is unchanged otherwise.
     if (userId) {
-      where.userId = userId;
+      where.userId =
+        hiddenAuthors.length > 0 && userId !== session?.user?.id
+          ? { equals: userId, notIn: hiddenAuthors }
+          : userId;
+    } else if (hiddenAuthors.length > 0) {
+      where.userId = { notIn: hiddenAuthors };
     }
     if (groupId) {
       // A PRIVATE group's posts are for its members. Posting into a group checks
@@ -134,10 +151,28 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
+    // Only an anchor from the last hour is honoured; anything else ranks now.
+    const rankNow =
+      page > 1 &&
+      Number.isFinite(rankedAtParam) &&
+      rankedAtParam <= now.getTime() &&
+      now.getTime() - rankedAtParam < 60 * 60_000
+        ? new Date(rankedAtParam)
+        : now;
     // The main feed (no user/group/tag/search filter) is ranked by a smart
     // hot-score; filtered feeds stay chronological (intentional).
     const isMainFeed = !userId && !groupId && !tag && !search;
-    const organicWhere = { ...where, isAnnouncement: false, isPromoted: false };
+    // A promotion that has RUN OUT leaves `isPromoted` true — nothing resets it —
+    // and the page-1 promoted query only takes unexpired ones. Filtering on
+    // `isPromoted: false` alone therefore dropped every expired promoted post out
+    // of the feed for good. Floored to the minute so the cached pool query keeps
+    // a stable cache key.
+    const promoCutoff = new Date(Math.floor(now.getTime() / 60_000) * 60_000);
+    const organicWhere = {
+      ...where,
+      isAnnouncement: false,
+      OR: [{ isPromoted: false }, { promotedUntil: { lte: promoCutoff } }],
+    };
 
     // Narrowed to FEED_POST_SELECT — not the full Post row.
     let posts: FeedPostRow[];
@@ -166,6 +201,24 @@ export async function GET(request: NextRequest) {
         }),
         isMainFeed ? cachedMainFeedCount() : prisma.post.count({ where }),
       ]);
+
+      // The pool above is cached, so a post the viewer made a moment ago can be
+      // missing from it — they refresh and their own post is gone. Their recent
+      // posts are read uncached and joined in, so it takes its normal place.
+      if (session?.user?.id) {
+        const inPool = new Set(pool.map((p) => p.id));
+        const mine = await prisma.post.findMany({
+          where: {
+            ...organicWhere,
+            userId: session.user.id,
+            createdAt: { gte: new Date(now.getTime() - 10 * 60_000) },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          select: FEED_POST_SELECT,
+        });
+        for (const p of mine) if (!inPool.has(p.id)) pool.push(p);
+      }
 
       // Viewer's follow set among pool authors → light ranking boost.
       let follows = new Set<string>();
@@ -214,7 +267,7 @@ export async function GET(request: NextRequest) {
       const scoreById = new Map(
         pool.map((p) => [
           p.id,
-          scorePost(p as unknown as RankablePost, { follows, now, seed: jitterSeed }) *
+          scorePost(p as unknown as RankablePost, { follows, now: rankNow, seed: jitterSeed }) *
             (boostActive(p.id) ? 8 : 1),
         ])
       );
@@ -431,6 +484,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       posts: formattedPosts,
       latestActivityAt,
+      rankedAt: rankNow.getTime(),
       pagination: {
         page,
         limit,

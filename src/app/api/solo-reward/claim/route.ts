@@ -8,8 +8,7 @@ import { toNum } from "@/lib/money";
 import { getUserDayContext } from "@/lib/user-day";
 import { getPointsPerUsd } from "@/lib/economy";
 
-const CRITERIA = { tasksToday: 5, earningsToday: 1 };
-const REWARD = { points: 500, xp: 100 };
+import { getSoloRewardConfig } from "@/lib/reward-config-server";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -23,6 +22,12 @@ export async function POST(request: NextRequest) {
 
   return withIdempotency(request, session.user.id, async () => {
   const userId = session.user.id;
+
+  // Admin setting `solo_reward.config`; defaults are the old hardcoded
+  // 500 pts / 100 XP for 5 tasks + $1 today.
+  const solo = await getSoloRewardConfig();
+  const CRITERIA = { tasksToday: solo.tasksToday, earningsToday: solo.earningsToday };
+  const REWARD = { points: solo.points, xp: solo.xp };
 
   // "Today" is the user's LOCAL day (country-based).
   const { dayKey: todayKey, startOfDayUtc: todayStart } =

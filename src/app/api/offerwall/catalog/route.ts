@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextResponse } from "next/server";
 import { syncCountryMode } from "@/lib/country-mode";
 import { effectiveCountry } from "@/lib/effective-country";
@@ -18,6 +19,9 @@ export async function GET() {
   await syncCountryMode(); // country targeting: profile+IP or IP only
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Super-admin page visibility: refuse when /offerwalls is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/offerwalls");
+  if (pageHidden) return pageHidden;
   const userId = session.user.id;
 
   if (!(await userCanFeature(userId, "offerwallTasks"))) {

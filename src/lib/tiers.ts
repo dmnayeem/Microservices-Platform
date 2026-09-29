@@ -23,17 +23,10 @@ export const TIER_LIMITS: Record<string, { min: number; max: number }> = {
   VIP: { min: 50, max: 100000 },
 };
 
-/** Fractional discount applied to the base withdrawal fee, per tier. */
-export const TIER_FEE_DISCOUNT: Record<string, number> = {
-  FREE: 0,
-  STARTER: 0.1,
-  PRO: 0.25,
-  ELITE: 0.4,
-  VIP: 0.5,
-};
-
-/** Base withdrawal fee before any tier discount (5%). */
-export const BASE_FEE_PCT = 0.05;
+// TIER_FEE_DISCOUNT / BASE_FEE_PCT were removed: nothing imported them, and
+// the real withdrawal fee is `withdrawal_fee_percent` minus the package's
+// `withdrawalFeeDiscount` (src/lib/withdrawal.ts). A second, hardcoded fee
+// table here could only ever disagree with it.
 
 /** Tailwind gradient stops used on tier badges/cards. */
 export const TIER_GRADIENT: Record<Tier, string> = {

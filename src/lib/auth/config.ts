@@ -144,6 +144,7 @@ export const authConfig: NextAuthConfig = {
         "/api/popups", // site popups, shown to visitors as well (targeting is server-side)
         "/api/blog/", // blog read counter (public articles)
         "/api/health",
+        "/api/cpa/postback", // CPA network S2S postback — HMAC sig / secret key
       ];
       const isPublicApiRoute =
         publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||
@@ -167,10 +168,16 @@ export const authConfig: NextAuthConfig = {
        * `eg` token, which is bound to one submission, one task and one user.
        * `start` is deliberately NOT in this list — it mints that token and
        * must keep requiring a real session.
+       *
+       * `landing` and `visit-progress` are the search / social-post entry
+       * modes: the worker arrives with no token at all, so `landing` judges
+       * the arrival (it writes nothing) and hands back a signed visit token
+       * that `visit-progress` verifies. Left off this list, both modes were
+       * redirected to /login on every real site and the embed did nothing.
        */
       const isArticleEmbedRoute =
         pathname.startsWith("/embed/") ||
-        /^\/api\/article-tasks\/[^/]+\/(embed-config|popup-progress|generate-key)$/.test(
+        /^\/api\/article-tasks\/[^/]+\/(embed-config|popup-progress|generate-key|landing|visit-progress)$/.test(
           pathname
         );
 

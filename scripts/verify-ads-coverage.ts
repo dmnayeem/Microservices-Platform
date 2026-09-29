@@ -402,20 +402,25 @@ async function main() {
 
   /* -- The rate card is priced by hand, but it must be reachable ---------- */
   {
-    const settingsSrc = code("components/admin/settings/system-settings-form.tsx");
+    // Phase 3b: the global CPC had three editors (System Settings -> Money,
+    // Ad Manager, Monetization). It has one now -- the Ad Manager, beside the
+    // per-space rates that override it -- and the other two link there.
+    const managerSrc = code("components/admin/ads/ad-manager-view.tsx");
     check(
-      "the global CPC default is editable in system settings",
-      /"ads\.cpcUsd"/.test(settingsSrc)
+      "the global CPC default is editable in the Ad Manager",
+      /settings: \{ "ads\.cpcUsd": clamped \}/.test(managerSrc)
     );
-    // Both ends. A settings control whose key is missing from CATEGORY_FOR_KEY
-    // renders, accepts input, says "saved" and writes nothing -- which is how 44
-    // of 104 controls were once dead.
-    // Read from the catalog, which is now where the map is built from, instead
-    // of the literal the form used to carry. Same guarantee: a key missing here
-    // is a control that renders, says "saved" and writes nothing.
+    // Both ends: the save must actually name a category, or the route
+    // rejects it -- the Ad Manager files it under "ads".
     check(
-      "the global CPC key is actually saved (present in CATEGORY_FOR_KEY)",
-      CATEGORY_FOR_KEY["ads.cpcUsd"] === "financial"
+      "the global CPC key is actually saved (posted with a category)",
+      /category: "ads",\s*settings: \{ "ads\.cpcUsd": clamped \}/.test(managerSrc)
+    );
+    check(
+      "…and it has no second editor on System Settings or Monetization",
+      !/"ads\.cpcUsd"/.test(code("components/admin/settings/system-settings-form.tsx")) &&
+        !/"ads\.cpcUsd"/.test(code("components/admin/monetization/monetization-view.tsx")) &&
+        CATEGORY_FOR_KEY["ads.cpcUsd"] === undefined
     );
     const priced = await prisma.adPlacement.count({
       where: { cpcUsd: { not: null } },

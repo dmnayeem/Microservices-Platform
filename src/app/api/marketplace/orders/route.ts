@@ -12,6 +12,7 @@ import {
 import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { resolveCommissionBps, splitPrice } from "@/lib/marketplace-commission";
+import { userCanFeature } from "@/lib/packages";
 
 // GET /api/marketplace/orders - Get user's orders
 export async function GET(request: NextRequest) {
@@ -159,6 +160,19 @@ export async function POST(request: NextRequest) {
         { error: "You cannot purchase your own listing" },
         { status: 400 }
       );
+    }
+
+    // Same gates as the other sale paths. Without them this endpoint bought an
+    // AUCTION listing outright at its listed price, skipping the bidding, and
+    // ignored the plan's marketplace switch.
+    if (listing.auctionMode) {
+      return NextResponse.json(
+        { error: "Auction listings can't be direct-bought — place a bid instead." },
+        { status: 400 }
+      );
+    }
+    if (!(await userCanFeature(session.user.id, "marketplace"))) {
+      return NextResponse.json({ error: "Marketplace is disabled for your plan" }, { status: 403 });
     }
 
     // Check buyer balance

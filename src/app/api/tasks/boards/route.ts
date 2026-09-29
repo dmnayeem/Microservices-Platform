@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +13,9 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /board-tasks is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/board-tasks");
+  if (pageHidden) return pageHidden;
 
   // The per-board task count must reflect only what this user can actually do —
   // same visibility rules as every other task surface (this route previously

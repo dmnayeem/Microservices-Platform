@@ -172,6 +172,13 @@ export async function PUT(
         { status: 400 }
       );
     }
+    // Creating requires content; editing it away left a blank post behind.
+    if (content !== undefined && content.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Post content is required" },
+        { status: 400 }
+      );
+    }
     if (images !== undefined && validPostImages(images) === null) {
       return NextResponse.json({ error: "Invalid images" }, { status: 400 });
     }

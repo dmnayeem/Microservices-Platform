@@ -8,14 +8,51 @@ import {
   type AdminGame,
 } from "@/components/admin/games/games-client";
 import type { AdminGameCategory } from "@/components/admin/games/game-categories-modal";
+import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
+import { GamesSettingsForm } from "@/components/admin/games/games-settings-form";
+import { GAMES_DEFAULTS, getGamesGlobalConfig } from "@/lib/game-settings";
 
-export default async function GamesAdminPage() {
+const TABS = [
+  { id: "games", label: "Games" },
+  { id: "settings", label: "Settings" },
+];
+
+export default async function GamesAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   if (!(await can(session.user.id, "games.view"))) redirect("/admin");
 
   const canManage = await can(session.user.id, "games.manage");
+  const tab = pickTab(TABS, (await searchParams).tab);
+
+  const header = (
+    <div>
+      <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+        <Gamepad2 className="w-6 h-6 text-emerald-400" />
+        HTML5 Games
+      </h1>
+      <p className="text-slate-400 text-sm mt-1">
+        Add embeddable games, control their ads, and optionally pay points for
+        play time. Rewards are off unless you switch them on per game.
+      </p>
+    </div>
+  );
+
+  if (tab === "settings") {
+    const config = await getGamesGlobalConfig();
+    return (
+      <div className="space-y-6">
+        {header}
+        <AdminTabs tabs={TABS} active={tab} basePath="/admin/games" />
+        <GamesSettingsForm initial={config} defaults={GAMES_DEFAULTS} canEdit={canManage} />
+      </div>
+    );
+  }
   const [games, categoryRows, counts] = await Promise.all([
     prisma.game.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] }),
     prisma.gameCategory.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }] }),
@@ -77,16 +114,8 @@ export default async function GamesAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
-          <Gamepad2 className="w-6 h-6 text-emerald-400" />
-          HTML5 Games
-        </h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Add embeddable games, control their ads, and optionally pay points for
-          play time. Rewards are off unless you switch them on per game.
-        </p>
-      </div>
+      {header}
+      <AdminTabs tabs={TABS} active={tab} basePath="/admin/games" />
       <GamesClient initial={rows} categories={categories} canManage={canManage} />
     </div>
   );

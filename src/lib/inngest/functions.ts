@@ -1,3 +1,4 @@
+// NOT what runs in production: Inngest was never reachable there. These jobs run from src/lib/scheduler/jobs.ts (admin: /admin/scheduler).
 import { inngest, EVENTS } from "./client";
 import { prisma } from "@/lib/prisma";
 import { expireDueTasks } from "@/lib/task-expiry";

@@ -1,5 +1,5 @@
 import { cn, pts, usd } from "@/lib/utils";
-import { Coins, DollarSign, ArrowUpRight, Megaphone, Plus, Sparkles } from "lucide-react";
+import { Coins, DollarSign, ArrowUpRight, Megaphone, Plus, Sparkles, Users } from "lucide-react";
 import { TASK_CREDIT } from "@/lib/task-credit-theme";
 import Link from "next/link";
 
@@ -25,6 +25,11 @@ interface BalanceCardProps {
   addFundsHref?: string;
   /** Where the ad-credit "Top up" points (advertiser page). */
   adTopUpHref?: string;
+  /**
+   * My Team bonus — the multi-level referral commission — in USD. When set, it
+   * shares the ad credit's row: ad credit on the left, team bonus on the right.
+   */
+  teamBonus?: { totalUsd: number; todayUsd?: number; href?: string };
   className?: string;
   compact?: boolean;
   /** Admin-configurable points-per-$1 rate (default 1000). */
@@ -42,6 +47,7 @@ export function BalanceCard({
   withdrawHref = "/withdrawal",
   addFundsHref,
   adTopUpHref = "/advertiser",
+  teamBonus,
   className,
   compact = false,
   pointsPerUsd,
@@ -49,6 +55,9 @@ export function BalanceCard({
   const ptInUsd = points / pointsPerUsd;
   const showAdCredit = adCredit !== undefined;
   const showTaskCredit = taskCredit !== undefined && taskCredit > 0;
+  const showTeam = teamBonus !== undefined;
+  // Ad credit and the team bonus share one row when both show.
+  const halfRow = showAdCredit && showTeam;
   return (
     /* The one thing on a money screen that should be unmistakable.
        It was a translucent indigo wash over a card, with the total at 24px and
@@ -127,8 +136,33 @@ export function BalanceCard({
           </div>
         )}
 
-        {showAdCredit && (
-          <div className="col-span-2 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3 flex items-center justify-between gap-3">
+        {showAdCredit && halfRow && (
+          // Half-width: "Top up" is a small pill beside the label, so this tile
+          // stays the same height as the team bonus next to it (a full button
+          // under the text made it twice as tall, with an empty tile beside).
+          <div className="col-span-1 min-w-0 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3">
+            <div className="flex items-center gap-1.5 text-white/90 mb-1">
+              <Megaphone className="w-3.5 h-3.5 shrink-0" />
+              <span className="t-eyebrow whitespace-nowrap">Ad Credit</span>
+            </div>
+            {/* Wraps the pill under the figure when the tile is too narrow
+                (a 320px phone) instead of pushing it out of the tile. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <p className="t-figure-sm whitespace-nowrap text-white">{usd(adCredit)}</p>
+              <Link
+                href={adTopUpHref}
+                aria-label="Top up ad credit"
+                className="app-press inline-flex h-7 shrink-0 items-center gap-0.5 rounded-full bg-white/20 border border-white/40 px-2.5 text-[11px] font-extrabold text-white hover:bg-white/30"
+              >
+                <Plus className="w-3 h-3" /> Top up
+              </Link>
+            </div>
+            <p className="t-meta text-white/90">For ads · non-withdrawable</p>
+          </div>
+        )}
+
+        {showAdCredit && !halfRow && (
+          <div className="col-span-2 min-w-0 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-white/90 mb-1">
                 <Megaphone className="w-3.5 h-3.5 shrink-0" />
@@ -143,11 +177,35 @@ export function BalanceCard({
             </div>
             <Link
               href={adTopUpHref}
-              className="app-press app-tap-row shrink-0 inline-flex items-center gap-1 px-3.5 rounded-(--app-r-chip) bg-white/20 border border-white/40 text-white text-xs font-extrabold hover:bg-white/30"
+              className="app-press app-tap-row shrink-0 inline-flex items-center justify-center gap-1 px-3.5 rounded-(--app-r-chip) bg-white/20 border border-white/40 text-white text-xs font-extrabold hover:bg-white/30"
             >
               <Plus className="w-3.5 h-3.5" /> Top up
             </Link>
           </div>
+        )}
+
+        {showTeam && (
+          <Link
+            href={teamBonus.href ?? "/referrals"}
+            className={cn(
+              "app-press min-w-0 rounded-(--app-r-control) bg-black/20 border border-white/25 p-3 hover:bg-black/30",
+              halfRow ? "col-span-1" : "col-span-2"
+            )}
+          >
+            <div className="flex items-center gap-1.5 text-white/90 mb-1">
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="t-eyebrow whitespace-nowrap">Team Bonus</span>
+            </div>
+            <p className="t-figure-sm whitespace-nowrap text-white">
+              {pts(Math.round(teamBonus.totalUsd * pointsPerUsd))}
+            </p>
+            <p className="t-meta text-white/90">{usd(teamBonus.totalUsd)} · My Team</p>
+            {(teamBonus.todayUsd ?? 0) > 0 && (
+              <p className="t-meta font-bold text-white">
+                +{pts(Math.round((teamBonus.todayUsd ?? 0) * pointsPerUsd))} today
+              </p>
+            )}
+          </Link>
         )}
       </div>
 

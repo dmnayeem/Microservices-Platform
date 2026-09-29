@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -52,6 +53,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /marketplace is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/marketplace");
+  if (pageHidden) return pageHidden;
   return withIdempotency(_request, session.user.id, async () => {
   try {
     if (!(await userCanFeature(session.user.id, "marketplace"))) {
@@ -298,7 +302,7 @@ export async function POST(
       // update it replaces; with it on the money waits in a payout row, so a
       // refund inside the window reverses an untouched row instead of clawing
       // back a balance the seller may already have withdrawn.
-      await payOrHoldSeller(tx, {
+      const held = await payOrHoldSeller(tx, {
         sellerId: listing.sellerId,
         purchaseId: p.id,
         amount: sellerNet,
@@ -375,7 +379,10 @@ export async function POST(
           },
         },
       });
-      await tx.transaction.create({
+      // Only once the money is really theirs. While held, the release sweep
+      // writes the EARNING row on payout — writing one here too showed the
+      // sale as earned twice (the other three sale paths already skip it).
+      if (!held.held) await tx.transaction.create({
         data: {
           userId: listing.sellerId,
           type: TransactionType.EARNING,

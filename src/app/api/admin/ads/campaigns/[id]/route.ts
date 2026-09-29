@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
-import { refundCampaignBudgetToCredit } from "@/lib/ad-credits";
+import { refundCampaignBudgetToCredit, setCampaignBudgetByAdmin } from "@/lib/ad-credits";
 import { toNum } from "@/lib/money";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -189,7 +189,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const data: Record<string, unknown> = {};
   if (body.title !== undefined) data.title = String(body.title).trim();
   if (body.description !== undefined) data.description = body.description ? String(body.description) : null;
-  if (body.budget !== undefined) data.budget = Number(body.budget) || 0;
   if (body.status !== undefined && ["ACTIVE", "PAUSED", "ENDED"].includes(body.status))
     data.status = body.status;
   // Platform-owned inventory: exempt from the budget floor in
@@ -203,6 +202,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   };
   if (body.startAt !== undefined) data.startAt = parseDate(body.startAt);
   if (body.endAt !== undefined) data.endAt = parseDate(body.endAt);
+
+  // Budget is money, not a field: it moves through the Ad Credit ledger (see
+  // `setCampaignBudgetByAdmin`). Applied before the other fields so a request
+  // that both changes the budget and ends the campaign refunds the new figure.
+  let budgetDelta = 0;
+  const budgetSource = body.budgetSource === "platform" ? "platform" : "advertiser";
+  if (body.budget !== undefined) {
+    const r = await setCampaignBudgetByAdmin({
+      campaignId: id,
+      targetBudget: Number(body.budget),
+      source: budgetSource,
+      adminId: session.user.id,
+    });
+    if (!r.ok) {
+      return NextResponse.json({ error: r.error }, { status: r.status ?? 400 });
+    }
+    budgetDelta = r.delta;
+  }
+
   const campaign = await prisma.adCampaign.update({ where: { id }, data });
 
   // Ending a campaign returns its unspent budget to the owner's ad credit. This
@@ -221,8 +239,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     summary:
       data.status === "ENDED"
         ? `Ended campaign "${campaign.title}"${refunded ? ` — refunded ${usd(refunded)}` : ""}`
-        : `Updated campaign "${campaign.title}"`,
-    meta: { fields: Object.keys(data), refunded },
+        : `Updated campaign "${campaign.title}"${
+            budgetDelta
+              ? budgetDelta > 0
+                ? ` — budget +${usd(budgetDelta)} (${budgetSource === "platform" ? "platform grant" : "from advertiser's Ad Credit"})`
+                : ` — budget −${usd(-budgetDelta)} returned to Ad Credit`
+              : ""
+          }`,
+    meta: {
+      fields: [...Object.keys(data), ...(budgetDelta ? ["budget"] : [])],
+      refunded,
+      ...(budgetDelta ? { budgetDelta, budgetSource } : {}),
+    },
   });
 
   return NextResponse.json({ campaign, refunded });

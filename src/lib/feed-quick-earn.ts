@@ -1,102 +1,34 @@
-import {
-  CalendarCheck,
-  ListTodo,
-  PlayCircle,
-  Zap,
-  Gamepad2,
-  Ticket,
-  Layers,
-  Coins,
-  Gift,
-  Trophy,
-  Users,
-  Wallet,
-  Star,
-  Sparkles,
-  Target,
-  Rocket,
-  DollarSign,
-  ShoppingBag,
-  Video,
-  Award,
-  LayoutDashboard,
-  Brain,
-  GraduationCap,
-  Package,
-  Megaphone,
-  type LucideIcon,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { NAV_ICONS, NAV_ICON_OPTIONS } from "@/lib/nav-icons";
+import { isNavIconKey } from "@/lib/nav-icon-keys";
 
 /**
  * Admin-editable "Quick Earn" sidebar tiles. Stored in SystemSetting
  * `feed.quick_earn_tiles` and read by the social page. Each tile links to an
  * in-app earn route. Icon + color are stored as keys into the maps below.
+ *
+ * Edited on Settings -> Navigation (the Quick Earn tab), which is the one
+ * editor for this key.
  */
 export interface QuickEarnTile {
   id: string;
   label: string;
   href: string;
-  icon: string; // key into QUICK_EARN_ICONS
+  icon: string; // key into QUICK_EARN_ICONS (= the shared NAV_ICONS registry)
   color: string; // key into COLOR_CLASSES
   enabled: boolean;
 }
 
-/** Curated icon set the admin can pick from (key → lucide component). */
-export const QUICK_EARN_ICONS: Record<string, LucideIcon> = {
-  // These two mirror the feed toolbar exactly (`feed-quick-links.tsx`), so the
-  // same destination is not drawn as two different things in two places.
-  calendarCheck: CalendarCheck,
-  listTodo: ListTodo,
-  playCircle: PlayCircle,
-  zap: Zap,
-  gamepad: Gamepad2,
-  ticket: Ticket,
-  layers: Layers,
-  coins: Coins,
-  gift: Gift,
-  trophy: Trophy,
-  users: Users,
-  wallet: Wallet,
-  star: Star,
-  sparkles: Sparkles,
-  target: Target,
-  rocket: Rocket,
-  dollar: DollarSign,
-  shopping: ShoppingBag,
-  video: Video,
-  award: Award,
-  layoutDashboard: LayoutDashboard,
-  brain: Brain,
-  graduation: GraduationCap,
-  package: Package,
-  megaphone: Megaphone,
-};
+/**
+ * The icon set the admin can pick from. It is the shared navigation registry
+ * now (`nav-icons.ts`), which kept every key this map used to have — so a tile
+ * saved as `gamepad` or `graduation` draws exactly what it drew before.
+ */
+export const QUICK_EARN_ICONS: Record<string, LucideIcon> = NAV_ICONS;
 
-export const ICON_OPTIONS: { key: string; label: string }[] = [
-  { key: "playCircle", label: "Play" },
-  { key: "zap", label: "Bolt" },
-  { key: "gamepad", label: "Game" },
-  { key: "ticket", label: "Ticket" },
-  { key: "layers", label: "Layers" },
-  { key: "coins", label: "Coins" },
-  { key: "gift", label: "Gift" },
-  { key: "trophy", label: "Trophy" },
-  { key: "users", label: "Users" },
-  { key: "wallet", label: "Wallet" },
-  { key: "star", label: "Star" },
-  { key: "sparkles", label: "Sparkles" },
-  { key: "target", label: "Target" },
-  { key: "rocket", label: "Rocket" },
-  { key: "dollar", label: "Dollar" },
-  { key: "shopping", label: "Shopping" },
-  { key: "video", label: "Video" },
-  { key: "award", label: "Award" },
-  { key: "layoutDashboard", label: "Dashboard" },
-  { key: "brain", label: "Brain" },
-  { key: "graduation", label: "Graduation" },
-  { key: "package", label: "Package" },
-  { key: "megaphone", label: "Megaphone" },
-];
+export const ICON_OPTIONS: { key: string; label: string }[] = NAV_ICON_OPTIONS.map(
+  (o) => ({ key: o.key, label: o.label })
+);
 
 /**
  * NO LONGER RENDERED.
@@ -109,7 +41,7 @@ export const ICON_OPTIONS: { key: string; label: string }[] = [
  * The map is kept, and so is the stored `color` on every tile, so nothing an
  * admin has already set is destroyed and the feature can be switched back on
  * without a migration. What is NOT kept is a control that silently does
- * nothing: the picker in Settings → Feed Widgets is disabled and labelled, and
+ * nothing: the picker in Settings → Navigation → Quick Earn is disabled and labelled, and
  * its preview icon renders neutral so the form shows what the app shows.
  *
  * `COLOR_OPTIONS` below still reads from this map — it is what populates that
@@ -160,7 +92,7 @@ export function normalizeQuickEarn(raw: unknown): QuickEarnTile[] {
       id: typeof r.id === "string" && r.id ? r.id : `qe-${out.length}`,
       label,
       href,
-      icon: typeof r.icon === "string" && QUICK_EARN_ICONS[r.icon] ? r.icon : "zap",
+      icon: isNavIconKey(r.icon) ? r.icon : "zap",
       color: typeof r.color === "string" && COLOR_CLASSES[r.color] ? r.color : "indigo",
       enabled: r.enabled !== false,
     });

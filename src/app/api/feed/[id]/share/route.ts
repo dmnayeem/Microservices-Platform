@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { z } from "zod";
 import { recordUserAction } from "@/lib/goal-progress";
@@ -20,6 +21,16 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Banned/suspended accounts keep a valid 30-day session, so the status has
+  // to be checked here — see src/lib/require-active.ts.
+  const active = await requireActiveUser(session.user.id);
+  if (!active.ok) {
+    return NextResponse.json(
+      { error: active.message },
+      { status: active.httpStatus }
+    );
+  }
+
   const { id } = await params;
   const sharerId = session.user.id;
 

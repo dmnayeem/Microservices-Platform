@@ -3,6 +3,7 @@ import { usd } from "@/lib/utils";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/lib/toast";
 import {
   Save,
   X,
@@ -59,7 +60,9 @@ export function ReferralSettingsForm({ levels, isNew }: ReferralSettingsFormProp
         throw new Error(data.error || "Failed to save settings");
       }
 
-      router.push("/admin/referrals");
+      // Stay on the tab — this form is now the Commission levels tab of
+      // /admin/referrals rather than a page of its own.
+      toast.success("Commission levels saved");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -117,6 +120,12 @@ export function ReferralSettingsForm({ levels, isNew }: ReferralSettingsFormProp
           <p className="text-sm text-gray-400 mt-1">
             When a user completes a task, their referrer gets Level 1 commission, their referrer&apos;s
             referrer gets Level 2 commission, and so on up to Level 10.
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            <strong className="text-gray-200">Fractions are not lost.</strong> A small cut
+            (e.g. 3% of a 30-point task = 0.9 points) is carried on the referrer&apos;s account
+            to the thousandth of a point, and paid out as whole points each time the carry
+            reaches 1 point.
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,9 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /missions is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/missions");
+  if (pageHidden) return pageHidden;
   // Missions target on the same profile fields tasks do, so the same select.
   const [viewer, pkg] = await Promise.all([
     prisma.user.findUnique({

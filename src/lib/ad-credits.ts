@@ -124,8 +124,8 @@ export async function buyAdCredits(opts: {
           points: currency === "points" ? -pointsCost : 0,
           description: `Ad credits — ${usd(credited)}`,
           // Per-occurrence by design. An advertiser may top up the same
-          // amount of ad credit as often as they like.
-          // A deterministic key would make `Transaction @@unique([userId, reference])`
+          // amount of ad credit as often as they like.
+          // A deterministic key would make `Transaction @@unique([userId, reference])`
           // reject the second one, so this stays keyed on the instant it happened.
           reference: `adcredit_buy_${userId}_${Date.now()}`,
           metadata: { creditUsd: credited, currency, bonusPct: bonus },
@@ -254,6 +254,128 @@ export async function refundCampaignBudgetToCredit(
     });
     return remaining;
   });
+}
+
+export type AdminBudgetSource = "advertiser" | "platform";
+
+export interface AdminBudgetResult {
+  ok: boolean;
+  error?: string;
+  status?: number;
+  /** Signed change applied to the campaign's remaining budget. */
+  delta: number;
+}
+
+/**
+ * An admin changing a campaign's budget from the Ad Manager.
+ *
+ * `budget` is what is LEFT to spend (clicks draw it down and move the same
+ * amount into `spentTotal`), so the admin's number is a new remaining figure
+ * and what moves is the difference.
+ *
+ * It used to be written straight onto the row. For a campaign with an
+ * advertiser that was money from nowhere: ending the campaign refunds the
+ * remaining budget to the advertiser's Ad Credit, so every dollar an admin
+ * typed in came back out as spendable credit that no one had paid for.
+ *
+ * Now every change to an advertiser's campaign goes through the ledger:
+ *  - raise, source "advertiser": taken from their Ad Credit (CAMPAIGN_FUND),
+ *    refused if they don't have it — exactly the self-serve top-up.
+ *  - raise, source "platform": the platform pays. A GRANT row (+) and a
+ *    CAMPAIGN_FUND row (−) in the same transaction, so the books show where
+ *    the money came from and the advertiser's balance does not move.
+ *  - lower: the difference goes back to their Ad Credit (REFUND). The remaining
+ *    budget can never go below zero, so nothing already spent is returned.
+ *
+ * A campaign with no advertiser (house / platform inventory) has nobody to
+ * debit and nobody a refund can reach (`refundCampaignBudgetToCredit` returns 0
+ * for it), so its budget is set directly. Exemption is keyed on the missing
+ * advertiser, not on `isHouse`: that flag is an admin toggle, and flipping it
+ * off later must not turn an unjournalled budget into refundable credit.
+ */
+export async function setCampaignBudgetByAdmin(opts: {
+  campaignId: string;
+  targetBudget: number;
+  source: AdminBudgetSource;
+  adminId: string;
+}): Promise<AdminBudgetResult> {
+  const target = round6(Number(opts.targetBudget));
+  if (!Number.isFinite(target) || target < 0) {
+    return { ok: false, error: "Budget must be zero or more.", status: 400, delta: 0 };
+  }
+  const c = await prisma.adCampaign.findUnique({
+    where: { id: opts.campaignId },
+    select: { id: true, advertiserId: true, budget: true, status: true },
+  });
+  if (!c) return { ok: false, error: "Not found", status: 404, delta: 0 };
+
+  const current = round6(toNum(c.budget));
+  const delta = round6(target - current);
+  if (delta === 0) return { ok: true, delta: 0 };
+
+  if (!c.advertiserId) {
+    await prisma.adCampaign.update({ where: { id: c.id }, data: { budget: target } });
+    return { ok: true, delta };
+  }
+  // An ended campaign has already had its remainder refunded. Money put in now
+  // would sit where nothing spends it and nothing refunds it.
+  if (c.status === "ENDED") {
+    return { ok: false, error: "This campaign has ended — its budget can't be changed.", status: 400, delta: 0 };
+  }
+
+  const advertiserId = c.advertiserId;
+  const stamp = Date.now();
+  const meta = { campaignId: c.id, adminId: opts.adminId, via: "admin-budget-edit" };
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (delta > 0) {
+        if (opts.source === "platform") {
+          await creditAdCreditTx(tx, advertiserId, delta, {
+            kind: "GRANT",
+            reference: `campaign_grant_${c.id}_${stamp}`,
+            metadata: { ...meta, platformGrant: true },
+          });
+        }
+        await deductAdCreditTx(tx, advertiserId, delta, {
+          kind: "CAMPAIGN_FUND",
+          reference: `campaign_fund_${c.id}_${stamp}`,
+          metadata: { ...meta, source: opts.source },
+        });
+        await tx.adCampaign.update({
+          where: { id: c.id },
+          data: { budget: { increment: delta } },
+        });
+      } else {
+        const amount = -delta;
+        // CAS: clicks may have drawn the budget down since it was read. Never
+        // return more than is actually left.
+        const cut = await tx.adCampaign.updateMany({
+          where: { id: c.id, status: { not: "ENDED" }, budget: { gte: amount } },
+          data: { budget: { decrement: amount } },
+        });
+        if (cut.count === 0) throw new Error("BUDGET_MOVED");
+        await creditAdCreditTx(tx, advertiserId, amount, {
+          kind: "REFUND",
+          reference: `campaign_reduce_${c.id}_${stamp}`,
+          metadata: meta,
+        });
+      }
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "INSUFFICIENT_CREDIT") {
+      return {
+        ok: false,
+        error: `The advertiser doesn't have ${usd(delta)} of Ad Credit. Fund it as a platform grant instead, or ask them to top up.`,
+        status: 402,
+        delta: 0,
+      };
+    }
+    if (err instanceof Error && err.message === "BUDGET_MOVED") {
+      return { ok: false, error: "The budget changed while you were editing. Reload and try again.", status: 409, delta: 0 };
+    }
+    throw err;
+  }
+  return { ok: true, delta };
 }
 
 /** Balance + recent ledger for the advertiser credit page. */

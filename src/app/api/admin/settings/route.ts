@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { isSuperAdmin, type UserRole } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { invalidatePointsRateCache } from "@/lib/economy";
 import {
@@ -58,6 +59,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Category and settings are required" },
         { status: 400 }
+      );
+    }
+
+    // Keys that decide who may do what. `settings.edit` is held by ordinary
+    // admins, and this route writes any key — so an admin could rewrite the
+    // role→permission table and grant themselves anything. Only a super admin
+    // writes these (and only through here or their dedicated routes).
+    const RESERVED_PREFIXES = ["rbac.", "page_visibility.", "admin_modules."];
+    const reserved = Object.keys(settings).filter((k) =>
+      RESERVED_PREFIXES.some((p) => k.startsWith(p))
+    );
+    if (
+      reserved.length > 0 &&
+      !isSuperAdmin(session.user.role as UserRole | undefined)
+    ) {
+      return NextResponse.json(
+        { error: `Only a super admin can change ${reserved.join(", ")}` },
+        { status: 403 }
       );
     }
 

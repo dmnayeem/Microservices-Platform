@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
+  matchArticlePageNumber,
   type ArticleConfig,
   sanitizePopupHtml,
   DEFAULT_POPUP_THEME,
@@ -37,7 +38,10 @@ export async function GET(
   const token = searchParams.get("token") ?? searchParams.get("eg");
   const visitToken = searchParams.get("visitToken") ?? searchParams.get("egv");
   const pageParam = parseInt(searchParams.get("page") ?? "1", 10);
-  const pageNumber = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  let pageNumber = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  // The reader's page URL. When it matches one of the task's pages, that page
+  // wins over the snippet's data-page — one snippet can then serve every page.
+  const visitUrl = searchParams.get("url") ?? "";
 
   // Two ways to be here. A session token means the worker followed a link we
   // handed them; a visit note means they arrived from a search result or a
@@ -84,6 +88,8 @@ export async function GET(
     );
   }
   const pages = (cfg.pages ?? []).filter((p) => p.url.trim());
+  const matchedPage = visitUrl ? matchArticlePageNumber(pages, visitUrl) : null;
+  if (matchedPage) pageNumber = matchedPage;
   const pageIndex = pageNumber - 1;
   const page = pages[pageIndex];
   if (!page) {

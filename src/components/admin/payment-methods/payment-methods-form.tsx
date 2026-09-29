@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export interface PaymentMethod {
   key: string;
@@ -75,6 +76,32 @@ export function PaymentMethodsForm({ initial, canEdit }: Props) {
 
   return (
     <div className="space-y-6">
+      {/*
+        Checked 2026-09-29: nothing outside this screen reads a `pm_*` row.
+        The withdrawal request (api/withdrawals → getWithdrawalConfig) takes
+        its min, max and fee from Withdrawals → Settings and the user's
+        package, and accepts any method in the PaymentMethod enum whatever
+        "Active" says here. Wiring these in would change live payouts, so
+        they are labelled instead of being allowed to look enforced.
+      */}
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-100/90">
+        <p className="font-semibold text-amber-200">
+          These cards are saved but not enforced.
+        </p>
+        <p className="mt-1">
+          Withdrawals do not read the per-method Active switch, min / max
+          amount, fee or processing time below. What a user can withdraw, and
+          the fee they pay, come from{" "}
+          <Link href="/admin/withdrawals?tab=settings" className="underline hover:text-white">
+            Withdrawals &rarr; Settings
+          </Link>{" "}
+          and their{" "}
+          <Link href="/admin/packages" className="underline hover:text-white">
+            package
+          </Link>
+          .
+        </p>
+      </div>
       {Object.entries(grouped).map(([category, list]) => (
         <section key={category}>
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">
@@ -115,12 +142,12 @@ export function PaymentMethodsForm({ initial, canEdit }: Props) {
                       disabled={!canEdit}
                       className="rounded bg-slate-800 border-slate-600 text-emerald-500"
                     />
-                    <span className="text-xs text-slate-400">Active</span>
+                    <span className="text-xs text-slate-400">Active (not enforced)</span>
                   </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <Field label="Min Amount ($)">
+                  <Field label="Min Amount ($) — not enforced">
                     <input
                       type="number"
                       step={0.01}
@@ -134,7 +161,7 @@ export function PaymentMethodsForm({ initial, canEdit }: Props) {
                       className={inp}
                     />
                   </Field>
-                  <Field label="Max Amount ($)">
+                  <Field label="Max Amount ($) — not enforced">
                     <input
                       type="number"
                       step={0.01}
@@ -151,7 +178,7 @@ export function PaymentMethodsForm({ initial, canEdit }: Props) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <Field label="Fee (%)">
+                  <Field label="Fee (%) — not enforced">
                     <input
                       type="number"
                       step={0.1}
@@ -165,7 +192,7 @@ export function PaymentMethodsForm({ initial, canEdit }: Props) {
                       className={inp}
                     />
                   </Field>
-                  <Field label="Flat Fee ($)">
+                  <Field label="Flat Fee ($) — not enforced">
                     <input
                       type="number"
                       step={0.01}
@@ -181,7 +208,7 @@ export function PaymentMethodsForm({ initial, canEdit }: Props) {
                   </Field>
                 </div>
 
-                <Field label="Processing Time">
+                <Field label="Processing Time — not shown to users">
                   <input
                     value={m.processingTime}
                     onChange={(e) =>

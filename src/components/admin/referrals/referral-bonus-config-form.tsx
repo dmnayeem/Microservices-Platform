@@ -469,7 +469,7 @@ export function ReferralBonusConfigForm({
           blurb="A percentage of what your invitees — and their invitees — earn, down the chain. It is a table of levels rather than one amount, so it keeps its own page."
         >
           <Link
-            href="/admin/referrals/settings"
+            href="/admin/referrals?tab=commission"
             className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-xs font-bold text-indigo-300 hover:bg-indigo-500/20"
           >
             Open the level table

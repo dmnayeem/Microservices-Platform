@@ -33,6 +33,7 @@ export type PointSource =
   | "affiliate"
   | "lottery"
   | "offerwall"
+  | "cpa"
   | "game"
   | "donation"
   | "admin_grant"
@@ -56,6 +57,7 @@ export const POINT_SOURCE_META: Record<PointSource, { label: string; hint: strin
   affiliate: { label: "Affiliate", hint: "Affiliate program commission", swatch: "bg-yellow-500" },
   lottery: { label: "Lottery", hint: "Lottery winnings", swatch: "bg-orange-500" },
   offerwall: { label: "Offerwalls", hint: "Offerwall completions (network postbacks)", swatch: "bg-red-500" },
+  cpa: { label: "CPA offers", hint: "Approved CPA offer conversions (net of reversals)", swatch: "bg-lime-600" },
   game: { label: "Games", hint: "Mini-games and mystery boxes", swatch: "bg-stone-400" },
   donation: { label: "Donations received", hint: "Points gifted by other users", swatch: "bg-slate-400" },
   admin_grant: { label: "Admin hand grants", hint: "Balance added by an admin by hand", swatch: "bg-red-600" },
@@ -71,7 +73,8 @@ export function pointSourceOf(row: { type: string; reference?: string | null }):
 
   switch (row.type) {
     case "REFERRAL":
-      return "referral";
+      // Sign-up / invitee / milestone bonuses are REFERRAL rows too.
+      return ref.startsWith("refbonus_") ? "referral_bonus" : "referral";
     case "AFFILIATE_COMMISSION":
       return "affiliate";
     case "LOTTERY_WIN":
@@ -85,7 +88,8 @@ export function pointSourceOf(row: { type: string; reference?: string | null }):
     if (has("welcome")) return "welcome";
     if (has("browse_")) return "browse";
     if (has("event_")) return "event";
-    if (has("achievement_") || has("tasks_")) return "achievement";
+    if (has("achievement_") || has("tasks_") || has("milestone_")) return "achievement";
+    if (has("adreward_")) return "browse"; // rewarded ad view (api/ads/[id]/reward)
     if (has("mission_")) return "mission";
     if (has("refbonus_")) return "referral_bonus";
     if (has("leaderboard_")) return "leaderboard";
@@ -103,6 +107,7 @@ export function pointSourceOf(row: { type: string; reference?: string | null }):
   if (has("mission_")) return "mission";
   if (has("event_")) return "event";
   if (has("offerwall_")) return "offerwall";
+  if (has("cpa_")) return "cpa"; // CPA offers: cpa_<id> credit, cpa_rev_<id> reversal
   if (has("game_") || has("mystery_") || has("solo_")) return "game";
   if (has("donation_recv_")) return "donation";
   if (has("refbonus_")) return "referral_bonus";

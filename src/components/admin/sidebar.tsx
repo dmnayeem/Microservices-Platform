@@ -48,6 +48,8 @@ import {
   Timer,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Search,
   FolderTree,
   UserCog,
   Landmark,
@@ -86,7 +88,7 @@ interface AdminSidebarProps {
 }
 
 // Icon mapping for dynamic rendering
-const iconMap: Record<string, LucideIcon> = {
+export const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   Users,
   Trophy,
@@ -136,6 +138,9 @@ const iconMap: Record<string, LucideIcon> = {
   Eye,
   LayoutGrid,
 };
+
+/** Which sidebar groups this admin has open (per browser). */
+const NAV_OPEN_KEY = "rt-admin-nav-open";
 
 // Extract SidebarContent as a separate component
 interface AdminSidebarContentProps {
@@ -196,6 +201,51 @@ function AdminSidebarContent({
   onToggleCollapse,
 }: AdminSidebarContentProps) {
   const activeHref = activeHrefFor(pathname, groupedModules);
+  const activeGroup =
+    groupedModules.find((g) => g.modules.some((m) => m.href === activeHref))?.category ?? null;
+
+  // Find a page by name — with ~65 pages, scanning groups is the slow way.
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shownGroups = q
+    ? groupedModules
+        .map((g) => ({
+          ...g,
+          modules: g.modules.filter(
+            (m) => m.name.toLowerCase().includes(q) || (g.label ?? "").toLowerCase().includes(q)
+          ),
+        }))
+        .filter((g) => g.modules.length > 0)
+    : groupedModules;
+
+  // Which groups are open. The one holding the current page always is; the
+  // rest remember what this admin last opened or closed.
+  // Read after mount: the server render has no localStorage, and reading it in
+  // the initial state would make the first client render disagree with it.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      try {
+        setOpenGroups(JSON.parse(localStorage.getItem(NAV_OPEN_KEY) ?? "{}") as Record<string, boolean>);
+      } catch {
+        /* keep the defaults */
+      }
+    });
+  }, []);
+  const isOpen = (category: string) =>
+    !!q || collapsed || category === activeGroup || (openGroups[category] ?? category === "OVERVIEW");
+  const toggleGroup = (category: string) => {
+    setOpenGroups((cur) => {
+      const next = { ...cur, [category]: !isOpen(category) };
+      try {
+        localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next));
+      } catch {
+        /* private mode — still toggles for this visit */
+      }
+      return next;
+    });
+  };
+
   return (
     <>
       {/* Logo */}
@@ -254,22 +304,50 @@ function AdminSidebarContent({
         </div>
       )}
 
-      {/* Navigation — grouped by category */}
-      <nav className="flex-1 overflow-y-auto py-3">
-        {groupedModules.map((group, groupIdx) => (
-          <div
-            key={group.category}
-            className={cn(
-              "px-3",
-              groupIdx > 0 && "mt-4 pt-3 border-t border-slate-800/60"
-            )}
-          >
+      {/* Search */}
+      {!collapsed && (
+        <div className="px-3 pt-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find a page…"
+              aria-label="Find an admin page"
+              className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500/60 focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Navigation — grouped by the job, each group opens and closes */}
+      <nav className="flex-1 overflow-y-auto py-2">
+        {q && shownGroups.length === 0 && (
+          <p className="px-6 py-4 text-xs text-slate-500">No page matches “{query}”.</p>
+        )}
+        {shownGroups.map((group) => (
+          <div key={group.category} className={cn("px-3", collapsed ? "mt-2" : "mt-1")}>
             {!collapsed && group.label && (
-              <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                {group.label}
-              </p>
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.category)}
+                aria-expanded={isOpen(group.category)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wider transition-colors",
+                  group.category === activeGroup ? "text-indigo-300" : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                )}
+              >
+                <span className="flex-1 truncate">{group.label}</span>
+                <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 tabular-nums">
+                  {group.modules.length}
+                </span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 shrink-0 transition-transform", !isOpen(group.category) && "-rotate-90")}
+                />
+              </button>
             )}
-            <ul className="space-y-0.5">
+            <ul className={cn("space-y-0.5", !collapsed && "pb-1", !isOpen(group.category) && "hidden")}>
               {group.modules.map((module) => {
                 const Icon = iconMap[module.icon] || LayoutDashboard;
                 const isActive = activeHref === module.href;

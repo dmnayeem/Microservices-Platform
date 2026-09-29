@@ -63,6 +63,12 @@ export interface ClaimStore {
     leaseUntil: Date
   ): Promise<number>;
   finish(job: string, windowKey: string, patch: FinishPatch): Promise<void>;
+  /**
+   * Names of jobs with ANY window (scheduled or a hand-run) still `running`
+   * under a live lease. Optional: a store without it just skips the overlap
+   * check between a hand-run and a scheduled run of the same job.
+   */
+  liveJobs?(now: Date): Promise<Set<string>>;
 }
 
 export type ClaimResult =

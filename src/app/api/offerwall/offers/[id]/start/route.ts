@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { syncCountryMode } from "@/lib/country-mode";
 import { effectiveCountry } from "@/lib/effective-country";
@@ -21,9 +22,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   await syncCountryMode(); // country targeting: profile+IP or IP only
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const profileGated = await profileGateResponse(session.user.id, "offerwalls");
-  if (profileGated) return profileGated;
+  // Super-admin page visibility: refuse when /offerwalls is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/offerwalls");
+  if (pageHidden) return pageHidden;
   const userId = session.user.id;
+  // "offerwalls" is also locked by "tasks". Resuming an offer already started
+  // (a STARTED/PENDING completion) is not a new start, so it is let through.
+  const { id: gateOfferId } = await params;
+  const profileGated = await profileGateResponse(userId, "offerwalls", async () =>
+    !!(await prisma.offerwallCompletion.findFirst({
+      where: { userId, offerId: gateOfferId, status: { in: ["STARTED", "PENDING"] } },
+      select: { id: true },
+    }))
+  );
+  if (profileGated) return profileGated;
 
   if (!(await userCanFeature(userId, "offerwallTasks")))
     return NextResponse.json({ error: "Offerwall isn't enabled for your account." }, { status: 403 });

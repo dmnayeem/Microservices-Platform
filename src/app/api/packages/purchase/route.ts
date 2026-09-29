@@ -160,8 +160,16 @@ export async function POST(request: NextRequest) {
 
   // Don't let a user stack multiple off-platform (admin-verified) requests.
   if (isOffPlatform) {
-    const pending = await prisma.subscription.findFirst({
-      where: { userId, isActive: false },
+    // "Pending" is the PENDING ledger row written with the request below.
+    // `isActive: false` alone also matches every expired or cancelled
+    // subscription, which blocked anyone whose plan had ever lapsed from
+    // paying off-platform again.
+    const pending = await prisma.transaction.findFirst({
+      where: {
+        userId,
+        status: "PENDING",
+        reference: { startsWith: "subscription_" },
+      },
       select: { id: true },
     });
     if (pending) {

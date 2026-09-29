@@ -132,22 +132,43 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const pkg = subscription.package;
     const planLabel = pkg?.name ?? "—";
 
-    if (action === "approve") {
-      const startDate = new Date();
-      const endDate = new Date();
+    // `isActive: false` also means expired or cancelled, not only "awaiting
+    // verification". The request's own ledger row tells them apart: an
+    // off-platform request writes it PENDING, and only a PENDING one may be
+    // approved or rejected here. Without this an expired paid plan could be
+    // "approved" back to life for nothing. (A request with no ledger row at
+    // all comes from the older POST /api/packages path and is left as it was.)
+    const ledgerRef = `subscription_${subscription.id}`;
+    const ledger = await prisma.transaction.findUnique({
+      where: { userId_reference: { userId: subscription.userId, reference: ledgerRef } },
+      select: { status: true },
+    });
+    if (ledger && ledger.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "This subscription is not awaiting verification (it has expired or was cancelled)." },
+        { status: 400 }
+      );
+    }
+    const settleLedger = (status: "COMPLETED" | "CANCELLED") =>
+      prisma.transaction.updateMany({
+        where: { userId: subscription.userId, reference: ledgerRef, status: "PENDING" },
+        data: { status },
+      });
 
-      const monthsDiff = Math.round(
-        (subscription.endDate.getTime() - subscription.startDate.getTime()) /
-          (1000 * 60 * 60 * 24 * 30)
+    if (action === "approve") {
+      // Keep the length the user paid for. This used to round every request to
+      // one month or one year, so a paid QUARTERLY plan got a month and a
+      // LIFETIME plan a year. The window starts now, not when it was requested.
+      const startDate = new Date();
+      const endDate = new Date(
+        startDate.getTime() +
+          (subscription.endDate.getTime() - subscription.startDate.getTime())
       );
 
-      if (monthsDiff >= 12) {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      } else {
-        endDate.setMonth(endDate.getMonth() + 1);
-      }
-
       await prisma.$transaction([
+        // The request's ledger row was left PENDING forever, so finance never
+        // saw the money for an approved plan.
+        settleLedger("COMPLETED"),
         prisma.subscription.update({
           where: { id },
           data: {
@@ -214,6 +235,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
 
       await prisma.$transaction([
+        settleLedger("CANCELLED"),
         prisma.subscription.delete({
           where: { id },
         }),

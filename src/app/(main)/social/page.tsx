@@ -20,6 +20,7 @@ import {
 } from "@/lib/feed-widgets";
 import { NON_STAFF_WHERE } from "@/lib/staff";
 import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
+import { visibleFor } from "@/lib/nav-config";
 import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { serveFeedAds } from "@/lib/ad-serve";
@@ -198,7 +199,9 @@ export default async function SocialPage() {
     effectiveFeatures.enabled.has("donations") ||
     (!!donationRole && donationRole !== "USER" && donationRole !== "user");
 
-  const quickEarn = normalizeQuickEarn(quickEarnRaw);
+  // Visibility wins over the admin's tiles: a tile pointing at a page hidden
+  // for this user is dropped, like every other nav surface does.
+  const quickEarn = visibleFor(normalizeQuickEarn(quickEarnRaw), undefined, hiddenPaths);
   const customWidgets = normalizeCustomWidgets(customWidgetsRaw);
   const widgetConfig = normalizeWidgetConfig(
     widgetConfigRaw,

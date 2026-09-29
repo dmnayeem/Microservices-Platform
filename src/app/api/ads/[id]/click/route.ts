@@ -9,7 +9,7 @@ import { recordClick } from "@/lib/ad-events";
  * cooldown + no-overspend budget CAS live there).
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -19,6 +19,10 @@ export async function POST(
     return NextResponse.json({ success: true, billed: false });
   }
 
-  await recordClick(id, session.user.id);
+  // Serve token from the body or `?st=` — without one the click is not billed.
+  const body = await request.json().catch(() => ({}));
+  const serveToken =
+    (body as { st?: unknown }).st ?? request.nextUrl.searchParams.get("st");
+  await recordClick(id, session.user.id, { serveToken });
   return NextResponse.json({ success: true });
 }

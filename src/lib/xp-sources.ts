@@ -62,7 +62,7 @@ export const XP_SOURCES: XpSource[] = [
     label: "Daily reward claimed",
     where: "api/daily-reward",
     amount: "the day's configured reward",
-    configurable: "Settings → Daily reward",
+    configurable: "This page → Daily & solo rewards tab",
   },
   {
     label: "Daily mission claimed",
@@ -91,8 +91,8 @@ export const XP_SOURCES: XpSource[] = [
   {
     label: "Solo reward claimed",
     where: "api/solo-reward/claim",
-    amount: "a fixed figure in the route",
-    configurable: "Not yet — needs a developer",
+    amount: "the configured solo reward XP",
+    configurable: "This page → Daily & solo rewards tab",
   },
   {
     label: "Board completed",

@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
@@ -19,6 +20,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /games is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/games");
+  if (pageHidden) return pageHidden;
   const limited = await enforceDbRateLimit(
     req,
     "game-session",

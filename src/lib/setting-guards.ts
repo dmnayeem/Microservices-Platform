@@ -15,6 +15,7 @@
  *
  * Prisma-free so verification scripts can import it.
  */
+import { NAV_SETTING_KEYS, navSettingProblems } from "@/lib/nav-config";
 
 export interface SettingBound {
   min: number;
@@ -31,6 +32,13 @@ export const POINTS_PER_USD_MIN = 10;
 export const POINTS_PER_USD_MAX = 1_000_000;
 
 export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
+  "cpa.retry_after_hours": {
+    min: 0,
+    max: 720,
+    integer: true,
+    label: "CPA retry wait after a rejection (hours)",
+    why: "0 lets a rejected user retry at once; more than 30 days is no retry at all.",
+  },
   points_per_usd: {
     min: POINTS_PER_USD_MIN,
     max: POINTS_PER_USD_MAX,
@@ -135,6 +143,12 @@ export function validateSettingValues(
 ): SettingRejection[] {
   const out: SettingRejection[] = [];
   for (const [key, raw] of Object.entries(settings)) {
+    // Navigation menus are JSON shapes, not numbers: a malformed one would
+    // otherwise be stored and then silently replaced by the defaults.
+    if (NAV_SETTING_KEYS.includes(key)) {
+      for (const message of navSettingProblems(key, raw)) out.push({ key, message });
+      continue;
+    }
     const bound = NUMERIC_SETTING_BOUNDS[key];
     if (!bound) continue;
     if (raw === null || raw === undefined || raw === "") continue;

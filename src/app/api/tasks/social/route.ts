@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { syncCountryMode } from "@/lib/country-mode";
 import { auth } from "@/lib/auth";
@@ -15,6 +16,9 @@ export async function GET(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /social-tasks is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/social-tasks");
+  if (pageHidden) return pageHidden;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") ?? "available";
   // "create" = only tasks that ask the user to publish something new (a pin, a

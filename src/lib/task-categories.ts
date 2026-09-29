@@ -22,6 +22,7 @@ export const TASK_CATEGORY_META: TaskCategoryMeta[] = [
   { key: "board", label: "Board Tasks" },
   { key: "quizzes", label: "Quiz Games" },
   { key: "offerwalls", label: "Offerwalls" },
+  { key: "cpa", label: "CPA Offers" },
 ];
 
 /** A category is shown unless the admin explicitly set it to `false`. */

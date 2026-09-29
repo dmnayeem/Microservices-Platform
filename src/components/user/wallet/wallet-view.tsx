@@ -1,4 +1,6 @@
 "use client";
+import { WithdrawalStatusCards } from "@/components/user/wallet/withdrawal-status-cards";
+import { MyWithdrawals, type MyWithdrawal } from "@/components/user/wallet/my-withdrawals";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 import { useMemo, useState } from "react";
@@ -99,6 +101,8 @@ export interface WalletViewProps {
   convertThreshold?: number;
   /** Effective withdrawal fee % (admin setting minus package discount). */
   withdrawalFeePct?: number;
+  /** Recent withdrawals: the status cards and the record on the Withdraw tab. */
+  withdrawals?: MyWithdrawal[];
 }
 
 type Tab = "balance" | "history" | "deposits" | "referral" | "withdraw";
@@ -125,7 +129,9 @@ export function WalletView(props: WalletViewProps) {
   const pointsPerUsd = props.pointsPerUsd;
 
   return (
-    <div className="space-y-(--app-gap)">
+    // Capped and centred: at full laptop width every tile, the convert field
+    // and the tab strip stretched past 1,200px and read as empty space.
+    <div className="mx-auto w-full max-w-4xl space-y-(--app-gap)">
       <header>
         <h1 className="t-title text-white inline-flex items-center gap-2.5">
           <Wallet className="w-6 h-6 text-(--app-ink-3)" />
@@ -142,6 +148,10 @@ export function WalletView(props: WalletViewProps) {
         points={props.pointsBalance}
         cash={props.cashBalance}
         adCredit={props.adCreditBalance}
+        teamBonus={{
+          totalUsd: props.referralStats.totalEarned,
+          todayUsd: props.todayReferralBonus,
+        }}
         taskCredit={props.taskCreditPoints}
         packageTier={props.packageTier}
         pointsPerUsd={pointsPerUsd}
@@ -149,24 +159,11 @@ export function WalletView(props: WalletViewProps) {
         withdrawHref="/withdrawal"
       />
 
-      {props.pendingWithdrawals > 0 && (
-        <button
-          type="button"
-          onClick={() => setTab("withdraw")}
-          className="app-card app-press flex w-full items-center gap-3 text-left"
-        >
-          <span className="app-icon shrink-0">
-            <Clock className="w-4 h-4 text-amber-400" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-white">
-              {props.pendingWithdrawals} withdrawal{props.pendingWithdrawals === 1 ? "" : "s"} being processed
-            </span>
-            <span className="block text-xs text-(--app-ink-3)">We&apos;ll notify you when it is paid.</span>
-          </span>
-          <span className="t-meta shrink-0 font-extrabold text-(--app-accent-ink)">View</span>
-        </button>
-      )}
+      {/* Pending (orange), paid (green) and rejected (red, with the reason). */}
+      <WithdrawalStatusCards
+        items={props.withdrawals ?? []}
+        onOpenRecord={() => setTab("withdraw")}
+      />
 
       {/* Tabs */}
       {/* All five in view at every width — they used to sit in a row that
@@ -245,6 +242,8 @@ export function WalletView(props: WalletViewProps) {
           feePct={props.withdrawalFeePct ?? 0}
         />
       )}
+      {/* The record: every withdrawal, its date, amount and outcome. */}
+      {tab === "withdraw" && <MyWithdrawals items={props.withdrawals ?? []} />}
     </div>
   );
 }

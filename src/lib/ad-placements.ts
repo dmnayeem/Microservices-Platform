@@ -344,6 +344,7 @@ export const INCENTIVISED_PREFIXES = [
   "/earn",
   "/games",
   "/offerwalls",
+  "/cpa",
   "/offer",
   // Reward loops.
   "/daily-mission",

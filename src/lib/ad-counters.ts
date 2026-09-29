@@ -79,6 +79,19 @@ export async function flushAdCounters(): Promise<void> {
       const adId = key.slice(0, key.indexOf(KEY_SEP));
       perAd.set(adId, (perAd.get(adId) ?? 0) + count);
     }
+    // An ad deleted while its impressions sat in the buffer would fail its
+    // `ad.update` (and the daily-stat FK), and one failure rolls back the whole
+    // transaction — every other ad's impressions and all fill counts with it.
+    const live = new Set(
+      (
+        await prisma.ad.findMany({
+          where: { id: { in: [...perAd.keys()] } },
+          select: { id: true },
+        })
+      ).map((a) => a.id)
+    );
+    for (const adId of [...perAd.keys()]) if (!live.has(adId)) perAd.delete(adId);
+    const liveBatch = batch.filter(([key]) => live.has(key.slice(0, key.indexOf(KEY_SEP))));
     // One transaction, one round-trip: N ad updates + N daily-stat upserts,
     // instead of 2 round-trips per impression.
     await prisma.$transaction([
@@ -93,7 +106,7 @@ export async function flushAdCounters(): Promise<void> {
           update: { impressions: { increment: count } },
         }),
       ]),
-      ...batch.map(([key, count]) => {
+      ...liveBatch.map(([key, count]) => {
         const i = key.indexOf(KEY_SEP);
         const adId = key.slice(0, i);
         const country = key.slice(i + 1) || UNKNOWN_COUNTRY;

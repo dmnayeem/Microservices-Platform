@@ -23,30 +23,50 @@ export default async function WalletPage() {
 
   const userId = session.user.id;
 
+  const userP = prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      pointsBalance: true,
+      cashBalance: true,
+      adCreditBalance: true,
+      taskCreditPoints: true,
+      totalEarnings: true,
+      country: true,
+      timezone: true,
+      package: { select: { slug: true, name: true } },
+    },
+  });
+  const now = new Date();
+  // Calendar month in UTC — does not depend on the user's timezone.
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  // Today's referral bonus needs the user's local midnight, so it chains off
+  // the user read above — it still runs inside the one parallel round below
+  // instead of in a second round of its own after everything else.
+  const todayRefP = userP.then((u) => {
+    if (!u) return null;
+    const tz = resolveUserTimezone({ country: u.country, timezone: u.timezone });
+    return prisma.referralEarning.aggregate({
+      where: { userId, createdAt: { gte: localStartOfDayUtc(tz, now) } },
+      _sum: { amount: true },
+    });
+  });
+
   const [
     user,
     ledgerRaw,
     pendingWithdrawalsCount,
+    withdrawalRows,
     withdrawnAgg,
     teamSummary,
     deposits,
     kycPrompt,
     pointsPerUsd,
     convertThreshold,
+    monthlyAgg,
+    todayRefAgg,
+    wcfg,
   ] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          pointsBalance: true,
-          cashBalance: true,
-          adCreditBalance: true,
-          taskCreditPoints: true,
-          totalEarnings: true,
-          country: true,
-          timezone: true,
-          package: { select: { slug: true, name: true } },
-        },
-      }),
+      userP,
       // The last 30 days of the ledger, read once: the earnings breakdown
       // (same rules as the dashboard and the admin console) and the recent
       // list both come from it.
@@ -57,6 +77,27 @@ export default async function WalletPage() {
       }),
       prisma.withdrawal.count({
         where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
+      }),
+      // The status cards (pending / paid / rejected) and the withdrawal record.
+      prisma.withdrawal.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          amount: true,
+          fee: true,
+          netAmount: true,
+          method: true,
+          status: true,
+          createdAt: true,
+          processedAt: true,
+          transactionId: true,
+          paidFrom: true,
+          adminNote: true,
+          paymentProof: true,
+          rejectionReason: true,
+        },
       }),
       // Sums, not rows. These used to pull EVERY completed withdrawal and EVERY
       // referral-earning row for the user just to add them up in JS — unbounded,
@@ -78,42 +119,24 @@ export default async function WalletPage() {
       getKycPromptState(userId),
       getPointsPerUsd(),
       getPointsConvertThreshold(),
+      prisma.withdrawal.aggregate({
+        where: { userId, status: "COMPLETED", createdAt: { gte: monthStart } },
+        _sum: { amount: true },
+      }),
+      todayRefP,
+      // Effective withdrawal fee % (admin setting − package discount) so the
+      // wallet Withdraw tab can show it too, matching the /withdrawal page.
+      getWithdrawalConfig(userId),
     ]);
 
   if (!user) redirect("/login");
 
   const totalWithdrawn = toNum(withdrawnAgg._sum.amount ?? 0);
 
-  // Time boundaries in the user's local day (matches the daily-reset boundary).
-  const tz = resolveUserTimezone({
-    country: user.country,
-    timezone: user.timezone,
-  });
-  const now = new Date();
-  const dayStart = localStartOfDayUtc(tz, now);
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-
-  // The two windowed sums need the user's timezone, which is only known after
-  // the batch above — so they run as their own parallel pair rather than by
-  // filtering a full row set in memory.
-  const [monthlyAgg, todayRefAgg, wcfg] = await Promise.all([
-    prisma.withdrawal.aggregate({
-      where: { userId, status: "COMPLETED", createdAt: { gte: monthStart } },
-      _sum: { amount: true },
-    }),
-    prisma.referralEarning.aggregate({
-      where: { userId, createdAt: { gte: dayStart } },
-      _sum: { amount: true },
-    }),
-    // Effective withdrawal fee % (admin setting − package discount) so the
-    // wallet Withdraw tab can show it too, matching the /withdrawal page.
-    // Batched here: it was a round trip of its own between the two groups.
-    getWithdrawalConfig(userId),
-  ]);
   // Income = money withdrawn. Monthly income = withdrawn this month.
   const monthlyIncome = toNum(monthlyAgg._sum.amount ?? 0);
   // Today's referral bonus (USD) — referral earnings credited since local midnight.
-  const todayReferralBonus = toNum(todayRefAgg._sum.amount ?? 0);
+  const todayReferralBonus = toNum(todayRefAgg?._sum.amount ?? 0);
 
   const stats: ReferralStats = {
     levels: teamSummary.levels,
@@ -173,6 +196,12 @@ export default async function WalletPage() {
         deposits={depositList}
         referralStats={stats}
         pendingWithdrawals={pendingWithdrawalsCount}
+        withdrawals={withdrawalRows.map((w) => ({
+          ...w,
+          amount: Number(w.amount),
+          fee: Number(w.fee),
+          netAmount: Number(w.netAmount),
+        }))}
         pointsPerUsd={pointsPerUsd}
         convertThreshold={convertThreshold}
         withdrawalFeePct={wcfg.feePct}
