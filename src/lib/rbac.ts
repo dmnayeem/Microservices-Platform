@@ -53,21 +53,32 @@ export const ADMIN_ROLE_STRINGS = [
   "FINANCE_MODERATOR",
 ] as const;
 
-// Sidebar category groups
+// Sidebar category groups — by the job an admin is doing, so each group is
+// short enough to scan. Only the admin sidebar reads these.
 export type ModuleCategory =
-  | "CORE"
+  | "OVERVIEW"
+  | "USERS"
+  | "TASKS"
   | "FINANCE"
-  | "PLATFORM"
+  | "COMMERCE"
+  | "ENGAGEMENT"
+  | "ADS"
+  | "MESSAGING"
+  | "CONTENT"
   | "SECURITY"
-  | "MARKETING"
   | "SYSTEM";
 
 export const CATEGORY_LABELS: Record<ModuleCategory, string> = {
-  CORE: "",
+  OVERVIEW: "Overview",
+  USERS: "Users & Support",
+  TASKS: "Tasks & Earning",
   FINANCE: "Finance",
-  PLATFORM: "Platform",
-  SECURITY: "Security",
-  MARKETING: "Marketing",
+  COMMERCE: "Marketplace & Courses",
+  ENGAGEMENT: "Engagement & Rewards",
+  ADS: "Ads & Promotions",
+  MESSAGING: "Messaging",
+  CONTENT: "Content & SEO",
+  SECURITY: "Moderation & Security",
   SYSTEM: "System",
 };
 
@@ -1158,77 +1169,77 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin",
     icon: "LayoutDashboard",
     permissions: ["dashboard.view"],
-    category: "CORE",
+    category: "OVERVIEW",
   },
   {
     name: "Progress Report",
     href: "/admin/progress",
     icon: "TrendingUp",
     permissions: ["analytics.view"],
-    category: "CORE",
+    category: "OVERVIEW",
   },
   {
     name: "Users",
     href: "/admin/users",
     icon: "Users",
     permissions: ["users.view"],
-    category: "CORE",
+    category: "USERS",
   },
   {
     name: "User Activity",
     href: "/admin/user-activity",
     icon: "Activity",
     permissions: ["users.view"],
-    category: "CORE",
+    category: "USERS",
   },
   {
     name: "Returning Users",
     href: "/admin/users/returning",
     icon: "CalendarCheck",
     permissions: ["users.view"],
-    category: "CORE",
+    category: "USERS",
   },
   {
     name: "Leaderboard",
     href: "/admin/leaderboard",
     icon: "Trophy",
     permissions: ["leaderboards.view"],
-    category: "CORE",
+    category: "ENGAGEMENT",
   },
   {
     name: "Tasks",
     href: "/admin/tasks",
     icon: "ListTodo",
     permissions: ["tasks.view"],
-    category: "CORE",
+    category: "TASKS",
   },
   {
     name: "Buyers",
     href: "/admin/buyers",
     icon: "Users",
     permissions: ["tasks.view"],
-    category: "CORE",
+    category: "TASKS",
   },
   {
     name: "Task Categories",
     href: "/admin/task-categories",
     icon: "LayoutGrid",
     permissions: ["tasks.view"],
-    category: "CORE",
+    category: "TASKS",
   },
   {
     name: "Task Boards",
     href: "/admin/boards",
     icon: "Layers",
     permissions: ["boards.view"],
-    category: "CORE",
+    category: "TASKS",
   },
   {
     name: "Submissions",
     href: "/admin/submissions",
     icon: "ClipboardCheck",
     permissions: ["submissions.view"],
-    category: "CORE",
+    category: "TASKS",
   },
 
   // ── FINANCE ──
@@ -1286,7 +1297,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/referrals",
     icon: "GitBranch",
     permissions: ["referrals.view"],
-    category: "FINANCE",
+    category: "USERS",
   },
 
   // ── PLATFORM ──
@@ -1295,21 +1306,30 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/marketplace",
     icon: "Store",
     permissions: ["marketplace.view"],
-    category: "PLATFORM",
+    category: "COMMERCE",
   },
   {
     name: "Affiliate",
     href: "/admin/affiliate",
     icon: "Handshake",
     permissions: ["marketplace.view"],
-    category: "PLATFORM",
+    category: "COMMERCE",
   },
   {
     name: "Deals",
     href: "/admin/marketplace/deals",
     icon: "Scale",
     permissions: ["marketplace.mediate"],
-    category: "PLATFORM",
+    category: "COMMERCE",
+  },
+  {
+    // Same permission as the Marketplace page and the settings page's own
+    // guard — the entry only makes the existing screen reachable.
+    name: "Marketplace Settings",
+    href: "/admin/marketplace/settings",
+    icon: "Settings",
+    permissions: ["marketplace.view"],
+    category: "COMMERCE",
   },
   {
     // Named for what the page is: a queue of user-reported content. "Social
@@ -1318,56 +1338,72 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/social-moderation",
     icon: "Flag",
     permissions: ["social.moderate", "moderation.view"],
-    category: "PLATFORM",
+    category: "SECURITY",
   },
   {
     name: "Lottery",
     href: "/admin/lottery",
     icon: "Ticket",
     permissions: ["lottery.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Games",
     href: "/admin/games",
     icon: "Gamepad2",
     permissions: ["games.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Courses",
     href: "/admin/courses",
     icon: "GraduationCap",
     permissions: ["courses.view"],
-    category: "PLATFORM",
+    category: "COMMERCE",
   },
   {
     name: "Course Categories",
     href: "/admin/courses/categories",
     icon: "FolderTree",
     permissions: ["courses.manage"],
-    category: "PLATFORM",
+    category: "COMMERCE",
+  },
+  {
+    // Commission + refund window. Same guard as the page itself.
+    name: "Course Settings",
+    href: "/admin/courses/settings",
+    icon: "Settings",
+    permissions: ["courses.view"],
+    category: "COMMERCE",
+  },
+  {
+    // Course coupons. Same guard as the page itself (courses.view).
+    name: "Coupons",
+    href: "/admin/coupons",
+    icon: "Ticket",
+    permissions: ["courses.view"],
+    category: "COMMERCE",
   },
   {
     name: "Tutors",
     href: "/admin/tutors",
     icon: "UserCog",
     permissions: ["tutor.applications.review"],
-    category: "PLATFORM",
+    category: "COMMERCE",
   },
   {
     name: "Creator Applications",
     href: "/admin/creators",
     icon: "BadgeCheck",
     permissions: ["creators.review"],
-    category: "PLATFORM",
+    category: "COMMERCE",
   },
   {
     name: "Seller Access",
     href: "/admin/sellers",
     icon: "Store",
     permissions: ["users.edit"],
-    category: "PLATFORM",
+    category: "COMMERCE",
   },
   // Two DIFFERENT products. These were labelled "Daily Missions" and "Daily
   // Task Missions", which is why nobody could tell them apart.
@@ -1376,42 +1412,42 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/missions",
     icon: "Rocket",
     permissions: ["missions.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Daily Missions",
     href: "/admin/daily-missions",
     icon: "ListChecks",
     permissions: ["missions.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Events",
     href: "/admin/events",
     icon: "Sparkles",
     permissions: ["events.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Quiz Games",
     href: "/admin/quizzes",
     icon: "Brain",
     permissions: ["quizzes.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Levels & Achievements",
     href: "/admin/gamification",
     icon: "Trophy",
     permissions: ["settings.view"],
-    category: "PLATFORM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Offerwalls",
     href: "/admin/offerwalls",
     icon: "Gift",
     permissions: ["offerwalls.view"],
-    category: "PLATFORM",
+    category: "TASKS",
   },
 
   {
@@ -1419,7 +1455,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/support",
     icon: "MessageSquare",
     permissions: ["support.view"],
-    category: "CORE",
+    category: "USERS",
   },
 
   // ── SECURITY ──
@@ -1435,14 +1471,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/users/kyc",
     icon: "BadgeCheck",
     permissions: ["kyc.view"],
-    category: "SECURITY",
+    category: "USERS",
   },
   {
     name: "Proxy Servers",
     href: "/admin/proxy",
     icon: "Globe",
     permissions: ["proxy.view"],
-    category: "SECURITY",
+    category: "TASKS",
   },
   {
     name: "Security Logs",
@@ -1465,28 +1501,28 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/campaigns",
     icon: "Megaphone",
     permissions: ["campaigns.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     name: "Notifications",
     href: "/admin/notifications",
     icon: "Bell",
     permissions: ["notifications.view"],
-    category: "MARKETING",
+    category: "MESSAGING",
   },
   {
     name: "Broadcasts",
     href: "/admin/notifications/broadcasts",
     icon: "Send",
     permissions: ["notifications.send"],
-    category: "MARKETING",
+    category: "MESSAGING",
   },
   {
     name: "Banners",
     href: "/admin/banners",
     icon: "Image",
     permissions: ["banners.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     // Notices / images / ads over the site, targeted like banners.
@@ -1494,42 +1530,42 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/popups",
     icon: "Megaphone",
     permissions: ["banners.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     name: "Offers",
     href: "/admin/offers",
     icon: "Gift",
     permissions: ["offers.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     name: "Splash Screen",
     href: "/admin/splash-screen",
     icon: "Layout",
     permissions: ["banners.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     name: "Ads Manager",
     href: "/admin/ads",
     icon: "Newspaper",
     permissions: ["ads.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     name: "Promote Products",
     href: "/admin/ads/promote",
     icon: "Megaphone",
     permissions: ["ads.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     name: "Monetization",
     href: "/admin/monetization",
     icon: "DollarSign",
     permissions: ["ads.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
   {
     // Articles at /blog, with the SEO checklist; the landing-page permissions.
@@ -1537,7 +1573,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/blog",
     icon: "FileText",
     permissions: ["landing.view"],
-    category: "MARKETING",
+    category: "CONTENT",
   },
   {
     // Site name, logo, favicon, search appearance, verification tags, the
@@ -1546,21 +1582,21 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/seo",
     icon: "Globe",
     permissions: ["settings.view"],
-    category: "MARKETING",
+    category: "CONTENT",
   },
   {
     name: "Landing Page",
     href: "/admin/landing-page",
     icon: "Layout",
     permissions: ["landing.view"],
-    category: "MARKETING",
+    category: "CONTENT",
   },
   {
     name: "Withdrawal Ticker",
     href: "/admin/ticker",
     icon: "Activity",
     permissions: ["ticker.view"],
-    category: "MARKETING",
+    category: "ADS",
   },
 
   // ── SYSTEM ──
@@ -1569,14 +1605,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/analytics",
     icon: "BarChart3",
     permissions: ["analytics.view"],
-    category: "SYSTEM",
+    category: "OVERVIEW",
   },
   {
     name: "AI Content",
     href: "/admin/ai",
     icon: "Sparkles",
     permissions: ["ai.view"],
-    category: "SYSTEM",
+    category: "CONTENT",
   },
   {
     name: "System Settings",
@@ -1586,18 +1622,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "SYSTEM",
   },
   {
-    name: "Social Earning",
-    href: "/admin/settings/social-earning",
-    icon: "Sparkles",
-    permissions: ["settings.view"],
-    category: "SYSTEM",
-  },
-  {
-    name: "Feed Widgets",
-    href: "/admin/settings/feed-widgets",
+    // One page with tabs: Social earning · Widgets · General. The old
+    // /admin/settings/social-earning and /admin/settings/feed-widgets URLs
+    // redirect to it.
+    name: "Feed Settings",
+    href: "/admin/settings/feed",
     icon: "LayoutList",
     permissions: ["settings.view"],
-    category: "SYSTEM",
+    category: "ENGAGEMENT",
   },
   {
     name: "Locations",
@@ -1632,7 +1664,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/media",
     icon: "ImageIcon",
     permissions: ["media.view"],
-    category: "SYSTEM",
+    category: "CONTENT",
   },
 ];
 
@@ -1644,11 +1676,16 @@ export function roleDefaultPermSet(role: UserRole | undefined): Set<Permission> 
 }
 
 const CATEGORY_ORDER: ModuleCategory[] = [
-  "CORE",
+  "OVERVIEW",
+  "USERS",
+  "TASKS",
   "FINANCE",
-  "PLATFORM",
+  "COMMERCE",
+  "ENGAGEMENT",
+  "ADS",
+  "MESSAGING",
+  "CONTENT",
   "SECURITY",
-  "MARKETING",
   "SYSTEM",
 ];
 
