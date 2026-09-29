@@ -27,6 +27,7 @@ export default async function WalletPage() {
     user,
     ledgerRaw,
     pendingWithdrawalsCount,
+    withdrawalRows,
     withdrawnAgg,
     teamSummary,
     deposits,
@@ -57,6 +58,27 @@ export default async function WalletPage() {
       }),
       prisma.withdrawal.count({
         where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
+      }),
+      // The status cards (pending / paid / rejected) and the withdrawal record.
+      prisma.withdrawal.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          amount: true,
+          fee: true,
+          netAmount: true,
+          method: true,
+          status: true,
+          createdAt: true,
+          processedAt: true,
+          transactionId: true,
+          paidFrom: true,
+          adminNote: true,
+          paymentProof: true,
+          rejectionReason: true,
+        },
       }),
       // Sums, not rows. These used to pull EVERY completed withdrawal and EVERY
       // referral-earning row for the user just to add them up in JS — unbounded,
@@ -173,6 +195,12 @@ export default async function WalletPage() {
         deposits={depositList}
         referralStats={stats}
         pendingWithdrawals={pendingWithdrawalsCount}
+        withdrawals={withdrawalRows.map((w) => ({
+          ...w,
+          amount: Number(w.amount),
+          fee: Number(w.fee),
+          netAmount: Number(w.netAmount),
+        }))}
         pointsPerUsd={pointsPerUsd}
         convertThreshold={convertThreshold}
         withdrawalFeePct={wcfg.feePct}
