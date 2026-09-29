@@ -1,5 +1,6 @@
 import "server-only";
 import { getSetting } from "@/lib/system-settings";
+import { GAMES_BOUNDS as B } from "@/lib/game-settings-bounds";
 
 /**
  * Global guardrails for game earning.
@@ -9,9 +10,8 @@ import { getSetting } from "@/lib/system-settings";
  * one game cannot drain the treasury. Same shape and reasoning as
  * `getBrowseEarnConfig` in src/lib/browse-earn.ts.
  *
- * Stored under the `games.*` SystemSetting category. That category needs no
- * registration anywhere — `POST /api/admin/settings` accepts any category
- * string, exactly as `ads.*` does.
+ * Stored under the `games.*` SystemSetting keys, edited on Admin → Games →
+ * Settings (PUT /api/admin/games/settings).
  */
 
 export interface GamesGlobalConfig {
@@ -61,10 +61,10 @@ export async function getGamesGlobalConfig(): Promise<GamesGlobalConfig> {
     ]);
     return {
       enabled: enabled !== false,
-      maxPointsPerTick: clampInt(perTick, 0, 1_000, GAMES_DEFAULTS.maxPointsPerTick),
-      minTickSeconds: clampInt(tickSecs, 5, 3_600, GAMES_DEFAULTS.minTickSeconds),
-      globalDailyCap: clampInt(dailyCap, 0, 100_000, GAMES_DEFAULTS.globalDailyCap),
-      maxPerSession: clampInt(perSession, 0, 100_000, GAMES_DEFAULTS.maxPerSession),
+      maxPointsPerTick: clampInt(perTick, B.maxPointsPerTick.min, B.maxPointsPerTick.max, GAMES_DEFAULTS.maxPointsPerTick),
+      minTickSeconds: clampInt(tickSecs, B.minTickSeconds.min, B.minTickSeconds.max, GAMES_DEFAULTS.minTickSeconds),
+      globalDailyCap: clampInt(dailyCap, B.globalDailyCap.min, B.globalDailyCap.max, GAMES_DEFAULTS.globalDailyCap),
+      maxPerSession: clampInt(perSession, B.maxPerSession.min, B.maxPerSession.max, GAMES_DEFAULTS.maxPerSession),
     };
   } catch {
     // Fails soft: a settings blip must not turn earning off mid-session, nor

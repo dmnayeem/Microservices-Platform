@@ -4,16 +4,38 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Users, DollarSign, TrendingUp, ChevronLeft, ChevronRight, Crown, Gift, Settings, Eye, Download } from "lucide-react";
+import { Users, DollarSign, TrendingUp, ChevronLeft, ChevronRight, Crown, Gift, Eye, Download } from "lucide-react";
 import Link from "next/link";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { getReferralBonusConfig } from "@/lib/referral-bonus";
 import { ReferralBonusConfigForm } from "@/components/admin/referrals/referral-bonus-config-form";
+import { ReferralLimitsForm } from "@/components/admin/referrals/referral-limits-form";
+import { ReferralSettingsForm } from "./_components/ReferralSettingsForm";
+import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
+import { getSetting } from "@/lib/system-settings";
+
+/**
+ * Everything about referrals on one page. The commission levels used to live
+ * on /admin/referrals/settings (now a redirect to the tab), and the limit and
+ * notification switches on the global System Settings screen. The keys and
+ * tables are unchanged — only the screen moved.
+ */
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "commission", label: "Commission levels" },
+  { id: "bonuses", label: "Bonuses & milestones" },
+  { id: "limits", label: "Limits" },
+];
+
+/** Settings rows are sometimes stored wrapped as `{ v: value }`. */
+const unwrap = (v: unknown): unknown =>
+  v && typeof v === "object" && "v" in (v as object) ? (v as { v: unknown }).v : v;
 
 interface PageProps {
   searchParams: Promise<{
     page?: string;
     search?: string;
+    tab?: string;
   }>;
 }
 
@@ -29,6 +51,121 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
   }
 
   const params = await searchParams;
+  const tab = pickTab(TABS, params.tab);
+  const canEdit = await can(session.user.id, "referrals.configure");
+
+  const header = (
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-bold text-white">Referral Management</h1>
+        <p className="text-gray-400 mt-1">
+          Referrers, commission levels, bonuses and limits — all in one place
+        </p>
+      </div>
+      <a
+        href="/api/admin/referrals/export"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors self-start"
+      >
+        <Download className="w-4 h-4" />
+        CSV Export
+      </a>
+    </div>
+  );
+  const tabs = <AdminTabs tabs={TABS} active={tab} basePath="/admin/referrals" />;
+  const noEdit = (
+    <p className="text-sm text-amber-400">
+      View-only — changing this needs the referrals configure permission.
+    </p>
+  );
+
+  if (tab === "commission") {
+    if (!canEdit) {
+      return (
+        <div className="space-y-6">
+          {header}
+          {tabs}
+          {noEdit}
+        </div>
+      );
+    }
+    const referralLevelRows = await prisma.referralLevel.findMany({
+      orderBy: { level: "asc" },
+    });
+    // Always 10 editable rows; missing levels start at 0% (same as the old
+    // /admin/referrals/settings page).
+    const levels = Array.from({ length: 10 }, (_, i) => {
+      const level = i + 1;
+      return (
+        referralLevelRows.find((l) => l.level === level) ?? {
+          id: `temp-${level}`,
+          level,
+          commissionType: "PERCENTAGE" as const,
+          commissionValue: 0,
+          description: null,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      );
+    });
+    return (
+      <div className="space-y-6">
+        {header}
+        {tabs}
+        <ReferralSettingsForm levels={levels} isNew={referralLevelRows.length < 10} />
+      </div>
+    );
+  }
+
+  if (tab === "bonuses") {
+    if (!canEdit) {
+      return (
+        <div className="space-y-6">
+          {header}
+          {tabs}
+          {noEdit}
+        </div>
+      );
+    }
+    const [bonusConfig, referralPackages] = await Promise.all([
+      getReferralBonusConfig(),
+      // Plans a milestone can hand out as a free subscription. Only active
+      // ones — offering a retired plan as a prize is a promise nothing can
+      // deliver.
+      prisma.package.findMany({
+        where: { isActive: true },
+        orderBy: { accessLevel: "asc" },
+        select: { id: true, name: true },
+      }),
+    ]);
+    return (
+      <div className="space-y-6">
+        {header}
+        {tabs}
+        <ReferralBonusConfigForm initial={bonusConfig} packages={referralPackages} />
+      </div>
+    );
+  }
+
+  if (tab === "limits") {
+    const [maxRaw, notifyRaw, canEditSettings] = await Promise.all([
+      getSetting<unknown>("max_referrals_per_user", 0),
+      getSetting<unknown>("notify_referral", true),
+      can(session.user.id, "settings.edit"),
+    ]);
+    return (
+      <div className="space-y-6">
+        {header}
+        {tabs}
+        <ReferralLimitsForm
+          maxReferrals={Number(unwrap(maxRaw)) || 0}
+          notifyReferral={unwrap(notifyRaw) !== false}
+          canEdit={canEditSettings}
+        />
+      </div>
+    );
+  }
+
   const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
@@ -37,15 +174,6 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
   const referralLevels = await prisma.referralLevel.findMany({
     where: { isActive: true },
     orderBy: { level: "asc" },
-  });
-
-  const bonusConfig = await getReferralBonusConfig();
-  // Plans a milestone can hand out as a free subscription. Only active ones —
-  // offering a retired plan as a prize is a promise nothing can deliver.
-  const referralPackages = await prisma.package.findMany({
-    where: { isActive: true },
-    orderBy: { accessLevel: "asc" },
-    select: { id: true, name: true },
   });
 
   // The page ranked who refers the MOST but never answered the other direction
@@ -127,8 +255,6 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
     }),
   ]);
 
-  const canEdit = await can(session.user.id, "referrals.configure");
-
   const buildQueryString = (newPage: number) => {
     const queryParams = new URLSearchParams();
     queryParams.set("page", newPage.toString());
@@ -138,41 +264,8 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Referral Management</h1>
-          <p className="text-gray-400 mt-1">
-            Manage referral levels and commission rates
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <a
-            href="/api/admin/referrals/export"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            CSV Export
-          </a>
-          {canEdit && (
-            <Link
-              href="/admin/referrals/settings"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              Commission Settings
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Referral signup bonus config (feature #9) */}
-      {canEdit && (
-        <ReferralBonusConfigForm
-          initial={bonusConfig}
-          packages={referralPackages}
-        />
-      )}
+      {header}
+      {tabs}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -235,7 +328,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
           <h2 className="text-lg font-semibold text-white">Commission Levels (10-Level MLM)</h2>
           {canEdit && (
             <Link
-              href="/admin/referrals/settings"
+              href="/admin/referrals?tab=commission"
               className="text-sm text-indigo-400 hover:text-indigo-300"
             >
               Edit Rates
@@ -268,7 +361,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
             <p className="text-gray-400">No active commission levels configured.</p>
             {canEdit && (
               <Link
-                href="/admin/referrals/settings"
+                href="/admin/referrals?tab=commission"
                 className="inline-block mt-4 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
               >
                 Configure Levels

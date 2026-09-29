@@ -6,20 +6,29 @@ import { Percent, Info, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getCourseCommissionConfig } from "@/lib/course-commission";
 import { CourseCommissionForm } from "./_components/CourseCommissionForm";
+import { RefundWindowForm } from "./_components/RefundWindowForm";
 
 export default async function CourseSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
-  const [config, categories] = await Promise.all([
+  const [config, categories, courseSettings] = await Promise.all([
     getCourseCommissionConfig(),
     prisma.courseCategory.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, slug: true, name: true },
     }),
+    prisma.systemSetting.findUnique({ where: { key: "course_settings" } }),
   ]);
+  // Read exactly as api/courses/[id]/refund reads it — 30 days when unset.
+  const storedWindow =
+    courseSettings?.value && typeof courseSettings.value === "object"
+      ? (courseSettings.value as { refundWindowDays?: unknown }).refundWindowDays
+      : undefined;
+  const refundWindowDays =
+    typeof storedWindow === "number" && storedWindow >= 0 ? storedWindow : 30;
 
   const canEdit = await can(session.user.id, "courses.manage");
 
@@ -34,11 +43,12 @@ export default async function CourseSettingsPage() {
         </Link>
         <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2 mt-1">
           <Percent className="w-6 h-6 text-indigo-300" />
-          Course commission settings
+          Course settings
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Platform&apos;s cut on every enrolment. Tutors keep the remainder. Per-course
-          overrides set in the course builder always win.
+          Platform&apos;s cut on every enrolment, and the student refund window.
+          Tutors keep the remainder. Per-course overrides set in the course
+          builder always win.
         </p>
       </div>
 
@@ -55,6 +65,8 @@ export default async function CourseSettingsPage() {
         categories={categories}
         canEdit={canEdit}
       />
+
+      <RefundWindowForm initial={refundWindowDays} canEdit={canEdit} />
     </div>
   );
 }

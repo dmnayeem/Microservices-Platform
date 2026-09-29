@@ -167,7 +167,8 @@ export default async function PaymentMethodsPage() {
           Payment Method Settings
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Configure withdrawal/payout methods, fees, and processing times.
+          Payout method cards, deposit methods and local currency rates.
+          Withdrawal limits and fees are set on Withdrawals &rarr; Settings.
           {!canManage && (
             <span className="ml-2 text-amber-400">
               View-only — your role cannot edit these.
@@ -201,8 +202,11 @@ export default async function PaymentMethodsPage() {
         </h2>
         <p className="text-slate-400 text-sm mt-1 mb-3">
           Popular currencies + USD rate shown on the deposit page based on the
-          user&apos;s country (e.g. $1 = ৳125). Toggle VAT under Settings →
-          Financial.
+          user&apos;s country (e.g. $1 = ৳125). Stored as{" "}
+          <code className="text-slate-400">currency_rates</code> — a conversion
+          table for deposits, not the display currency (System Settings &rarr;
+          Money) and not the company books currency (Company finance). Toggle
+          VAT under System Settings &rarr; Money.
         </p>
         <CurrenciesForm initial={currencies} canEdit={canManage} />
       </div>

@@ -68,20 +68,20 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
     id: "financial",
     label: "Money",
     blurb:
-      "Withdrawals, points-to-cash, VAT, the marketplace cut, ad click price, and what buyers may fund.",
+      "Points-to-cash, VAT, the marketplace cut, and what buyers may fund. Withdrawal limits and fees are on the Withdrawals page.",
     order: 2,
   },
   {
     id: "limits",
-    label: "Limits & anti-fraud",
+    label: "Limits",
     blurb:
-      "Per-user caps, task-approval automation, duplicate/VPN/ad-blocker defences, and log retention.",
+      "Per-user caps, sequential task unlock, country matching, and log retention. Anti-fraud settings are on the Fraud Monitor page.",
     order: 3,
   },
   {
     id: "security",
-    label: "Security & KYC",
-    blurb: "Password rules and the thresholds the automatic KYC check uses.",
+    label: "Security",
+    blurb: "Password rules. The automatic KYC thresholds are on the KYC page.",
     order: 4,
   },
   {
@@ -127,7 +127,23 @@ export interface SettingEntry {
    * with a badge so nobody mistakes it for a working switch.
    */
   status?: SettingStatus;
+  /**
+   * Set when the control lives on its feature's own admin page instead of the
+   * System Settings form. The entry stays here, because this is still where
+   * the key's name, description and row category (`group`) are defined, but
+   * the System Settings form neither renders nor saves it. One editor per key.
+   */
+  home?: { href: string; where: string };
 }
+
+/** Where each feature's settings moved to (Phase 3b). */
+export const WITHDRAWALS_HOME = {
+  href: "/admin/withdrawals?tab=settings",
+  where: "Withdrawals → Settings",
+};
+export const KYC_HOME = { href: "/admin/users/kyc?tab=settings", where: "KYC → Settings" };
+export const FRAUD_HOME = { href: "/admin/fraud?tab=settings", where: "Fraud Monitor → Settings" };
+export const FEED_HOME = { href: "/admin/settings/feed?tab=general", where: "Feed settings → General" };
 
 /** Array order is the display order within each group. */
 export const SETTINGS_CATALOG: readonly SettingEntry[] = [
@@ -137,20 +153,19 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "maintenance_message", group: "general", label: "Maintenance message", description: "Shown on the closed-app screen" },
 
   // ── Money ──
-  { key: "currency", group: "financial", label: "Currency", description: "The currency symbol and code shown throughout the app. It does not convert any stored amount — balances are held in USD." },
-  { key: "min_withdrawal", group: "financial", label: "Min Withdrawal ($)", description: "The smallest cash withdrawal a user may request" },
-  { key: "max_withdrawal", group: "financial", label: "Max Withdrawal ($)", description: "The largest cash withdrawal a user may request in one go" },
-  { key: "withdrawal_fee_percent", group: "financial", label: "Withdrawal Fee (%)", description: "Deducted from every approved withdrawal" },
+  { key: "currency", group: "financial", label: "Display currency", description: "Saved, but nothing reads it yet: every amount is still shown as USD ($) and balances are held in USD. Not the same thing as the deposit-page currency rates (Payment methods) or the company books currency (Company finance).", status: "not-active" },
+  { key: "min_withdrawal", group: "financial", label: "Min Withdrawal ($)", description: "The smallest cash withdrawal a user may request", home: WITHDRAWALS_HOME },
+  { key: "max_withdrawal", group: "financial", label: "Max Withdrawal ($)", description: "The largest cash withdrawal a user may request in one go", home: WITHDRAWALS_HOME },
+  { key: "withdrawal_fee_percent", group: "financial", label: "Withdrawal Fee (%)", description: "Deducted from every approved withdrawal", home: WITHDRAWALS_HOME },
   { key: "marketplace.fee_percent", group: "financial", label: "Marketplace fee (%)", description: "The platform's cut of every marketplace sale — taken out of the seller's payout, not added to the buyer's price. Per-listing and per-asset-type overrides on the Marketplace commission screen still win over this." },
-  { key: "allow_withdrawals", group: "financial", label: "Allow withdrawals", description: "Master switch. Turning this off stops every new withdrawal request platform-wide." },
-  { key: "withdrawal_requires_subscription", group: "financial", label: "Require a subscription to withdraw", description: "Users on the free/default package must buy a package before they can withdraw" },
-  { key: "withdrawal_payout_time_message", group: "financial", label: "Payout time message", description: "Shown to the user after they request a withdrawal" },
+  { key: "allow_withdrawals", group: "financial", label: "Allow withdrawals", description: "Master switch. Turning this off stops every new withdrawal request platform-wide.", home: WITHDRAWALS_HOME },
+  { key: "withdrawal_requires_subscription", group: "financial", label: "Require a subscription to withdraw", description: "Users on the free/default package must buy a package before they can withdraw", home: WITHDRAWALS_HOME },
+  { key: "withdrawal_payout_time_message", group: "financial", label: "Payout time message", description: "Shown to the user after they request a withdrawal", home: WITHDRAWALS_HOME },
   { key: "points_per_usd", group: "financial", label: "Points per $1 (USD)", description: "The conversion rate when a user turns earned points into cash — how many points buy one dollar" },
   { key: "points_convert_threshold", group: "financial", label: "Points needed before cash conversion unlocks", description: "Below this, the wallet hides the points-to-cash button" },
   { key: "bkash.usdToBdtRate", group: "financial", label: "bKash rate (BDT per $1)", description: "bKash settles in taka; a USD deposit is charged at this rate" },
   { key: "vat_enabled", group: "financial", label: "Charge VAT on deposits", description: "Add VAT on top of the deposit amount (shown on the deposit page)" },
   { key: "vat_pct", group: "financial", label: "VAT (%)", description: "Applied to the deposit amount + method charge" },
-  { key: "ads.cpcUsd", group: "financial", label: "Default cost per click ($)", description: "Charged to the advertiser’s campaign budget when a click is billed. Existing spend is never re-priced — every click snapshots the rate in force when it happened." },
   { key: "buyer.enabled", group: "financial", label: "Allow buyers to fund tasks", description: "Off closes the create-task API for everyone, even accounts that already hold the permission." },
   { key: "buyer.fee_percent", group: "financial", label: "Platform fee (%)", description: "The platform's cut when a buyer funds a task — charged on top of the points they buy" },
   { key: "buyer.min_points_per_task", group: "financial", label: "Min points per completion", description: "The least a buyer may offer one user for finishing their task" },
@@ -166,37 +181,36 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "buyer.refund_fee_on_reject", group: "financial", label: "Refund the fee when a task is rejected", description: "On (recommended): a buyer whose task you turn down gets the fee back too. Off keeps it as a review charge." },
 
   // ── Limits & anti-fraud ──
-  { key: "max_withdrawals_per_day", group: "limits", label: "Max Withdrawals Per Day", description: "Rolling 24h, per user · 0 = no limit" },
-  { key: "max_referrals_per_user", group: "limits", label: "Max Referrals Per User", description: "Beyond this, signups stop being attributed · 0 = no limit" },
+  { key: "max_withdrawals_per_day", group: "limits", label: "Max Withdrawals Per Day", description: "Rolling 24h, per user · 0 = no limit", home: WITHDRAWALS_HOME },
   { key: "max_active_listings", group: "limits", label: "Max Active Marketplace Listings", description: "Live + awaiting review, per seller · 0 = no limit" },
   { key: "ai.daily_limit_per_user", group: "limits", label: "AI Generations / User / Day", description: "How many AI generations one user may run per day before the button stops working · 0 = no limit" },
-  { key: "social.ai_regenerate_limit", group: "limits", label: "AI caption re-rolls per social task", description: "How many times a user may ask the AI for a different caption on one social task before they have to write their own" },
+  { key: "social.ai_regenerate_limit", group: "limits", label: "AI caption re-rolls per social task", description: "How many times a user may ask the AI for a different caption on one social task before they have to write their own", home: FEED_HOME },
   { key: "tasks.sequential_unlock", group: "limits", label: "Sequential task unlock", description: "Lock every task behind the previous one — users must finish tasks one-by-one in the admin-set Sequence Order. Resets daily; admins are never locked." },
-  { key: "antifraud.auto_approve_min_trust", group: "limits", label: "Auto-approve min trust (0 = off)", description: "A submission from a user at or above this trust score is approved without an admin looking at it · 0 = never auto-approve" },
-  { key: "antifraud.spot_check_percent", group: "limits", label: "Spot-check % of auto-approvals", description: "This share of auto-approved submissions is still sent to the review queue, so auto-approval never goes entirely unwatched" },
-  { key: "antifraud.block_duplicate_proof", group: "limits", label: "Block duplicate proof", description: "Reject a task submission whose proof (post/profile URL, username, or re-uploaded screenshot) already matches another user's. Off = flag for review only. Public links can legitimately repeat, so leave off unless abuse is high." },
-  { key: "antifraud.max_accounts_per_device", group: "limits", label: "Max accounts per device (0 = off)", description: "How many accounts one browser/device may hold. The reliable multi-account signal — a device id kept in a cookie and local storage, backed by a browser fingerprint. Recommended 2–3." },
-  { key: "antifraud.device_limit_action", group: "limits", label: "When the device limit is hit", description: "Block refuses the new sign-up and task work from that device; Flag only allows it and reports it to the Fraud Monitor. Either way the account gets fraud risk." },
+  { key: "antifraud.auto_approve_min_trust", group: "limits", label: "Auto-approve min trust (0 = off)", description: "A submission from a user at or above this trust score is approved without an admin looking at it · 0 = never auto-approve", home: FRAUD_HOME },
+  { key: "antifraud.spot_check_percent", group: "limits", label: "Spot-check % of auto-approvals", description: "This share of auto-approved submissions is still sent to the review queue, so auto-approval never goes entirely unwatched", home: FRAUD_HOME },
+  { key: "antifraud.block_duplicate_proof", group: "limits", label: "Block duplicate proof", description: "Reject a task submission whose proof (post/profile URL, username, or re-uploaded screenshot) already matches another user's. Off = flag for review only. Public links can legitimately repeat, so leave off unless abuse is high.", home: FRAUD_HOME },
+  { key: "antifraud.max_accounts_per_device", group: "limits", label: "Max accounts per device (0 = off)", description: "How many accounts one browser/device may hold. The reliable multi-account signal — a device id kept in a cookie and local storage, backed by a browser fingerprint. Recommended 2–3.", home: FRAUD_HOME },
+  { key: "antifraud.device_limit_action", group: "limits", label: "When the device limit is hit", description: "Block refuses the new sign-up and task work from that device; Flag only allows it and reports it to the Fraud Monitor. Either way the account gets fraud risk.", home: FRAUD_HOME },
   { key: "targeting.country_ip_only", group: "limits", label: "Match country targeting by IP only", description: "Off: a country rule (tasks, banners, ads, notifications, offers) uses the country in the profile, or the IP country when there is none. On: only the IP country counts, so a user cannot reach another country's tasks by typing it into their profile. VPN users are matched to the VPN's country." },
-  { key: "antifraud.max_users_per_ip", group: "limits", label: "Max accounts per IP (0 = off)", description: "How many accounts may use one IP address. A whole home or office WiFi shares one IP, and mobile data changes it — treat this as a hint. Recommended 10–20 with Flag only." },
-  { key: "antifraud.ip_limit_action", group: "limits", label: "When the IP limit is hit", description: "Flag only (recommended) allows the sign-up/task and reports it for review, with no fraud risk. Block refuses — which locks out everyone after the limit on a shared WiFi." },
-  { key: "antifraud.adblock_reminder_minutes", group: "limits", label: "Ad-blocker reminder every N minutes (0 = off)", description: "How often a user running an ad-blocker is reminded to turn it off · 0 = never remind" },
-  { key: "antifraud.risk_enabled", group: "limits", label: "Fraud risk scoring", description: "Each caught cheating attempt on a task (another user's proof, someone else's article key, a reviewer's \"this was cheating\") adds to the user's fraud risk %. Shown per user on the Fraud Monitor." },
-  { key: "antifraud.auto_suspend_enabled", group: "limits", label: "Auto-suspend at the bar", description: "Suspend a user automatically when their fraud risk reaches the bar below. They are emailed a link to appeal; staff accounts are never auto-suspended." },
-  { key: "antifraud.auto_suspend_at", group: "limits", label: "Auto-suspend at (%)", description: "The fraud risk % at which an account is suspended. Users are warned at 50% and 80%." },
-  { key: "antifraud.risk_points", group: "limits", label: "Risk points per offence", description: "How many % each kind of cheating adds. 0 records it without adding risk." },
-  { key: "antifraud.vpn_block_enabled", group: "limits", label: "Block VPN / proxy (best-effort)", description: "Block task work from IPs that match the datacenter/VPN prefix list below. Heuristic only — catches roughly 50–70%, not 100%. For full accuracy, integrate a detection provider later." },
-  { key: "antifraud.vpn_ranges", group: "limits", label: "VPN/datacenter IP prefixes (space or comma separated, e.g. 45.83. 2607:5300:)", description: "The IP prefixes the VPN block above matches against. An empty list means the switch has nothing to block." },
-  { key: "antifraud.adblock_gate_enabled", group: "limits", label: "Ad-blocker gate on tasks", description: "Block opening a task while an ad-blocker is detected (a re-check overlay is shown). Turn off to allow tasks with an ad-blocker on." },
+  { key: "antifraud.max_users_per_ip", group: "limits", label: "Max accounts per IP (0 = off)", description: "How many accounts may use one IP address. A whole home or office WiFi shares one IP, and mobile data changes it — treat this as a hint. Recommended 10–20 with Flag only.", home: FRAUD_HOME },
+  { key: "antifraud.ip_limit_action", group: "limits", label: "When the IP limit is hit", description: "Flag only (recommended) allows the sign-up/task and reports it for review, with no fraud risk. Block refuses — which locks out everyone after the limit on a shared WiFi.", home: FRAUD_HOME },
+  { key: "antifraud.adblock_reminder_minutes", group: "limits", label: "Ad-blocker reminder every N minutes (0 = off)", description: "How often a user running an ad-blocker is reminded to turn it off · 0 = never remind", home: FRAUD_HOME },
+  { key: "antifraud.risk_enabled", group: "limits", label: "Fraud risk scoring", description: "Each caught cheating attempt on a task (another user's proof, someone else's article key, a reviewer's \"this was cheating\") adds to the user's fraud risk %. Shown per user on the Fraud Monitor.", home: FRAUD_HOME },
+  { key: "antifraud.auto_suspend_enabled", group: "limits", label: "Auto-suspend at the bar", description: "Suspend a user automatically when their fraud risk reaches the bar below. They are emailed a link to appeal; staff accounts are never auto-suspended.", home: FRAUD_HOME },
+  { key: "antifraud.auto_suspend_at", group: "limits", label: "Auto-suspend at (%)", description: "The fraud risk % at which an account is suspended. Users are warned at 50% and 80%.", home: FRAUD_HOME },
+  { key: "antifraud.risk_points", group: "limits", label: "Risk points per offence", description: "How many % each kind of cheating adds. 0 records it without adding risk.", home: FRAUD_HOME },
+  { key: "antifraud.vpn_block_enabled", group: "limits", label: "Block VPN / proxy (best-effort)", description: "Block task work from IPs that match the datacenter/VPN prefix list below. Heuristic only — catches roughly 50–70%, not 100%. For full accuracy, integrate a detection provider later.", home: FRAUD_HOME },
+  { key: "antifraud.vpn_ranges", group: "limits", label: "VPN/datacenter IP prefixes (space or comma separated, e.g. 45.83. 2607:5300:)", description: "The IP prefixes the VPN block above matches against. An empty list means the switch has nothing to block.", home: FRAUD_HOME },
+  { key: "antifraud.adblock_gate_enabled", group: "limits", label: "Ad-blocker gate on tasks", description: "Block opening a task while an ad-blocker is detected (a re-check overlay is shown). Turn off to allow tasks with an ad-blocker on.", home: FRAUD_HOME },
   { key: "retention_days", group: "limits", label: "Log retention (days)", description: "How long page views, system logs, audit records and notifications are kept before the nightly prune deletes them" },
 
   // ── Security & KYC ──
   { key: "password_min_length", group: "security", label: "Password Min Length", description: "6–64 · applies to sign-up, reset, change and admin-created accounts" },
   { key: "require_strong_passwords", group: "security", label: "Require Strong Passwords", description: "At least one uppercase letter, one lowercase letter and one number" },
-  { key: "kyc.autoEnabled", group: "security", label: "Instant (auto) KYC verification", description: "Let users verify instantly via AI OCR + selfie face-match. Uncertain cases still go to manual review." },
-  { key: "kyc.faceMinSimilarity", group: "security", label: "Auto KYC — min face-match %", description: "How closely the selfie must match the ID photo to verify automatically. Below this it goes to manual review, never an auto-rejection." },
-  { key: "kyc.ocrMinConfidence", group: "security", label: "Auto KYC — min OCR confidence (0–1)", description: "How sure the document read must be to verify automatically. Below this it goes to manual review, never an auto-rejection." },
-  { key: "kyc.ocrRejectBelow", group: "security", label: "Auto KYC — reject-outright OCR confidence (0–1)", description: "Below this the read is treated as unusable. It still routes to manual review, never an auto-rejection." },
+  { key: "kyc.autoEnabled", group: "security", label: "Instant (auto) KYC verification", description: "Let users verify instantly via AI OCR + selfie face-match. Uncertain cases still go to manual review.", home: KYC_HOME },
+  { key: "kyc.faceMinSimilarity", group: "security", label: "Auto KYC — min face-match %", description: "How closely the selfie must match the ID photo to verify automatically. Below this it goes to manual review, never an auto-rejection.", home: KYC_HOME },
+  { key: "kyc.ocrMinConfidence", group: "security", label: "Auto KYC — min OCR confidence (0–1)", description: "How sure the document read must be to verify automatically. Below this it goes to manual review, never an auto-rejection.", home: KYC_HOME },
+  { key: "kyc.ocrRejectBelow", group: "security", label: "Auto KYC — reject-outright OCR confidence (0–1)", description: "Below this the read is treated as unusable. It still routes to manual review, never an auto-rejection.", home: KYC_HOME },
 
   // ── Site toggles ──
   { key: "analytics_pageviews_enabled", group: "ui_toggles", label: "Page-view analytics", description: "Record page visits and foreground time for /admin/analytics. First-party only — nothing is sent to a third party." },
@@ -207,9 +221,9 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "profile_gate.mode", group: "ui_toggles", label: "Profile standard", description: "7 essentials (photo, name, birth date, gender, phone, country) or the full 100% profile ring." },
   { key: "profile_gate.min_percent", group: "ui_toggles", label: "Profile percentage required", description: "With the profile-ring standard: how complete the profile must be (10–100%) before features unlock." },
   { key: "profile_gate.features", group: "ui_toggles", label: "Locked until complete", description: "Which features stay locked until the profile meets the standard." },
-  { key: "ui.require_kyc_for_withdrawal", group: "ui_toggles", label: "Require KYC for withdrawals", description: "Users must be KYC-verified to withdraw. When off, only withdrawals over $100 require KYC." },
+  { key: "ui.require_kyc_for_withdrawal", group: "ui_toggles", label: "Require KYC for withdrawals", description: "Users must be KYC-verified to withdraw. When off, only withdrawals over $100 require KYC.", home: WITHDRAWALS_HOME },
   { key: "ui.require_email_verification", group: "ui_toggles", label: "Require email verification to log in", description: "Users must verify their email before they can sign in. When off, unverified accounts can log in (Google accounts are always verified)." },
-  { key: "ui.groups_enabled", group: "ui_toggles", label: "Groups", description: "Show the Groups tab on the social feed. When off the tab is hidden AND the group pages and API are blocked, so the feature is genuinely off. Existing groups and their members are kept and come back when you turn this on." },
+  { key: "ui.groups_enabled", group: "ui_toggles", label: "Groups", description: "Show the Groups tab on the social feed. When off the tab is hidden AND the group pages and API are blocked, so the feature is genuinely off. Existing groups and their members are kept and come back when you turn this on.", home: FEED_HOME },
   { key: "ui.theme_default", group: "ui_toggles", label: "Default theme", description: "The theme everyone gets: Dark or Light. Users who have never chosen — and every user, when the switch below is off — see this one." },
   { key: "ui.theme_user_choice", group: "ui_toggles", label: "Let users choose their theme", description: "On: the light/dark switch appears in the header and in Settings. Off: the switch is hidden everywhere and everyone sees the default theme above, including users who had already picked the other one." },
   { key: "ui.accent_user_choice", group: "ui_toggles", label: "Let users choose their accent colour", description: "On: users can pick their own accent colour in Profile and Settings. Off: the colour swatches are hidden and every user sees the platform colour, even those who had picked another one." },
@@ -219,7 +233,6 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "celebrate.achievement_min_points", group: "notifications", label: "Big achievement popup — from (points)", description: "An achievement worth at least this many points also shows a celebration popup, not only a bell notification. 0 = every achievement with a reward." },
   { key: "notify_new_task", group: "notifications", label: "New Task Available", description: "Notify users when a task they are eligible for is published" },
   { key: "notify_withdrawal", group: "notifications", label: "Withdrawal Status Updates", description: "Notify a user when their withdrawal is approved, paid or rejected" },
-  { key: "notify_referral", group: "notifications", label: "New Referral", description: "Notify a user when someone signs up through their referral link" },
   { key: "notify_level_up", group: "notifications", label: "Level Up", description: "Notify a user when they earn enough XP to reach the next level" },
 
   // ── Email ──
@@ -295,8 +308,60 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
     label: "Referral commission %",
     description:
       "What a referrer earns from their referrals, per level — held in the ReferralLevel table, not a settings row",
-    href: "/admin/referrals/settings",
-    where: "Referrals → Settings",
+    href: "/admin/referrals?tab=commission",
+    where: "Referrals → Commission levels",
+  },
+  {
+    label: "Max Referrals Per User",
+    description: "Beyond this, signups stop being attributed · 0 = no limit",
+    href: "/admin/referrals?tab=limits",
+    where: "Referrals → Limits",
+    key: "max_referrals_per_user",
+    status: "live",
+  },
+  {
+    label: "New Referral notification",
+    description: "Notify a user when someone signs up through their referral link",
+    href: "/admin/referrals?tab=limits",
+    where: "Referrals → Limits",
+    key: "notify_referral",
+    status: "live",
+  },
+  {
+    label: "Referral bonuses & milestone ladder",
+    description:
+      "Signup, purchase, deposit and milestone bonuses paid to referrers — the referral_bonus_config setting",
+    href: "/admin/referrals?tab=bonuses",
+    where: "Referrals → Bonuses & milestones",
+    key: "referral_bonus_config",
+    status: "live",
+  },
+  {
+    label: "Milestone rewards",
+    description:
+      "Points paid for each one-time milestone (tasks, streaks, earnings, referrals…), and which ones are switched on",
+    href: "/admin/gamification?tab=milestones",
+    where: "Levels & Achievements → Milestones",
+    key: "milestones.rewards",
+    status: "live",
+  },
+  {
+    label: "Daily check-in & solo reward",
+    description:
+      "The 7-day check-in ladder, the day-7 mystery box, and the daily solo reward and what unlocks it",
+    href: "/admin/gamification?tab=rewards",
+    where: "Levels & Achievements → Daily & solo rewards",
+    key: "daily_reward.config",
+    status: "live",
+  },
+  {
+    label: "Game earning limits",
+    description:
+      "The platform-wide caps every game's reward is clamped to: points per tick, tick length, daily and per-session caps, and the master switch",
+    href: "/admin/games?tab=settings",
+    where: "Games → Settings",
+    key: "games.reward_enabled",
+    status: "live",
   },
   {
     label: "Task reward multiplier · Max tasks per day",
@@ -309,21 +374,100 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
     label: "Feed widgets",
     description:
       "Which widgets appear beside the social feed, and in what order",
-    href: "/admin/settings/feed-widgets",
-    where: "Settings → Feed widgets",
+    href: "/admin/settings/feed?tab=widgets",
+    where: "Feed settings → Widgets",
   },
   {
     label: "Social earning rates & daily missions",
     description:
       "What a post, like, comment or share pays, and how the daily missions are configured",
-    href: "/admin/settings/social-earning",
-    where: "Settings → Social earning",
+    href: "/admin/settings/feed",
+    where: "Feed settings → Social earning",
   },
   {
-    label: "Course refund window & certificate settings",
-    description: "How long a student has to ask for a refund, and what the certificate says",
+    label: "Groups, AI caption re-rolls, boosted-post cap",
+    description:
+      "The Groups switch, how many AI caption re-rolls a social task allows, and how often one boosted post may be shown to the same user",
+    href: "/admin/settings/feed?tab=general",
+    where: "Feed settings → General",
+  },
+  {
+    label: "Boosted post — max times shown per user",
+    description:
+      "How many times the same boosted post may be shown to one user · 0 = unlimited",
+    href: "/admin/settings/feed?tab=general",
+    where: "Feed settings → General",
+    key: "feed.boost_max_per_user",
+    status: "live",
+  },
+  {
+    label: "Withdrawal limits, fee & switches",
+    description:
+      "Min / max withdrawal, the withdrawal fee, withdrawals per day, the master switch, the subscription and KYC requirements, and the payout-time message",
+    href: "/admin/withdrawals?tab=settings",
+    where: "Withdrawals → Settings",
+  },
+  {
+    label: "Payment methods (payout, deposit, currency rates)",
+    description:
+      "Payout method cards, deposit methods and the local currency rates shown on the deposit page. The per-method min / max / fee on the payout cards are not enforced — withdrawals use the global limits and the user's package.",
+    href: "/admin/payment-methods",
+    where: "Payment Methods",
+  },
+  {
+    label: "Automatic KYC thresholds",
+    description:
+      "Instant (auto) KYC on/off, and the face-match and OCR confidence bars it uses before sending a case to manual review",
+    href: "/admin/users/kyc?tab=settings",
+    where: "KYC → Settings",
+  },
+  {
+    label: "Anti-fraud & fraud risk",
+    description:
+      "Auto-approval trust, spot checks, duplicate proof, accounts per device / IP, VPN block, the task ad-blocker gate, risk points per offence and auto-suspension",
+    href: "/admin/fraud?tab=settings",
+    where: "Fraud Monitor → Settings",
+  },
+  {
+    label: "Default cost per click ($)",
+    description:
+      "What an advertiser is billed per click on any ad space with no price of its own. Existing spend is never re-priced.",
+    href: "/admin/ads?tab=placements",
+    where: "Ad Manager → Ad Spaces",
+    key: "ads.cpcUsd",
+    status: "live",
+  },
+  {
+    label: "Feed ad density",
+    description:
+      "How often a native ad, a promoted post and the under-post banner appear in the feed",
+    href: "/admin/ads?tab=placements",
+    where: "Ad Manager → Ad Spaces",
+  },
+  {
+    label: "AdSense client & Ad Manager network code",
+    description:
+      "The publisher ids for Google ad networks, plus the consent (CMP) and auto-ads switches and ads.txt",
+    href: "/admin/monetization",
+    where: "Monetization",
+    key: "ads.adsense_client",
+    status: "live",
+  },
+  {
+    label: "Browse & Earn",
+    description:
+      "The passive /watch-ads reward: on/off, points per interval, interval length and the daily cap",
+    href: "/admin/monetization?tab=browse-earn",
+    where: "Monetization → Browse & Earn",
+    key: "ads.browse_earn_enabled",
+    status: "live",
+  },
+  {
+    label: "Course refund window",
+    description: "How many days after enrolling a student may ask for a refund (30 when never set)",
     href: "/admin/courses/settings",
     where: "Courses → Settings",
+    key: "course_settings",
   },
   {
     label: "Leaderboard metric",
@@ -381,6 +525,21 @@ export function settingEntry(key: string): SettingEntry | undefined {
   return BY_KEY.get(key);
 }
 
+/** The catalog keys whose editor lives on the page at `href` (its `home`). */
+export function keysHomedAt(href: string): string[] {
+  return SETTINGS_CATALOG.filter((e) => e.home?.href === href).map((e) => e.key);
+}
+
+/**
+ * True when the System Settings form is this key's editor. False for a key
+ * that has a `home` on its feature's page — the form must neither render nor
+ * save it, or there would be two editors and the one saved last would win.
+ */
+export function editedOnSettingsForm(key: string): boolean {
+  const e = BY_KEY.get(key);
+  return !!e && !e.home;
+}
+
 export const GROUP_BY_ID = new Map(SETTING_GROUPS.map((g) => [g.id, g]));
 
 /** Groups in their deliberate order, each with its controls in theirs. */
@@ -392,7 +551,7 @@ export function groupedSettings(): {
     .sort((a, b) => a.order - b.order)
     .map((group) => ({
       group,
-      entries: SETTINGS_CATALOG.filter((e) => e.group === group.id),
+      entries: SETTINGS_CATALOG.filter((e) => e.group === group.id && !e.home),
     }));
 }
 
@@ -433,16 +592,18 @@ export function searchSettings(query: string): SettingHit[] {
 
   for (const e of SETTINGS_CATALOG) {
     const g = GROUP_BY_ID.get(e.group)!;
-    const s = score([e.label, e.description, e.key, g.label], e.label);
+    const where = e.home?.where ?? g.label;
+    const s = score([e.label, e.description, e.key, where], e.label);
     if (s)
       hits.push({
         label: e.label,
         description: e.description,
         key: e.key,
-        group: e.group,
-        where: g.label,
+        // A key edited on its feature page is a link there, not a tab here.
+        ...(e.home ? { href: e.home.href } : { group: e.group }),
+        where,
         status: e.status,
-        _score: s,
+        _score: e.home ? s - 0.5 : s,
       });
   }
 

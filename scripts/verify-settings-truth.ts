@@ -58,6 +58,21 @@ const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 
 const FORM = "src/components/admin/settings/system-settings-form.tsx";
 
+/**
+ * The settings panels on feature pages (Phase 3b). A key moved off the System
+ * Settings form keeps its catalog row (with a `home`) and is edited by exactly
+ * one of these instead. They are held to the same rules as the form.
+ */
+const WITHDRAWAL_PANEL = "src/components/admin/withdrawals/withdrawal-settings-panel.tsx";
+const FEED_GENERAL_PANEL = "src/components/admin/settings/feed-general-panel.tsx";
+const PANELS = [
+  WITHDRAWAL_PANEL,
+  "src/components/admin/kyc/kyc-settings-panel.tsx",
+  "src/components/admin/fraud/fraud-settings-panel.tsx",
+  FEED_GENERAL_PANEL,
+];
+const EDITORS = [FORM, ...PANELS];
+
 /** Every .ts/.tsx under src + scripts, excluding generated Prisma output. */
 function sourceFiles(): string[] {
   const out: string[] = [];
@@ -107,6 +122,11 @@ async function main() {
   const files = sourceFiles();
   const bodies = new Map(files.map((f) => [f, read(f)]));
   const form = bodies.get(FORM)!;
+  const withdrawalPanel = bodies.get(WITHDRAWAL_PANEL)!;
+  const editorKeys = (body: string) => [
+    // `\s*`: a long line wraps as `set(` + newline + `"key",` and must still count.
+    ...new Set([...body.matchAll(/set\(\s*"([^"]+)"/g)].map((m) => m[1])),
+  ];
 
   /* ── 1. The rival settings surface is gone ── */
   console.log("1. One settings surface, not two");
@@ -121,30 +141,36 @@ async function main() {
         path.join(root, "src/app/admin/settings/_components/SettingsForm.tsx")
       )
     );
-    // The keys it owned had to move, not vanish.
+    // The keys it owned had to move, not vanish. They moved again in Phase
+    // 3b — off the System Settings form, onto Withdrawals → Settings.
     for (const key of [
       "allow_withdrawals",
       "withdrawal_requires_subscription",
       "withdrawal_payout_time_message",
       "withdrawal_fee_percent",
     ]) {
-      check(`${key} survived the deletion — it is on the live form`, form.includes(`"${key}"`));
+      check(
+        `${key} survived the deletion — it is on the withdrawal settings panel`,
+        withdrawalPanel.includes(`set("${key}"`)
+      );
     }
   }
 
   /* ── 2. No control writes a key nothing reads ── */
   console.log("\n2. Every box on the form does something");
   {
-    const written = [...form.matchAll(/set\("([^"]+)"/g)].map((m) => m[1]);
-    const uniqueWritten = [...new Set(written)];
-    check("the form still writes settings", uniqueWritten.length > 20);
+    check("the form still writes settings", editorKeys(form).length > 20);
+    // Every editor — the form and each feature-page panel — is held to it.
+    const uniqueWritten = EDITORS.flatMap((e) =>
+      editorKeys(bodies.get(e)!).map((key) => ({ e, key }))
+    );
 
     const dead: string[] = [];
-    for (const key of uniqueWritten) {
+    for (const { e, key } of uniqueWritten) {
       if (READER_EXEMPT.has(key)) continue;
       const readSomewhere = files.some(
         (f) =>
-          f !== FORM &&
+          f !== e &&
           !f.startsWith("scripts/verify-settings-truth") &&
           bodies.get(f)!.includes(`"${key}"`)
       );
@@ -162,7 +188,8 @@ async function main() {
   {
     check(
       "the withdrawal fee box writes the key payouts read",
-      form.includes('set("withdrawal_fee_percent"') &&
+      withdrawalPanel.includes('set("withdrawal_fee_percent"') &&
+        !withdrawalPanel.includes('set("withdrawal_fee_pct"') &&
         !form.includes('set("withdrawal_fee_pct"')
     );
     check(
@@ -206,12 +233,12 @@ async function main() {
   console.log("\n4. Nothing was removed without saying where it went");
   {
     for (const [label, href] of [
-      ["Referral commission %", "/admin/referrals/settings"],
+      ["Referral commission %", "/admin/referrals?tab=commission"],
       ["Task reward multiplier", "/admin/packages"],
       ["Max tasks per day", "/admin/packages"],
     ] as const) {
       const block = new RegExp(
-        `label="${label}"[\\s\\S]{0,200}?href="${href}"`,
+        `label="${label}"[\\s\\S]{0,200}?href="${href.replace(/\?/g, "\\?")}"`,
         "i"
       );
       check(`"${label}" links to ${href}`, block.test(form));
@@ -348,7 +375,7 @@ async function main() {
   /* ── 7. One catalog describes every setting, and search can find it ──── */
   console.log("\n7. Every setting has a name, a description, and is findable");
   {
-    const keys = [...new Set([...form.matchAll(/set\("([^"]+)"/g)].map((m) => m[1]))];
+    const keys = editorKeys(form);
 
     // 7a. The form describes nothing itself — it names a key and the catalog
     //     supplies the label and the description. That is what keeps the label
@@ -365,6 +392,80 @@ async function main() {
       unbound.length === 0,
       unbound.length ? `not bound: ${unbound.join(", ")}` : undefined
     );
+    // The feature-page panels follow the same rule. A key that is not in the
+    // catalog (feed.boost_max_per_user, filed under "ads") must at least be
+    // findable as a "lives on another screen" entry.
+    const elsewhereKeys = new Set(SETTINGS_ELSEWHERE.flatMap((e) => (e.key ? [e.key] : [])));
+    for (const panel of PANELS) {
+      const body = bodies.get(panel)!;
+      const pk = editorKeys(body);
+      const name = panel.split("/").pop();
+      check(`${name} writes settings`, pk.length > 0);
+      const lost = pk.filter((k) => !settingEntry(k) && !elsewhereKeys.has(k));
+      check(
+        `every key ${name} writes is catalogued or indexed`,
+        lost.length === 0,
+        lost.join(", ")
+      );
+      const unboundHere = pk.filter((k) => !body.includes(`settingKey="${k}"`));
+      check(
+        `every control on ${name} is bound to its key with settingKey`,
+        unboundHere.length === 0,
+        unboundHere.join(", ")
+      );
+      check(
+        `${name} saves through the shared POST /api/admin/settings helper`,
+        body.includes("useKeyedSettings(") &&
+          read("src/components/admin/settings/keyed-settings.tsx").includes(
+            'fetch("/api/admin/settings"'
+          )
+      );
+    }
+
+    // One editor per key. A key with a `home` is edited on that page only:
+    // the form neither renders it nor re-sends it when a tab is saved.
+    const homed = SETTINGS_CATALOG.filter((e) => e.home).map((e) => e.key);
+    const stillOnForm = homed.filter((k) => keys.includes(k));
+    check(
+      "no key that moved to a feature page is still a control on the form",
+      stillOnForm.length === 0,
+      stillOnForm.join(", ")
+    );
+    const orphanedHome = homed.filter(
+      (k) => PANELS.filter((p) => editorKeys(bodies.get(p)!).includes(k)).length !== 1
+    );
+    check(
+      "every key that moved has exactly one panel editing it",
+      orphanedHome.length === 0,
+      orphanedHome.join(", ")
+    );
+    check(
+      "the form's Save and Reset skip keys edited on a feature page",
+      (form.match(/editedOnSettingsForm\(k\)/g) ?? []).length >= 2,
+      "otherwise the stale value loaded with the form would overwrite the new one"
+    );
+    // Keys owned by a screen outside this catalog: exactly one admin file
+    // may write each.
+    const adminUi = files.filter(
+      (f) => f.startsWith("src/components/admin/") || f.startsWith("src/app/admin/")
+    );
+    for (const [key, owner] of [
+      ["ads.cpcUsd", "src/components/admin/ads/ad-manager-view.tsx"],
+      ["ads.adsense_client", "src/components/admin/monetization/monetization-view.tsx"],
+      ["ads.gam_network_code", "src/components/admin/monetization/monetization-view.tsx"],
+      ["feed.boost_max_per_user", FEED_GENERAL_PANEL],
+    ] as const) {
+      const writerRe = new RegExp(
+        `set\\("${key.replace(/\./g, "\\.")}"|"${key.replace(/\./g, "\\.")}"\\s*:`
+      );
+      const writers = adminUi.filter((f) => writerRe.test(bodies.get(f)!));
+      check(
+        `${key} has one editor (${owner.split("/").pop()})`,
+        writers.length === 1 && writers[0] === owner,
+        `written by: ${writers.join(", ") || "nothing"}`
+      );
+    }
+
     check(
       "the form no longer keeps its own copy of the key → tab map",
       !/const CATEGORY_FOR_KEY[^=]*=\s*\{/.test(form) &&
@@ -433,7 +534,7 @@ async function main() {
     //     the category map — enough to look edited-able, editable nowhere.
     check(
       "social.ai_regenerate_limit is editable, not just defaulted",
-      form.includes('settingKey="social.ai_regenerate_limit"') &&
+      bodies.get(FEED_GENERAL_PANEL)!.includes('settingKey="social.ai_regenerate_limit"') &&
         read("src/app/api/tasks/[id]/ai-recipe/route.ts").includes(
           '"social.ai_regenerate_limit"'
         )
@@ -571,7 +672,8 @@ async function main() {
     // settings ground on the platform.
 
     const feedRoute = read("src/app/api/admin/settings/feed-widgets/route.ts");
-    const feedPage = "src/app/admin/settings/feed-widgets/page.tsx";
+    // The widgets form is a tab of Feed settings now (the old URL redirects).
+    const feedPage = "src/app/admin/settings/feed/page.tsx";
     const FEED_KEYS = [
       "feed.sidebar_widgets",
       "feed.quick_earn_tiles",
@@ -661,15 +763,20 @@ async function main() {
 
     // Reachable from the admin UI, not just by typing the URL — same rule as
     // §7f for the marketplace settings page.
+    //
+    // Both forms are tabs of one page since Phase 3b; the old URLs must keep
+    // working, as redirects to it.
+    for (const [oldPath, target] of [
+      ["src/app/admin/settings/feed-widgets/page.tsx", '"/admin/settings/feed?tab=widgets"'],
+      ["src/app/admin/settings/social-earning/page.tsx", '"/admin/settings/feed"'],
+    ] as const) {
+      check(
+        `${oldPath.split("/").slice(-2, -1)[0]} still resolves — it redirects to Feed settings`,
+        read(oldPath).includes(`redirect(${target})`)
+      );
+    }
     for (const [routePath, pagePath] of [
-      [
-        "/admin/settings/feed-widgets",
-        "src/app/admin/settings/feed-widgets/page.tsx",
-      ],
-      [
-        "/admin/settings/social-earning",
-        "src/app/admin/settings/social-earning/page.tsx",
-      ],
+      ["/admin/settings/feed", "src/app/admin/settings/feed/page.tsx"],
     ] as const) {
       const linked = files.some(
         (f) =>

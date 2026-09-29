@@ -17,16 +17,24 @@ import {
   localDayKeyDaysAgo,
 } from "@/lib/user-day";
 
-// Daily reward configuration (points per streak day)
-const DAILY_REWARDS = [
-  { day: 1, points: 50, xp: 10 },
-  { day: 2, points: 75, xp: 15 },
-  { day: 3, points: 100, xp: 20 },
-  { day: 4, points: 125, xp: 25 },
-  { day: 5, points: 150, xp: 30 },
-  { day: 6, points: 200, xp: 40 },
-  { day: 7, points: 300, xp: 60, bonus: "mystery_box" },
-];
+import { getDailyRewardConfig } from "@/lib/reward-config-server";
+import type { MysteryBoxOutcome } from "@/lib/reward-config";
+
+/**
+ * The 7-day ladder, from the admin setting `daily_reward.config`
+ * (Admin → Levels & Achievements → Daily & solo rewards). With no row saved it
+ * is exactly the ladder that used to be hardcoded here.
+ */
+async function loadDailyRewards() {
+  const cfg = await getDailyRewardConfig();
+  const rewards = cfg.days.map((d, i) => ({
+    day: i + 1,
+    points: d.points,
+    xp: d.xp,
+    ...(i === 6 && cfg.mysteryBoxEnabled ? { bonus: "mystery_box" as const } : {}),
+  })) as { day: number; points: number; xp: number; bonus?: "mystery_box" }[];
+  return { rewards, mysteryBox: cfg.mysteryBox };
+}
 
 // GET /api/daily-reward - Get daily reward status
 export async function GET() {
@@ -68,6 +76,8 @@ export async function GET() {
         currentStreak = 0; // missed a day → streak broken
       }
     }
+
+    const { rewards: DAILY_REWARDS } = await loadDailyRewards();
 
     // Calculate next reward (streak day 1-7, then cycles)
     const nextRewardDay = (currentStreak % 7) + 1;
@@ -165,6 +175,7 @@ export async function POST() {
     // (userId, reference) unique enforces one reward per local day.
 
     // Calculate reward for current day
+    const { rewards: DAILY_REWARDS, mysteryBox } = await loadDailyRewards();
     const rewardDay = (newStreak % 7) + 1;
     const reward = DAILY_REWARDS[rewardDay - 1];
     newStreak++;
@@ -238,7 +249,7 @@ export async function POST() {
     // Handle day 7 bonus (mystery box)
     let bonusReward = null;
     if (reward.bonus === "mystery_box") {
-      bonusReward = await claimMysteryBox(session.user.id, todayKey);
+      bonusReward = await claimMysteryBox(session.user.id, todayKey, mysteryBox);
     }
 
     return NextResponse.json({
@@ -286,14 +297,11 @@ export async function POST() {
  */
 async function claimMysteryBox(
   userId: string,
-  dayKey: string
+  dayKey: string,
+  // Admin-set outcomes; the defaults are the three that used to be hardcoded.
+  bonusTypes: MysteryBoxOutcome[]
 ): Promise<{ type: string; value: number } | null> {
-  // Random bonus: extra points, XP, or special reward
-  const bonusTypes = [
-    { type: "points", min: 100, max: 500 },
-    { type: "xp", min: 50, max: 200 },
-    { type: "points", min: 200, max: 1000 }, // Rare jackpot
-  ];
+  if (bonusTypes.length === 0) return null;
 
   const selectedBonus = bonusTypes[Math.floor(Math.random() * bonusTypes.length)];
   const value =

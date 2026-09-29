@@ -21,18 +21,15 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { RiskPointsEditor } from "@/components/admin/settings/risk-points-editor";
 import { ProfileGateStandard, ProfileGateFeatures, ProfileGatePercent } from "@/components/admin/settings/profile-gate-settings";
 import { cn, usd } from "@/lib/utils";
-import {
-  NotActiveBadge,
-  Section,
-  Toggle,
-} from "@/components/admin/shared/controls";
+import { Section, Toggle } from "@/components/admin/shared/controls";
+import { Field, inp } from "@/components/admin/settings/keyed-settings";
 import { BUYER_TASK_TYPES } from "@/lib/buyer-task-types";
 import {
   CATEGORY_FOR_KEY,
   SETTING_GROUPS,
+  editedOnSettingsForm,
   settingDomId,
   settingEntry,
   type SettingGroupId,
@@ -80,16 +77,6 @@ const DEFAULTS: SettingsBag = {
   maintenance_message: "",
   // Financial
   currency: "USD",
-  // The global click price every ad space falls back to. Not a new default —
-  // 0.05 is the value `getAdClickCost()` has always used when the row is absent;
-  // it is stated here so the form shows what is actually in force.
-  "ads.cpcUsd": 0.05,
-  min_withdrawal: 5,
-  max_withdrawal: 10000,
-  withdrawal_fee_percent: 5,
-  allow_withdrawals: true,
-  withdrawal_requires_subscription: false,
-  withdrawal_payout_time_message: "1-3 business days",
   points_per_usd: 1000,
   points_convert_threshold: 1000,
   "bkash.usdToBdtRate": 123,
@@ -112,10 +99,6 @@ const DEFAULTS: SettingsBag = {
   // Security
   password_min_length: 8,
   require_strong_passwords: true,
-  "kyc.autoEnabled": true,
-  "kyc.faceMinSimilarity": 88,
-  "kyc.ocrMinConfidence": 0.7,
-  "kyc.ocrRejectBelow": 0.2,
   // Email
   smtp_host: "smtp.gmail.com",
   smtp_port: 587,
@@ -130,7 +113,6 @@ const DEFAULTS: SettingsBag = {
   push_notifications_enabled: true,
   notify_new_task: true,
   notify_withdrawal: true,
-  notify_referral: true,
   notify_level_up: true,
   "celebrate.achievement_min_points": 200,
   // Integrations
@@ -150,28 +132,10 @@ const DEFAULTS: SettingsBag = {
   "integrations.discord_client_secret": "",
   "integrations.discord_bot_token": "",
   // Limits
-  max_withdrawals_per_day: 1,
-  max_referrals_per_user: 0,
   max_active_listings: 0,
   "ai.daily_limit_per_user": 50,
-  "social.ai_regenerate_limit": 2,
   "tasks.sequential_unlock": false,
-  "antifraud.auto_approve_min_trust": 0,
-  "antifraud.spot_check_percent": 0,
-  "antifraud.block_duplicate_proof": false,
-  "antifraud.risk_enabled": true,
-  "antifraud.auto_suspend_enabled": true,
-  "antifraud.auto_suspend_at": 100,
-  "antifraud.risk_points": {},
-  "antifraud.max_users_per_ip": 0,
-  "antifraud.ip_limit_action": "flag",
-  "antifraud.max_accounts_per_device": 3,
-  "antifraud.device_limit_action": "block",
   "targeting.country_ip_only": false,
-  "antifraud.vpn_block_enabled": false,
-  "antifraud.vpn_ranges": "",
-  "antifraud.adblock_gate_enabled": true,
-  "antifraud.adblock_reminder_minutes": 0,
   // Log retention windows (days) — consumed by the daily pruning cron
   retention_days: { views: 90, logs: 120, audit: 365, notifications: 60 },
   // Popups / install (site-wide)
@@ -182,8 +146,6 @@ const DEFAULTS: SettingsBag = {
   "profile_gate.mode": "ESSENTIALS",
   "profile_gate.features": ["tasks", "missions"],
   "profile_gate.min_percent": 100,
-  "ui.require_kyc_for_withdrawal": true,
-  "ui.groups_enabled": false,
   // Dark, and users may choose — the behaviour before these settings existed,
   // so an install with no rows saved is unchanged.
   "ui.theme_default": "dark",
@@ -217,10 +179,14 @@ export function SystemSettingsForm({
   const saveCategory = async (category: string) => {
     setBusy(true);
     try {
-      // Pluck only keys that belong to this category
+      // Pluck only keys that belong to this category AND are edited on this
+      // form. `values` holds every stored row, including the keys that moved
+      // to their feature pages (withdrawals, KYC, fraud, feed) — re-sending
+      // those from here would overwrite a newer value saved over there.
       const payload: SettingsBag = {};
       for (const [k, v] of Object.entries(values)) {
-        if (CATEGORY_FOR_KEY[k] === category) payload[k] = v;
+        if (CATEGORY_FOR_KEY[k] === category && editedOnSettingsForm(k))
+          payload[k] = v;
       }
       const res = await fetch("/api/admin/settings", {
         method: "POST",
@@ -247,7 +213,8 @@ export function SystemSettingsForm({
     setValues((p) => {
       const next = { ...p };
       for (const [k, v] of Object.entries(DEFAULTS)) {
-        if (CATEGORY_FOR_KEY[k] === category) next[k] = v;
+        if (CATEGORY_FOR_KEY[k] === category && editedOnSettingsForm(k))
+          next[k] = v;
       }
       return next;
     });
@@ -392,43 +359,12 @@ export function SystemSettingsForm({
                 <option>BDT</option>
               </select>
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field settingKey="min_withdrawal">
-                <input
-                  type="number"
-                  step={0.01}
-                  value={Number(values.min_withdrawal ?? 0)}
-                  onChange={(e) => set("min_withdrawal", parseFloat(e.target.value))}
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-              <Field settingKey="max_withdrawal">
-                <input
-                  type="number"
-                  step={0.01}
-                  value={Number(values.max_withdrawal ?? 0)}
-                  onChange={(e) => set("max_withdrawal", parseFloat(e.target.value))}
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-            </div>
-            <Field settingKey="withdrawal_fee_percent"
-            >
-              <input
-                type="number"
-                step={0.1}
-                min={0}
-                max={100}
-                value={Number(values.withdrawal_fee_percent ?? 5)}
-                onChange={(e) =>
-                  set("withdrawal_fee_percent", parseFloat(e.target.value))
-                }
-                disabled={!canEdit}
-                className={inp}
-              />
-            </Field>
+            <ManagedElsewhere
+              label="Withdrawal limits, fee & switches"
+              href="/admin/withdrawals?tab=settings"
+              linkLabel="Withdrawals → Settings"
+              why="Min / max withdrawal, the withdrawal fee, withdrawals per day, the master switch, the subscription and KYC requirements and the payout-time message all live on the Withdrawals page now. Same settings, same values."
+            />
             <Field settingKey="marketplace.fee_percent"
             >
               <input
@@ -444,35 +380,9 @@ export function SystemSettingsForm({
                 className={inp}
               />
             </Field>
-            <Toggle settingKey="allow_withdrawals"
-              checked={values.allow_withdrawals !== false}
-              onChange={(v) => set("allow_withdrawals", v)}
-              disabled={!canEdit}
-              tone="amber"
-            />
-            <Toggle settingKey="withdrawal_requires_subscription"
-              checked={!!values.withdrawal_requires_subscription}
-              onChange={(v) => set("withdrawal_requires_subscription", v)}
-              disabled={!canEdit}
-            />
-            <Field settingKey="withdrawal_payout_time_message"
-            >
-              <input
-                type="text"
-                value={
-                  (values.withdrawal_payout_time_message as string) ??
-                  "1-3 business days"
-                }
-                onChange={(e) =>
-                  set("withdrawal_payout_time_message", e.target.value)
-                }
-                disabled={!canEdit}
-                className={inp}
-              />
-            </Field>
             <ManagedElsewhere
               label="Referral commission %"
-              href="/admin/referrals/settings"
+              href="/admin/referrals?tab=commission"
               linkLabel="Referral Settings"
               why="Commission is per level and there can be up to 10 of them, so it lives in its own table — three boxes here could never describe it."
             />
@@ -550,33 +460,12 @@ export function SystemSettingsForm({
                 />
               </Field>
             )}
-            <Section title="Advertising">
-              <p className="-mt-1 mb-2 text-xs leading-relaxed text-slate-500">
-                The default price an advertiser pays for one click, used by any
-                ad space that has no price of its own. Today that is every space:
-                none of the 29 has a per-space rate set, so this one number
-                prices a click on the withdrawal page — the longest-dwell screen
-                on the platform — exactly the same as a click on a banner nobody
-                scrolls to. Per-space prices live in{" "}
-                <Link href="/admin/ads" className="text-blue-400 hover:underline">
-                  Ad Manager &rarr; Spaces
-                </Link>
-                , and anything set there overrides this.
-              </p>
-              <Field settingKey="ads.cpcUsd"
-              >
-                <input
-                  type="number"
-                  min={0.001}
-                  max={100}
-                  step={0.01}
-                  value={Number(values["ads.cpcUsd"] ?? 0.05)}
-                  onChange={(e) => set("ads.cpcUsd", parseFloat(e.target.value))}
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-            </Section>
+            <ManagedElsewhere
+              label="Default cost per click (ads)"
+              href="/admin/ads?tab=placements"
+              linkLabel="Ad Manager → Ad Spaces"
+              why="The global click price is edited in one place, beside the per-space prices that override it. It used to be editable here, in the Ad Manager and on Monetization."
+            />
             <Section title="Buyer & task funding">
               <p className="-mt-1 mb-2 text-xs leading-relaxed text-slate-500">
                 A buyer funds a task from bought task credit: nothing is taken
@@ -794,58 +683,21 @@ export function SystemSettingsForm({
             </Section>
             <ManagedElsewhere
               label="Require KYC for withdrawals"
-              href="/admin/settings"
-              linkLabel="Toggles tab"
-              why="There were two switches for this and only the one on the Toggles tab (ui.require_kyc_for_withdrawal) was ever read by the withdrawal gate."
+              href="/admin/withdrawals?tab=settings"
+              linkLabel="Withdrawals → Settings"
+              why="One switch (ui.require_kyc_for_withdrawal), kept with the other withdrawal rules. There used to be two, and only this one was ever read by the withdrawal gate."
             />
-            <Toggle settingKey="kyc.autoEnabled"
-              checked={values["kyc.autoEnabled"] !== false}
-              onChange={(v) => set("kyc.autoEnabled", v)}
-              disabled={!canEdit}
+            <ManagedElsewhere
+              label="Automatic KYC thresholds"
+              href="/admin/users/kyc?tab=settings"
+              linkLabel="KYC → Settings"
+              why="Instant (auto) KYC on/off and its face-match and OCR confidence bars moved to the KYC page, next to the queue they decide. Same settings, same values."
             />
-            <Field settingKey="kyc.faceMinSimilarity">
-              <input
-                type="number"
-                min={50}
-                max={100}
-                value={Number(values["kyc.faceMinSimilarity"] ?? 88)}
-                onChange={(e) => set("kyc.faceMinSimilarity", parseInt(e.target.value) || 88)}
-                disabled={!canEdit}
-                className={inp}
-              />
-            </Field>
-            <Field settingKey="kyc.ocrMinConfidence">
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.05}
-                value={Number(values["kyc.ocrMinConfidence"] ?? 0.7)}
-                onChange={(e) => set("kyc.ocrMinConfidence", parseFloat(e.target.value) || 0.7)}
-                disabled={!canEdit}
-                className={inp}
-              />
-            </Field>
-            <Field settingKey="kyc.ocrRejectBelow"
-            >
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.05}
-                value={Number(values["kyc.ocrRejectBelow"] ?? 0.2)}
-                onChange={(e) =>
-                  set("kyc.ocrRejectBelow", parseFloat(e.target.value) || 0.2)
-                }
-                disabled={!canEdit}
-                className={inp}
-              />
-            </Field>
             <ManagedElsewhere
               label="Fraud detection"
-              href="/admin/settings"
-              linkLabel="Limits tab"
-              why="The switches that actually run — accounts per IP, duplicate-proof blocking, VPN ranges, spot-check rate, the ad-block gate — are the antifraud group on the Limits tab."
+              href="/admin/fraud?tab=settings"
+              linkLabel="Fraud Monitor → Settings"
+              why="The switches that actually run — accounts per device and IP, duplicate-proof blocking, VPN ranges, spot-check rate, the ad-block gate, risk points and auto-suspension — are on the Fraud Monitor page."
             />
             <ManagedElsewhere
               label="Require full profile before withdrawing"
@@ -1013,10 +865,11 @@ export function SystemSettingsForm({
                 onChange={(v) => set("notify_withdrawal", v)}
                 disabled={!canEdit}
               />
-              <Toggle settingKey="notify_referral"
-                checked={values.notify_referral !== false}
-                onChange={(v) => set("notify_referral", v)}
-                disabled={!canEdit}
+              <ManagedElsewhere
+                label="New referral"
+                href="/admin/referrals?tab=limits"
+                linkLabel="Referrals → Limits"
+                why="Moved to the Referrals page with the other referral settings. Same setting, same value."
               />
               <Toggle settingKey="notify_level_up"
                 checked={values.notify_level_up !== false}
@@ -1154,7 +1007,7 @@ export function SystemSettingsForm({
               label="Payment gateways"
               href="/admin/payment-methods"
               linkLabel="Payment Methods"
-              why="Deposits and payouts run on the payment methods you configure there (bKash, SSLCommerz and the manual methods). There is no Stripe or Twilio integration in the platform, so those key boxes stored text nothing could ever use."
+              why="Deposit methods are configured there (bKash, SSLCommerz and the manual methods). Withdrawal limits and fees are on Withdrawals → Settings — the per-method payout cards there are not enforced. There is no Stripe or Twilio integration in the platform, so those key boxes stored text nothing could ever use."
             />
             <NotWired
               items={[
@@ -1230,32 +1083,18 @@ export function SystemSettingsForm({
               why="The daily task limit is per package (Daily Task Limit), which is what the task list actually enforces. One global number here would override nothing."
             />
             <div className="grid grid-cols-2 gap-3">
-              <Field settingKey="max_withdrawals_per_day"
-              >
-                <input
-                  type="number"
-                  min={0}
-                  value={Number(values.max_withdrawals_per_day ?? 1)}
-                  onChange={(e) =>
-                    set("max_withdrawals_per_day", parseInt(e.target.value))
-                  }
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-              <Field settingKey="max_referrals_per_user"
-              >
-                <input
-                  type="number"
-                  min={0}
-                  value={Number(values.max_referrals_per_user ?? 0)}
-                  onChange={(e) =>
-                    set("max_referrals_per_user", parseInt(e.target.value))
-                  }
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
+              <ManagedElsewhere
+                label="Max withdrawals per day"
+                href="/admin/withdrawals?tab=settings"
+                linkLabel="Withdrawals → Settings"
+                why="Moved to the Withdrawals page with the other withdrawal limits. Same setting, same value."
+              />
+              <ManagedElsewhere
+                label="Max referrals per user"
+                href="/admin/referrals?tab=limits"
+                linkLabel="Referrals → Limits"
+                why="Moved to the Referrals page so every referral setting is in one place. Same setting, same value."
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field settingKey="max_active_listings"
@@ -1283,208 +1122,30 @@ export function SystemSettingsForm({
                   className={inp}
                 />
               </Field>
-              {/*
-                Read by `api/tasks/[id]/ai-recipe` since the day it shipped and
-                editable nowhere: the key sat in DEFAULTS and in the category
-                map, which was enough to satisfy the "every setting has an
-                editor" check without any admin ever being able to change it.
-                A default that can only be changed in code is not a setting.
-              */}
-              <Field settingKey="social.ai_regenerate_limit">
-                <input
-                  type="number"
-                  min={0}
-                  value={Number(values["social.ai_regenerate_limit"] ?? 2)}
-                  onChange={(e) =>
-                    set(
-                      "social.ai_regenerate_limit",
-                      Math.max(0, parseInt(e.target.value) || 0)
-                    )
-                  }
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
+              <ManagedElsewhere
+                label="AI caption re-rolls per social task"
+                href="/admin/settings/feed?tab=general"
+                linkLabel="Feed settings → General"
+                why="Moved to Feed settings with the other social switches. Same setting, same value."
+              />
             </div>
             <Toggle settingKey="tasks.sequential_unlock"
               checked={values["tasks.sequential_unlock"] === true}
               onChange={(v) => set("tasks.sequential_unlock", v)}
               disabled={!canEdit}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Field settingKey="antifraud.auto_approve_min_trust">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={Number(values["antifraud.auto_approve_min_trust"] ?? 0)}
-                  onChange={(e) =>
-                    set(
-                      "antifraud.auto_approve_min_trust",
-                      parseInt(e.target.value) || 0
-                    )
-                  }
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-              <Field settingKey="antifraud.spot_check_percent">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={Number(values["antifraud.spot_check_percent"] ?? 0)}
-                  onChange={(e) =>
-                    set(
-                      "antifraud.spot_check_percent",
-                      parseInt(e.target.value) || 0
-                    )
-                  }
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-            </div>
-            <Toggle settingKey="antifraud.block_duplicate_proof"
-              checked={values["antifraud.block_duplicate_proof"] === true}
-              onChange={(v) => set("antifraud.block_duplicate_proof", v)}
-              disabled={!canEdit}
+            <ManagedElsewhere
+              label="Anti-fraud & fraud risk"
+              href="/admin/fraud?tab=settings"
+              linkLabel="Fraud Monitor → Settings"
+              why="Auto-approval trust, spot checks, duplicate proof, accounts per device / IP, the VPN block, the task ad-blocker gate, risk points and auto-suspension moved to the Fraud Monitor page. Same settings, same values."
             />
-
-            <Section title="Fraud risk & auto-suspension">
-              <Toggle settingKey="antifraud.risk_enabled"
-                checked={values["antifraud.risk_enabled"] !== false}
-                onChange={(v) => set("antifraud.risk_enabled", v)}
-                disabled={!canEdit}
-                tone="red"
-              />
-              <Toggle settingKey="antifraud.auto_suspend_enabled"
-                checked={values["antifraud.auto_suspend_enabled"] !== false}
-                onChange={(v) => set("antifraud.auto_suspend_enabled", v)}
-                disabled={!canEdit}
-                tone="red"
-              />
-              <Field settingKey="antifraud.auto_suspend_at">
-                <input
-                  type="number"
-                  min={10}
-                  max={100}
-                  value={Number(values["antifraud.auto_suspend_at"] ?? 100)}
-                  onChange={(e) => set("antifraud.auto_suspend_at", parseInt(e.target.value) || 100)}
-                  disabled={!canEdit}
-                  className={inp}
-                />
-              </Field>
-              <Field settingKey="antifraud.risk_points">
-                <RiskPointsEditor
-                  value={(values["antifraud.risk_points"] as Record<string, number> | undefined) ?? {}}
-                  onChange={(v) => set("antifraud.risk_points", v)}
-                  disabled={!canEdit}
-                />
-              </Field>
-            </Section>
-
-            <Section title="Network anti-abuse">
-              <div className="rounded-lg border border-sky-500/25 bg-sky-500/5 p-3 text-xs text-sky-100/90 space-y-1">
-                <p>
-                  <b>Device first, IP second.</b> Many honest people share one IP — everyone on a home or office WiFi —
-                  and one person&apos;s mobile data changes IP all day. Several accounts on the <i>same device</i> is
-                  what multi-accounting actually looks like.
-                </p>
-                <p>
-                  Recommended: accounts per device <b>2–3</b>, action <b>Block</b>. Accounts per IP <b>10–20</b>,
-                  action <b>Flag only</b> — hits go to the Fraud Monitor for review, nobody on shared WiFi is locked
-                  out, and they add no fraud risk.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field settingKey="antifraud.max_accounts_per_device">
-                  <input
-                    type="number"
-                    min={0}
-                    value={Number(values["antifraud.max_accounts_per_device"] ?? 3)}
-                    onChange={(e) => set("antifraud.max_accounts_per_device", Math.max(0, parseInt(e.target.value) || 0))}
-                    disabled={!canEdit}
-                    className={inp}
-                  />
-                </Field>
-                <Field settingKey="antifraud.device_limit_action">
-                  <select
-                    value={String(values["antifraud.device_limit_action"] ?? "block")}
-                    onChange={(e) => set("antifraud.device_limit_action", e.target.value)}
-                    disabled={!canEdit}
-                    className={inp}
-                  >
-                    <option value="block">Block — refuse the sign-up / task</option>
-                    <option value="flag">Flag only — allow, report to Fraud Monitor</option>
-                  </select>
-                </Field>
-                <Toggle settingKey="targeting.country_ip_only"
-                  checked={values["targeting.country_ip_only"] === true}
-                  onChange={(v) => set("targeting.country_ip_only", v)}
-                  disabled={!canEdit}
-                  tone="amber"
-                />
-                <Field settingKey="antifraud.ip_limit_action">
-                  <select
-                    value={String(values["antifraud.ip_limit_action"] ?? "flag")}
-                    onChange={(e) => set("antifraud.ip_limit_action", e.target.value)}
-                    disabled={!canEdit}
-                    className={inp}
-                  >
-                    <option value="flag">Flag only — allow, report to Fraud Monitor (recommended)</option>
-                    <option value="block">Block — refuse (locks out shared WiFi)</option>
-                  </select>
-                </Field>
-                <Field settingKey="antifraud.max_users_per_ip">
-                  <input
-                    type="number"
-                    min={0}
-                    value={Number(values["antifraud.max_users_per_ip"] ?? 0)}
-                    onChange={(e) =>
-                      set("antifraud.max_users_per_ip", parseInt(e.target.value) || 0)
-                    }
-                    disabled={!canEdit}
-                    className={inp}
-                  />
-                </Field>
-                <Field settingKey="antifraud.adblock_reminder_minutes">
-                  <input
-                    type="number"
-                    min={0}
-                    value={Number(values["antifraud.adblock_reminder_minutes"] ?? 0)}
-                    onChange={(e) =>
-                      set(
-                        "antifraud.adblock_reminder_minutes",
-                        parseInt(e.target.value) || 0
-                      )
-                    }
-                    disabled={!canEdit}
-                    className={inp}
-                  />
-                </Field>
-              </div>
-              <Toggle settingKey="antifraud.vpn_block_enabled"
-                checked={values["antifraud.vpn_block_enabled"] === true}
-                onChange={(v) => set("antifraud.vpn_block_enabled", v)}
-                disabled={!canEdit}
-              />
-              <Field settingKey="antifraud.vpn_ranges">
-                <input
-                  type="text"
-                  value={String(values["antifraud.vpn_ranges"] ?? "")}
-                  onChange={(e) => set("antifraud.vpn_ranges", e.target.value)}
-                  disabled={!canEdit}
-                  placeholder="45.83. 185.220. 2607:5300:"
-                  className={inp}
-                />
-              </Field>
-              <Toggle settingKey="antifraud.adblock_gate_enabled"
-                checked={values["antifraud.adblock_gate_enabled"] !== false}
-                onChange={(v) => set("antifraud.adblock_gate_enabled", v)}
-                disabled={!canEdit}
-              />
-            </Section>
+            <Toggle settingKey="targeting.country_ip_only"
+              checked={values["targeting.country_ip_only"] === true}
+              onChange={(v) => set("targeting.country_ip_only", v)}
+              disabled={!canEdit}
+              tone="amber"
+            />
 
             {/*
               Four inputs, one key: `retention_days` is a single JSON row. The
@@ -1596,17 +1257,17 @@ export function SystemSettingsForm({
                 />
               </Field>
             </div>
-            <Toggle settingKey="ui.require_kyc_for_withdrawal"
-              checked={values["ui.require_kyc_for_withdrawal"] !== false}
-              onChange={(v) => set("ui.require_kyc_for_withdrawal", v)}
-              disabled={!canEdit}
-              tone="red"
+            <ManagedElsewhere
+              label="Require KYC for withdrawals"
+              href="/admin/withdrawals?tab=settings"
+              linkLabel="Withdrawals → Settings"
+              why="Moved to the Withdrawals page with the other withdrawal rules. Same setting, same value."
             />
-            <Toggle settingKey="ui.groups_enabled"
-              checked={values["ui.groups_enabled"] === true}
-              onChange={(v) => set("ui.groups_enabled", v)}
-              disabled={!canEdit}
-              tone="purple"
+            <ManagedElsewhere
+              label="Groups"
+              href="/admin/settings/feed?tab=general"
+              linkLabel="Feed settings → General"
+              why="Moved to Feed settings with the other feed switches. Same setting, same value."
             />
             {/* Appearance. Two controls that belong together: which theme the
                 platform wears, and whether a user may change it. With choice
@@ -1673,9 +1334,6 @@ export function SystemSettingsForm({
     </div>
   );
 }
-
-const inp =
-  "w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 disabled:opacity-60";
 
 /**
  * A control that used to live here and does not any more.
@@ -1857,19 +1515,6 @@ function PlatformAllowList({
 }
 
 /**
- * One labelled control.
- *
- * Pass `settingKey` and nothing else: the name and the plain-language
- * description come from `admin-settings-catalog.ts`, which is also what the
- * search box indexes and what `CATEGORY_FOR_KEY` is derived from. One row in
- * one file describes a setting completely, so the label and the key cannot
- * drift apart — which is exactly how users once got charged a 5% withdrawal
- * fee from a box the owner had set to 2.5%.
- *
- * `label`/`hint` remain for the handful of controls that are not one setting
- * each (the retention-window grid writes four fields of one JSON key).
- */
-/**
  * Ask the provider whether the SAVED key works.
  *
  * Deliberately tests what is stored, not what is typed in the box beside it: an
@@ -1932,35 +1577,7 @@ function TestKeyButton({
   );
 }
 
-function Field({
-  label,
-  hint,
-  settingKey,
-  children,
-}: {
-  label?: string;
-  hint?: string;
-  settingKey?: string;
-  children: React.ReactNode;
-}) {
-  const entry = settingKey ? settingEntry(settingKey) : undefined;
-  const shownLabel = label ?? entry?.label ?? settingKey;
-  const shownHint = hint ?? entry?.description;
-  return (
-    <div
-      id={settingKey ? settingDomId(settingKey) : undefined}
-      data-setting-key={settingKey}
-      className="scroll-mt-28"
-    >
-      <label className="block text-xs font-medium text-slate-400 mb-1.5">
-        {shownLabel}
-        {entry?.status === "not-active" && <NotActiveBadge />}
-        {shownHint && <span className="text-slate-600 ml-2">{shownHint}</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 // `Section` and `Toggle` now live in components/admin/shared/controls.tsx so the
-// social-earning screen uses the same switch rather than a look-alike.
+// social-earning screen uses the same switch rather than a look-alike. `Field`
+// and `inp` live in ./keyed-settings.tsx, shared with the settings panels on
+// the feature pages (withdrawals, KYC, fraud, feed).

@@ -6,7 +6,6 @@ export const APP_DESCRIPTION = "Complete tasks, earn rewards, and grow your inco
 
 // Economy
 export const DEFAULT_POINTS_TO_USD_RATE = 1000; // 1000 points = $1
-export const MINIMUM_WITHDRAWAL_USD = 50;
 // Minimum points a user must accumulate before the "convert points → cash"
 // option unlocks (whole-balance conversion). Admin-configurable via the
 // `points_convert_threshold` SystemSetting.
@@ -15,44 +14,9 @@ export const DEFAULT_POINTS_CONVERT_THRESHOLD = 10000; // 10,000 pts = $10 at de
 // MLM Levels (10 levels)
 export const DEFAULT_REFERRAL_LEVELS = 10;
 
-// Package Tiers (5-tier system per admin_oo.md / USER_MANAGEMENT_PACKAGE_TIERS_UPDATE.md)
-export const PACKAGE_TIERS = {
-  FREE: {
-    name: "Free",
-    dailyTaskLimit: 10,
-    withdrawalFee: 5, // percentage
-    minWithdrawal: 50,
-    features: ["10 tasks per day", "Basic support", "Standard rewards"],
-  },
-  STARTER: {
-    name: "Starter",
-    dailyTaskLimit: 15,
-    withdrawalFee: 3,
-    minWithdrawal: 30,
-    features: ["15 tasks per day", "Email support", "1.1x earning bonus", "Reduced withdrawal fee"],
-  },
-  PRO: {
-    name: "Pro",
-    dailyTaskLimit: 25,
-    withdrawalFee: 2,
-    minWithdrawal: 20,
-    features: ["25 tasks per day", "Priority support", "1.25x earning bonus", "Lower withdrawal fee", "Exclusive tasks"],
-  },
-  ELITE: {
-    name: "Elite",
-    dailyTaskLimit: 50,
-    withdrawalFee: 1,
-    minWithdrawal: 10,
-    features: ["50 tasks per day", "Priority 24/7 support", "1.5x earning bonus", "Faster payouts", "All exclusive tasks"],
-  },
-  VIP: {
-    name: "VIP",
-    dailyTaskLimit: -1, // unlimited
-    withdrawalFee: 0,
-    minWithdrawal: 5,
-    features: ["Unlimited tasks", "Dedicated account manager", "2x earning bonus", "Zero withdrawal fees", "Instant payouts", "VIP-only events"],
-  },
-} as const;
+// MINIMUM_WITHDRAWAL_USD and PACKAGE_TIERS were removed: nothing imported
+// them. Withdrawal limits and fees are admin settings (Withdrawals → Settings)
+// layered with each Package row — see src/lib/withdrawal.ts.
 
 // Gamification
 export const XP_PER_LEVEL_MULTIPLIER = 100; // Level^2 * 100 XP needed

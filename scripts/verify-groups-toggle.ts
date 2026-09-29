@@ -187,7 +187,9 @@ async function main() {
   /* ── 4. The admin control ── */
   console.log("\n4. The owner can turn it back on");
   {
-    const f = code("src/components/admin/settings/system-settings-form.tsx");
+    // Phase 3b: the switch moved from System Settings → Site toggles to Feed
+    // settings → General. Same key, same row category, same checks.
+    const f = code("src/components/admin/settings/feed-general-panel.tsx");
     check('the key is in DEFAULTS as false', /"ui\.groups_enabled": false/.test(f));
     // Asserted against the real map rather than the literal that used to be
     // hand-written in the form. The mapping moved into the settings catalog and

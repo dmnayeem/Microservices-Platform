@@ -31,7 +31,9 @@ import {
   type LucideIcon,
 
   CalendarClock,
-  ReceiptText,} from "lucide-react";
+  ReceiptText,
+  ExternalLink,} from "lucide-react";
+import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
@@ -59,6 +61,8 @@ interface Campaign {
   status: string;
   /** Platform-owned inventory: exempt from the budget floor, never billed. */
   isHouse?: boolean;
+  /** Set when a real advertiser owns it — budget changes then move Ad Credit. */
+  advertiserId?: string | null;
   startAt?: string | null;
   endAt?: string | null;
   _count?: { ads: number };
@@ -174,8 +178,19 @@ const PLACEMENT_ICON: Record<string, LucideIcon> = {
   VIDEO_INTERSTITIAL: Film,
 };
 
-export function AdManagerView({ canManage, seesMoney = false }: { canManage: boolean; seesMoney?: boolean }) {
-  const [tab, setTab] = useState<TabId>("ads");
+export function AdManagerView({
+  canManage,
+  seesMoney = false,
+  initialTab,
+}: {
+  canManage: boolean;
+  seesMoney?: boolean;
+  /** From `?tab=`, so another admin screen can link straight to a tab. */
+  initialTab?: string;
+}) {
+  const [tab, setTab] = useState<TabId>(
+    TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "ads"
+  );
   const [ads, setAds] = useState<Ad[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -191,14 +206,10 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
   const [rotationBusy, setRotationBusy] = useState(false);
   const [cpcUsd, setCpcUsd] = useState(0.01);
   const [cpcBusy, setCpcBusy] = useState(false);
-  const [adsenseClient, setAdsenseClient] = useState("");
-  const [gamNetworkCode, setGamNetworkCode] = useState("");
-  const [networkBusy, setNetworkBusy] = useState(false);
   const [feedAdInterval, setFeedAdInterval] = useState(2);
   const [feedPromoInterval, setFeedPromoInterval] = useState(4);
   const [underPostBanner, setUnderPostBanner] = useState(true);
   const [underPostInterval, setUnderPostInterval] = useState(3);
-  const [boostMaxPerUser, setBoostMaxPerUser] = useState(20);
   const [densityBusy, setDensityBusy] = useState(false);
   const [grantEmail, setGrantEmail] = useState("");
   const [grantAmount, setGrantAmount] = useState(10);
@@ -241,7 +252,6 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
             "ads.feed_promo_interval": Math.max(1, feedPromoInterval),
             "ads.under_post_banner": underPostBanner,
             "ads.under_post_interval": Math.max(1, underPostInterval),
-            "feed.boost_max_per_user": Math.max(0, boostMaxPerUser),
           },
         }),
       });
@@ -251,29 +261,6 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
       toast.error("Couldn't save density");
     } finally {
       setDensityBusy(false);
-    }
-  };
-
-  const saveNetworkGlobals = async () => {
-    setNetworkBusy(true);
-    try {
-      const res = await fetch("/api/admin/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category: "ads",
-          settings: {
-            "ads.adsense_client": adsenseClient.trim(),
-            "ads.gam_network_code": gamNetworkCode.trim(),
-          },
-        }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success("Ad-network settings saved");
-    } catch {
-      toast.error("Couldn't save ad-network settings");
-    } finally {
-      setNetworkBusy(false);
     }
   };
 
@@ -294,15 +281,11 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
       setPlacements(p.placements ?? []);
       if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
       if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
-      if (typeof p.adsenseClient === "string") setAdsenseClient(p.adsenseClient);
-      if (typeof p.gamNetworkCode === "string") setGamNetworkCode(p.gamNetworkCode);
       if (p.density) {
         setFeedAdInterval(p.density.feedAdInterval ?? 2);
         setFeedPromoInterval(p.density.feedPromoInterval ?? 4);
         setUnderPostBanner(!!p.density.underPostBanner);
         setUnderPostInterval(p.density.underPostInterval ?? 3);
-        if (typeof p.density.boostMaxPerUser === "number")
-          setBoostMaxPerUser(p.density.boostMaxPerUser);
       }
     } catch {
       toast.error("Failed to load ad data");
@@ -325,8 +308,6 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
         setPlacements(p.placements ?? []);
         if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
         if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
-        if (typeof p.adsenseClient === "string") setAdsenseClient(p.adsenseClient);
-        if (typeof p.gamNetworkCode === "string") setGamNetworkCode(p.gamNetworkCode);
         if (p.density) {
           setFeedAdInterval(p.density.feedAdInterval ?? 2);
           setFeedPromoInterval(p.density.feedPromoInterval ?? 4);
@@ -829,42 +810,17 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
                 </div>
               </div>
 
-              {/* Global ad-network (publisher) config */}
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-                <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Ad networks (publisher)</p>
-                <p className="text-[11px] text-slate-500 -mt-1">Set once — per-ad you only enter the slot / ad-unit. Network ads are third-party (ad-blockable) and report in the network&apos;s own console.</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">AdSense client (ca-pub-…)</label>
-                    <input
-                      value={adsenseClient}
-                      onChange={(e) => setAdsenseClient(e.target.value)}
-                      disabled={!canManage}
-                      placeholder="ca-pub-1234567890123456"
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Ad Manager network code</label>
-                    <input
-                      value={gamNetworkCode}
-                      onChange={(e) => setGamNetworkCode(e.target.value)}
-                      disabled={!canManage}
-                      placeholder="22106938064"
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 disabled:opacity-50"
-                    />
-                  </div>
+              {/* The AdSense client and Ad Manager network code used to be
+                  editable here AND on Monetization. Monetization owns them now
+                  (with the consent and auto-ads switches that go with them). */}
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Ad networks (publisher)</p>
+                  <p className="text-[11px] text-slate-500 mt-1">AdSense client, Ad Manager network code, consent and ads.txt are set on Monetization. Per ad you only enter the slot / ad-unit.</p>
                 </div>
-                {canManage && (
-                  <button
-                    onClick={saveNetworkGlobals}
-                    disabled={networkBusy}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-                  >
-                    {networkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    Save networks
-                  </button>
-                )}
+                <Link href="/admin/monetization" className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300 hover:bg-blue-500/20">
+                  Monetization <ExternalLink className="h-3 w-3" />
+                </Link>
               </div>
 
               {/* Feed ad density */}
@@ -894,10 +850,10 @@ export function AdManagerView({ canManage, seesMoney = false }: { canManage: boo
                     <p className="text-[11px] text-slate-500 mt-1">1 = under every post. On a 20-post page that is 20 ad requests at once.</p>
                   </div>
                 )}
-                <div className="max-w-xs">
-                  <label className="block text-xs text-slate-400 mb-1">Boosted post — max times shown per user (0 = unlimited)</label>
-                  <input type="number" min={0} max={1000} value={boostMaxPerUser} disabled={!canManage} onChange={(e) => setBoostMaxPerUser(Math.max(0, Number(e.target.value) || 0))} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm disabled:opacity-50" />
-                </div>
+                <p className="text-[11px] text-slate-500">
+                  How often one boosted post may be shown to the same user is set in{" "}
+                  <Link href="/admin/settings/feed?tab=general" className="text-blue-400 hover:underline">Feed settings → General</Link>.
+                </p>
                 {canManage && (
                   <button onClick={saveDensity} disabled={densityBusy} className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
                     {densityBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -2606,6 +2562,13 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
   const [title, setTitle] = useState(campaign?.title ?? "");
   const [description, setDescription] = useState(campaign?.description ?? "");
   const [budget, setBudget] = useState(String(campaign?.budget ?? 0));
+  // Where extra budget comes from, for an advertiser's campaign. Budget is money:
+  // raising it either spends the advertiser's Ad Credit or is recorded as a
+  // platform grant — it is never conjured by typing a bigger number.
+  const [budgetSource, setBudgetSource] = useState<"advertiser" | "platform">("advertiser");
+  const initialBudget = campaign?.budget ?? 0;
+  const budgetDelta = (Number(budget) || 0) - initialBudget;
+  const advertiserFunded = !!campaign?.advertiserId;
   const [status, setStatus] = useState(campaign?.status ?? "ACTIVE");
   const toDateInput = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const [startAt, setStartAt] = useState(toDateInput(campaign?.startAt));
@@ -2630,7 +2593,12 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
         body: JSON.stringify({
           title,
           description,
-          budget: Number(budget) || 0,
+          // Only when it changed: a click landing while this form is open
+          // lowers the live budget, and re-sending the stale figure would
+          // "top it back up" out of someone's Ad Credit.
+          ...(!campaign || Math.abs(budgetDelta) > 1e-9
+            ? { budget: Number(budget) || 0, budgetSource }
+            : {}),
           status,
           isHouse,
           startAt: startAt ? new Date(startAt).toISOString() : null,
@@ -2680,7 +2648,9 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
           <div>
             <label className="block text-xs text-slate-400 mb-1">Budget ($)</label>
             <input type="number" min={1} value={budget} onChange={(e) => setBudget(e.target.value)} className={inputCls} />
-            <p className="text-[11px] text-slate-500 mt-1">Budget must be ≥ the per-click cost for ads to serve.</p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {advertiserFunded ? "What's left to spend. " : ""}Budget must be ≥ the per-click cost for ads to serve.
+            </p>
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">Status</label>
@@ -2691,6 +2661,32 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
             </select>
           </div>
         </div>
+        {advertiserFunded && budgetDelta > 1e-9 && (
+          <fieldset className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 space-y-2">
+            <legend className="px-1 text-xs font-semibold text-amber-300">
+              Who pays the extra {usd(budgetDelta)}?
+            </legend>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" name="budgetSource" checked={budgetSource === "advertiser"} onChange={() => setBudgetSource("advertiser")} className="mt-0.5" />
+              <span className="text-sm text-white">
+                The advertiser&apos;s Ad Credit
+                <span className="block text-xs text-slate-500">Taken from their balance. Refused if they don&apos;t have it.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" name="budgetSource" checked={budgetSource === "platform"} onChange={() => setBudgetSource("platform")} className="mt-0.5" />
+              <span className="text-sm text-white">
+                Platform grant (you pay)
+                <span className="block text-xs text-slate-500">Recorded as a grant in their Ad Credit history. Anything unspent goes back to them as Ad Credit when the campaign ends.</span>
+              </span>
+            </label>
+          </fieldset>
+        )}
+        {advertiserFunded && budgetDelta < -1e-9 && (
+          <p className="text-xs text-slate-400 rounded-lg border border-slate-700 px-3 py-2">
+            {usd(-budgetDelta)} goes back to the advertiser&apos;s Ad Credit.
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-slate-400 mb-1">Start date (optional)</label>

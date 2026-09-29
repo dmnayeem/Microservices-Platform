@@ -392,7 +392,7 @@ async function main() {
     );
     check(
       "…and the referral page links to it",
-      /\/admin\/referrals\/settings/.test(code(FORM))
+      /\/admin\/referrals\?tab=commission/.test(code(FORM))
     );
   }
 
