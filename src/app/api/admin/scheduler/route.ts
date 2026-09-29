@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { SCHEDULED_JOBS, findJob } from "@/lib/scheduler/jobs";
 import { runJobNow } from "@/lib/scheduler/run";
+import { getJobModes, setJobMode } from "@/lib/scheduler/modes";
+import { latestRunPerJob } from "@/lib/scheduler/latest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -50,7 +52,11 @@ export async function GET() {
     error: string | null;
   }>;
 
+  const [modes, latest] = await Promise.all([getJobModes(), latestRunPerJob()]);
+
   return NextResponse.json({
+    modes,
+    latest,
     jobs: SCHEDULED_JOBS.map((j) => ({
       name: j.name,
       label: j.label,
@@ -93,4 +99,45 @@ export async function POST(request: NextRequest) {
     meta: { ...line } as Record<string, unknown>,
   });
   return NextResponse.json({ ok: true, line });
+}
+
+const modeSchema = z.object({
+  job: z.string().min(1),
+  mode: z.enum(["auto", "manual"]),
+});
+
+/** Switch one job between Auto (on its schedule) and Manual (Run now only). */
+export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await can(session.user.id, "settings.edit"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const v = modeSchema.safeParse(await request.json().catch(() => null));
+  if (!v.success) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+  const job = findJob(v.data.job);
+  if (!job) {
+    return NextResponse.json({ error: "Unknown job" }, { status: 404 });
+  }
+
+  const previous = await setJobMode(job.name, v.data.mode);
+  if (previous !== v.data.mode) {
+    await writeAudit({
+      actorId: session.user.id,
+      action: "scheduler.mode",
+      entity: "ScheduledJob",
+      entityId: job.name,
+      summary:
+        v.data.mode === "manual"
+          ? `Set the "${job.label}" job to Manual — it now runs only when an admin presses Run now.`
+          : `Set the "${job.label}" job to Auto — it runs on its schedule again.`,
+      meta: { job: job.name, from: previous, to: v.data.mode },
+    });
+  }
+  return NextResponse.json({ ok: true, job: job.name, mode: v.data.mode });
 }

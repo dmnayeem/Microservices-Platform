@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { getJobMode } from "@/lib/scheduler/modes";
 import { recheckPendingSocialSubmissions } from "@/lib/social-recheck";
 
 export const dynamic = "force-dynamic";
@@ -28,23 +29,32 @@ export const maxDuration = 60;
  * left open — an unauthenticated endpoint that pays people is not something to
  * default to on, and the scheduler no longer needs the endpoint at all.
  */
-async function authorise(req: NextRequest): Promise<boolean> {
+async function authorise(
+  req: NextRequest
+): Promise<"secret" | "admin" | null> {
   const secret = process.env.CRON_SECRET;
   if (secret) {
     const bearer = req.headers.get("authorization");
     const key = req.nextUrl.searchParams.get("key");
-    if (bearer === `Bearer ${secret}` || key === secret) return true;
+    if (bearer === `Bearer ${secret}` || key === secret) return "secret";
   }
   const session = await auth();
   if (session?.user?.id && (await can(session.user.id, "submissions.approve"))) {
-    return true;
+    return "admin";
   }
-  return false;
+  return null;
 }
 
 async function run(req: NextRequest) {
-  if (!(await authorise(req))) {
+  const via = await authorise(req);
+  if (!via) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // A CRON_SECRET caller is a schedule, and the owner can switch this job to
+  // Manual on /admin/scheduler. A signed-in admin calling it is a hand-run and
+  // always goes through.
+  if (via === "secret" && (await getJobMode("recheck-submissions")) === "manual") {
+    return NextResponse.json({ ok: true, skipped: "manual-mode" });
   }
   const sp = req.nextUrl.searchParams;
   const summary = await recheckPendingSocialSubmissions({

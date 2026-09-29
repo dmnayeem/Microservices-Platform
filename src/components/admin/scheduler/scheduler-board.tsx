@@ -56,27 +56,74 @@ const STATE_STYLE: Record<string, string> = {
   failed: "bg-rose-500/10 text-rose-300 border-rose-500/30",
 };
 
+export type JobMode = "auto" | "manual";
+
 export function SchedulerBoard({
   jobs,
   initialRuns,
+  initialModes,
+  initialLatest,
 }: {
   jobs: JobInfo[];
   initialRuns: RunRow[];
+  initialModes: Record<string, JobMode>;
+  initialLatest: Record<string, RunRow>;
 }) {
   const [runs, setRuns] = useState<RunRow[]>(initialRuns);
   const [busy, setBusy] = useState<string | null>(null);
+  const [modes, setModes] = useState<Record<string, JobMode>>(initialModes);
+  const [latestByJob, setLatestByJob] =
+    useState<Record<string, RunRow>>(initialLatest);
+  const [savingMode, setSavingMode] = useState<string | null>(null);
 
+  // The per-job latest comes from its own query (the recent list is dominated
+  // by the every-minute jobs); a newer row in the recent list still wins.
   const latest = useMemo(() => {
-    const m = new Map<string, RunRow>();
-    for (const r of runs) if (!m.has(r.job)) m.set(r.job, r);
+    const m = new Map<string, RunRow>(Object.entries(latestByJob));
+    for (const r of runs) {
+      const cur = m.get(r.job);
+      if (!cur || r.claimedAt > cur.claimedAt) m.set(r.job, r);
+    }
     return m;
-  }, [runs]);
+  }, [runs, latestByJob]);
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/admin/scheduler", { cache: "no-store" });
     if (!res.ok) return;
-    const data = (await res.json()) as { runs: RunRow[] };
+    const data = (await res.json()) as {
+      runs: RunRow[];
+      modes?: Record<string, JobMode>;
+      latest?: Record<string, RunRow>;
+    };
     setRuns(data.runs);
+    if (data.modes) setModes(data.modes);
+    if (data.latest) setLatestByJob(data.latest);
+  }, []);
+
+  const changeMode = useCallback(async (name: string, mode: JobMode) => {
+    setSavingMode(name);
+    try {
+      const res = await fetch("/api/admin/scheduler", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job: name, mode }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(data.error || "Could not change that job.");
+        return;
+      }
+      setModes((m) => ({ ...m, [name]: mode }));
+      toast.success(
+        mode === "manual"
+          ? "Manual — it now runs only when you press Run now."
+          : "Auto — it runs on its schedule."
+      );
+    } catch {
+      toast.error("Could not reach the server.");
+    } finally {
+      setSavingMode(null);
+    }
   }, []);
 
   const runNow = useCallback(
@@ -98,6 +145,8 @@ export function SchedulerBoard({
         }
         if (data.line?.outcome === "failed") {
           toast.error(data.line.error || "That job failed.");
+        } else if (data.line?.outcome === "held-by-another-tick") {
+          toast.error(data.line.summary || "Already running.");
         } else {
           toast.success(data.line?.summary || "Done.");
         }
@@ -123,6 +172,12 @@ export function SchedulerBoard({
           moment. If the platform is quiet for a day, the next visitor catches
           it up.
         </p>
+        <p className="max-w-3xl text-sm text-slate-400">
+          Each job is <span className="text-slate-200">Auto</span> (runs on its
+          schedule) or <span className="text-slate-200">Manual</span> (runs
+          only when you press Run now). Run now always works, whichever you
+          choose.
+        </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -140,8 +195,44 @@ export function SchedulerBoard({
                   <h2 className="font-semibold text-white">{j.label}</h2>
                   <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
                     <Timer className="h-3.5 w-3.5" />
-                    Due {every(j.intervalMs)}
+                    {modes[j.name] === "manual"
+                      ? "Manual — runs only when you press Run now"
+                      : `Due ${every(j.intervalMs)}`}
                   </p>
+                  <div
+                    role="radiogroup"
+                    aria-label={`${j.label} mode`}
+                    className="mt-2 inline-flex rounded-lg border border-slate-700 bg-slate-950/60 p-0.5 text-xs"
+                  >
+                    {(["auto", "manual"] as const).map((m) => {
+                      const on = (modes[j.name] ?? "auto") === m;
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          disabled={savingMode !== null || on}
+                          onClick={() => changeMode(j.name, m)}
+                          className={`rounded-md px-3 py-1 font-medium transition-colors ${
+                            on
+                              ? m === "auto"
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : "bg-amber-500/15 text-amber-300"
+                              : "text-slate-400 hover:text-slate-200"
+                          } disabled:cursor-default`}
+                        >
+                          {savingMode === j.name && !on ? (
+                            <Loader2 className="inline h-3 w-3 animate-spin" />
+                          ) : m === "auto" ? (
+                            "Auto"
+                          ) : (
+                            "Manual"
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <button
                   type="button"
