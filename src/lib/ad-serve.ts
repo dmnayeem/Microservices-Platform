@@ -21,6 +21,7 @@ import {
   type NetworkSlotConfig,
 } from "@/lib/ad-network";
 import type { FeedAd } from "@/components/user/feed/feed-ad-card";
+import { signAdServeToken } from "@/lib/ad-serve-token";
 
 /** Shaped banner/interstitial ad — identical to the `/api/ads/serve` payload. */
 export interface ServedAd {
@@ -43,6 +44,8 @@ export interface ServedAd {
   allowSameOrigin?: boolean;
   /** Present only for ADSENSE / GAM — what the client needs to build a real slot. */
   network?: NetworkSlotConfig;
+  /** Serve token — a click bills only when it sends this back (see ad-serve-token). */
+  st?: string;
 }
 
 export interface ServeResult {
@@ -449,6 +452,12 @@ export async function serveAd(opts: {
     // `serveAdInner` just made, so this is a cache hit rather than a query.
     void recordServeOutcome(opts.placement, !!result.ad);
   }
+  // Stamp the delivery so a click on it can be billed — and only a click on
+  // an ad that was actually served to this viewer.
+  if (!opts.preview && result.ad && opts.userId) {
+    const st = signAdServeToken(result.ad.id, opts.userId);
+    if (st) return { ...result, ad: { ...result.ad, st } };
+  }
   return result;
 }
 
@@ -489,7 +498,7 @@ export async function serveFeedAds(opts: {
   userId?: string | null;
   count: number;
   exclude?: Iterable<string>;
-}): Promise<FeedAd[]> {
+}): Promise<(FeedAd & { st?: string })[]> {
   const { userId } = opts;
   const count = Math.min(Math.max(opts.count, 1), 20);
   const exclude = new Set(opts.exclude ?? []);
@@ -663,5 +672,7 @@ export async function serveFeedAds(opts: {
   // IN_FEED was the one space in the list with no denominator at all.
   bufferServeOutcome(placement.id, out.length > 0);
 
-  return out;
+  // Serve token per delivered ad — the only thing that makes a click on it
+  // billable (see ad-serve-token).
+  return out.map((a) => ({ ...a, st: signAdServeToken(a.adId, userId) }));
 }

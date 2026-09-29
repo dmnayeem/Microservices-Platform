@@ -47,6 +47,8 @@ export interface AdResponse {
   allowSameOrigin?: boolean;
   /** Present only for ADSENSE / GAM — what a real in-page slot needs. */
   network?: NetworkSlotConfig;
+  /** Serve token — sent back on click so the click can be billed. */
+  st?: string;
 }
 
 interface AdRendererProps {
@@ -354,7 +356,8 @@ export function AdRenderer({
     fetch(`/api/spaces/${ad.id}/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "open" }),
+      // The serve token is what makes this click billable (ad-serve-token).
+      body: JSON.stringify({ kind: "open", st: ad.st }),
     }).catch(() => {});
     // Optional third-party click tracker.
     if (ad.clickTracker) {

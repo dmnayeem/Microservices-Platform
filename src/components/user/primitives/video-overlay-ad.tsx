@@ -51,7 +51,8 @@ export function VideoOverlayAd({ className }: { className?: string }) {
     fetch(`/api/spaces/${ad.id}/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "open" }),
+      // The serve token is what makes this click billable (ad-serve-token).
+      body: JSON.stringify({ kind: "open", st: ad.st }),
     }).catch(() => {});
     if (ad.clickTracker) {
       try {

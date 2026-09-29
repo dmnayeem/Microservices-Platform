@@ -5,6 +5,7 @@ import { bumpAdDailyStat } from "@/lib/ad-stats";
 import { resolveEventCountry } from "@/lib/ad-geo";
 // `ad-serve` does not import this module, so there is no cycle.
 import { servableCampaignWhere } from "@/lib/ad-serve";
+import { verifyAdServeToken } from "@/lib/ad-serve-token";
 
 /**
  * Shared ad impression/click recording. Used by the neutral `/api/spaces/:id/
@@ -109,14 +110,22 @@ export async function recordImpression(
 
 /**
  * Record an authenticated click and bill the owning campaign. A click is BILLED
- * once per (user, ad) within a cooldown window so a bot can't drain a rival's
- * budget. The `budget >= cost` CAS is the no-overspend guard. Returns whether
+ * only with a valid serve token (once per token), and once per (user, ad)
+ * within a cooldown window, so a bot can't drain a rival's budget. The `budget >= cost` CAS is the no-overspend guard. Returns whether
  * the click was billed (false when deduped or out of budget).
  */
 export async function recordClick(
   adId: string,
-  userId: string
+  userId: string,
+  opts: { serveToken?: unknown } = {}
 ): Promise<{ billed: boolean }> {
+  // A click is billable only on an ad we actually served to this viewer: the
+  // serve path stamped it with a signed, 30-minute token bound to (ad, user).
+  // Without one the click still navigates (the caller never blocks on this),
+  // but nothing is counted or billed — it is not a click on a delivered ad.
+  const served = verifyAdServeToken(opts.serveToken, adId, userId);
+  if (!served) return { billed: false };
+
   const slot = await claimSlot({
     adId,
     kind: "CLICK",
@@ -125,6 +134,18 @@ export async function recordClick(
     windowMs: CLICK_COOLDOWN_MS,
   });
   if (!slot) return { billed: false };
+
+  // At most one billed click per serve. The unique index on
+  // (adId, kind, subject, bucket) is the guard; bucket 0 = "forever" (the
+  // token itself expires in 30 minutes, retention prunes the row at 30 days).
+  const tokenClaimed = await prisma.adEngagement
+    .create({
+      data: { adId, kind: "SERVE_TOKEN", subject: `st:${served.nonce}`, userId, bucket: BigInt(0) },
+      select: { id: true },
+    })
+    .then(() => true)
+    .catch(() => false);
+  if (!tokenClaimed) return { billed: false };
 
   // Resolved once, at the top, and threaded through every exit below.
   //
@@ -227,9 +248,14 @@ export async function recordClick(
 
   if (billed.count === 0) {
     // Out of budget — pause so it drops out of rotation.
+    //
+    // Only when the budget is what failed. The CAS above also fails for a
+    // campaign past its `endAt` or with a suspended advertiser; pausing those
+    // took them out of `runAdCampaignSweep`'s ACTIVE-only "ended → refund"
+    // pass, so the unspent budget sat locked in a PAUSED campaign.
     await prisma.adCampaign
       .updateMany({
-        where: { id: ad.campaignId, status: "ACTIVE" },
+        where: { id: ad.campaignId, status: "ACTIVE", budget: { lt: cost } },
         data: { status: "PAUSED" },
       })
       .catch(() => {});

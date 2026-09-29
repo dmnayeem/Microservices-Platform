@@ -7,6 +7,8 @@ import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-fram
 
 interface Ad {
   id: string;
+  /** Serve token — sent back on click so the click can be billed. */
+  st?: string;
   type: string;
   imageUrl?: string;
   videoUrl?: string;
@@ -123,7 +125,8 @@ export function AdInterstitialOverlay({
     fetch(`/api/spaces/${ad.id}/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "open" }),
+      // The serve token is what makes this click billable (ad-serve-token).
+      body: JSON.stringify({ kind: "open", st: ad.st }),
     }).catch(() => {});
   };
 
