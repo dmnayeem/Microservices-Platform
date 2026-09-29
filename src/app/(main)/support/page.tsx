@@ -76,7 +76,7 @@ const SECTIONS: Section[] = [
       {
         id: "methods",
         q: "What payment methods are supported?",
-        a: "bKash, Nagad, Binance Pay, PayPal, USDT (TRC-20). Add methods from Profile → Payment Methods.",
+        a: "Binance Pay, PayPal, USDT (TRC-20). Add methods from Profile → Payment Methods.",
       },
       {
         id: "time",

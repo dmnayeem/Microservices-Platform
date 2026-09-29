@@ -66,7 +66,7 @@ export function FooterEditor({ value, onChange, disabled }: Props) {
             items={value.payment_methods}
             onChange={(next) => set("payment_methods", next)}
             disabled={disabled}
-            placeholder="bKash, PayPal, …"
+            placeholder="PayPal, Binance, …"
           />
         </Field>
       </SectionCard>

@@ -26,7 +26,7 @@ const SECTIONS: Section[] = [
       },
       {
         q: "How do withdrawals work?",
-        a: "Convert points to cash, then withdraw via your linked payment method (bKash, Nagad, Binance, PayPal, etc). Minimum withdrawal varies by tier. FREE tier cannot withdraw — upgrade to STARTER or higher.",
+        a: "Convert points to cash, then withdraw via your linked payment method (Binance, PayPal, etc). Minimum withdrawal varies by tier. FREE tier cannot withdraw — upgrade to STARTER or higher.",
       },
       {
         q: "What are packages?",
@@ -66,11 +66,11 @@ const SECTIONS: Section[] = [
       },
       {
         q: "What payment methods are supported?",
-        a: "bKash, Nagad, Binance Pay, PayPal, bank transfer (select countries), and crypto (USDT/BTC).",
+        a: "Binance Pay, PayPal, bank transfer (select countries), and crypto (USDT/BTC).",
       },
       {
         q: "How long do withdrawals take?",
-        a: "Mobile wallets (bKash, Nagad): 1-24 hours. Crypto: under 1 hour. Bank transfers: 2-5 business days. PayPal: 1-3 business days.",
+        a: "Crypto: under 1 hour. Bank transfers: 2-5 business days. PayPal: 1-3 business days.",
       },
     ],
   },
