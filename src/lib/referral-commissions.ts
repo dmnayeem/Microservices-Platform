@@ -118,15 +118,20 @@ export async function processReferralCommissions(
       }
 
       if (eligible) {
-        let commission: number;
-        if (referrerConfig.commissionType === "PERCENTAGE") {
-          commission = Math.floor(pointsEarned * (referrerConfig.commissionValue / 100));
-        } else {
-          // FLAT_RATE commissionValue is denominated in USD → convert to points.
-          commission = Math.floor(referrerConfig.commissionValue * pointsPerUsd);
-        }
+        // Exact commission in THOUSANDTHS of a point, floored (never rounded
+        // up). Flooring whole points instead paid 0 on every small task — a 3%
+        // cut of 30 pts is 0.9 — so no commission was ever paid. The fraction
+        // now accrues on the upline and whole points are paid once it reaches
+        // 1000. `round6` strips float noise (0.1 * 3 = 0.30000000000000004)
+        // before the floor so a 999.9999999 does not lose a milli-point.
+        const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
+        const milli =
+          referrerConfig.commissionType === "PERCENTAGE"
+            ? Math.floor(round6(pointsEarned * referrerConfig.commissionValue * 10))
+            : // FLAT_RATE commissionValue is denominated in USD → convert to points.
+              Math.floor(round6(referrerConfig.commissionValue * pointsPerUsd * 1000));
 
-        if (commission > 0) {
+        if (milli > 0) {
           const uplineId = currentUser.referredById;
           // Keyed on the SUBMISSION, not the task.
           //
@@ -144,16 +149,39 @@ export async function processReferralCommissions(
             : `referral_${userId}_${taskId}_L${level}`;
 
           try {
-            await prisma.$transaction(async (tx) => {
-              // Ledger first: it carries the unique constraint, so a replay
-              // fails here — before any balance moves.
+            const commission = await prisma.$transaction(async (tx) => {
+              // Accrual first: its unique (userId, reference) makes a replay
+              // fail here — before the carry or any balance moves — even for
+              // an event that pays no whole point and so writes no ledger row.
+              await tx.referralCommissionAccrual.create({
+                data: { userId: uplineId, reference, milli },
+              });
+              // Paid under the pre-carry code (same reference)? Then this event
+              // is settled; recording its fraction again would pay it twice.
+              const settled = await tx.transaction.findUnique({
+                where: { userId_reference: { userId: uplineId, reference } },
+                select: { id: true },
+              });
+              if (settled) return 0;
+
+              // The increment takes the row lock, so a concurrent commission
+              // for the same upline waits and then reads this carry.
+              const { referralCommissionCarryMilli: carry } = await tx.user.update({
+                where: { id: uplineId },
+                data: { referralCommissionCarryMilli: { increment: milli } },
+                select: { referralCommissionCarryMilli: true },
+              });
+              const payout = Math.floor(carry / 1000);
+              if (payout <= 0) return 0;
+
+              // Ledger next: it carries the unique constraint too.
               await tx.transaction.create({
                 data: {
                   userId: uplineId,
                   type: TransactionType.REFERRAL,
                   status: TransactionStatus.COMPLETED,
-                  points: commission,
-                  amount: commission / pointsPerUsd,
+                  points: payout,
+                  amount: payout / pointsPerUsd,
                   description: `Level ${level} referral commission (${
                     referrerConfig.commissionType === "PERCENTAGE"
                       ? `${referrerConfig.commissionValue}%`
@@ -167,46 +195,58 @@ export async function processReferralCommissions(
                     level,
                     commissionType: referrerConfig.commissionType,
                     commissionValue: referrerConfig.commissionValue,
+                    // This event's exact share, and the carry it closed out.
+                    commissionMilli: milli,
+                    carryMilliBefore: carry - milli,
                   },
                 },
               });
               await tx.user.update({
                 where: { id: uplineId },
                 data: {
-                  pointsBalance: { increment: commission },
-                  totalEarnings: { increment: commission / pointsPerUsd },
+                  referralCommissionCarryMilli: { decrement: payout * 1000 },
+                  pointsBalance: { increment: payout },
+                  totalEarnings: { increment: payout / pointsPerUsd },
                 },
+              });
+              await tx.referralCommissionAccrual.update({
+                where: { userId_reference: { userId: uplineId, reference } },
+                data: { paidPoints: payout },
               });
               await tx.referralEarning.create({
                 data: {
                   userId: uplineId,
                   referredUserId: userId,
                   level,
-                  amount: commission / pointsPerUsd,
+                  amount: payout / pointsPerUsd,
                   sourceType: "TASK",
                   sourceId: taskId,
                 },
               });
+              return payout;
             });
 
-            await notifyUser({
-              userId: uplineId,
-              type: NotificationType.REFERRAL,
-              title: "Referral Commission!",
-              message: `You earned ${commission} points from your level ${level} referral's activity!`,
-              data: {
-                commission,
-                level,
-                referredUserId: userId,
-                commissionType: referrerConfig.commissionType,
-                commissionValue: referrerConfig.commissionValue,
-              },
-              link: "/referrals",
-            });
+            if (commission > 0) {
+              await notifyUser({
+                userId: uplineId,
+                type: NotificationType.REFERRAL,
+                title: "Referral Commission!",
+                message: `You earned ${commission} points from your level ${level} referral's activity!`,
+                data: {
+                  commission,
+                  level,
+                  referredUserId: userId,
+                  commissionType: referrerConfig.commissionType,
+                  commissionValue: referrerConfig.commissionValue,
+                },
+                link: "/referrals",
+              });
+            }
           } catch (err) {
-            // Already paid for this submission at this level. Nothing moved —
-            // the ledger insert is the first statement in the transaction.
-            // Keep walking: the levels above have their own references.
+            // Already accrued/paid for this submission at this level. Nothing
+            // moved — the accrual insert is the first statement in the
+            // transaction. Keep walking: the levels above have their own
+            // references.
             if (!isDuplicateLedgerError(err)) throw err;
             console.log(
               `[referral-commission] already paid user=${uplineId} level=${level} ref=${reference}`

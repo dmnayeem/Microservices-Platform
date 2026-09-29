@@ -298,7 +298,7 @@ export async function POST(
       // update it replaces; with it on the money waits in a payout row, so a
       // refund inside the window reverses an untouched row instead of clawing
       // back a balance the seller may already have withdrawn.
-      await payOrHoldSeller(tx, {
+      const held = await payOrHoldSeller(tx, {
         sellerId: listing.sellerId,
         purchaseId: p.id,
         amount: sellerNet,
@@ -375,7 +375,10 @@ export async function POST(
           },
         },
       });
-      await tx.transaction.create({
+      // Only once the money is really theirs. While held, the release sweep
+      // writes the EARNING row on payout — writing one here too showed the
+      // sale as earned twice (the other three sale paths already skip it).
+      if (!held.held) await tx.transaction.create({
         data: {
           userId: listing.sellerId,
           type: TransactionType.EARNING,

@@ -31,6 +31,9 @@ import {
 import { requireActiveUser } from "@/lib/require-active";
 import { closeTaskIfFull } from "@/lib/task-slots";
 import { profileGateResponse } from "@/lib/profile-gate-server";
+import { processReferralCommissions } from "@/lib/referral-commissions";
+import { recordUserAction } from "@/lib/goal-progress";
+import { runAchievementCheck } from "@/lib/achievements";
 
 /**
  * Strip the answer key before sending a quiz to the browser.
@@ -514,6 +517,22 @@ export async function POST(request: NextRequest) {
     // A pass awarded xp. Same reasoning as the slot retirement above: the
     // reward has landed, so this runs outside the transaction and quietly.
     if (passed) await syncUserLevelQuietly(session.user.id);
+
+    // The same follow-ups the submit and admin-review paths run on an approved
+    // quiz. This route is where the quiz player actually submits, and without
+    // them a pass never moved a "complete a quiz / task" event or mission, never
+    // unlocked an achievement and never paid the upline's commission. All three
+    // are idempotent on the submission id. Board quizzes count as none — the
+    // board's own claim is the one completion (see goal-progress ACCEPTS).
+    if (passed && pointsEarned > 0 && !task.boardId) {
+      await processReferralCommissions(session.user.id, pointsEarned, taskId, submission.id);
+      await recordUserAction({
+        userId: session.user.id,
+        action: "quiz_approved",
+        targetId: submission.id,
+      });
+      await runAchievementCheck(session.user.id);
+    }
 
     return NextResponse.json({
       submissionId: submission.id,

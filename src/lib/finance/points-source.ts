@@ -71,7 +71,8 @@ export function pointSourceOf(row: { type: string; reference?: string | null }):
 
   switch (row.type) {
     case "REFERRAL":
-      return "referral";
+      // Sign-up / invitee / milestone bonuses are REFERRAL rows too.
+      return ref.startsWith("refbonus_") ? "referral_bonus" : "referral";
     case "AFFILIATE_COMMISSION":
       return "affiliate";
     case "LOTTERY_WIN":
@@ -85,7 +86,8 @@ export function pointSourceOf(row: { type: string; reference?: string | null }):
     if (has("welcome")) return "welcome";
     if (has("browse_")) return "browse";
     if (has("event_")) return "event";
-    if (has("achievement_") || has("tasks_")) return "achievement";
+    if (has("achievement_") || has("tasks_") || has("milestone_")) return "achievement";
+    if (has("adreward_")) return "browse"; // rewarded ad view (api/ads/[id]/reward)
     if (has("mission_")) return "mission";
     if (has("refbonus_")) return "referral_bonus";
     if (has("leaderboard_")) return "leaderboard";

@@ -254,6 +254,21 @@ export async function POST(
 
     // Atomic settle
     const result = await prisma.$transaction(async (tx) => {
+      // Claim a coupon use FIRST, conditionally. validateCoupon() checked the
+      // limit outside this transaction, so two buyers at once both passed it
+      // and a 100-use coupon could be redeemed 101+ times. The row lock taken
+      // by this UPDATE serialises them; the loser matches 0 rows and the whole
+      // enrolment (charge included) rolls back.
+      if (couponInfo) {
+        const claimed = await tx.$executeRaw`
+          UPDATE "CourseCoupon"
+             SET "redemptionsCount" = "redemptionsCount" + 1, "updatedAt" = NOW()
+           WHERE "id" = ${couponInfo.id}
+             AND "isActive" = true
+             AND ("maxRedemptions" IS NULL OR "redemptionsCount" < "maxRedemptions")`;
+        if (claimed === 0) throw new Error("COUPON_EXHAUSTED");
+      }
+
       const enrollment = await tx.courseEnrollment.create({
         data: {
           courseId: course.id,
@@ -404,14 +419,6 @@ export async function POST(
         },
       });
 
-      // Coupon counter
-      if (couponInfo) {
-        await tx.courseCoupon.update({
-          where: { id: couponInfo.id },
-          data: { redemptionsCount: { increment: 1 } },
-        });
-      }
-
       return { enrollment };
     });
 
@@ -438,6 +445,15 @@ export async function POST(
     }
     // The debit compare-and-set matched nothing — the balance was spent between
     // the check above and the transaction. Nothing was enrolled or charged.
+    if (error instanceof Error && error.message === "COUPON_EXHAUSTED") {
+      return NextResponse.json(
+        {
+          error:
+            "That coupon just reached its redemption limit, so nothing was charged. Try again without it.",
+        },
+        { status: 409 }
+      );
+    }
     if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
       return NextResponse.json(
         {

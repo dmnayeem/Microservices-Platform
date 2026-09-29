@@ -4,26 +4,7 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
-
-const REWARDS: Record<string, number> = {
-  tasks_5: 100,
-  tasks_25: 500,
-  tasks_100: 2000,
-  checkins_7: 250,
-  checkins_30: 1500,
-  earn_5: 250,
-  earn_50: 1000,
-  earn_500: 5000,
-  posts_5: 200,
-  likes_50: 500,
-  level_10: 1000,
-  level_25: 5000,
-  refer_1: 500,
-  refer_10: 2500,
-  refer_50: 10000,
-  profile_complete: 500,
-  profile_socials: 300,
-};
+import { getMilestones, milestoneProgress } from "@/lib/milestones";
 
 export async function POST(
   _request: NextRequest,
@@ -41,9 +22,27 @@ export async function POST(
   return withIdempotency(_request, session.user.id, async () => {
   const { id } = await params;
   const userId = session.user.id;
-  const reward = REWARDS[id];
-  if (!reward) {
+  // Live list: admin-set points and on/off (`milestones.rewards`).
+  const def = (await getMilestones()).find((m) => m.id === id);
+  if (!def) {
     return NextResponse.json({ error: "Unknown milestone" }, { status: 400 });
+  }
+  if (!def.enabled) {
+    return NextResponse.json(
+      { error: "This milestone is not available right now." },
+      { status: 400 }
+    );
+  }
+  const reward = def.pointsReward;
+
+  // The milestone has to actually be reached. This route used to pay on the
+  // id alone, so every reward could be claimed by anyone, done or not.
+  const progress = await milestoneProgress(userId);
+  if ((progress?.get(id) ?? 0) < def.target) {
+    return NextResponse.json(
+      { error: "You haven't reached this milestone yet." },
+      { status: 400 }
+    );
   }
 
   // Check if already claimed
@@ -81,7 +80,9 @@ export async function POST(
         points: reward,
         amount: rewardUsd,
         description: `Milestone reward: ${id}`,
-        reference: id,
+        // Prefixed so the finance breakdown files it under achievements;
+        // the bare id (`refer_1`, `earn_5`…) was classified as "other".
+        reference: `milestone_${id}`,
       },
     }),
     prisma.auditLog.create({

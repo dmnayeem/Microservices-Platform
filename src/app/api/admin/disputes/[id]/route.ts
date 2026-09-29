@@ -343,9 +343,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         // The affiliate commission on a marketplace sale is paid OUT of the
-        // seller's cut (`api/marketplace/[id]/checkout/route.ts`), so the seller
-        // actually banked `sellerAmount - affiliateAmount`. Clawing back the
-        // full `sellerAmount` would take money the seller never received.
+        // seller's cut (`api/marketplace/[id]/checkout/route.ts`); the seller
+        // banked only the share after that commission.
         const commission = purchase
           ? await prisma.affiliateCommission.findUnique({
               where: {
@@ -355,7 +354,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             })
           : null;
         const affiliateAmount = toNum(commission?.commissionAmount);
-        const sellerBanked = Math.max(0, toNum(purchase?.sellerAmount) - affiliateAmount);
+        // `MarketplacePurchase.sellerAmount` is ALREADY that net figure — the
+        // checkout stores `sellerNet` — so it is used as-is. Subtracting the
+        // affiliate cut again under-clawed the seller by the commission.
+        const sellerBanked = Math.max(0, toNum(purchase?.sellerAmount));
         const platformFee = toNum(purchase?.fee);
 
         // Partial refunds unwind each party proportionally; a full refund

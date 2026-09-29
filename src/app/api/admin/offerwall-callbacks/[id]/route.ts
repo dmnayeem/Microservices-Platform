@@ -141,7 +141,10 @@ export async function PATCH(
           points: callback.userPayout,
           amount: callback.payoutAmount,
           description: `Offerwall: ${callback.offerName ?? callback.offerId ?? "completion"}`,
-          reference: callback.id,
+          // `offerwall_` prefix: a bare cuid was filed as task income, and
+          // `amount` here is the network payout, which finance only knows to
+          // skip for offerwall-prefixed rows. Still unique per callback.
+          reference: `offerwall_cb_${callback.id}`,
         },
       }),
       prisma.auditLog.create({

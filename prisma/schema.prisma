@@ -1553,6 +1553,10 @@ model User {
   customRole                        CustomRole?                  @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
   status                            UserStatus                   @default(PENDING_VERIFICATION)
   pointsBalance                     Int                          @default(0)
+  // Unpaid fraction of referral commission, in thousandths of a point. A 3%
+  // cut of a 30-pt task is 0.9 pts; flooring it paid nothing, ever. The
+  // fraction accrues here and whole points are paid once it reaches 1000.
+  referralCommissionCarryMilli      Int                          @default(0)
   cashBalance                       Decimal                      @default(0) @db.Decimal(18, 6)
   // Non-withdrawable ad-spend wallet (USD, 1 credit = $1). Bought with cash/
   // points or admin-granted; campaign budgets are funded from this.
@@ -2539,6 +2543,21 @@ model ReferralLevel {
   isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+}
+
+/// One row per referral-commission EVENT (submission x level), paid or not.
+/// Its unique (userId, reference) is what makes the carry idempotent: a replay
+/// fails on this insert before the carry moves, even when the event paid 0
+/// whole points and so wrote no Transaction row.
+model ReferralCommissionAccrual {
+  id         String   @id @default(cuid())
+  userId     String
+  reference  String
+  milli      Int
+  paidPoints Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, reference])
 }
 
 model ReferralEarning {
