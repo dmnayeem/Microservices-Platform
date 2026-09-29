@@ -59,6 +59,8 @@ export function AdInterstitialOverlay({
   const [ad, setAd] = useState<Ad | null>(null);
   const [left, setLeft] = useState(skipSeconds);
   const [total, setTotal] = useState(skipSeconds);
+  // Admin-set auto-close for this ad (seconds), or null = until closed.
+  const [showFor, setShowFor] = useState<number | null>(null);
   const doneRef = useRef(onDone);
   useEffect(() => {
     doneRef.current = onDone;
@@ -85,9 +87,12 @@ export function AdInterstitialOverlay({
         if (d?.ad) {
           setAd(d.ad);
           // Duration is admin-set per space (server), falling back to the prop.
-          const secs = Number(d.interstitialSeconds) || skipSeconds;
+          // Not `||`: that would turn an admin's 0 (skip instantly) into the default.
+          const raw = Number(d.interstitialSeconds);
+          const secs = Number.isFinite(raw) && raw >= 0 ? raw : skipSeconds;
           setLeft(secs);
           setTotal(secs);
+          setShowFor(Number(d.showSeconds) > 0 ? Number(d.showSeconds) : null);
           // The serve call already counted this impression server-side; firing
           // the beacon too would double-count every interstitial.
           if (!d.countedServerSide) {
@@ -118,6 +123,14 @@ export function AdInterstitialOverlay({
     const t = setTimeout(() => setLeft((n) => n - 1), 1000);
     return () => clearTimeout(t);
   }, [open, ad, left]);
+
+  // Auto-close once the ad's own show time is up (the server never sets it
+  // below the skip time, so this never cuts a forced watch short).
+  useEffect(() => {
+    if (!open || !ad || !showFor) return;
+    const t = setTimeout(() => doneRef.current(), showFor * 1000);
+    return () => clearTimeout(t);
+  }, [open, ad, showFor]);
 
   if (!open || !ad) return null;
 
@@ -160,6 +173,8 @@ export function AdInterstitialOverlay({
             muted
             playsInline
             controls
+            // A finished video has nothing left to force-watch.
+            onEnded={() => setLeft(0)}
             className="w-full max-h-[70vh] bg-black"
           />
           {ad.ctaUrl && (

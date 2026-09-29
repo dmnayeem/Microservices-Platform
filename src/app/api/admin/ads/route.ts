@@ -12,6 +12,14 @@ import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
 const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
 
+/** Per-ad full-screen timing: null/"" clears it, else clamped to [min, max]. */
+function parseSeconds(v: unknown, min: number, max: number): number | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === "") return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : undefined;
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user || !(await can(session.user.id, "ads.view"))) {
@@ -105,6 +113,8 @@ export async function POST(request: NextRequest) {
     width: Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null,
     height: Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null,
     weight: Number.isFinite(Number(body.weight)) ? Math.max(1, Number(body.weight)) : 10,
+    skipAfterSeconds: parseSeconds(body.skipAfterSeconds, 0, 60) ?? null,
+    showSeconds: parseSeconds(body.showSeconds, 1, 300) ?? null,
     // Admin-created ads are auto-approved (admin IS the reviewer) — stamping
     // approvedAt/reviewedBy here is what later lets them be paused and resumed.
     status: AD_STATUSES.includes(body.status) ? body.status : "ACTIVE",

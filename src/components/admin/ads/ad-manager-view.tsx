@@ -108,6 +108,8 @@ interface Ad {
   width: number | null;
   height: number | null;
   weight: number;
+  skipAfterSeconds?: number | null;
+  showSeconds?: number | null;
   status: string;
   impressions: number;
   clicks: number;
@@ -697,7 +699,7 @@ export function AdManagerView({
                           <p className="text-[11px] text-sky-300/90 mt-0.5 truncate">{hostOf(ad.targetUrl)}</p>
                         )}
                         <p className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
-                          {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} billed clicks · w{ad.weight}
+                          {ad.impressions.toLocaleString()} impr · {ad.clicks.toLocaleString()} billed clicks · w{ad.weight}{ad.skipAfterSeconds != null && ` · skip ${ad.skipAfterSeconds}s`}{ad.showSeconds != null && ` · ${ad.showSeconds}s`}
                         </p>
                         {ad.rejectionReason && (
                           <p className="text-[11px] text-red-300/80 mt-0.5 line-clamp-2">{ad.rejectionReason}</p>
@@ -2245,6 +2247,9 @@ function AdModal({
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
   const [weight, setWeight] = useState(String(ad?.weight ?? 10));
+  // Full-screen timing. Empty skip = the space's setting; empty show = until closed.
+  const [skipSecs, setSkipSecs] = useState(ad?.skipAfterSeconds != null ? String(ad.skipAfterSeconds) : "");
+  const [showSecs, setShowSecs] = useState(ad?.showSeconds != null ? String(ad.showSeconds) : "");
   // Display-only: the review state machine owns Ad.status (see ad-review.ts).
   const status = ad?.status ?? "ACTIVE";
   const isReviewState = ["PENDING", "REJECTED", "CHANGES_REQUESTED"].includes(status);
@@ -2303,6 +2308,8 @@ function AdModal({
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
         weight: Number(weight) || 10,
+        skipAfterSeconds: skipSecs.trim() === "" ? null : Number(skipSecs),
+        showSeconds: showSecs.trim() === "" ? null : Number(showSecs),
         // No `status` — an edit must never change review state. New admin ads are
         // auto-approved server-side (the admin IS the reviewer).
         rewardPoints: Number(rewardPoints) || 0,
@@ -2457,6 +2464,41 @@ function AdModal({
         <div>
           <label className="block text-xs text-slate-400 mb-1">Target URL (click destination)</label>
           <input value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} placeholder="https://..." className={inputCls} />
+        </div>
+
+        <div className="rounded-xl border border-slate-800 p-3 space-y-3">
+          <p className="text-xs font-semibold text-slate-300">
+            Full-screen timing{" "}
+            <span className="font-normal text-slate-500">(used where this ad shows as an interstitial)</span>
+          </p>
+          <SecondsPicker
+            label="Skip button appears after"
+            value={skipSecs}
+            onChange={setSkipSecs}
+            presets={[["", "Space default"], ["0", "Instantly"], ["5", "5s"], ["10", "10s"], ["15", "15s"]]}
+            min={0}
+            max={60}
+            inputCls={inputCls}
+          />
+          <SecondsPicker
+            label="Close automatically after"
+            value={showSecs}
+            onChange={setShowSecs}
+            presets={[["", "When viewer closes"], ["15", "15s"], ["30", "30s"], ["60", "60s"]]}
+            min={1}
+            max={300}
+            inputCls={inputCls}
+          />
+          {showSecs !== "" && skipSecs !== "" && Number(showSecs) < Number(skipSecs) && (
+            <p className="text-[11px] text-amber-400">
+              Closes before the skip time, so it stays until {skipSecs}s instead.
+            </p>
+          )}
+          {creative === "VIDEO" && (
+            <p className="text-[11px] text-slate-500">
+              Video: Skip also appears as soon as the video ends.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -2703,5 +2745,57 @@ function CampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign | nu
         </button>
       </div>
     </ModalShell>
+  );
+}
+
+/** Preset chips + a custom number box for one full-screen timing value. */
+function SecondsPicker({
+  label,
+  value,
+  onChange,
+  presets,
+  min,
+  max,
+  inputCls,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  presets: [string, string][];
+  min: number;
+  max: number;
+  inputCls: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-slate-400 mb-1">{label}</label>
+      <div className="flex flex-wrap items-center gap-2">
+        {presets.map(([v, text]) => (
+          <button
+            key={text}
+            type="button"
+            onClick={() => onChange(v)}
+            className={
+              "rounded-lg border px-3 py-1.5 text-xs font-semibold " +
+              (value === v
+                ? "border-emerald-500 bg-emerald-500/15 text-emerald-300"
+                : "border-slate-700 text-slate-300 hover:bg-white/5")
+            }
+          >
+            {text}
+          </button>
+        ))}
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Custom"
+          aria-label={`${label} (seconds)`}
+          className={inputCls + " w-24!"}
+        />
+      </div>
+    </div>
   );
 }

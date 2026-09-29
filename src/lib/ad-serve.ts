@@ -52,6 +52,8 @@ export interface ServeResult {
   poolSize: number;
   rotateMs: number;
   interstitialSeconds: number;
+  /** Auto-close after this many seconds; null = until the viewer closes it. */
+  showSeconds?: number | null;
   ad: ServedAd | null;
   /** True when this serve already counted the impression, so the client must
    *  NOT also fire a view beacon (that double-counted every interstitial). */
@@ -335,10 +337,17 @@ async function serveAdInner(opts: {
     placementRow.rotationSeconds ??
     (await getSetting<number>("ads.rotation_seconds", 12));
   const rotateSeconds = Math.min(60, Math.max(5, Number(rotateSecondsRaw) || 12));
-  const interstitialSeconds = Math.min(
-    60,
-    Math.max(3, placementRow.interstitialSeconds ?? 5)
-  );
+  // Skip time: the ad's own setting wins, then the space's, then 5s — so one
+  // space can mix 5s, 10s and 15s ads.
+  const interstitialSeconds =
+    chosen.skipAfterSeconds != null
+      ? Math.min(60, Math.max(0, chosen.skipAfterSeconds))
+      : Math.min(60, Math.max(3, placementRow.interstitialSeconds ?? 5));
+  // Auto-close time, never earlier than the skip time. Null = until closed.
+  const showSeconds =
+    chosen.showSeconds != null && chosen.showSeconds > 0
+      ? Math.min(300, Math.max(interstitialSeconds, chosen.showSeconds))
+      : null;
 
   const proxy = isFirstPartyAdType(chosen.type);
   // Network types (ADSENSE/GAM) ship their SLOT CONFIG, not markup.
@@ -396,6 +405,7 @@ async function serveAdInner(opts: {
     poolSize: ads.length,
     rotateMs: rotateSeconds * 1000,
     interstitialSeconds,
+    showSeconds,
     countedServerSide: counted,
     ad: {
       id: chosen.id,
