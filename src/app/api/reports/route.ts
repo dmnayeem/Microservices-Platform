@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { priorityForReason } from "@/lib/moderation";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   targetType: z.enum(["POST", "COMMENT", "USER", "LISTING", "GROUP"]),
@@ -16,7 +17,17 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const body = await request.json();
+  // Per account, not per IP: a reporter's IP changes often, the account does
+  // not. Enough for anyone genuinely flagging content; stops a script from
+  // flooding the moderation queue.
+  const rl = rateLimit(`report:${session.user.id}`, 20, 60 * 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Too many reports. Try again in ${rl.retryAfterSec}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
+  }
+  const body = await request.json().catch(() => null);
   const v = schema.safeParse(body);
   if (!v.success) {
     return NextResponse.json(
@@ -29,6 +40,23 @@ export async function POST(request: NextRequest) {
   // `"fraud"`, but the reporting dialog submits `"scam"` for that option — so
   // scam and fraud reports were filed as routine, which is exactly backwards.
   const priority = priorityForReason(v.data.reason);
+
+  // One open report per reporter per target. Re-reporting the same thing adds
+  // no information and inflated the queue (and any "N reports" signal). The
+  // reporter still sees success. A RESOLVED report does not block a new one —
+  // the content may have come back.
+  const already = await prisma.socialReport.findFirst({
+    where: {
+      contentType: v.data.targetType,
+      contentId: v.data.targetId,
+      reporterId: session.user.id,
+      status: "PENDING",
+    },
+    select: { id: true },
+  });
+  if (already) {
+    return NextResponse.json({ success: true, duplicate: true });
+  }
 
   await prisma.socialReport.create({
     data: {

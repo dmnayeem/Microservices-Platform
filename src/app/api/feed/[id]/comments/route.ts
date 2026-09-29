@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import { awardSocialEarning } from "@/lib/social-earning";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { recordUserAction } from "@/lib/goal-progress";
@@ -17,7 +18,10 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get("limit") || "20", 10) || 20, 1),
+      100
+    );
     const skip = (page - 1) * limit;
 
     // Check if post exists
@@ -27,6 +31,31 @@ export async function GET(
 
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Same visibility rules as GET /api/feed/:id — that route refuses a
+    // moderator-hidden post and a private group's post to outsiders, but its
+    // comments were readable here by anyone holding the post id.
+    const isOwner = post.userId === session?.user?.id;
+    if (post.isHidden && !isOwner) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+    if (post.groupId && !isOwner) {
+      const group = await prisma.group.findUnique({
+        where: { id: post.groupId },
+        select: { type: true },
+      });
+      if (group?.type === "PRIVATE") {
+        const member = session?.user?.id
+          ? await prisma.groupMember.findFirst({
+              where: { groupId: post.groupId, userId: session.user.id },
+              select: { id: true },
+            })
+          : null;
+        if (!member) {
+          return NextResponse.json({ error: "Post not found" }, { status: 404 });
+        }
+      }
     }
 
     // Get comments
@@ -88,6 +117,16 @@ export async function POST(
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Banned/suspended accounts keep a valid 30-day session, so the status has
+    // to be checked here — see src/lib/require-active.ts.
+    const active = await requireActiveUser(session.user.id);
+    if (!active.ok) {
+      return NextResponse.json(
+        { error: active.message },
+        { status: active.httpStatus }
+      );
     }
 
     const { id } = await params;

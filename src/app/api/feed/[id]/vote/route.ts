@@ -50,14 +50,23 @@ export async function POST(
     return NextResponse.json({ error: "Invalid option" }, { status: 400 });
   }
 
-  const existing = await prisma.vote.findUnique({
-    where: {
-      postId_userId: { postId: id, userId: session.user.id },
-    },
-  });
-
-  await prisma.$transaction(async (tx) => {
-    let updated = options.map((o) => ({ ...o }));
+  const existing = await prisma.$transaction(async (tx) => {
+    // Lock the post and recompute from the CURRENT counts. `pollOptions` is one
+    // JSON blob rewritten whole, so building it from the snapshot read above
+    // let two concurrent voters each write their own copy — the later write
+    // erased the earlier vote from the tallies while its Vote row stayed.
+    await tx.$queryRaw`SELECT id FROM "Post" WHERE id = ${id} FOR UPDATE`;
+    const fresh = await tx.post.findUnique({
+      where: { id },
+      select: { pollOptions: true },
+    });
+    const current =
+      (fresh?.pollOptions as unknown as PollOption[] | null) ?? options;
+    // Re-read under the lock too: a vote read before it could already be stale.
+    const existing = await tx.vote.findUnique({
+      where: { postId_userId: { postId: id, userId: session.user.id } },
+    });
+    let updated = current.map((o) => ({ ...o }));
     if (existing) {
       // Decrement previous, increment new
       updated = updated.map((o) =>
@@ -85,6 +94,7 @@ export async function POST(
       where: { id },
       data: { pollOptions: updated },
     });
+    return existing;
   });
 
   const refreshed = await prisma.post.findUnique({

@@ -383,6 +383,9 @@ function FeedTab({
   // pull-to-refresh regenerates it for fresh variety, while staying stable
   // across pages within one session (same seed).
   const seedRef = useRef<string>(Math.random().toString(36).slice(2));
+  // When page 1 was ranked; later pages rank against the same instant so no
+  // post slips between two pages.
+  const rankedAtRef = useRef<number | null>(null);
   // Baseline for the live "new activity" pill — the max lastActivityAt from the
   // last full load. The pulse poll compares against this.
   const latestSeenRef = useRef<number>(0);
@@ -440,6 +443,7 @@ function FeedTab({
       );
       const data = await res.json();
       const items: FeedPost[] = data.posts ?? [];
+      rankedAtRef.current = typeof data.rankedAt === "number" ? data.rankedAt : null;
       setPosts(items);
       setPage(1);
       setHasMore(items.length >= PAGE_SIZE);
@@ -475,7 +479,8 @@ function FeedTab({
     const next = page + 1;
     try {
       const res = await fetch(
-        `/api/feed?page=${next}&limit=${PAGE_SIZE}&seed=${seedRef.current}`
+        `/api/feed?page=${next}&limit=${PAGE_SIZE}&seed=${seedRef.current}` +
+          (rankedAtRef.current ? `&rankedAt=${rankedAtRef.current}` : "")
       );
       const data = await res.json();
       const items: FeedPost[] = data.posts ?? [];

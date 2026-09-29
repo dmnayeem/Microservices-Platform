@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
+import { requireActiveUser } from "@/lib/require-active";
 import {
   TransactionType,
   TransactionStatus,
@@ -23,6 +24,16 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Banned/suspended accounts keep a valid 30-day session, so the status has
+  // to be checked here — see src/lib/require-active.ts.
+  const active = await requireActiveUser(session.user.id);
+  if (!active.ok) {
+    return NextResponse.json(
+      { error: active.message },
+      { status: active.httpStatus }
+    );
+  }
+
   return withIdempotency(req, session.user.id, async () => {
   const donorId = session.user.id;
 

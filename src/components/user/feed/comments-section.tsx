@@ -58,7 +58,10 @@ export function CommentsSection({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/feed/${postId}/comments?page=1&limit=20`)
+    // The only page this panel ever loads — at 20, every comment past the 20th
+    // (and any reply whose parent was older) could never be seen. 100 is the
+    // route's cap.
+    fetch(`/api/feed/${postId}/comments?page=1&limit=100`)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;

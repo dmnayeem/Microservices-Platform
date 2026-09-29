@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NotificationType } from "@/generated/prisma/client";
+import { rateLimit } from "@/lib/rate-limit";
+
+/** Repeat follow/unfollow toggles notify the target at most once per window. */
+const FOLLOW_NOTIFY_WINDOW_MS = 24 * 60 * 60_000;
 
 export async function POST(
   _req: NextRequest,
@@ -13,6 +17,16 @@ export async function POST(
   }
   const { id: targetId } = await params;
   const me = session.user.id;
+
+  // Per account: follow/unfollow each write three rows (and a notification),
+  // so a toggling script was a cheap way to spam a target and churn counters.
+  const rl = rateLimit(`follow:${me}`, 30, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Too many follow changes. Try again in ${rl.retryAfterSec}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
+  }
 
   if (me === targetId) {
     return NextResponse.json({ error: "Can't follow yourself" }, { status: 400 });
@@ -57,10 +71,22 @@ export async function POST(
   }
 
   // Follow
-  const meUser = await prisma.user.findUnique({
-    where: { id: me },
-    select: { name: true, username: true },
-  });
+  const [meUser, recentlyNotified] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: me },
+      select: { name: true, username: true },
+    }),
+    // Unfollow → follow again must not ping the target a second time.
+    prisma.notification.findFirst({
+      where: {
+        userId: targetId,
+        type: NotificationType.SOCIAL,
+        createdAt: { gte: new Date(Date.now() - FOLLOW_NOTIFY_WINDOW_MS) },
+        data: { path: ["followerId"], equals: me },
+      },
+      select: { id: true },
+    }),
+  ]);
   await prisma.$transaction([
     prisma.follow.create({
       data: { followerId: me, followingId: targetId },
@@ -73,15 +99,19 @@ export async function POST(
       where: { id: targetId },
       data: { followersCount: { increment: 1 } },
     }),
-    prisma.notification.create({
-      data: {
-        userId: targetId,
-        type: NotificationType.SOCIAL,
-        title: "New follower",
-        message: `${meUser?.name ?? meUser?.username ?? "Someone"} started following you.`,
-        data: { followerId: me },
-      },
-    }),
+    ...(recentlyNotified
+      ? []
+      : [
+          prisma.notification.create({
+            data: {
+              userId: targetId,
+              type: NotificationType.SOCIAL,
+              title: "New follower",
+              message: `${meUser?.name ?? meUser?.username ?? "Someone"} started following you.`,
+              data: { followerId: me },
+            },
+          }),
+        ]),
   ]);
 
   const counts = await prisma.user.findUnique({

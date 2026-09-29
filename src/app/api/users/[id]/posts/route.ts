@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hiddenAuthorIds } from "@/lib/feed-hidden-authors";
 
 // GET /api/users/[id]/posts?limit=20&cursor=<postId>
 export async function GET(
@@ -15,6 +16,11 @@ export async function GET(
   const { searchParams } = new URL(req.url);
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
   const cursor = searchParams.get("cursor");
+
+  // A banned / suspended author's timeline is empty to everyone but them.
+  if (id !== session.user.id && (await hiddenAuthorIds()).includes(id)) {
+    return NextResponse.json({ posts: [], nextCursor: null });
+  }
 
   const posts = await prisma.post.findMany({
     // A "Members only" post is still on its author's timeline for signed-in

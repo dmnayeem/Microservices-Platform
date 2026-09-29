@@ -17,6 +17,8 @@ import { placementSpec } from "@/lib/ad-placements";
 export interface FeedAd {
   adId: string;
   kind: "post" | "brand";
+  /** Serve token: a click only bills when it carries the one issued with this ad. */
+  st?: string;
   author: {
     name: string;
     username: string | null;
@@ -128,7 +130,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
     fetch(`/api/spaces/${ad.adId}/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "open" }),
+      body: JSON.stringify({ kind: "open", st: ad.st }),
     }).catch(() => {});
   };
 
