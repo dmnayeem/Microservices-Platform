@@ -49,14 +49,41 @@ export function subscribeNotify(listener: () => void): () => void {
   };
 }
 
-/** The active (front-of-queue) notification, or null. */
-export function getNotifySnapshot(): NotifyItem | null {
-  return queue[0] ?? null;
+/**
+ * Everything waiting to be shown. The host renders rewards one at a time in
+ * the centre and every other kind as a stack in the top corner. The array is
+ * replaced (never mutated) on change, so it is a stable snapshot.
+ */
+export function getNotifySnapshot(): NotifyItem[] {
+  return queue;
 }
+
+/** Corner toasts kept on screen at once; the oldest makes room. */
+const MAX_TOASTS = 4;
 
 function push(item: Omit<NotifyItem, "id">): number {
   const id = ++counter;
-  queue = [...queue, { ...item, id }];
+  let next = queue;
+  if (item.kind !== "reward") {
+    // The same message again (a double tap, a retry loop) replaces the one on
+    // screen and restarts its timer instead of stacking copies.
+    next = next.filter(
+      (n) =>
+        !(
+          n.kind === item.kind &&
+          n.title === item.title &&
+          n.description === item.description
+        )
+    );
+    const toasts = next.filter((n) => n.kind !== "reward");
+    if (toasts.length >= MAX_TOASTS) {
+      const drop = new Set(
+        toasts.slice(0, toasts.length - MAX_TOASTS + 1).map((n) => n.id)
+      );
+      next = next.filter((n) => !drop.has(n.id));
+    }
+  }
+  queue = [...next, { ...item, id }];
   emit();
   return id;
 }
@@ -79,7 +106,7 @@ export const notifyCenter = {
         description: opts.description,
         amount: opts.amount,
         unit: opts.unit ?? "pts",
-        durationMs: opts.durationMs ?? 3500,
+        durationMs: opts.durationMs ?? 2200,
       });
     void runInterstitial().then(show, show);
     return 0;

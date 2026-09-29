@@ -125,7 +125,7 @@ export function WithdrawalStatusCards({
                 {paid && w.transactionId ? ` · ref ${w.transactionId}` : ""}
               </p>
               {!paid && w.rejectionReason && (
-                <p className="mt-1.5 rounded-lg bg-black/20 px-2.5 py-1.5 text-xs text-red-100">
+                <p className="mt-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
                   <span className="font-semibold">Reason:</span> {w.rejectionReason}
                 </p>
               )}

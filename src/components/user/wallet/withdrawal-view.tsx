@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, AlertTriangle, Loader2, Lock, Plus, ShieldCheck, Banknote, Clock } from "lucide-react";
+import { ArrowUpRight, AlertTriangle, Loader2, Lock, Plus, ShieldCheck, Banknote, Clock, Crown, CheckCircle2 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
@@ -65,6 +65,21 @@ export function WithdrawalView({
     methods.find((m) => m.isDefault)?.id ?? methods[0]?.id ?? ""
   );
   const [busy, setBusy] = useState(false);
+  // Shown when a user without a subscription sends the request. The form is
+  // open to them on purpose: they see what they would receive first, and the
+  // subscription is asked for at the moment it matters.
+  const [needSub, setNeedSub] = useState(false);
+  const subCardRef = useRef<HTMLDivElement | null>(null);
+  const askForSubscription = () => {
+    setNeedSub(true);
+    // The card sits above the form; bring it into view on a phone.
+    requestAnimationFrame(() =>
+      subCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    );
+  };
+  // The form is usable when withdrawals are on, or when the ONLY thing missing
+  // is a subscription — that one is asked for on submit, not up front.
+  const formOpen = withdrawalsEnabled || subscriptionRequired;
 
   const onAmountChange = (raw: string) => {
     // Digits + a single decimal point, and no leading zeros ("020" → "20",
@@ -85,7 +100,7 @@ export function WithdrawalView({
   const tooHigh = amount > max;
   const overBalance = amount > cashBalance;
   const valid =
-    withdrawalsEnabled &&
+    formOpen &&
     !kycLocked &&
     amount > 0 &&
     !tooLow &&
@@ -95,6 +110,10 @@ export function WithdrawalView({
 
   const submit = async () => {
     if (!valid) return;
+    if (subscriptionRequired) {
+      askForSubscription();
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/withdrawals", {
@@ -102,7 +121,16 @@ export function WithdrawalView({
         headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify({ amount, methodId }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        // The server is the final word: a plan that lapsed while this page was
+        // open lands here, and gets the same prompt rather than a raw error.
+        if (res.status === 403 && /subscription/i.test(body.error ?? "")) {
+          askForSubscription();
+          return;
+        }
+        throw new Error(body.error || "Try again");
+      }
       await runInterstitial();
       toast.success("Withdrawal request submitted", {
         description: `You'll receive your funds within ${payoutMessage} after approval.`,
@@ -129,30 +157,6 @@ export function WithdrawalView({
         pointsPerUsd={pointsPerUsd}
         compact
       />
-
-      {subscriptionRequired && (
-        <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4">
-          <div className="flex items-start gap-3">
-            <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-amber-300">
-                Subscription required to withdraw
-              </p>
-              <p className="text-xs text-amber-400/80 mt-0.5">
-                Withdrawals are only available with an active subscription.
-                Subscribe to a plan to unlock cashing out your earnings.
-              </p>
-              <Link
-                href="/packages"
-                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) text-xs font-bold"
-              >
-                Get Subscription
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       {!withdrawalsEnabled && !subscriptionRequired && (
         <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-4">
@@ -205,8 +209,64 @@ export function WithdrawalView({
         </div>
       )}
 
-      {withdrawalsEnabled && !kycLocked && (
+      {formOpen && !kycLocked && cashBalance < min && (
+        <div className="glass rounded-xl p-4">
+          <p className="text-sm font-bold text-white">
+            {usd(Math.max(0, min - cashBalance))} more to your first withdrawal
+          </p>
+          <p className="text-xs text-(--app-ink-3) mt-0.5">
+            You can withdraw once your cash balance reaches {usd(min)}.
+          </p>
+          <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-500"
+              style={{ width: `${Math.min(100, min > 0 ? (cashBalance / min) * 100 : 100)}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-(--app-ink-3) tabular-nums">
+            {usd(cashBalance)} of {usd(min)}
+          </p>
+        </div>
+      )}
+
+      {formOpen && !kycLocked && cashBalance >= min && (
         <>
+          {needSub && (
+            <div
+              ref={subCardRef}
+              role="status"
+              className="scroll-mt-20 rounded-xl border border-amber-500/40 bg-linear-to-br from-amber-500/15 to-amber-500/5 p-4"
+            >
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-500/20 text-amber-300">
+                  <Crown className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-amber-200">
+                    Subscribe to unlock withdrawals
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-100/80">
+                    Your earnings are ready — withdrawals are open to members
+                    with an active subscription.
+                  </p>
+                </div>
+              </div>
+              <ul className="mt-3 space-y-1.5 text-xs text-amber-50/90">
+                <li className="flex gap-2">
+                  <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  Nothing was sent and your balance is untouched.
+                </li>
+                <li className="flex gap-2">
+                  <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  Subscribe, come back, and submit this same request.
+                </li>
+                <li className="flex gap-2">
+                  <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  Withdraw any time your cash is {usd(min)} or more.
+                </li>
+              </ul>
+            </div>
+          )}
           <div className="glass rounded-xl p-4 space-y-3">
             <div>
               <label className="block text-xs font-medium text-(--app-ink-3) mb-1.5">
@@ -327,18 +387,29 @@ export function WithdrawalView({
             </div>
           )}
 
-          <button
-            disabled={!valid || busy}
-            onClick={submit}
-            className="w-full py-3 rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {busy ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
+          {needSub ? (
+            <Link
+              href="/packages"
+              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) font-bold text-sm inline-flex items-center justify-center gap-2"
+            >
+              <Crown className="w-4 h-4" />
+              Get subscription
               <ArrowUpRight className="w-4 h-4" />
-            )}
-            Submit Withdrawal Request
-          </button>
+            </Link>
+          ) : (
+            <button
+              disabled={!valid || busy}
+              onClick={submit}
+              className="w-full py-3 rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 hover:opacity-90 text-white font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {busy ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowUpRight className="w-4 h-4" />
+              )}
+              Submit Withdrawal Request
+            </button>
+          )}
         </>
       )}
     </div>

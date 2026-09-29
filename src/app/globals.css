@@ -418,6 +418,21 @@ textarea,
   animation: pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Corner toast arriving (notify-center-host.tsx): a short drop-in, no bounce. */
+@keyframes toast-in {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
 /* Celebration popup confetti (celebration-host.tsx): a short burst from the
    band, once. Pure CSS; nothing runs after it lands. */
 .celebrate-confetti span {
@@ -440,6 +455,7 @@ textarea,
 @media (prefers-reduced-motion: reduce) {
   .celebrate-confetti span { animation: none; }
   .animate-pop-in { animation: none; }
+  .animate-toast-in { animation: none; }
 }
 
 /* Feed cards arriving. Deliberately short and small: a long slide on every card
