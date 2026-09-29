@@ -16,13 +16,26 @@ import {
   BookOpen,
   ExternalLink,
   UserCircle2,
+  PanelsTopLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
-import { isSuperAdmin, type UserRole, ADMIN_ROLES, ROLE_CONFIG, ROLE_PERMISSIONS, PERMISSION_CATALOG, FINANCE_PERMISSIONS, SUPERADMIN_ONLY_PERMISSIONS, ROLE_META, permissionLabel, permissionDescription } from "@/lib/rbac";
+import { isSuperAdmin, type UserRole, ADMIN_ROLES, ROLE_CONFIG, ROLE_PERMISSIONS, PERMISSION_CATALOG, FINANCE_PERMISSIONS, SUPERADMIN_ONLY_PERMISSIONS, ROLE_META, permissionLabel, permissionDescription, ADMIN_MODULES, CATEGORY_LABELS, CATEGORY_ORDER, stripProtectedForRole } from "@/lib/rbac";
 import { FEATURES } from "@/lib/features";
 import { AccessCatalog } from "@/components/admin/access/access-catalog";
-import { getRolePermissionConfig, can } from "@/lib/permissions";
+import {
+  getRolePermissionConfig,
+  can,
+  getAdminModuleRules,
+  getConfiguredRolePermissions,
+} from "@/lib/permissions";
+import {
+  CONFIGURABLE_ADMIN_ROLES,
+  isConfigurableModule,
+  isLockedModule,
+  modulesSharingPermissions,
+} from "@/lib/admin-module-rules";
+import { AdminPagesEditor } from "@/components/admin/access/admin-pages-editor";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { RolePermissionEditor } from "@/components/admin/access/role-permission-editor";
 import { CustomRolesManager } from "@/components/admin/access/custom-roles-manager";
@@ -43,11 +56,12 @@ interface PageProps {
   }>;
 }
 
-type ViewId = "admins" | "activity" | "roles" | "catalog";
+type ViewId = "admins" | "activity" | "roles" | "pages" | "catalog";
 
 const VIEW_TABS: Array<{ id: ViewId; label: string; icon: typeof Shield }> = [
   { id: "admins", label: "Admin Accounts", icon: Users },
   { id: "roles", label: "Roles & Permissions", icon: Key },
+  { id: "pages", label: "Admin pages", icon: PanelsTopLeft },
   { id: "catalog", label: "What Everything Does", icon: BookOpen },
   { id: "activity", label: "Activity Log", icon: Activity },
 ];
@@ -75,6 +89,51 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
 
   // Saved role→permission overrides (for the editable Roles & Permissions tab).
   const savedRolePerms = view === "roles" ? await getRolePermissionConfig() : {};
+
+  // Admin pages tab: the page rules, plus which pages each role's permissions
+  // reach at all (a role that can't open a page has nothing to hide).
+  const pagesTab =
+    view === "pages"
+      ? await (async () => {
+          const [rules, configured] = await Promise.all([
+            getAdminModuleRules(),
+            getConfiguredRolePermissions(),
+          ]);
+          const sharing = modulesSharingPermissions();
+          const groups = CATEGORY_ORDER.map((category) => ({
+            label: CATEGORY_LABELS[category],
+            modules: ADMIN_MODULES.filter((m) => m.category === category).map((m) => ({
+              href: m.href,
+              name: m.name,
+              icon: m.icon,
+              configurable: isConfigurableModule(m),
+              lockedReason: isLockedModule(m.href)
+                ? "always on"
+                : m.superAdminOnly
+                  ? "super admin only"
+                  : null,
+              sharesWith: sharing[m.href] ?? [],
+            })),
+          })).filter((g) => g.modules.length > 0);
+          const roleReach = Object.fromEntries(
+            CONFIGURABLE_ADMIN_ROLES.map((r) => {
+              const perms = stripProtectedForRole(new Set(configured[r]), r, []);
+              return [
+                r,
+                ADMIN_MODULES.filter((m) => m.permissions.some((p) => perms.has(p))).map(
+                  (m) => m.href
+                ),
+              ];
+            })
+          );
+          return {
+            groups,
+            roleReach,
+            initial: { disabled: rules.disabled, roles: rules.roles as Record<string, string[]> },
+            roles: CONFIGURABLE_ADMIN_ROLES.map((r) => ({ role: r, label: ROLE_CONFIG[r].label })),
+          };
+        })()
+      : null;
   const customRolesRaw =
     view === "roles"
       ? await prisma.customRole.findMany({
@@ -514,6 +573,17 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
             </div>
           );
         })()}
+
+      {/* ADMIN PAGES TAB — which admin pages exist, for all admins / per role */}
+      {view === "pages" && pagesTab && (
+        <AdminPagesEditor
+          groups={pagesTab.groups}
+          roles={pagesTab.roles}
+          initial={pagesTab.initial}
+          roleReach={pagesTab.roleReach}
+          canManage={isSuperAdmin(adminRole)}
+        />
+      )}
 
       {/* ADMINS TAB */}
       {view === "admins" && (

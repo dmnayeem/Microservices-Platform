@@ -4,12 +4,19 @@ import { BALANCE_EVENT, fetchHeaderData } from "@/lib/header-data";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Home, ListTodo, Wallet, Target, Menu } from "lucide-react";
+import { Home, Menu } from "lucide-react";
 import { useNavCounts, badgeText } from "@/hooks/use-nav-counts";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { haptic } from "@/lib/haptics";
+import {
+  DEFAULT_BOTTOM_TABS,
+  isExternalHref,
+  visibleFor,
+  type BottomTab,
+} from "@/lib/nav-config";
+import { NavIcon } from "@/lib/nav-icons";
 
 /**
  * The bar's measured height, in px, on <html>. Anything that has to sit above
@@ -17,13 +24,9 @@ import { haptic } from "@/lib/haptics";
  */
 const NAV_HEIGHT_VAR = "--bottom-nav-h";
 
-// Left → right: two smaller page tabs, the bigger center Home, then Wallet + Menu.
-const TABS = [
-  { name: "Mission", href: "/daily-mission", icon: Target, feature: "dailyMission" },
-  { name: "Tasks", href: "/tasks", icon: ListTodo, feature: "tasks" },
-  { name: "Home", href: "/social", icon: Home, primary: true },
-  { name: "Wallet", href: "/wallet", icon: Wallet },
-] as const;
+// Left → right: four admin-editable slots (Settings → Navigation → Tab bar),
+// then the fixed Menu button. The default is today's bar: Mission, Tasks, the
+// bigger centre Home, Wallet — see DEFAULT_BOTTOM_TABS.
 
 const GRID_COLS: Record<number, string> = {
   3: "grid-cols-3",
@@ -36,9 +39,12 @@ const GRID_COLS: Record<number, string> = {
 export function BottomTabBar({
   features,
   hiddenPaths,
+  tabs: configured = DEFAULT_BOTTOM_TABS,
 }: {
   features?: string[];
   hiddenPaths?: string[];
+  /** The admin's four slots (already normalised server-side). */
+  tabs?: BottomTab[];
 }) {
   const pathname = usePathname();
   const setMenuOpen = useMobileNav((s) => s.setOpen);
@@ -90,12 +96,9 @@ export function BottomTabBar({
     pathname === href || pathname.startsWith(`${href}/`);
 
   const navRef = useRef<HTMLElement | null>(null);
-  const hidden = new Set(hiddenPaths ?? []);
-  const tabs = TABS.filter(
-    (t) =>
-      (!("feature" in t) || !features || features.includes(t.feature)) &&
-      !hidden.has(t.href)
-  );
+  // Visibility still wins over the admin's menu: a tab whose page is hidden
+  // for this user, or whose feature they lack, drops out.
+  const tabs = visibleFor(configured, features, hiddenPaths);
 
   /**
    * Publish this bar's real height so anything sitting above it can clear it
@@ -170,18 +173,23 @@ export function BottomTabBar({
       >
         {tabs.map((tab) => {
           const activeTab = isActive(tab.href);
-          const primary = "primary" in tab && tab.primary;
+          const primary = tab.primary;
+          const external = isExternalHref(tab.href);
           return (
             <Link
-              key={tab.name}
+              key={tab.id}
               href={tab.href}
+              {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               onClick={() => haptic("light")}
               aria-current={activeTab ? "page" : undefined}
               className={cn(
                 // min-h-14 (56px) rather than whatever the content happened to
                 // add up to — a tab bar row is the most-tapped target in the
                 // app and it must not depend on the label's line height.
-                "app-press relative flex flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-bold tracking-tight",
+                // `min-w-0` + the nowrap label below: an admin-typed label (up
+                // to 12 characters) must never wrap onto a second line and
+                // make this row taller than the bar measures.
+                "app-press relative flex min-w-0 flex-col items-center justify-center gap-1 min-h-14 py-2 text-[11px] font-bold tracking-tight",
                 activeTab ? "text-(--app-accent-ink)" : "text-(--app-ink-3)"
               )}
             >
@@ -210,11 +218,11 @@ export function BottomTabBar({
                       : "bg-(--app-surface-2) text-(--app-ink-2) border border-(--app-line)"
                   )}
                 >
-                  <tab.icon className="w-6 h-6" />
+                  <NavIcon iconKey={tab.icon} fallback={Home} className="w-6 h-6" />
                 </span>
               ) : (
                 <span className="relative">
-                  <tab.icon className="w-5.5 h-5.5" />
+                  <NavIcon iconKey={tab.icon} fallback={Home} className="w-5.5 h-5.5" />
                   {tab.href === "/daily-mission" && navCounts.dailyMission > 0 && (
                     <span
                       aria-label={`${navCounts.dailyMission} left today`}
@@ -225,7 +233,14 @@ export function BottomTabBar({
                   )}
                 </span>
               )}
-              <span className={cn(primary && "mt-0.5")}>{tab.name}</span>
+              <span
+                className={cn(
+                  "block max-w-full truncate whitespace-nowrap px-0.5",
+                  primary && "mt-0.5"
+                )}
+              >
+                {tab.label}
+              </span>
             </Link>
           );
         })}

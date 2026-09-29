@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,9 @@ import { toNum, toNumOrNull } from "@/lib/money";
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    // Super-admin page visibility: refuse when /courses is hidden for this user.
+    const pageHidden = await assertPageVisible(session?.user?.id, "/courses");
+    if (pageHidden) return pageHidden;
     const { searchParams } = new URL(request.url);
 
     const q = (searchParams.get("q") ?? searchParams.get("search") ?? "").trim();

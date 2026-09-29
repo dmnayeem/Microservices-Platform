@@ -21,6 +21,7 @@ import {
   GraduationCap,
   TrendingUp,
   Award,
+  BadgeDollarSign,
 } from "lucide-react";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
 import { cn, pts } from "@/lib/utils";
@@ -36,8 +37,10 @@ import {
   PromoteTab,
   LeaderboardTab,
   OfferwallTab,
+  TAB_PAGE,
   type UserSummary,
 } from "@/components/user/earn/earning-hub";
+import { isPathHidden } from "@/lib/page-visibility";
 
 type SummaryRow = {
   available: number;
@@ -114,6 +117,7 @@ const CATEGORIES: Category[] = [
   { key: "board", label: "Board Tasks", description: "Complete a task board", icon: Pin, color: "amber", href: "/board-tasks", kind: "board" },
   { key: "quizzes", label: "Quiz Games", description: "Standalone games — not tasks", icon: Brain, color: "amber", href: "/quizzes", kind: "feature", feature: "quizzes" },
   { key: "offerwalls", label: "Offerwalls", description: "Complete partner offers", icon: Gift, color: "emerald", href: "/offerwalls", kind: "feature", feature: "offerwalls" },
+  { key: "cpa", label: "CPA Offers", description: "Sign up with partners + proof", icon: BadgeDollarSign, color: "emerald", href: "/cpa", kind: "feature" },
 ];
 
 const EMPTY: SummaryData = {
@@ -127,12 +131,21 @@ const EMPTY: SummaryData = {
 export function TasksHubView({
   user,
   packageName,
+  initialSummary,
+  hiddenPaths,
 }: {
   user: UserSummary;
   packageName: string;
+  /** Server-rendered first copy of /api/tasks/summary (null ⇒ fetch on mount). */
+  initialSummary?: SummaryData | null;
+  /** Pages hidden by super-admin page visibility — their cards/tabs drop out. */
+  hiddenPaths?: string[];
 }) {
   const [tab, setTab] = useState<TabKey>("tasks");
-  const [data, setData] = useState<SummaryData>(EMPTY);
+  const [data, setData] = useState<SummaryData>(() =>
+    initialSummary ? { ...EMPTY, ...initialSummary } : EMPTY
+  );
+  const hasInitialSummary = !!initialSummary;
   const [today, setToday] = useState({
     completedToday: 0,
     pointsEarned: 0,
@@ -168,11 +181,12 @@ export function TasksHubView({
   useEffect(() => {
     // Deferred a tick so the loaders' setState calls are not synchronous in the
     // effect body (react-hooks/set-state-in-effect).
+    // The summary arrives server-rendered; only fetch it here when it did not.
     void Promise.resolve().then(() => {
-      loadSummary();
+      if (!hasInitialSummary) loadSummary();
       loadStats();
     });
-  }, [loadSummary, loadStats]);
+  }, [loadSummary, loadStats, hasInitialSummary]);
 
   useAutoRefresh(() => {
     loadSummary();
@@ -185,10 +199,19 @@ export function TasksHubView({
   );
 
   // Which category cards show is controlled by the admin per-category toggle
-  // (SystemSetting `tasks.category_visibility`); missing key ⇒ shown.
+  // (SystemSetting `tasks.category_visibility`); missing key ⇒ shown. A card
+  // whose page the super admin hid for this user drops out as well.
   const visibleCategories = useMemo(
-    () => CATEGORIES.filter((cat) => isCategoryVisible(data.visibility, cat.key)),
-    [data.visibility]
+    () =>
+      CATEGORIES.filter(
+        (cat) =>
+          isCategoryVisible(data.visibility, cat.key) &&
+          !isPathHidden(cat.href, hiddenPaths)
+      ),
+    [data.visibility, hiddenPaths]
+  );
+  const tabs = TABS.filter(
+    (t) => !TAB_PAGE[t.key] || !isPathHidden(TAB_PAGE[t.key]!, hiddenPaths)
   );
 
   const STATS = [
@@ -267,7 +290,7 @@ export function TasksHubView({
         innerClassName="flex gap-1.5 px-1 pb-1"
         ariaLabel="Task tabs"
       >
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const isActive = t.key === tab;
           return (
             <button
@@ -387,9 +410,9 @@ export function TasksHubView({
           </div>
         ))}
 
-      {tab === "learn" && <LearnTab />}
+      {tab === "learn" && <LearnTab hiddenPaths={hiddenPaths} />}
       {tab === "rank" && <LevelUpTab user={user} />}
-      {tab === "promote" && <PromoteTab />}
+      {tab === "promote" && <PromoteTab hiddenPaths={hiddenPaths} />}
       {tab === "leaderboard" && <LeaderboardTab user={user} />}
       {tab === "offerwall" && <OfferwallTab />}
     </div>

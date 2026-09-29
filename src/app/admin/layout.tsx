@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
@@ -5,12 +6,14 @@ import { USER_HOME } from "@/lib/routes";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
 import { AdminLayoutShell } from "@/components/admin/layout-shell";
-import { isAdmin, type UserRole } from "@/lib/rbac";
+import { isAdmin, moduleForPath, type UserRole } from "@/lib/rbac";
 import {
   getEffectivePermissions,
   getEffectiveModules,
+  getModuleDecisions,
   pathAllowed,
 } from "@/lib/permissions";
+import { ModuleOffNotice } from "@/components/admin/module-off-notice";
 import { getPendingCounts, badgesByModule } from "@/lib/admin/pending-counts";
 import { SIDEBAR_COOKIE } from "@/lib/stores/admin-ui-store";
 
@@ -58,6 +61,21 @@ export default async function AdminLayout({
     if (!pathAllowed(pathname, perms)) {
       redirect("/admin/no-access");
     }
+    // Page rules (super admin: off for all / per role / per admin). A page
+    // switched off goes back to the dashboard with a notice; a page reachable
+    // only through a permission another page's grant brought in is refused
+    // like any missing permission. The super admin is never refused.
+    const mod = moduleForPath(pathname);
+    if (mod && mod.href !== "/admin") {
+      const decision = (await getModuleDecisions(session.user.id)).get(mod.href);
+      if (decision && !decision.visible) {
+        redirect(
+          decision.source === "no-permission" || decision.source === "locked"
+            ? "/admin/no-access"
+            : "/admin?notice=page-off"
+        );
+      }
+    }
   }
 
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
@@ -94,6 +112,9 @@ export default async function AdminLayout({
           />
         }
       >
+        <Suspense fallback={null}>
+          <ModuleOffNotice />
+        </Suspense>
         {children}
       </AdminLayoutShell>
     </div>

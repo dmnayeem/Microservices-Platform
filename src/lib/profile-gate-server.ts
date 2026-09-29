@@ -3,10 +3,12 @@ import {
   GATE_FEATURES,
   DEFAULT_GATE_FEATURES,
   clampGatePercent,
+  gateCovers,
   type GateFeature,
   type GateMode,
 } from "@/lib/profile-gate-features";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { getSetting } from "@/lib/system-settings";
 import {
@@ -86,50 +88,44 @@ export async function getGateConfig(): Promise<{
   };
 }
 
-/**
- * Resolve the gate for one user and one feature.
- *
- * With no feature it answers "is this user's profile complete by the admin's
- * chosen standard" — for the dashboard banner — and `required` means the switch
- * is on at all. Short-circuits with no user query when the switch is off.
- */
-export async function getProfileGateState(
-  userId: string,
-  feature?: GateFeature
-): Promise<ProfileGateState> {
-  const cfg = await getGateConfig();
-  if (!cfg.on) return open(cfg.mode);
-  if (feature && !cfg.features.includes(feature)) return open(cfg.mode);
+/** The user fields the gate reads. Exported so a page that reads the user for
+ *  its own reasons can fetch these in the same query (see `resolveProfileGate`). */
+export const GATE_USER_SELECT = {
+  avatar: true,
+  coverPhoto: true,
+  firstName: true,
+  lastName: true,
+  bio: true,
+  gender: true,
+  dateOfBirth: true,
+  nidNumber: true,
+  emailVerified: true,
+  phone: true,
+  phoneVerified: true,
+  country: true,
+  city: true,
+  street: true,
+  postalCode: true,
+  tags: true,
+  _count: { select: { socialAccounts: true } },
+} as const;
 
-  let user;
-  try {
-    user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        avatar: true,
-        coverPhoto: true,
-        firstName: true,
-        lastName: true,
-        bio: true,
-        gender: true,
-        dateOfBirth: true,
-        nidNumber: true,
-        emailVerified: true,
-        phone: true,
-        phoneVerified: true,
-        country: true,
-        city: true,
-        street: true,
-        postalCode: true,
-        tags: true,
-        _count: { select: { socialAccounts: true } },
-      },
-    });
-  } catch {
-    // Fail-open on a DB blip — a lock screen for everyone because a query
-    // timed out is worse than one request that slips through.
-    return open(cfg.mode);
-  }
+type GateConfig = Awaited<ReturnType<typeof getGateConfig>>;
+type GateUser = Prisma.UserGetPayload<{ select: typeof GATE_USER_SELECT }>;
+
+/**
+ * The gate from a config and a user row the caller already fetched (with at
+ * least GATE_USER_SELECT). Same answer as `getProfileGateState`; lets a page run
+ * the config read and its one user read in parallel instead of in series.
+ */
+export function resolveProfileGate(
+  cfg: GateConfig,
+  user: GateUser | null,
+  feature?: GateFeature
+): ProfileGateState {
+  if (!cfg.on) return open(cfg.mode);
+  // "tasks" also covers the task-like surfaces (CPA offers, offerwalls).
+  if (feature && !gateCovers(cfg.features, feature)) return open(cfg.mode);
   if (!user) return open(cfg.mode);
 
   const socialAccountsCount = (user as unknown as { _count: { socialAccounts: number } })._count.socialAccounts;
@@ -147,11 +143,41 @@ export async function getProfileGateState(
   };
 }
 
+/**
+ * Resolve the gate for one user and one feature.
+ *
+ * With no feature it answers "is this user's profile complete by the admin's
+ * chosen standard" — for the dashboard banner — and `required` means the switch
+ * is on at all. Short-circuits with no user query when the switch is off.
+ */
+export async function getProfileGateState(
+  userId: string,
+  feature?: GateFeature
+): Promise<ProfileGateState> {
+  const cfg = await getGateConfig();
+  if (!cfg.on) return open(cfg.mode);
+  if (feature && !gateCovers(cfg.features, feature)) return open(cfg.mode);
+
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: GATE_USER_SELECT,
+    });
+  } catch {
+    // Fail-open on a DB blip — a lock screen for everyone because a query
+    // timed out is worse than one request that slips through.
+    return open(cfg.mode);
+  }
+  return resolveProfileGate(cfg, user, feature);
+}
+
 const FEATURE_NOUN: Record<GateFeature, string> = {
   tasks: "start tasks",
   missions: "claim mission rewards",
   quizzes: "play quiz games",
   offerwalls: "use offerwalls",
+  cpa: "start CPA offers",
   selling: "sell on the marketplace",
   withdrawals: "withdraw",
 };
@@ -159,10 +185,20 @@ const FEATURE_NOUN: Record<GateFeature, string> = {
 /**
  * For API routes: `null` when the user may go ahead, otherwise a 403 carrying
  * the sentence and the checklist, so any client can show what is missing.
+ *
+ * `inProgress` (optional) is asked only when the user IS locked: when it says
+ * the user already started this item (an unsent submission, an open offer),
+ * they may carry on — the gate is enforced at START, and a rule switched on
+ * mid-task must not strand work already under way.
  */
-export async function profileGateResponse(userId: string, feature: GateFeature): Promise<NextResponse | null> {
+export async function profileGateResponse(
+  userId: string,
+  feature: GateFeature,
+  inProgress?: () => Promise<boolean>
+): Promise<NextResponse | null> {
   const gate = await getProfileGateState(userId, feature);
   if (!gate.locked) return null;
+  if (inProgress && (await inProgress().catch(() => false))) return null;
   const { done, total, percentage, missing } = gate.progress;
   return NextResponse.json(
     {

@@ -146,8 +146,9 @@ function main() {
     // without the constant fails here.
     check(
       "the sidebar's Home entry points at it",
-      new RegExp(`\\{ name: "Home", href: "${USER_HOME}"`).test(
-        code("src/components/dashboard/sidebar.tsx")
+      // The default menu lives in nav-config.ts (DEFAULT_SIDEBAR) now.
+      new RegExp(`\\["Home", "${USER_HOME}"`).test(
+        code("src/lib/nav-config.ts")
       )
     );
     check(
@@ -236,7 +237,9 @@ function main() {
     // And /dashboard is still a real destination, not orphaned.
     check(
       "the Dashboard nav entry still exists",
-      /href: "\/dashboard"/.test(code("src/components/dashboard/sidebar.tsx")) &&
+      // The menu's default lives in nav-config.ts (admin-editable since
+      // Settings → Navigation); sidebar.tsx renders whatever that resolves to.
+      /\["Dashboard", "\/dashboard"/.test(code("src/lib/nav-config.ts")) &&
         fs.existsSync(path.join(root, "src/app/(main)/dashboard/page.tsx"))
     );
   }
@@ -542,8 +545,15 @@ function main() {
       "/deposit", "/withdrawal", "/transactions", "/packages", "/my-package",
       "/notifications", "/chat", "/support", "/settings",
     ];
+    // The default menu is DEFAULT_SIDEBAR in nav-config.ts now (admin-editable
+    // on Settings → Navigation); it must still carry every destination.
+    const cfg = code("src/lib/nav-config.ts");
+    const defaults = cfg.slice(
+      cfg.indexOf("export const DEFAULT_SIDEBAR"),
+      cfg.indexOf("export function normalizeSidebar")
+    );
     const missing = NAV_MUST_KEEP.filter(
-      (h) => !new RegExp(`href: "${h}"`).test(sb)
+      (h) => !new RegExp(`", "${h}", "`).test(defaults)
     );
     check(
       `all ${NAV_MUST_KEEP.length} nav destinations survive the regrouping`,
@@ -2070,7 +2080,8 @@ function main() {
        platform reads as broken rather than as configured -- so the control has
        to SAY so. The stored value is kept either way. */
     {
-      const form = read("src/components/admin/settings/feed-widgets-form.tsx");
+      // The Quick Earn editor moved to Settings → Navigation (one editor per key).
+      const form = read("src/components/admin/navigation/quick-earn-editor.tsx");
       check(
         "the Quick Earn colour picker is disabled rather than silently dead",
         /value=\{tile\.color\}[\s\S]{0,200}?disabled/.test(form) &&

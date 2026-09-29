@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
 import { getBuyerSettings } from "@/lib/buyer-settings";
@@ -59,6 +60,9 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Super-admin page visibility: refuse when /quiz-tasks is hidden for this user.
+    const pageHidden = await assertPageVisible(session.user.id, "/quiz-tasks");
+    if (pageHidden) return pageHidden;
 
     const { searchParams } = new URL(request.url);
     const taskId = searchParams.get("taskId");
@@ -211,6 +215,9 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Super-admin page visibility: refuse when /quiz-tasks is hidden for this user.
+    const pageHidden = await assertPageVisible(session.user.id, "/quiz-tasks");
+    if (pageHidden) return pageHidden;
     // Profile gate — see lib/profile-gate-server.ts. Checked on every route
     // that lets a user earn, or a locked user earns through the unchecked one.
     const profileGated = await profileGateResponse(session.user.id, "tasks");

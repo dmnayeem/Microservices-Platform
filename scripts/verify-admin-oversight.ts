@@ -313,20 +313,20 @@ console.log("\n4. Page + function visibility per user");
 // wrote it. These pin the resolver's contract so the new UI cannot drift.
 check(
   "a per-user override beats the role rule that hides a page",
-  computeHiddenPaths({ packages: {}, roles: { USER: ["/wallet"] } }, null, "USER", {
+  computeHiddenPaths({ global: [], packages: {}, roles: { USER: ["/wallet"] } }, null, "USER", {
     "/wallet": true,
   }).includes("/wallet") === false,
   "force-show has to win, or the per-user tab cannot open anything"
 );
 check(
   "…and can hide a page the role leaves visible",
-  computeHiddenPaths({ packages: {}, roles: {} }, null, "USER", {
+  computeHiddenPaths({ global: [], packages: {}, roles: {} }, null, "USER", {
     "/wallet": false,
   }).includes("/wallet")
 );
 check(
   "no override means the inherited answer is untouched",
-  computeHiddenPaths({ packages: {}, roles: { USER: ["/wallet"] } }, null, "USER", {})
+  computeHiddenPaths({ global: [], packages: {}, roles: { USER: ["/wallet"] } }, null, "USER", {})
     .join() === "/wallet",
   "this is what the third state exists for"
 );
@@ -335,16 +335,21 @@ check(
   Object.keys(parsePageOverrides({ "/not-a-page": false })).length === 0
 );
 
-const matrix = code("src/components/admin/visibility/visibility-matrix.tsx");
+// 2026-09-29: the Visibility hub moved to server tabs (Pages / Features / Task
+// categories / Per user). The per-user panel is now its own tab on the page,
+// and the matrix (with its Save button) renders only on the Pages tab.
+const visPage = code("src/app/admin/visibility/page.tsx");
 check(
-  "the visibility screen has a By user tab",
-  /setTab\("user"\)/.test(matrix) && /By user/.test(matrix),
+  "the visibility screen has a Per user tab",
+  /id: "user", label: "Per user"/.test(visPage) &&
+    /tab === "user" && <UserVisibilityPanel \/>/.test(visPage),
   "the capability existed but only inside the Edit User modal, where nothing said the role rules were already acting"
 );
 check(
   "the shared matrix Save button is not shown on it",
-  /hidden=\{tab === "user"\}/.test(matrix),
-  "that button saves the package/role rules — on the user tab it would be a different, wrong action"
+  /tab === "pages" && <PagesTab \/>/.test(visPage) &&
+    !/UserVisibilityPanel/.test(code("src/components/admin/visibility/visibility-matrix.tsx")),
+  "that button saves the everyone/package/role rules — on the user tab it would be a different, wrong action"
 );
 
 const panel = code("src/components/admin/visibility/user-visibility-panel.tsx");

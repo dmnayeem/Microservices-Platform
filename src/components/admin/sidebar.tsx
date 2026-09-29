@@ -88,7 +88,7 @@ interface AdminSidebarProps {
 }
 
 // Icon mapping for dynamic rendering
-const iconMap: Record<string, LucideIcon> = {
+export const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   Users,
   Trophy,

@@ -10,6 +10,8 @@ import { AdminTable } from "@/components/admin/ui/admin-table";
 import { getReferralBonusConfig } from "@/lib/referral-bonus";
 import { ReferralBonusConfigForm } from "@/components/admin/referrals/referral-bonus-config-form";
 import { ReferralLimitsForm } from "@/components/admin/referrals/referral-limits-form";
+import { CommissionSourcesForm } from "@/components/admin/referrals/commission-sources-form";
+import { getCommissionSources } from "@/lib/referral-commissions";
 import { ReferralSettingsForm } from "./_components/ReferralSettingsForm";
 import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
 import { getSetting } from "@/lib/system-settings";
@@ -88,9 +90,13 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
         </div>
       );
     }
-    const referralLevelRows = await prisma.referralLevel.findMany({
-      orderBy: { level: "asc" },
-    });
+    const [referralLevelRows, commissionSources, canEditSettings] = await Promise.all([
+      prisma.referralLevel.findMany({
+        orderBy: { level: "asc" },
+      }),
+      getCommissionSources(),
+      can(session.user.id, "settings.edit"),
+    ]);
     // Always 10 editable rows; missing levels start at 0% (same as the old
     // /admin/referrals/settings page).
     const levels = Array.from({ length: 10 }, (_, i) => {
@@ -113,6 +119,7 @@ export default async function AdminReferralsPage({ searchParams }: PageProps) {
         {header}
         {tabs}
         <ReferralSettingsForm levels={levels} isNew={referralLevelRows.length < 10} />
+        <CommissionSourcesForm initial={commissionSources} canEdit={canEditSettings} />
       </div>
     );
   }

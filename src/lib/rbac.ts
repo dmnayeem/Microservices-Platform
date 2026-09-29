@@ -1159,6 +1159,8 @@ export interface AdminModule {
   permissions: Permission[];
   category: ModuleCategory;
   badge?: string;
+  /** Only the super admin ever sees this module, whatever its permissions say. */
+  superAdminOnly?: boolean;
 }
 
 // Full 33-module admin navigation per admin_oo.md specification
@@ -1239,6 +1241,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/submissions",
     icon: "ClipboardCheck",
     permissions: ["submissions.view"],
+    category: "TASKS",
+  },
+  {
+    name: "CPA Offers",
+    href: "/admin/cpa",
+    icon: "Target",
+    permissions: ["offerwalls.view"],
     category: "TASKS",
   },
 
@@ -1449,6 +1458,13 @@ export const ADMIN_MODULES: AdminModule[] = [
     permissions: ["offerwalls.view"],
     category: "TASKS",
   },
+  {
+    name: "Offerwall Callbacks",
+    href: "/admin/offerwall-callbacks",
+    icon: "Gift",
+    permissions: ["offerwalls.view"],
+    category: "TASKS",
+  },
 
   {
     name: "Support Inbox",
@@ -1632,6 +1648,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "ENGAGEMENT",
   },
   {
+    // The user app's menus: Quick Earn tiles, phone tab bar, header, sidebar.
+    name: "Navigation",
+    href: "/admin/settings/navigation",
+    icon: "Layout",
+    permissions: ["settings.view"],
+    category: "SYSTEM",
+  },
+  {
     name: "Locations",
     href: "/admin/locations",
     icon: "Globe",
@@ -1658,6 +1682,9 @@ export const ADMIN_MODULES: AdminModule[] = [
     icon: "Eye",
     permissions: ["admins.manage"],
     category: "SYSTEM",
+    // The page itself redirects anyone but the super admin; MANAGER holds
+    // admins.manage, so without this it saw a link that bounced.
+    superAdminOnly: true,
   },
   {
     name: "Media Library",
@@ -1675,7 +1702,7 @@ export function roleDefaultPermSet(role: UserRole | undefined): Set<Permission> 
   return new Set(role ? ROLE_PERMISSIONS[role] ?? [] : []);
 }
 
-const CATEGORY_ORDER: ModuleCategory[] = [
+export const CATEGORY_ORDER: ModuleCategory[] = [
   "OVERVIEW",
   "USERS",
   "TASKS",

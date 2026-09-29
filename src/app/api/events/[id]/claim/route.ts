@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
@@ -13,6 +14,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /events is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/events");
+  if (pageHidden) return pageHidden;
   // Reward claim. Correctness comes from the unique ledger constraints; this
   // keeps a claim flood from being absorbed by the database.
   const limited = await enforceDbRateLimit(req, "claim", session.user.id, 30, 60_000);

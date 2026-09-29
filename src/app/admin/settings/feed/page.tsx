@@ -8,7 +8,6 @@ import { FeedWidgetsForm } from "@/components/admin/settings/feed-widgets-form";
 import { FeedGeneralPanel } from "@/components/admin/settings/feed-general-panel";
 import { readSocialEarningAdminConfig } from "@/lib/social-earning-admin";
 import { normalizeWidgetConfig } from "@/lib/feed-widgets";
-import { normalizeQuickEarn } from "@/lib/feed-quick-earn";
 import { normalizeCustomWidgets } from "@/lib/feed-custom-widgets";
 import { loadSettingValues } from "@/lib/admin-setting-values";
 import { FEED_HOME, keysHomedAt } from "@/lib/admin-settings-catalog";
@@ -49,7 +48,6 @@ export default async function FeedSettingsPage({
         key: {
           in: [
             "feed.sidebar_widgets",
-            "feed.quick_earn_tiles",
             "feed.custom_widgets",
             "feed.public_post_sharing",
           ],
@@ -64,7 +62,6 @@ export default async function FeedSettingsPage({
         map.get("feed.sidebar_widgets"),
         customWidgets.map((c) => c.id)
       ),
-      quickEarn: normalizeQuickEarn(map.get("feed.quick_earn_tiles")),
       customWidgets,
       publicSharing: map.get("feed.public_post_sharing") === true,
     };

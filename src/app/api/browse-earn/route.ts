@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +11,9 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /watch-ads is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/watch-ads");
+  if (pageHidden) return pageHidden;
   const userId = session.user.id;
 
   const [cfg, todayEarned, last] = await Promise.all([

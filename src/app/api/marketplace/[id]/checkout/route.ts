@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -52,6 +53,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /marketplace is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/marketplace");
+  if (pageHidden) return pageHidden;
   return withIdempotency(_request, session.user.id, async () => {
   try {
     if (!(await userCanFeature(session.user.id, "marketplace"))) {

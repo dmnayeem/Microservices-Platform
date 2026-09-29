@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
@@ -12,6 +13,9 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /deposit is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/deposit");
+  if (pageHidden) return pageHidden;
   const deposits = await prisma.deposit.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
@@ -30,6 +34,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /deposit is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/deposit");
+  if (pageHidden) return pageHidden;
 
   // Money route. `withIdempotency` + the unique ledger constraints are what make
   // this CORRECT under retries; this limiter is so a flood can't make the

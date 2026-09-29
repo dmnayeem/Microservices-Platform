@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { openSubmission } from "@/lib/open-submission";
 import { taskStartFraudGate, taskStartPlanGate } from "@/lib/task-start-gates";
@@ -40,9 +41,20 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /article-tasks is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/article-tasks");
+  if (pageHidden) return pageHidden;
   // Profile gate — see lib/profile-gate-server.ts. Checked on every route
   // that lets a user earn, or a locked user earns through the unchecked one.
-  const profileGated = await profileGateResponse(session.user.id, "tasks");
+  // Resuming an attempt already started (not yet sent in) is not a new start.
+  const { taskId: gateTaskId } = await params;
+  const gateUserId = session.user.id;
+  const profileGated = await profileGateResponse(session.user.id, "tasks", async () =>
+    !!(await prisma.taskSubmission.findFirst({
+      where: { taskId: gateTaskId, userId: gateUserId, status: SubmissionStatus.PENDING, submittedAt: null },
+      select: { id: true },
+    }))
+  );
   if (profileGated) return profileGated;
 
   // A banned or suspended account must not be able to start a task. `User.status`

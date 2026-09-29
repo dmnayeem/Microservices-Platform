@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { usd } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -55,6 +56,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /courses is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/courses");
+  if (pageHidden) return pageHidden;
   return withIdempotency(req, session.user.id, async () => {
   try {
     if (!(await userCanFeature(session.user.id, "courses"))) {

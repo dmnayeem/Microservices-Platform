@@ -22,11 +22,12 @@ import {
 } from "@/components/user/profile/verified-badge";
 import { userDisplayId } from "@/lib/display-id";
 import { useCountries } from "@/lib/use-countries";
-import { PERMISSION_CATALOG, permissionLabel, permissionDescription, canAdministerStaffAccount, canAssignStaffRole, ROLE_CONFIG, roleDescription, type UserRole } from "@/lib/rbac";
+import { PERMISSION_CATALOG, permissionLabel, permissionDescription, canAdministerStaffAccount, canAssignStaffRole, ROLE_CONFIG, roleDescription, ADMIN_ROLES, type UserRole } from "@/lib/rbac";
 import { USER_PAGES } from "@/lib/page-visibility";
 import { FEATURES, type PackageFeatureKey } from "@/lib/features";
 import { FEATURE_BUNDLES, missingFor } from "@/lib/feature-bundles";
 import { BuyerSuspensionPanel } from "@/components/admin/users/buyer-suspension-panel";
+import { AdminModuleOverridesPanel } from "@/components/admin/access/admin-module-overrides-panel";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { DateField } from "@/components/ui/date-field";
 
@@ -1625,6 +1626,13 @@ export function UserEditForm({
                 for this user only. Use <b>Deny</b> to hide a whole area (e.g.
                 Finance) from one admin.
               </p>
+              {/* Which admin pages this admin gets — saved on its own. */}
+              {user.role !== "SUPER_ADMIN" &&
+                ADMIN_ROLES.includes(user.role as UserRole) && (
+                  <div className="pb-3 border-b border-slate-800">
+                    <AdminModuleOverridesPanel userId={user.id} />
+                  </div>
+                )}
               {PERMISSION_CATALOG.map((cat) => (
                 <div key={cat.label} className="space-y-2">
                   <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">

@@ -1,3 +1,5 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
+import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
 import { openSubmission } from "@/lib/open-submission";
 import { taskStartFraudGate, taskStartPlanGate } from "@/lib/task-start-gates";
@@ -44,7 +46,16 @@ export async function POST(
     }
     // Profile gate — see lib/profile-gate-server.ts. Checked on every route
     // that lets a user earn, or a locked user earns through the unchecked one.
-    const profileGated = await profileGateResponse(session.user.id, "tasks");
+    // A user resuming an attempt they already started (not yet sent in) is
+    // let through: the gate is enforced at start, not mid-task.
+    const { id: gateTaskId } = await params;
+    const gateUserId = session.user.id;
+    const profileGated = await profileGateResponse(session.user.id, "tasks", async () =>
+      !!(await prisma.taskSubmission.findFirst({
+        where: { taskId: gateTaskId, userId: gateUserId, status: SubmissionStatus.PENDING, submittedAt: null },
+        select: { id: true },
+      }))
+    );
     if (profileGated) return profileGated;
 
     // A banned or suspended account must not be able to start a task. `User.status`
@@ -71,6 +82,11 @@ export async function POST(
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+
+    // Super-admin page visibility: the page that runs this task type is
+    // hidden for this user, so the task is too. Refuses only; fails open.
+    const pageHidden = await assertPageVisible(session.user.id, taskTypePage(task.type));
+    if (pageHidden) return pageHidden;
 
     // The super-admin hard hide. This route checks status, expiry, start date,
     // level, access level, audience, the unlock chain and every limit — but

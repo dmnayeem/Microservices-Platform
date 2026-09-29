@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
     if (off) return off;
 
     const session = await auth();
+    // Super-admin page visibility: refuse when /leaderboard is hidden for this user.
+    const pageHidden = await assertPageVisible(session?.user?.id, "/leaderboard");
+    if (pageHidden) return pageHidden;
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "combined"; // combined | points | xp | tasks | referrals

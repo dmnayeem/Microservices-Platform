@@ -285,6 +285,15 @@ export interface ElsewhereEntry {
 
 export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
   {
+    label: "Navigation menus",
+    description:
+      "What the user app's Quick Earn tiles, phone tab bar, header icons and sidebar menu link to — labels, icons and order",
+    href: "/admin/settings/navigation",
+    where: "Settings → Navigation",
+    key: "nav.sidebar",
+    status: "live",
+  },
+  {
     label: "Marketplace commission overrides",
     description:
       "Per-asset-type and per-listing commission rates that beat the default marketplace fee",
@@ -310,6 +319,23 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
       "What a referrer earns from their referrals, per level — held in the ReferralLevel table, not a settings row",
     href: "/admin/referrals?tab=commission",
     where: "Referrals → Commission levels",
+  },
+  {
+    label: "Referral commission sources",
+    description:
+      "Which earnings pay My Team commission — each task type, CPA offers, offerwall completions. Defaults: every task type on, CPA and offerwall off",
+    href: "/admin/referrals?tab=commission",
+    where: "Referrals → Commission levels",
+    key: "referral.commission_sources",
+    status: "live",
+  },
+  {
+    label: "CPA retry wait after a rejection",
+    description: "Hours before a user whose CPA conversion was rejected may try the same offer again (0–720, default 24)",
+    href: "/admin/cpa?tab=postback",
+    where: "CPA Offers → Postback & rules",
+    key: "cpa.retry_after_hours",
+    status: "live",
   },
   {
     label: "Max Referrals Per User",

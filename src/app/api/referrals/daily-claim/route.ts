@@ -1,3 +1,4 @@
+import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
@@ -24,6 +25,9 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /referrals is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/referrals");
+  if (pageHidden) return pageHidden;
   const userId = session.user.id;
 
   const me = await prisma.user.findUnique({
@@ -106,6 +110,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Super-admin page visibility: refuse when /referrals is hidden for this user.
+  const pageHidden = await assertPageVisible(session.user.id, "/referrals");
+  if (pageHidden) return pageHidden;
 
   // A banned or suspended account must not be able to claim a reward. `User.status`
   // is otherwise only ever read at login, and the JWT lives 30 days with no

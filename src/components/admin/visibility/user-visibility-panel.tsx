@@ -45,6 +45,8 @@ interface VisibilityState {
   packageSlug: string | null;
   packageName: string | null;
   inheritedHidden: string[];
+  /** Which rule layer hides each inherited-hidden page. */
+  inheritedSources?: Record<string, string[]>;
   pageOverrides: Record<string, boolean>;
   inheritedFeatures: Record<string, boolean>;
   featureOverrides: Record<string, boolean>;
@@ -284,13 +286,14 @@ export function UserVisibilityPanel() {
 
           <TriTable
             title="Pages"
-            caption="What appears in this person's navigation. “Inherit” follows the plan and role tabs; the other two win over them."
+            caption="What this person can open. “Inherit” follows the Everyone, package and role columns on the Pages tab; Hide and Show win over all of them — Show even re-opens a page hidden for everyone."
             rows={USER_PAGES.map((p) => ({
               key: p.path,
               label: p.label,
               sub: p.path,
               group: p.group,
               inherited: !state.inheritedHidden.includes(p.path),
+              why: sourceLabel(state.inheritedSources?.[p.path]),
             }))}
             valueOf={pageTri}
             onChange={setPageTri}
@@ -338,6 +341,17 @@ interface TriRow {
   group: string;
   /** What the plan + role already grant, before this user's overrides. */
   inherited: boolean;
+  /** Where an inherited "hidden" comes from, e.g. "for everyone · by role". */
+  why?: string;
+}
+
+function sourceLabel(sources: string[] | undefined): string | undefined {
+  if (!sources?.length) return undefined;
+  return sources
+    .map((s) =>
+      s === "everyone" ? "for everyone" : s === "package" ? "by package" : "by role"
+    )
+    .join(" · ");
 }
 
 function TriTable({
@@ -394,7 +408,9 @@ function TriTable({
                         {r.inherited ? (
                           <span className="text-emerald-500/80">visible</span>
                         ) : (
-                          <span className="text-rose-500/80">hidden</span>
+                          <span className="text-rose-500/80">
+                            hidden{r.why ? ` (${r.why})` : ""}
+                          </span>
                         )}
                       </span>
                       {redundant && (

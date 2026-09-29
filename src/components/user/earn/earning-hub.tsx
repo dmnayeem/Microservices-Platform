@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Lock,
   CheckCircle,
+  BadgeDollarSign,
 } from "lucide-react";
 import { TaskCard } from "@/components/user/primitives/task-card";
 import { FilterChips } from "@/components/user/primitives/filter-chips";
@@ -39,6 +40,7 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { cn, pts } from "@/lib/utils";
 import { levelProgress, calculateXpForLevel } from "@/lib/level";
 import { taskRunHref } from "@/lib/task-routes";
+import { isPathHidden, taskTypePage } from "@/lib/page-visibility";
 import { ScrollFadeRow } from "@/components/user/primitives/scroll-fade-row";
 
 type TabKey =
@@ -57,6 +59,29 @@ const TABS: { key: TabKey; label: string; icon: typeof ListTodo }[] = [
   { key: "leaderboard", label: "Leaderboard", icon: Award },
   { key: "offerwall", label: "Offerwall", icon: Globe },
 ];
+
+/**
+ * The page each hub tab stands in for. When the super admin hides that page
+ * the tab drops out too, or the hub would be a side door into it. Shared with
+ * the /tasks hub, which reuses these tabs.
+ */
+export const TAB_PAGE: Partial<Record<TabKey, string>> = {
+  learn: "/courses",
+  leaderboard: "/leaderboard",
+  offerwall: "/offerwalls",
+};
+
+/** A task list minus tasks whose run page is hidden for this user. */
+function dropHiddenTasks<T extends { type: string }>(
+  list: T[],
+  hiddenPaths?: string[]
+): T[] {
+  if (!hiddenPaths?.length) return list;
+  return list.filter((t) => {
+    const page = taskTypePage(t.type);
+    return !page || !isPathHidden(page, hiddenPaths);
+  });
+}
 
 // Cohesive tinted chips (not saturated rainbow gradients) — matches the
 // tasks-hub Quick Access for a consistent, professional look.
@@ -78,6 +103,7 @@ const QUICK_ACCESS = [
   { name: "Proxy", href: "/proxy-tasks", icon: Globe, tone: "rose" },
   { name: "Board Tasks", href: "/board-tasks", icon: Pin, tone: "amber" },
   { name: "Offerwalls", href: "/offerwalls", icon: Smartphone, tone: "violet" },
+  { name: "CPA Offers", href: "/cpa", icon: BadgeDollarSign, tone: "emerald" },
 ];
 
 export interface UserSummary {
@@ -92,10 +118,21 @@ export interface UserSummary {
 
 interface EarningHubProps {
   user: UserSummary;
+  /**
+   * The default (Tasks) tab's first page, started on the server when the page
+   * rendered and streamed in — so the tab does not start its own fetch after
+   * hydration. Resolves to null on failure (the tab then fetches as before).
+   */
+  initialTasks?: Promise<ApiTask[] | null>;
+  /** Pages hidden by super-admin page visibility — their shortcuts drop out. */
+  hiddenPaths?: string[];
 }
 
-export function EarningHub({ user }: EarningHubProps) {
+export function EarningHub({ user, initialTasks, hiddenPaths }: EarningHubProps) {
   const [tab, setTab] = useState<TabKey>("tasks");
+  const shows = (path: string) => !isPathHidden(path, hiddenPaths);
+  const quickAccess = QUICK_ACCESS.filter((q) => shows(q.href));
+  const tabs = TABS.filter((t) => !TAB_PAGE[t.key] || shows(TAB_PAGE[t.key]!));
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
@@ -125,7 +162,7 @@ export function EarningHub({ user }: EarningHubProps) {
           Quick Access
         </p>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {QUICK_ACCESS.map((item) => (
+          {quickAccess.map((item) => (
             <Link
               key={item.name}
               href={item.href}
@@ -150,7 +187,7 @@ export function EarningHub({ user }: EarningHubProps) {
         innerClassName="flex gap-1 px-1 pb-1"
         ariaLabel="Earn tabs"
       >
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const isActive = t.key === tab;
           return (
             <button
@@ -172,10 +209,12 @@ export function EarningHub({ user }: EarningHubProps) {
 
       {/* Active Tab */}
       <section>
-        {tab === "tasks" && <TasksTab />}
-        {tab === "learn" && <LearnTab />}
+        {tab === "tasks" && (
+          <TasksTab initial={initialTasks} hiddenPaths={hiddenPaths} />
+        )}
+        {tab === "learn" && <LearnTab hiddenPaths={hiddenPaths} />}
         {tab === "rank" && <LevelUpTab user={user} />}
-        {tab === "promote" && <PromoteTab />}
+        {tab === "promote" && <PromoteTab hiddenPaths={hiddenPaths} />}
         {tab === "leaderboard" && <LeaderboardTab user={user} />}
         {tab === "offerwall" && <OfferwallTab />}
       </section>
@@ -213,7 +252,17 @@ const TASK_FILTERS = [
   { value: "BOARD", label: "Board" },
 ] as const;
 
-function TasksTab() {
+// Server-streamed first pages already shown once. A later visit to the tab
+// (or another filter) fetches fresh, exactly as before.
+const consumedInitialTasks = new WeakSet<Promise<ApiTask[] | null>>();
+
+function TasksTab({
+  initial,
+  hiddenPaths,
+}: {
+  initial?: Promise<ApiTask[] | null>;
+  hiddenPaths?: string[];
+}) {
   const [filter, setFilter] = useState<string>("ALL");
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,11 +272,16 @@ function TasksTab() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const url = filter === "ALL" ? "/api/tasks" : `/api/tasks?type=${filter}`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((d) => {
+    const fetchTasks = (): Promise<ApiTask[]> =>
+      fetch(url)
+        .then((r) => r.json())
+        .then((d) => d.tasks ?? []);
+    const useInitial = filter === "ALL" && !!initial && !consumedInitialTasks.has(initial);
+    if (useInitial) consumedInitialTasks.add(initial);
+    (useInitial ? initial.then((t) => t ?? fetchTasks()) : fetchTasks())
+      .then((list) => {
         if (cancelled) return;
-        setTasks(d.tasks ?? []);
+        setTasks(dropHiddenTasks(list, hiddenPaths));
       })
       .catch(() => {
         if (!cancelled) setTasks([]);
@@ -238,14 +292,17 @@ function TasksTab() {
     return () => {
       cancelled = true;
     };
-  }, [filter]);
+  }, [filter, initial, hiddenPaths]);
 
   return (
     <div className="space-y-4">
       <FilterChips
         value={filter}
         onChange={setFilter}
-        options={TASK_FILTERS.map((f) => ({ value: f.value, label: f.label }))}
+        options={TASK_FILTERS.filter((f) => {
+          const page = f.value === "ALL" ? null : taskTypePage(f.value);
+          return !page || !isPathHidden(page, hiddenPaths);
+        }).map((f) => ({ value: f.value, label: f.label }))}
       />
 
       {loading && <ListSkeleton rows={4} />}
@@ -299,7 +356,7 @@ interface ApiCourse {
   creator?: { name?: string | null } | null;
 }
 
-export function LearnTab() {
+export function LearnTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
   const [courses, setCourses] = useState<ApiCourse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -325,6 +382,7 @@ export function LearnTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-white">Available Courses</h2>
+        {!isPathHidden("/tutor", hiddenPaths) && (
         <Link
           href="/tutor/courses/new"
           className="inline-flex items-center gap-1 text-xs font-semibold text-(--app-accent-ink) hover:text-(--app-accent-ink)"
@@ -332,6 +390,7 @@ export function LearnTab() {
           <Sparkles className="w-3.5 h-3.5" />
           Create Course
         </Link>
+        )}
       </div>
 
       {loading && <ListSkeleton rows={3} />}
@@ -570,7 +629,7 @@ interface MissionItem {
   done: boolean;
 }
 
-export function PromoteTab() {
+export function PromoteTab({ hiddenPaths }: { hiddenPaths?: string[] } = {}) {
   const [missions, setMissions] = useState<MissionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -624,6 +683,7 @@ export function PromoteTab() {
               referral commission on every signup.
             </p>
             <div className="flex flex-wrap gap-2 mt-3">
+              {!isPathHidden("/referrals", hiddenPaths) && (
               <Link
                 href="/referrals"
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold"
@@ -631,12 +691,15 @@ export function PromoteTab() {
                 <Sparkles className="w-3.5 h-3.5" />
                 Share my link
               </Link>
+              )}
+              {!isPathHidden("/social-posts", hiddenPaths) && (
               <Link
                 href="/social-posts"
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10"
               >
                 Boost a post
               </Link>
+              )}
             </div>
           </div>
         </div>

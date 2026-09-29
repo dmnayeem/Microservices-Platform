@@ -45,6 +45,8 @@ import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { summarizeEarnings } from "@/lib/dashboard-earnings";
 import { EarningsOverview } from "@/components/user/dashboard/earnings-overview";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
+import { getHiddenPaths } from "@/lib/page-visibility-server";
+import { isPathHidden, taskTypePage } from "@/lib/page-visibility";
 
 /* Four shortcuts, previously indigo / emerald / amber / pink, above six more
    in cyan / emerald / fuchsia / sky / violet / amber. Ten shortcuts, nine
@@ -81,7 +83,7 @@ export default async function DashboardPage() {
     userData,
     submissionsByStatus,
     referralsCount,
-    availableTasks,
+    availableTasksRaw,
     ledgerRaw,
     pendingWithdrawals,
     pointsPerUsd,
@@ -90,6 +92,7 @@ export default async function DashboardPage() {
     dashAd,
     features,
     convertThreshold,
+    hiddenPaths,
   ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
@@ -155,7 +158,16 @@ export default async function DashboardPage() {
       serveAd({ placement: "DASHBOARD", userId: session.user.id }),
       getEffectiveFeatures(session.user.id),
       getPointsConvertThreshold(),
+      // Request-cached: the (main) layout already resolved it.
+      getHiddenPaths(session.user.id),
     ]);
+
+  // Super-admin page visibility: a shortcut to a hidden page is a side door.
+  const shows = (path: string) => !isPathHidden(path, hiddenPaths);
+  const availableTasks = availableTasksRaw.filter((t) => {
+    const page = taskTypePage(t.type);
+    return !page || shows(page);
+  });
 
   const user = session.user;
   const subCount = (...st: string[]) =>
@@ -296,7 +308,9 @@ export default async function DashboardPage() {
             ...(isAdvertiser
               ? [{ label: "Run Ads", href: "/advertiser", icon: Megaphone }]
               : []),
-          ].map((qa) => (
+          ]
+            .filter((qa) => shows(qa.href))
+            .map((qa) => (
             <Link
               key={qa.label}
               href={qa.href}
@@ -317,7 +331,7 @@ export default async function DashboardPage() {
       <div>
         <p className="t-eyebrow text-(--app-ink-3) mb-2.5 px-1">Explore</p>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {EXPLORE.map((e) => (
+          {EXPLORE.filter((e) => shows(e.href)).map((e) => (
             <Link
               key={e.label}
               href={e.href}

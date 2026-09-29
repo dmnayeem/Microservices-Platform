@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getSetting, invalidateSettingsCache,
@@ -10,13 +11,26 @@ import {
   isPermission,
   parsePermissionOverrides,
   stripProtectedForRole,
-  getGroupedModulesForPerms,
   moduleForPath,
+  ADMIN_MODULES,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
   type Permission,
   type UserRole,
   type ModuleCategory,
   type AdminModule,
 } from "@/lib/rbac";
+import {
+  ADMIN_MODULE_RULES_KEY,
+  decideModule,
+  moduleForApiPath,
+  parseAdminModuleRules,
+  parseModuleOverrides,
+  permissionsGrantedByModules,
+  type AdminModuleRules,
+  type ModuleDecision,
+  type ModuleOverrides,
+} from "@/lib/admin-module-rules";
 
 /**
  * Effective-permission engine. Resolves what a user can actually do by layering:
@@ -100,53 +114,213 @@ export async function saveRolePermissionConfig(
   primeSetting(ROLE_PERM_SETTING_KEY, clean);
 }
 
+/** What the effective-permission engine resolves for one user. */
+interface ResolvedAccess {
+  role: UserRole | null;
+  /** Final set — what `can()` answers from. Includes permissions added by the
+   *  admin's own module "show" overrides. */
+  perms: Set<Permission>;
+  /** The same set WITHOUT the module-override additions. The page decision
+   *  reads this, so showing one page does not open its permission-siblings. */
+  basePerms: Set<Permission>;
+  moduleOverrides: ModuleOverrides;
+}
+
+// `User.moduleOverrides` ships in migration 20260929400000. Until it is
+// applied, selecting it throws; fall back to the old select (no overrides)
+// and skip the doomed query for a few minutes.
+let moduleColumnMissingUntil = 0;
+
+type AccessUserRow = {
+  role: string;
+  permissionOverrides: unknown;
+  financeGrants: string[] | null;
+  customRoleId: string | null;
+  customRole: { permissions: string[]; isActive: boolean } | null;
+  moduleOverrides?: unknown;
+};
+
+async function loadAccessUser(userId: string): Promise<AccessUserRow | null> {
+  const base = {
+    role: true,
+    permissionOverrides: true,
+    financeGrants: true,
+    customRoleId: true,
+    customRole: { select: { permissions: true, isActive: true } },
+  } as const;
+  if (Date.now() >= moduleColumnMissingUntil) {
+    try {
+      return (await prisma.user.findUnique({
+        where: { id: userId },
+        select: { ...base, moduleOverrides: true },
+      })) as AccessUserRow | null;
+    } catch (e) {
+      if (!/moduleOverrides/i.test(String((e as Error)?.message ?? e))) throw e;
+      moduleColumnMissingUntil = Date.now() + 5 * 60_000;
+    }
+  }
+  return (await prisma.user.findUnique({
+    where: { id: userId },
+    select: base,
+  })) as AccessUserRow | null;
+}
+
+const resolveAccess = cache(async function resolveAccess(
+  userId: string
+): Promise<ResolvedAccess> {
+  const [configured, user] = await Promise.all([
+    getConfiguredRolePermissions(),
+    loadAccessUser(userId),
+  ]);
+  if (!user) {
+    return { role: null, perms: new Set(), basePerms: new Set(), moduleOverrides: {} };
+  }
+  const role = user.role as UserRole;
+  // Super admin is always full — overrides/config can never strip it.
+  if (role === "SUPER_ADMIN") {
+    const full = new Set(ROLE_PERMISSIONS.SUPER_ADMIN);
+    return { role, perms: full, basePerms: full, moduleOverrides: {} };
+  }
+
+  // Base = active custom-role permissions when assigned, else the configured
+  // (or default) role set. Custom-role users carry role="ADMIN" as baseline.
+  const customRole = user.customRole;
+  const perms =
+    user.customRoleId && customRole?.isActive
+      ? new Set(customRole.permissions.filter(isPermission))
+      : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
+
+  const overrides = parsePermissionOverrides(user.permissionOverrides);
+  for (const [perm, granted] of Object.entries(overrides)) {
+    if (granted) perms.add(perm as Permission);
+    else perms.delete(perm as Permission);
+  }
+  const financeGrants = user.financeGrants ?? [];
+  const moduleOverrides = parseModuleOverrides(user.moduleOverrides);
+
+  // A per-admin page "show" brings that page's permissions with it, so the
+  // page and its APIs work. It goes in BEFORE the strip below, which removes
+  // any finance permission not in financeGrants; staff-admin permissions are
+  // never added in the first place (see permissionsGrantedByModules).
+  const withModules = new Set(perms);
+  for (const p of permissionsGrantedByModules(moduleOverrides)) withModules.add(p);
+
+  // Hard backstop: strip admins.manage for non-super principals, and every
+  // finance permission that was not granted to this person by name. See
+  // `stripProtectedForRole` — `financeGrants` is the only way in.
+  return {
+    role,
+    perms: stripProtectedForRole(withModules, role, financeGrants),
+    basePerms: stripProtectedForRole(perms, role, financeGrants),
+    moduleOverrides,
+  };
+});
+
 /**
- * A user's effective permission set = configured role perms ± per-user overrides.
+ * A user's effective permission set = configured role perms ± per-user
+ * overrides + the permissions of admin pages shown to them by name.
  * Request-cached by user id (layout + child pages resolve once per render).
  */
 export const getEffectivePermissions = cache(
   async function getEffectivePermissions(
     userId: string
   ): Promise<Set<Permission>> {
-    const [configured, user] = await Promise.all([
-      getConfiguredRolePermissions(),
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          role: true,
-          permissionOverrides: true,
-          financeGrants: true,
-          customRoleId: true,
-          customRole: { select: { permissions: true, isActive: true } },
-        },
-      }),
-    ]);
-    if (!user) return new Set();
-    const role = user.role as UserRole;
-    // Super admin is always full — overrides/config can never strip it.
-    if (role === "SUPER_ADMIN") return new Set(ROLE_PERMISSIONS.SUPER_ADMIN);
-
-    // Base = active custom-role permissions when assigned, else the configured
-    // (or default) role set. Custom-role users carry role="ADMIN" as baseline.
-    const customRole = user.customRole as
-      | { permissions: string[]; isActive: boolean }
-      | null;
-    const perms =
-      user.customRoleId && customRole?.isActive
-        ? new Set(customRole.permissions.filter(isPermission))
-        : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
-
-    const overrides = parsePermissionOverrides(user.permissionOverrides);
-    for (const [perm, granted] of Object.entries(overrides)) {
-      if (granted) perms.add(perm as Permission);
-      else perms.delete(perm as Permission);
-    }
-    // Hard backstop: strip admins.manage for non-super principals, and every
-    // finance permission that was not granted to this person by name. See
-    // `stripProtectedForRole` — `financeGrants` is the only way in.
-    return stripProtectedForRole(perms, role, user.financeGrants ?? []);
+    return (await resolveAccess(userId)).perms;
   }
 );
+
+// ── Admin pages (modules): which exist for whom ──────────────────────────────
+
+/** `admin_modules.rules` (sanitized). Rides getSetting's cache. */
+export const getAdminModuleRules = cache(
+  async function getAdminModuleRules(): Promise<AdminModuleRules> {
+    return parseAdminModuleRules(
+      await getSetting<unknown>(ADMIN_MODULE_RULES_KEY, null)
+    );
+  }
+);
+
+/** Persist the rules (caller must be the super admin). Returns what was saved. */
+export async function saveAdminModuleRules(
+  rules: unknown
+): Promise<AdminModuleRules> {
+  const clean = parseAdminModuleRules(rules);
+  await prisma.systemSetting.upsert({
+    where: { key: ADMIN_MODULE_RULES_KEY },
+    create: {
+      key: ADMIN_MODULE_RULES_KEY,
+      category: SETTING_CATEGORY,
+      value: clean as unknown as object,
+    },
+    update: { category: SETTING_CATEGORY, value: clean as unknown as object },
+  });
+  invalidateSettingsCache();
+  primeSetting(ADMIN_MODULE_RULES_KEY, clean);
+  return clean;
+}
+
+/** The admin's role, base permissions and own overrides (for the per-admin panel). */
+export async function getModuleAccessInputs(userId: string) {
+  const [access, rules] = await Promise.all([
+    resolveAccess(userId),
+    getAdminModuleRules(),
+  ]);
+  return { ...access, rules };
+}
+
+/** Every module's decision for one admin (rules + their own overrides). */
+export async function getModuleDecisions(
+  userId: string
+): Promise<Map<string, ModuleDecision>> {
+  const { role, basePerms, moduleOverrides, rules } =
+    await getModuleAccessInputs(userId);
+  const out = new Map<string, ModuleDecision>();
+  if (!role) return out;
+  for (const m of ADMIN_MODULES) {
+    out.set(m.href, decideModule(m, role, basePerms, rules, moduleOverrides));
+  }
+  return out;
+}
+
+/** Is this admin page (module href) available to the user? Super admin: always. */
+export async function moduleAllowed(userId: string, href: string): Promise<boolean> {
+  const d = (await getModuleDecisions(userId)).get(href);
+  return d ? d.visible : true;
+}
+
+/**
+ * Route form of `moduleAllowed`: the module owning `pathname` (longest
+ * prefix). Paths no module owns are allowed.
+ */
+export async function moduleRouteAllowed(
+  userId: string,
+  pathname: string
+): Promise<boolean> {
+  const mod = moduleForPath(pathname);
+  if (!mod) return true;
+  return moduleAllowed(userId, mod.href);
+}
+
+/**
+ * API guard, applied inside `can()`/`canAny()`/`canAll()`: when the current
+ * request is an admin API that belongs to exactly one admin page (see
+ * API_MODULE_PREFIXES in admin-module-rules.ts), that page must be available
+ * to the caller. Only ever refuses; fails OPEN when there is no request or no
+ * x-pathname (scripts; `next dev`, where middleware does not run), and the
+ * super admin is always allowed.
+ */
+async function apiModuleAllowed(userId: string): Promise<boolean> {
+  let path = "";
+  try {
+    path = (await headers()).get("x-pathname") ?? "";
+  } catch {
+    return true;
+  }
+  if (!path.startsWith("/api/admin/")) return true;
+  const href = moduleForApiPath(path);
+  if (!href) return true;
+  return moduleAllowed(userId, href);
+}
 
 /** The current session's effective permissions (empty if unauthenticated). */
 export async function currentPermissions(): Promise<Set<Permission>> {
@@ -162,7 +336,8 @@ export async function can(
   permission: Permission
 ): Promise<boolean> {
   if (!userId) return false;
-  return (await getEffectivePermissions(userId)).has(permission);
+  if (!(await getEffectivePermissions(userId)).has(permission)) return false;
+  return apiModuleAllowed(userId);
 }
 
 export async function canAny(
@@ -171,7 +346,8 @@ export async function canAny(
 ): Promise<boolean> {
   if (!userId) return false;
   const perms = await getEffectivePermissions(userId);
-  return permissions.some((p) => perms.has(p));
+  if (!permissions.some((p) => perms.has(p))) return false;
+  return apiModuleAllowed(userId);
 }
 
 export async function canAll(
@@ -180,17 +356,26 @@ export async function canAll(
 ): Promise<boolean> {
   if (!userId) return false;
   const perms = await getEffectivePermissions(userId);
-  return permissions.every((p) => perms.has(p));
+  if (!permissions.every((p) => perms.has(p))) return false;
+  return apiModuleAllowed(userId);
 }
 
-/** Admin nav modules the user can actually see (grouped), config/override-aware. */
+/**
+ * Admin nav modules the user can actually see (grouped): permissions first,
+ * then the page rules (off for all / per role / per admin).
+ */
 export async function getEffectiveModules(
   userId: string
 ): Promise<
   Array<{ category: ModuleCategory; label: string; modules: AdminModule[] }>
 > {
-  const perms = await getEffectivePermissions(userId);
-  return getGroupedModulesForPerms(perms);
+  const decisions = await getModuleDecisions(userId);
+  const visible = ADMIN_MODULES.filter((m) => decisions.get(m.href)?.visible);
+  return CATEGORY_ORDER.map((category) => ({
+    category,
+    label: CATEGORY_LABELS[category],
+    modules: visible.filter((m) => m.category === category),
+  })).filter((g) => g.modules.length > 0);
 }
 
 /**
