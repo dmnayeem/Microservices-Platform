@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { screenLinks } from "@/lib/link-safety";
 
 const PLATFORMS = [
   "TWITTER",
@@ -64,6 +65,15 @@ export async function POST(req: NextRequest) {
   const { platform, username, url, followers, following, postsCount } = v.data;
   const handle = username.replace(/^@/, "").trim();
   const computedUrl = url ?? PLATFORM_BASE[platform](handle);
+
+  // Phishing / malware links: the profile link is shown to everyone.
+  const links = await screenLinks(
+    { urls: [computedUrl] },
+    { userId: session.user.id, entityType: "profile", entityId: session.user.id }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
 
   const account = await prisma.socialAccount.upsert({
     where: { userId_platform: { userId: session.user.id, platform } },

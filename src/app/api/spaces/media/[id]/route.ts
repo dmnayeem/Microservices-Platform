@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { assertPublicUrl } from "@/lib/link-preview";
+import { BROWSER_UA, cappedStream, guardUrl, safeFetch } from "@/lib/safe-fetch";
+import { safeServeHeaders } from "@/lib/upload-safety";
 import { AD_MEDIA_COLUMN, type AdMediaField } from "@/lib/ad-proxy";
 import { ownMediaKey } from "@/lib/media-url";
 import { getObjectStream } from "@/lib/s3";
@@ -15,51 +16,26 @@ export const runtime = "nodejs";
  *
  * Safe by construction: the URL is never taken from the client — only a creative
  * URL already stored on an `Ad` row is proxied. We still run it through the
- * shared SSRF guard (`assertPublicUrl`, re-checked on every redirect hop) so a
- * malicious advertiser-supplied URL can't reach internal hosts.
+ * shared outbound fetcher (`safe-fetch.ts`: SSRF guard re-checked on every
+ * redirect hop, size cap) so a malicious advertiser-supplied URL can't reach
+ * internal hosts. No outbound rate limit here: each creative is fetched once
+ * per CDN cache fill, and a limit would blank ads at peak traffic.
  */
 
 const TIMEOUT_MS = 15_000;
-const MAX_REDIRECTS = 3;
-const BROWSER_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+/** Creative size ceilings — far above any real creative, low enough to stop a stream of junk. */
+const MAX_BYTES: Record<AdMediaField, number> = {
+  img: 50 * 1024 * 1024,
+  logo: 50 * 1024 * 1024,
+  video: 500 * 1024 * 1024,
+};
 
 const FIELD_FALLBACK_TYPE: Record<AdMediaField, string> = {
   img: "image/jpeg",
   logo: "image/png",
   video: "video/mp4",
 };
-
-/** Guarded fetch that re-validates every redirect hop, then returns the final
- *  Response for streaming. Keeps the SSRF guard across redirects. */
-async function fetchGuarded(start: URL, signal: AbortSignal): Promise<Response> {
-  let current = start;
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    if (hop > 0) await assertPublicUrl(current.toString());
-    const res = await fetch(current, {
-      signal,
-      redirect: "manual",
-      headers: { "User-Agent": BROWSER_UA, Accept: "image/*,video/*,*/*;q=0.8" },
-    });
-    if (res.status >= 300 && res.status < 400) {
-      const loc = res.headers.get("location");
-      if (!loc) return res;
-      let next: URL;
-      try {
-        next = new URL(loc, current);
-      } catch {
-        throw new Error("Bad redirect target");
-      }
-      if (next.protocol !== "http:" && next.protocol !== "https:") {
-        throw new Error("Bad redirect scheme");
-      }
-      current = next;
-      continue;
-    }
-    return res;
-  }
-  throw new Error("Too many redirects");
-}
 
 export async function GET(
   request: NextRequest,
@@ -100,7 +76,7 @@ export async function GET(
         return new NextResponse(webStream, {
           status: 200,
           headers: {
-            "Content-Type": contentType || FIELD_FALLBACK_TYPE[fieldParam],
+            ...creativeHeaders(contentType, fieldParam, key),
             "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
           },
         });
@@ -112,23 +88,27 @@ export async function GET(
 
   let target: URL;
   try {
-    target = await assertPublicUrl(stored);
+    target = await guardUrl(stored);
   } catch {
     // Stored URL is malformed or points somewhere disallowed → don't proxy.
     return NextResponse.json({ error: "unavailable" }, { status: 404 });
   }
 
   try {
-    const upstream = await fetchGuarded(target, AbortSignal.timeout(TIMEOUT_MS));
+    const { response: upstream } = await safeFetch(target, {
+      timeoutMs: TIMEOUT_MS,
+      rateLimit: false,
+      userAgent: BROWSER_UA,
+      headers: { Accept: "image/*,video/*,*/*;q=0.8" },
+      purpose: "ad_creative",
+    });
     if (!upstream.ok || !upstream.body) {
       return NextResponse.json({ error: "upstream" }, { status: 502 });
     }
-    const contentType =
-      upstream.headers.get("content-type") ?? FIELD_FALLBACK_TYPE[fieldParam];
-    return new NextResponse(upstream.body, {
+    return new NextResponse(cappedStream(upstream.body, MAX_BYTES[fieldParam]), {
       status: 200,
       headers: {
-        "Content-Type": contentType,
+        ...creativeHeaders(upstream.headers.get("content-type"), fieldParam, target.pathname),
         // Creatives are immutable per ad — cache hard so the proxy hop is paid
         // once (put a CDN in front of the origin to scale this further).
         "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
@@ -137,4 +117,21 @@ export async function GET(
   } catch {
     return NextResponse.json({ error: "fetch failed" }, { status: 502 });
   }
+}
+
+/**
+ * Headers for a proxied creative. Served from OUR origin, so the advertiser's
+ * Content-Type must never be passed through as-is: an "image" URL answering
+ * with text/html would otherwise run as a page on revtype.com. Images, video
+ * and audio stay inline; anything else downloads, sandboxed (safeServeHeaders).
+ * Many hosts send real images as octet-stream — those take the field's type.
+ */
+function creativeHeaders(
+  upstreamType: string | null | undefined,
+  field: keyof typeof FIELD_FALLBACK_TYPE,
+  key: string
+): Record<string, string> {
+  const ct = (upstreamType ?? "").toLowerCase().split(";")[0].trim();
+  const unknown = !ct || ct === "application/octet-stream" || ct === "binary/octet-stream";
+  return safeServeHeaders(unknown ? FIELD_FALLBACK_TYPE[field] : ct, key);
 }

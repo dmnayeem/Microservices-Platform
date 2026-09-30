@@ -6,6 +6,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { cpaRetryState, readCpaHistory, type CpaAttemptRecord } from "@/lib/cpa/retry";
 import { processCpaReferralCommissions } from "@/lib/referral-commissions";
+import { raiseAbuseSignal } from "@/lib/abuse/signal";
 
 /**
  * CPA conversion money — the ONLY place a CPA conversion moves points.
@@ -649,6 +650,15 @@ export async function reverseCpaConversion(
       return { owed, clawedBack };
     }, TX_OPTS);
     if (!r) return { ok: false, reason: "NOT_APPROVED" };
+    // A chargeback is an abuse signal too: one case per account while open.
+    raiseAbuseSignal({
+      kind: "FRAUD_PATTERN",
+      severity: "MEDIUM",
+      userId: c.userId,
+      entityType: "cpa",
+      summary: `CPA conversion reversed: ${reason.slice(0, 160)}`,
+      evidence: { conversionId: c.id, offerId: c.offerId, reviewerId, owed: r.owed, clawedBack: r.clawedBack },
+    });
     return { ok: true, userId: c.userId, ...r };
   } catch (e) {
     if (isDuplicateLedgerError(e)) return { ok: false, reason: "NOT_APPROVED" };

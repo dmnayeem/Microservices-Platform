@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { financeGuard } from "@/lib/company-finance/api";
 import { generateFileKey, getDownloadUrl, uploadFile, isS3Configured } from "@/lib/s3";
+import { inspectUpload, decideUpload } from "@/lib/upload-safety";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -61,7 +62,15 @@ export async function POST(request: NextRequest) {
   }
 
   const key = generateFileKey("finance-receipts", file.name || "receipt", g.caller.id);
-  const up = await uploadFile(key, Buffer.from(await file.arrayBuffer()), type);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const gate = await decideUpload(inspectUpload(file.name || "receipt", type, bytes), {
+    userId: g.caller.id,
+    where: "company finance receipt",
+    fileName: file.name || "receipt",
+    key,
+  });
+  if (gate.reject) return NextResponse.json({ error: gate.reject }, { status: 400 });
+  const up = await uploadFile(key, bytes, type);
   if (!up.success) return NextResponse.json({ error: up.error ?? "Upload failed" }, { status: 502 });
 
   return NextResponse.json({ ok: true, key, name: file.name, size: file.size, type });

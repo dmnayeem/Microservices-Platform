@@ -230,6 +230,7 @@ export const API_MODULE_PREFIXES: Record<string, string> = {
   "/api/admin/gamification": "/admin/gamification",
   "/api/admin/support": "/admin/support",
   "/api/admin/fraud": "/admin/fraud",
+  "/api/admin/abuse": "/admin/abuse",
   "/api/admin/kyc": "/admin/users/kyc",
   "/api/admin/proxy": "/admin/proxy",
   "/api/admin/campaigns": "/admin/campaigns",

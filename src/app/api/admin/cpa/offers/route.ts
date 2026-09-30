@@ -12,6 +12,7 @@ import {
   requireCpaAdmin,
 } from "@/lib/cpa/admin";
 import { CPA_STATUSES } from "@/lib/cpa/eligibility";
+import { screenLinks } from "@/lib/link-safety";
 
 // GET /api/admin/cpa/offers?status=&q= — every offer, with conversion counts by status.
 export async function GET(request: NextRequest) {
@@ -76,6 +77,14 @@ export async function POST(request: NextRequest) {
   const offer = await prisma.cpaOffer.create({
     data: { ...(data as Prisma.CpaOfferCreateInput), createdById: gate.userId },
   });
+
+  // Admin-entered: never refused, only flagged for a second look. A tracking
+  // URL that Safe Browsing lists sends every user who opens the offer there.
+  const tracking = (data as Record<string, unknown>).trackingUrl;
+  await screenLinks(
+    { urls: [typeof tracking === "string" ? tracking : null] },
+    { userId: gate.userId, entityType: "cpa", entityId: offer.id, enforcement: "never" }
+  );
 
   await writeAudit({
     actorId: gate.userId,

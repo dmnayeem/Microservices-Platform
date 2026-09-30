@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit";
 import { notifyUser } from "@/lib/notify";
 import { sendNotificationEmail } from "@/lib/email";
 import { FRAUD_SIGNALS, type FraudSignal } from "@/lib/fraud-signals";
+import { raiseAbuseSignal } from "@/lib/abuse/signal";
 
 /**
  * Task-fraud risk: a 0–100% score per user that climbs each time they are
@@ -145,6 +146,21 @@ export async function addFraudRisk(opts: {
         } as object,
       },
     });
+
+    // A high-risk account also becomes an Abuse Center case (one per account
+    // while open — further offences fold into it).
+    const sev = severityFor(after, cfg.suspendAt);
+    if (sev === "HIGH" || sev === "CRITICAL") {
+      raiseAbuseSignal({
+        kind: "FRAUD_PATTERN",
+        severity: sev,
+        userId: opts.userId,
+        entityType: "user",
+        entityId: opts.userId,
+        summary: `Task-fraud risk reached ${after}% (${FRAUD_SIGNALS[opts.signal].label.toLowerCase()})`,
+        evidence: { fraudEventId: eventId, signal: opts.signal, riskBefore: before, riskAfter: after },
+      });
+    }
 
     let suspended = false;
     // Staff are scored (the admin should see it) but never auto-suspended —

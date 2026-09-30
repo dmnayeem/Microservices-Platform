@@ -1483,6 +1483,15 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "SECURITY",
   },
   {
+    // One place for abuse: cases from every signal source, evidence kept,
+    // one-click actions, and the reply to the host / network.
+    name: "Abuse Center",
+    href: "/admin/abuse",
+    icon: "ShieldAlert",
+    permissions: ["fraud.view"],
+    category: "SECURITY",
+  },
+  {
     name: "KYC / Blue Badge",
     href: "/admin/users/kyc",
     icon: "BadgeCheck",

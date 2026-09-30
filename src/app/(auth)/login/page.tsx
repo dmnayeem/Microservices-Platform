@@ -13,6 +13,18 @@ import { Input } from "@/components/ui/input";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { ADMIN_ROLE_STRINGS } from "@/lib/rbac";
 
+/** `raw` if it stays on this site once a browser parses it, else null. */
+function sameSitePath(raw: string | null): string | null {
+  if (!raw || !raw.startsWith("/")) return null;
+  try {
+    const base = "https://same-site.invalid";
+    const u = new URL(raw, base);
+    return u.origin === base ? `${u.pathname}${u.search}${u.hash}` : null;
+  } catch {
+    return null;
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,7 +45,11 @@ function LoginForm() {
   const verified = searchParams.get("verified") === "true";
   // Set when Google sign-up is refused by the device / network account limit.
   const accountLimit = searchParams.get("error") === "AccountLimit";
-  const callbackUrl = searchParams.get("callbackUrl") || "/social";
+  // Only a same-site path. `router.push()` follows an absolute URL off-site, so
+  // `/login?callbackUrl=https://evil.example` was an open redirect straight
+  // after a real sign-in. `//host`, `/\host` and `/<tab>/host` are off-site
+  // too, so the check parses the value the way the browser will.
+  const callbackUrl = sameSitePath(searchParams.get("callbackUrl") || "/social") ?? "/social";
 
   const {
     register,

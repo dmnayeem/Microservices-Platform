@@ -20,6 +20,7 @@ import { validateSurveyConfig } from "@/lib/survey-tasks";
 import { sanitizeTaskAudience, EMPTY_TASK_AUDIENCE } from "@/lib/task-targeting";
 import { userCanFeature } from "@/lib/packages";
 import { writeAudit } from "@/lib/audit";
+import { screenLinks, stringsIn } from "@/lib/link-safety";
 import { notifyUser } from "@/lib/notify";
 import { NotificationType } from "@/generated/prisma/client";
 
@@ -289,6 +290,23 @@ export async function PATCH(
     d.article !== undefined ||
     d.appInstall !== undefined ||
     touchedAudience;
+
+  // Phishing / malware links — the same screen as creating the task.
+  const links = await screenLinks(
+    {
+      texts: [
+        d.title,
+        d.description,
+        d.instructions,
+        ...stringsIn([d.custom, d.survey, d.quiz, d.article, d.appInstall]),
+      ],
+      urls: [d.socialUrl],
+    },
+    { userId, entityType: "task", entityId: id }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
 
   const backToReview = !notYetLive && contentChanged;
 

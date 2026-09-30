@@ -9,6 +9,7 @@ import {
   getMediaS3KeyPath,
   validateMediaFile,
 } from "@/lib/s3";
+import { inspectUpload, decideUpload } from "@/lib/upload-safety";
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -63,6 +64,16 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // The declared type said "image" — make sure the bytes agree.
+    const gate = await decideUpload(inspectUpload(file.name, file.type, buffer), {
+      userId: session.user.id,
+      where: `profile/photo (${target})`,
+      fileName: file.name,
+    });
+    if (gate.reject) {
+      return NextResponse.json({ error: gate.reject }, { status: 400 });
+    }
 
     const uniqueFilename = generateMediaFilename(file.name);
     const s3Key = getMediaS3KeyPath(file.type, uniqueFilename);

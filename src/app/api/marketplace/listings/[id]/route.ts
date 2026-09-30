@@ -7,6 +7,8 @@ import { isAffiliateEligible, formatAffiliateReward } from "@/lib/affiliate";
 import { hasPermission } from "@/lib/rbac";
 import type { UserRole } from "@/generated/prisma";
 import { z } from "zod";
+import { inspectStoredFiles, reportStoredFiles } from "@/lib/upload-safety";
+import { screenLinks } from "@/lib/link-safety";
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -217,6 +219,15 @@ export async function PUT(
 
     const { title, description, images, files, price, category } = parsed.data;
 
+    // Phishing / malware links — the same screen as creating a listing.
+    const links = await screenLinks(
+      { texts: [title, description] },
+      { userId: session.user.id, entityType: "listing", entityId: id }
+    );
+    if (!links.ok) {
+      return NextResponse.json({ error: links.message }, { status: 400 });
+    }
+
     // Anything a buyer pays for or sees goes back through review. The update
     // used to be written straight onto a live listing: a seller could set a
     // negative price and "buy" it from a second account, which paid points
@@ -230,9 +241,40 @@ export async function PUT(
         price !== undefined ||
         category !== undefined);
 
+    // New deliverables are re-read like on create (see listings/route.ts):
+    // a disguised program is refused; archive findings follow the policy and
+    // land on the listing for the reviewer.
+    let uploadSafety: Awaited<ReturnType<typeof inspectStoredFiles>> = null;
+    if (files !== undefined) {
+      try {
+        uploadSafety = await inspectStoredFiles(files);
+      } catch (e) {
+        console.error("upload safety check failed (update still saved):", e);
+      }
+      if (uploadSafety && (uploadSafety.blocked || (uploadSafety.flagged && uploadSafety.policy === "block"))) {
+        reportStoredFiles(uploadSafety, { userId: session.user.id, where: "marketplace listing edit (refused)", entityType: "listing", entityId: id });
+        const bad = uploadSafety.files.find((f) => f.blocked.length || f.flags.length)!;
+        return NextResponse.json(
+          { error: `"${bad.fileName}" can't be sold here: ${bad.blocked[0] ?? bad.flags[0]}.` },
+          { status: 400 }
+        );
+      }
+      if (uploadSafety?.flagged) {
+        reportStoredFiles(uploadSafety, { userId: session.user.id, where: "marketplace listing edit", entityType: "listing", entityId: id });
+      }
+    }
+    const prevMeta =
+      listing.fileMeta && typeof listing.fileMeta === "object" && !Array.isArray(listing.fileMeta)
+        ? (listing.fileMeta as Record<string, unknown>)
+        : {};
+
     const updatedListing = await prisma.marketplaceListing.update({
       where: { id },
       data: {
+        // Only touch fileMeta when there is a (new or stale) safety result.
+        ...(files !== undefined && (uploadSafety || "uploadSafety" in prevMeta) && {
+          fileMeta: JSON.parse(JSON.stringify({ ...prevMeta, uploadSafety: uploadSafety ?? undefined })),
+        }),
         ...(title !== undefined && { title }),
         ...(description !== undefined && { description }),
         ...(images !== undefined && { images }),

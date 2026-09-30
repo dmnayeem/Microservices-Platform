@@ -642,13 +642,19 @@ export async function resetPassword(token: string, newPassword: string) {
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
+  // Consume the token FIRST, atomically: only the request that actually
+  // deletes it may set the password. Deleting it afterwards let two
+  // concurrent submissions of the same link both succeed.
+  const consumed = await prisma.verificationToken.deleteMany({
+    where: { token, type: "PASSWORD_RESET" },
+  });
+  if (consumed.count !== 1) {
+    throw new Error("Invalid reset token");
+  }
+
   await prisma.user.update({
     where: { email: resetToken.identifier },
     data: { password: hashedPassword },
-  });
-
-  await prisma.verificationToken.delete({
-    where: { token },
   });
 
   return { success: true };

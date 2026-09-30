@@ -70,10 +70,12 @@ function verifyStatuses(metadata: unknown): string[] {
 }
 
 /** Ask as a link-preview crawler first, then as a browser. Same chain as submit. */
-async function verifyFetch(url: string): Promise<string | null> {
-  const asCrawler = await fetchRawHtml(url, CRAWLER_UA, VERIFY_MAX_BYTES).catch(() => null);
+async function verifyFetch(url: string, userId: string): Promise<string | null> {
+  // `userId`: the per-user outbound limit counts distinct URLs, so re-reading a
+  // page the user already submitted costs them nothing extra.
+  const asCrawler = await fetchRawHtml(url, CRAWLER_UA, VERIFY_MAX_BYTES, { userId }).catch(() => null);
   if (asCrawler && !looksUnreadable(toPageContent(asCrawler))) return asCrawler;
-  const asBrowser = await fetchRawHtml(url, undefined, VERIFY_MAX_BYTES).catch(() => null);
+  const asBrowser = await fetchRawHtml(url, undefined, VERIFY_MAX_BYTES, { userId }).catch(() => null);
   if (asBrowser && !looksUnreadable(toPageContent(asBrowser))) return asBrowser;
   return asCrawler ?? asBrowser;
 }
@@ -218,7 +220,7 @@ export async function recheckPendingSocialSubmissions(opts?: {
       ];
       const pages = new Map<string, string | null>();
       await Promise.all(
-        urls.map(async (u) => pages.set(u, await verifyFetch(u).catch(() => null)))
+        urls.map(async (u) => pages.set(u, await verifyFetch(u, sub.userId).catch(() => null)))
       );
 
       let allVerified = true;

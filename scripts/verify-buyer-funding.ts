@@ -210,7 +210,7 @@ async function main() {
     );
     check(
       "auto-approve pays nothing when the charge failed",
-      /if \(!charge\.paid\) \{[\s\S]{0,400}rewards: \{ points: 0, xp: 0 \}/.test(
+      /if \(!charge\.paid\) \{[\s\S]{0,1000}rewards: \{ points: 0, xp: 0 \}/.test(
         read("src/app/api/tasks/[id]/submit/route.ts")
       )
     );

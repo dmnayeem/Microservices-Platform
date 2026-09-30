@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { validateMediaFile } from "@/lib/s3";
+import { inspectUpload, decideUpload } from "@/lib/upload-safety";
 import { isGeminiConfigured } from "@/lib/gemini";
 import { storeStockAsset, generateListingMetadata } from "@/lib/marketplace-studio";
 
@@ -77,6 +78,15 @@ export async function POST(request: NextRequest) {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
+  // Sold as a deliverable → must really be what it says; archive findings
+  // follow the upload policy like any seller upload.
+  const gate = await decideUpload(
+    inspectUpload(file.name || "upload", file.type || "application/octet-stream", bytes, { allowSvg: true }),
+    { userId: session.user.id, where: "admin marketplace studio upload", fileName: file.name || "upload" }
+  );
+  if (gate.reject) {
+    return NextResponse.json({ error: gate.reject }, { status: 400 });
+  }
   const stored = await storeStockAsset({
     bytes,
     filename: file.name || "upload",

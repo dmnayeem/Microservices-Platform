@@ -1,3 +1,4 @@
+import { requireActiveUser } from "@/lib/require-active";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,12 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = session.user.id;
+  // A suspended account keeps its 30-day session; without this it could
+  // un-pause a task the Abuse Center paused (see src/lib/require-active.ts).
+  const active = await requireActiveUser(userId);
+  if (!active.ok) {
+    return NextResponse.json({ error: active.message }, { status: active.httpStatus });
+  }
   const { id } = await params;
 
   const body = await req.json().catch(() => ({}));

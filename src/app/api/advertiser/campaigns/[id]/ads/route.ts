@@ -12,6 +12,7 @@ import { isAdvertiserSelectable, placementSizeKey, checkAdFitsPlacement, placeme
 import { normalizeTargeting } from "@/lib/ad-targeting";
 import { adTargetingSchema } from "@/lib/ad-targeting-schema";
 import { AD_STATUS, recordSubmission } from "@/lib/ad-review";
+import { screenLinks } from "@/lib/link-safety";
 
 const createAdSchema = z.object({
   format: z.enum(["NATIVE", "BANNER"]).default("NATIVE"),
@@ -106,6 +107,15 @@ export async function POST(
     );
   }
 
+  // Phishing / malware destinations. Every click on this ad goes there.
+  const links = await screenLinks(
+    { texts: [d.headline, d.brandName], urls: [d.targetUrl] },
+    { userId: session.user.id, entityType: "ad" }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
+
   // Resolve placement(s) by name (ensuring canonical rows exist first).
   await ensureDefaultPlacements();
   const wantedNames = (
@@ -189,6 +199,7 @@ export async function POST(
     )
   );
 
+  links.report(created[0]?.id ?? null);
   await recordSubmission({
     adIds: created.map((c) => c.id),
     userId: session.user.id,

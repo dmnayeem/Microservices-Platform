@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -16,6 +17,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Per ACCOUNT, shared across instances. A stolen session must not be able to guess the current password.
+  const limited = await enforceDbRateLimit(request, "password-change", session.user.id, 5, 15 * 60_000);
+  if (limited) return limited;
   const body = await request.json();
   const v = schema.safeParse(body);
   if (!v.success) {

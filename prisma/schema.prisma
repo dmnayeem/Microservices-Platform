@@ -5525,3 +5525,55 @@ model CpaConversion {
   @@index([userId, createdAt])
   @@index([status, heldUntil])
 }
+
+/// Abuse Center (2026-09-29): one case per piece of trouble — an infected
+/// upload, a phishing link, a fraud pattern, a user report, a complaint from a
+/// host or network. Signals with the same (kind, userId, entityType, entityId)
+/// fold into the OPEN case through `openKey`, which is cleared the moment the
+/// case leaves OPEN, so a later repeat opens a fresh case. No FK to User on
+/// purpose: a case must outlive whatever it is about.
+model AbuseCase {
+  id               String          @id @default(cuid())
+  status           String          @default("OPEN") // OPEN | ACTIONED | RESOLVED | DISMISSED
+  severity         String          @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  kind             String
+  userId           String?
+  entityType       String?
+  entityId         String?
+  summary          String          @db.Text
+  signalCount      Int             @default(1)
+  firstSeenAt      DateTime        @default(now())
+  lastSeenAt       DateTime        @default(now())
+  /// "kind|userId|entityType|entityId" while OPEN; null otherwise.
+  openKey          String?         @unique
+  assignedToId     String?
+  resolution       String?         @db.Text
+  /// The host / network / advertiser's own complaint or ticket id.
+  providerRef      String?
+  /// While true, a pending withdrawal of this user cannot be approved.
+  withdrawalsHeld  Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  evidence         AbuseEvidence[]
+
+  @@index([status, lastSeenAt])
+  @@index([severity])
+  @@index([kind])
+  @@index([userId])
+  @@index([entityType, entityId])
+}
+
+/// Append-only record behind a case: the signals, data snapshots, admin notes
+/// and every action taken. App code never updates or deletes these rows.
+model AbuseEvidence {
+  id          String    @id @default(cuid())
+  caseId      String
+  case        AbuseCase @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  kind        String // SIGNAL | SNAPSHOT | NOTE | ACTION
+  data        Json
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([caseId, createdAt])
+  @@index([kind])
+}

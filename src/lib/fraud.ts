@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/system-settings";
+import { raiseAbuseSignal } from "@/lib/abuse/signal";
 
 /**
  * Anti-fraud helpers (feature: fraud toggles). Every control is admin-gated via
@@ -128,6 +129,18 @@ export async function recordFraudEvent(args: {
         details: (args.details ?? {}) as object,
       },
     });
+    // High-risk entries also open an Abuse Center case (telemetry stays here).
+    if (args.severity === "HIGH" || args.severity === "CRITICAL") {
+      raiseAbuseSignal({
+        kind: "FRAUD_PATTERN",
+        severity: args.severity,
+        userId: args.userId ?? null,
+        entityType: "user",
+        entityId: args.userId ?? null,
+        summary: `Fraud event: ${args.eventType}`,
+        evidence: { eventType: args.eventType, ipAddress: args.ipAddress ?? null, userAgent: args.userAgent ?? null, details: args.details ?? null },
+      });
+    }
   } catch {
     /* never block the caller on telemetry */
   }

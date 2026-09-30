@@ -884,7 +884,7 @@ export async function POST(
         const byteHashes: string[] = [];
         const phashes: string[] = [];
         for (const url of shotUrls) {
-          const bytes = await fetchRawBytes(url);
+          const bytes = await fetchRawBytes(url, { userId: session.user.id });
           if (bytes) {
             byteHashes.push(createHash("sha256").update(bytes).digest("hex"));
             // Perceptual hash too — survives re-encode/crop that dodges sha256.
@@ -1072,11 +1072,11 @@ export async function POST(
             // is cheaper than a wrongly unverifiable submission.
             const fetched = await Promise.all(
               fetchUrls.map(async (u) => {
-                const asCrawler = await fetchRawHtml(u, CRAWLER_UA, VERIFY_MAX_BYTES).catch(() => null);
+                const asCrawler = await fetchRawHtml(u, CRAWLER_UA, VERIFY_MAX_BYTES, { userId: session.user.id }).catch(() => null);
                 if (asCrawler && !looksUnreadable(toPageContent(asCrawler))) {
                   return asCrawler;
                 }
-                const asBrowser = await fetchRawHtml(u, undefined, VERIFY_MAX_BYTES).catch(() => null);
+                const asBrowser = await fetchRawHtml(u, undefined, VERIFY_MAX_BYTES, { userId: session.user.id }).catch(() => null);
                 // Keep whichever actually said something; prefer the browser
                 // result only when the crawler result was unusable.
                 if (asBrowser && !looksUnreadable(toPageContent(asBrowser))) {

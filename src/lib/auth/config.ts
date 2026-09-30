@@ -85,6 +85,8 @@ export const authConfig: NextAuthConfig = {
         "/forgot-password",
         // A suspended user appeals here with a signed link — no session.
         "/appeal",
+        // How to report abuse / copyright, with a public report form.
+        "/abuse",
         "/reset-password",
         "/verify-email",
         "/privacy",
@@ -141,10 +143,12 @@ export const authConfig: NextAuthConfig = {
         "/api/splash",
         "/api/config/antifraud",
         "/api/contact", // contact form on the marketing site
+        "/api/abuse/report", // public abuse / copyright report form (/abuse) — honeypot + per-IP limit
         "/api/popups", // site popups, shown to visitors as well (targeting is server-side)
         "/api/blog/", // blog read counter (public articles)
         "/api/health",
         "/api/cpa/postback", // CPA network S2S postback — HMAC sig / secret key
+        "/api/security/csp-report", // browser CSP violation reports — sent without cookies
       ];
       const isPublicApiRoute =
         publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { prisma } from "@/lib/prisma";
 import speakeasy from "speakeasy";
 import { z } from "zod";
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Per ACCOUNT, shared across instances. A stolen session must not be able to guess its way past the 2FA code.
+  const limited = await enforceDbRateLimit(request, "2fa-disable", session.user.id, 5, 15 * 60_000);
+  if (limited) return limited;
   const body = await request.json().catch(() => ({}));
   const v = schema.safeParse(body);
   if (!v.success) {

@@ -12,6 +12,7 @@ import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { isValidPostBackground } from "@/lib/post-backgrounds";
 import { fetchLinkPreview, firstUrl } from "@/lib/link-preview";
 import { isEmbeddableVideoUrl } from "@/lib/video-url";
+import { screenLinks } from "@/lib/link-safety";
 import {
   scorePost,
   dayKey,
@@ -582,6 +583,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid images" }, { status: 400 });
     }
 
+    // Phishing / malware links. The first URL here is also the link-preview
+    // target, so this covers the preview too.
+    const links = await screenLinks(
+      {
+        texts: [
+          content,
+          ...(Array.isArray(pollOptions) ? pollOptions.map((o) => String(o?.label ?? "")) : []),
+        ],
+      },
+      { userId: session.user.id, entityType: "post" }
+    );
+    if (!links.ok) {
+      return NextResponse.json({ error: links.message }, { status: 400 });
+    }
+
     // Link/video sharing is an admin-granted capability for normal users. A URL
     // in the post requires shareLinks (plain link) or shareYouTube (YouTube/
     // Vimeo/video). Privileged roles (admins/staff) bypass this gate.
@@ -695,6 +711,7 @@ export async function POST(request: NextRequest) {
         groupId: groupId ?? null,
       },
     });
+    links.report(post.id);
 
     await Promise.all([
       // Social earning — author gets daily post-create bonus (capped 1×/day via reference)
@@ -759,7 +776,7 @@ export async function POST(request: NextRequest) {
         : firstUrl(post.content);
     if (previewUrl) {
       try {
-        linkPreview = await fetchLinkPreview(previewUrl);
+        linkPreview = await fetchLinkPreview(previewUrl, { userId: post.userId });
         if (linkPreview) {
           await prisma.post.update({
             where: { id: post.id },
