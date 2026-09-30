@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { DELIVERED_SUBMISSION } from "@/lib/delivered-submission";
 import {
   ListTodo,
   Search,
@@ -171,7 +172,8 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
       include: {
         _count: {
           select: {
-            submissions: true,
+            // Opened-but-never-sent rows are visits, not submissions.
+            submissions: { where: DELIVERED_SUBMISSION },
           },
         },
       },
