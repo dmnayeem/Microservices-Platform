@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { resendVerificationEmail } from "@/lib/auth/services";
-import { enforceDbRateLimit } from "@/lib/rate-limit-db";
+import { dbRateLimit, enforceDbRateLimit } from "@/lib/rate-limit-db";
 
 const resendSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -15,6 +15,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email } = resendSchema.parse(body);
+    // Per ADDRESS too — the limit above is per IP, and IPs rotate.
+    const perEmail = await dbRateLimit(`resend-verification:e:${email.toLowerCase()}`, 3, 60 * 60_000);
+    if (!perEmail.ok) {
+      return NextResponse.json(
+        { error: `Too many requests. Try again in ${perEmail.retryAfterSec}s.` },
+        { status: 429, headers: { "Retry-After": String(perEmail.retryAfterSec) } }
+      );
+    }
 
     const result = await resendVerificationEmail(email);
 

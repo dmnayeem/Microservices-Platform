@@ -7,6 +7,7 @@ import {
   validateArticleConfig,
 } from "@/lib/article-tasks";
 import { z } from "zod";
+import { screenLinks, stringsIn } from "@/lib/link-safety";
 
 const HEX_COLOR = z
   .string()
@@ -171,6 +172,13 @@ export async function PATCH(
       }),
     },
   });
+
+  // Article landing / page URLs are where users are sent. Staff-entered, so
+  // never refused — flagged for a second look if one is unsafe.
+  await screenLinks(
+    { texts: stringsIn(patch) },
+    { userId: session.user.id, entityType: "task", entityId: id, enforcement: "never" }
+  );
 
   await prisma.auditLog.create({
     data: {

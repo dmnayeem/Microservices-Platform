@@ -6,6 +6,7 @@ import { awardSocialEarning } from "@/lib/social-earning";
 import { extractMentionUsernames, resolveMentionedUsers } from "@/lib/mentions";
 import { recordUserAction } from "@/lib/goal-progress";
 import { deleteCommentCascade } from "@/lib/content-delete";
+import { screenLinks } from "@/lib/link-safety";
 
 // GET /api/feed/:id/comments - Get post comments
 export async function GET(
@@ -148,6 +149,15 @@ export async function POST(
       );
     }
 
+    // Phishing / malware links.
+    const links = await screenLinks(
+      { texts: [content] },
+      { userId: session.user.id, entityType: "comment" }
+    );
+    if (!links.ok) {
+      return NextResponse.json({ error: links.message }, { status: 400 });
+    }
+
     // Check if post exists
     const post = await prisma.post.findUnique({
       where: { id },
@@ -189,6 +199,7 @@ export async function POST(
         },
       },
     });
+    links.report(comment.id);
 
     // Update comment count + bump freshness so a newly-commented post
     // resurfaces in the smart feed ("new comment → back to top").

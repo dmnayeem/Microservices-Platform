@@ -21,6 +21,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "url is required" }, { status: 400 });
   }
 
-  const preview = await fetchLinkPreview(url);
+  const preview = await fetchLinkPreview(url, { userId: session.user.id });
   return NextResponse.json({ preview });
 }

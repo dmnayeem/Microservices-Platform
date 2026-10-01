@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { priorityForReason } from "@/lib/moderation";
 import { rateLimit } from "@/lib/rate-limit";
+import { raiseAbuseSignal } from "@/lib/abuse/signal";
+import { severityForReportPriority } from "@/lib/abuse/policy";
 
 const schema = z.object({
   targetType: z.enum(["POST", "COMMENT", "USER", "LISTING", "GROUP"]),
@@ -68,6 +70,17 @@ export async function POST(request: NextRequest) {
       priority,
       status: "PENDING",
     },
+  });
+
+  // The moderation queue stays as it is; the report also lands in the Abuse
+  // Center, where reports on the same item by the same author fold together.
+  raiseAbuseSignal({
+    kind: "USER_REPORT",
+    severity: severityForReportPriority(priority),
+    entityType: v.data.targetType.toLowerCase(),
+    entityId: v.data.targetId,
+    summary: `Reported ${v.data.targetType.toLowerCase()}: ${v.data.reason.toLowerCase()}`,
+    evidence: { reporterId: session.user.id, reason: v.data.reason, details: v.data.details ?? null, priority },
   });
 
   return NextResponse.json({ success: true });

@@ -10,6 +10,7 @@ import {
   isS3Configured,
   S3_PART_SIZE,
 } from "@/lib/s3";
+import { decideUploadName } from "@/lib/upload-safety";
 
 // POST /api/media/upload/multipart/initiate - Initiate multipart upload
 export async function POST(request: NextRequest) {
@@ -43,6 +44,17 @@ export async function POST(request: NextRequest) {
     const validation = validateMediaFile(fileType, fileSize);
     if (!validation.isValid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+
+    // Name/type rules (the bytes never pass through this server).
+    const nameGate = await decideUploadName(
+      String(filename),
+      String(fileType),
+      { userId: session.user.id, where: "api/media/upload/multipart (admin media library)" },
+      { allowSvg: true }
+    );
+    if (nameGate.reject) {
+      return NextResponse.json({ error: nameGate.reject }, { status: 400 });
     }
 
     // Generate unique filename and S3 key

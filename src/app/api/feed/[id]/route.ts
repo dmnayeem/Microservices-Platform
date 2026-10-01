@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validPostImages } from "@/lib/post-images";
 import { firstUrl } from "@/lib/link-preview";
 import { isEmbeddableVideoUrl } from "@/lib/video-url";
+import { screenLinks } from "@/lib/link-safety";
 import { userCanFeature } from "@/lib/packages";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -181,6 +182,17 @@ export async function PUT(
     }
     if (images !== undefined && validPostImages(images) === null) {
       return NextResponse.json({ error: "Invalid images" }, { status: 400 });
+    }
+
+    // Phishing / malware links — the same screen as posting.
+    if (typeof content === "string") {
+      const links = await screenLinks(
+        { texts: [content] },
+        { userId: session.user.id, entityType: "post", entityId: id }
+      );
+      if (!links.ok) {
+        return NextResponse.json({ error: links.message }, { status: 400 });
+      }
     }
 
     // The same link gate as posting. Editing skipped it, so a user without the

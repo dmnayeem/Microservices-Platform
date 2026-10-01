@@ -4,6 +4,7 @@ import { hasInstructions } from "@/lib/task-instructions";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { DELIVERED_SUBMISSION } from "@/lib/delivered-submission";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { TaskHistoryPanel } from "@/components/admin/tasks/task-history-panel";
 import {
@@ -68,9 +69,11 @@ export default async function TaskDetailPage({ params }: PageProps) {
     where: { id },
     include: {
       _count: {
-        select: { submissions: true },
+        // Opened-but-never-sent rows are visits, not submissions.
+        select: { submissions: { where: DELIVERED_SUBMISSION } },
       },
       submissions: {
+        where: DELIVERED_SUBMISSION,
         orderBy: { createdAt: "desc" },
         take: 10,
         include: {

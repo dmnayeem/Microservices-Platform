@@ -10,6 +10,7 @@ import { deliverToUser } from "@/lib/notify";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { ownMediaKey } from "@/lib/media-url";
 import type { CelebrationPayload } from "@/lib/celebration";
+import { withdrawalHoldCase } from "@/lib/abuse/evidence";
 
 /** A file in this platform's own media store — never an arbitrary link. */
 function isOwnMediaUrl(u: string): boolean {
@@ -155,6 +156,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json(
           { error: "Only PENDING withdrawals can be approved" },
           { status: 400 }
+        );
+      }
+
+      // Abuse Center hold: an open case on this account says "do not pay yet".
+      // Nothing is refunded or moved — the request simply stays PENDING.
+      const heldBy = await withdrawalHoldCase(existingWithdrawal.userId);
+      if (heldBy) {
+        return NextResponse.json(
+          { error: "Withdrawals for this account are on hold by an open Abuse Center case. Release the hold or resolve the case first." },
+          { status: 409 }
         );
       }
 

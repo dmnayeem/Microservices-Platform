@@ -10,6 +10,7 @@ import {
   listUploadedParts,
   getPublicUrl,
 } from "@/lib/s3";
+import { USER_UPLOAD_TYPES, decideUploadName } from "@/lib/upload-safety";
 
 // Minimum part size (5MB except for last part)
 const MIN_PART_SIZE = 5 * 1024 * 1024;
@@ -59,6 +60,19 @@ export async function POST(request: NextRequest) {
             { error: "Invalid upload folder" },
             { status: 400 }
           );
+        }
+
+        // Same type allowlist and name rules as /api/upload — this route used
+        // to accept ANY type (it has no callers in the app today).
+        if (!USER_UPLOAD_TYPES.includes(fileType)) {
+          return NextResponse.json({ error: "File type not allowed" }, { status: 400 });
+        }
+        const nameGate = await decideUploadName(String(fileName), String(fileType), {
+          userId: session.user.id,
+          where: `api/upload/multipart (${folder})`,
+        });
+        if (nameGate.reject) {
+          return NextResponse.json({ error: nameGate.reject }, { status: 400 });
         }
 
         // Generate file key

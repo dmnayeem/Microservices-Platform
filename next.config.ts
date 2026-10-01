@@ -1,5 +1,100 @@
 import type { NextConfig } from "next";
 
+/**
+ * Security response headers (docs/SECURITY-RUNBOOK.md).
+ *
+ * Set here rather than in middleware so they also apply under `next dev` and
+ * to every route, including the ones middleware skips. Every one of them has
+ * an env switch, read at build/start time:
+ *
+ *   SECURITY_HEADERS=off      drop ALL of the headers below (kill switch)
+ *   SECURITY_FRAME_GUARD=off  drop X-Frame-Options (clickjacking guard)
+ *   SECURITY_HSTS=off         drop Strict-Transport-Security
+ *   CSP_REPORT=off            drop the report-only Content-Security-Policy
+ *   CSP_ENFORCE=on            send the same policy as an ENFORCED
+ *                             Content-Security-Policy instead — default OFF;
+ *                             only after the reports have been clean for a while.
+ *
+ * Framing: app pages may only be framed by our own origin (the admin landing
+ * live preview frames "/"). `/embed/*` (the article-task script that runs on
+ * publishers' sites) and `/api/*` are left out, so nothing that another site
+ * loads is affected. Ad creatives run in `<iframe srcDoc>`, which has no
+ * response and is not subject to X-Frame-Options.
+ *
+ * Permissions-Policy only switches off features nothing here uses. Camera,
+ * microphone, display-capture, fullscreen, autoplay and the motion sensors are
+ * deliberately NOT listed: live classes delegate camera/mic to the class
+ * provider's iframe, and YouTube/Vimeo embeds use the sensors — listing them
+ * would silently break those. `browsing-topics` is left alone for AdSense.
+ */
+const flagOff = (name: string) => (process.env[name] ?? "").toLowerCase() === "off";
+const flagOn = (name: string) => (process.env[name] ?? "").toLowerCase() === "on";
+
+const CSP_REPORT_PATH = "/api/security/csp-report";
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  // Inline boot scripts in the root layout + Next's own inline payloads, plus
+  // ad networks, tag managers and video players. Ad networks load further
+  // hosts at run time — the reports will name them.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.googlesyndication.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://www.googletagmanager.com https://www.google-analytics.com https://*.google.com https://*.gstatic.com https://www.youtube.com https://player.vimeo.com https://connect.facebook.net https://*.sentry.io https://static.cloudflareinsights.com https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob: https:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https: wss:",
+  "frame-src 'self' https: blob: data:",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  // Payment gateways (SSLCommerz etc.) receive a form POST.
+  "form-action 'self' https:",
+  `report-uri ${CSP_REPORT_PATH}`,
+  "report-to csp",
+].join("; ");
+
+function securityHeaders(): { source: string; headers: { key: string; value: string }[] }[] {
+  if (flagOff("SECURITY_HEADERS")) return [];
+
+  const everywhere = [
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    // Same as the modern browser default; stated so no browser falls back to
+    // leaking full URLs (which can carry tokens) to other sites.
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    {
+      key: "Permissions-Policy",
+      value: "geolocation=(), usb=(), serial=(), hid=(), bluetooth=(), midi=()",
+    },
+  ];
+  // Vercel already sends HSTS on production domains; a VPS does not. No
+  // `includeSubDomains` / `preload`: a subdomain still on plain http would be
+  // locked out for the whole max-age.
+  if (process.env.NODE_ENV === "production" && !flagOff("SECURITY_HSTS")) {
+    everywhere.push({ key: "Strict-Transport-Security", value: "max-age=31536000" });
+  }
+
+  const pages: { key: string; value: string }[] = [];
+  if (!flagOff("SECURITY_FRAME_GUARD")) {
+    pages.push({ key: "X-Frame-Options", value: "SAMEORIGIN" });
+  }
+  if (flagOn("CSP_ENFORCE")) {
+    // frame-ancestors only works in an enforced policy (browsers ignore it,
+    // with a console warning, in report-only).
+    pages.push({ key: "Content-Security-Policy", value: `${CSP_DIRECTIVES}; frame-ancestors 'self'` });
+  } else if (!flagOff("CSP_REPORT")) {
+    pages.push({ key: "Content-Security-Policy-Report-Only", value: CSP_DIRECTIVES });
+  }
+  if (pages.some((h) => h.key.startsWith("Content-Security-Policy"))) {
+    pages.push({ key: "Reporting-Endpoints", value: `csp="${CSP_REPORT_PATH}"` });
+  }
+
+  return [
+    { source: "/:path*", headers: everywhere },
+    // Every page except /embed/* and /api/* (see above).
+    ...(pages.length ? [{ source: "/((?!embed/|api/).*)", headers: pages }] : []),
+  ];
+}
+
 const nextConfig: NextConfig = {
   // Lets a verification build run to a separate folder (NEXT_DIST_DIR=.next-verify)
   // so it never clobbers a running `next dev` server's `.next`. Unset → default.
@@ -91,6 +186,7 @@ const nextConfig: NextConfig = {
   // installed PWAs instead of a CDN/browser pinning a stale worker.
   async headers() {
     return [
+      ...securityHeaders(),
       {
         source: "/sw.js",
         headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],

@@ -413,6 +413,28 @@ export async function getObjectStream(key: string): Promise<{
 }
 
 /**
+ * Read (part of) a stored object as bytes. `range` is an HTTP byte range such
+ * as "bytes=0-65535" or "bytes=-65536" (the last 64 KB). Returns the object's
+ * FULL size too (from Content-Range), so a caller can read the head and the
+ * tail of a large file without downloading all of it. Used by upload-safety to
+ * re-inspect files that went straight to S3 through a pre-signed URL.
+ */
+export async function getObjectBytes(
+  key: string,
+  range?: string
+): Promise<{ bytes: Buffer; totalSize: number; contentType: string }> {
+  const client = getS3Client();
+  const out = await client.send(
+    new GetObjectCommand({ Bucket: AWS_S3_BUCKET, Key: key, Range: range })
+  );
+  const body = out.Body as { transformToByteArray: () => Promise<Uint8Array> } | undefined;
+  const bytes = body ? Buffer.from(await body.transformToByteArray()) : Buffer.alloc(0);
+  const cr = out.ContentRange?.match(/\/(\d+)$/);
+  const totalSize = cr ? Number(cr[1]) : (out.ContentLength ?? bytes.length);
+  return { bytes, totalSize, contentType: out.ContentType ?? "application/octet-stream" };
+}
+
+/**
  * Get CloudFront URL if configured, otherwise S3 URL
  */
 export function getMediaUrl(s3Key: string): { s3Url: string; cloudFrontUrl?: string } {

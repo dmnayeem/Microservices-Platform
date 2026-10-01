@@ -18,32 +18,35 @@ import {
   sanitizeTiers,
 } from "@/lib/marketplace-selling";
 import { hammingDistance, PHASH_HAMMING_THRESHOLD } from "@/lib/phash";
-import { assertPublicUrl } from "@/lib/link-preview";
+import { safeFetchBytes } from "@/lib/safe-fetch";
 import { inngest, EVENTS } from "@/lib/inngest/client";
 import { userCanFeature } from "@/lib/packages";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { getSetting } from "@/lib/system-settings";
 import { formatAffiliateReward } from "@/lib/affiliate";
 import { z } from "zod";
+import { screenLinks, stringsIn } from "@/lib/link-safety";
 import { profileGateResponse } from "@/lib/profile-gate-server";
+import { inspectStoredFiles, reportStoredFiles, type StoredFilesSafety } from "@/lib/upload-safety";
 
 // Cap how many bytes we pull back to analyse a deliverable (bounds bandwidth
 // for large stock video; images/audio are usually far smaller). For a bigger
 // file this is a partial read — enough for EXIF/container tags + a fingerprint.
 const PARSE_BYTE_CAP = 30 * 1024 * 1024;
 
-async function fetchDeliverableBytes(url: string): Promise<Buffer | null> {
+async function fetchDeliverableBytes(url: string, sellerId: string): Promise<Buffer | null> {
   try {
-    await assertPublicUrl(url); // files[] is client-supplied → guard SSRF
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(20_000),
-      // A redirect would skip the public-URL check above (to 169.254… etc).
-      redirect: "manual",
+    // files[] is client-supplied → the shared outbound fetcher guards SSRF on
+    // every redirect hop and counts it toward the seller's outbound limit.
+    const r = await safeFetchBytes(url, {
+      timeoutMs: 20_000,
       headers: { Range: `bytes=0-${PARSE_BYTE_CAP - 1}` },
+      maxBytes: PARSE_BYTE_CAP,
+      overflow: "truncate",
+      userId: sellerId,
+      purpose: "marketplace_deliverable",
     });
-    if (!res.ok && res.status !== 206) return null;
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab.byteLength > PARSE_BYTE_CAP ? ab.slice(0, PARSE_BYTE_CAP) : ab);
+    return r.body;
   } catch {
     return null;
   }
@@ -55,7 +58,7 @@ async function analyseDeliverable(
   fileUrl: string,
   sellerId: string
 ): Promise<MediaMeta | null> {
-  const bytes = await fetchDeliverableBytes(fileUrl);
+  const bytes = await fetchDeliverableBytes(fileUrl, sellerId);
   if (!bytes) return null;
   const kind = getDeliverableKind(assetType) ?? "file";
   const meta = await extractMediaMetadata(bytes, "", kind);
@@ -453,6 +456,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Upload safety: large files reach S3 through a pre-signed URL the server
+    // never sees, so the deliverables are re-read here. A disguised program is
+    // always refused; archive findings follow `security.upload_archive_policy`
+    // (default "review": the listing is created and the reviewer sees the flag).
+    let uploadSafety: StoredFilesSafety | null = null;
+    try {
+      uploadSafety = await inspectStoredFiles([...(data.files ?? []), ...(data.attachments ?? [])]);
+    } catch (e) {
+      console.error("upload safety check failed (listing still created):", e);
+    }
+    if (uploadSafety && (uploadSafety.blocked || (uploadSafety.flagged && uploadSafety.policy === "block"))) {
+      reportStoredFiles(uploadSafety, { userId: session.user.id, where: "marketplace listing (refused)", entityType: "listing" });
+      const bad = uploadSafety.files.find((f) => f.blocked.length || f.flags.length)!;
+      return NextResponse.json(
+        { error: `"${bad.fileName}" can't be sold here: ${bad.blocked[0] ?? bad.flags[0]}.` },
+        { status: 400 }
+      );
+    }
+
     // Stock media: analyse the uploaded deliverable (files[0]) so the admin can
     // judge original vs downloaded/edited. Best-effort — never blocks creation.
     let fileMeta: MediaMeta | null = null;
@@ -471,6 +493,29 @@ export async function POST(request: NextRequest) {
       (await getLicenseTiersEnabled()) && canBeUnlimited(data.assetType)
         ? sanitizeTiers(data.licenseTiers)
         : [];
+
+    // Phishing / malware links anywhere a buyer will read.
+    const links = await screenLinks(
+      {
+        texts: [
+          data.title,
+          data.description,
+          ...stringsIn(data.details),
+          ...stringsIn(data.licenseTiers),
+          ...stringsIn([
+            data.reasonsForSelling,
+            data.whatsIncluded,
+            data.whatsNotIncluded,
+            data.niche,
+          ]),
+        ],
+        html: [data.richDescription],
+      },
+      { userId: session.user.id, entityType: "listing" }
+    );
+    if (!links.ok) {
+      return NextResponse.json({ error: links.message }, { status: 400 });
+    }
 
     const listing = await prisma.marketplaceListing.create({
       data: {
@@ -526,11 +571,24 @@ export async function POST(request: NextRequest) {
         reservePrice: data.reservePrice ?? null,
         buyNowPrice: data.buyNowPrice ?? null,
         auctionEndsAt: data.auctionEndsAt ? new Date(data.auctionEndsAt) : null,
-        fileMeta: fileMeta ? JSON.parse(JSON.stringify(fileMeta)) : undefined,
+        fileMeta:
+          fileMeta || uploadSafety
+            ? JSON.parse(JSON.stringify({ ...(fileMeta ?? {}), ...(uploadSafety ? { uploadSafety } : {}) }))
+            : undefined,
         // User listings now go through admin moderation before going live.
         status: MarketplaceListingStatus.PENDING_REVIEW,
       },
     });
+    links.report(listing.id);
+
+    if (uploadSafety?.flagged) {
+      reportStoredFiles(uploadSafety, {
+        userId: session.user.id,
+        where: "marketplace listing",
+        entityType: "listing",
+        entityId: listing.id,
+      });
+    }
 
     // Schedule an exact-time auction close via Inngest (fires at auctionEndsAt).
     if (listing.auctionMode && listing.auctionEndsAt) {

@@ -90,6 +90,20 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
     label: "Max accounts per IP",
     why: "0 would lock every user out of the platform.",
   },
+  "security.outbound_domain_per_min": {
+    min: 1,
+    max: 10_000,
+    integer: true,
+    label: "Outbound fetches per site per minute",
+    why: "Below 1 the server could never read a link. The hourly cap is 20× this.",
+  },
+  "security.outbound_user_per_hour": {
+    min: 1,
+    max: 100_000,
+    integer: true,
+    label: "Outbound fetches per user per hour",
+    why: "Below 1 no user's link could ever be read, so every proof would go to manual review.",
+  },
   "ads.interstitial_min_gap_sec": {
     min: 0,
     max: 3600,
@@ -125,6 +139,66 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
   },
 };
 
+/**
+ * Link safety settings (src/lib/link-safety.ts). Kept Prisma-free and
+ * restated here rather than imported so this file stays importable anywhere.
+ */
+const LINK_POLICY_MODES = ["flag", "block", "off"];
+const DOMAIN_RE = /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/i;
+
+function linkSafetyProblems(key: string, raw: unknown): string[] {
+  if (key === "security.link_policy") {
+    return typeof raw === "string" && LINK_POLICY_MODES.includes(raw)
+      ? []
+      : ["Link safety mode must be one of: flag, block, off."];
+  }
+  if (key === "security.blocked_domains") {
+    if (raw === null || raw === undefined || raw === "") return [];
+    // Blank lines are allowed (the editor is a textarea) and ignored.
+    const list: unknown[] = (
+      Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(/[\s,]+/) : [raw]
+    ).filter((d) => !(typeof d === "string" && d.trim() === ""));
+    if (list.length > 5000) return ["The blocked-domain list is limited to 5,000 domains."];
+    const bad = list.filter(
+      (d) =>
+        typeof d !== "string" ||
+        !DOMAIN_RE.test(
+          d
+            .trim()
+            .toLowerCase()
+            .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
+            .split(/[/?#]/)[0]
+            .replace(/:\d+$/, "")
+            .replace(/^\*?\./, "")
+        )
+    );
+    return bad.length > 0
+      ? [`These are not domain names: ${bad.slice(0, 5).map(String).join(", ")}. Enter one domain per line, like bad-site.com.`]
+      : [];
+  }
+  if (key === "security.safe_browsing_api_key") {
+    if (raw === null || raw === undefined || raw === "") return [];
+    return typeof raw === "string" && raw.trim().length <= 200 && !/\s/.test(raw.trim())
+      ? []
+      : ["The Safe Browsing API key looks wrong — paste just the key, with no spaces."];
+  }
+  return [];
+}
+
+export const LINK_SAFETY_SETTING_KEYS = [
+  "security.link_policy",
+  "security.blocked_domains",
+  "security.safe_browsing_api_key",
+];
+
+/** Keys whose value must be one of a fixed set of choices. */
+export const ENUM_SETTING_CHOICES: Record<string, { label: string; values: string[] }> = {
+  "security.upload_archive_policy": {
+    label: "Suspicious uploads policy",
+    values: ["review", "block", "allow"],
+  },
+};
+
 export interface SettingRejection {
   key: string;
   message: string;
@@ -147,6 +221,21 @@ export function validateSettingValues(
     // otherwise be stored and then silently replaced by the defaults.
     if (NAV_SETTING_KEYS.includes(key)) {
       for (const message of navSettingProblems(key, raw)) out.push({ key, message });
+      continue;
+    }
+    if (LINK_SAFETY_SETTING_KEYS.includes(key)) {
+      for (const message of linkSafetyProblems(key, raw)) out.push({ key, message });
+      continue;
+    }
+    const choices = ENUM_SETTING_CHOICES[key];
+    if (choices) {
+      if (raw !== null && raw !== undefined && raw !== "" && !choices.values.includes(String(raw))) {
+        out.push({ key, message: `${choices.label} must be one of: ${choices.values.join(", ")}.` });
+      }
+      continue;
+    }
+    if (key === "security.virustotal_api_key" && typeof raw === "string" && raw.trim() !== "" && !/^[A-Za-z0-9]{32,128}$/.test(raw.trim())) {
+      out.push({ key, message: "The VirusTotal API key should be letters and digits only (64 characters)." });
       continue;
     }
     const bound = NUMERIC_SETTING_BOUNDS[key];

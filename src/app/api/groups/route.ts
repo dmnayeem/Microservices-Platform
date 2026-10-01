@@ -4,6 +4,7 @@ import { groupsDisabled } from "@/lib/groups-gate";
 import { prisma } from "@/lib/prisma";
 import { GroupType, GroupRole } from "@/generated/prisma/client";
 import { z } from "zod";
+import { screenLinks } from "@/lib/link-safety";
 
 const createSchema = z.object({
   name: z.string().min(2).max(80),
@@ -118,6 +119,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Phishing / malware links in the group's name or description.
+  const links = await screenLinks(
+    { texts: [v.data.name, v.data.description] },
+    { userId, entityType: "group" }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
+
   const group = await prisma.group.create({
     data: {
       ...v.data,
@@ -131,6 +141,7 @@ export async function POST(request: NextRequest) {
       },
     },
   });
+  links.report(group.id);
 
   return NextResponse.json({ group }, { status: 201 });
 }

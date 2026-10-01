@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { writeAudit } from "@/lib/audit";
+import { screenLinks } from "@/lib/link-safety";
 import { getPointsPerUsd } from "@/lib/economy";
 import {
   CPA_MANAGE,
@@ -55,6 +56,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     where: { id },
     data: data as Prisma.CpaOfferUpdateInput,
   });
+
+  // Admin-entered: never refused, only flagged for a second look.
+  const tracking = (data as Record<string, unknown>).trackingUrl;
+  if (typeof tracking === "string") {
+    await screenLinks(
+      { urls: [tracking] },
+      { userId: gate.userId, entityType: "cpa", entityId: id, enforcement: "never" }
+    );
+  }
 
   const changed = Object.keys(data).filter(
     (k) =>

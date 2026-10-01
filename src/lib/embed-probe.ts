@@ -1,4 +1,5 @@
 import "server-only";
+import { SafeFetchError, safeFetch } from "@/lib/safe-fetch";
 
 /**
  * Can this URL actually be shown inside an iframe?
@@ -48,17 +49,21 @@ export async function probeEmbed(url: string): Promise<EmbedProbeResult> {
   try {
     // GET, not HEAD: plenty of hosts answer HEAD differently (or not at all),
     // and the framing headers only appear on the real response.
-    const res = await fetch(parsed.toString(), {
+    // Through the shared outbound fetcher: the admin-typed URL (and every
+    // redirect hop) must not point inside our network. No rate limit — an
+    // admin pressing "check" is not a flood.
+    const { response: res } = await safeFetch(parsed, {
       method: "GET",
-      redirect: "follow",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: {
-        // Some hosts vary their framing headers by client; ask as a browser would.
-        "User-Agent":
-          "Mozilla/5.0 (compatible; RevType-EmbedProbe/1.0; +https://revtype.com)",
-        Accept: "text/html,application/xhtml+xml",
-      },
+      timeoutMs: TIMEOUT_MS,
+      maxRedirects: 5,
+      rateLimit: false,
+      purpose: "embed_probe",
+      // Some hosts vary their framing headers by client; ask as a browser would.
+      userAgent: "Mozilla/5.0 (compatible; RevType-EmbedProbe/1.0; +https://revtype.com)",
+      headers: { Accept: "text/html,application/xhtml+xml" },
     });
+    // Only the headers matter; don't download the page.
+    await res.body?.cancel().catch(() => {});
 
     const xfo = res.headers.get("x-frame-options");
     const csp = res.headers.get("content-security-policy");
@@ -121,7 +126,10 @@ export async function probeEmbed(url: string): Promise<EmbedProbeResult> {
     return { ok: true, xfo, csp, status: res.status, checkedAt };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    const timedOut = msg.includes("timeout") || msg.includes("aborted");
+    const timedOut =
+      (err instanceof SafeFetchError && err.reason === "timeout") ||
+      msg.includes("timeout") ||
+      msg.includes("aborted");
     return {
       ok: false,
       reason: timedOut

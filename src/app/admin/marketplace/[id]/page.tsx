@@ -10,6 +10,7 @@ import { Avatar } from "@/components/user/primitives/avatar";
 import { ListingActions } from "./_components/ListingActions";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import type { MediaMeta } from "@/lib/media-metadata";
+import type { StoredFilesSafety } from "@/lib/upload-safety";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -181,10 +182,18 @@ export default async function MarketplaceDetailPage({ params }: PageProps) {
 
           {/* Uploaded-file micro-data (stock media) — helps judge original vs
               downloaded/edited. */}
-          {typedListing.fileMeta ? (
+          {typedListing.fileMeta && (typedListing.fileMeta as { kind?: unknown }).kind ? (
             <FileMetaPanel
               meta={typedListing.fileMeta as unknown as MediaMeta}
               downloadUrl={typedListing.files[0]}
+            />
+          ) : null}
+
+          {/* Upload safety — what the seller's files really are (disguised
+              programs are refused at submit; archive findings land here). */}
+          {(typedListing.fileMeta as unknown as { uploadSafety?: StoredFilesSafety } | null)?.uploadSafety ? (
+            <UploadSafetyPanel
+              safety={(typedListing.fileMeta as unknown as { uploadSafety: StoredFilesSafety }).uploadSafety}
             />
           ) : null}
 
@@ -376,6 +385,53 @@ function Row({ label, value }: { label: string; value?: string | number | null }
     <div className="flex justify-between gap-3 text-sm">
       <span className="text-gray-500">{label}</span>
       <span className="text-white text-right break-all">{value}</span>
+    </div>
+  );
+}
+
+/** Admin-only: the upload-safety check of the listing's files. */
+function UploadSafetyPanel({ safety }: { safety: StoredFilesSafety }) {
+  const bad = safety.files.filter((f) => f.blocked.length || f.flags.length);
+  return (
+    <div
+      className={`bg-gray-900 rounded-xl border p-6 ${bad.length ? "border-amber-500/60" : "border-gray-800"}`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        {bad.length ? (
+          <ShieldAlert className="w-5 h-5 text-amber-400" />
+        ) : (
+          <ShieldCheck className="w-5 h-5 text-emerald-400" />
+        )}
+        <h2 className="text-lg font-semibold text-white">
+          File safety {bad.length ? "— needs a look before approving" : "— nothing found"}
+        </h2>
+      </div>
+      <ul className="space-y-3 text-sm">
+        {safety.files.map((f) => (
+          <li key={f.url} className="break-words">
+            <div className="text-gray-200">
+              {f.fileName}{" "}
+              <span className="text-gray-500">
+                · {f.detectedType ?? "type not recognised"} · {(f.sizeBytes / 1024 / 1024).toFixed(1)} MB
+                {f.partial ? " · too large to scan whole" : ""}
+              </span>
+            </div>
+            {[...f.blocked, ...f.flags].map((r) => (
+              <div key={r} className="text-amber-300">⚠ {r}</div>
+            ))}
+            {f.scan?.map((sc) => (
+              <div key={sc.engine} className={sc.status === "malicious" ? "text-red-400" : "text-gray-500"}>
+                {sc.engine}: {sc.status}
+                {sc.detail ? ` (${sc.detail})` : ""}
+              </div>
+            ))}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-gray-500 mt-3">
+        Checked {format(new Date(safety.checkedAt), "PPp")} · policy: {safety.policy}. Archives holding programs are
+        not refused automatically — decide here whether the listing should go live.
+      </p>
     </div>
   );
 }

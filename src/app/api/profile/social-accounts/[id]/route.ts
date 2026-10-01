@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { screenLinks } from "@/lib/link-safety";
 
 const updateSchema = z.object({
   username: z.string().min(2).max(60).optional(),
@@ -39,6 +40,17 @@ export async function PATCH(
     data.username = (data.username as string).replace(/^@/, "").trim();
   }
   data.lastSyncedAt = new Date();
+
+  // Phishing / malware links: the profile link is shown to everyone.
+  if (typeof v.data.url === "string") {
+    const links = await screenLinks(
+      { urls: [v.data.url] },
+      { userId: session.user.id, entityType: "profile", entityId: session.user.id }
+    );
+    if (!links.ok) {
+      return NextResponse.json({ error: links.message }, { status: 400 });
+    }
+  }
 
   const account = await prisma.socialAccount.update({
     where: { id },

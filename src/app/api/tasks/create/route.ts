@@ -33,6 +33,7 @@ import {
   platformRefusal,
 } from "@/lib/buyer-scope";
 import { KYCStatus } from "@/generated/prisma/client";
+import { screenLinks, stringsIn } from "@/lib/link-safety";
 import { TransactionType, TransactionStatus, TaskType } from "@/generated/prisma/client";
 
 // Task types this endpoint knows how to build. WHICH of them a buyer may
@@ -379,6 +380,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Phishing / malware links. Users are sent to these, so they are the
+  // riskiest links on the platform.
+  const links = await screenLinks(
+    {
+      texts: [
+        d.title,
+        d.description,
+        d.instructions,
+        ...stringsIn([d.custom, d.survey, d.quiz, d.article, d.appInstall]),
+      ],
+      urls: [d.socialUrl, d.videoUrl],
+    },
+    { userId, entityType: "task" }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
+
   try {
     const task = await prisma.$transaction(async (tx) => {
       // NOTHING is charged here. Credit is spent as the task is USED — one
@@ -488,6 +507,7 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
+    links.report(task.id);
     return NextResponse.json(
       {
         success: true,

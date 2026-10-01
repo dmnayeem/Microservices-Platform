@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { uploadFile, isS3Configured, getMediaUrl, getMediaFileType, generateMediaFilename, getMediaS3KeyPath, validateMediaFile } from "@/lib/s3";
+import { inspectUpload, decideUpload } from "@/lib/upload-safety";
 
 // POST /api/media/upload - Upload media file (for small files < 1MB)
 export async function POST(request: NextRequest) {
@@ -39,6 +40,16 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // Admin library: any type, but never a program, script or web page (it is
+    // served from our own origin). Plain SVG logos stay allowed.
+    const gate = await decideUpload(
+      inspectUpload(file.name, file.type, buffer, { allowSvg: true }),
+      { userId: session.user.id, where: "api/media/upload (admin media library)", fileName: file.name }
+    );
+    if (gate.reject) {
+      return NextResponse.json({ error: gate.reject }, { status: 400 });
+    }
 
     // Generate unique filename and S3 key
     const uniqueFilename = generateMediaFilename(file.name);

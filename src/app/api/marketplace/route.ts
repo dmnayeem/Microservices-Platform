@@ -6,6 +6,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { userCanFeature } from "@/lib/packages";
 import { toNum } from "@/lib/money";
+import { screenLinks } from "@/lib/link-safety";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -95,6 +96,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Phishing / malware links anywhere a buyer will read.
+  const links = await screenLinks(
+    { texts: [v.data.title, v.data.description] },
+    { userId: session.user.id, entityType: "listing" }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
+
   const listing = await prisma.marketplaceListing.create({
     data: {
       sellerId: session.user.id,
@@ -107,6 +117,7 @@ export async function POST(request: NextRequest) {
       status: "ACTIVE",
     },
   });
+  links.report(listing.id);
 
   return NextResponse.json(
     { success: true, listing: { id: listing.id, title: listing.title } },

@@ -8,6 +8,7 @@ import { userCanFeature } from "@/lib/packages";
 import { normalizeTargeting } from "@/lib/ad-targeting";
 import { adTargetingSchema } from "@/lib/ad-targeting-schema";
 import { AdReviewError, applyAdvertiserEdit } from "@/lib/ad-review";
+import { screenLinks } from "@/lib/link-safety";
 
 /** Load an ad and confirm the session user owns its campaign. */
 async function ownAd(adId: string, userId: string) {
@@ -121,6 +122,15 @@ export async function PATCH(
     );
   }
   const d = parsed.data;
+
+  // Phishing / malware destinations — the same screen as creating the ad.
+  const links = await screenLinks(
+    { texts: [d.headline, d.brandName], urls: [d.targetUrl] },
+    { userId: g.userId, entityType: "ad", entityId: id }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
+  }
 
   // Same fit rule as create — an advertiser can resize an already-approved ad,
   // and size changes deliberately skip re-review.

@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isS3Configured, getUploadUrl, generateFileKey, uploadFile, getPublicUrl } from "@/lib/s3";
+import {
+  USER_UPLOAD_TYPES,
+  inspectUpload,
+  decideUpload,
+  decideUploadName,
+  scanStoredUploadInBackground,
+} from "@/lib/upload-safety";
 
 // Maximum file size for direct upload (5MB)
 const MAX_DIRECT_UPLOAD_SIZE = 5 * 1024 * 1024;
 
-// Allowed file types
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/tiff"];
-const ALLOWED_DOCUMENT_TYPES = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip", "application/epub+zip", "application/x-mobipocket-ebook"];
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-// Stock-media (music) deliverables.
-const ALLOWED_AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/flac", "audio/aac", "audio/ogg", "audio/aiff", "audio/x-aiff"];
+// Allowed file types (image / document / video / audio) — the list lives in
+// src/lib/upload-safety.ts. The declared type is only the first gate: the
+// bytes are sniffed (PUT) or the name is checked (pre-signed POST, where the
+// server never sees the bytes), so a program renamed .pdf/.zip/.jpg is refused.
 
 // POST /api/upload - Request a pre-signed URL for file upload
 export async function POST(request: NextRequest) {
@@ -39,8 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type based on folder/purpose
-    const allAllowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_AUDIO_TYPES];
-    if (!allAllowedTypes.includes(fileType)) {
+    if (!USER_UPLOAD_TYPES.includes(fileType)) {
       return NextResponse.json(
         { error: "File type not allowed" },
         { status: 400 }
@@ -63,6 +67,17 @@ export async function POST(request: NextRequest) {
         { error: "Invalid upload folder" },
         { status: 400 }
       );
+    }
+
+    // Pre-signed: the bytes go straight to S3, so only the name/type can be
+    // checked here (x.pdf.exe, .js, a ".zip" sent as image/png…). Marketplace
+    // files are re-inspected byte-for-byte when the listing is submitted.
+    const nameGate = await decideUploadName(String(fileName), String(fileType), {
+      userId: session.user.id,
+      where: `api/upload (pre-signed, ${folder})`,
+    });
+    if (nameGate.reject) {
+      return NextResponse.json({ error: nameGate.reject }, { status: 400 });
     }
 
     // Generate file key
@@ -128,8 +143,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validate file type
-    const allAllowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_AUDIO_TYPES];
-    if (!allAllowedTypes.includes(file.type)) {
+    if (!USER_UPLOAD_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: "File type not allowed" },
         { status: 400 }
@@ -142,6 +156,20 @@ export async function PUT(request: NextRequest) {
     // Read file content
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // What is it REALLY? A program/script/web page, or bytes that don't match
+    // the name/type, is refused. Archive findings follow the admin's policy
+    // (default: accept + flag to the Abuse Center).
+    const verdict = inspectUpload(file.name, file.type, buffer);
+    const gate = await decideUpload(verdict, {
+      userId: session.user.id,
+      where: `api/upload (${folder})`,
+      fileName: file.name,
+      key,
+    });
+    if (gate.reject) {
+      return NextResponse.json({ error: gate.reject }, { status: 400 });
+    }
+
     // Upload to S3
     const result = await uploadFile(key, buffer, file.type);
 
@@ -151,6 +179,15 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Optional malware lookup (VirusTotal hash / ClamAV) — documents and
+    // archives only, after the response, never blocking the user.
+    scanStoredUploadInBackground(buffer, verdict, {
+      userId: session.user.id,
+      where: `api/upload (${folder})`,
+      fileName: file.name,
+      key,
+    });
 
     return NextResponse.json({
       success: true,

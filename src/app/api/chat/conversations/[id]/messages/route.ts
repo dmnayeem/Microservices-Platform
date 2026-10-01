@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { screenLinks } from "@/lib/link-safety";
 
 const schema = z.object({
   content: z.string().min(1).max(2000),
@@ -36,6 +37,17 @@ export async function POST(
   }
   if (conv.user1Id !== userId && conv.user2Id !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Phishing / malware links. Chat is private conversation, so only the hard
+  // rules (bad scheme, admin blocklist) refuse; anything else is flagged.
+  // Only the links are reported, never the message text.
+  const links = await screenLinks(
+    { texts: [v.data.content] },
+    { userId, entityType: "chat", entityId: id, enforcement: "hard-only" }
+  );
+  if (!links.ok) {
+    return NextResponse.json({ error: links.message }, { status: 400 });
   }
 
   // Increment unread for the OTHER user

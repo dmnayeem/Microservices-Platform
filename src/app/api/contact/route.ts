@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/email";
 import { SUPPORT_EMAIL } from "@/config/company";
 import { z } from "zod";
+import { screenLinks } from "@/lib/link-safety";
 
 const schema = z.object({
   name: z.string().min(1).max(120),
@@ -37,6 +38,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
   const d = parsed.data;
   if (d.website) return NextResponse.json({ ok: true }); // silently drop bots
+
+  // Links in a support message are flagged for staff, never refused: someone
+  // reporting a scam link has to be able to paste it.
+  (
+    await screenLinks(
+      { texts: [d.subject, d.message] },
+      { entityType: "support", enforcement: "never" }
+    )
+  ).report();
 
   try {
     await prisma.contactMessage.create({

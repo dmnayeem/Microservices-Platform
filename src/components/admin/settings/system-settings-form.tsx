@@ -35,6 +35,7 @@ import {
   type SettingGroupId,
 } from "@/lib/admin-settings-catalog";
 import { SettingsSearch } from "./settings-search";
+import { LinkSafetyTest } from "./link-safety-test";
 
 export type SettingsBag = Record<string, unknown>;
 
@@ -99,6 +100,15 @@ const DEFAULTS: SettingsBag = {
   // Security
   password_min_length: 8,
   require_strong_passwords: true,
+  // Link safety — "flag" is the non-breaking default: nothing is refused
+  // except the blocked-domain list and javascript:/data:/file: links.
+  "security.link_policy": "flag",
+  "security.blocked_domains": [],
+  "security.safe_browsing_api_key": "",
+  "security.upload_archive_policy": "review",
+  "security.virustotal_api_key": "",
+  "security.outbound_domain_per_min": 30,
+  "security.outbound_user_per_hour": 60,
   // Email
   smtp_host: "smtp.gmail.com",
   smtp_port: 587,
@@ -680,6 +690,107 @@ export function SystemSettingsForm({
                 onChange={(v) => set("require_strong_passwords", v)}
                 disabled={!canEdit}
               />
+            </Section>
+            <Section title="Link safety">
+              <p className="text-xs text-slate-500 -mt-1 mb-2">
+                Checks every link users save — posts, comments, profiles,
+                listings, tasks, ads and chat — for phishing and malware, so a
+                bad link cannot get the site reported to its host. Links using
+                javascript:, data: or file: are always refused; they have no
+                honest use. Anything flagged opens a case in the Abuse Center.
+              </p>
+              <Field settingKey="security.link_policy">
+                <select
+                  value={String(values["security.link_policy"] ?? "flag")}
+                  onChange={(e) => set("security.link_policy", e.target.value)}
+                  disabled={!canEdit}
+                  className={inp}
+                >
+                  <option value="flag">Flag for review (recommended)</option>
+                  <option value="block">Block unsafe links</option>
+                  <option value="off">Off (blocked domains only)</option>
+                </select>
+              </Field>
+              <Field settingKey="security.blocked_domains">
+                <textarea
+                  rows={5}
+                  value={
+                    Array.isArray(values["security.blocked_domains"])
+                      ? (values["security.blocked_domains"] as string[]).join("\n")
+                      : String(values["security.blocked_domains"] ?? "")
+                  }
+                  onChange={(e) =>
+                    set("security.blocked_domains", e.target.value.split("\n"))
+                  }
+                  disabled={!canEdit}
+                  className={inp}
+                  placeholder={"bad-site.com\nphishing-example.net"}
+                />
+              </Field>
+              <Field settingKey="security.safe_browsing_api_key">
+                <input
+                  type="password"
+                  value={(values["security.safe_browsing_api_key"] as string) || ""}
+                  onChange={(e) => set("security.safe_browsing_api_key", e.target.value)}
+                  disabled={!canEdit}
+                  className={inp}
+                  placeholder="AIza…"
+                />
+              </Field>
+              <LinkSafetyTest />
+            </Section>
+            <Section title="Uploads">
+              <Field settingKey="security.upload_archive_policy">
+                <select
+                  value={String(values["security.upload_archive_policy"] ?? "review")}
+                  onChange={(e) => set("security.upload_archive_policy", e.target.value)}
+                  disabled={!canEdit}
+                  className={inp}
+                >
+                  <option value="review">Review — accept and flag (recommended)</option>
+                  <option value="block">Block — refuse the upload</option>
+                  <option value="allow">Allow — do nothing</option>
+                </select>
+              </Field>
+              <Field settingKey="security.virustotal_api_key">
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={(values["security.virustotal_api_key"] as string) || ""}
+                  onChange={(e) => set("security.virustotal_api_key", e.target.value)}
+                  disabled={!canEdit}
+                  placeholder="Not set — no malware lookup"
+                  className={inp}
+                />
+              </Field>
+            </Section>
+            <Section title="Outbound fetches">
+              <Field settingKey="security.outbound_domain_per_min">
+                <input
+                  type="number"
+                  min={1}
+                  max={10000}
+                  value={Number(values["security.outbound_domain_per_min"] ?? 30)}
+                  onChange={(e) =>
+                    set("security.outbound_domain_per_min", parseInt(e.target.value))
+                  }
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
+              <Field settingKey="security.outbound_user_per_hour">
+                <input
+                  type="number"
+                  min={1}
+                  max={100000}
+                  value={Number(values["security.outbound_user_per_hour"] ?? 60)}
+                  onChange={(e) =>
+                    set("security.outbound_user_per_hour", parseInt(e.target.value))
+                  }
+                  disabled={!canEdit}
+                  className={inp}
+                />
+              </Field>
             </Section>
             <ManagedElsewhere
               label="Require KYC for withdrawals"

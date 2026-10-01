@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getObjectStream, isS3Configured } from "@/lib/s3";
+import { safeServeHeaders } from "@/lib/upload-safety";
 
 /**
  * First-party media proxy. Our S3 bucket is private and CloudFront has no read
@@ -55,8 +56,12 @@ export async function GET(
       body as { transformToWebStream: () => ReadableStream }
     ).transformToWebStream();
 
+    // Images/video/audio/PDF stay inline; SVG is sandboxed; anything else
+    // (HTML, XML, scripts, archives, unknown) downloads as opaque bytes, so a
+    // user upload can never run as a page on our origin. `nosniff` stops a
+    // mislabelled file being re-read as HTML.
     const headers: Record<string, string> = {
-      "Content-Type": contentType,
+      ...safeServeHeaders(contentType, key),
       // Keys are unique per upload → the bytes never change: cache hard.
       "Cache-Control": "public, max-age=31536000, immutable",
     };

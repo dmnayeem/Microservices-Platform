@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { detectStore } from "@/lib/app-install-tasks";
+import { SafeFetchError, safeFetchText } from "@/lib/safe-fetch";
 
 // POST /api/admin/tasks/fetch-app-metadata { url }
 // Best-effort auto-fill of app name / description / logo from a store link.
@@ -56,16 +57,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Play Store — parse Open Graph tags out of the initial HTML.
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-    });
+    // The link is typed by whoever is building the task: through the shared
+    // outbound fetcher (SSRF guard on every hop, size cap, outbound limits).
     clearTimeout(timeout);
-    const html = await res.text();
+    const html = (
+      await safeFetchText(url, {
+        timeoutMs: 8000,
+        maxBytes: 4 * 1024 * 1024,
+        overflow: "truncate",
+        requireOk: false,
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+        headers: { "Accept-Language": "en-US,en;q=0.9" },
+        userId: session.user.id,
+        purpose: "app_store_metadata",
+      })
+    ).body;
     const og = (prop: string) => {
       const m =
         html.match(
@@ -95,7 +102,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          err instanceof Error && err.name === "AbortError"
+          (err instanceof Error && err.name === "AbortError") ||
+          (err instanceof SafeFetchError && err.reason === "timeout")
             ? "The store timed out — fill the fields manually."
             : "Couldn't fetch app details — fill the fields manually.",
       },

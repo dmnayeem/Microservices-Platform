@@ -15,6 +15,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { toNum } from "@/lib/money";
 import { resolveCountryCode } from "@/lib/country-codes";
 import { checkUsername, USERNAME_RULE_MESSAGE } from "@/lib/username";
+import { screenLinks } from "@/lib/link-safety";
 import { getUserDayContext } from "@/lib/user-day";
 import {
   BIO_CHAR_LIMIT,
@@ -747,6 +748,23 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updateData.targetingChangedAt = new Date();
+    }
+
+    // Phishing / malware links in the public profile text (bio, name,
+    // profession). Only the fields this request changes are screened.
+    {
+      const texts = (["bio", "name", "firstName", "lastName", "profession"] as const)
+        .map((k) => updateData[k])
+        .filter((t): t is string => typeof t === "string");
+      if (texts.length > 0) {
+        const links = await screenLinks(
+          { texts },
+          { userId: session.user.id, entityType: "profile", entityId: session.user.id }
+        );
+        if (!links.ok) {
+          return NextResponse.json({ error: links.message }, { status: 400 });
+        }
+      }
     }
 
     await prisma.user.update({

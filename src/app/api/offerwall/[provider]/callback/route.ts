@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { parseOfferwallConfig } from "@/lib/offerwall";
 import { processOfferwallReferralCommissions } from "@/lib/referral-commissions";
+import { raiseAbuseSignal } from "@/lib/abuse/signal";
 
 /**
  * Generic offerwall server-to-server postback. Provider-agnostic:
@@ -172,6 +173,16 @@ async function handle(request: NextRequest, provider: string) {
         );
       }
       await prisma.$transaction(ops as never);
+      if (completion && completion.status === "APPROVED") {
+        raiseAbuseSignal({
+          kind: "FRAUD_PATTERN",
+          severity: "MEDIUM",
+          userId: completion.userId,
+          entityType: "offerwall",
+          summary: `Offerwall chargeback (${provider}): ${offerName ?? "offer"}`,
+          evidence: { provider, transactionId, offerId, payoutAmount, userPayout, ip },
+        });
+      }
       return NextResponse.json({ ok: true, reversed: back });
     }
 
