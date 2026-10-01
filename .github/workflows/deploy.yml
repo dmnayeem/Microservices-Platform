@@ -1,0 +1,109 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+    paths-ignore: ['**.md', 'docs/**']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit SHA to deploy (blank = current master)'
+        required: false
+
+# One deploy at a time; never cancel one midway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  check:
+    name: Typecheck and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: npm }
+      - name: Install
+        env: { DATABASE_URL: 'postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder' }
+        run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm run lint
+
+  build:
+    name: Build and push image
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+        with: { ref: "${{ github.event.inputs.ref || github.sha }}" }
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        run: |
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          SHA=$(git rev-parse HEAD)
+          echo "repo_lc=$REPO_LC" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA"         >> "$GITHUB_OUTPUT"
+          echo "image=${{ env.REGISTRY }}/$REPO_LC:$SHA" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.sha }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_APP_NAME=${{ vars.NEXT_PUBLIC_APP_NAME }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+          # Prisma Postgres is a public HTTPS endpoint: a runner reaches it like
+          # the VPS does, so any page Next prerenders can read real data at
+          # build time. Reads only; no migration runs in CI.
+
+  deploy:
+    name: Deploy to VPS
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            cd /opt/revtype
+            # Repo is the source of truth for deploy.sh / Caddyfile / compose.
+            # .env, .deploy-state and build.log are untracked and untouched.
+            git fetch --quiet origin
+            git reset --quiet --hard "${{ github.sha }}"
+            ./deploy.sh --image "${{ needs.build.outputs.image }}"
+      - if: always()
+        run: |
+          [ "${{ job.status }}" = success ] \
+            && echo "### Deployed \`${{ needs.build.outputs.image }}\`" >> "$GITHUB_STEP_SUMMARY" \
+            || echo "### Deploy FAILED ??? server auto-reverted to the previous image" >> "$GITHUB_STEP_SUMMARY"

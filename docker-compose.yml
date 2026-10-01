@@ -1,0 +1,49 @@
+name: revtype
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-RevType}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}
+        DATABASE_URL: ${DATABASE_URL}
+    # deploy.sh sets APP_IMAGE to the tag CI just pushed; a manual
+    # `docker compose build` falls back to the local tag.
+    image: ${APP_IMAGE:-revtype-app:latest}
+    pull_policy: ${APP_PULL_POLICY:-missing}
+    restart: unless-stopped
+    env_file: [.env]
+    expose: ["3000"]            # reachable by Caddy only; never published
+    # Hardening. Node needs no Linux capabilities; the only thing it may not do
+    # is acquire new ones. 4 GB keeps a runaway process from taking the host.
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 4g
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]   # udp ??? HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificates
+      - caddy_config:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    security_opt: ["no-new-privileges:true"]
+    depends_on: [app]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy_data:
+  caddy_config:
