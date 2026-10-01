@@ -32,7 +32,7 @@ const FIN = new Set<string>(FINANCE_PERMISSIONS);
     await prisma.user.delete({ where: { id: mgr.id } });
   }
   const staff = await prisma.user.findMany({ where: { role: { in: ["ADMIN", "MANAGER", "MODERATOR", "CONTENT_ADMIN", "SUPPORT_ADMIN", "MARKETING_ADMIN"] } }, select: { id: true, email: true, role: true } });
-  let leaks: string[] = [];
+  const leaks: string[] = [];
   for (const s of staff) {
     const p = await getEffectivePermissions(s.id);
     const f = [...p].filter((x) => FIN.has(x));
