@@ -1,6 +1,6 @@
 name: Deploy
 
-# Push to master Ã¢â€ â€™ SSH into the VPS Ã¢â€ â€™ it pulls the commit, BUILDS the image
+# Push to master -> SSH into the VPS -> it pulls the commit, BUILDS the image
 # there, and swaps containers with a health gate and automatic rollback.
 # Nothing is built on GitHub; this job is a trigger and a status light.
 
@@ -40,15 +40,15 @@ jobs:
             # .deploy-state and the Docker caches are untracked and untouched.
             git fetch --quiet origin
             git reset --quiet --hard "${{ github.sha }}"
-            # `bash` rather than `./` â€” immune to the executable bit, which a
+            # bash rather than ./ : immune to the executable bit, which a
             # commit from Windows can silently drop.
             bash ./deploy.sh
 
       - name: Summary
         if: always()
         run: |
-          if [ "${{ job.status }}" = success ]; then
- - built on the VPS" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "### OK - deployed ${{ github.sha }} (built on the VPS)" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### FAILED  Deploy failed - the previous release is still serving (auto-revert)" >> "$GITHUB_STEP_SUMMARY"
+            echo "### FAILED - previous release still serving (auto-revert)" >> "$GITHUB_STEP_SUMMARY"
           fi
