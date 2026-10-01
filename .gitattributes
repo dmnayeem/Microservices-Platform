@@ -1,0 +1,10 @@
+# Deploy files run on Linux. Guarantee LF in the repo and on every checkout,
+# regardless of the committer's core.autocrlf â€” a CRLF deploy.sh fails on the
+# server with: bash: $'\r': command not found
+*.sh          text eol=lf
+Dockerfile    text eol=lf
+Caddyfile     text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+.dockerignore text eol=lf
+.gitattributes text eol=lf

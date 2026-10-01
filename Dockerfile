@@ -1,9 +1,15 @@
-# RevType ??? production image.
+# RevType â€” production image. Built ON the VPS by deploy.sh.
 #
-# Not using `output: "standalone"` on purpose. next.config.ts marks jimp and
+# Not using `output: "standalone"` on purpose: next.config.ts marks jimp and
 # geoip-country as serverExternalPackages because jimp/fonts exports ABSOLUTE
-# node_modules paths that output tracing rewrites and breaks (loadFont dies ???
-# empty watermark previews). Carrying the real node_modules sidesteps that.
+# node_modules paths that output tracing rewrites and breaks. Carrying the
+# real node_modules sidesteps that.
+#
+# Two BuildKit cache mounts make repeat builds fast:
+#   /root/.npm        npm's download cache â€” `npm ci` re-runs only when
+#                     package-lock.json changes, and then from local cache
+#   /app/.next/cache  Next's own build cache â€” Turbopack rebuilds incrementally
+# Neither ends up in the image; both persist on the VPS between builds.
 
 FROM node:24-bookworm-slim AS base
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -19,11 +25,12 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY scripts ./scripts
 RUN mkdir -p src/generated/prisma
-# postinstall ??? prisma generate ??? prisma.config.ts ??? env("DATABASE_URL").
-# Generate needs the variable to EXIST, never to connect. Placeholder here.
+# postinstall â†’ prisma generate â†’ prisma.config.ts â†’ env("DATABASE_URL").
+# Generate needs the variable to EXIST, never to connect.
 ENV DATABASE_URL="postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder"
-RUN npm ci --no-audit --no-fund
-RUN npm install --no-save --no-audit --no-fund sharp
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund \
+ && npm install --no-save --no-audit --no-fund sharp
 
 # ----------------------------------------------------------------- build
 FROM base AS builder
@@ -31,7 +38,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
     && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# NEXT_PUBLIC_* are inlined into the client bundle at BUILD time.
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_APP_NAME=RevType
 ARG NEXT_PUBLIC_SENTRY_DSN=
@@ -44,7 +50,8 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     DATABASE_URL=$DATABASE_URL \
     NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # ---------------------------------------------------------------- runner
 FROM base AS runner
