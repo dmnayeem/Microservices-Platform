@@ -1,15 +1,18 @@
-# RevType â€” production image. Built ON the VPS by deploy.sh.
+# RevType --- production image. Built ON the VPS by deploy.sh.
 #
 # Not using `output: "standalone"` on purpose: next.config.ts marks jimp and
 # geoip-country as serverExternalPackages because jimp/fonts exports ABSOLUTE
 # node_modules paths that output tracing rewrites and breaks. Carrying the
 # real node_modules sidesteps that.
 #
-# Two BuildKit cache mounts make repeat builds fast:
-#   /root/.npm        npm's download cache â€” `npm ci` re-runs only when
-#                     package-lock.json changes, and then from local cache
-#   /app/.next/cache  Next's own build cache â€” Turbopack rebuilds incrementally
-# Neither ends up in the image; both persist on the VPS between builds.
+# Two BuildKit cache mounts make repeat builds fast (this is what Vercel does
+# when it "restores the build cache"):
+#   id=revtype-npm         npm's download cache; `npm ci` re-runs only when
+#                          package-lock.json changes, then from local cache
+#   id=revtype-next-cache  Next 16.3's Turbopack build cache (.next/cache/
+#                          turbopack, on by default) so rebuilds are incremental
+# Neither ends up in the image; both persist on the VPS between builds. The
+# sizes are printed after each build so the deploy log shows them working.
 
 FROM node:24-bookworm-slim AS base
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -25,12 +28,13 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY scripts ./scripts
 RUN mkdir -p src/generated/prisma
-# postinstall â†’ prisma generate â†’ prisma.config.ts â†’ env("DATABASE_URL").
+# postinstall -> prisma generate -> prisma.config.ts -> env("DATABASE_URL").
 # Generate needs the variable to EXIST, never to connect.
 ENV DATABASE_URL="postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder"
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund \
- && npm install --no-save --no-audit --no-fund sharp
+RUN --mount=type=cache,id=revtype-npm,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --no-fund \
+ && npm install --no-save --prefer-offline --no-audit --no-fund sharp \
+ && echo "npm cache after install: $(du -sh /root/.npm 2>/dev/null | cut -f1)"
 
 # ----------------------------------------------------------------- build
 FROM base AS builder
@@ -50,8 +54,11 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     DATABASE_URL=$DATABASE_URL \
     NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=4096"
-RUN --mount=type=cache,target=/app/.next/cache \
-    npm run build
+RUN --mount=type=cache,id=revtype-next-cache,target=/app/.next/cache \
+    echo "turbopack cache before build: $(du -sh /app/.next/cache/turbopack 2>/dev/null | cut -f1 || echo none)" \
+ && npm run build \
+ && echo "turbopack cache after build:  $(du -sh /app/.next/cache/turbopack 2>/dev/null | cut -f1 || echo none)" \
+ && echo ".next/cache entries: $(ls /app/.next/cache 2>/dev/null | tr '\n' ' ')"
 
 # ---------------------------------------------------------------- runner
 FROM base AS runner
