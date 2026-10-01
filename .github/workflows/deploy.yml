@@ -32,13 +32,18 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 20m
-          script_stop: true
           script: |
             set -e
             cd /opt/revtype
             # The repo is the source of truth for every deploy file. .env,
             # .deploy-state and the Docker caches are untracked and untouched.
-            git fetch --quiet origin
+            # GitHub occasionally resets a connection; retry before giving up.
+            for i in 1 2 3; do
+              git fetch --quiet origin && break
+              echo "git fetch attempt $i failed; retrying in 5s"
+              sleep 5
+            done
+            git cat-file -e "${{ github.sha }}^{commit}" || { echo "commit not fetched after 3 attempts"; exit 1; }
             git reset --quiet --hard "${{ github.sha }}"
             # bash rather than ./ : immune to the executable bit, which a
             # commit from Windows can silently drop.
