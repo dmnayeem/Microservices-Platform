@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef } from "react";
 import {
   ArrowUpRight,
   Bell,
@@ -6,6 +9,13 @@ import {
   PlayCircle,
   Wallet,
 } from "lucide-react";
+import { heroMoney, normalizeHeroAnimation, type HeroAnimation } from "@/lib/landing-content";
+import {
+  HeroAnimationOverlay,
+  HeroBalance,
+  useActiveHeroStyle,
+  useHeroMotion,
+} from "./hero-animations";
 
 /**
  * The product, shown rather than described.
@@ -20,14 +30,19 @@ import {
  * be pinned to one theme. This themes with the page and weighs nothing.
  */
 const ROWS = [
-  { icon: PlayCircle, title: "Watch & verify a 30s clip", meta: "Video · 2 min", reward: "+$0.35" },
-  { icon: ListTodo, title: "Try an app and send a screenshot", meta: "Install · 5 min", reward: "+$1.20" },
-  { icon: CheckCircle2, title: "Short opinion survey", meta: "Survey · 4 min", reward: "+$0.80" },
+  { icon: PlayCircle, title: "Watch & verify a 30s clip", meta: "Video · 2 min", reward: 0.35 },
+  { icon: ListTodo, title: "Try an app and send a screenshot", meta: "Install · 5 min", reward: 1.2 },
+  { icon: CheckCircle2, title: "Short opinion survey", meta: "Survey · 4 min", reward: 0.8 },
 ];
 
-export function HeroProduct() {
+export function HeroProduct({ animation }: { animation?: HeroAnimation }) {
+  // Old saved content has no `animation` → defaults → the original chip.
+  const a = normalizeHeroAnimation(animation);
+  const ref = useRef<HTMLDivElement>(null);
+  const motion = useHeroMotion(ref);
+  const active = useActiveHeroStyle(a, motion);
   return (
-    <div className="relative mx-auto w-full min-w-0 max-w-[380px] lg:max-w-[420px]">
+    <div ref={ref} className="relative mx-auto w-full min-w-0 max-w-[380px] lg:max-w-[420px]">
       {/* Brand glow behind the frame — gives the mock a place to sit rather
           than floating on the page. */}
       <div
@@ -62,7 +77,7 @@ export function HeroProduct() {
               <div className="text-[11px] font-medium uppercase tracking-wider text-white/80">
                 Available balance
               </div>
-              <div className="mk-figure text-3xl mt-1">$248.60</div>
+              <HeroBalance a={a} active={active} motion={motion} />
             </div>
             <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold">
               <ArrowUpRight className="w-3 h-3" />
@@ -110,31 +125,16 @@ export function HeroProduct() {
                 </span>
               </span>
               <span className="mk-figure shrink-0 rounded-lg bg-(--mk-success-soft) px-2 py-1 text-[11px] text-(--mk-success)">
-                {r.reward}
+                +{heroMoney(a.currency, r.reward)}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Live approval — the one moving element, and the one that says the
-          money is real. Gated by the admin animation switch. */}
-      <div
-        aria-hidden
-        className="mk-ticker mk-card absolute -bottom-4 -left-2 sm:-left-6 rounded-2xl px-3 py-2 flex items-center gap-2"
-      >
-        <span className="w-7 h-7 rounded-full bg-(--mk-success-soft) flex items-center justify-center">
-          <CheckCircle2 className="w-4 h-4 text-(--mk-success)" />
-        </span>
-        <span className="leading-tight">
-          <span className="block text-[11px] font-bold text-(--mk-text)">
-            Task approved
-          </span>
-          <span className="mk-figure block text-[11px] text-(--mk-success)">
-            +$0.42
-          </span>
-        </span>
-      </div>
+      {/* The one moving element — style chosen in the landing editor (Hero →
+          Balance card animation). Gated by the admin animation switch. */}
+      <HeroAnimationOverlay a={a} active={active} motion={motion} />
     </div>
   );
 }
