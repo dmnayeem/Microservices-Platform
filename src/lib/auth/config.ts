@@ -113,6 +113,7 @@ export const authConfig: NextAuthConfig = {
         "/post",
         // Home-screen icons, fetched by the browser without cookies.
         "/app-icon",
+        "/unsubscribe", // email unsubscribe confirm page — signed token, no session
       ];
 
       // Admin routes that require admin role
@@ -149,6 +150,7 @@ export const authConfig: NextAuthConfig = {
         "/api/health",
         "/api/cpa/postback", // CPA network S2S postback — HMAC sig / secret key
         "/api/security/csp-report", // browser CSP violation reports — sent without cookies
+        "/api/email/unsubscribe", // RFC 8058 one-click unsubscribe (Gmail/Yahoo POST) — signed token
       ];
       const isPublicApiRoute =
         publicApiPrefixes.some((p) => pathname === p.replace(/\/$/, "") || pathname.startsWith(p)) ||

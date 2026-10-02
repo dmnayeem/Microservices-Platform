@@ -53,7 +53,15 @@ export type NotificationStyleDef = {
     /** The tinted background of the whole card. */
     surface: string;
   };
-  /** Literal colours for email, where no stylesheet exists. */
+  /**
+   * Literal colours for email, where no stylesheet exists.
+   *
+   * `accent` carries WHITE text (the button) and is also used as text on the
+   * white card (the kicker), so it must reach 4.5:1 against #ffffff. The badge
+   * is `ink` on `soft`. A mid-tone accent (sky-500 and friends) fails both and
+   * is how the "UPDATE" pill became unreadable — scripts/verify-email.ts
+   * computes every pair.
+   */
   mail: { accent: string; soft: string; ink: string };
   /** One line in the admin picker. */
   hint: string;
@@ -73,7 +81,7 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
       button: "bg-(--app-cta) text-white hover:brightness-110",
       surface: "",
     },
-    mail: { accent: "#6366f1", soft: "#eef2ff", ink: "#1e1b4b" },
+    mail: { accent: "#4f46e5", soft: "#eef2ff", ink: "#1e1b4b" },
     hint: "No decoration. For everyday messages.",
   },
   {
@@ -85,13 +93,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "pulse",
     web: {
       ring: "border-rose-500/60",
-      chip: "bg-rose-500 text-white",
+      chip: "bg-rose-600 text-white",
       iconWrap: "bg-rose-500/20 text-rose-300",
       title: "text-rose-200",
-      button: "bg-rose-500 text-white hover:bg-rose-400",
+      button: "bg-rose-600 text-white hover:bg-rose-700",
       surface: "bg-rose-500/10",
     },
-    mail: { accent: "#e11d48", soft: "#fff1f2", ink: "#881337" },
+    mail: { accent: "#be123c", soft: "#fff1f2", ink: "#881337" },
     hint: "Needs acting on now — account locked, payout failed, security.",
   },
   {
@@ -107,7 +115,7 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
       button: "bg-amber-500 text-black hover:bg-amber-400",
       surface: "bg-amber-500/[0.07]",
     },
-    mail: { accent: "#f59e0b", soft: "#fffbeb", ink: "#78350f" },
+    mail: { accent: "#b45309", soft: "#fffbeb", ink: "#78350f" },
     hint: "Must be read, but nothing is on fire. Terms, policy, deadlines.",
   },
   {
@@ -117,14 +125,14 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "shine",
     web: {
       ring: "border-fuchsia-500/50",
-      chip: "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white",
+      chip: "bg-gradient-to-r from-fuchsia-700 to-violet-700 text-white",
       iconWrap: "bg-fuchsia-500/20 text-fuchsia-300",
       title: "text-fuchsia-100",
       button:
-        "bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white hover:brightness-110",
+        "bg-gradient-to-r from-fuchsia-700 to-violet-700 text-white hover:brightness-110",
       surface: "bg-fuchsia-500/[0.07]",
     },
-    mail: { accent: "#d946ef", soft: "#fdf4ff", ink: "#701a75" },
+    mail: { accent: "#a21caf", soft: "#fdf4ff", ink: "#701a75" },
     hint: "Bonus, discount, limited-time promotion.",
   },
   {
@@ -140,7 +148,7 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
       button: "bg-yellow-400 text-black hover:bg-yellow-300",
       surface: "bg-yellow-400/[0.07]",
     },
-    mail: { accent: "#eab308", soft: "#fefce8", ink: "#713f12" },
+    mail: { accent: "#a16207", soft: "#fefce8", ink: "#713f12" },
     hint: "Money or points have arrived.",
   },
   {
@@ -150,13 +158,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "none",
     web: {
       ring: "border-sky-500/50",
-      chip: "bg-sky-500 text-white",
+      chip: "bg-sky-700 text-white",
       iconWrap: "bg-sky-500/20 text-sky-300",
       title: "text-sky-100",
-      button: "bg-sky-500 text-white hover:bg-sky-400",
+      button: "bg-sky-700 text-white hover:bg-sky-800",
       surface: "bg-sky-500/[0.06]",
     },
-    mail: { accent: "#0ea5e9", soft: "#f0f9ff", ink: "#0c4a6e" },
+    mail: { accent: "#0369a1", soft: "#f0f9ff", ink: "#0c4a6e" },
     hint: "New feature, a change worth knowing about.",
   },
   {
@@ -166,13 +174,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "none",
     web: {
       ring: "border-emerald-500/50",
-      chip: "bg-emerald-500 text-white",
+      chip: "bg-emerald-700 text-white",
       iconWrap: "bg-emerald-500/20 text-emerald-300",
       title: "text-emerald-100",
-      button: "bg-emerald-500 text-white hover:bg-emerald-400",
+      button: "bg-emerald-700 text-white hover:bg-emerald-800",
       surface: "bg-emerald-500/[0.06]",
     },
-    mail: { accent: "#10b981", soft: "#ecfdf5", ink: "#064e3b" },
+    mail: { accent: "#047857", soft: "#ecfdf5", ink: "#064e3b" },
     hint: "Something the user was waiting for has gone through.",
   },
   {
@@ -182,13 +190,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "glow",
     web: {
       ring: "border-orange-500/50",
-      chip: "bg-orange-500 text-white",
+      chip: "bg-orange-700 text-white",
       iconWrap: "bg-orange-500/20 text-orange-300",
       title: "text-orange-100",
-      button: "bg-orange-500 text-white hover:bg-orange-400",
+      button: "bg-orange-700 text-white hover:bg-orange-800",
       surface: "bg-orange-500/[0.07]",
     },
-    mail: { accent: "#f97316", soft: "#fff7ed", ink: "#7c2d12" },
+    mail: { accent: "#c2410c", soft: "#fff7ed", ink: "#7c2d12" },
     hint: "Something will go wrong unless the user acts.",
   },
   {
@@ -198,13 +206,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "shine",
     web: {
       ring: "border-violet-500/50",
-      chip: "bg-violet-500 text-white",
+      chip: "bg-violet-600 text-white",
       iconWrap: "bg-violet-500/20 text-violet-300",
       title: "text-violet-100",
-      button: "bg-violet-500 text-white hover:bg-violet-400",
+      button: "bg-violet-600 text-white hover:bg-violet-700",
       surface: "bg-violet-500/[0.07]",
     },
-    mail: { accent: "#8b5cf6", soft: "#f5f3ff", ink: "#4c1d95" },
+    mail: { accent: "#6d28d9", soft: "#f5f3ff", ink: "#4c1d95" },
     hint: "Contest, giveaway, live session, seasonal campaign.",
   },
   {
@@ -214,13 +222,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "none",
     web: {
       ring: "border-cyan-500/50",
-      chip: "bg-cyan-500 text-white",
+      chip: "bg-cyan-700 text-white",
       iconWrap: "bg-cyan-500/20 text-cyan-300",
       title: "text-cyan-100",
-      button: "bg-cyan-500 text-white hover:bg-cyan-400",
+      button: "bg-cyan-700 text-white hover:bg-cyan-800",
       surface: "bg-cyan-500/[0.06]",
     },
-    mail: { accent: "#06b6d4", soft: "#ecfeff", ink: "#164e63" },
+    mail: { accent: "#0e7490", soft: "#ecfeff", ink: "#164e63" },
     hint: "Announcements and general platform news.",
   },
   {
@@ -230,13 +238,13 @@ export const NOTIFICATION_STYLES: NotificationStyleDef[] = [
     motion: "none",
     web: {
       ring: "border-slate-500/50",
-      chip: "bg-slate-500 text-white",
+      chip: "bg-slate-600 text-white",
       iconWrap: "bg-slate-500/20 text-slate-300",
       title: "text-slate-100",
-      button: "bg-slate-500 text-white hover:bg-slate-400",
+      button: "bg-slate-600 text-white hover:bg-slate-700",
       surface: "bg-slate-500/[0.07]",
     },
-    mail: { accent: "#64748b", soft: "#f8fafc", ink: "#1e293b" },
+    mail: { accent: "#475569", soft: "#f8fafc", ink: "#1e293b" },
     hint: "Downtime, migrations, temporary limits.",
   },
 ];

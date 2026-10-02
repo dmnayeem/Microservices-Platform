@@ -1,6 +1,8 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
+import { randomUUID } from "crypto";
 import { getSetting } from "@/lib/system-settings";
+import { emailHtmlToText } from "@/lib/email-html";
 
 /**
  * One place that decides how mail leaves the platform.
@@ -33,6 +35,10 @@ export interface MailConfig {
   fromName: string;
   /** Ready-made `Name <addr>` From header. */
   from: string;
+  /** Where replies go: setting `email_reply_to`, else the From address. */
+  replyTo: string;
+  /** Domain of the From address — the Message-ID and the DNS checks use it. */
+  fromDomain: string;
   /** False when the admin has switched outgoing email off entirely. */
   enabled: boolean;
   /** False when there is no usable host/user/pass from either source. */
@@ -42,6 +48,17 @@ export interface MailConfig {
 function str(v: unknown, fallback: string): string {
   const s = typeof v === "string" ? v.trim() : "";
   return s || fallback;
+}
+
+/**
+ * Where an admin's test email goes: setting `email_test_recipient` when it is a
+ * valid address, else the admin's own account email.
+ */
+export async function testRecipient(accountEmail: string | null | undefined): Promise<string | null> {
+  const v = await getSetting<string>("email_test_recipient", "");
+  const s = typeof v === "string" ? v.trim() : "";
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return s;
+  return accountEmail || null;
 }
 
 export async function getMailConfig(): Promise<MailConfig> {
@@ -54,6 +71,7 @@ export async function getMailConfig(): Promise<MailConfig> {
     fromName,
     enabled,
     platformName,
+    replyTo,
   ] = await Promise.all([
     getSetting<string>("smtp_host", ""),
     getSetting<number>("smtp_port", 0),
@@ -63,6 +81,7 @@ export async function getMailConfig(): Promise<MailConfig> {
     getSetting<string>("email_from_name", ""),
     getSetting<boolean>("email_notifications_enabled", true),
     getSetting<string>("platform_name", ""),
+    getSetting<string>("email_reply_to", ""),
   ]);
 
   const h = str(host, process.env.SMTP_HOST ?? "");
@@ -77,10 +96,16 @@ export async function getMailConfig(): Promise<MailConfig> {
     fromAddress,
     process.env.SMTP_FROM || process.env.EMAIL_FROM || u
   );
+  // Display names cannot carry quotes or angle brackets unescaped; strip them
+  // rather than send a From header some providers reject.
   const name = str(
     fromName,
     str(platformName, process.env.NEXT_PUBLIC_APP_NAME ?? "RevType")
-  );
+  ).replace(/["<>\r\n]/g, "");
+  // EMAIL_FROM is sometimes written as `Name <addr>` — take the address only,
+  // or the header becomes `RevType <Old Name <addr>>`.
+  const bareAddr = (addr.match(/<([^>]+)>/)?.[1] ?? addr).trim();
+  const reply = str(replyTo, bareAddr);
 
   return {
     host: h,
@@ -90,9 +115,11 @@ export async function getMailConfig(): Promise<MailConfig> {
     secure: process.env.SMTP_SECURE === "true" || prt === 465,
     user: u,
     pass: p,
-    fromAddress: addr,
+    fromAddress: bareAddr,
     fromName: name,
-    from: `${name} <${addr}>`,
+    from: `"${name}" <${bareAddr}>`,
+    replyTo: reply,
+    fromDomain: (bareAddr.split("@")[1] ?? "").toLowerCase(),
     enabled: enabled !== false,
     configured: Boolean(h && u && p),
   };
@@ -121,20 +148,59 @@ export async function sendMail(opts: {
   to: string;
   subject: string;
   html: string;
+  /** Plain-text part. Generated from the HTML when omitted — every mail has one. */
   text?: string;
   /** Send even when "Email notifications" is off (verification, password reset). */
   transactional?: boolean;
+  /**
+   * Bulk/marketing mail only (broadcasts): the RFC 8058 one-click unsubscribe
+   * pair Gmail and Yahoo require from bulk senders. Never set on transactional
+   * mail — a password reset must not offer "unsubscribe".
+   */
+  listUnsubscribe?: { url: string; mailto?: string };
 }): Promise<boolean> {
   const cfg = await getMailConfig();
   if (!cfg.enabled && !opts.transactional) return false;
   if (!cfg.configured) throw new Error("MAIL_NOT_CONFIGURED");
 
-  await buildTransport(cfg).sendMail({
+  await buildTransport(cfg).sendMail(buildMessage(cfg, opts));
+  return true;
+}
+
+/**
+ * The full nodemailer message — exported so scripts/verify-email.ts can assert
+ * the headers without sending anything.
+ *
+ * Deliverability headers, all of which a missing one costs inbox placement:
+ *   - Message-ID on OUR domain (nodemailer's default uses the SMTP host name,
+ *     which does not align with the From domain);
+ *   - Date, explicitly;
+ *   - Reply-To, so replies reach a mailbox somebody reads;
+ *   - a text/plain alternative.
+ * `Precedence: bulk` is deliberately NOT sent — Gmail's sender guidelines say
+ * not to, and it suppresses auto-replies people sometimes want.
+ */
+export function buildMessage(
+  cfg: MailConfig,
+  opts: { to: string; subject: string; html: string; text?: string; listUnsubscribe?: { url: string; mailto?: string } }
+) {
+  const domain = cfg.fromDomain || "localhost";
+  const headers: Record<string, string> = {};
+  if (opts.listUnsubscribe) {
+    const parts = [`<${opts.listUnsubscribe.url}>`];
+    if (opts.listUnsubscribe.mailto) parts.push(`<${opts.listUnsubscribe.mailto}>`);
+    headers["List-Unsubscribe"] = parts.join(", ");
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  }
+  return {
     from: cfg.from,
     to: opts.to,
+    replyTo: cfg.replyTo || cfg.fromAddress,
     subject: opts.subject,
     html: opts.html,
-    ...(opts.text ? { text: opts.text } : {}),
-  });
-  return true;
+    text: opts.text?.trim() ? opts.text : emailHtmlToText(opts.html),
+    messageId: `<${randomUUID()}@${domain}>`,
+    date: new Date(),
+    ...(Object.keys(headers).length ? { headers } : {}),
+  };
 }

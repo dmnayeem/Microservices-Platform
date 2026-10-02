@@ -36,6 +36,7 @@ import {
 } from "@/lib/admin-settings-catalog";
 import { SettingsSearch } from "./settings-search";
 import { LinkSafetyTest } from "./link-safety-test";
+import { EmailDeliverabilityPanel } from "./email-deliverability-panel";
 
 export type SettingsBag = Record<string, unknown>;
 
@@ -116,6 +117,8 @@ const DEFAULTS: SettingsBag = {
   smtp_password: "",
   email_from_address: "noreply@revtype.com",
   email_from_name: "RevType Team",
+  email_reply_to: "",
+  email_test_recipient: "",
   email_notifications_enabled: true,
   email_daily_cap: 500,
   email_per_minute: 60,
@@ -897,6 +900,27 @@ export function SystemSettingsForm({
                 />
               </Field>
             </div>
+            <Field settingKey="email_reply_to">
+              <input
+                type="email"
+                value={(values.email_reply_to as string) || ""}
+                onChange={(e) => set("email_reply_to", e.target.value)}
+                disabled={!canEdit}
+                className={inp}
+                placeholder={(values.email_from_address as string) || "support@yourdomain.com"}
+              />
+            </Field>
+            <Field settingKey="email_test_recipient">
+              <input
+                type="email"
+                value={(values.email_test_recipient as string) || ""}
+                onChange={(e) => set("email_test_recipient", e.target.value)}
+                disabled={!canEdit}
+                className={inp}
+                placeholder="you@yourdomain.com"
+              />
+            </Field>
+            <EmailDeliverabilityPanel />
             <Toggle settingKey="email_notifications_enabled"
               checked={!!values.email_notifications_enabled}
               onChange={(v) => set("email_notifications_enabled", v)}

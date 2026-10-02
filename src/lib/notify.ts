@@ -59,6 +59,58 @@ function ensureVapid(): boolean {
   return vapidReady;
 }
 
+/** True when our own web push (VAPID keys) can send. */
+export function isWebPushConfigured(): boolean {
+  return ensureVapid();
+}
+
+/**
+ * Our own web push to many users at once — the broadcast path. Respects the
+ * site switch and each user's push setting, drops dead subscriptions (404/410)
+ * like the single-user path, and never throws.
+ */
+export async function webPushToUsers(
+  userIds: string[],
+  msg: { title: string; body: string; url?: string }
+): Promise<{ devices: number; delivered: number }> {
+  const out = { devices: 0, delivered: 0 };
+  try {
+    if (userIds.length === 0 || !ensureVapid() || !(await pushAllowed())) return out;
+    const optedIn = await prisma.user.findMany({
+      where: { id: { in: userIds }, pushNotifications: true },
+      select: { id: true },
+    });
+    if (optedIn.length === 0) return out;
+    const subs = await prisma.pushSubscription.findMany({
+      where: { userId: { in: optedIn.map((u) => u.id) } },
+      select: { id: true, endpoint: true, p256dh: true, auth: true },
+    });
+    out.devices = subs.length;
+    const payload = JSON.stringify({ title: msg.title, body: msg.body, url: msg.url ?? "/" });
+    // A few at a time: push services rate-limit a burst from one sender.
+    const PARALLEL = 20;
+    for (let i = 0; i < subs.length; i += PARALLEL) {
+      await Promise.all(
+        subs.slice(i, i + PARALLEL).map((s) =>
+          webpush
+            .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
+            .then(() => {
+              out.delivered++;
+            })
+            .catch(async (err: { statusCode?: number }) => {
+              if (err?.statusCode === 404 || err?.statusCode === 410) {
+                await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
+              }
+            })
+        )
+      );
+    }
+  } catch {
+    // best-effort, like every push here
+  }
+  return out;
+}
+
 /**
  * Deliver email + web-push for an event whose in-app Notification row is created
  * elsewhere (e.g. inside a Prisma $transaction). Does NOT create a row. Safe to

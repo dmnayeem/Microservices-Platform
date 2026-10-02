@@ -41,7 +41,10 @@ import { getSetting } from "@/lib/system-settings";
 import { audienceWhereResolved, type AudienceCriteria } from "@/lib/audience";
 import { sendNotificationEmail, isSmtpConfigured } from "@/lib/email";
 import { getMailConfig } from "@/lib/mailer";
+import { decodeEmailBody } from "@/lib/email-html";
+import { unsubscribeUrls } from "@/lib/unsubscribe";
 import { sendPushToUsers, isOneSignalConfigured } from "@/lib/onesignal";
+import { isWebPushConfigured, webPushToUsers } from "@/lib/notify";
 import type { Prisma, NotificationType } from "@/generated/prisma/client";
 
 export type BroadcastChannels = { inApp: boolean; push: boolean; email: boolean };
@@ -61,12 +64,15 @@ export type BroadcastTargetKind = "ALL" | "SEGMENT" | "PACKAGE" | "SPECIFIC";
  * a dedicated provider raises it once and never thinks about it again.
  */
 const DEFAULT_DAILY_CAP = 500;
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com").replace(/\/+$/, "");
 const DEFAULT_PER_MINUTE = 60;
 
 /** How many rows one enumeration / delivery pass touches. */
 const ENUMERATE_CHUNK = 2000;
 const INAPP_CHUNK = 500;
 const PUSH_CHUNK = 1000;
+/** Recipients per sweep for our own web push — one request per device. */
+const PUSH_SLICE_OWN = 200;
 
 export async function emailDailyCap(): Promise<number> {
   const v = await getSetting<number>("email_daily_cap", DEFAULT_DAILY_CAP);
@@ -468,38 +474,64 @@ export async function deliverBroadcast(
     }
   }
 
-  // 3. Push. One call per chunk of ids; the provider fans out.
-  if (channels.push && b.pushSent === 0 && isOneSignalConfigured()) {
-    const ids = await prisma.broadcastRecipient.findMany({
+  // 3. Push — our own web push (VAPID), free and uncapped; OneSignal only when
+  //    ours isn't configured. `pushSent` counts recipients processed, in id
+  //    order, so a sweep cut off mid-broadcast resumes at the next slice
+  //    instead of stopping after the first 1,000 people (which it used to).
+  const ownPush = isWebPushConfigured();
+  // Only once the audience is final: slices are taken by offset in id order,
+  // and rows still being added could otherwise land behind the offset.
+  const pushOn = !!channels.push && (ownPush || isOneSignalConfigured());
+  if (pushOn && b.audienceReady) {
+    const slice = await prisma.broadcastRecipient.findMany({
       where: { broadcastId },
-      take: PUSH_CHUNK,
+      orderBy: { id: "asc" },
+      skip: b.pushSent,
+      take: ownPush ? PUSH_SLICE_OWN : PUSH_CHUNK,
       select: { userId: true },
     });
-    if (ids.length > 0) {
-      const r = await sendPushToUsers(
-        ids.map((x) => x.userId),
-        b.title,
-        b.message,
-        { type: b.type, broadcastId },
-        b.actionUrl ?? undefined
-      );
-      if (r?.success) {
-        out.push = ids.length;
-        await prisma.broadcast.update({
-          where: { id: broadcastId },
-          data: { pushSent: { increment: ids.length } },
+    if (slice.length > 0) {
+      const ids = slice.map((x) => x.userId);
+      let ok = true;
+      if (ownPush) {
+        await webPushToUsers(ids, {
+          title: b.title,
+          body: b.message,
+          url: b.actionUrl ?? undefined,
         });
+      } else {
+        const r = await sendPushToUsers(
+          ids,
+          b.title,
+          b.message,
+          { type: b.type, broadcastId },
+          b.actionUrl ?? undefined
+        );
+        ok = !!r?.success;
       }
+      if (ok) out.push = ids.length;
+      // Counted as processed either way: a provider that keeps failing must
+      // not hold the broadcast open forever (push is best-effort).
+      await prisma.broadcast.update({
+        where: { id: broadcastId },
+        data: { pushSent: { increment: ids.length } },
+      });
     }
   }
 
   // 4. Email — the only capped channel, and the only one that can be refused
   //    by somebody else.
   if (channels.email) {
+    // `emailBody` may carry a rich (HTML) body and a preheader behind a header
+    // comment — see encodeEmailBody in lib/email-html.ts. A bare value is the
+    // plain text it always was.
+    const stored = decodeEmailBody(b.emailBody);
     const pass = await deliverEmails(b.id, {
       deadline,
       subject: b.emailSubject || b.title,
-      body: b.emailBody || b.message,
+      body: stored.format === "text" ? stored.body || b.message : b.message,
+      html: stored.format === "html" ? stored.body : undefined,
+      preheader: stored.preheader || undefined,
       actionUrl: b.actionUrl,
       maxEmails: opts.maxEmails,
       important: b.important,
@@ -517,10 +549,10 @@ export async function deliverBroadcast(
   //    channel has nothing left to do.
   const fresh = await prisma.broadcast.findUnique({
     where: { id: broadcastId },
-    select: { audienceReady: true, status: true },
+    select: { audienceReady: true, status: true, pushSent: true },
   });
   if (fresh?.audienceReady && fresh.status === "SENDING") {
-    const [inAppLeft, emailLeft] = await Promise.all([
+    const [inAppLeft, emailLeft, pushLeft] = await Promise.all([
       channels.inApp !== false
         ? prisma.broadcastRecipient.count({ where: { broadcastId, inAppAt: null } })
         : Promise.resolve(0),
@@ -529,8 +561,13 @@ export async function deliverBroadcast(
             where: { broadcastId, emailAt: null, email: { not: null }, attempts: { lt: 3 } },
           })
         : Promise.resolve(0),
+      pushOn
+        ? prisma.broadcastRecipient
+            .count({ where: { broadcastId } })
+            .then((n) => Math.max(0, n - fresh.pushSent))
+        : Promise.resolve(0),
     ]);
-    if (inAppLeft === 0 && emailLeft === 0) {
+    if (inAppLeft === 0 && emailLeft === 0 && pushLeft === 0) {
       await prisma.broadcast.update({
         where: { id: broadcastId },
         data: { status: "DONE", finishedAt: new Date() },
@@ -563,6 +600,8 @@ async function deliverEmails(
     kicker?: string | null;
     imageUrl?: string | null;
     actionLabel?: string | null;
+    html?: string;
+    preheader?: string;
   }
 ): Promise<{ sent: number; failed: number; note?: string }> {
   if (!(await isSmtpConfigured())) {
@@ -615,7 +654,7 @@ async function deliverEmails(
         attempts: { lt: 3 },
       },
       take: Math.min(25, perPass - sent - failed),
-      select: { id: true, email: true },
+      select: { id: true, email: true, userId: true },
     });
     if (slice.length === 0) break;
 
@@ -632,6 +671,12 @@ async function deliverEmails(
           kicker: opts.kicker ?? undefined,
           imageUrl: opts.imageUrl ?? undefined,
           actionLabel: opts.actionLabel ?? undefined,
+          html: opts.html,
+          preheader: opts.preheader,
+          // Marketing mail carries a one-click unsubscribe (footer link +
+          // List-Unsubscribe headers). A service notice does not: it ignores
+          // the opt-out, so offering one would be a lie.
+          unsubscribe: opts.important ? null : unsubscribeUrls(SITE_URL, r.userId),
         })
       )
     );
