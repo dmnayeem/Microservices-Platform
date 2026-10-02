@@ -160,7 +160,17 @@ self.addEventListener("push", (event) => {
     data: { url: data.url || "/" },
   };
   if (data.image) options.image = data.image;
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Mark the app icon even while the app is closed: the exact count when the
+  // server sent one, otherwise a plain "something new" dot. The app replaces
+  // it with the real unread number the next time it opens.
+  const badge =
+    self.navigator && self.navigator.setAppBadge
+      ? (typeof data.badgeCount === "number"
+          ? self.navigator.setAppBadge(data.badgeCount)
+          : self.navigator.setAppBadge()
+        ).catch(() => {})
+      : Promise.resolve();
+  event.waitUntil(Promise.all([self.registration.showNotification(title, options), badge]));
 });
 
 self.addEventListener("notificationclick", (event) => {

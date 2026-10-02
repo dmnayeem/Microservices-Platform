@@ -81,14 +81,14 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
             <Bell className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-white">Enable Notifications</p>
+            <p className="text-sm font-bold text-white">Never miss a reward</p>
             <p className="text-xs text-(--app-ink-2)">
-              Stay updated on rewards, tasks, and chat.
+              Be first to new offers, tasks and events — keep notifications on to earn more.
             </p>
           </div>
           <button
             onClick={dismiss}
-            className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-(--app-ink) hover:bg-white/10"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />
@@ -99,13 +99,13 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
             onClick={dismiss}
             className="flex-1 py-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink) text-xs font-semibold"
           >
-            Not Now
+            Not now
           </button>
           <button
             onClick={enable}
             className="flex-1 py-1.5 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
           >
-            Enable
+            Turn on
           </button>
         </div>
       </div>
