@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink, Loader2, Save } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirm";
 import { NotActiveBadge } from "@/components/admin/shared/controls";
 import {
   CATEGORY_FOR_KEY,
@@ -109,6 +110,22 @@ export function useKeyedSettings(
       byCategory.set(category, bag);
     }
     if (byCategory.size === 0) return;
+    // A setting that hits every user at once (the withdrawal master switch,
+    // the points rate, maintenance mode) asks before it is saved.
+    const dangers = changedKeys.flatMap((k) => {
+      const e = settingEntry(k);
+      return e?.danger ? [`${e.label}: ${e.danger}`] : [];
+    });
+    if (
+      dangers.length > 0 &&
+      !(await confirmDialog({
+        title: "Save a platform-wide change?",
+        description: dangers.join("\n\n"),
+        tone: "danger",
+        confirmLabel: "Save anyway",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       for (const [category, settings] of byCategory) {

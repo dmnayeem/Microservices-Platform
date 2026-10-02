@@ -8,6 +8,7 @@ import {
   SETTINGS_CATALOG,
   SETTINGS_ELSEWHERE,
   SETTING_GROUPS,
+  SETTINGS_TABS,
   searchSettings,
   settingEntry,
 } from "../src/lib/admin-settings-catalog";
@@ -232,17 +233,62 @@ async function main() {
   /* ── 4. Controls that moved point at where they moved to ── */
   console.log("\n4. Nothing was removed without saying where it went");
   {
+    // The link cards used to be hand-written <ManagedElsewhere> blocks in the
+    // form. Since the regroup they are data in SETTINGS_TABS (the catalog is
+    // the single source for what each tab shows), so the assertion moved with
+    // them: the card must exist in the screen layout and point at the page.
+    const cards = SETTINGS_TABS.flatMap((t) =>
+      t.sections.flatMap((s) => s.links ?? [])
+    );
     for (const [label, href] of [
       ["Referral commission %", "/admin/referrals?tab=commission"],
       ["Task reward multiplier", "/admin/packages"],
       ["Max tasks per day", "/admin/packages"],
     ] as const) {
-      const block = new RegExp(
-        `label="${label}"[\\s\\S]{0,200}?href="${href.replace(/\?/g, "\\?")}"`,
-        "i"
+      check(
+        `"${label}" links to ${href}`,
+        cards.some((c) => c.label.toLowerCase() === label.toLowerCase() && c.href === href)
       );
-      check(`"${label}" links to ${href}`, block.test(form));
     }
+
+    // Every key the form edits is shown in exactly one section, every key
+    // shown is one the form edits, and every key that moved to a feature page
+    // is named on a link card — so nothing is duplicated and nothing is lost.
+    const shown = SETTINGS_TABS.flatMap((t) => t.sections.flatMap((s) => s.keys));
+    const formEdited = SETTINGS_CATALOG.filter((e) => !e.home).map((e) => e.key);
+    const twice = shown.filter((k, i) => shown.indexOf(k) !== i);
+    check("no control appears in two sections", twice.length === 0, twice.join(", "));
+    const unplaced = formEdited.filter((k) => !shown.includes(k));
+    check(
+      "every key the form edits has a place on the screen",
+      unplaced.length === 0,
+      unplaced.join(", ")
+    );
+    const homedShown = shown.filter((k) => !formEdited.includes(k));
+    check(
+      "no key edited on a feature page is laid out as a control here",
+      homedShown.length === 0,
+      homedShown.join(", ")
+    );
+    const carded = new Set(cards.flatMap((c) => c.keys ?? []));
+    const homedUncarded = SETTINGS_CATALOG.filter((e) => e.home && !carded.has(e.key)).map(
+      (e) => e.key
+    );
+    check(
+      "every key that lives on a feature page is named on a link card",
+      homedUncarded.length === 0,
+      homedUncarded.join(", ")
+    );
+    const sectionIds = SETTINGS_TABS.flatMap((t) => t.sections.map((s) => s.id));
+    check(
+      "section ids are unique (they are ?section= values)",
+      new Set(sectionIds).size === sectionIds.length
+    );
+    check(
+      "the form renders its layout from SETTINGS_TABS",
+      /SETTINGS_TABS/.test(form) && /useUrlTab[<(]/.test(form),
+      "and keeps the tab in the URL"
+    );
   }
 
   /* ── 5. No live setting is left without an editor ── */

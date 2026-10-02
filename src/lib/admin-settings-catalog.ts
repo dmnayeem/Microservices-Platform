@@ -13,15 +13,20 @@
  *
  * So they live here, together, in one row per setting. The form renders the
  * label and description FROM this file (`system-settings-form.tsx` passes only
- * `settingKey`), the save routine derives which tab owns a key FROM this file,
- * and the search box indexes this file. A setting cannot be renamed in one
- * place and not the other, because there is only one place.
+ * `settingKey`), the save routine derives which row category a key is filed
+ * under FROM this file, and the search box indexes this file. A setting cannot
+ * be renamed in one place and not the other, because there is only one place.
  *
- * ORDER
- * -----
- * `SETTING_GROUPS` is ordered deliberately, most-reached-for first, and each
- * group carries an explicit `order`. Within a group, array order here is the
- * display order — also deliberate, not "whoever added a control last".
+ * TWO DIFFERENT GROUPINGS — DO NOT MERGE THEM
+ * -------------------------------------------
+ * `group` is the STORAGE category: the `SystemSetting.category` a key is saved
+ * under, which readers such as `getUiToggles()` query by. Changing a key's
+ * group changes where its row lives, so it is fixed.
+ *
+ * `SETTINGS_TABS` is the SCREEN layout: which tab and which section of
+ * /admin/settings a control appears in, ordered by what an admin is trying to
+ * do ("set up email", "change what money is worth"). It can be rearranged
+ * freely — it never touches a stored row.
  *
  * STATUS
  * ------
@@ -42,21 +47,17 @@ export type SettingGroupId =
   | "email"
   | "integrations";
 
+/** A storage category. See "TWO DIFFERENT GROUPINGS" above. */
 export interface SettingGroup {
   id: SettingGroupId;
-  /** Tab name. */
+  /** Name of the category (shown in audit rows, not as a tab any more). */
   label: string;
   /** One line: what this group of settings affects. */
   blurb: string;
-  /** Explicit display order. Lower is earlier. */
+  /** Explicit order. Lower is earlier. */
   order: number;
 }
 
-/**
- * Deliberate order: the money and the day-to-day guardrails come first,
- * because those are what an owner opens this screen to change. Credentials
- * and plumbing sit at the end — they are set once and then left alone.
- */
 export const SETTING_GROUPS: readonly SettingGroup[] = [
   {
     id: "general",
@@ -81,14 +82,14 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
   {
     id: "security",
     label: "Security",
-    blurb: "Password rules. The automatic KYC thresholds are on the KYC page.",
+    blurb: "Password rules, link safety, uploads and outbound fetches. The automatic KYC thresholds are on the KYC page.",
     order: 4,
   },
   {
     id: "ui_toggles",
     label: "Site toggles",
     blurb:
-      "Site-wide switches — popups, install prompts, and what a user must do before they can earn or withdraw.",
+      "Site-wide switches — theme, popups, install prompts, and what a user must do before they can earn or withdraw.",
     order: 5,
   },
   {
@@ -117,11 +118,26 @@ export type SettingStatus = "live" | "not-active";
 export interface SettingEntry {
   /** The `SystemSetting.key` this control reads and writes. */
   key: string;
+  /** Storage category (the row's `category`). Not the tab — see above. */
   group: SettingGroupId;
-  /** The name shown on the control. */
+  /** The name shown on the control. Plain language, sentence case. */
   label: string;
   /** One line, plain language: what changing this actually does. */
   description: string;
+  /**
+   * The short "what happens at the edges" line shown under the description:
+   * "Off = …", "0 = no limit". Only where the description does not say it.
+   */
+  effect?: string;
+  /** Unit shown beside the label: "%", "$", "points", "days", "per day"… */
+  unit?: string;
+  /**
+   * A setting whose change hits every user at once. Saving a change to it
+   * asks for confirmation first, with this sentence as the warning.
+   */
+  danger?: string;
+  /** A credential: shown masked, with Show and Replace. */
+  secret?: boolean;
   /**
    * `not-active` = the row is saved but no code path honours it yet. Rendered
    * with a badge so nobody mistakes it for a working switch.
@@ -145,47 +161,50 @@ export const KYC_HOME = { href: "/admin/users/kyc?tab=settings", where: "KYC →
 export const FRAUD_HOME = { href: "/admin/fraud?tab=settings", where: "Fraud Monitor → Settings" };
 export const FEED_HOME = { href: "/admin/settings/feed?tab=general", where: "Feed settings → General" };
 
-/** Array order is the display order within each group. */
+/**
+ * Every setting. Array order is irrelevant to the screen — `SETTINGS_TABS`
+ * below decides where and in what order a control appears.
+ */
 export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   // ── General ──
-  { key: "platform_name", group: "general", label: "Platform Name", description: "Names outgoing email and the entry in authenticator apps" },
-  { key: "maintenance_mode", group: "general", label: "Maintenance Mode", description: "Closes the whole app for everyone except staff, who keep full access so they can see the fix land. The marketing and login pages stay up." },
-  { key: "maintenance_message", group: "general", label: "Maintenance message", description: "Shown on the closed-app screen" },
+  { key: "platform_name", group: "general", label: "Platform name", description: "The name used as the sender of outgoing email and as the account name in authenticator (2FA) apps." },
+  { key: "maintenance_mode", group: "general", label: "Maintenance mode", description: "Closes the whole app for everyone except staff, who keep full access so they can see the fix land. The marketing and login pages stay up.", effect: "On = users see the maintenance screen instead of the app. Off = normal.", danger: "Turning maintenance mode on closes the app for every user who is not staff, immediately." },
+  { key: "maintenance_message", group: "general", label: "Maintenance message", description: "The text users see on the closed-app screen while maintenance mode is on.", effect: "Empty = a generic \"back shortly\" message." },
 
   // ── Money ──
   { key: "currency", group: "financial", label: "Display currency", description: "Saved, but nothing reads it yet: every amount is still shown as USD ($) and balances are held in USD. Not the same thing as the deposit-page currency rates (Payment methods) or the company books currency (Company finance).", status: "not-active" },
   { key: "min_withdrawal", group: "financial", label: "Min Withdrawal ($)", description: "The smallest cash withdrawal a user may request", home: WITHDRAWALS_HOME },
   { key: "max_withdrawal", group: "financial", label: "Max Withdrawal ($)", description: "The largest cash withdrawal a user may request in one go", home: WITHDRAWALS_HOME },
   { key: "withdrawal_fee_percent", group: "financial", label: "Withdrawal Fee (%)", description: "Deducted from every approved withdrawal", home: WITHDRAWALS_HOME },
-  { key: "marketplace.fee_percent", group: "financial", label: "Marketplace fee (%)", description: "The platform's cut of every marketplace sale — taken out of the seller's payout, not added to the buyer's price. Per-listing and per-asset-type overrides on the Marketplace commission screen still win over this." },
-  { key: "allow_withdrawals", group: "financial", label: "Allow withdrawals", description: "Master switch. Turning this off stops every new withdrawal request platform-wide.", home: WITHDRAWALS_HOME },
+  { key: "marketplace.fee_percent", group: "financial", label: "Marketplace fee", unit: "%", description: "The platform's cut of every marketplace sale — taken out of the seller's payout, not added to the buyer's price. Per-listing and per-asset-type overrides on the Marketplace commission screen still win over this.", effect: "0 = sellers keep the whole price." },
+  { key: "allow_withdrawals", group: "financial", label: "Allow withdrawals", description: "Master switch. Turning this off stops every new withdrawal request platform-wide.", danger: "Changing the withdrawal master switch affects every user at once — off stops every new withdrawal request platform-wide.", home: WITHDRAWALS_HOME },
   { key: "withdrawal_requires_subscription", group: "financial", label: "Require a subscription to withdraw", description: "Users on the free/default package must buy a package before they can withdraw", home: WITHDRAWALS_HOME },
   { key: "withdrawal_payout_time_message", group: "financial", label: "Payout time message", description: "Shown to the user after they request a withdrawal", home: WITHDRAWALS_HOME },
-  { key: "points_per_usd", group: "financial", label: "Points per $1 (USD)", description: "The conversion rate when a user turns earned points into cash — how many points buy one dollar" },
-  { key: "points_convert_threshold", group: "financial", label: "Points needed before cash conversion unlocks", description: "Below this, the wallet hides the points-to-cash button" },
-  { key: "bkash.usdToBdtRate", group: "financial", label: "bKash rate (BDT per $1)", description: "bKash settles in taka; a USD deposit is charged at this rate" },
-  { key: "vat_enabled", group: "financial", label: "Charge VAT on deposits", description: "Add VAT on top of the deposit amount (shown on the deposit page)" },
-  { key: "vat_pct", group: "financial", label: "VAT (%)", description: "Applied to the deposit amount + method charge" },
-  { key: "buyer.enabled", group: "financial", label: "Allow buyers to fund tasks", description: "Off closes the create-task API for everyone, even accounts that already hold the permission." },
-  { key: "buyer.fee_percent", group: "financial", label: "Platform fee (%)", description: "The platform's cut when a buyer funds a task — charged on top of the points they buy" },
-  { key: "buyer.min_points_per_task", group: "financial", label: "Min points per completion", description: "The least a buyer may offer one user for finishing their task" },
-  { key: "buyer.max_points_per_task", group: "financial", label: "Max points per completion", description: "The most a buyer may offer one user for finishing their task" },
-  { key: "buyer.max_active_tasks", group: "financial", label: "Max live tasks per buyer", description: "Live + awaiting review + paused · 0 = no limit" },
-  { key: "buyer.max_completions", group: "financial", label: "Max completions per task", description: "Caps how large one buyer-funded task can get" },
-  { key: "buyer.min_purchase_points", group: "financial", label: "Min task-credit purchase", description: "points, per purchase" },
-  { key: "buyer.max_purchase_points", group: "financial", label: "Max task-credit purchase", description: "points, per purchase" },
-  { key: "buyer.allowed_task_types", group: "financial", label: "Task types buyers may create", description: "Unticking both closes buyer task creation as surely as the switch above" },
-  { key: "buyer.allowed_platforms", group: "financial", label: "Social platforms buyers may target", description: "Which of the social platforms a buyer may aim a social task at. Ticking none means all of them, now and in future." },
-  { key: "buyer.require_kyc", group: "financial", label: "Require KYC before funding", description: "Checked when the buyer spends, not when they are paid — an unverified account is stopped before the money moves." },
+  { key: "points_per_usd", group: "financial", label: "Points per $1", unit: "points", description: "The conversion rate when a user turns earned points into cash — how many points buy one dollar. Every earning and withdrawal is valued with it.", effect: "Higher = each point is worth less cash.", danger: "This revalues every points balance on the platform against cash, immediately. One wrong digit changes what every user's points are worth." },
+  { key: "points_convert_threshold", group: "financial", label: "Points needed before cash conversion unlocks", unit: "points", description: "A user needs at least this many points before the wallet shows the points-to-cash button.", effect: "Below this, the convert button is hidden." },
+  { key: "bkash.usdToBdtRate", group: "financial", label: "bKash rate", unit: "BDT per $1", description: "bKash settles in taka; a USD deposit made through bKash is charged at this rate." },
+  { key: "vat_enabled", group: "financial", label: "Charge VAT on deposits", description: "Adds VAT on top of the deposit amount, shown as its own line on the deposit page.", effect: "Off = no VAT is added to deposits." },
+  { key: "vat_pct", group: "financial", label: "VAT rate", unit: "%", description: "Applied to the deposit amount plus the payment-method charge, while VAT is switched on." },
+  { key: "buyer.enabled", group: "financial", label: "Allow buyers to fund tasks", description: "Lets accounts with the buyer permission create and fund their own tasks.", effect: "Off closes the create-task API for everyone, even accounts that already hold the permission." },
+  { key: "buyer.fee_percent", group: "financial", label: "Platform fee on buyer tasks", unit: "%", description: "The platform's cut when a buyer funds a task — charged on top of the points they buy.", effect: "0 = buyers pay only the rewards and the platform earns nothing on task funding." },
+  { key: "buyer.min_points_per_task", group: "financial", label: "Min points per completion", unit: "points", description: "The least a buyer may offer one user for finishing their task" },
+  { key: "buyer.max_points_per_task", group: "financial", label: "Max points per completion", unit: "points", description: "The most a buyer may offer one user for finishing their task" },
+  { key: "buyer.max_active_tasks", group: "financial", label: "Max live tasks per buyer", description: "How many tasks one buyer may have live, awaiting review or paused at the same time.", effect: "0 = no limit." },
+  { key: "buyer.max_completions", group: "financial", label: "Max completions per task", description: "Caps how large one buyer-funded task can get (how many users may complete it)." },
+  { key: "buyer.min_purchase_points", group: "financial", label: "Min task-credit purchase", unit: "points", description: "The smallest amount of task credit a buyer may buy in one purchase." },
+  { key: "buyer.max_purchase_points", group: "financial", label: "Max task-credit purchase", unit: "points", description: "The largest amount of task credit a buyer may buy in one purchase." },
+  { key: "buyer.allowed_task_types", group: "financial", label: "Task types buyers may create", description: "Which kinds of task a buyer may create and fund.", effect: "Unticking all of them closes buyer task creation as surely as the switch above." },
+  { key: "buyer.allowed_platforms", group: "financial", label: "Social platforms buyers may target", description: "Which of the social platforms a buyer may aim a social task at.", effect: "Ticking none means all of them, now and in future." },
+  { key: "buyer.require_kyc", group: "financial", label: "Require KYC before funding", description: "Checked when the buyer spends, not when they are paid — an unverified account is stopped before the money moves.", effect: "Off = any buyer may fund tasks without verifying." },
   { key: "buyer.auto_approve_tasks", group: "financial", label: "Publish buyer tasks without review", description: "Off (recommended) sends every buyer task to the admin review queue first. On means a funded task goes live immediately." },
   { key: "buyer.refund_fee_on_reject", group: "financial", label: "Refund the fee when a task is rejected", description: "On (recommended): a buyer whose task you turn down gets the fee back too. Off keeps it as a review charge." },
 
   // ── Limits & anti-fraud ──
   { key: "max_withdrawals_per_day", group: "limits", label: "Max Withdrawals Per Day", description: "Rolling 24h, per user · 0 = no limit", home: WITHDRAWALS_HOME },
-  { key: "max_active_listings", group: "limits", label: "Max Active Marketplace Listings", description: "Live + awaiting review, per seller · 0 = no limit" },
-  { key: "ai.daily_limit_per_user", group: "limits", label: "AI Generations / User / Day", description: "How many AI generations one user may run per day before the button stops working · 0 = no limit" },
+  { key: "max_active_listings", group: "limits", label: "Max live marketplace listings per seller", description: "How many listings one seller may have live or awaiting review at the same time.", effect: "0 = no limit." },
+  { key: "ai.daily_limit_per_user", group: "limits", label: "AI generations per user", unit: "per day", description: "How many AI generations one user may run per day before the button stops working.", effect: "0 = no limit." },
   { key: "social.ai_regenerate_limit", group: "limits", label: "AI caption re-rolls per social task", description: "How many times a user may ask the AI for a different caption on one social task before they have to write their own", home: FEED_HOME },
-  { key: "tasks.sequential_unlock", group: "limits", label: "Sequential task unlock", description: "Lock every task behind the previous one — users must finish tasks one-by-one in the admin-set Sequence Order. Resets daily; admins are never locked." },
+  { key: "tasks.sequential_unlock", group: "limits", label: "Sequential task unlock", description: "Lock every task behind the previous one — users must finish tasks one-by-one in the admin-set Sequence Order. Resets daily; admins are never locked.", effect: "Off = users may open tasks in any order." },
   { key: "antifraud.auto_approve_min_trust", group: "limits", label: "Auto-approve min trust (0 = off)", description: "A submission from a user at or above this trust score is approved without an admin looking at it · 0 = never auto-approve", home: FRAUD_HOME },
   { key: "antifraud.spot_check_percent", group: "limits", label: "Spot-check % of auto-approvals", description: "This share of auto-approved submissions is still sent to the review queue, so auto-approval never goes entirely unwatched", home: FRAUD_HOME },
   { key: "antifraud.block_duplicate_proof", group: "limits", label: "Block duplicate proof", description: "Reject a task submission whose proof (post/profile URL, username, or re-uploaded screenshot) already matches another user's. Off = flag for review only. Public links can legitimately repeat, so leave off unless abuse is high.", home: FRAUD_HOME },
@@ -202,76 +221,705 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "antifraud.vpn_block_enabled", group: "limits", label: "Block VPN / proxy (best-effort)", description: "Block task work from IPs that match the datacenter/VPN prefix list below. Heuristic only — catches roughly 50–70%, not 100%. For full accuracy, integrate a detection provider later.", home: FRAUD_HOME },
   { key: "antifraud.vpn_ranges", group: "limits", label: "VPN/datacenter IP prefixes (space or comma separated, e.g. 45.83. 2607:5300:)", description: "The IP prefixes the VPN block above matches against. An empty list means the switch has nothing to block.", home: FRAUD_HOME },
   { key: "antifraud.adblock_gate_enabled", group: "limits", label: "Ad-blocker gate on tasks", description: "Block opening a task while an ad-blocker is detected (a re-check overlay is shown). Turn off to allow tasks with an ad-blocker on.", home: FRAUD_HOME },
-  { key: "retention_days", group: "limits", label: "Log retention (days)", description: "How long page views, system logs, audit records and notifications are kept before the nightly prune deletes them" },
+  { key: "retention_days", group: "limits", label: "Log retention", unit: "days", description: "How long page views, system logs, audit records and notifications are kept before the nightly prune deletes them", effect: "Higher = kept longer. Unread notifications are never deleted." },
 
   // ── Security & KYC ──
-  { key: "password_min_length", group: "security", label: "Password Min Length", description: "6–64 · applies to sign-up, reset, change and admin-created accounts" },
-  { key: "require_strong_passwords", group: "security", label: "Require Strong Passwords", description: "At least one uppercase letter, one lowercase letter and one number" },
+  { key: "password_min_length", group: "security", label: "Minimum password length", unit: "characters", description: "Applies to sign-up, password reset, password change and admin-created accounts. Allowed range 6–64." },
+  { key: "require_strong_passwords", group: "security", label: "Require strong passwords", description: "New passwords must contain at least one uppercase letter, one lowercase letter and one number.", effect: "Off = only the minimum length is checked." },
   { key: "security.upload_archive_policy", group: "security", label: "Suspicious uploads (archives, macros, scan hits)", description: "What happens when an uploaded ZIP holds programs (.exe, .bat, .apk…), escapes its folder, is a zip bomb or password-protected, an Office file has macros, a PDF can launch a program, or the malware scan hits. Review (recommended): accept, flag it on the marketplace listing for the reviewer and in the Abuse Center. Block: refuse the upload. Allow: do nothing. Disguised programs, scripts and web pages are always refused, whatever this says." },
-  { key: "security.virustotal_api_key", group: "security", label: "VirusTotal API key (optional malware lookup)", description: "When set, uploaded documents and archives are looked up on VirusTotal by their SHA-256 fingerprint — the file itself is never sent. A hit raises a HIGH case in the Abuse Center (and deletes the file when the policy above is Block). Empty = no lookup. The VIRUSTOTAL_API_KEY environment variable takes priority. Free keys allow about 4 lookups a minute." },
-  { key: "security.outbound_domain_per_min", group: "security", label: "Outbound fetches per site / minute", description: "How often the server may fetch pages from one website (link previews, proof checks, thumbnails) across the whole platform. The hourly cap is 20× this. Over the limit the fetch is skipped — a proof then goes to manual review, never an auto-rejection. Default 30." },
-  { key: "security.outbound_user_per_hour", group: "security", label: "Outbound fetches per user / hour", description: "How many different links one account can make the server fetch in an hour. Over the limit the fetch is skipped and the Abuse Center is told once. Default 60." },
+  { key: "security.virustotal_api_key", group: "security", label: "VirusTotal API key (optional malware lookup)", secret: true, description: "When set, uploaded documents and archives are looked up on VirusTotal by their SHA-256 fingerprint — the file itself is never sent. A hit raises a HIGH case in the Abuse Center (and deletes the file when the upload policy is Block). The VIRUSTOTAL_API_KEY environment variable takes priority. Free keys allow about 4 lookups a minute.", effect: "Empty = no malware lookup." },
+  { key: "security.outbound_domain_per_min", group: "security", label: "Outbound fetches per website", unit: "per minute", description: "How often the server may fetch pages from one website (link previews, proof checks, thumbnails) across the whole platform. The hourly cap is 20× this. Over the limit the fetch is skipped — a proof then goes to manual review, never an auto-rejection." },
+  { key: "security.outbound_user_per_hour", group: "security", label: "Outbound fetches per user", unit: "per hour", description: "How many different links one account can make the server fetch in an hour. Over the limit the fetch is skipped and the Abuse Center is told once." },
   { key: "kyc.autoEnabled", group: "security", label: "Instant (auto) KYC verification", description: "Let users verify instantly via AI OCR + selfie face-match. Uncertain cases still go to manual review.", home: KYC_HOME },
   { key: "kyc.faceMinSimilarity", group: "security", label: "Auto KYC — min face-match %", description: "How closely the selfie must match the ID photo to verify automatically. Below this it goes to manual review, never an auto-rejection.", home: KYC_HOME },
   { key: "kyc.ocrMinConfidence", group: "security", label: "Auto KYC — min OCR confidence (0–1)", description: "How sure the document read must be to verify automatically. Below this it goes to manual review, never an auto-rejection.", home: KYC_HOME },
   { key: "security.link_policy", group: "security", label: "Unsafe link policy", description: "What happens when someone saves a link Google Safe Browsing lists as phishing or malware, or a look-alike of a well-known site. Flag (recommended): the post goes through and the link is sent to the Abuse Center for review. Block: the post is refused with a message. Off: only the blocked-domain list below is checked." },
-  { key: "security.blocked_domains", group: "security", label: "Blocked domains", description: "One domain per line. Any link to these domains or their subdomains is refused everywhere users post (feed, comments, profiles, listings, tasks, ads, chat), whatever the policy above. Staff screens are only flagged." },
-  { key: "security.safe_browsing_api_key", group: "security", label: "Google Safe Browsing API key", description: "Free key from Google Cloud (Safe Browsing API). Without it only the blocked-domain list and the built-in checks run. If Google is unreachable, links are allowed — nobody is blocked because Google is down. The env var GOOGLE_SAFE_BROWSING_KEY wins when set." },
+  { key: "security.blocked_domains", group: "security", label: "Blocked domains", description: "One domain per line. Any link to these domains or their subdomains is refused everywhere users post (feed, comments, profiles, listings, tasks, ads, chat), whatever the policy above. Staff screens are only flagged.", effect: "Empty = no domain is blocked outright." },
+  { key: "security.safe_browsing_api_key", group: "security", label: "Google Safe Browsing API key", secret: true, description: "Free key from Google Cloud (Safe Browsing API), used by the unsafe-link policy. If Google is unreachable, links are allowed — nobody is blocked because Google is down. The env var GOOGLE_SAFE_BROWSING_KEY wins when set.", effect: "Empty = only the blocked-domain list and the built-in checks run." },
   { key: "kyc.ocrRejectBelow", group: "security", label: "Auto KYC — reject-outright OCR confidence (0–1)", description: "Below this the read is treated as unusable. It still routes to manual review, never an auto-rejection.", home: KYC_HOME },
 
   // ── Site toggles ──
-  { key: "analytics_pageviews_enabled", group: "ui_toggles", label: "Page-view analytics", description: "Record page visits and foreground time for /admin/analytics. First-party only — nothing is sent to a third party." },
-  { key: "ui.cookies_popup_enabled", group: "ui_toggles", label: "Cookie consent popup", description: "Show the cookie consent banner to visitors" },
-  { key: "ui.notification_popup_enabled", group: "ui_toggles", label: "Notification permission popup", description: "Show the “Enable notifications” prompt" },
-  { key: "ui.pwa_install_prompt_enabled", group: "ui_toggles", label: "PWA install prompt", description: "Prompt users who haven't installed the app (Android & iOS); hidden once installed" },
-  { key: "ui.require_profile_completion", group: "ui_toggles", label: "Require a complete profile", description: "Lock the features ticked below until a user's profile meets the chosen standard. Enforced on every route that lets a user earn, not just on the pages." },
+  { key: "analytics_pageviews_enabled", group: "ui_toggles", label: "Page-view analytics", description: "Record page visits and foreground time for /admin/analytics. First-party only — nothing is sent to a third party.", effect: "Off = no new page views are recorded; the Traffic reports stop growing." },
+  { key: "ui.cookies_popup_enabled", group: "ui_toggles", label: "Cookie consent popup", description: "Show the cookie consent banner to visitors.", effect: "Off = the banner is never shown." },
+  { key: "ui.notification_popup_enabled", group: "ui_toggles", label: "Notification permission popup", description: "Show the “Enable notifications” prompt that asks users to allow push notifications.", effect: "Off = users are never asked; they can still enable push from Settings." },
+  { key: "ui.pwa_install_prompt_enabled", group: "ui_toggles", label: "App install prompt", description: "Prompt users who haven't installed the app (Android & iOS); hidden once installed.", effect: "Off = no install prompt is shown." },
+  { key: "ui.require_profile_completion", group: "ui_toggles", label: "Require a complete profile", description: "Lock the features ticked below until a user's profile meets the chosen standard. Enforced on every route that lets a user earn, not just on the pages.", effect: "Off = nothing is locked behind the profile." },
   { key: "profile_gate.mode", group: "ui_toggles", label: "Profile standard", description: "7 essentials (photo, name, birth date, gender, phone, country) or the full 100% profile ring." },
-  { key: "profile_gate.min_percent", group: "ui_toggles", label: "Profile percentage required", description: "With the profile-ring standard: how complete the profile must be (10–100%) before features unlock." },
+  { key: "profile_gate.min_percent", group: "ui_toggles", label: "Profile percentage required", unit: "%", description: "With the profile-ring standard: how complete the profile must be (10–100%) before features unlock." },
   { key: "profile_gate.features", group: "ui_toggles", label: "Locked until complete", description: "Which features stay locked until the profile meets the standard." },
   { key: "ui.require_kyc_for_withdrawal", group: "ui_toggles", label: "Require KYC for withdrawals", description: "Users must be KYC-verified to withdraw. When off, only withdrawals over $100 require KYC.", home: WITHDRAWALS_HOME },
-  { key: "ui.require_email_verification", group: "ui_toggles", label: "Require email verification to log in", description: "Users must verify their email before they can sign in. When off, unverified accounts can log in (Google accounts are always verified)." },
+  { key: "ui.require_email_verification", group: "ui_toggles", label: "Require email verification to log in", description: "Users must verify their email before they can sign in.", effect: "Off = unverified accounts can log in (Google accounts are always verified)." },
   { key: "ui.groups_enabled", group: "ui_toggles", label: "Groups", description: "Show the Groups tab on the social feed. When off the tab is hidden AND the group pages and API are blocked, so the feature is genuinely off. Existing groups and their members are kept and come back when you turn this on.", home: FEED_HOME },
   { key: "ui.theme_default", group: "ui_toggles", label: "Default theme", description: "The theme everyone gets: Dark or Light. Users who have never chosen — and every user, when the switch below is off — see this one." },
   { key: "ui.theme_user_choice", group: "ui_toggles", label: "Let users choose their theme", description: "On: the light/dark switch appears in the header and in Settings. Off: the switch is hidden everywhere and everyone sees the default theme above, including users who had already picked the other one." },
   { key: "ui.accent_user_choice", group: "ui_toggles", label: "Let users choose their accent colour", description: "On: users can pick their own accent colour in Profile and Settings. Off: the colour swatches are hidden and every user sees the platform colour, even those who had picked another one." },
 
   // ── Notifications ──
-  { key: "push_notifications_enabled", group: "notifications", label: "Push Notifications", description: "Web push (VAPID). Off here mutes push for everyone, whatever each user has chosen." },
-  { key: "celebrate.achievement_min_points", group: "notifications", label: "Big achievement popup — from (points)", description: "An achievement worth at least this many points also shows a celebration popup, not only a bell notification. 0 = every achievement with a reward." },
-  { key: "notify_new_task", group: "notifications", label: "New Task Available", description: "Notify users when a task they are eligible for is published" },
-  { key: "notify_withdrawal", group: "notifications", label: "Withdrawal Status Updates", description: "Notify a user when their withdrawal is approved, paid or rejected" },
-  { key: "notify_level_up", group: "notifications", label: "Level Up", description: "Notify a user when they earn enough XP to reach the next level" },
+  { key: "push_notifications_enabled", group: "notifications", label: "Push notifications", description: "Web push (VAPID) to phones and browsers that allowed it.", effect: "Off mutes push for everyone, whatever each user has chosen. In-app notifications still arrive." },
+  { key: "celebrate.achievement_min_points", group: "notifications", label: "Big achievement popup from", unit: "points", description: "An achievement worth at least this many points also shows a celebration popup, not only a bell notification.", effect: "0 = every achievement with a reward gets the popup." },
+  { key: "notify_new_task", group: "notifications", label: "New task available", description: "Notify users when a task they are eligible for is published.", effect: "Off = no email or push; the in-app record is still kept." },
+  { key: "notify_withdrawal", group: "notifications", label: "Withdrawal status updates", description: "Notify a user when their withdrawal is approved, paid or rejected.", effect: "Off = no email or push; the in-app record is still kept." },
+  { key: "notify_level_up", group: "notifications", label: "Level up", description: "Notify a user when they earn enough XP to reach the next level.", effect: "Off = no email or push; the in-app record is still kept." },
 
   // ── Email ──
-  { key: "smtp_host", group: "email", label: "SMTP Host", description: "The mail server every outgoing email is sent through" },
-  { key: "smtp_port", group: "email", label: "SMTP Port", description: "587 for STARTTLS, 465 for implicit TLS" },
-  { key: "smtp_username", group: "email", label: "SMTP Username", description: "The account the mail server is logged into" },
-  { key: "smtp_password", group: "email", label: "SMTP Password", description: "Stored encrypted. For Gmail this is an app password, not the account password." },
-  { key: "email_from_address", group: "email", label: "From Email", description: "The address recipients see — and reply to" },
-  { key: "email_from_name", group: "email", label: "From Name", description: "The sender name shown beside the address. Empty = the platform name." },
-  { key: "email_test_recipient", group: "email", label: "Send test emails to", description: "Where the SMTP test and the broadcast \"Send test to me\" go. Empty = your own admin account email." },
-  { key: "email_reply_to", group: "email", label: "Reply-To address", description: "Where replies go. Empty = the From address. Use a mailbox somebody reads — a From address that bounces replies hurts inbox placement." },
-  { key: "email_notifications_enabled", group: "email", label: "Enable Email Notifications", description: "Master switch for all outgoing email. Off stops verification, reset and alert mail platform-wide." },
-  { key: "email_daily_cap", group: "email", label: "Broadcast emails per day", description: "How many broadcast emails may leave the platform in one calendar day. Gmail SMTP allows 500, SendGrid's free tier 100, Amazon SES 200 in sandbox and 50,000 in production — set this to your provider's figure. Exceeding it does not bounce one message, it gets the sending domain throttled, which takes password resets with it. 0 = no limit." },
-  { key: "email_per_minute", group: "email", label: "Broadcast emails per minute", description: "Throughput cap, so a large send is paced instead of arriving as a burst a provider reads as spam. 60 is safe almost everywhere. 0 = no limit." },
+  { key: "smtp_host", group: "email", label: "SMTP server", description: "The mail server every outgoing email is sent through, e.g. smtp.gmail.com." },
+  { key: "smtp_port", group: "email", label: "SMTP port", description: "587 for STARTTLS (most providers), 465 for implicit TLS." },
+  { key: "smtp_username", group: "email", label: "SMTP username", description: "The account the mail server is logged into — usually the mailbox address." },
+  { key: "smtp_password", group: "email", label: "SMTP password", secret: true, description: "Stored encrypted. For Gmail this is an app password, not the account password." },
+  { key: "email_from_address", group: "email", label: "From address", description: "The address recipients see — and reply to, unless a Reply-To is set." },
+  { key: "email_from_name", group: "email", label: "From name", description: "The sender name shown beside the address.", effect: "Empty = the platform name." },
+  { key: "email_test_recipient", group: "email", label: "Send test emails to", description: "Where the SMTP test and the broadcast \"Send test to me\" go.", effect: "Empty = your own admin account email." },
+  { key: "email_reply_to", group: "email", label: "Reply-To address", description: "Where replies go. Use a mailbox somebody reads — a From address that bounces replies hurts inbox placement.", effect: "Empty = the From address." },
+  { key: "email_notifications_enabled", group: "email", label: "Send email", description: "Master switch for all outgoing email.", effect: "Off stops verification, password-reset and alert mail platform-wide." },
+  { key: "email_daily_cap", group: "email", label: "Broadcast emails", unit: "per day", description: "How many broadcast emails may leave the platform in one calendar day. Gmail SMTP allows 500, SendGrid's free tier 100, Amazon SES 200 in sandbox and 50,000 in production — set this to your provider's figure. Exceeding it gets the sending domain throttled, which takes password resets with it.", effect: "0 = no limit." },
+  { key: "email_per_minute", group: "email", label: "Broadcast emails", unit: "per minute", description: "Throughput cap, so a large send is paced instead of arriving as a burst a provider reads as spam. 60 is safe almost everywhere.", effect: "0 = no limit." },
 
   // ── Integrations ──
-  { key: "gemini_api_key", group: "integrations", label: "Gemini API Key", description: "Powers every AI feature — caption generation, KYC document reading. Stored encrypted." },
-  { key: "openai_api_key", group: "integrations", label: "OpenAI API Key", description: "ChatGPT image generation in the Stock Studio. Billed by OpenAI, separately from the others." },
-  { key: "magnific_api_key", group: "integrations", label: "Magnific API Key", description: "Magnific (ex-Freepik): the stock library, its image models, and video generation. The env var MAGNIFIC_API_KEY wins when it is set." },
-  { key: "magnific_webhook_secret", group: "integrations", label: "Magnific Webhook Secret", description: "Only needed if you switch Magnific to push results. The scheduler polls instead, so this can stay empty." },
-  { key: "bkash.appKey", group: "integrations", label: "bKash app key", description: "bKash merchant credential for taka deposits. Stored encrypted." },
-  { key: "bkash.appSecret", group: "integrations", label: "bKash app secret", description: "bKash merchant credential for taka deposits. Stored encrypted." },
+  { key: "gemini_api_key", group: "integrations", label: "Gemini API key", secret: true, description: "Powers every AI feature — caption generation, KYC document reading. Stored encrypted. The GEMINI_API_KEY env var wins when set.", effect: "Empty = AI features are unavailable." },
+  { key: "openai_api_key", group: "integrations", label: "OpenAI API key", secret: true, description: "ChatGPT image generation in the Stock Studio. Billed by OpenAI, separately from the others." },
+  { key: "magnific_api_key", group: "integrations", label: "Magnific API key", secret: true, description: "Magnific (ex-Freepik): the stock library, its image models, and video generation. The env var MAGNIFIC_API_KEY wins when it is set." },
+  { key: "magnific_webhook_secret", group: "integrations", label: "Magnific webhook secret", secret: true, description: "Only needed if you switch Magnific to push results. The scheduler polls instead, so this can stay empty." },
+  { key: "bkash.appKey", group: "integrations", label: "bKash app key", secret: true, description: "bKash merchant credential for taka deposits. Stored encrypted." },
+  { key: "bkash.appSecret", group: "integrations", label: "bKash app secret", secret: true, description: "bKash merchant credential for taka deposits. Stored encrypted." },
   { key: "bkash.username", group: "integrations", label: "bKash username", description: "bKash merchant credential for taka deposits. Stored encrypted." },
-  { key: "bkash.password", group: "integrations", label: "bKash password", description: "bKash merchant credential for taka deposits. Stored encrypted." },
+  { key: "bkash.password", group: "integrations", label: "bKash password", secret: true, description: "bKash merchant credential for taka deposits. Stored encrypted." },
   { key: "sslcommerz.storeId", group: "integrations", label: "SSLCommerz store ID", description: "SSLCommerz credential for card and mobile-banking deposits. Stored encrypted." },
-  { key: "sslcommerz.storePasswd", group: "integrations", label: "SSLCommerz store password", description: "SSLCommerz credential for card and mobile-banking deposits. Stored encrypted." },
-  { key: "integrations.telegram_bot_token", group: "integrations", label: "Telegram bot token", description: "Lets the platform confirm a user really joined a Telegram channel. Without it, Telegram join tasks fall back to manual proof." },
+  { key: "sslcommerz.storePasswd", group: "integrations", label: "SSLCommerz store password", secret: true, description: "SSLCommerz credential for card and mobile-banking deposits. Stored encrypted." },
+  { key: "integrations.telegram_bot_token", group: "integrations", label: "Telegram bot token", secret: true, description: "Lets the platform confirm a user really joined a Telegram channel.", effect: "Empty = Telegram join tasks fall back to manual proof." },
   { key: "integrations.telegram_bot_username", group: "integrations", label: "Telegram bot username (@handle)", description: "The bot's public handle, shown to users who have to start a chat with it" },
   { key: "integrations.discord_client_id", group: "integrations", label: "Discord client ID", description: "Discord OAuth app credential, used to link a user's Discord account" },
-  { key: "integrations.discord_client_secret", group: "integrations", label: "Discord client secret", description: "Discord OAuth app credential, used to link a user's Discord account. Stored encrypted." },
-  { key: "integrations.discord_bot_token", group: "integrations", label: "Discord bot token", description: "Lets the platform confirm a user really joined a Discord server. Without it, Discord join tasks fall back to manual proof." },
+  { key: "integrations.discord_client_secret", group: "integrations", label: "Discord client secret", secret: true, description: "Discord OAuth app credential, used to link a user's Discord account. Stored encrypted." },
+  { key: "integrations.discord_bot_token", group: "integrations", label: "Discord bot token", secret: true, description: "Lets the platform confirm a user really joined a Discord server.", effect: "Empty = Discord join tasks fall back to manual proof." },
 ] as const;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE SCREEN LAYOUT — tabs → sections → controls
+   ═══════════════════════════════════════════════════════════════════════════
+   Grouped by what an admin is trying to do. Every key the System Settings form
+   edits appears in exactly one section; every key that moved to a feature page
+   appears as a link card in the section an admin would look for it in.
+   `verify-settings-truth.ts` holds both of those true. */
+
+export type SettingsTabId =
+  | "general"
+  | "money"
+  | "users"
+  | "email"
+  | "notifications"
+  | "security"
+  | "integrations"
+  | "appearance"
+  | "limits";
+
+/** A pointer to settings edited on another screen. */
+export interface SettingsLinkCard {
+  label: string;
+  href: string;
+  /** The button text: where it goes. */
+  linkLabel: string;
+  why: string;
+  /** Keys edited there — listed as chips so the card says what it holds. */
+  keys?: readonly string[];
+}
+
+/** Non-setting blocks a section can show (buttons, panels). */
+export type SettingsWidget =
+  | "email-test"
+  | "email-deliverability"
+  | "link-safety-test";
+
+export interface SettingsSection {
+  /** Unique across all tabs — it is the `?section=` value. */
+  id: string;
+  title: string;
+  blurb?: string;
+  /** Controls, in display order. */
+  keys: readonly string[];
+  widgets?: readonly SettingsWidget[];
+  links?: readonly SettingsLinkCard[];
+  /** Things an admin may look for here that are not settings (yet). */
+  notes?: { title: string; items: readonly { label: string; why: string }[] };
+}
+
+export interface SettingsTab {
+  id: SettingsTabId;
+  label: string;
+  blurb: string;
+  sections: readonly SettingsSection[];
+}
+
+const homedAt = (h: { href: string }) =>
+  SETTINGS_CATALOG.filter((e) => e.home?.href === h.href).map((e) => e.key);
+
+const WITHDRAWAL_CARD: SettingsLinkCard = {
+  label: "Withdrawal settings",
+  href: WITHDRAWALS_HOME.href,
+  linkLabel: "Withdrawals page",
+  why: "Min / max withdrawal, the fee, withdrawals per day, the master switch, the subscription and KYC requirements and the payout-time message are edited on the Withdrawals page, beside the queue they govern.",
+  keys: homedAt(WITHDRAWALS_HOME),
+};
+const FRAUD_CARD: SettingsLinkCard = {
+  label: "Anti-fraud & fraud risk",
+  href: FRAUD_HOME.href,
+  linkLabel: "Fraud Monitor page",
+  why: "Auto-approval trust, spot checks, duplicate proof, accounts per device / IP, the VPN block, the task ad-blocker gate, risk points and auto-suspension.",
+  keys: homedAt(FRAUD_HOME),
+};
+const KYC_CARD: SettingsLinkCard = {
+  label: "Automatic KYC thresholds",
+  href: KYC_HOME.href,
+  linkLabel: "KYC page",
+  why: "Instant (auto) KYC on/off and its face-match and OCR confidence bars live next to the KYC queue they decide.",
+  keys: homedAt(KYC_HOME),
+};
+const PAYMENT_METHODS_CARD: SettingsLinkCard = {
+  label: "Payment methods",
+  href: "/admin/payment-methods",
+  linkLabel: "Payment Methods page",
+  why: "Which deposit methods users are offered (bKash, SSLCommerz, manual), payout method cards and the local currency rates on the deposit page.",
+};
+
+export const SETTINGS_TABS: readonly SettingsTab[] = [
+  {
+    id: "general",
+    label: "General",
+    blurb: "The platform's name and the switch that closes the whole app.",
+    sections: [
+      {
+        id: "identity",
+        title: "Site identity",
+        keys: ["platform_name"],
+        notes: {
+          title: "Set in code, not here",
+          items: [
+            {
+              label: "Platform URL, logo, favicon, support email",
+              why: "The page title, social cards, logo, favicon and the support address are compile-time values (app/layout.tsx, config/company.ts). Changing them is a rebrand — canonical URLs, the PWA manifest and the legal pages all have to move together — not a settings row.",
+            },
+            {
+              label: "Timezone & language",
+              why: "Dates render in each visitor's own locale and the app ships in English only. Neither has anything to change yet.",
+            },
+          ],
+        },
+      },
+      {
+        id: "maintenance",
+        title: "Maintenance",
+        blurb: "Close the app while you fix something. Staff keep full access.",
+        keys: ["maintenance_mode", "maintenance_message"],
+      },
+    ],
+  },
+  {
+    id: "money",
+    label: "Money",
+    blurb: "What points are worth, deposit VAT, the marketplace cut and buyer-funded tasks. Withdrawals, ads and referral pay live on their own pages — linked below.",
+    sections: [
+      {
+        id: "points",
+        title: "Points & cash",
+        blurb: "How earned points turn into money.",
+        keys: ["points_per_usd", "points_convert_threshold", "currency"],
+      },
+      {
+        id: "deposits",
+        title: "Deposits & VAT",
+        keys: ["vat_enabled", "vat_pct", "bkash.usdToBdtRate"],
+        links: [PAYMENT_METHODS_CARD],
+      },
+      {
+        id: "marketplace-fee",
+        title: "Marketplace",
+        keys: ["marketplace.fee_percent"],
+        links: [
+          {
+            label: "Commission overrides, boosts & dispute fee",
+            href: "/admin/marketplace/settings",
+            linkLabel: "Marketplace settings",
+            why: "Per-asset-type and per-listing commission that beat the fee above, promotion pricing and the dispute mediation fee.",
+            keys: ["marketplace.fee_percent"],
+          },
+        ],
+      },
+      {
+        id: "buyer",
+        title: "Buyer-funded tasks",
+        blurb: "A buyer funds a task from bought task credit: nothing is taken up front, and each approved completion charges the buyer for itself, plus the platform fee. A task stops being shown the moment the buyer can no longer cover one more completion. Who may create tasks at all is a per-user grant (Users → features), not a switch here.",
+        keys: [
+          "buyer.enabled",
+          "buyer.fee_percent",
+          "buyer.min_points_per_task",
+          "buyer.max_points_per_task",
+          "buyer.max_active_tasks",
+          "buyer.max_completions",
+          "buyer.min_purchase_points",
+          "buyer.max_purchase_points",
+          "buyer.allowed_task_types",
+          "buyer.allowed_platforms",
+          "buyer.require_kyc",
+          "buyer.auto_approve_tasks",
+          "buyer.refund_fee_on_reject",
+        ],
+      },
+      {
+        id: "money-elsewhere",
+        title: "Money settings on other pages",
+        blurb: "Edited where the thing they configure lives. Same settings, same values.",
+        keys: [],
+        links: [
+          WITHDRAWAL_CARD,
+          {
+            label: "Referral commission %",
+            href: "/admin/referrals?tab=commission",
+            linkLabel: "Referrals page",
+            why: "Commission is per level and there can be up to 10 of them, so it lives in its own table — a few boxes here could never describe it.",
+            keys: ["referral.commission_sources"],
+          },
+          {
+            label: "Task reward multiplier",
+            href: "/admin/packages",
+            linkLabel: "Packages page",
+            why: "The multiplier is a property of the user's package, not one global number — that is what task approval actually reads.",
+          },
+          {
+            label: "Default cost per click (ads)",
+            href: "/admin/ads?tab=placements",
+            linkLabel: "Ad Manager → Ad Spaces",
+            why: "The global click price is edited beside the per-space prices that override it.",
+            keys: ["ads.cpcUsd"],
+          },
+          {
+            label: "Invoice details",
+            href: "/admin/monetization",
+            linkLabel: "Monetization page",
+            why: "Your business name, address and VAT/BIN number printed on advertiser invoices and receipts.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "users",
+    label: "Users & sign-up",
+    blurb: "What it takes to sign in, and what a user must complete before they can earn.",
+    sections: [
+      {
+        id: "signin",
+        title: "Sign-in & passwords",
+        keys: ["ui.require_email_verification", "password_min_length", "require_strong_passwords"],
+      },
+      {
+        id: "profile-gate",
+        title: "Profile completion gate",
+        blurb: "Lock earning features until a user's profile is complete enough.",
+        keys: [
+          "ui.require_profile_completion",
+          "profile_gate.mode",
+          "profile_gate.min_percent",
+          "profile_gate.features",
+        ],
+      },
+      {
+        id: "users-elsewhere",
+        title: "Verification & referrals",
+        keys: [],
+        links: [
+          KYC_CARD,
+          {
+            label: "Require KYC for withdrawals",
+            href: WITHDRAWALS_HOME.href,
+            linkLabel: "Withdrawals page",
+            why: "One switch, kept with the other withdrawal rules.",
+            keys: ["ui.require_kyc_for_withdrawal"],
+          },
+          {
+            label: "Referral limits & bonuses",
+            href: "/admin/referrals?tab=limits",
+            linkLabel: "Referrals page",
+            why: "Max referrals per user, the new-referral notification, and the signup / milestone bonuses paid to referrers.",
+            keys: ["max_referrals_per_user", "notify_referral", "referral_bonus_config"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "email",
+    label: "Email",
+    blurb: "The mail server, who mail is from, and how much may be sent.",
+    sections: [
+      {
+        id: "smtp",
+        title: "Mail server (SMTP)",
+        blurb: "Save first, then send a test — the test uses what is saved.",
+        keys: ["smtp_host", "smtp_port", "smtp_username", "smtp_password"],
+        widgets: ["email-test"],
+      },
+      {
+        id: "sender",
+        title: "Sender",
+        keys: ["email_from_address", "email_from_name", "email_reply_to", "email_test_recipient"],
+      },
+      {
+        id: "sending",
+        title: "Sending & limits",
+        keys: ["email_notifications_enabled", "email_daily_cap", "email_per_minute"],
+        links: [
+          {
+            label: "Broadcasts",
+            href: "/admin/notifications/broadcasts",
+            linkLabel: "Broadcasts page",
+            why: "Compose and schedule notification + email broadcasts. They obey the daily and per-minute caps above.",
+          },
+        ],
+      },
+      {
+        id: "deliverability",
+        title: "Deliverability",
+        blurb: "Whether your sending domain's SPF, DKIM and DMARC records are in place.",
+        keys: [],
+        widgets: ["email-deliverability"],
+      },
+    ],
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    blurb: "Push, which events notify users automatically, and celebration popups.",
+    sections: [
+      {
+        id: "push",
+        title: "Push",
+        keys: ["push_notifications_enabled"],
+      },
+      {
+        id: "auto-notify",
+        title: "Automatic notifications",
+        blurb: "Off means the email and push are not sent. The in-app notification is still recorded either way — muting a channel should not erase the record of what happened to a user.",
+        keys: ["notify_new_task", "notify_withdrawal", "notify_level_up"],
+        links: [
+          {
+            label: "New referral",
+            href: "/admin/referrals?tab=limits",
+            linkLabel: "Referrals page",
+            why: "Kept with the other referral settings.",
+            keys: ["notify_referral"],
+          },
+        ],
+      },
+      {
+        id: "celebrations",
+        title: "Celebrations",
+        keys: ["celebrate.achievement_min_points"],
+      },
+      {
+        id: "notifications-elsewhere",
+        title: "Messages on other pages",
+        keys: [],
+        links: [
+          {
+            label: "Broadcasts",
+            href: "/admin/notifications/broadcasts",
+            linkLabel: "Broadcasts page",
+            why: "One-off and scheduled messages to a chosen audience, by notification and email.",
+          },
+          {
+            label: "Site popups & banners",
+            href: "/admin/popups",
+            linkLabel: "Popups page",
+            why: "Announcement popups and banners, who sees them and how often.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "security",
+    label: "Security",
+    blurb: "Unsafe links, suspicious uploads and how hard the server may be made to fetch other sites.",
+    sections: [
+      {
+        id: "link-safety",
+        title: "Link safety",
+        blurb: "Checks every link users save — posts, comments, profiles, listings, tasks, ads and chat — for phishing and malware, so a bad link cannot get the site reported to its host. Links using javascript:, data: or file: are always refused. Anything flagged opens a case in the Abuse Center.",
+        keys: ["security.link_policy", "security.blocked_domains"],
+        widgets: ["link-safety-test"],
+        links: [
+          {
+            label: "Google Safe Browsing key",
+            href: "/admin/settings?tab=integrations&section=security-services",
+            linkLabel: "Integrations → Security services",
+            why: "The policy above uses it when set. API keys are kept together on the Integrations tab.",
+            keys: ["security.safe_browsing_api_key"],
+          },
+        ],
+      },
+      {
+        id: "uploads",
+        title: "Uploads",
+        keys: ["security.upload_archive_policy"],
+        links: [
+          {
+            label: "VirusTotal key",
+            href: "/admin/settings?tab=integrations&section=security-services",
+            linkLabel: "Integrations → Security services",
+            why: "Optional malware lookup for uploaded files, by fingerprint.",
+            keys: ["security.virustotal_api_key"],
+          },
+        ],
+      },
+      {
+        id: "outbound",
+        title: "Outbound fetches",
+        blurb: "Link previews, proof checks and thumbnails make the server fetch other websites. These caps stop the platform being used to hammer one site.",
+        keys: ["security.outbound_domain_per_min", "security.outbound_user_per_hour"],
+      },
+      {
+        id: "security-elsewhere",
+        title: "Abuse, fraud & headers",
+        keys: [],
+        links: [
+          {
+            label: "Abuse Center settings",
+            href: "/admin/abuse?tab=settings",
+            linkLabel: "Abuse Center page",
+            why: "How reported content and flagged links are handled, and the provider response.",
+          },
+          FRAUD_CARD,
+        ],
+        notes: {
+          title: "Not a setting here",
+          items: [
+            {
+              label: "Security headers (HSTS, CSP, frame guard)",
+              why: "Sent by next.config.ts on every response and switched by environment variables (SECURITY_HEADERS, SECURITY_HSTS, SECURITY_FRAME_GUARD, CSP_REPORT, CSP_ENFORCE) read at start-up — see docs/SECURITY-RUNBOOK.md.",
+            },
+            {
+              label: "Session timeout",
+              why: "Session lifetime is fixed in the Auth.js config and applied when the process boots, so it cannot be changed from a settings row without a redeploy.",
+            },
+            {
+              label: "Max login attempts / lockout",
+              why: "There is no lockout store yet. Login is rate-limited per IP (10/min) but failures are not counted per account.",
+            },
+            {
+              label: "Admin IP whitelist",
+              why: "Nothing checks a source IP against a list. Restrict admin access at the firewall for now.",
+            },
+            {
+              label: "Force 2FA for admins",
+              why: "2FA can be enrolled voluntarily (/api/2fa/setup) but nothing requires it at login.",
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    blurb: "API keys and secrets for the services the platform talks to. Paste a key and Save — it takes effect immediately. A matching environment variable wins when it is set.",
+    sections: [
+      {
+        id: "ai",
+        title: "AI providers",
+        blurb: "“Test” asks the provider whether the SAVED key is good using a read-only call, so it never spends generation credits.",
+        keys: ["gemini_api_key", "openai_api_key", "magnific_api_key", "magnific_webhook_secret"],
+      },
+      {
+        id: "security-services",
+        title: "Security services",
+        blurb: "Used by Security → Link safety and Security → Uploads.",
+        keys: ["security.safe_browsing_api_key", "security.virustotal_api_key"],
+      },
+      {
+        id: "payment-gateways",
+        title: "Payment gateways",
+        blurb: "Used by the bKash and SSLCommerz deposit flows. The matching environment variables win when they are set, so these are for deployments that cannot set env vars.",
+        keys: [
+          "bkash.appKey",
+          "bkash.appSecret",
+          "bkash.username",
+          "bkash.password",
+          "sslcommerz.storeId",
+          "sslcommerz.storePasswd",
+        ],
+        links: [PAYMENT_METHODS_CARD],
+      },
+      {
+        id: "bots",
+        title: "Social verification bots",
+        blurb: "Powers auto-verified Telegram/Discord JOIN tasks. Create a bot, add it to the target channel/server as admin, then paste the tokens here. The feature stays dormant until they are set.",
+        keys: [
+          "integrations.telegram_bot_token",
+          "integrations.telegram_bot_username",
+          "integrations.discord_client_id",
+          "integrations.discord_client_secret",
+          "integrations.discord_bot_token",
+        ],
+      },
+      {
+        id: "google",
+        title: "Google ads",
+        keys: [],
+        links: [
+          {
+            label: "AdSense client & Ad Manager network code",
+            href: "/admin/monetization",
+            linkLabel: "Monetization page",
+            why: "The Google ad publisher ids, the consent (CMP) and auto-ads switches, and ads.txt.",
+            keys: ["ads.adsense_client"],
+          },
+        ],
+        notes: {
+          title: "Not built yet",
+          items: [
+            {
+              label: "Google Analytics / Facebook Pixel",
+              why: "No third-party tracking script is injected. Page and traffic analytics are first-party (/admin/analytics), and adding a tag also has to pass the cookie-consent gate — so it needs building, not just an ID.",
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "appearance",
+    label: "Appearance & site",
+    blurb: "Theme, popups and prompts, analytics, and feature switches that apply to every user.",
+    sections: [
+      {
+        id: "theme",
+        title: "Theme",
+        keys: ["ui.theme_default", "ui.theme_user_choice", "ui.accent_user_choice"],
+      },
+      {
+        id: "prompts",
+        title: "Popups & prompts",
+        blurb: "Applies to every user within a minute (the values are cached server-side).",
+        keys: ["ui.cookies_popup_enabled", "ui.notification_popup_enabled", "ui.pwa_install_prompt_enabled"],
+      },
+      {
+        id: "analytics",
+        title: "Analytics",
+        keys: ["analytics_pageviews_enabled"],
+      },
+      {
+        id: "appearance-elsewhere",
+        title: "Site features on other pages",
+        keys: [],
+        links: [
+          {
+            label: "Groups, AI caption re-rolls, boosted posts",
+            href: FEED_HOME.href,
+            linkLabel: "Feed settings",
+            why: "The Groups switch and the other social-feed settings.",
+            keys: homedAt(FEED_HOME),
+          },
+          {
+            label: "Navigation menus",
+            href: "/admin/settings/navigation",
+            linkLabel: "Navigation page",
+            why: "Quick Earn tiles, the phone tab bar, header icons and the sidebar menu.",
+            keys: ["nav.sidebar"],
+          },
+          {
+            label: "Leaderboard on/off",
+            href: "/admin/leaderboard",
+            linkLabel: "Leaderboard page",
+            why: "Off takes the board down for real — page, API and nav entry.",
+            keys: ["lb_enabled"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "limits",
+    label: "Limits & anti-fraud",
+    blurb: "Per-user caps, task order and targeting, and how long logs are kept. Most anti-fraud switches are on the Fraud Monitor page.",
+    sections: [
+      {
+        id: "caps",
+        title: "Per-user caps",
+        keys: ["max_active_listings", "ai.daily_limit_per_user"],
+        links: [
+          {
+            label: "Max tasks per day",
+            href: "/admin/packages",
+            linkLabel: "Packages page",
+            why: "The daily task limit is per package (Daily Task Limit), which is what the task list actually enforces.",
+          },
+          {
+            label: "Max withdrawals per day",
+            href: WITHDRAWALS_HOME.href,
+            linkLabel: "Withdrawals page",
+            why: "Kept with the other withdrawal limits.",
+            keys: ["max_withdrawals_per_day"],
+          },
+          {
+            label: "Max referrals per user",
+            href: "/admin/referrals?tab=limits",
+            linkLabel: "Referrals page",
+            why: "Kept with every other referral setting.",
+            keys: ["max_referrals_per_user"],
+          },
+          {
+            label: "AI caption re-rolls per social task",
+            href: FEED_HOME.href,
+            linkLabel: "Feed settings",
+            why: "Kept with the other social switches.",
+            keys: ["social.ai_regenerate_limit"],
+          },
+        ],
+      },
+      {
+        id: "task-access",
+        title: "Task order & targeting",
+        keys: ["tasks.sequential_unlock", "targeting.country_ip_only"],
+      },
+      {
+        id: "retention",
+        title: "Data retention",
+        keys: ["retention_days"],
+      },
+      {
+        id: "fraud",
+        title: "Anti-fraud",
+        keys: [],
+        links: [FRAUD_CARD],
+      },
+    ],
+  },
+] as const;
+
+/** Where a control sits on the System Settings screen. */
+export interface SettingLocation {
+  tab: SettingsTabId;
+  section: string;
+}
+
+/** key → its tab and section. Derived from SETTINGS_TABS — never hand-kept. */
+export const LOCATION_FOR_KEY: Record<string, SettingLocation> = Object.fromEntries(
+  SETTINGS_TABS.flatMap((t) =>
+    t.sections.flatMap((s) => s.keys.map((k) => [k, { tab: t.id, section: s.id }] as const))
+  )
+);
+
+export const TAB_BY_ID = new Map(SETTINGS_TABS.map((t) => [t.id, t]));
+
+/** "Money › Buyer-funded tasks" */
+export function locationLabel(loc: SettingLocation): string {
+  const t = TAB_BY_ID.get(loc.tab);
+  const s = t?.sections.find((x) => x.id === loc.section);
+  return [t?.label, s?.title].filter(Boolean).join(" › ");
+}
+
+/** The DOM id a section is given, so the section nav and search can scroll to it. */
+export function sectionDomId(section: string): string {
+  return `settings-section-${section}`;
+}
 
 /**
  * Settings that are real, but live on another admin screen.
@@ -550,7 +1198,11 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
   },
 ];
 
-/** Which tab owns a key. Derived — never hand-maintained. */
+/**
+ * Which storage category (row `category`) a key is saved under. Derived —
+ * never hand-maintained. This is NOT the tab it is shown on: see
+ * `LOCATION_FOR_KEY` for that.
+ */
 export const CATEGORY_FOR_KEY: Record<string, SettingGroupId> =
   Object.fromEntries(SETTINGS_CATALOG.map((e) => [e.key, e.group]));
 
@@ -577,7 +1229,7 @@ export function editedOnSettingsForm(key: string): boolean {
 
 export const GROUP_BY_ID = new Map(SETTING_GROUPS.map((g) => [g.id, g]));
 
-/** Groups in their deliberate order, each with its controls in theirs. */
+/** Storage groups in their order, each with the form-edited keys filed there. */
 export function groupedSettings(): {
   group: SettingGroup;
   entries: SettingEntry[];
@@ -590,19 +1242,32 @@ export function groupedSettings(): {
     }));
 }
 
+/**
+ * A short human label for any key — a catalog setting or one indexed as
+ * living on another screen. Used for the chips on a link card.
+ */
+export function keyLabel(key: string): string {
+  return (
+    BY_KEY.get(key)?.label ??
+    SETTINGS_ELSEWHERE.find((e) => e.key === key)?.label ??
+    key
+  );
+}
+
 export interface SettingHit {
   label: string;
   description: string;
   key?: string;
-  /** Where to go: a tab on this screen, or another admin page. */
-  group?: SettingGroupId;
+  /** Where to go: a tab + section on this screen, or another admin page. */
+  tab?: SettingsTabId;
+  section?: string;
   href?: string;
   where: string;
   status?: SettingStatus;
 }
 
 /**
- * Search by name, description or key.
+ * Search by name, description, key, or the tab/section it sits in.
  *
  * The point is that an admin who remembers only the word "withdrawal" finds
  * every withdrawal control without knowing which tab it is filed under — so
@@ -614,7 +1279,7 @@ export function searchSettings(query: string): SettingHit[] {
   const terms = q.split(/\s+/).filter(Boolean);
 
   const score = (hay: string[], weightLabel: string): number => {
-    const blob = hay.join("   ").toLowerCase();
+    const blob = hay.join(" \u0000 ").toLowerCase();
     if (!terms.every((t) => blob.includes(t))) return 0;
     // A match in the name beats a match buried in the description.
     const name = weightLabel.toLowerCase();
@@ -626,16 +1291,16 @@ export function searchSettings(query: string): SettingHit[] {
   const hits: (SettingHit & { _score: number })[] = [];
 
   for (const e of SETTINGS_CATALOG) {
-    const g = GROUP_BY_ID.get(e.group)!;
-    const where = e.home?.where ?? g.label;
-    const s = score([e.label, e.description, e.key, where], e.label);
+    const loc = LOCATION_FOR_KEY[e.key];
+    const where = e.home?.where ?? (loc ? locationLabel(loc) : GROUP_BY_ID.get(e.group)!.label);
+    const s = score([e.label, e.description, e.effect ?? "", e.key, where], e.label);
     if (s)
       hits.push({
         label: e.label,
         description: e.description,
         key: e.key,
         // A key edited on its feature page is a link there, not a tab here.
-        ...(e.home ? { href: e.home.href } : { group: e.group }),
+        ...(e.home ? { href: e.home.href } : loc ? { tab: loc.tab, section: loc.section } : {}),
         where,
         status: e.status,
         _score: e.home ? s - 0.5 : s,
