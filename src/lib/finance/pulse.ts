@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { isPointsEarned, magnitudePoints } from "@/lib/finance/signing";
+import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 
 /**
  * Today, and the periods around it.
@@ -113,14 +114,16 @@ export async function getFinancePulse(): Promise<FinancePulse> {
   const yearStart = utcYearStart();
 
   try {
-    const pointsPerUsd = await getPointsPerUsd();
+    const [pointsPerUsd, testIds] = await Promise.all([getPointsPerUsd(), getFinanceTestUserIds()]);
+    // Finance test users are left out of every count and sum on this card set.
+    const noTest = <W extends object>(w: NoInfer<W>, field = "userId"): W => withoutUsers<W>(w, testIds, field);
 
     /* One pass over the ledger since the start of the year. Everything the
        four periods need is in there, and a single snapshot cannot disagree
        with itself the way five separate queries can when a row lands between
        two of them. */
     const ledger = await prisma.transaction.findMany({
-      where: { createdAt: { gte: yearStart } },
+      where: noTest({ createdAt: { gte: yearStart } }),
       select: {
         type: true,
         status: true,
@@ -155,22 +158,25 @@ export async function getFinancePulse(): Promise<FinancePulse> {
 
     const signupsIn = (from?: Date) =>
       prisma.user.count({
-        where: from ? { createdAt: { gte: from } } : {},
+        where: noTest(from ? { createdAt: { gte: from } } : {}, "id"),
       });
 
     const referredIn = (from?: Date) =>
       prisma.user.count({
-        where: {
-          referredById: { not: null },
-          ...(from ? { createdAt: { gte: from } } : {}),
-        },
+        where: noTest(
+          {
+            referredById: { not: null },
+            ...(from ? { createdAt: { gte: from } } : {}),
+          },
+          "id"
+        ),
       });
 
     const subsIn = (from?: Date) =>
       prisma.subscription.aggregate({
         _count: { _all: true },
         _sum: { amount: true },
-        where: from ? { startDate: { gte: from } } : {},
+        where: noTest(from ? { startDate: { gte: from } } : {}),
       });
 
     const [
@@ -211,10 +217,10 @@ export async function getFinancePulse(): Promise<FinancePulse> {
          would count a cancelled row whose flag was never cleared, and an
          endDate alone would count one the user cancelled yesterday. */
       prisma.subscription.count({
-        where: { isActive: true, endDate: { gte: new Date() } },
+        where: noTest({ isActive: true, endDate: { gte: new Date() } }),
       }),
       prisma.subscription
-        .findMany({ select: { userId: true }, distinct: ["userId"] })
+        .findMany({ where: noTest({}), select: { userId: true }, distinct: ["userId"] })
         .then((rows) => rows.length),
     ]);
 
@@ -223,7 +229,7 @@ export async function getFinancePulse(): Promise<FinancePulse> {
        compare two columns of the same row, and at this platform's size the
        comparison is cheaper in memory than four queries would be anyway. */
     const seen = await prisma.user.findMany({
-      where: { lastLoginAt: { not: null } },
+      where: noTest({ lastLoginAt: { not: null } }, "id"),
       select: { createdAt: true, lastLoginAt: true },
     });
     const utcDay = (d: Date) =>

@@ -45,6 +45,8 @@ import { PointsTab } from "@/components/admin/finance/points-tab";
 import { getCashFlow, getMoneyByFeature } from "@/lib/finance/by-feature";
 import { CashInOut, MoneyByFeature } from "@/components/admin/finance/money-by-feature";
 import { getPayrollExpense, lastClosedPeriod } from "@/lib/payroll/run";
+import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
+import { TestUsersPanel } from "@/components/admin/finance/test-users-panel";
 
 export const revalidate = 60;
 
@@ -69,6 +71,8 @@ const TABS = [
   { id: "sources", label: "Sources" },
   { id: "ledger", label: "Ledger" },
   { id: "users", label: "Users" },
+  // Accounts admins test with — marked here, left out of every figure above.
+  { id: "test-users", label: "Test users" },
 ] as const;
 
 const RANGES = [
@@ -116,6 +120,7 @@ export default async function AdminFinancePage({
     pulse,
     sellerName,
     taxId,
+    testIds,
   ] = await Promise.all([
     getBalances(),
     getObligations(),
@@ -127,7 +132,9 @@ export default async function AdminFinancePage({
     getFinancePulse(),
     getSetting<string>("billing.seller_name", ""),
     getSetting<string>("billing.tax_id", ""),
+    getFinanceTestUserIds(),
   ]);
+  const canManageTestUsers = await can(session.user.id, "finance.settings");
 
   // Points by source: the Points tab's own range, and today's for the Overview
   // card, so the card can say what today's number is mostly made of. Only
@@ -211,7 +218,17 @@ export default async function AdminFinancePage({
         </span>
       </Link>
 
-      <nav className="flex gap-1 border-b border-slate-800">
+      {testIds.length > 0 && tab !== "test-users" && (
+        <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[12px] text-sky-400">
+          <b>{testIds.length} test user{testIds.length === 1 ? "" : "s"} excluded</b> from
+          every figure on this page.{" "}
+          <Link href={`/admin/finance?tab=test-users&range=${range.id}`} className="underline font-semibold">
+            Manage test users
+          </Link>
+        </div>
+      )}
+
+      <nav className="flex gap-1 border-b border-slate-800 overflow-x-auto">
         {TABS.map((t) => (
           <Link
             key={t.id}
@@ -256,8 +273,10 @@ export default async function AdminFinancePage({
       {tab === "ledger" && <LedgerTab days={range.days} />}
 
       {tab === "users" && (
-        <UsersTab balances={balances} recon={recon} obligations={obligations} />
+        <UsersTab balances={balances} recon={recon} obligations={obligations} testIds={testIds} />
       )}
+
+      {tab === "test-users" && <TestUsersPanel canManage={canManageTestUsers} />}
     </div>
   );
 }
@@ -749,13 +768,15 @@ async function UsersTab({
   balances,
   recon,
   obligations,
+  testIds,
 }: {
   balances: Awaited<ReturnType<typeof getBalances>>;
   recon: Awaited<ReturnType<typeof getReconciliation>>;
   obligations: Awaited<ReturnType<typeof getObligations>>;
+  testIds: string[];
 }) {
   const topEarners = await prisma.user.findMany({
-    where: { role: "USER" },
+    where: withoutUsers({ role: "USER" }, testIds, "id"),
     orderBy: { totalEarnings: "desc" },
     take: 10,
     select: {

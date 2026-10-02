@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Wallet, Clock, Landmark, Scale, Printer } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Clock, Landmark, Scale, Printer, CalendarClock } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { SeriesChart, DonutChart } from "@/components/admin/charts";
 import { periodLabel, shiftPeriod } from "@/lib/company-finance/constants";
+import { SUBSCRIPTIONS_TAB_HREF } from "@/lib/company-finance/subscriptions-shared";
 import { api, cardCls, inputCls, Loading, thisMonth, usdFmt, type Meta } from "./ui";
 
 type PnL = {
@@ -26,12 +27,25 @@ type PnL = {
  * and what is left. Tax is on neither side — it is not the company's money —
  * and lives on the Tax tab.
  */
-export function OverviewTab({ meta }: { meta: Meta }) {
+export function OverviewTab({ meta, onOpenTab }: { meta: Meta; onOpenTab?: (tab: string) => void }) {
   const [to, setTo] = useState(thisMonth());
   const [from, setFrom] = useState(shiftPeriod(thisMonth(), -5));
   const [pnl, setPnl] = useState<PnL | null>(null);
   const [tax, setTax] = useState<{ outstandingUsd: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [due7, setDue7] = useState(0);
+
+  // "N renewals due in 7 days" — one count. Silent on any failure, including
+  // the subscriptions table not existing yet: a hint must never break the P&L.
+  useEffect(() => {
+    let alive = true;
+    api<{ ready: boolean; due7: number }>("/api/admin/company-finance/subscriptions?hint=1")
+      .then((r) => alive && setDue7(r.ready ? r.due7 : 0))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +76,21 @@ export function OverviewTab({ meta }: { meta: Meta }) {
 
   return (
     <div className="space-y-5">
+      {due7 > 0 && (
+        <a
+          href={SUBSCRIPTIONS_TAB_HREF}
+          onClick={(e) => {
+            if (!onOpenTab) return;
+            e.preventDefault();
+            onOpenTab("subscriptions");
+          }}
+          className="flex items-center gap-2 rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-200 hover:bg-orange-500/15"
+        >
+          <CalendarClock className="h-4 w-4" />
+          {due7} renewal{due7 === 1 ? "" : "s"} due in 7 days
+          <span className="ml-auto text-xs underline">Open subscriptions</span>
+        </a>
+      )}
       <div className={`${cardCls} flex flex-wrap items-center gap-2 p-3`}>
         {presets.map((p) => (
           <button

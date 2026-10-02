@@ -4,6 +4,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { direction, isSettled, magnitudePoints, magnitudeUsd, pointsDenominated } from "@/lib/finance/signing";
 import { pointSourceOf, type PointSource } from "@/lib/finance/points-source";
 import type { RevenueBreakdown } from "@/lib/finance/revenue";
+import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 
 /**
  * Every feature's money on one line: what it brings in, what it pays users, and
@@ -63,10 +64,11 @@ export async function getMoneyByFeature(
   from: Date | undefined,
   to: Date
 ): Promise<{ rows: FeatureMoney[]; unassignedOutUsd: number }> {
+  const testIds = await getFinanceTestUserIds();
   const [pointsPerUsd, ledger] = await Promise.all([
     getPointsPerUsd(),
     prisma.transaction.findMany({
-      where: { createdAt: { ...(from ? { gte: from } : {}), lt: to } },
+      where: withoutUsers({ createdAt: { ...(from ? { gte: from } : {}), lt: to } }, testIds),
       select: { type: true, status: true, reference: true, amount: true, points: true },
     }),
   ]);
@@ -114,19 +116,23 @@ export interface CashFlow {
 /** Real cash in and out: deposits and withdrawals, with who and when. */
 export async function getCashFlow(from: Date | undefined): Promise<CashFlow> {
   const at = from ? { createdAt: { gte: from } } : {};
+  // Finance test users' deposits and withdrawals are left out of every figure
+  // and list here (they still appear in the operational queues).
+  const testIds = await getFinanceTestUserIds();
+  const x = <W extends object>(w: NoInfer<W>): W => withoutUsers<W>(w, testIds);
   const [dep, depPending, wPaid, wPending, recentD, recentW] = (await Promise.all([
-    prisma.deposit.aggregate({ where: { status: "APPROVED", ...at }, _sum: { amount: true }, _count: true }),
-    prisma.deposit.aggregate({ where: { status: "PENDING" }, _sum: { amount: true }, _count: true }),
-    prisma.withdrawal.aggregate({ where: { status: "COMPLETED", ...at }, _sum: { netAmount: true }, _count: true }),
-    prisma.withdrawal.aggregate({ where: { status: { in: ["PENDING", "PROCESSING"] } }, _sum: { netAmount: true }, _count: true }),
+    prisma.deposit.aggregate({ where: x({ status: "APPROVED", ...at }), _sum: { amount: true }, _count: true }),
+    prisma.deposit.aggregate({ where: x({ status: "PENDING" }), _sum: { amount: true }, _count: true }),
+    prisma.withdrawal.aggregate({ where: x({ status: "COMPLETED", ...at }), _sum: { netAmount: true }, _count: true }),
+    prisma.withdrawal.aggregate({ where: x({ status: { in: ["PENDING", "PROCESSING"] } }), _sum: { netAmount: true }, _count: true }),
     prisma.deposit.findMany({
-      where: at,
+      where: x(at),
       orderBy: { createdAt: "desc" },
       take: 8,
       select: { id: true, userId: true, amount: true, method: true, status: true, createdAt: true },
     }),
     prisma.withdrawal.findMany({
-      where: at,
+      where: x(at),
       orderBy: { createdAt: "desc" },
       take: 8,
       select: { id: true, userId: true, netAmount: true, method: true, status: true, createdAt: true, user: { select: { name: true, email: true } } },

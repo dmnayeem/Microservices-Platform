@@ -4,6 +4,7 @@ import { TransactionStatus } from "@/generated/prisma/client";
 import { toNum } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
 import { SOURCE_META, SOURCE_ORDER, type SourceKey } from "@/lib/tx-sources";
+import { excludeTestUsers } from "@/lib/finance/test-users";
 import {
   amountIsUserValue,
   direction,
@@ -94,12 +95,13 @@ interface LoadedRow extends LedgerRow {
  */
 async function loadRows(range: Range): Promise<LoadedRow[]> {
   const rows = await prisma.transaction.findMany({
-    where: {
+    // Finance test users' rows are not the platform's money.
+    where: await excludeTestUsers({
       status: TransactionStatus.COMPLETED,
       ...(range.from || range.to
         ? { createdAt: { gte: range.from, lte: range.to } }
         : {}),
-    },
+    }),
     select: {
       type: true,
       status: true,

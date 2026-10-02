@@ -36,6 +36,7 @@ export type PointSource =
   | "cpa"
   | "game"
   | "donation"
+  | "app_install"
   | "admin_grant"
   | "other";
 
@@ -60,6 +61,7 @@ export const POINT_SOURCE_META: Record<PointSource, { label: string; hint: strin
   cpa: { label: "CPA offers", hint: "Approved CPA offer conversions (net of reversals)", swatch: "bg-lime-600" },
   game: { label: "Games", hint: "Mini-games and mystery boxes", swatch: "bg-stone-400" },
   donation: { label: "Donations received", hint: "Points gifted by other users", swatch: "bg-slate-400" },
+  app_install: { label: "App install bonus", hint: "Paid once for installing the app (src/lib/pwa-install.ts)", swatch: "bg-emerald-600" },
   admin_grant: { label: "Admin hand grants", hint: "Balance added by an admin by hand", swatch: "bg-red-600" },
   other: { label: "Other", hint: "A reference this classifier does not know yet", swatch: "bg-slate-600" },
 };
@@ -107,7 +109,8 @@ export function pointSourceOf(row: { type: string; reference?: string | null }):
   if (has("mission_")) return "mission";
   if (has("event_")) return "event";
   if (has("offerwall_")) return "offerwall";
-  if (has("cpa_")) return "cpa"; // CPA offers: cpa_<id> credit, cpa_rev_<id> reversal
+  if (has("cpa_")) return "cpa";
+  if (has("pwa_")) return "app_install"; // one-time app-install bonus (EARNING, pwa_install_<userId>) // CPA offers: cpa_<id> credit, cpa_rev_<id> reversal
   if (has("game_") || has("mystery_") || has("solo_")) return "game";
   if (has("donation_recv_")) return "donation";
   if (has("refbonus_")) return "referral_bonus";

@@ -6,6 +6,7 @@ import { toNum } from "@/lib/money";
 import { deriveSource, SOURCE_ORDER, type SourceKey } from "@/lib/tx-sources";
 import { direction, magnitudeUsd } from "@/lib/finance/signing";
 import { csvFilename, csvResponse, toCsv } from "@/lib/csv";
+import { excludeTestUsers } from "@/lib/finance/test-users";
 
 /**
  * The searchable ledger — the view that did not exist.
@@ -48,7 +49,9 @@ export async function GET(request: NextRequest) {
   const wantsCsv = sp.get("format") === "csv";
   const { from } = parseRange(sp);
 
-  const where = {
+  // Finance test users' rows are left out of the ledger and its CSV export,
+  // so the books here are only real money.
+  const where = await excludeTestUsers({
     ...(type && type !== "all" ? { type: type as never } : {}),
     ...(status && status !== "all" ? { status: status as never } : {}),
     ...(from ? { createdAt: { gte: from } } : {}),
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
           ],
         }
       : {}),
-  };
+  });
 
   // Source is derived from type + reference in application code, so it cannot be
   // a database filter. Over-fetch and filter here — correct at this ledger size,

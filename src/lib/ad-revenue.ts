@@ -67,8 +67,14 @@ export function utcDay(d: Date): Date {
  */
 export async function adRevenueWindow(
   from: Date,
-  to: Date
+  to: Date,
+  /**
+   * Finance only: advertisers whose campaigns are left out entirely (finance
+   * test users). Omitted everywhere else, so the ad panels are unchanged.
+   */
+  opts: { excludeAdvertiserIds?: readonly string[] } = {}
 ): Promise<AdRevenueWindow> {
+  const skipAdvertiser = new Set(opts.excludeAdvertiserIds ?? []);
   const start = utcDay(from);
   const end = utcDay(to);
 
@@ -83,7 +89,7 @@ export async function adRevenueWindow(
         select: {
           placementId: true,
           type: true,
-          campaign: { select: { isHouse: true } },
+          campaign: { select: { isHouse: true, advertiserId: true } },
         },
       },
     },
@@ -94,7 +100,7 @@ export async function adRevenueWindow(
     ad: {
       placementId: string;
       type: string;
-      campaign: { isHouse: boolean } | null;
+      campaign: { isHouse: boolean; advertiserId: string | null } | null;
     } | null;
   }[];
 
@@ -110,6 +116,8 @@ export async function adRevenueWindow(
   };
 
   for (const r of rows) {
+    const advertiserId = r.ad?.campaign?.advertiserId;
+    if (advertiserId && skipAdvertiser.has(advertiserId)) continue;
     const house = !!r.ad?.campaign?.isHouse;
     const network = isNetworkAdType(r.ad?.type);
     if (house) out.houseImpressions += r.impressions;
