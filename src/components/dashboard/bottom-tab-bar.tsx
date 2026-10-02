@@ -258,7 +258,7 @@ export function BottomTabBar({
             <Menu className="w-5.5 h-5.5" />
             {unread > 0 ? (
               <span className="absolute -top-1.5 -right-2 px-1 min-w-4.5 h-4.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-4.5 text-center ring-2 ring-(--shell-bar-bg)">
-                {unread > 9 ? "9+" : unread}
+                {unread > 99 ? "99+" : unread}
               </span>
             ) : (
               menuHasGoals && (

@@ -335,7 +335,7 @@ function BackLink() {
   return (
     <Link
       href="/cpa"
-      className="app-press inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap text-sm text-(--app-ink-3) hover:text-white"
+      className="app-press inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap text-sm text-(--app-ink-3) hover:text-(--app-ink)"
     >
       <ArrowLeft className="h-4 w-4" /> All offers
     </Link>

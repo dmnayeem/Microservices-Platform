@@ -276,7 +276,7 @@ function FilterPill({
       className={
         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold border " +
         (active
-          ? "border-(--app-accent-edge) bg-(--app-cta)/20 text-(--app-on-cta)"
+          ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
           : `border-(--app-line) bg-(--app-surface) hover:bg-(--app-surface-2) ${toneCls}`)
       }
     >

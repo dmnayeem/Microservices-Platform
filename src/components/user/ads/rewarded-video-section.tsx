@@ -277,7 +277,7 @@ function RewardedPlayer({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
+            className="p-1.5 rounded-lg bg-(--app-surface-2) text-(--app-ink-3) hover:text-(--app-ink)"
           >
             <X className="w-4 h-4" />
           </button>

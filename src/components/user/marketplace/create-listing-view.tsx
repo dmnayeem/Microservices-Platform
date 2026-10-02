@@ -347,7 +347,7 @@ export function CreateListingView({
                     <button
                       type="button"
                       onClick={() => setTiers([])}
-                      className="text-xs text-(--app-ink-3) hover:text-white"
+                      className="text-xs text-(--app-ink-3) hover:text-(--app-ink)"
                     >
                       Remove tiers
                     </button>

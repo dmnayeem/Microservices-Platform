@@ -622,8 +622,8 @@ export function ProfileTabBody({
                   className={cn(
                     "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
                     editTab === t.key
-                      ? "bg-(--app-cta)/15 text-(--app-on-cta) border border-(--app-accent-edge)/40"
-                      : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+                      ? "bg-(--app-nav-wash) text-(--app-nav-on) border border-(--app-accent-edge)/40"
+                      : "text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
                   )}
                 >
                   <t.icon className="w-4 h-4" />

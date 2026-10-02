@@ -584,7 +584,7 @@ export function BuyerHubView({
                 {!step.done && (
                   <Link
                     href={step.href}
-                    className="h-fit shrink-0 rounded-lg border border-(--app-line) px-2.5 py-1 text-[11px] font-bold text-(--app-ink) hover:text-white"
+                    className="h-fit shrink-0 rounded-lg border border-(--app-line) px-2.5 py-1 text-[11px] font-bold text-(--app-ink) hover:text-(--app-ink)"
                   >
                     {step.cta}
                   </Link>
@@ -754,7 +754,7 @@ export function BuyerHubView({
                             t.status === "ACTIVE" ? "pause" : "resume"
                           )
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-(--app-ink) disabled:opacity-50"
                       >
                         {busyId === t.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -773,7 +773,7 @@ export function BuyerHubView({
                           type="button"
                           disabled={busyId === t.id}
                           onClick={() => setEditingTask(t)}
-                          className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-white disabled:opacity-50"
+                          className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-(--app-ink) disabled:opacity-50"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit
@@ -794,7 +794,7 @@ export function BuyerHubView({
                       <button
                         type="button"
                         onClick={() => openProof(t.id)}
-                        className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-white"
+                        className="ml-2 inline-flex items-center gap-1.5 rounded-lg border border-(--app-line) px-3 py-1.5 text-xs font-semibold text-(--app-ink-2) hover:text-(--app-ink)"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         {proofFor === t.id
@@ -901,7 +901,7 @@ export function BuyerHubView({
                                         setReportFor(null);
                                         setReportText("");
                                       }}
-                                      className="rounded-md border border-(--app-line) px-2 py-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-white disabled:opacity-50"
+                                      className="rounded-md border border-(--app-line) px-2 py-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-(--app-ink) disabled:opacity-50"
                                     >
                                       Never mind
                                     </button>
@@ -1371,7 +1371,7 @@ function EditTaskModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-lg border border-(--app-line) px-3 py-2 text-xs font-semibold text-(--app-ink-2) hover:text-white disabled:opacity-50"
+            className="rounded-lg border border-(--app-line) px-3 py-2 text-xs font-semibold text-(--app-ink-2) hover:text-(--app-ink) disabled:opacity-50"
           >
             Cancel
           </button>

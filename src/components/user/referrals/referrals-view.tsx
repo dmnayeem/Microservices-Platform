@@ -256,7 +256,7 @@ export function ReferralsView({
               </code>
               <button
                 onClick={() => copyText(referralCode, "Code")}
-                className="app-press app-tap shrink-0 inline-flex items-center justify-center rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink-2) hover:text-white"
+                className="app-press app-tap shrink-0 inline-flex items-center justify-center rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink-2) hover:text-(--app-ink)"
                 aria-label="Copy code"
               >
                 <Copy className="w-4 h-4" />
@@ -274,7 +274,7 @@ export function ReferralsView({
               />
               <button
                 onClick={() => copyText(shareUrl, "Link")}
-                className="app-press app-tap shrink-0 inline-flex items-center justify-center rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink-2) hover:text-white"
+                className="app-press app-tap shrink-0 inline-flex items-center justify-center rounded-(--app-r-control) bg-(--app-surface-2) text-(--app-ink-2) hover:text-(--app-ink)"
                 aria-label="Copy link"
               >
                 <Copy className="w-4 h-4" />
@@ -504,7 +504,7 @@ export function ReferralsView({
             {filteredTeam.length > shown && (
               <button
                 onClick={() => setShown((n) => n + PAGE)}
-                className="app-press app-tap-row mt-2 w-full rounded-(--app-r-control) border border-(--app-line) text-sm font-bold text-(--app-ink-2) hover:text-white"
+                className="app-press app-tap-row mt-2 w-full rounded-(--app-r-control) border border-(--app-line) text-sm font-bold text-(--app-ink-2) hover:text-(--app-ink)"
               >
                 Show more ({filteredTeam.length - shown})
               </button>

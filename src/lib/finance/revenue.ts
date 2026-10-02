@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { adRevenueWindow } from "@/lib/ad-revenue";
 import { getPointsPerUsd } from "@/lib/economy";
+import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 
 /**
  * What the platform actually earns, from the columns that already record it.
@@ -71,7 +72,11 @@ const within = (r: Range) =>
 
 export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBreakdown> {
   const created = within(range);
-  const pointsPerUsd = await getPointsPerUsd();
+  const [pointsPerUsd, testIds] = await Promise.all([getPointsPerUsd(), getFinanceTestUserIds()]);
+  // Finance test users are excluded from every stream: their purchases, fees
+  // and ad spend are test money. `x` adds the exclusion on the named column(s).
+  const x = <W extends object>(w: NoInfer<W>, fields: string | string[] = "userId", nullable = false): W =>
+    withoutUsers<W>(w, testIds, fields, { nullable });
 
   const [
     marketplace,
@@ -85,19 +90,19 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     taskFees,
   ] = (await Promise.all([
     prisma.marketplacePurchase.aggregate({
-      where: created ? { createdAt: created } : {},
+      where: x(created ? { createdAt: created } : {}, ["buyerId", "listing.sellerId"]),
       _sum: { fee: true, tax: true },
       _count: true,
     }),
     prisma.marketplaceDeal.aggregate({
-      where: created ? { createdAt: created } : {},
+      where: x(created ? { createdAt: created } : {}, ["buyerId", "sellerId"]),
       _sum: { adminFee: true },
       _count: true,
     }),
     // Only completed payouts: the fee on a pending withdrawal has not been
     // earned yet, and a rejected one is refunded in full.
     prisma.withdrawal.aggregate({
-      where: { status: "COMPLETED", ...(created ? { createdAt: created } : {}) },
+      where: x({ status: "COMPLETED", ...(created ? { createdAt: created } : {}) }),
       _sum: { fee: true },
       _count: true,
     }),
@@ -108,11 +113,11 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     }),
     // The margin is per-row: what the network paid minus what the user got.
     prisma.offerwallCallback.findMany({
-      where: { status: "APPROVED", ...(created ? { createdAt: created } : {}) },
+      where: x({ status: "APPROVED", ...(created ? { createdAt: created } : {}) }),
       select: { payoutAmount: true, userPayout: true },
     }),
     prisma.courseEnrollment.aggregate({
-      where: created ? { createdAt: created } : {},
+      where: x(x(created ? { createdAt: created } : {}), "course.tutorId", true),
       _sum: { platformFeeUsd: true },
       _count: true,
     }),
@@ -126,7 +131,9 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     // the unfiltered screen still shows what it always did. The same house and
     // network exclusions the ad panels use apply here, or this would report the
     // platform's own house inventory billing itself as income.
-    adRevenueWindow(range.from ?? new Date(0), range.to ?? new Date()),
+    adRevenueWindow(range.from ?? new Date(0), range.to ?? new Date(), {
+      excludeAdvertiserIds: testIds,
+    }),
     // Subscriptions bought off-platform are created `isActive: false` and only
     // flip to true when an admin verifies the payment — so summing every row
     // counted money nobody has been paid yet as revenue. Rejections are
@@ -135,10 +142,10 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     // the discriminator is the term rather than the flag: a row is counted once
     // it is active, or once its term has run.
     prisma.subscription.aggregate({
-      where: {
+      where: x({
         OR: [{ isActive: true }, { endDate: { lt: new Date() } }],
         ...(created ? { createdAt: created } : {}),
-      },
+      }),
       _sum: { amount: true },
       _count: true,
     }),
@@ -147,12 +154,12 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     // shipped and summed by nothing, which is the exact bug this file exists
     // to stop. It has no column of its own; the ledger row IS the record.
     prisma.transaction.aggregate({
-      where: {
+      where: x({
         type: "ADMIN_FEE",
         status: "COMPLETED",
         reference: { startsWith: "task_fee_" },
         ...(created ? { createdAt: created } : {}),
-      },
+      }),
       _sum: { points: true },
       _count: true,
     }),

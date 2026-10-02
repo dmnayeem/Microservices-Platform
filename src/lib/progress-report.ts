@@ -6,6 +6,7 @@ import { toNum } from "@/lib/money";
 import { isPointsEarned, magnitudePoints } from "@/lib/finance/signing";
 import { pointSourceOf, type PointSource } from "@/lib/finance/points-source";
 import { getRevenueBreakdown, type RevenueStream } from "@/lib/finance/revenue";
+import { getFinanceTestUserIds, testUsersSql, withoutUsers } from "@/lib/finance/test-users";
 
 /**
  * /admin/progress — how the platform did in a period (today, this week, this
@@ -187,14 +188,19 @@ export async function getProgressReport(
   const readFrom = new Date(Math.min(prevFrom.getTime(), chartFrom.getTime()));
   const inCur = (d: Date) => d >= from && d < to;
   const inPrev = (d: Date) => d >= prevFrom && d < prevTo;
+  // Finance test users are left out of the whole report, like the finance
+  // console it mirrors. One cached settings read, no extra query.
+  const testIds = await getFinanceTestUserIds();
+  const noTest = <W extends object>(w: NoInfer<W>, field = "userId"): W => withoutUsers<W>(w, testIds, field);
+  const notTestU = testUsersSql(testIds, "u.id");
 
   const userCount = (a: Date, b: Date, referred = false) =>
     prisma.user.count({
-      where: { role: "USER", createdAt: { gte: a, lt: b }, ...(referred ? { referredById: { not: null } } : {}) },
+      where: noTest({ role: "USER", createdAt: { gte: a, lt: b }, ...(referred ? { referredById: { not: null } } : {}) }, "id"),
     });
   const tasksCount = (a: Date, b: Date) =>
     prisma.taskSubmission.count({
-      where: { status: { in: [...APPROVED] }, reviewedAt: { gte: a, lt: b }, user: { role: "USER" } },
+      where: noTest({ status: { in: [...APPROVED] }, reviewedAt: { gte: a, lt: b }, user: { role: "USER" } }),
     });
   const activeIn = (a: Date, b: Date, n: number) =>
     prisma.$queryRaw<Array<{ active: number; returning: number; every: number }>>`
@@ -205,11 +211,11 @@ export async function getProgressReport(
         SELECT a."userId", COUNT(*) AS d,
                COUNT(*) FILTER (WHERE a.date > (u."createdAt" AT TIME ZONE 'UTC')::date) AS later
         FROM "UserActiveDay" a JOIN "User" u ON u.id = a."userId"
-        WHERE a.date >= ${a} AND a.date < ${b} AND u.role = 'USER'
+        WHERE a.date >= ${a} AND a.date < ${b} AND u.role = 'USER' ${notTestU}
         GROUP BY a."userId"
       ) x`.then((r) => r[0]);
   const commission = (a: Date, b: Date) =>
-    prisma.referralEarning.aggregate({ _sum: { amount: true }, where: { createdAt: { gte: a, lt: b } } });
+    prisma.referralEarning.aggregate({ _sum: { amount: true }, where: noTest({ createdAt: { gte: a, lt: b } }) });
 
   const [
     pointsPerUsd,
@@ -239,7 +245,7 @@ export async function getProgressReport(
     commission(from, to),
     commission(prevFrom, prevTo),
     prisma.transaction.findMany({
-      where: { createdAt: { gte: readFrom, lt: to }, user: { role: "USER" } },
+      where: noTest({ createdAt: { gte: readFrom, lt: to }, user: { role: "USER" } }),
       select: { userId: true, type: true, status: true, reference: true, amount: true, points: true, createdAt: true },
     }),
     prisma.$queryRaw<Array<{ date: Date; signups: number; referred: number; active: number; returning: number; tasks: number }>>`
@@ -249,19 +255,19 @@ export async function getProgressReport(
       s AS (
         SELECT ("createdAt" AT TIME ZONE 'UTC')::date AS date, COUNT(*)::int AS signups,
                COUNT(*) FILTER (WHERE "referredById" IS NOT NULL)::int AS referred
-        FROM "User" WHERE role = 'USER' AND "createdAt" >= ${chartFrom} AND "createdAt" < ${to} GROUP BY 1
+        FROM "User" u WHERE role = 'USER' AND "createdAt" >= ${chartFrom} AND "createdAt" < ${to} ${notTestU} GROUP BY 1
       ),
       a AS (
         SELECT a.date, COUNT(*)::int AS active,
                COUNT(*) FILTER (WHERE a.date > (u."createdAt" AT TIME ZONE 'UTC')::date)::int AS returning
         FROM "UserActiveDay" a JOIN "User" u ON u.id = a."userId"
-        WHERE a.date >= ${chartFrom} AND a.date < ${to} AND u.role = 'USER' GROUP BY 1
+        WHERE a.date >= ${chartFrom} AND a.date < ${to} AND u.role = 'USER' ${notTestU} GROUP BY 1
       ),
       t AS (
         SELECT (ts."reviewedAt" AT TIME ZONE 'UTC')::date AS date, COUNT(*)::int AS tasks
         FROM "TaskSubmission" ts JOIN "User" u ON u.id = ts."userId"
         WHERE ts.status IN ('APPROVED', 'AUTO_APPROVED') AND ts."reviewedAt" >= ${chartFrom} AND ts."reviewedAt" < ${to}
-          AND u.role = 'USER'
+          AND u.role = 'USER' ${notTestU}
         GROUP BY 1
       )
       SELECT d.date, COALESCE(s.signups, 0) AS signups, COALESCE(s.referred, 0) AS referred,
@@ -270,7 +276,7 @@ export async function getProgressReport(
       ORDER BY d.date`,
     prisma.taskSubmission.groupBy({
       by: ["userId"],
-      where: { status: { in: [...APPROVED] }, reviewedAt: { gte: from, lt: to } },
+      where: noTest({ status: { in: [...APPROVED] }, reviewedAt: { gte: from, lt: to } }),
       _count: { _all: true },
     }),
   ]);
@@ -312,14 +318,14 @@ export async function getProgressReport(
   const [newRefs, comByUser] = (await Promise.all([
     prisma.user.groupBy({
       by: ["referredById"],
-      where: { referredById: { not: null }, role: "USER", createdAt: { gte: refFrom, lt: to } },
+      where: noTest({ referredById: { not: null }, role: "USER", createdAt: { gte: refFrom, lt: to } }, "id"),
       _count: { _all: true },
       orderBy: { _count: { referredById: "desc" } },
       take: 20,
     }),
     prisma.referralEarning.groupBy({
       by: ["userId"],
-      where: { createdAt: { gte: refFrom, lt: to } },
+      where: noTest({ createdAt: { gte: refFrom, lt: to } }),
       _sum: { amount: true },
       orderBy: { _sum: { amount: "desc" } },
       take: 20,
@@ -400,7 +406,9 @@ export async function getProgressReport(
       prisma.withdrawal.aggregate({
         _sum: { amount: true },
         _count: { _all: true },
-        where: field === "processedAt" ? { status: "COMPLETED", processedAt: { gte: a, lt: b } } : { createdAt: { gte: a, lt: b } },
+        where: noTest(
+          field === "processedAt" ? { status: "COMPLETED", processedAt: { gte: a, lt: b } } : { createdAt: { gte: a, lt: b } },
+        ),
       });
     const [revCur, revPrev, reqCur, reqPrev, paidCur, paidPrev] = await Promise.all([
       getRevenueBreakdown({ from, to: last(to) }),

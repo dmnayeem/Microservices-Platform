@@ -36,6 +36,7 @@ import {
 import Link from "next/link";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
+import { useUrlTab } from "@/components/admin/ui/use-url-tab";
 import { AdWizard } from "@/components/admin/ads/ad-wizard";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
@@ -156,6 +157,7 @@ const TABS = [
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
+const TAB_IDS = TABS.map((t) => t.id);
 
 const PLACEMENT_LABEL = Object.fromEntries(AD_PLACEMENTS.map((p) => [p.name, p.label]));
 const PLACEMENT_DESC = Object.fromEntries(AD_PLACEMENTS.map((p) => [p.name, p.description]));
@@ -183,16 +185,13 @@ const PLACEMENT_ICON: Record<string, LucideIcon> = {
 export function AdManagerView({
   canManage,
   seesMoney = false,
-  initialTab,
 }: {
   canManage: boolean;
   seesMoney?: boolean;
-  /** From `?tab=`, so another admin screen can link straight to a tab. */
-  initialTab?: string;
 }) {
-  const [tab, setTab] = useState<TabId>(
-    TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "ads"
-  );
+  // `?tab=` both ways: another admin screen can link straight to a tab, and
+  // a reload stays on the tab you were on.
+  const [tab, setTab] = useUrlTab<TabId>("ads", TAB_IDS);
   const [ads, setAds] = useState<Ad[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);

@@ -23,6 +23,7 @@ const REASONS: Record<string, string> = {
   NOT_STAFF: "That account is not on the payroll sheet for this period.",
   NOTHING_OWED: "Nothing is owed for that period.",
   ALREADY_PAID: "Already paid for that period.",
+  BAD_PERIOD: "That period can't be paid — it hasn't started yet, or it is before this account existed.",
 };
 
 export async function POST(request: NextRequest) {

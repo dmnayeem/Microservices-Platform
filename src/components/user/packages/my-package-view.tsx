@@ -182,7 +182,7 @@ export function MyPackageView({
                 "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
                 isActive
                   ? "text-white border-(--app-accent-edge)"
-                  : "text-(--app-ink-3) border-transparent hover:text-white"
+                  : "text-(--app-ink-3) border-transparent hover:text-(--app-ink)"
               )}
             >
               <t.icon className="w-4 h-4" />

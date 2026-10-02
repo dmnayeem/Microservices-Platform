@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUnsubscribeToken } from "@/lib/unsubscribe";
 import { writeAudit } from "@/lib/audit";
+import { publicOrigin } from "@/lib/public-origin";
 
 /**
  * One-click unsubscribe (RFC 8058).
@@ -23,7 +24,7 @@ export const runtime = "nodejs";
 // Behind the reverse proxy `request.url` can carry the internal host, so the
 // redirects are built on the public origin.
 const origin = (request: NextRequest) =>
-  (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/+$/, "");
+  (process.env.NEXT_PUBLIC_APP_URL || publicOrigin(request)).replace(/\/+$/, "");
 
 async function tokenFrom(request: NextRequest): Promise<string | null> {
   const q = request.nextUrl.searchParams.get("t");

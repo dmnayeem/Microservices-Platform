@@ -301,7 +301,7 @@ function TabButton({
         "inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 -mb-px " +
         (active
           ? "border-(--app-accent-edge) text-white"
-          : "border-transparent text-(--app-ink-3) hover:text-white")
+          : "border-transparent text-(--app-ink-3) hover:text-(--app-ink)")
       }
     >
       {icon}

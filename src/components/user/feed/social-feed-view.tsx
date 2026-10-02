@@ -175,7 +175,7 @@ export function SocialFeedView({
                     "app-tap-row app-press inline-flex shrink-0 items-center gap-1.5 rounded-(--app-r-chip) px-3 text-sm font-bold",
                     isActive
                       ? "app-accent-soft"
-                      : "text-(--app-ink-3) hover:text-white"
+                      : "text-(--app-ink-3) hover:text-(--app-ink)"
                   )}
                 >
                   <t.icon className="h-4.5 w-4.5" />
@@ -245,7 +245,7 @@ export function SocialFeedView({
             type="button"
             onClick={() => setRailOpen(true)}
             aria-label="Open earnings and discovery panel"
-            className="app-tap app-press inline-flex shrink-0 items-center justify-center rounded-(--app-r-chip) border border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2) hover:text-white xl:hidden"
+            className="app-tap app-press inline-flex shrink-0 items-center justify-center rounded-(--app-r-chip) border border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2) hover:text-(--app-ink) xl:hidden"
           >
             <PanelRight className="h-4.5 w-4.5" />
           </button>
@@ -757,7 +757,7 @@ function BackToTop() {
       onClick={scrollToTop}
       aria-label="Back to top"
       title="Back to top"
-      className="app-press fixed right-4 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink) shadow-(--app-e3) hover:text-white bottom-[calc(var(--bottom-nav-h,0px)+var(--anchor-ad-h,0px)+1rem)] md:bottom-[calc(var(--anchor-ad-h,0px)+1.5rem)] md:right-6"
+      className="app-press fixed right-4 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink) shadow-(--app-e3) hover:text-(--app-ink) bottom-[calc(var(--bottom-nav-h,0px)+var(--anchor-ad-h,0px)+1rem)] md:bottom-[calc(var(--anchor-ad-h,0px)+1.5rem)] md:right-6"
     >
       <ArrowUp className="h-5 w-5" />
     </button>

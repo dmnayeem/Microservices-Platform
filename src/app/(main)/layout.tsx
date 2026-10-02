@@ -17,6 +17,9 @@ import { PageAccessGuard } from "@/components/dashboard/page-access-guard";
 import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
+import { PwaSeenBeacon } from "@/components/pwa/pwa-seen-beacon";
+import { getPwaRewardConfig } from "@/lib/pwa-install";
+import { isStaffRole } from "@/lib/staff";
 import { maintenanceFor } from "@/lib/maintenance";
 import { MaintenanceScreen } from "@/components/dashboard/maintenance-screen";
 import { getAppNavConfig, DEFAULT_APP_NAV } from "@/lib/nav-config-server";
@@ -50,13 +53,13 @@ export default async function MainLayout({
   //    — every request but the rare one — pays nothing extra for the check.
   //  - getAppNavConfig: the admin-edited tab bar / header / sidebar menus
   //    (Settings -> Navigation). Cached setting reads, in the same batch.
-  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav] = await Promise.all([
+  const [{ enabled }, hiddenPaths, dbUser, maintenance, ui, hdrs, nav, pwaReward] = await Promise.all([
     getEffectiveFeatures(session.user.id),
     getHiddenPaths(session.user.id),
     prisma.user
       .findUnique({
         where: { id: session.user.id },
-        select: { avatar: true },
+        select: { avatar: true, pwaRewardedAt: true },
         cacheStrategy: { ttl: 10, swr: 30 },
       })
       .catch(() => null),
@@ -69,6 +72,8 @@ export default async function MainLayout({
     getUiToggles().catch(() => null),
     headers(),
     getAppNavConfig().catch(() => DEFAULT_APP_NAV),
+    // App-install reward (cached settings) — only for the install prompt's line.
+    getPwaRewardConfig().catch(() => null),
   ]);
 
   // Server-side page-visibility guard: a hidden page never renders on a hard
@@ -87,6 +92,8 @@ export default async function MainLayout({
   }
   const features = Array.from(enabled);
   const avatar = dbUser?.avatar ?? null;
+  const installRewardPoints =
+    pwaReward?.enabled && !dbUser?.pwaRewardedAt && !isStaffRole(session.user.role) ? pwaReward.points : 0;
 
   return (
     <div className="min-h-screen bg-(--app-page)">
@@ -172,7 +179,10 @@ export default async function MainLayout({
           (a visitor on the landing page has nothing to be notified about),
           and asked again at the moment it matters: starting a task. */}
       <PushPermissionPrompt enabled={ui?.notificationPopup ?? true} />
-      <PwaInstallPrompt enabled={ui?.pwaInstallPrompt ?? true} />
+      <PwaInstallPrompt enabled={ui?.pwaInstallPrompt ?? true} rewardPoints={installRewardPoints} />
+      {/* Reports opening the INSTALLED app (once a day) for install tracking
+          and the install reward — src/lib/pwa-install.ts. */}
+      <PwaSeenBeacon />
 
       {/* Device id + fingerprint for the multi-account rules; reports this
           device (IP, country, browser) once per session. */}

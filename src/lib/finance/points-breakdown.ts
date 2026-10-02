@@ -4,6 +4,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { isStaffRole } from "@/lib/staff";
 import { isPointsDeducted, isPointsEarned, magnitudePoints } from "@/lib/finance/signing";
 import { pointSourceOf, submissionIdOf, type PointSource } from "@/lib/finance/points-source";
+import { excludeTestUsers } from "@/lib/finance/test-users";
 
 /**
  * Where the points in a period came from, and who got them.
@@ -65,7 +66,8 @@ export async function getPointsBreakdown(from: Date, to: Date): Promise<PointsBr
   const [pointsPerUsd, raw] = await Promise.all([
     getPointsPerUsd(),
     prisma.transaction.findMany({
-      where: { createdAt: { gte: from, lt: to } },
+      // Finance test users' points are not the platform's.
+      where: await excludeTestUsers({ createdAt: { gte: from, lt: to } }),
       select: {
         id: true,
         userId: true,

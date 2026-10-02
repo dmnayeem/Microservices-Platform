@@ -196,6 +196,10 @@ export async function POST(request: NextRequest) {
       perListingOverride: listing.commissionRateBps,
     });
     const { fee, sellerAmount } = splitPrice(priceNum, bps);
+    // Never pay the seller more points than the buyer paid. On a sub-cent
+    // price the cent rounding in splitPrice can round the seller's share UP
+    // (a $0.005 sale paid the seller $0.01 worth of points for $0.005 spent).
+    const sellerPoints = Math.min(Math.ceil(sellerAmount * pointsPerUsd), totalCost);
 
     if (!buyer || buyer.pointsBalance < totalCost) {
       return NextResponse.json(
@@ -243,7 +247,7 @@ export async function POST(request: NextRequest) {
       await tx.user.update({
         where: { id: listing.sellerId },
         data: {
-          pointsBalance: { increment: Math.ceil(sellerAmount * pointsPerUsd) },
+          pointsBalance: { increment: sellerPoints },
           totalEarnings: { increment: sellerAmount },
         },
       });
@@ -264,7 +268,7 @@ export async function POST(request: NextRequest) {
           userId: listing.sellerId,
           type: TransactionType.EARNING,
           status: TransactionStatus.COMPLETED,
-          points: Math.ceil(sellerAmount * pointsPerUsd),
+          points: sellerPoints,
           amount: sellerAmount,
           description: `Sale: ${listing.title}`,
           reference: `sale_${listingId}`,

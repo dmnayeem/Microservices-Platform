@@ -181,7 +181,7 @@ export function GroupDetailView({ groupId }: Props) {
     <div className="space-y-4">
       <Link
         href="/social"
-        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to community

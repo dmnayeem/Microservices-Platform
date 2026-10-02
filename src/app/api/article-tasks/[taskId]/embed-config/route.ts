@@ -17,6 +17,7 @@ import {
   appendArticleToken,
 } from "@/lib/article-task-token";
 import { corsPreflight, corsResponse } from "@/lib/article-task-cors";
+import { publicOrigin } from "@/lib/public-origin";
 
 export function OPTIONS() {
   return corsPreflight();
@@ -118,7 +119,7 @@ export async function GET(
 
   // Compute the auto-submit landing URL on our origin (the embed redirects
   // here after the user generates their key on the final page).
-  const origin = req.nextUrl.origin;
+  const origin = publicOrigin(req);
   const completeUrl = `${origin}/article-tasks/complete`;
 
   // Build the inline-text popup TEMPLATES from admin config. Prefer

@@ -56,7 +56,7 @@ export function ThemeSwitch({
       className={
         className ||
         // 44px so it is a real tap target on a phone, not a decorative icon.
-        "app-tap app-press inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:bg-(--shell-hover) hover:text-white"
+        "app-tap app-press inline-flex items-center justify-center rounded-(--app-r-control) text-(--app-ink-2) hover:bg-(--shell-hover) hover:text-(--app-ink)"
       }
     >
       {isLight ? (

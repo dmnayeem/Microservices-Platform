@@ -223,6 +223,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           { status: 400 }
         );
       }
+      // Same Abuse Center hold as approve: a case opened after approval must
+      // still stop the money leaving. Nothing moves; it stays PROCESSING.
+      if (await withdrawalHoldCase(existingWithdrawal.userId)) {
+        return NextResponse.json(
+          { error: "Withdrawals for this account are on hold by an open Abuse Center case. Release the hold or resolve the case first." },
+          { status: 409 }
+        );
+      }
 
       // Interactive, opening with a status compare-and-set.
       //
@@ -255,17 +263,35 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             totalWithdrawals: { increment: existingWithdrawal.amount },
           },
         });
-        await tx.transaction.create({
-          data: {
+        // The request already wrote this withdrawal's ledger row
+        // (`withdrawal_<id>`, PENDING) when it took the cash. Paying it settles
+        // THAT row; writing a second one made every paid withdrawal appear
+        // twice in the ledger and in any report summing WITHDRAWAL rows.
+        const settled = await tx.transaction.updateMany({
+          where: {
             userId: existingWithdrawal.userId,
             type: "WITHDRAWAL",
+            reference: `withdrawal_${id}`,
+          },
+          data: {
             status: "COMPLETED",
-            points: 0,
-            amount: -existingWithdrawal.amount,
             description: `Withdrawal via ${existingWithdrawal.method}`,
-            reference: id,
           },
         });
+        // Withdrawals requested before that row existed have nothing to settle.
+        if (settled.count === 0) {
+          await tx.transaction.create({
+            data: {
+              userId: existingWithdrawal.userId,
+              type: "WITHDRAWAL",
+              status: "COMPLETED",
+              points: 0,
+              amount: -existingWithdrawal.amount,
+              description: `Withdrawal via ${existingWithdrawal.method}`,
+              reference: id,
+            },
+          });
+        }
         await tx.notification.create({
           data: {
             userId: existingWithdrawal.userId,

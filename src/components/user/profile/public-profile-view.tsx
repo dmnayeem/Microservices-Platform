@@ -523,7 +523,7 @@ export function PublicProfileView({ userId, viewerId }: Props) {
               "shrink-0 px-4 py-2 text-sm font-medium transition-colors",
               tab === t.key
                 ? "text-white border-b-2 border-(--app-accent-edge)"
-                : "text-(--app-ink-3) hover:text-white"
+                : "text-(--app-ink-3) hover:text-(--app-ink)"
             )}
           >
             {t.label}
@@ -730,7 +730,7 @@ export function PostsTab({
                 type="button"
                 onClick={() => setOpen(null)}
                 aria-label="Close"
-                className="p-1 rounded-lg text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+                className="p-1 rounded-lg text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
               >
                 <X className="w-4 h-4" />
               </button>

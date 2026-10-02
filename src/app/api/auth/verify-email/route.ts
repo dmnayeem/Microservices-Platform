@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyEmail } from "@/lib/auth/services";
+import { publicOrigin } from "@/lib/public-origin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,16 +41,16 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("token");
 
   if (!token) {
-    return NextResponse.redirect(new URL("/login?error=invalid_token", request.url));
+    return NextResponse.redirect(new URL("/login?error=invalid_token", publicOrigin(request)));
   }
 
   try {
     await verifyEmail(token);
-    return NextResponse.redirect(new URL("/login?verified=true", request.url));
+    return NextResponse.redirect(new URL("/login?verified=true", publicOrigin(request)));
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "verification_failed";
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, request.url)
+      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, publicOrigin(request))
     );
   }
 }

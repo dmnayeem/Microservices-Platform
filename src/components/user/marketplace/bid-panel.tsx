@@ -286,7 +286,7 @@ export function BidPanel({
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
-            className="text-[11px] text-(--app-ink-3) hover:text-white underline"
+            className="text-[11px] text-(--app-ink-3) hover:text-(--app-ink) underline"
           >
             {showHistory ? "Hide" : "Show"} bid history ({totalBids})
           </button>

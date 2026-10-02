@@ -17,6 +17,7 @@ import { getEffectivePermissions } from "@/lib/permissions";
 import { getPendingSources } from "@/lib/admin/pending-counts";
 import { format, startOfDay, subDays, startOfMonth } from "date-fns";
 import { AWAITING_REVIEW_WHERE, completedBetween } from "@/lib/submission-status";
+import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 
 // Auto-revalidate every 30 seconds (matches PROTOTYPE_ADMIN.md §38 spec)
 export const revalidate = 30;
@@ -75,6 +76,11 @@ export default async function AdminDashboardPage() {
   // Hidden figures are not rendered at all, so they never reach the browser.
   const seesMoney = perms.has("finance.view");
   const pendingSources = await getPendingSources(perms);
+  // Money cards leave out finance test users, like /admin/finance does. People
+  // and queue counts below do not — those are operational, not the books.
+  const testIds = await getFinanceTestUserIds();
+  const noTest = <W extends object>(w: NoInfer<W>, field = "userId", nullable = false): W =>
+    withoutUsers<W>(w, testIds, field, { nullable });
 
   const now = new Date();
   const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
@@ -146,27 +152,27 @@ export default async function AdminDashboardPage() {
 
 
     prisma.withdrawal.aggregate({
-      where: { status: "PENDING" },
+      where: noTest({ status: "PENDING" }),
       _sum: { amount: true },
     }),
     prisma.withdrawal.count({ where: { status: "PENDING" } }),
     prisma.withdrawal.aggregate({
-      where: { status: "COMPLETED" },
+      where: noTest({ status: "COMPLETED" }),
       _sum: { amount: true },
     }),
     prisma.subscription.aggregate({
-      where: { createdAt: { gte: todayStart }, isActive: true },
+      where: noTest({ createdAt: { gte: todayStart }, isActive: true }),
       _sum: { amount: true },
     }),
     prisma.subscription.aggregate({
-      where: { createdAt: { gte: monthStart }, isActive: true },
+      where: noTest({ createdAt: { gte: monthStart }, isActive: true }),
       _sum: { amount: true },
     }),
     prisma.subscription.aggregate({
-      where: { isActive: true },
+      where: noTest({ isActive: true }),
       _sum: { amount: true },
     }),
-    prisma.referralEarning.aggregate({ _sum: { amount: true } }),
+    prisma.referralEarning.aggregate({ where: noTest({}), _sum: { amount: true } }),
 
     prisma.subscription.count({ where: { isActive: true } }),
 
@@ -185,18 +191,18 @@ export default async function AdminDashboardPage() {
     // Pre-fetch admin user names — done in next step using already-fetched logs
     Promise.resolve([] as string[]),
     prisma.subscription.findMany({
-      where: { createdAt: { gte: thirtyDaysAgo }, isActive: true },
+      where: noTest({ createdAt: { gte: thirtyDaysAgo }, isActive: true }),
       select: { createdAt: true, amount: true },
     }),
 
     // Deposits awaiting review — count + $ liability sitting in the queue.
-    prisma.deposit.aggregate({ where: { status: "PENDING" }, _sum: { amount: true }, _count: true }),
+    prisma.deposit.aggregate({ where: noTest({ status: "PENDING" }), _sum: { amount: true }, _count: true }),
     // Approved deposits — lifetime funded volume.
-    prisma.deposit.aggregate({ where: { status: "APPROVED" }, _sum: { amount: true } }),
+    prisma.deposit.aggregate({ where: noTest({ status: "APPROVED" }), _sum: { amount: true } }),
     // Wallet liability — withdrawable cash the platform owes users right now.
-    prisma.user.aggregate({ _sum: { cashBalance: true } }),
+    prisma.user.aggregate({ where: noTest({}, "id"), _sum: { cashBalance: true } }),
     // Ad credit outstanding — non-withdrawable balance advertisers can still spend.
-    prisma.user.aggregate({ _sum: { adCreditBalance: true } }),
+    prisma.user.aggregate({ where: noTest({}, "id"), _sum: { adCreditBalance: true } }),
     // Ad REVENUE — what advertisers have actually been billed.
     //
     // This summed `budget` and called it "Ad Spend": money COMMITTED, not money
@@ -206,7 +212,7 @@ export default async function AdminDashboardPage() {
     // never reached this card. `where`/`_sum` deliberately match
     // `src/lib/finance/revenue.ts`, so the two screens report one number.
     prisma.adCampaign.aggregate({
-      where: { isHouse: false },
+      where: noTest({ isHouse: false }, "advertiserId", true),
       _sum: { spentTotal: true, budget: true },
     }),
     // Moved out of the post-batch waterfall.
@@ -309,7 +315,7 @@ export default async function AdminDashboardPage() {
     // `task_fee_` reference — see src/lib/tx-sources.ts). Written negative on
     // the buyer's ledger, so its magnitude is the income.
     prisma.transaction.aggregate({
-      where: { type: "ADMIN_FEE", reference: { startsWith: "task_fee_" }, createdAt: { gte: thirtyDaysAgo } },
+      where: noTest({ type: "ADMIN_FEE", reference: { startsWith: "task_fee_" }, createdAt: { gte: thirtyDaysAgo } }),
       _sum: { amount: true },
       _count: true,
     }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useUrlTab } from "@/components/admin/ui/use-url-tab";
 import { useRouter } from "next/navigation";
 import {
   Sparkles,
@@ -181,6 +182,7 @@ const TABS = [
   { id: "missions", label: "Daily missions", icon: Target },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
+const TAB_IDS = TABS.map((t) => t.id);
 
 /** Field-level diff, so the footer can say how much is actually unsaved. */
 function countChanges(a: FormState, b: FormState): number {
@@ -237,7 +239,8 @@ export function SocialEarningForm({ initial, canEdit }: Props) {
    */
   const [baseline, setBaseline] = useState<FormState>(initial);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<TabId>("rates");
+  // `?sub=` — this page's own `?tab=` already picks Feed settings' tab.
+  const [tab, setTab] = useUrlTab<TabId>("rates", TAB_IDS, { param: "sub" });
 
   const changeCount = useMemo(
     () => countChanges(form, baseline),

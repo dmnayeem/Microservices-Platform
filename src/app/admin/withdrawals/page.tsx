@@ -27,6 +27,7 @@ import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
 import { WithdrawalSettingsPanel } from "@/components/admin/withdrawals/withdrawal-settings-panel";
 import { loadSettingValues } from "@/lib/admin-setting-values";
 import { WITHDRAWALS_HOME, keysHomedAt } from "@/lib/admin-settings-catalog";
+import { getFinanceTestUserIds } from "@/lib/finance/test-users";
 
 /**
  * Requests, plus every platform-wide withdrawal setting on its own tab. The
@@ -193,6 +194,9 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
     };
   };
   const withdrawals = withdrawalsRaw as WithdrawalWithUser[];
+  // The queue still shows finance test users' withdrawals — they have to be
+  // processed like any other — but marks them, since finance leaves them out.
+  const testUserIds = new Set(await getFinanceTestUserIds());
 
   // Pre-compute per-user history counts for risk scoring (one round-trip)
   const userIds = Array.from(new Set(withdrawals.map((w) => w.userId)));
@@ -417,6 +421,14 @@ export default async function AdminWithdrawalsPage({ searchParams }: PageProps) 
                         >
                           {r.withdrawal.user.name || "Unnamed"}
                         </Link>
+                        {testUserIds.has(r.withdrawal.user.id) && (
+                          <span
+                            className="inline-block mt-0.5 rounded px-1.5 py-px text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/30"
+                            title="Finance test user — left out of finance reports"
+                          >
+                            Test user
+                          </span>
+                        )}
                         <p className="text-xs text-slate-500 truncate max-w-45">
                           {r.withdrawal.user.email}
                         </p>

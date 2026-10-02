@@ -54,7 +54,14 @@ const isAndroid = () => typeof navigator !== "undefined" && /android/i.test(navi
  * Never shown once installed, suppressed on /admin, snoozed ~1 day after a
  * dismissal.
  */
-export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
+export function PwaInstallPrompt({
+  enabled = true,
+  rewardPoints = 0,
+}: {
+  enabled?: boolean;
+  /** App-install bonus on offer to this user (0 = none) — see lib/pwa-install.ts. */
+  rewardPoints?: number;
+}) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "other">("other");
@@ -176,10 +183,15 @@ export function PwaInstallPrompt({ enabled = true }: { enabled?: boolean }) {
               Open it from your home screen like an app — full screen, signed
               in, always up to date.
             </p>
+            {rewardPoints > 0 && (
+              <p className="text-xs font-semibold text-emerald-400 mt-1">
+                Install the app and get {rewardPoints.toLocaleString()} points.
+              </p>
+            )}
           </div>
           <button
             onClick={snoozeAndClose}
-            className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-white hover:bg-white/10 shrink-0"
+            className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-(--app-ink) hover:bg-white/10 shrink-0"
             aria-label="Dismiss"
           >
             <X className="w-4 h-4" />

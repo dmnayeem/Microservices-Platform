@@ -1,5 +1,6 @@
 "use client";
 
+import { syncAppBadge } from "@/lib/app-badge";
 import { BALANCE_EVENT, fetchHeaderData } from "@/lib/header-data";
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { Fragment, useState, useEffect, useCallback, useRef } from "react";
@@ -86,6 +87,10 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Mirror the unread count onto the installed app's icon badge.
+  useEffect(() => {
+    syncAppBadge(unreadCount);
+  }, [unreadCount]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(0);
@@ -395,7 +400,7 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 flex items-center justify-center px-1 text-[10px] font-extrabold text-(--app-on-accent) bg-(--app-badge) rounded-full ring-2 ring-(--shell-bar-bg)">
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
               </button>

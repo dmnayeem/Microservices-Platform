@@ -614,7 +614,7 @@ export function ThemeTab({
               className={cn(
                 "p-3 rounded-lg border text-sm font-semibold transition-colors flex flex-col items-center gap-2",
                 preferences.theme === t.id
-                  ? "bg-(--app-cta)/15 text-(--app-on-cta) border-(--app-accent-edge)/50 ring-1 ring-(--app-accent-edge)/40"
+                  ? "bg-(--app-nav-wash) text-(--app-nav-on) border-(--app-accent-edge)/50 ring-1 ring-(--app-accent-edge)/40"
                   : "bg-(--app-surface) text-(--app-ink-2) border-(--app-line) hover:border-(--app-line)"
               )}
             >
@@ -653,7 +653,7 @@ export function ThemeTab({
               className={cn(
                 "w-9 h-9 rounded-full ring-2 ring-offset-2 ring-offset-(--app-surface) transition-all capitalize",
                 preferences.themeAccent === id && !accentIsDefault
-                  ? "ring-white"
+                  ? "ring-(--app-ink)"
                   : "ring-transparent"
               )}
               title={id}

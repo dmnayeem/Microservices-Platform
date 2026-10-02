@@ -131,7 +131,7 @@ export function CpaOffersView({
             onClick={() => setTab(t.key)}
             className={cn(
               "app-press inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-semibold transition-colors",
-              tab === t.key ? "app-accent" : "text-(--app-ink-3) hover:text-white"
+              tab === t.key ? "app-accent" : "text-(--app-ink-3) hover:text-(--app-ink)"
             )}
           >
             {t.label}

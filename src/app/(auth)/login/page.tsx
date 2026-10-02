@@ -5,6 +5,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
+import { useGoogleEnabled } from "@/hooks/use-google-enabled";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Lock } from "lucide-react";
@@ -185,6 +186,9 @@ function LoginForm() {
     }
   };
 
+  // Hidden when the server has no Google provider configured.
+  const googleOn = useGoogleEnabled();
+
   const handleGoogleLogin = () => {
     setOauthOnly(false);
     signIn("google", { callbackUrl });
@@ -244,13 +248,13 @@ function LoginForm() {
               You never set a password here. Use the Google button below — or
               choose &quot;Forgot password&quot; to add one.
             </p>
-            <button
+            {googleOn && <button
               type="button"
               onClick={handleGoogleLogin}
               className="text-(--app-accent-ink) hover:text-(--app-accent-ink) text-xs font-bold underline"
             >
               Continue with Google
-            </button>
+            </button>}
           </div>
         )}
 
@@ -329,6 +333,8 @@ function LoginForm() {
           </Button>
         </form>
 
+        {googleOn && (
+          <>
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -371,6 +377,8 @@ function LoginForm() {
         >
           Continue with Google
         </Button>
+          </>
+        )}
 
         {/* Register Link */}
         <p className="text-center text-(--app-ink-3)">

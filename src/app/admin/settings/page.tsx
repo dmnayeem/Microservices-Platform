@@ -26,11 +26,13 @@ export default async function AdminSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-white">System Settings</h1>
         <p className="text-slate-400 text-sm mt-1">
-          Configure platform-wide settings across all categories.
+          Platform-wide settings, grouped by what you are trying to do. Search
+          finds any setting — including the ones kept on their feature&rsquo;s
+          own page.
           {!canEdit && (
             <span className="ml-2 text-amber-400">
               View-only — your role cannot edit settings.
@@ -54,13 +56,17 @@ export default async function AdminSettingsPage() {
         time that happened the answer was found by reading the source. The
         search box above indexes these too.
       */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-        <h2 className="text-sm font-semibold text-white">
-          Settings that live on other screens
-        </h2>
+      <details className="group bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-white">
+          Every setting kept on another page ({SETTINGS_ELSEWHERE.length})
+          <span className="ml-2 text-xs font-normal text-slate-500 group-open:hidden">
+            show
+          </span>
+        </summary>
         <p className="mt-1 text-xs text-slate-500">
-          Not everything belongs on one form — these are configured where the
-          thing they configure lives. The search box above finds them too.
+          These are configured where the thing they configure lives. The search
+          box above finds them too, and each tab links to the ones that belong
+          with it.
         </p>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {SETTINGS_ELSEWHERE.map((s) => (
@@ -89,10 +95,10 @@ export default async function AdminSettingsPage() {
             </li>
           ))}
         </ul>
-      </div>
+      </details>
 
       {/* System Info */}
-      <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 sm:p-6">
         <h2 className="text-sm font-semibold text-white mb-4">
           System Information
         </h2>

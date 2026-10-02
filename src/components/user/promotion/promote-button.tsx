@@ -167,7 +167,7 @@ export function PromoteButton({
                     "flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition-colors",
                     currency === c
                       ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-accent-ink)"
-                      : "border-(--app-line) bg-(--app-page) text-(--app-ink-3) hover:text-white"
+                      : "border-(--app-line) bg-(--app-page) text-(--app-ink-3) hover:text-(--app-ink)"
                   )}
                 >
                   {c === "cash" ? (

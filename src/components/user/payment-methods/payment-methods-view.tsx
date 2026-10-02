@@ -149,7 +149,7 @@ export function PaymentMethodsView() {
     <div className="space-y-5 max-w-2xl mx-auto">
       <Link
         href="/profile"
-        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to profile

@@ -132,7 +132,7 @@ export function BuyPointsView({
                   "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                   points === v
                     ? cn(TASK_CREDIT.border, TASK_CREDIT.bgStrong, TASK_CREDIT.textStrong)
-                    : "border-(--app-line) text-(--app-ink-3) hover:text-white"
+                    : "border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink)"
                 )}
               >
                 {pts(v)}
@@ -223,7 +223,7 @@ export function BuyPointsView({
 
       <Link
         href="/buyer"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-(--app-ink-3) hover:text-(--app-ink)"
       >
         Back to Buyer Hub <ArrowRight className="h-4 w-4" />
       </Link>

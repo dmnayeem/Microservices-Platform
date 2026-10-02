@@ -15,15 +15,10 @@ export const dynamic = "force-dynamic";
  * a finance admin, a finance moderator, and nobody else unless a super admin
  * granted it to them by name.
  */
-export default async function CompanyFinancePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function CompanyFinancePage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "finance.view"))) redirect("/admin");
-  const { tab } = await searchParams;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -41,7 +36,7 @@ export default async function CompanyFinancePage({
           </p>
         </div>
       </div>
-      <CompanyFinanceApp initialTab={tab} />
+      <CompanyFinanceApp />
     </div>
   );
 }

@@ -22,6 +22,7 @@ import { pts, usd } from "@/lib/utils";
 import { POINT_SOURCE_META } from "@/lib/finance/points-source";
 import { PERIODS, getProgressReport, resolvePeriod, type Pair } from "@/lib/progress-report";
 import { SeriesChart } from "@/components/admin/charts";
+import { getFinanceTestUserIds } from "@/lib/finance/test-users";
 
 /**
  * Progress Report — today / this week / this month / any range, each figure
@@ -112,7 +113,10 @@ export default async function ProgressReportPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const period = resolvePeriod(sp.period, sp.from, sp.to);
   const refAll = sp.ref === "all";
-  const r = await getProgressReport(period, seesMoney, refAll);
+  const [r, testIds] = await Promise.all([
+    getProgressReport(period, seesMoney, refAll),
+    getFinanceTestUserIds(),
+  ]);
 
   const lastDay = new Date(period.to.getTime() - 86_400_000);
   const prevLast = new Date(period.prevTo.getTime() - 86_400_000);
@@ -144,6 +148,19 @@ export default async function ProgressReportPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-8">
+      {testIds.length > 0 && (
+        <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[12px] text-sky-400">
+          <b>
+            {testIds.length} test user{testIds.length === 1 ? "" : "s"} excluded
+          </b>{" "}
+          from this report.{" "}
+          {seesMoney && (
+            <Link href="/admin/finance?tab=test-users" className="font-semibold underline">
+              Manage test users
+            </Link>
+          )}
+        </p>
+      )}
       {/* Header + period picker */}
       <div className="space-y-4">
         <div>

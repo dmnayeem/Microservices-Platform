@@ -222,7 +222,7 @@ function QuestionCard({
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 rounded-lg text-xs text-(--app-ink-3) hover:text-white"
+                className="px-3 py-1.5 rounded-lg text-xs text-(--app-ink-3) hover:text-(--app-ink)"
               >
                 Cancel
               </button>

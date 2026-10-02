@@ -91,7 +91,7 @@ export function BuyerSurveyResponsesView({ taskId }: { taskId: string }) {
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <Link
         href="/buyer"
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Your tasks
       </Link>

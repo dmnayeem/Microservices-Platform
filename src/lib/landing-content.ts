@@ -42,6 +42,166 @@ export interface HeroContent {
   cta_secondary_label: string;
   cta_secondary_href: string;
   stats: HeroStat[];
+  /**
+   * The moving element on the hero's balance-card mock. Optional: content
+   * saved before this existed has none and renders the default ("task"),
+   * which is the original "Task approved +$0.42" chip, unchanged.
+   */
+  animation?: HeroAnimation;
+}
+
+// ── Hero balance-card animation ────────────────────────────────────────────
+
+export const HERO_ANIMATION_STYLES = ["task", "ticker", "feed", "withdrawal", "coins"] as const;
+export type HeroAnimationStyle = (typeof HERO_ANIMATION_STYLES)[number];
+
+export const HERO_ANIMATION_LABELS: Record<HeroAnimationStyle, string> = {
+  task: "Task completed",
+  ticker: "Live earnings ticker",
+  feed: "Activity feed",
+  withdrawal: "Withdrawal success",
+  coins: "Rewards rain / coins",
+};
+
+export interface HeroFeedItem {
+  text: string;
+  amount: number;
+  /** "in" = money earned (+), "out" = a payout sent (✓). */
+  kind: "in" | "out";
+}
+
+export interface HeroAnimation {
+  style: HeroAnimationStyle;
+  /** Cycle through `rotateStyles` every `intervalSec` seconds. */
+  rotate: boolean;
+  rotateStyles: HeroAnimationStyle[];
+  intervalSec: number;
+  /** Symbol shown before every amount on the mock ("$", "৳", "€" …). */
+  currency: string;
+  task: { label: string; amount: number };
+  ticker: { label: string; start: number; step: number };
+  feed: { items: HeroFeedItem[] };
+  withdrawal: { method: string; amount: number; pendingLabel: string; doneLabel: string };
+  coins: { label: string; points: number; level: string };
+}
+
+/** Limits the editor shows and the save route / renderer enforce. */
+export const HERO_ANIM_LIMITS = {
+  text: 40,
+  short: 16,
+  currency: 4,
+  amountMax: 100_000,
+  pointsMax: 100_000,
+  intervalMin: 4,
+  intervalMax: 30,
+  feedMax: 5,
+} as const;
+
+export const DEFAULT_HERO_ANIMATION: HeroAnimation = {
+  style: "task",
+  rotate: false,
+  rotateStyles: ["task", "ticker", "feed"],
+  intervalSec: 8,
+  currency: "$",
+  task: { label: "Task approved", amount: 0.42 },
+  ticker: { label: "Earning live", start: 248.6, step: 0.25 },
+  feed: {
+    items: [
+      { text: "Survey completed", amount: 1.2, kind: "in" },
+      { text: "Referral bonus", amount: 0.5, kind: "in" },
+      { text: "Withdrawal sent", amount: 15, kind: "out" },
+    ],
+  },
+  withdrawal: { method: "PayPal", amount: 25, pendingLabel: "Sending payout", doneLabel: "Paid" },
+  coins: { label: "Level 7", points: 50, level: "XP" },
+};
+
+const isStyle = (s: unknown): s is HeroAnimationStyle =>
+  typeof s === "string" && (HERO_ANIMATION_STYLES as readonly string[]).includes(s);
+
+/** Plain text, trimmed, control chars removed, capped. Empty → fallback. */
+function cleanText(v: unknown, max: number, fallback: string): string {
+  if (typeof v !== "string") return fallback;
+  const s = v.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
+  return s || fallback;
+}
+
+/** Finite number clamped to [min, max], rounded to 2 decimals. Bad → fallback. */
+function cleanNum(v: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
+  if (typeof n !== "number" || !Number.isFinite(n)) return fallback;
+  return Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
+}
+
+/**
+ * Any stored / submitted value → a complete, valid `HeroAnimation`.
+ * Missing or malformed fields fall back to the defaults, so old content (no
+ * `animation` at all) renders the original chip.
+ */
+export function normalizeHeroAnimation(raw: unknown): HeroAnimation {
+  const d = DEFAULT_HERO_ANIMATION;
+  const L = HERO_ANIM_LIMITS;
+  const r = (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+  const obj = (v: unknown) =>
+    (v && typeof v === "object" && !Array.isArray(v) ? v : {}) as Record<string, unknown>;
+  const task = obj(r.task);
+  const ticker = obj(r.ticker);
+  const feed = obj(r.feed);
+  const wd = obj(r.withdrawal);
+  const coins = obj(r.coins);
+
+  const rotateStyles = Array.isArray(r.rotateStyles)
+    ? [...new Set(r.rotateStyles.filter(isStyle))]
+    : d.rotateStyles;
+
+  const feedItems = Array.isArray(feed.items)
+    ? feed.items
+        .slice(0, L.feedMax)
+        .map((it) => obj(it))
+        .map((it) => ({
+          text: cleanText(it.text, L.text, ""),
+          amount: cleanNum(it.amount, 0, L.amountMax, 0),
+          kind: it.kind === "out" ? ("out" as const) : ("in" as const),
+        }))
+        .filter((it) => it.text)
+    : d.feed.items;
+
+  return {
+    style: isStyle(r.style) ? r.style : d.style,
+    rotate: r.rotate === true,
+    rotateStyles: rotateStyles.length ? rotateStyles : d.rotateStyles,
+    intervalSec: Math.round(cleanNum(r.intervalSec, L.intervalMin, L.intervalMax, d.intervalSec)),
+    currency: cleanText(r.currency, L.currency, d.currency),
+    task: {
+      label: cleanText(task.label, L.text, d.task.label),
+      amount: cleanNum(task.amount, 0, L.amountMax, d.task.amount),
+    },
+    ticker: {
+      label: cleanText(ticker.label, L.text, d.ticker.label),
+      start: cleanNum(ticker.start, 0, L.amountMax, d.ticker.start),
+      step: cleanNum(ticker.step, 0.01, 1000, d.ticker.step),
+    },
+    feed: { items: feedItems.length ? feedItems : d.feed.items },
+    withdrawal: {
+      method: cleanText(wd.method, L.short, d.withdrawal.method),
+      amount: cleanNum(wd.amount, 0, L.amountMax, d.withdrawal.amount),
+      pendingLabel: cleanText(wd.pendingLabel, L.text, d.withdrawal.pendingLabel),
+      doneLabel: cleanText(wd.doneLabel, L.short, d.withdrawal.doneLabel),
+    },
+    coins: {
+      label: cleanText(coins.label, L.short, d.coins.label),
+      points: Math.round(cleanNum(coins.points, 1, L.pointsMax, d.coins.points)),
+      level: cleanText(coins.level, L.short, d.coins.level),
+    },
+  };
+}
+
+/** "$" + 1,234.50 — fixed locale so server and browser render the same text. */
+export function heroMoney(currency: string, n: number): string {
+  return (
+    currency +
+    n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
 }
 
 export interface FeatureItem {
@@ -317,6 +477,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       { iconKey: "CheckCircle", value: "5M+", label: "Tasks Completed" },
       { iconKey: "Star", value: "4.9/5", label: "User Rating" },
     ],
+    animation: DEFAULT_HERO_ANIMATION,
   },
   features: {
     badge: "Multiple Ways to Earn",

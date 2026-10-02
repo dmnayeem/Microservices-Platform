@@ -213,7 +213,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
       <div className="space-y-4">
         <Link
           href="/tasks"
-          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to tasks
@@ -234,7 +234,7 @@ export function CustomTaskDetailView({ taskId }: { taskId: string }) {
     <div className="space-y-5">
       <Link
         href="/tasks"
-        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to tasks

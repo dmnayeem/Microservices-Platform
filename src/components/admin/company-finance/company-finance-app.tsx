@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Receipt,
@@ -8,6 +7,7 @@ import {
   Users,
   Building2,
   Repeat,
+  CalendarClock,
   Landmark,
   Settings2,
   ShieldCheck,
@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUrlTab } from "@/components/admin/ui/use-url-tab";
 import { Loading, useFinanceMeta, type Meta } from "./ui";
 import { OverviewTab } from "./overview-tab";
 import { EntriesTab } from "./entries-tab";
@@ -22,6 +23,7 @@ import { SalaryTab } from "./salary-tab";
 import { EmployeesTab } from "./employees-tab";
 import { PayeesTab } from "./payees-tab";
 import { RecurringTab } from "./recurring-tab";
+import { SubscriptionsTab } from "./subscriptions-tab";
 import { TaxTab } from "./tax-tab";
 import { SettingsTab } from "./settings-tab";
 import { TeamTab } from "./team-tab";
@@ -33,6 +35,7 @@ type TabId =
   | "employees"
   | "payees"
   | "recurring"
+  | "subscriptions"
   | "tax"
   | "settings"
   | "team";
@@ -44,10 +47,12 @@ const TABS: { id: TabId; label: string; icon: LucideIcon; show: (m: Meta) => boo
   { id: "employees", label: "Employees", icon: Users, show: (m) => m.can.hrView },
   { id: "payees", label: "Payees", icon: Building2, show: () => true },
   { id: "recurring", label: "Recurring", icon: Repeat, show: () => true },
+  { id: "subscriptions", label: "Subscriptions", icon: CalendarClock, show: () => true },
   { id: "tax", label: "VAT & tax", icon: Landmark, show: () => true },
   { id: "settings", label: "Categories & fields", icon: Settings2, show: (m) => m.can.settings },
   { id: "team", label: "Finance team", icon: ShieldCheck, show: (m) => m.can.staff },
 ];
+const TAB_IDS = TABS.map((t) => t.id);
 
 /**
  * The company's own books — expenses, HR, tax — as one screen.
@@ -57,19 +62,11 @@ const TABS: { id: TabId; label: string; icon: LucideIcon; show: (m: Meta) => boo
  * cannot open. The server still refuses every call independently; hiding the
  * tab is courtesy, not security.
  */
-export function CompanyFinanceApp({ initialTab }: { initialTab?: string }) {
+export function CompanyFinanceApp() {
   const { meta, error, reload } = useFinanceMeta();
-  const [tab, setTab] = useState<TabId>((initialTab as TabId) || "overview");
-
-  // Keep the tab in the URL, so a link to "Salaries" opens Salaries and the
-  // back button behaves.
-  useEffect(() => {
-    const u = new URL(window.location.href);
-    if (u.searchParams.get("tab") !== tab) {
-      u.searchParams.set("tab", tab);
-      window.history.replaceState(null, "", u.toString());
-    }
-  }, [tab]);
+  // Keep the tab in the URL, so a link to "Salaries" opens Salaries, a reload
+  // stays there and the back button behaves.
+  const [tab, setTab] = useUrlTab<TabId>("overview", TAB_IDS);
 
   if (error) {
     return (
@@ -108,12 +105,13 @@ export function CompanyFinanceApp({ initialTab }: { initialTab?: string }) {
         </div>
       </div>
 
-      {active === "overview" && <OverviewTab meta={meta} />}
+      {active === "overview" && <OverviewTab meta={meta} onOpenTab={(t) => setTab(t as TabId)} />}
       {active === "entries" && <EntriesTab meta={meta} />}
       {active === "salaries" && <SalaryTab meta={meta} />}
       {active === "employees" && <EmployeesTab meta={meta} onChanged={reload} />}
       {active === "payees" && <PayeesTab meta={meta} onChanged={reload} />}
       {active === "recurring" && <RecurringTab meta={meta} />}
+      {active === "subscriptions" && <SubscriptionsTab meta={meta} />}
       {active === "tax" && <TaxTab meta={meta} />}
       {active === "settings" && <SettingsTab meta={meta} onChanged={reload} />}
       {active === "team" && <TeamTab />}

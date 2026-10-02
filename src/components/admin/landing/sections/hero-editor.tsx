@@ -9,6 +9,7 @@ import {
   inp,
   inpSm,
 } from "../_shared";
+import { HeroAnimationEditor } from "./hero-animation-editor";
 
 interface Props {
   value: HeroContent;
@@ -101,6 +102,12 @@ export function HeroEditor({ value, onChange, disabled }: Props) {
           </Field>
         </div>
       </SectionCard>
+
+      <HeroAnimationEditor
+        value={value.animation}
+        onChange={(next) => set("animation", next)}
+        disabled={disabled}
+      />
 
       <SectionCard
         title="Stat Cards"

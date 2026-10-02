@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { publicOrigin as sitePublicOrigin } from "@/lib/public-origin";
 
 /**
  * GET /embed/article.js
@@ -55,7 +56,9 @@ function publicOrigin(fallback: string): string {
 }
 
 export function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  // The public address, not the container's (see src/lib/public-origin.ts) —
+  // this script runs on someone else's site and must call us back by name.
+  const origin = sitePublicOrigin(req);
   const script = buildScript(origin, publicOrigin(origin));
   return new Response(script, {
     headers: {

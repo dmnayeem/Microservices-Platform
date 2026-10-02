@@ -125,7 +125,7 @@ export function AnchorAdBar() {
               type="button"
               onClick={dismiss}
               aria-label="Hide ad"
-              className="absolute -top-2 -right-2 z-10 grid h-6 w-6 place-items-center rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink-2) shadow-md hover:text-white"
+              className="absolute -top-2 -right-2 z-10 grid h-6 w-6 place-items-center rounded-full border border-(--app-line) bg-(--app-surface) text-(--app-ink-2) shadow-md hover:text-(--app-ink)"
             >
               <X className="w-3.5 h-3.5" />
             </button>

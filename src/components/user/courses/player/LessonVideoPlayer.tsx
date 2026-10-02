@@ -197,7 +197,7 @@ export function LessonVideoPlayer({
               "px-2 py-0.5 rounded text-[11px] font-bold tabular-nums " +
               (speed === s
                 ? "bg-(--app-cta) text-(--app-on-cta)"
-                : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)")
+                : "text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)")
             }
           >
             {s}x

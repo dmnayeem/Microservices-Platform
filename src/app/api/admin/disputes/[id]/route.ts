@@ -197,6 +197,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         })
       : null;
 
+    // assign / escalate / close used to overwrite ANY status — re-opening a
+    // dispute that had already been resolved (and refunded), so it could be
+    // re-resolved with its refund figure overwritten, and the refund cap on a
+    // later dispute for the same order no longer saw the money already paid.
+    const ACTIVE_DISPUTE: DisputeStatus[] = [DisputeStatus.OPEN, DisputeStatus.IN_REVIEW, DisputeStatus.ESCALATED];
+    if (["assign", "escalate", "close"].includes(action) && !ACTIVE_DISPUTE.includes(dispute.status)) {
+      return NextResponse.json({ error: "This dispute is already resolved or closed." }, { status: 409 });
+    }
+
     switch (action) {
       case "message": {
         // Add admin message
@@ -253,7 +262,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       case "assign": {
         // Assign dispute to admin
         const updated = await prisma.marketplaceDispute.update({
-          where: { id },
+          where: { id, status: { in: ACTIVE_DISPUTE } },
           data: {
             assignedAdminId: session.user.id!,
             status: DisputeStatus.IN_REVIEW,
@@ -280,7 +289,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       case "escalate": {
         // Escalate dispute
         const updated = await prisma.marketplaceDispute.update({
-          where: { id },
+          where: { id, status: { in: ACTIVE_DISPUTE } },
           data: {
             status: DisputeStatus.ESCALATED,
             adminNotes: adminNotes || dispute.adminNotes,
@@ -387,6 +396,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             },
           });
           if (claimed.count === 0) throw new Error("DISPUTE_ALREADY_RESOLVED");
+
+          // A purchase can carry several disputes over time (only an ACTIVE one
+          // blocks a new one), and each refund has its own per-dispute
+          // reference — so without this, every new dispute on an already
+          // refunded order could refund the full price again. Lock the purchase
+          // so two resolutions on the same order serialise, then cap the total.
+          if (refundAmount > 0 && purchase) {
+            await tx.$queryRaw`SELECT id FROM "MarketplacePurchase" WHERE id = ${purchase.id} FOR UPDATE`;
+            const prior = await tx.marketplaceDispute.aggregate({
+              where: { purchaseId: purchase.id, id: { not: id }, status: DisputeStatus.RESOLVED_BUYER },
+              _sum: { resolvedAmount: true },
+            });
+            const alreadyRefunded = toNum(prior._sum.resolvedAmount);
+            if (money2(alreadyRefunded + refundAmount) > paidAmount) {
+              throw new Error(`REFUND_EXCEEDS_PAID:${money2(Math.max(0, paidAmount - alreadyRefunded))}`);
+            }
+          }
 
           // If refund amount specified and resolving for buyer, process refund
           if (refundAmount > 0 && purchase) {
@@ -585,7 +611,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       case "close": {
         // Close dispute without resolution
         await prisma.marketplaceDispute.update({
-          where: { id },
+          where: { id, status: { in: ACTIVE_DISPUTE } },
           data: {
             status: DisputeStatus.CLOSED,
             resolution: resolution || "Dispute closed by admin",
@@ -645,6 +671,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: "This dispute has already been resolved." },
         { status: 409 }
+      );
+    }
+    if (error instanceof Error && error.message.startsWith("REFUND_EXCEEDS_PAID:")) {
+      const left = Number(error.message.split(":")[1]) || 0;
+      return NextResponse.json(
+        { error: `This order was already refunded in an earlier dispute — at most ${usd(left)} can still be refunded.` },
+        { status: 400 }
       );
     }
     // Retry of a refund action reuses reference `dispute_refund_<id>` → P2002;

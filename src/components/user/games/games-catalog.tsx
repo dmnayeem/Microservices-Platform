@@ -114,7 +114,7 @@ export function GamesCatalog({ games }: { games: CatalogGame[] }) {
                     "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
                     tab === c
                       ? "bg-emerald-500 text-white"
-                      : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
+                      : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-(--app-ink)"
                   )}
                 >
                   {c === ALL ? "All" : c}

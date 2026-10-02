@@ -284,7 +284,7 @@ export type PayResult =
   | { ok: true; paidUsd: number; transactionId: string }
   | {
       ok: false;
-      reason: "DISABLED" | "NOT_STAFF" | "NOTHING_OWED" | "ALREADY_PAID";
+      reason: "DISABLED" | "NOT_STAFF" | "NOTHING_OWED" | "ALREADY_PAID" | "BAD_PERIOD";
     };
 
 /**
@@ -306,6 +306,21 @@ export async function payPayroll(args: {
 }): Promise<PayResult> {
   const cfg = await getPayrollConfig();
   if (!cfg.enabled) return { ok: false, reason: "DISABLED" };
+
+  // A salary line with no start/end period "applies" to every month ever, and
+  // each month has its own ledger reference — so without a bound, one person
+  // could be paid years of salary in advance (or for months before their
+  // account existed), one click per month. Only a month that has started, and
+  // not one before the account was created, is payable.
+  const now = new Date();
+  const currentPeriod = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  if (args.period > currentPeriod) return { ok: false, reason: "BAD_PERIOD" };
+  const payee = await prisma.user.findUnique({ where: { id: args.userId }, select: { createdAt: true } });
+  if (payee) {
+    const c = payee.createdAt;
+    const joined = `${c.getUTCFullYear()}-${String(c.getUTCMonth() + 1).padStart(2, "0")}`;
+    if (args.period < joined) return { ok: false, reason: "BAD_PERIOD" };
+  }
 
   const sheet = await getPayrollSheet(args.period);
   const row = sheet.rows.find((r) => r.userId === args.userId);

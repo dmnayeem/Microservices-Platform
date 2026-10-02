@@ -63,6 +63,14 @@ async function runSubscriptionExpiryBatch(): Promise<{
     if (canRenew) {
       try {
         await prisma.$transaction(async (tx) => {
+          // Claim THIS period first: two overlapping sweeps each compute their
+          // own `newEnd`, so the ledger reference differs and both would charge.
+          // Only the run that moves `endDate` off the value it read may debit.
+          const claim = await tx.subscription.updateMany({
+            where: { id: sub.id, isActive: true, endDate: sub.endDate },
+            data: { endDate: newEnd },
+          });
+          if (claim.count === 0) throw new Error("ALREADY_RENEWED");
           const debit = await tx.user.updateMany({
             where: { id: sub.userId, cashBalance: { gte: subAmount } },
             data: { cashBalance: { decrement: subAmount } },
@@ -97,7 +105,9 @@ async function runSubscriptionExpiryBatch(): Promise<{
           link: "/my-package",
         });
         continue;
-      } catch {
+      } catch (e) {
+        // Another run already renewed this period — nothing left to do.
+        if (e instanceof Error && e.message === "ALREADY_RENEWED") continue;
         // Balance moved / race — fall through and expire instead.
       }
     }
@@ -105,20 +115,24 @@ async function runSubscriptionExpiryBatch(): Promise<{
     const entitlement = expiresById.get(sub.userId);
     const stillEntitled =
       entitlement != null && entitlement.getTime() > now.getTime();
-    await prisma.$transaction([
-      prisma.subscription.update({
-        where: { id: sub.id },
+    // Conditional on the period as read: an overlapping run may have just
+    // renewed (and charged for) this subscription — ending it now would take
+    // the plan away from someone who paid for it.
+    const ended = await prisma.$transaction(async (tx) => {
+      const off = await tx.subscription.updateMany({
+        where: { id: sub.id, isActive: true, endDate: sub.endDate },
         data: { isActive: false },
-      }),
-      ...(stillEntitled
-        ? []
-        : [
-            prisma.user.update({
-              where: { id: sub.userId },
-              data: { packageId: fallback?.id ?? null, packageExpiresAt: null },
-            }),
-          ]),
-    ]);
+      });
+      if (off.count === 0) return false;
+      if (!stillEntitled) {
+        await tx.user.update({
+          where: { id: sub.userId },
+          data: { packageId: fallback?.id ?? null, packageExpiresAt: null },
+        });
+      }
+      return true;
+    });
+    if (!ended) continue;
     expired++;
     void deliverToUser({
       userId: sub.userId,

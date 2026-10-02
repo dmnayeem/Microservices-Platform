@@ -113,7 +113,7 @@ export function TaskInstructions({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-white"
+          className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-(--app-ink)"
         >
           <ChevronDown
             className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}

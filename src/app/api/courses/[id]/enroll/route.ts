@@ -271,6 +271,22 @@ export async function POST(
              AND "isActive" = true
              AND ("maxRedemptions" IS NULL OR "redemptionsCount" < "maxRedemptions")`;
         if (claimed === 0) throw new Error("COUPON_EXHAUSTED");
+        // Per-user cap, re-checked under that same row lock. validateCoupon()
+        // counted outside the transaction, so parallel enrolments in several
+        // courses each saw "0 used" and a one-per-user coupon was redeemed
+        // once per request. The lock above serialises every redemption of
+        // this coupon, so this count sees the competing enrolment once it has
+        // committed.
+        const limit = await tx.courseCoupon.findUnique({
+          where: { id: couponInfo.id },
+          select: { perUserLimit: true },
+        });
+        if (limit && limit.perUserLimit > 0) {
+          const used = await tx.courseEnrollment.count({
+            where: { userId: session.user.id, couponCode: couponInfo.code },
+          });
+          if (used >= limit.perUserLimit) throw new Error("COUPON_USER_LIMIT");
+        }
       }
 
       const enrollment = await tx.courseEnrollment.create({
@@ -455,6 +471,12 @@ export async function POST(
           error:
             "That coupon just reached its redemption limit, so nothing was charged. Try again without it.",
         },
+        { status: 409 }
+      );
+    }
+    if (error instanceof Error && error.message === "COUPON_USER_LIMIT") {
+      return NextResponse.json(
+        { error: "You've already used this coupon the max number of times, so nothing was charged." },
         { status: 409 }
       );
     }

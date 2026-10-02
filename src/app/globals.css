@@ -1775,6 +1775,114 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8da699; 
   }
 }
 
+/* ── Hero balance-card animation styles (admin-selectable) ──────────────
+   Base rules are the STILL state (animations off / reduced motion); motion
+   lives only under [data-mk-anim="on"] and is dropped for reduced motion.
+   Every element here is absolutely placed by its parent, so none of it can
+   shift layout. */
+[data-mk-theme="light"] {
+  --mk-coin: #d97706;
+  --mk-coin-text: #b45309;
+}
+[data-mk-theme="dark"] {
+  --mk-coin: #f59e0b;
+  --mk-coin-text: #fbbf24;
+}
+@keyframes mk-ha-swap {
+  from { opacity: 0; transform: translateY(4px); }
+}
+@keyframes mk-ha-float {
+  0% { opacity: 0; transform: translateY(4px); }
+  20% { opacity: 1; }
+  75% { opacity: 1; transform: translateY(-10px); }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+@keyframes mk-ha-glow {
+  0% { text-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+  30% { text-shadow: 0 0 14px rgba(255, 255, 255, 0.75); }
+  100% { text-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+}
+@keyframes mk-ha-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
+@keyframes mk-ha-slide {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+}
+@keyframes mk-ha-up {
+  from { transform: translateY(44px); }
+}
+/* Withdrawal: 0–55% bar fills while "sending"; then the check + "Paid". */
+@keyframes mk-ha-wd-bar {
+  0% { transform: scaleX(0); }
+  55%, 100% { transform: scaleX(1); }
+}
+@keyframes mk-ha-wd-pending {
+  0%, 56% { opacity: 1; }
+  62%, 100% { opacity: 0; }
+}
+@keyframes mk-ha-wd-done {
+  0%, 58% { opacity: 0; transform: translateY(4px); }
+  64%, 100% { opacity: 1; transform: none; }
+}
+@keyframes mk-ha-wd-check {
+  0%, 58% { opacity: 0; transform: scale(0.4); }
+  66% { opacity: 1; transform: scale(1.15); }
+  72%, 100% { opacity: 1; transform: none; }
+}
+@keyframes mk-ha-coin {
+  0% { opacity: 0; transform: translateY(8px) scale(0.6); }
+  10% { opacity: 1; transform: translateY(0) scale(1.1); }
+  35% { opacity: 1; transform: translateY(-12px) scale(1); }
+  50%, 100% { opacity: 0; transform: translateY(-20px) scale(1); }
+}
+@keyframes mk-ha-xp {
+  0% { transform: scaleX(0.3); }
+  85%, 100% { transform: scaleX(0.95); }
+}
+
+/* Still state */
+.mk-ha-wd-pending { opacity: 0; }
+.mk-ha-wd-done,
+.mk-ha-wd-check { opacity: 1; }
+.mk-ha-wd-bar,
+.mk-ha-xp { transform-origin: left; }
+.mk-ha-xp { transform: scaleX(0.7); }
+.mk-ha-coin { opacity: 0; }
+.mk-ha-coin.mk-ha-coin-0 { opacity: 1; transform: translateY(-10px); }
+
+/* Motion */
+[data-mk-anim="on"] .mk-ha-swap { animation: mk-ha-swap 0.45s ease-out both; }
+[data-mk-anim="on"] .mk-ha-float { animation: mk-ha-float 1.6s ease-out both; }
+[data-mk-anim="on"] .mk-ha-glow { animation: mk-ha-glow 1.2s ease-out both; }
+[data-mk-anim="on"] .mk-ha-dot { animation: mk-ha-dot 1.6s ease-in-out infinite; }
+[data-mk-anim="on"] .mk-ha-slide { animation: mk-ha-slide 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+[data-mk-anim="on"] .mk-ha-up { animation: mk-ha-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+[data-mk-anim="on"] .mk-ha-wd-bar { animation: mk-ha-wd-bar 5.5s ease-in-out infinite; }
+[data-mk-anim="on"] .mk-ha-wd-pending { animation: mk-ha-wd-pending 5.5s linear infinite; }
+[data-mk-anim="on"] .mk-ha-wd-done { animation: mk-ha-wd-done 5.5s ease-out infinite; }
+[data-mk-anim="on"] .mk-ha-wd-check { animation: mk-ha-wd-check 5.5s ease-out infinite; }
+[data-mk-anim="on"] .mk-ha-xp { animation: mk-ha-xp 3s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+[data-mk-anim="on"] .mk-ha-coin { animation: mk-ha-coin 3s ease-out infinite; }
+[data-mk-anim="on"] .mk-ha-coin.mk-ha-coin-1 { animation-delay: 0.9s; }
+[data-mk-anim="on"] .mk-ha-coin.mk-ha-coin-2 { animation-delay: 1.8s; }
+@media (prefers-reduced-motion: reduce) {
+  [data-mk-anim="on"] .mk-ha-swap,
+  [data-mk-anim="on"] .mk-ha-float,
+  [data-mk-anim="on"] .mk-ha-glow,
+  [data-mk-anim="on"] .mk-ha-dot,
+  [data-mk-anim="on"] .mk-ha-slide,
+  [data-mk-anim="on"] .mk-ha-up,
+  [data-mk-anim="on"] .mk-ha-wd-bar,
+  [data-mk-anim="on"] .mk-ha-wd-pending,
+  [data-mk-anim="on"] .mk-ha-wd-done,
+  [data-mk-anim="on"] .mk-ha-wd-check,
+  [data-mk-anim="on"] .mk-ha-xp,
+  [data-mk-anim="on"] .mk-ha-coin {
+    animation: none;
+  }
+}
+
 /* ── App shell: skeletons that shimmer rather than blink ────────────────
    `animate-pulse` fades a block in and out in place, which reads as a broken
    element. A sweep reads as "loading". Used by the Skeleton primitive, so

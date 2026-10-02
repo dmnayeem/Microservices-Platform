@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getPointsPerUsd } from "@/lib/economy";
+import { getFinanceTestUserIds, withoutUsers } from "@/lib/finance/test-users";
 
 /**
  * Balances, split between real users and staff.
@@ -65,15 +66,17 @@ function shape(
 }
 
 export async function getBalances(): Promise<Balances> {
-  const pointsPerUsd = await getPointsPerUsd();
+  const [pointsPerUsd, testIds] = await Promise.all([getPointsPerUsd(), getFinanceTestUserIds()]);
   const select = {
     _sum: { cashBalance: true, pointsBalance: true, adCreditBalance: true },
     _count: true,
   } as const;
 
   const [all, real] = await Promise.all([
-    prisma.user.aggregate(select),
-    prisma.user.aggregate({ where: { role: "USER" }, ...select }),
+    // Finance test users are out of both scopes: their balances are test
+    // money, not money the platform owes anyone.
+    prisma.user.aggregate({ where: withoutUsers({}, testIds, "id"), ...select }),
+    prisma.user.aggregate({ where: withoutUsers({ role: "USER" }, testIds, "id"), ...select }),
   ]);
 
   const allShaped = shape(all as never, pointsPerUsd);
@@ -119,23 +122,24 @@ export interface Obligations {
 export async function getObligations(): Promise<Obligations> {
   // Prisma's aggregate generics degrade to `{}` inside a Promise.all tuple —
   // the same gotcha the finance page documents — so the shapes are declared.
+  const testIds = await getFinanceTestUserIds();
   const [payouts, escrow, adBudget, deposits] = (await Promise.all([
     prisma.withdrawal.aggregate({
-      where: { status: { in: ["PENDING", "PROCESSING"] } },
+      where: withoutUsers({ status: { in: ["PENDING", "PROCESSING"] } }, testIds),
       _sum: { amount: true },
       _count: true,
     }),
     prisma.marketplaceDeal.aggregate({
-      where: { heldAmount: { gt: 0 } },
+      where: withoutUsers({ heldAmount: { gt: 0 } }, testIds, ["buyerId", "sellerId"]),
       _sum: { heldAmount: true },
       _count: true,
     }),
     prisma.adCampaign.aggregate({
-      where: { isHouse: false },
+      where: withoutUsers({ isHouse: false }, testIds, "advertiserId", { nullable: true }),
       _sum: { budget: true },
     }),
     prisma.deposit.aggregate({
-      where: { status: "PENDING" },
+      where: withoutUsers({ status: "PENDING" }, testIds),
       _sum: { amount: true },
       _count: true,
     }),
@@ -178,10 +182,11 @@ export interface Reconciliation {
  * disagree — the disagreement is the finding.
  */
 export async function getReconciliation(): Promise<Reconciliation> {
+  const testIds = await getFinanceTestUserIds();
   const [users, ledger] = (await Promise.all([
-    prisma.user.aggregate({ _sum: { cashBalance: true } }),
+    prisma.user.aggregate({ where: withoutUsers({}, testIds, "id"), _sum: { cashBalance: true } }),
     prisma.transaction.aggregate({
-      where: { status: "COMPLETED" },
+      where: withoutUsers({ status: "COMPLETED" }, testIds),
       _sum: { amount: true },
     }),
   ])) as unknown as [

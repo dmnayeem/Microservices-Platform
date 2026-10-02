@@ -300,7 +300,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       <div className="space-y-4">
         <Link
           href="/article-tasks"
-          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to article tasks
@@ -325,7 +325,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* Back link — compact on mobile */}
       <Link
         href="/article-tasks"
-        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-(--app-ink-3) hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-(--app-ink-3) hover:text-(--app-ink) transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         Back to article tasks

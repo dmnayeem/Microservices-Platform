@@ -122,7 +122,7 @@ export function Hero(props: Props) {
 
           {/* ── Proof: the product itself ── */}
           <div className="mk-in mk-in-2 min-w-0 lg:pl-4">
-            <HeroProduct />
+            <HeroProduct animation={v.animation} />
           </div>
         </div>
 

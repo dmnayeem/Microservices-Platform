@@ -126,7 +126,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-(--app-ink-3) hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-(--app-ink-3) hover:text-(--app-ink)"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -134,7 +134,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
           </div>
           <button
             onClick={onClose}
-            className="px-3 py-2 text-(--app-ink-3) hover:text-white text-sm font-medium"
+            className="px-3 py-2 text-(--app-ink-3) hover:text-(--app-ink) text-sm font-medium"
           >
             Cancel
           </button>

@@ -34,7 +34,7 @@ export function ComposerToolBtn({
         "p-2 rounded-lg transition-colors disabled:opacity-50",
         active
           ? "bg-(--app-cta)/20 text-(--app-accent-ink)"
-          : "text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+          : "text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
       )}
     >
       {children}
@@ -92,7 +92,7 @@ export function SelectionFormatBtn({
       aria-label={title}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className="p-1.5 rounded-md text-(--app-ink-2) hover:text-white hover:bg-(--app-surface-2) transition-colors"
+      className="p-1.5 rounded-md text-(--app-ink-2) hover:text-(--app-ink) hover:bg-(--app-surface-2) transition-colors"
     >
       {children}
     </button>

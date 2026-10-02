@@ -90,7 +90,7 @@ export function StatCard({
         {icon && <div className={TONE_CLASSES[tone]}>{icon}</div>}
         <div className="min-w-0 flex-1 @max-[8.5rem]:w-full">
           <p
-            className={STAT_VALUE_CLASS}
+            className={cn(STAT_VALUE_CLASS, "overflow-hidden text-ellipsis")}
             title={`${shown}${sub ?? ""}${unit ? ` ${unit}` : ""}`}
           >
             {shown}

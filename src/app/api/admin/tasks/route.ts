@@ -273,6 +273,18 @@ export async function POST(request: NextRequest) {
       meta: { ...taskSnapshot(task) },
     });
 
+    // Instruction template the admin started from (TaskForm sends it on
+    // create only). One updateMany, so a deleted template is a no-op and a
+    // missing table (migration not applied) can never fail the task create.
+    if (typeof body.templateId === "string" && body.templateId) {
+      await prisma.instructionTemplate
+        .updateMany({
+          where: { id: body.templateId },
+          data: { usageCount: { increment: 1 } },
+        })
+        .catch(() => {});
+    }
+
     return NextResponse.json({ success: true, task }, { status: 201 });
   } catch (error) {
     console.error("Error creating task:", error);

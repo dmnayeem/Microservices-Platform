@@ -186,7 +186,7 @@ function ApplyModal({ card, onClose }: { card: RoleCard; onClose: () => void }) 
       >
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-base font-bold text-white">Apply — {card.label}</h2>
-          <button onClick={onClose} className="text-(--app-ink-3) hover:text-white">
+          <button onClick={onClose} className="text-(--app-ink-3) hover:text-(--app-ink)">
             <X className="w-5 h-5" />
           </button>
         </div>

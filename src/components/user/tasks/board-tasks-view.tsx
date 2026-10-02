@@ -204,7 +204,7 @@ export function BoardTasksView() {
             setSelectedBoardId(null);
             setDetail(null);
           }}
-          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink) transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to boards
@@ -501,7 +501,7 @@ export function BoardTasksView() {
                     </h3>
                     <button
                       onClick={() => !claiming && setShowConfirm(false)}
-                      className="p-1 rounded-md hover:bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
+                      className="p-1 rounded-md hover:bg-(--app-surface-2) text-(--app-ink-3) hover:text-(--app-ink)"
                       disabled={claiming}
                     >
                       <X className="w-4 h-4" />

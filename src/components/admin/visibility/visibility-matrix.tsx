@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { useUrlTab } from "@/components/admin/ui/use-url-tab";
 import { EyeOff, Loader2, Save, Info } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
@@ -62,7 +63,12 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
   const [rules, setRules] = useState<PageVisibilityRules>(
     initialRules ?? emptyPageRules()
   );
-  const [view, setView] = useState<View>("all");
+  // `?view=` — the page's own `?tab=` picks Pages vs the other tabs.
+  const [view, setView] = useUrlTab<View>(
+    "all",
+    ["all", "global", "packages", "roles"],
+    { param: "view" }
+  );
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 

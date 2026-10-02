@@ -161,7 +161,7 @@ export function CopyField({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-white"
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-(--app-ink-3) hover:text-(--app-ink)"
         >
           <ChevronDown
             className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}

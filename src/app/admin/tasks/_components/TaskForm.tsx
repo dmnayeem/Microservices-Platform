@@ -12,6 +12,12 @@ import {
 
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { notifyCenter } from "@/lib/notify-center";
+import { toast } from "@/lib/toast";
+import {
+  InstructionTemplatePicker,
+  SaveInstructionTemplateDialog,
+} from "@/components/admin/tasks/instruction-template-picker";
+import type { InstructionTemplateRow } from "@/lib/instruction-templates";
 import type { MediaItem } from "@/types/media";
 import { SocialTaskBuilder } from "./SocialTaskBuilder";
 import { ArticleTaskBuilder } from "./ArticleTaskBuilder";
@@ -291,6 +297,24 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
   const [instructionsHtml, setInstructionsHtml] = useState<string>(() =>
     instructionsToEditorHtml(task?.instructions)
   );
+  // Instruction templates. The editor only reads `value` on mount, so an
+  // inserted template remounts it via `instructionsEditorKey`. The task keeps
+  // its own copy; `usedTemplateId` only bumps the template's usage count when
+  // the task is created.
+  const [instructionsEditorKey, setInstructionsEditorKey] = useState(0);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [usedTemplateId, setUsedTemplateId] = useState<string | null>(null);
+  const applyTemplate = (t: InstructionTemplateRow, mode: "replace" | "append") => {
+    const current = isEmptyInstructionsHtml(instructionsHtml) ? "" : instructionsHtml;
+    setInstructionsHtml(mode === "append" && current ? `${current}${t.contentHtml}` : t.contentHtml);
+    setInstructionsEditorKey((k) => k + 1);
+    setUsedTemplateId(t.id);
+    setTemplatePickerOpen(false);
+    toast.success(mode === "append" ? "Template added below" : "Template inserted", {
+      description: "Edit it freely — the template itself won't change.",
+    });
+  };
 
   // Quiz questions
   const [questions, setQuestions] = useState<QuizQuestion[]>(
@@ -556,6 +580,8 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         hidden: formData.hidden === true,
         questions: formData.type === "QUIZ" ? questions : null,
         boardId: formData.boardId || null,
+        // Only on create: counts the task against the template it came from.
+        ...(!effectiveTaskId && usedTemplateId ? { templateId: usedTemplateId } : {}),
       };
 
       const url = effectiveTaskId
@@ -1474,8 +1500,28 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               <FileText className="w-4 h-4 inline mr-1" />
               Text Instructions (Optional)
             </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTemplatePickerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-200 hover:border-gray-600"
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                Use a template
+              </button>
+              <button
+                type="button"
+                onClick={() => setSaveTemplateOpen(true)}
+                disabled={isEmptyInstructionsHtml(instructionsHtml)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-800 disabled:opacity-40"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Save as template
+              </button>
+            </div>
           </div>
           <RichTextEditor
+            key={instructionsEditorKey}
             value={instructionsHtml}
             onChange={setInstructionsHtml}
             onPickImage={pickInstructionImage}
@@ -1485,6 +1531,19 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             Paste straight from ChatGPT — headings, bold, lists and links come
             across formatted. Use the image button for screenshots.
           </p>
+          <InstructionTemplatePicker
+            open={templatePickerOpen}
+            onClose={() => setTemplatePickerOpen(false)}
+            taskType={formData.type || undefined}
+            hasContent={!isEmptyInstructionsHtml(instructionsHtml)}
+            onPick={applyTemplate}
+          />
+          <SaveInstructionTemplateDialog
+            open={saveTemplateOpen}
+            onClose={() => setSaveTemplateOpen(false)}
+            html={instructionsHtml}
+            taskType={formData.type || undefined}
+          />
         </div>
       </div>
 

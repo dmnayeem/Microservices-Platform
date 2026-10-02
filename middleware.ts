@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { authConfig, REFERRAL_COOKIE } from "@/lib/auth/config";
+import { publicHost } from "@/lib/public-origin";
 
 /**
  * Auth middleware, plus the two things `authorized()` cannot do by itself.
@@ -46,6 +47,19 @@ export default async function middleware(
   request: NextRequest,
   event: NextFetchEvent
 ) {
+  // One host. www and the bare domain both served the site, so a visitor (or
+  // an installed app) on www started Google sign-in there while Auth.js sends
+  // the callback to the bare domain — the sign-in cookies never matched. 308
+  // keeps the method and body, so a postback that hits www still arrives.
+  const host = publicHost(request);
+  if (host.startsWith("www.")) {
+    const target = new URL(
+      request.nextUrl.pathname + request.nextUrl.search,
+      `https://${host.slice(4)}`
+    );
+    return NextResponse.redirect(target, 308);
+  }
+
   // `auth` is overloaded (route handler / middleware / server action), so its
   // public type does not describe the (request, event) middleware call Next
   // makes. Cast at the boundary rather than reshaping the call.

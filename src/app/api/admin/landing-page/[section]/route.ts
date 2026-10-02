@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { isSectionKey, settingKeyFor } from "@/lib/landing-content";
+import { isSectionKey, normalizeHeroAnimation, settingKeyFor } from "@/lib/landing-content";
 import { invalidateSettingsCache } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -37,6 +37,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(
       { error: "Section payload must be an object" },
       { status: 400 }
+    );
+  }
+
+  // Hero balance-card animation: texts capped + stripped of control chars,
+  // numbers clamped, styles limited to the known set. Rendered as React text.
+  if (section === "hero" && "animation" in body) {
+    (body as Record<string, unknown>).animation = normalizeHeroAnimation(
+      (body as Record<string, unknown>).animation
     );
   }
 

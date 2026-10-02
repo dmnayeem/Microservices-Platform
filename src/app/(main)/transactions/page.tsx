@@ -27,7 +27,7 @@ export default async function TransactionsPage() {
       <header className="flex items-start gap-3">
         <Link
           href="/wallet"
-          className="mt-0.5 rounded-lg border border-(--app-line) p-2 text-(--app-ink-3) hover:text-white"
+          className="mt-0.5 rounded-lg border border-(--app-line) p-2 text-(--app-ink-3) hover:text-(--app-ink)"
           aria-label="Back to wallet"
         >
           <ArrowLeft className="h-4 w-4" />

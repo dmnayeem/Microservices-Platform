@@ -160,7 +160,7 @@ export function BecomeTutorForm() {
                 <button
                   type="button"
                   onClick={() => removeExpertise(e)}
-                  className="text-(--app-accent-ink)/70 hover:text-white"
+                  className="text-(--app-accent-ink)/70 hover:text-(--app-ink)"
                 >
                   <X className="w-3 h-3" />
                 </button>

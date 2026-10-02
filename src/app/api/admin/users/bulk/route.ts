@@ -98,6 +98,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Users the audit rows below are written for. Normally every target; a
+    // points adjustment that fails part-way narrows it to the users actually
+    // credited/debited (see there).
+    let auditIds = targetIds;
+    let adjustFailed = false;
+
     // Apply the action
     if (action === "ban") {
       await prisma.user.updateMany({
@@ -143,34 +149,48 @@ export async function POST(request: NextRequest) {
       }
       const delta = points as number;
       const pointsPerUsd = await getPointsPerUsd();
+      // Each user commits on its own. If one fails, the ones before it are
+      // already paid: they must still be audited, and the admin must be told
+      // NOT to re-run the whole batch (that would pay them twice). This used
+      // to throw straight to the 500 handler — no audit for anyone, and a
+      // generic "Failed" that invites exactly that retry.
+      const adjusted: string[] = [];
       for (const uid of targetIds) {
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: uid },
-            data: {
-              pointsBalance: { increment: delta },
-              ...(delta > 0 ? { totalEarnings: { increment: delta / pointsPerUsd } } : {}),
-            },
-          }),
-          prisma.transaction.create({
-            data: {
-              userId: uid,
-              type: delta > 0 ? TransactionType.BONUS : TransactionType.PENALTY,
-              status: TransactionStatus.COMPLETED,
-              points: delta,
-              amount: delta / pointsPerUsd,
-              description: reason || `Admin ${delta > 0 ? "credit" : "debit"}`,
-              // Repeatable admin action — key per-occurrence so two same-size
-              // adjustments to one user don't collide on the (userId, reference)
-              // unique (batch-size was collision-prone).
-              reference: `admin_adjust_${uid}_${Date.now()}`,
-              // Who granted it — the finance console names the admin behind
-              // every hand grant. The single-user edit already recorded this.
-              metadata: { adminId, via: "bulk" },
-            },
-          }),
-        ]);
+        try {
+          await prisma.$transaction([
+            prisma.user.update({
+              where: { id: uid },
+              data: {
+                pointsBalance: { increment: delta },
+                ...(delta > 0 ? { totalEarnings: { increment: delta / pointsPerUsd } } : {}),
+              },
+            }),
+            prisma.transaction.create({
+              data: {
+                userId: uid,
+                type: delta > 0 ? TransactionType.BONUS : TransactionType.PENALTY,
+                status: TransactionStatus.COMPLETED,
+                points: delta,
+                amount: delta / pointsPerUsd,
+                description: reason || `Admin ${delta > 0 ? "credit" : "debit"}`,
+                // Repeatable admin action — key per-occurrence so two same-size
+                // adjustments to one user don't collide on the (userId, reference)
+                // unique (batch-size was collision-prone).
+                reference: `admin_adjust_${uid}_${Date.now()}`,
+                // Who granted it — the finance console names the admin behind
+                // every hand grant. The single-user edit already recorded this.
+                metadata: { adminId, via: "bulk" },
+              },
+            }),
+          ]);
+        } catch (e) {
+          console.error("Bulk points adjustment stopped at", uid, e);
+          adjustFailed = true;
+          break;
+        }
+        adjusted.push(uid);
       }
+      auditIds = adjusted;
     } else if (action === "changeTier") {
       if (!packageId) {
         return NextResponse.json({ error: "packageId required" }, { status: 400 });
@@ -204,7 +224,7 @@ export async function POST(request: NextRequest) {
     };
     const spec = perAction[action];
     await writeAuditMany(
-      targetIds.map((uid) => ({
+      auditIds.map((uid) => ({
         actorId: adminId,
         action: spec.code,
         entity: "User",
@@ -220,6 +240,16 @@ export async function POST(request: NextRequest) {
         },
       }))
     );
+
+    if (adjustFailed) {
+      return NextResponse.json(
+        {
+          error: `Stopped after adjusting ${auditIds.length} of ${targetIds.length} users. Those ${auditIds.length} are done and recorded — do not re-run on the same selection, or they will be adjusted twice.`,
+          affected: auditIds.length,
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

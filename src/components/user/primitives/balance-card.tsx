@@ -72,7 +72,7 @@ export function BalanceCard({
        thing winning. The sub-tiles keep their icons and lose their hues. */
     <div
       className={cn(
-        "app-panel app-accent app-accent-glow relative overflow-hidden",
+        "app-panel app-accent app-accent-glow relative overflow-hidden @container",
         className
       )}
     >
@@ -85,7 +85,8 @@ export function BalanceCard({
       <div className="relative flex items-start justify-between gap-3 mb-5">
         <div className="min-w-0">
           <p className="t-eyebrow text-white/90">Total Balance</p>
-          <p className="t-hero mt-1.5 whitespace-nowrap text-white">
+          {/* Scales with the card: a 320px phone has no room for 48px digits. */}
+          <p className="t-hero mt-1.5 whitespace-nowrap text-white text-[clamp(1.75rem,13cqi,3rem)]!">
             {usd(cash + ptInUsd)}
           </p>
           <p className="t-meta mt-1.5 text-white/90">Cash + points value</p>

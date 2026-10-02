@@ -7,6 +7,7 @@ import { effectiveCountry } from "@/lib/effective-country";
 import { checkCpaEligibility, loadCpaViewer } from "@/lib/cpa/eligibility";
 import { buildCpaTrackingUrl } from "@/lib/cpa/link";
 import { getProfileGateState } from "@/lib/profile-gate-server";
+import { publicOrigin } from "@/lib/public-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,12 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const back = (reason: string) =>
-    NextResponse.redirect(new URL(`/cpa/${encodeURIComponent(id)}?error=${reason}`, request.url), 302);
+    NextResponse.redirect(new URL(`/cpa/${encodeURIComponent(id)}?error=${reason}`, publicOrigin(request)), 302);
 
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) {
-    const login = new URL("/login", request.url);
+    const login = new URL("/login", publicOrigin(request));
     login.searchParams.set("callbackUrl", `/go/cpa/${id}`);
     return NextResponse.redirect(login, 302);
   }

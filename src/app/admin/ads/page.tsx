@@ -5,11 +5,7 @@ import Link from "next/link";
 import { Megaphone } from "lucide-react";
 import { AdManagerView } from "@/components/admin/ads/ad-manager-view";
 
-export default async function AdsAdminPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function AdsAdminPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "ads.view"))) redirect("/admin");
@@ -37,7 +33,6 @@ export default async function AdsAdminPage({
       <AdManagerView
         canManage={await can(session.user.id, "ads.manage")}
         seesMoney={await can(session.user.id, "finance.view")}
-        initialTab={(await searchParams).tab}
       />
     </div>
   );

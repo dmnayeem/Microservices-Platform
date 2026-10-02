@@ -138,7 +138,7 @@ export function TaskAside({
       open={defaultOpen}
       className="group rounded-xl border border-(--app-line) bg-(--app-surface)/60"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-(--app-ink-3) hover:text-white [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-(--app-ink-3) hover:text-(--app-ink) [&::-webkit-details-marker]:hidden">
         {title}
         <span className="text-[10px] font-semibold normal-case tracking-normal text-(--app-ink-3) group-open:hidden">
           Show

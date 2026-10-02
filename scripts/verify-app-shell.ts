@@ -1453,6 +1453,18 @@ function main() {
       // The one decorative hue left in the feed: a loved heart.
       ["dark", "loved heart (rose-400) on card", "#fb7185", SURF.dark.card, 4.5],
       ["light", "loved heart (rose-700) on card", "#be123c", SURF.light.card, 4.5],
+      // A selected tab/chip. Twelve of them painted `--app-on-cta` (the ink for
+      // a SOLID cta fill — obsidian in dark, white in light) on a 10–20% cta
+      // tint: dark-on-dark and white-on-white (the composer's selected "Text"
+      // tab). `--app-accent-ink` on that tint is still 3.7–4.2:1 in light, so
+      // they use the active-row pair instead: `--app-nav-wash` + `--app-nav-on`.
+      ...(["dark", "light"] as const).map((th): Row => [
+        th,
+        "nav-on on nav-wash (selected tab/chip)",
+        hexOf("--app-nav-on", th),
+        hexOf("--app-nav-wash", th),
+        4.5,
+      ]),
     ];
 
     console.log("\n   theme      ratio  floor  pair");

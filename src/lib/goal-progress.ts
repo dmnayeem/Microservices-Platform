@@ -67,7 +67,8 @@ export type GoalActionKey =
   | "quiz_approved"
   | "board_claim"
   | "lottery_ticket"
-  | "referral_signup";
+  | "referral_signup"
+  | "pwa_installed";
 
 /** @deprecated Old name from when this only handled events. */
 export type EventActionKey = GoalActionKey;
@@ -104,6 +105,7 @@ const ACCEPTS: Record<EventActionType, GoalActionKey[]> = {
   FEED_SHARE: ["feed_share"],
   FEED_POST: ["feed_post"],
   FEED_VOTE: ["feed_vote"],
+  PWA_INSTALLED: ["pwa_installed"],
   SOCIAL_ACTION: FEED_KEYS,
   // Proof goals are claimed by uploading, never by an action.
   UPLOAD_PROOF: [],
@@ -334,6 +336,9 @@ function dedupKeyFor(action: GoalActionKey, targetId: string): string {
       return `lottery:${targetId}`;
     case "referral_signup":
       return `referral:${targetId}`;
+    case "pwa_installed":
+      // One per user per goal, ever — the targetId is the user's own id.
+      return `pwa:${targetId}`;
   }
 }
 
