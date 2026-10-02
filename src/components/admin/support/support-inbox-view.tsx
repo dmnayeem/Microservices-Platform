@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useUrlTab } from "@/components/admin/ui/use-url-tab";
 import {
   MessageSquare,
   Mail,
@@ -49,7 +50,11 @@ const STATUS_STYLE: Record<Status, string> = {
 };
 
 export function SupportInboxView() {
-  const [tab, setTab] = useState<Status | "ALL">("NEW");
+  const [tab, setTab] = useUrlTab<Status | "ALL">(
+    "NEW",
+    TABS.map((t) => t.value),
+    { param: "status" }
+  );
   const [q, setQ] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});

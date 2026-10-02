@@ -624,7 +624,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             <div className="relative shrink-0" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((v) => !v)}
-                className="app-tap app-press inline-flex items-center justify-center rounded-(--app-r-chip) text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+                className="app-tap app-press inline-flex items-center justify-center rounded-(--app-r-chip) text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
                 aria-label="Post actions"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -866,7 +866,7 @@ export const FeedPostCard = memo(function FeedPostCard({
         <button
           onClick={() => setShowComments((v) => !v)}
           aria-label="Comments"
-          className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+          className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
         >
           <MessageCircle className="w-5 h-5 shrink-0" />
           <span className="tabular-nums font-bold">
@@ -876,7 +876,7 @@ export const FeedPostCard = memo(function FeedPostCard({
         <button
           onClick={() => setShareOpen(true)}
           aria-label="Share"
-          className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+          className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
         >
           <Share2 className="w-5 h-5 shrink-0" />
           <span className="hidden sm:inline">Share</span>
@@ -893,7 +893,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             "shrink-0 app-tap app-press inline-flex items-center justify-center px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm hover:bg-(--app-surface-2)",
             post.isSaved
               ? "text-(--app-accent-ink)"
-              : "text-(--app-ink-3) hover:text-white"
+              : "text-(--app-ink-3) hover:text-(--app-ink)"
           )}
         >
           <Bookmark className={cn("w-5 h-5 shrink-0", post.isSaved && "fill-current")} />
@@ -904,7 +904,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             <button
               onClick={() => setBoostOpen(true)}
               aria-label="Boost this post"
-              className="shrink-0 app-tap app-press ml-auto inline-flex items-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+              className="shrink-0 app-tap app-press ml-auto inline-flex items-center gap-1.5 px-2.5 sm:px-3 rounded-(--app-r-chip) text-sm font-semibold text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
             >
               <Megaphone className="w-5 h-5 shrink-0" />
               <span className="hidden sm:inline">Boost</span>
@@ -925,7 +925,7 @@ export const FeedPostCard = memo(function FeedPostCard({
               onClick={() => setShowAnalytics((v) => !v)}
               aria-expanded={showAnalytics}
               aria-label="View post stats - views, reactions and link clicks"
-              className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-(--app-r-chip) text-sm text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+              className="shrink-0 app-tap app-press inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 rounded-(--app-r-chip) text-sm text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
               title="View stats"
             >
               <BarChart3 className="w-5 h-5 shrink-0" />
@@ -1092,7 +1092,7 @@ export const FeedPostCard = memo(function FeedPostCard({
             </div>
             <button
               onClick={() => !busy && setBoostOpen(false)}
-              className="mt-3 w-full py-2 rounded-lg text-xs text-(--app-ink-3) hover:text-white"
+              className="mt-3 w-full py-2 rounded-lg text-xs text-(--app-ink-3) hover:text-(--app-ink)"
             >
               Cancel
             </button>

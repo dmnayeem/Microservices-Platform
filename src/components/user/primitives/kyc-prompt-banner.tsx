@@ -51,7 +51,7 @@ export function KycPromptBanner() {
             setHidden(true);
           }}
           aria-label="Dismiss"
-          className="p-1 rounded-lg text-(--app-accent-ink)/70 hover:text-white shrink-0"
+          className="p-1 rounded-lg text-(--app-accent-ink)/70 hover:text-(--app-ink) shrink-0"
         >
           <X className="w-4 h-4" />
         </button>

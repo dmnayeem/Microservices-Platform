@@ -336,6 +336,29 @@ export async function POST(request: NextRequest) {
         });
         if (held.count === 0) throw new Error("INSUFFICIENT_BALANCE");
 
+        // Daily cap, re-checked UNDER the user-row lock the CAS above just
+        // took. The pre-check further up is check-then-act: N parallel
+        // requests all counted the same "0 today" and all got through, so
+        // `max_withdrawals_per_day` (and the per-day exposure it bounds) did
+        // nothing against a burst. A concurrent request now blocks on that
+        // row lock until this one commits, then counts it here.
+        if (wcfg.maxPerDay > 0) {
+          const inWindow = await tx.withdrawal.count({
+            where: {
+              userId: session.user.id,
+              createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+              status: {
+                in: [
+                  WithdrawalStatus.PENDING,
+                  WithdrawalStatus.PROCESSING,
+                  WithdrawalStatus.COMPLETED,
+                ],
+              },
+            },
+          });
+          if (inWindow >= wcfg.maxPerDay) throw new Error("DAILY_CAP");
+        }
+
         const w = await tx.withdrawal.create({
           data: {
             userId: session.user.id,
@@ -365,6 +388,12 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       if (e instanceof Error && e.message === "INSUFFICIENT_BALANCE") {
         return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
+      }
+      if (e instanceof Error && e.message === "DAILY_CAP") {
+        return NextResponse.json(
+          { error: `You can request ${wcfg.maxPerDay} withdrawal${wcfg.maxPerDay === 1 ? "" : "s"} per day.` },
+          { status: 400 }
+        );
       }
       throw e;
     }

@@ -131,7 +131,14 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    const goods = cart.reduce((s, i) => s + toNum(i.listing.price), 0);
+    // Each line is rounded to the cent BEFORE summing, because each seller is
+    // paid a per-line cent-rounded amount. Summing raw sub-cent prices and
+    // rounding once let a cart of N $0.005 lines charge N x $0.005 while paying
+    // the sellers N x $0.01 - money out of nothing on every half-cent line.
+    const goods = cart.reduce(
+      (s, i) => s + Math.round(toNum(i.listing.price) * 100) / 100,
+      0
+    );
     const taxTotal = Math.round(itemPlans.reduce((s, p) => s + p.tax, 0) * 100) / 100;
     const total = Math.round((goods + taxTotal) * 100) / 100;
 

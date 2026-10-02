@@ -251,7 +251,7 @@ export function PhotoModal({
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-white"
+          className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
         >
           Close
         </button>

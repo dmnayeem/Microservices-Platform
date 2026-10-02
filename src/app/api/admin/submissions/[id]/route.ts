@@ -181,6 +181,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         pointsOverride ?? Math.round(task.pointsReward * multiplier);
       const baseXp = Math.round(task.xpReward * multiplier);
 
+      // A points override ABOVE the task's own reward is a hand grant of
+      // points, not a review decision. It was gated only by
+      // `submissions.approve` and had no ceiling, so any reviewer could mint
+      // unlimited points into any pending submission (an accomplice's) and
+      // step around `users.adjust_balance` — the finance permission every
+      // other hand grant needs. Lowering the reward stays a reviewer's call.
+      const standardPoints = Math.round(task.pointsReward * multiplier);
+      if (
+        pointsOverride != null &&
+        pointsOverride > standardPoints &&
+        !(await can(session.user.id, "users.adjust_balance"))
+      ) {
+        return NextResponse.json(
+          {
+            error: `Awarding more than this task's ${standardPoints} pts needs the balance permission — ask a super admin.`,
+          },
+          { status: 403 }
+        );
+      }
+
       // Default: whole-submission approval → full reward (override / multiplied).
       let earnedPoints = isBoardTask ? 0 : basePoints;
       let earnedXp = isBoardTask ? 0 : baseXp;

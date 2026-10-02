@@ -171,7 +171,9 @@ export async function POST(request: NextRequest) {
   }
 
   const referralCount = await prisma.user.count({
-    where: { referredById: userId },
+    // ACTIVE only, matching GET: banned/suspended referrals (e.g. a farmed
+    // signup the fraud rules caught) must not keep paying a daily bonus.
+    where: { referredById: userId, status: "ACTIVE" },
   });
   if (referralCount === 0) {
     return NextResponse.json(

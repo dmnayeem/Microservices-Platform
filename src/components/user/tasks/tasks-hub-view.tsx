@@ -301,7 +301,7 @@ export function TasksHubView({
                 "app-tap-row app-press shrink-0 inline-flex items-center gap-1.5 px-3.5 rounded-full text-sm font-bold whitespace-nowrap border",
                 isActive
                   ? "app-accent-soft"
-                  : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white"
+                  : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
               )}
             >
               <t.icon className="w-4 h-4" />

@@ -243,7 +243,7 @@ export function EventsView() {
                   </div>
                 ) : (
                   <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1 text-amber-400 font-bold text-sm">
+                    <span className="inline-flex min-w-0 flex-wrap items-center gap-1 text-amber-400 font-bold text-sm">
                       <Coins className="w-4 h-4" /> +{ev.rewardPoints}
                       {ev.rewardXp ? (
                         <span className="text-violet-400 ml-1">
@@ -260,7 +260,7 @@ export function EventsView() {
                         onClick={() => claim(ev)}
                         disabled={!canClaim || claiming === ev.id}
                         className={cn(
-                          "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold",
+                          "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold",
                           canClaim
                             ? "bg-emerald-500 hover:bg-emerald-600 text-white"
                             : "bg-(--app-surface-2) text-(--app-ink-3) cursor-not-allowed"

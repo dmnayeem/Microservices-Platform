@@ -494,52 +494,78 @@ export async function PATCH(
           })
         : null;
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        username: true,
-        role: true,
-        status: true,
-        package: { select: { slug: true, name: true } },
-        kycStatus: true,
-      },
-    });
+    // The balance write is a compare-and-set on the `priorBal` values the delta
+    // is computed from, in ONE transaction with its ledger row. Before, the set
+    // ran outside any transaction: a user earning/spending between the read and
+    // the write had that movement silently overwritten and the journalled delta
+    // was wrong, and a failed ledger insert left an unjournalled balance.
+    const auditData = { ...updateData };
+    delete updateData.pointsBalance;
+    delete updateData.cashBalance;
+    const pointsDelta =
+      priorBal && settingPoints ? (data.pointsBalance as number) - priorBal.pointsBalance : 0;
+    const cashDelta =
+      priorBal && settingCash ? (data.cashBalance as number) - toNum(priorBal.cashBalance) : 0;
+    const pointsPerUsd = pointsDelta !== 0 || cashDelta !== 0 ? await getPointsPerUsd() : 0;
 
-    // Journal balance deltas from the absolute set + keep totalEarnings in sync
-    // on a positive points delta (matching the bulk-adjust route).
-    if (priorBal) {
-      const pointsDelta = settingPoints
-        ? (data.pointsBalance as number) - priorBal.pointsBalance
-        : 0;
-      const cashDelta = settingCash
-        ? (data.cashBalance as number) - toNum(priorBal.cashBalance)
-        : 0;
-      if (pointsDelta !== 0 || cashDelta !== 0) {
-        const pointsPerUsd = await getPointsPerUsd();
-        if (pointsDelta > 0 && pointsPerUsd > 0) {
-          await prisma.user.update({
-            where: { id },
-            data: { totalEarnings: { increment: pointsDelta / pointsPerUsd } },
+    let updatedUser;
+    try {
+      updatedUser = await prisma.$transaction(async (tx) => {
+        if (priorBal && (pointsDelta !== 0 || cashDelta !== 0)) {
+          const cas = await tx.user.updateMany({
+            where: {
+              id,
+              pointsBalance: priorBal.pointsBalance,
+              cashBalance: priorBal.cashBalance,
+            },
+            data: {
+              ...(settingPoints ? { pointsBalance: data.pointsBalance } : {}),
+              ...(settingCash ? { cashBalance: data.cashBalance } : {}),
+              // Keep totalEarnings in sync on a positive points delta (matching
+              // the bulk-adjust route); deductions never lower it.
+              ...(pointsDelta > 0 && pointsPerUsd > 0
+                ? { totalEarnings: { increment: pointsDelta / pointsPerUsd } }
+                : {}),
+            },
+          });
+          if (cas.count === 0) throw new Error("BALANCE_CHANGED");
+          await recordTransaction(tx, {
+            userId: id,
+            type: pointsDelta + cashDelta >= 0 ? TransactionType.BONUS : TransactionType.PENALTY,
+            points: pointsDelta,
+            amountUsd: cashDelta,
+            description: `Admin balance ${pointsDelta + cashDelta >= 0 ? "credit" : "debit"}`,
+            // Per-occurrence by design. An admin may apply the same balance
+            // adjustment to one user more than once.
+            // A deterministic key would make `Transaction @@unique([userId, reference])`
+            // reject the second one, so this stays keyed on the instant it happened.
+            reference: `admin_edit_${id}_${Date.now()}`,
+            metadata: { adminId: session.user.id, via: "edit-user" },
           });
         }
-        await recordTransaction(prisma, {
-          userId: id,
-          type: pointsDelta + cashDelta >= 0 ? TransactionType.BONUS : TransactionType.PENALTY,
-          points: pointsDelta,
-          amountUsd: cashDelta,
-          description: `Admin balance ${pointsDelta + cashDelta >= 0 ? "credit" : "debit"}`,
-          // Per-occurrence by design. An admin may apply the same balance
-          // adjustment to one user more than once.
-          // A deterministic key would make `Transaction @@unique([userId, reference])`
-          // reject the second one, so this stays keyed on the instant it happened.
-          reference: `admin_edit_${id}_${Date.now()}`,
-          metadata: { adminId: session.user.id, via: "edit-user" },
+        return tx.user.update({
+          where: { id },
+          data: updateData,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            username: true,
+            role: true,
+            status: true,
+            package: { select: { slug: true, name: true } },
+            kycStatus: true,
+          },
         });
+      });
+    } catch (e) {
+      if (e instanceof Error && e.message === "BALANCE_CHANGED") {
+        return NextResponse.json(
+          { error: "This user's balance changed while you were editing. Reload and try again." },
+          { status: 409 }
+        );
       }
+      throw e;
     }
 
     // If admin flipped the role to TUTOR, make sure a TutorProfile exists so
@@ -566,8 +592,8 @@ export async function PATCH(
       entity: "User",
       entityId: id,
       targetUserId: id,
-      summary: `Edited user profile (${Object.keys(updateData).slice(0, 6).join(", ") || "no fields"})`,
-      meta: updateData as Record<string, unknown>,
+      summary: `Edited user profile (${Object.keys(auditData).slice(0, 6).join(", ") || "no fields"})`,
+      meta: auditData as Record<string, unknown>,
     });
 
     return NextResponse.json({

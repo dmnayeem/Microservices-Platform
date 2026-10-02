@@ -640,7 +640,15 @@ export async function cancelLottery(lotteryId: string): Promise<CancelResult> {
         where: { id: lotteryId, status: { in: ["UPCOMING", "ACTIVE"] } },
         data: { status: "CANCELLED" },
       });
-      if (claim.count === 0) return; // already cancelled — fall through to resume
+      if (claim.count === 0) {
+        // Only a CANCELLED lottery may resume its refund run. A draw that
+        // committed between the `head` read above and this lock left it
+        // COMPLETED — winners paid (or the pot rolled over) — and refunding
+        // every ticket on top of that would pay twice.
+        const now = await tx.lottery.findUnique({ where: { id: lotteryId }, select: { status: true } });
+        if (now?.status !== "CANCELLED") throw new Error("LOTTERY_ALREADY_DRAWN");
+        return; // already cancelled — fall through to resume
+      }
 
       claimed = true;
       const l = await tx.lottery.findUniqueOrThrow({ where: { id: lotteryId } });
@@ -672,6 +680,9 @@ export async function cancelLottery(lotteryId: string): Promise<CancelResult> {
       resumed: !claimed,
     };
   } catch (err) {
+    if (err instanceof Error && err.message === "LOTTERY_ALREADY_DRAWN") {
+      return { ok: false, reason: "already_drawn" };
+    }
     console.error(`[lottery] cancel failed for ${lotteryId}:`, err);
     return { ok: false, reason: "failed" };
   }

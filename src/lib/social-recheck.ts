@@ -273,71 +273,70 @@ export async function recheckPendingSocialSubmissions(opts?: {
       // ── Approve and pay ──
       // Same CAS and the same ledger reference as the other two writers, so a
       // race with a manual approval or a resubmit cannot pay twice.
-      const claimed = await prisma.taskSubmission.updateMany({
-        where: { id: sub.id, status: SubmissionStatus.PENDING },
-        data: {
-          status: SubmissionStatus.AUTO_APPROVED,
-          reviewedAt: new Date(),
-          metadata: meta as never,
-        },
-      });
-      if (claimed.count === 0) continue; // somebody else got there first
-
+      // Claim, buyer charge and worker credit commit TOGETHER. They used to be
+      // three separate writes: an error after the charge (any DB blip) left the
+      // buyer charged, the submission AUTO_APPROVED — so never re-checked — and
+      // the worker never paid. The outer catch just counted it as an error.
       const points = sub.task.pointsReward;
       const xp = sub.task.xpReward;
-
-      // A user-funded task is paid for by its BUYER, so charge the buyer first
-      // — exactly as the submit and admin-review paths do, through the same
-      // `chargeTaskCompletion`.
-      //
-      // Without a charge here the re-check credited the worker while the
-      // buyer's balance stayed untouched: points minted from nothing, once per
-      // approval, silently. The CAS inside the charge is what makes it safe
-      // against this job racing the other two writers.
-      if (sub.task.fundedByUserId) {
-        const charge = await chargeTaskCompletion(prisma, {
-          taskId: sub.taskId,
-          buyerId: sub.task.fundedByUserId,
-          rewardPoints: points,
-          standardReward: sub.task.pointsReward,
-          feePercent,
-          remainingBudget: sub.task.remainingBudget,
-        });
-        if (charge.closeTask) {
-          await prisma.task.update({
-            where: { id: sub.taskId },
-            data: { status: "COMPLETED" },
-          });
-          void notifyTaskClosed({
-            buyerId: sub.task.fundedByUserId,
-            taskTitle: sub.task.title,
-            reason: charge.closeReason ?? "DELIVERED",
-          });
-        }
-        if (!charge.paid) {
-          // The buyer cannot pay. Leave the submission for a human rather than
-          // paying money that does not exist. The status was already claimed
-          // above, so hand it back to PENDING.
-          await prisma.taskSubmission.update({
-            where: { id: sub.id },
-            data: { status: SubmissionStatus.PENDING, reviewedAt: null },
-          });
-          summary.nowFailing++;
-          continue;
-        }
-      }
-
+      let closedTask: { buyerId: string; taskTitle: string; reason: "NO_CREDIT" | "DELIVERED" } | null = null;
+      let outcome: "lost" | "unfunded" | "paid";
       try {
-        await prisma.$transaction([
-          prisma.user.update({
+        outcome = await prisma.$transaction(async (tx) => {
+          const claimed = await tx.taskSubmission.updateMany({
+            where: { id: sub.id, status: SubmissionStatus.PENDING },
+            data: {
+              status: SubmissionStatus.AUTO_APPROVED,
+              reviewedAt: new Date(),
+              metadata: meta as never,
+            },
+          });
+          if (claimed.count === 0) return "lost" as const; // somebody else got there first
+
+          // A user-funded task is paid for by its BUYER, so charge the buyer
+          // first — exactly as the submit and admin-review paths do, through
+          // the same `chargeTaskCompletion` (its CAS on remainingBudget is what
+          // makes this safe against the other two writers).
+          if (sub.task.fundedByUserId) {
+            const charge = await chargeTaskCompletion(tx, {
+              taskId: sub.taskId,
+              buyerId: sub.task.fundedByUserId,
+              rewardPoints: points,
+              standardReward: sub.task.pointsReward,
+              feePercent,
+              remainingBudget: sub.task.remainingBudget,
+            });
+            if (charge.closeTask) {
+              await tx.task.update({
+                where: { id: sub.taskId },
+                data: { status: "COMPLETED" },
+              });
+              closedTask = {
+                buyerId: sub.task.fundedByUserId,
+                taskTitle: sub.task.title,
+                reason: charge.closeReason ?? "DELIVERED",
+              };
+            }
+            if (!charge.paid) {
+              // The buyer cannot pay. Leave the submission for a human rather
+              // than paying money that does not exist: hand it back to PENDING.
+              await tx.taskSubmission.update({
+                where: { id: sub.id },
+                data: { status: SubmissionStatus.PENDING, reviewedAt: null },
+              });
+              return "unfunded" as const;
+            }
+          }
+
+          await tx.user.update({
             where: { id: sub.userId },
             data: {
               pointsBalance: { increment: points },
               xp: { increment: xp },
               totalEarnings: { increment: points / pointsPerUsd },
             },
-          }),
-          prisma.transaction.create({
+          });
+          await tx.transaction.create({
             data: {
               userId: sub.userId,
               type: TransactionType.EARNING,
@@ -353,16 +352,25 @@ export async function recheckPendingSocialSubmissions(opts?: {
                 viaRecheck: true,
               },
             },
-          }),
-          prisma.task.update({
+          });
+          await tx.task.update({
             where: { id: sub.taskId },
             data: { completedCount: { increment: 1 } },
-          }),
-        ]);
+          });
+          return "paid" as const;
+        });
       } catch (e) {
-        // Already paid under this reference by another path — the CAS above
-        // should have prevented it, so this is the backstop doing its job.
+        // Already paid under this reference by another path. The whole
+        // transaction (claim + charge) rolled back with it, so the buyer is not
+        // charged a second time; the submission stays as it was.
         if (!isDuplicateLedgerError(e)) throw e;
+        continue;
+      }
+      if (closedTask) void notifyTaskClosed(closedTask);
+      if (outcome === "lost") continue;
+      if (outcome === "unfunded") {
+        summary.nowFailing++;
+        continue;
       }
 
       await closeTaskIfFull(sub.taskId).catch(() => {});

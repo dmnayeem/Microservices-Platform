@@ -91,9 +91,18 @@ export function VideoTaskPlayer({
   const [warmupLeft, setWarmupLeft] = useState(warmupTarget);
   const [watched, setWatched] = useState(resumeFrom);
   const [isPlaying, setIsPlaying] = useState(false);
-  // No autoplay: the video only starts after a real user tap (iOS Safari blocks
-  // autoplay-with-sound and doesn't fire play() on cross-origin YouTube iframes).
+  // Playback starts on its own (with sound) as soon as the intro ad is done.
+  // Where the browser refuses unmuted autoplay — iOS Safari, cross-origin
+  // YouTube iframes on some phones — it stays paused and the tap button below
+  // takes over, so a real gesture starts genuine playback with sound.
   const [userStarted, setUserStarted] = useState(false);
+  const autoTriedRef = useRef(false);
+  const autoTimerRef = useRef<number | null>(null);
+  const isPlayingRef = useRef(false);
+  // Live handle to sendBeat for the mount-only visibility/focus listeners.
+  const sendBeatRef = useRef<(force?: boolean, anchor?: boolean) => Promise<void>>(
+    async () => {}
+  );
   const [busy, setBusy] = useState(false);
   // Player couldn't load the media (bad/unsupported URL) — show a clear error
   // + external link instead of a silent black box.
@@ -182,13 +191,23 @@ export function VideoTaskPlayer({
 
   // Track tab visibility + window focus — either being lost stops accrual.
   useEffect(() => {
+    // Leaving flushes the stretch watched so far; coming back while the video
+    // plays restarts the server clock (anchor), so time away never counts.
+    const watching = () => playingRef.current && phaseRef.current === "watch";
     const onVis = () => {
+      const wasVisible = visibleRef.current;
       visibleRef.current = !document.hidden;
+      if (!watching()) return;
+      if (wasVisible && !visibleRef.current) void sendBeatRef.current(true);
+      if (!wasVisible && visibleRef.current) void sendBeatRef.current(false, true);
     };
     const onFocus = () => {
+      const was = focusedRef.current;
       focusedRef.current = true;
+      if (!was && watching()) void sendBeatRef.current(false, true);
     };
     const onBlur = () => {
+      if (focusedRef.current && watching()) void sendBeatRef.current(true);
       focusedRef.current = false;
     };
     document.addEventListener("visibilitychange", onVis);
@@ -259,19 +278,25 @@ export function VideoTaskPlayer({
   // beat (fired on playback start) only anchors the clock; each later beat
   // credits the real, capped gap since the previous one. `force` lets the
   // pre-submit beat flush the final interval even after playback has ended.
-  const sendBeat = async (force = false) => {
+  // `anchor`: playback is (re)starting — restart the server clock without
+  // crediting the time it was paused, hidden or unfocused.
+  const sendBeat = async (force = false, anchor = false) => {
     if (!force && !canAccrue()) return;
     try {
       await fetch(`/api/tasks/${task.id}/heartbeat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submissionId }),
+        body: JSON.stringify({ submissionId, anchor }),
         keepalive: true,
       });
     } catch {
       /* transient network error — next beat will catch up */
     }
   };
+
+  useEffect(() => {
+    sendBeatRef.current = sendBeat;
+  });
 
   useEffect(() => {
     if (phase !== "watch") return;
@@ -282,17 +307,46 @@ export function VideoTaskPlayer({
 
   const needsProofForm = proofReq.screenshot || proofReq.uniqueKey;
   /**
-   * Whether the task collects anything after the video. When it doesn't,
-   * `autoSubmit` means "don't show a proof form", NOT "submit by itself" — the
-   * user still presses the button below.
-   *
-   * There used to be an effect here that submitted with no user action at all,
-   * so the task went from playing to done with nothing to press and no signal
-   * that the work had been sent. It's gone: submitting is always something the
-   * user chooses to do.
+   * Whether the task collects anything after the video (a proof form, steps,
+   * engagement actions). When it doesn't, the reward is claimed on its own
+   * once the video is watched and the closing ad is done — the owner's flow:
+   * open, watch without touching anything, ad, reward. The screen says so the
+   * whole time, and the server still checks the watched seconds it recorded
+   * from the heartbeats, so nothing is paid for time that wasn't watched.
    */
   const needsInteraction =
     needsProofForm || engSteps.length > 0 || steps.length > 0;
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Try to start by itself once, as soon as the video phase opens. If it is
+  // not actually playing a moment later, hand back to the tap button.
+  useEffect(() => {
+    if (phase !== "watch" || !introAdDone || autoTriedRef.current) return;
+    autoTriedRef.current = true;
+    setUserStarted(true);
+    autoTimerRef.current = window.setTimeout(() => {
+      if (!isPlayingRef.current) setUserStarted(false);
+    }, 2500);
+  }, [phase, introAdDone]);
+
+  useEffect(
+    () => () => {
+      if (autoTimerRef.current) window.clearTimeout(autoTimerRef.current);
+    },
+    []
+  );
+
+  // Watch-only task: claim the reward by itself once the closing ad is done.
+  useEffect(() => {
+    if (needsInteraction) return;
+    if (phase !== "complete" || !outroAdDone) return;
+    if (submittedRef.current) return;
+    void doSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, outroAdDone]);
 
   // Step flow: after the user presses Complete and the outro ad is closed,
   // create the submission.
@@ -519,7 +573,7 @@ export function VideoTaskPlayer({
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/80 to-transparent">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold">
+          <p className="text-xs text-white/60 uppercase tracking-wider font-bold">
             Video Task
           </p>
           <p className="text-sm text-white font-semibold truncate">
@@ -542,7 +596,7 @@ export function VideoTaskPlayer({
         <button
           type="button"
           onClick={() => setVideoCollapsed(false)}
-          className="shrink-0 mt-14 mx-3 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left"
+          className="on-media shrink-0 mt-14 mx-3 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-left"
         >
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span className="flex-1 min-w-0">
@@ -588,11 +642,14 @@ export function VideoTaskPlayer({
                   }
                 }
               }
-              // Anchor the server clock at real playback start (first beat
-              // credits 0), so short videos don't fail the gate on a race.
-              void sendBeat();
+              // Anchor the server clock at real playback (re)start: the first
+              // beat — and every beat after a pause — credits 0, so paused
+              // time never counts toward the watch.
+              void sendBeat(false, true);
             }}
             onPause={() => {
+              // Credit the played stretch up to now, then stop the clock.
+              if (phaseRef.current === "watch") void sendBeat(true);
               playingRef.current = false;
               setIsPlaying(false);
             }}
@@ -620,7 +677,7 @@ export function VideoTaskPlayer({
             }}
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center text-(--app-ink-3)">
+          <div className="absolute inset-0 grid place-items-center text-white/60">
             <p>No video URL configured.</p>
           </div>
         )}
@@ -633,7 +690,7 @@ export function VideoTaskPlayer({
               <p className="text-sm font-semibold text-white">
                 Couldn&apos;t load this video
               </p>
-              <p className="text-xs text-(--app-ink-3)">
+              <p className="text-xs text-white/60">
                 The video link may be invalid or unsupported for in-app playback.
                 You can open it directly and try again.
               </p>
@@ -649,7 +706,7 @@ export function VideoTaskPlayer({
               )}
               <button
                 onClick={handleCancel}
-                className="block w-full text-xs text-(--app-ink-3) hover:text-white"
+                className="block w-full text-xs text-white/60 hover:text-white/90"
               >
                 Close
               </button>
@@ -697,7 +754,7 @@ export function VideoTaskPlayer({
               <span className="text-sm font-semibold text-white">
                 Tap to play with sound
               </span>
-              <span className="text-xs text-(--app-ink-2)">
+              <span className="text-xs text-white/70">
                 Watch time counts only while the video is playing
               </span>
             </span>
@@ -714,7 +771,7 @@ export function VideoTaskPlayer({
               <p className="text-7xl font-black text-white tabular-nums">
                 {warmupLeft}
               </p>
-              <p className="text-sm text-(--app-ink-3) mt-3">
+              <p className="text-sm text-white/60 mt-3">
                 Starting in… stay on this screen.
               </p>
             </div>
@@ -787,7 +844,7 @@ export function VideoTaskPlayer({
         {phase === "watch" && (
           <>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-(--app-ink-2) inline-flex items-center gap-1.5">
+              <span className="text-white/70 inline-flex items-center gap-1.5">
                 <PlayCircle className="w-4 h-4 text-(--app-accent-ink)" />
                 Watching
               </span>
@@ -795,7 +852,7 @@ export function VideoTaskPlayer({
                 {formatDuration(watched)} / {formatDuration(watchTarget)}
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
+            <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
               <div
                 className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width] duration-300"
                 style={{ width: `${watchPct}%` }}

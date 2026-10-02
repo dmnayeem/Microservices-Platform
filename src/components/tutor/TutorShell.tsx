@@ -90,7 +90,7 @@ export function TutorShell({ user, children }: Props) {
                 className={
                   "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors " +
                   (active
-                    ? "bg-(--app-cta)/20 text-(--app-on-cta) border border-(--app-accent-edge)/40"
+                    ? "bg-(--app-nav-wash) text-(--app-nav-on) border border-(--app-accent-edge)/40"
                     : "text-(--app-ink-2) hover:bg-(--app-surface-2)")
                 }
               >

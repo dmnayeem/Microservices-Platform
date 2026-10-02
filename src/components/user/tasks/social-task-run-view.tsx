@@ -785,7 +785,7 @@ export function SocialTaskRunView({ taskId }: { taskId: string }) {
     <div className="max-w-2xl mx-auto space-y-4 pb-[calc(7rem+var(--bottom-nav-h,3.5rem)+var(--anchor-ad-h,0px))] md:pb-[calc(7rem+var(--anchor-ad-h,0px))]">
       <Link
         href="/social-tasks"
-        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to social tasks
       </Link>

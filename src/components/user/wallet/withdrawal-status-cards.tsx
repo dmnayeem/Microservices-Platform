@@ -122,7 +122,9 @@ export function WithdrawalStatusCards({
               </p>
               <p className={cn("mt-0.5 text-xs", paid ? "text-emerald-100/80" : "text-red-100/80")}>
                 {method(w.method)} · {paid ? "paid" : "rejected"} {when}
-                {paid && w.transactionId ? ` · ref ${w.transactionId}` : ""}
+                {paid && w.transactionId && (
+                  <span className="block truncate" title={w.transactionId}>ref {w.transactionId}</span>
+                )}
               </p>
               {!paid && w.rejectionReason && (
                 <p className="mt-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
@@ -141,7 +143,7 @@ export function WithdrawalStatusCards({
               type="button"
               aria-label="Dismiss"
               onClick={() => setNews((cur) => cur.filter((x) => x.id !== w.id))}
-              className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-(--app-ink-3) hover:bg-white/10 hover:text-white"
+              className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-(--app-ink-3) hover:bg-white/10 hover:text-(--app-ink)"
             >
               <X className="h-4 w-4" />
             </button>

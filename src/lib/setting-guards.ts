@@ -32,6 +32,20 @@ export const POINTS_PER_USD_MIN = 10;
 export const POINTS_PER_USD_MAX = 1_000_000;
 
 export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
+  "pwa.install_reward_points": {
+    min: 0,
+    max: 100_000,
+    integer: true,
+    label: "App install reward (points)",
+    why: "Paid once to every user who installs the app — a stray extra zero would pay it to everyone.",
+  },
+  "pwa.install_reward_min_days": {
+    min: 1,
+    max: 30,
+    integer: true,
+    label: "App install reward: days the app must be opened",
+    why: "At least 1. Two or more means a single faked request is never enough to get paid.",
+  },
   "cpa.retry_after_hours": {
     min: 0,
     max: 720,
@@ -124,6 +138,12 @@ export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
     label: "Cost per click",
     why: "It is the price of a click in every ad space with no rate of its own — today, all 29 of them — so it moves real money across the whole inventory.",
   },
+  "bkash.usdToBdtRate": {
+    min: 50,
+    max: 500,
+    label: "bKash taka per US dollar",
+    why: "A bKash deposit is charged in taka at this rate and credited in dollars — a rate of 1 would sell $10 of wallet money for 10 taka.",
+  },
   "billing.tax_pct": {
     min: 0,
     max: 100,
@@ -199,6 +219,48 @@ export const ENUM_SETTING_CHOICES: Record<string, { label: string; values: strin
   },
 };
 
+/**
+ * `referral_bonus_config` is one JSON blob saved through the generic settings
+ * route, and every number in it is paid out: points to referrers and invitees,
+ * and a percentage of every deposit / withdrawal. Nothing bounded them, so one
+ * extra zero minted points platform-wide.
+ */
+const REFERRAL_POINT_FIELDS = [
+  "signupPoints",
+  "inviteePoints",
+  "subscriptionPoints",
+  "purchasePoints",
+  "monthlyPoints",
+];
+const REFERRAL_POINTS_MAX = 100_000;
+const REFERRAL_MONEY_CAP_MAX = 1_000_000;
+
+function referralBonusProblems(raw: unknown): string[] {
+  if (raw === null || raw === undefined) return [];
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return ["Referral bonus settings are malformed."];
+  }
+  const cfg = raw as Record<string, unknown>;
+  const out: string[] = [];
+  const check = (v: unknown, max: number, label: string) => {
+    if (v === undefined || v === null || v === "") return;
+    const n = typeof v === "string" ? Number(v) : v;
+    if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > max) {
+      out.push(`${label} must be between 0 and ${max.toLocaleString()}.`);
+    }
+  };
+  for (const f of REFERRAL_POINT_FIELDS) check(cfg[f], REFERRAL_POINTS_MAX, `Referral ${f}`);
+  check(cfg.depositPercent, 100, "Referral deposit bonus %");
+  check(cfg.withdrawalPercent, 100, "Referral withdrawal bonus %");
+  check(cfg.moneyBonusMaxPointsPerUser, REFERRAL_MONEY_CAP_MAX, "Referral money-bonus cap per user");
+  if (Array.isArray(cfg.milestones)) {
+    cfg.milestones.forEach((m, i) =>
+      check((m as { points?: unknown } | null)?.points, REFERRAL_POINTS_MAX, `Referral milestone ${i + 1} points`)
+    );
+  }
+  return out;
+}
+
 export interface SettingRejection {
   key: string;
   message: string;
@@ -221,6 +283,10 @@ export function validateSettingValues(
     // otherwise be stored and then silently replaced by the defaults.
     if (NAV_SETTING_KEYS.includes(key)) {
       for (const message of navSettingProblems(key, raw)) out.push({ key, message });
+      continue;
+    }
+    if (key === "referral_bonus_config") {
+      for (const message of referralBonusProblems(raw)) out.push({ key, message });
       continue;
     }
     if (LINK_SAFETY_SETTING_KEYS.includes(key)) {

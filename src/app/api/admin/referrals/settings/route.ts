@@ -38,6 +38,9 @@ export async function GET() {
   }
 }
 
+/** Ceiling for a FLAT_RATE level (USD per completed task). */
+const FLAT_RATE_MAX_USD = 10;
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -62,6 +65,18 @@ export async function POST(request: NextRequest) {
 
     // Validate levels
     for (const level of levels) {
+      // A non-number (a string, NaN) slipped past every `<` / `>` check below
+      // and was stored as the rate paid on every task completion.
+      if (
+        !Number.isInteger(level.level) ||
+        !Number.isFinite(level.commissionValue) ||
+        (level.commissionType !== "PERCENTAGE" && level.commissionType !== "FLAT_RATE")
+      ) {
+        return NextResponse.json(
+          { error: "Each level needs a number, a type and a numeric commission" },
+          { status: 400 }
+        );
+      }
       if (level.level < 1 || level.level > 10) {
         return NextResponse.json(
           { error: "Level must be between 1 and 10" },
@@ -78,9 +93,11 @@ export async function POST(request: NextRequest) {
           );
         }
       } else if (level.commissionType === "FLAT_RATE") {
-        if (level.commissionValue < 0) {
+        // USD paid to the upline on EVERY task completion, at every level —
+        // unbounded, one typed "10" for "0.10" paid $10 a task.
+        if (level.commissionValue < 0 || level.commissionValue > FLAT_RATE_MAX_USD) {
           return NextResponse.json(
-            { error: "Flat rate commission must be greater than or equal to 0" },
+            { error: `Flat rate commission must be between $0 and $${FLAT_RATE_MAX_USD} per task` },
             { status: 400 }
           );
         }

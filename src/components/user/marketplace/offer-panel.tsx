@@ -208,7 +208,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="text-[11px] text-(--app-ink-3) hover:text-white"
+            className="text-[11px] text-(--app-ink-3) hover:text-(--app-ink)"
           >
             Cancel
           </button>
@@ -357,7 +357,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                   <button
                     type="button"
                     onClick={() => setCounterDraft(null)}
-                    className="text-[11px] text-(--app-ink-3) hover:text-white"
+                    className="text-[11px] text-(--app-ink-3) hover:text-(--app-ink)"
                   >
                     Cancel
                   </button>

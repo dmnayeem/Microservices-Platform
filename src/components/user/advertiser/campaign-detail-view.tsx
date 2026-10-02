@@ -311,7 +311,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
     <div className="space-y-4">
       <Link
         href="/advertiser"
-        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ChevronLeft className="w-4 h-4" />
         All campaigns
@@ -536,7 +536,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                     {(ad.status === "ACTIVE" || ad.status === "PAUSED") && (
                       <button
                         onClick={() => toggleAd(ad)}
-                        className="p-1.5 rounded-md text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+                        className="p-1.5 rounded-md text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
                         title={ad.status === "ACTIVE" ? "Pause" : "Resume"}
                       >
                         {ad.status === "ACTIVE" ? (
@@ -551,7 +551,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
                         setSheetAd(ad);
                         setCreating(true);
                       }}
-                      className="p-1.5 rounded-md text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2)"
+                      className="p-1.5 rounded-md text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2)"
                       title="Edit"
                     >
                       <Pencil className="w-4 h-4" />

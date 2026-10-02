@@ -218,7 +218,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
   if (loadError || !task) {
     return (
       <div className="space-y-4">
-        <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white">
+        <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)">
           <ArrowLeft className="w-4 h-4" /> Back to tasks
         </Link>
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
@@ -231,7 +231,7 @@ export function AppInstallDetailView({ taskId }: { taskId: string }) {
 
   return (
     <div className="space-y-5">
-      <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white">
+      <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)">
         <ArrowLeft className="w-4 h-4" /> Back to tasks
       </Link>
 

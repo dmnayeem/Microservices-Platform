@@ -545,6 +545,53 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
       });
       if (raceDup) return null;
 
+      // Re-check every ceiling UNDER the lock. The scan above ran before it, so
+      // N concurrent engagements (different posts → different references) all
+      // saw the same "today" total, all passed, and together overshot the
+      // daily / mode / pair / per-post caps.
+      const lockedRows = await tx.transaction.findMany({
+        where: {
+          userId,
+          reference: { startsWith: "social_" },
+          createdAt: { gte: todayStart },
+        },
+        select: { points: true, metadata: true },
+      });
+      let lPts = 0;
+      let lMode = 0;
+      let lPair = 0;
+      let lXp = 0;
+      for (const r of lockedRows) {
+        const md = r.metadata as
+          | { xp?: number; role?: string; sourceUserId?: string | null }
+          | null;
+        const pts = Math.max(0, r.points ?? 0);
+        lPts += pts;
+        if (md && typeof md.xp === "number") lXp += md.xp;
+        if (md?.role === role) {
+          lMode += pts;
+          if (sourceUserId && md.sourceUserId === sourceUserId) lPair += pts;
+        }
+      }
+      if (allowPoints > 0) {
+        if (postId && role === "recipient") {
+          const p = await tx.post.findUnique({
+            where: { id: postId },
+            select: { socialEarnings: true },
+          });
+          allowPoints = Math.min(allowPoints, Math.max(0, cfg.capPerPost - (p?.socialEarnings ?? 0)));
+        }
+        allowPoints = Math.min(allowPoints, Math.max(0, cfg.dailyCapPerUser - lPts));
+        allowPoints = Math.min(allowPoints, Math.max(0, modeCap - lMode));
+        if (pairCap > 0 && sourceUserId) {
+          allowPoints = Math.min(allowPoints, Math.max(0, pairCap - lPair));
+        }
+      }
+      if (allowXp > 0 && cfg.dailyXpCapPerUser > 0) {
+        allowXp = Math.min(allowXp, Math.max(0, cfg.dailyXpCapPerUser - lXp));
+      }
+      if (allowPoints <= 0 && allowXp <= 0) return null;
+
       await tx.transaction.create({
         data: {
           userId,

@@ -44,7 +44,7 @@ export default async function LiveClassPage({
     <div className="max-w-4xl mx-auto space-y-4">
       <Link
         href={`/learn/${courseId}`}
-        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to course
       </Link>

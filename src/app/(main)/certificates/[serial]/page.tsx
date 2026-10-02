@@ -22,7 +22,7 @@ export default async function CertificatePage({
     <div className="max-w-2xl mx-auto py-12 space-y-6">
       <Link
         href="/my-learning?tab=certificates"
-        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back to my learning
       </Link>

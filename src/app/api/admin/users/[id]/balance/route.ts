@@ -97,50 +97,80 @@ export async function POST(
     // the profile total.
     const pointsPerUsd = await getPointsPerUsd();
 
-    // Update user balance/progression and create transaction
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        pointsBalance:
-          type === "points" ? { increment: adjustmentAmount } : undefined,
-        cashBalance:
-          type === "cash" ? { increment: adjustmentAmount } : undefined,
-        level: type === "level" ? { increment: adjustmentAmount } : undefined,
-        xp: type === "xp" ? { increment: adjustmentAmount } : undefined,
-        // Only positive points credits raise lifetime earnings (a deduct never
-        // lowers lifetime earned — mirrors the bulk route).
-        totalEarnings:
-          type === "points" && adjustmentAmount > 0
-            ? { increment: adjustmentAmount / pointsPerUsd }
-            : undefined,
-      },
-    });
-
-    // Only points / cash create transactions; level + xp are progression-only
-    if (type === "points" || type === "cash") {
-      await prisma.transaction.create({
-        data: {
-          userId: id,
-          type: action === "add" ? "BONUS" : "PENALTY",
-          points: type === "points" ? adjustmentAmount : 0,
-          amount:
-            type === "cash"
-              ? adjustmentAmount
-              : type === "points"
-              ? adjustmentAmount / pointsPerUsd
-              : 0,
-          description:
-            reason || `Admin ${action === "add" ? "credit" : "debit"} - ${type}`,
-          status: "COMPLETED",
-          metadata: {
-            adminId: session.user.id,
-            adminEmail: session.user.email,
-            balanceType: type,
-            action,
-            originalAmount: amount,
+    // Update user balance/progression and create transaction — in ONE
+    // transaction, and a deduct is a compare-and-set (`gte`): the sufficiency
+    // check above reads a row fetched earlier, so two concurrent deducts (or a
+    // deduct racing a withdrawal hold) could both pass it and drive the
+    // balance negative; and the ledger row used to be a separate write that
+    // could fail after the balance had already moved.
+    const deductGuard =
+      action !== "deduct"
+        ? {}
+        : type === "points"
+        ? { pointsBalance: { gte: amount } }
+        : type === "cash"
+        ? { cashBalance: { gte: amount } }
+        : type === "level"
+        ? { level: { gte: amount + 1 } }
+        : { xp: { gte: amount } };
+    let updatedUser;
+    try {
+      updatedUser = await prisma.$transaction(async (tx) => {
+        const moved = await tx.user.updateMany({
+          where: { id, ...deductGuard },
+          data: {
+            pointsBalance:
+              type === "points" ? { increment: adjustmentAmount } : undefined,
+            cashBalance:
+              type === "cash" ? { increment: adjustmentAmount } : undefined,
+            level: type === "level" ? { increment: adjustmentAmount } : undefined,
+            xp: type === "xp" ? { increment: adjustmentAmount } : undefined,
+            // Only positive points credits raise lifetime earnings (a deduct never
+            // lowers lifetime earned — mirrors the bulk route).
+            totalEarnings:
+              type === "points" && adjustmentAmount > 0
+                ? { increment: adjustmentAmount / pointsPerUsd }
+                : undefined,
           },
-        },
+        });
+        if (moved.count === 0) throw new Error("INSUFFICIENT");
+    
+        // Only points / cash create transactions; level + xp are progression-only
+        if (type === "points" || type === "cash") {
+          await tx.transaction.create({
+            data: {
+              userId: id,
+              type: action === "add" ? "BONUS" : "PENALTY",
+              points: type === "points" ? adjustmentAmount : 0,
+              amount:
+                type === "cash"
+                  ? adjustmentAmount
+                  : type === "points"
+                  ? adjustmentAmount / pointsPerUsd
+                  : 0,
+              description:
+                reason || `Admin ${action === "add" ? "credit" : "debit"} - ${type}`,
+              status: "COMPLETED",
+              metadata: {
+                adminId: session.user.id,
+                adminEmail: session.user.email,
+                balanceType: type,
+                action,
+                originalAmount: amount,
+              },
+            },
+          });
+        }
+        return tx.user.findUniqueOrThrow({ where: { id } });
       });
+    } catch (e) {
+      if (e instanceof Error && e.message === "INSUFFICIENT") {
+        return NextResponse.json(
+          { error: "The balance changed and is now too low for this deduction. Reload and try again." },
+          { status: 409 }
+        );
+      }
+      throw e;
     }
 
     // Audit log every adjustment

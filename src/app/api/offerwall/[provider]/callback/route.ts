@@ -128,31 +128,54 @@ async function handle(request: NextRequest, provider: string) {
   try {
     // ── Reversal / chargeback ──
     if (isReversal) {
-      const back = Math.abs(userPayout) || completion?.points || 0;
+      // A legacy (no click id) credit has no completion row — the credited
+      // callback itself is the record. Without this lookup a legacy chargeback
+      // was logged and nothing was ever taken back.
+      const orig = completion
+        ? null
+        : await prisma.offerwallCallback.findUnique({
+            where: { transactionId },
+            select: { userId: true, userPayout: true, status: true },
+          });
+      const legacyTarget =
+        orig && orig.status === "APPROVED" && orig.userId === userId ? orig : null;
+      const back = Math.abs(userPayout) || completion?.points || legacyTarget?.userPayout || 0;
       const ops: unknown[] = [
         prisma.offerwallCallback.create({
           data: {
-            userId, offerwallId: config.id, offerId, offerName, transactionId,
+            userId, offerwallId: config.id, offerId, offerName,
+            // Networks usually send the chargeback under the SAME transaction id
+            // as the credit. `transactionId` is globally unique, so reusing it
+            // hit P2002 → "duplicate" and the reversal was silently dropped.
+            // Namespaced so it is distinct from the credit yet still dedupes
+            // a replayed reversal.
+            transactionId: `rev_${transactionId}`,
             payoutAmount, userPayout, status: "CHARGEBACK", isReversal: true,
             internalOfferId, ipAddress: ip, processedAt: now, rawPayload,
           },
         }),
       ];
-      // Only claw back if the completion was actually credited.
-      if (completion && completion.status === "APPROVED" && back > 0) {
+      // Only claw back if the completion (or legacy callback) was actually credited.
+      const clawUserId =
+        completion && completion.status === "APPROVED"
+          ? completion.userId
+          : legacyTarget?.userId ?? null;
+      if (clawUserId && back > 0) {
         // Clamp to what the user actually has. An unclamped decrement drove
         // `pointsBalance` negative whenever the points had already been spent
         // or converted, and a negative balance breaks every `gte` guard
         // downstream. The shortfall is recorded rather than silently absorbed.
         const holder = await prisma.user.findUnique({
-          where: { id: completion.userId },
+          where: { id: clawUserId },
           select: { pointsBalance: true },
         });
         const clawback = Math.max(0, Math.min(holder?.pointsBalance ?? 0, back));
+        if (completion) {
+          ops.push(prisma.offerwallCompletion.update({ where: { id: completion.id }, data: { status: "REVERSED", reversedAt: now } }));
+        }
         ops.push(
-          prisma.offerwallCompletion.update({ where: { id: completion.id }, data: { status: "REVERSED", reversedAt: now } }),
           prisma.user.update({
-            where: { id: completion.userId },
+            where: { id: clawUserId },
             data: {
               pointsBalance: { decrement: clawback },
               // The credit incremented `totalEarnings`; the reversal never did.
@@ -163,7 +186,7 @@ async function handle(request: NextRequest, provider: string) {
           }),
           prisma.transaction.create({
             data: {
-              userId: completion.userId, type: "EARNING", status: "COMPLETED",
+              userId: clawUserId, type: "EARNING", status: "COMPLETED",
               points: -clawback, amount: -Math.abs(payoutAmount),
               description: `Offerwall reversal: ${offerName ?? "offer"}`,
               reference: `offerwall_rev_${transactionId}`,

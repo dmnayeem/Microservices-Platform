@@ -217,7 +217,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 onClick={() => setAmount(String(a))}
                 className={`px-3 py-1 rounded-lg text-xs font-bold border ${
                   Number(amount) === a
-                    ? "border-(--app-accent-edge) bg-(--app-cta)/15 text-(--app-on-cta)"
+                    ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
                     : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2) hover:border-(--app-line)"
                 }`}
               >
@@ -319,7 +319,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                     onClick={() => setMethod(m.key)}
                     className={`p-2.5 rounded-lg border text-sm font-semibold flex flex-col items-center justify-center gap-0.5 ${
                       method === m.key
-                        ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-on-cta)"
+                        ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
                         : "border-(--app-line) bg-(--app-surface-2) text-(--app-ink-2)"
                     }`}
                   >
@@ -512,7 +512,7 @@ export function DepositView({ from }: { from?: string } = {}) {
           <button
             onClick={submitManual}
             disabled={busy}
-            className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
+            className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 whitespace-nowrap py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-bold disabled:opacity-50"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Submit manual deposit
@@ -521,7 +521,7 @@ export function DepositView({ from }: { from?: string } = {}) {
             <button
               onClick={() => payOnline()}
               disabled={busy}
-              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+              className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 whitespace-nowrap py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
             >
               <ExternalLink className="w-4 h-4" />
               Pay online
@@ -532,7 +532,7 @@ export function DepositView({ from }: { from?: string } = {}) {
                 key={g.key}
                 onClick={() => payOnline(g.key)}
                 disabled={busy}
-                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
+                className="flex-1 min-w-35 inline-flex items-center justify-center gap-1.5 whitespace-nowrap py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold disabled:opacity-50"
               >
                 <ExternalLink className="w-4 h-4" />
                 {g.label}

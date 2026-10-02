@@ -246,7 +246,7 @@ export function ProfileView() {
           </button>
           <button
             onClick={() => setAutoCountry({ ...autoCountry, dismissed: true })}
-            className="p-1.5 text-(--app-accent-ink) hover:text-white"
+            className="p-1.5 text-(--app-accent-ink) hover:text-(--app-ink)"
           >
             <X className="w-4 h-4" />
           </button>
@@ -471,7 +471,7 @@ export function ProfileView() {
                 "shrink-0 inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors relative",
                 primaryTab === t.key
                   ? "text-(--app-accent-ink)"
-                  : "text-(--app-ink-3) hover:text-white"
+                  : "text-(--app-ink-3) hover:text-(--app-ink)"
               )}
             >
               <t.icon className="w-4 h-4" />

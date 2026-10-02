@@ -75,8 +75,12 @@ export async function releaseDuePayouts(
         // Claim it first. `status: "HELD"` in the WHERE is what makes a second
         // tick — or a refund reversing it a moment ago — a no-op rather than a
         // double payment.
+        // `amount` too: a partial refund shrinks a HELD row in place
+        // (`reverseHeldPayout`), and paying the figure read before that would
+        // hand the seller the part the buyer was just refunded. A changed row
+        // is skipped here and released at its new amount on the next run.
         const claimed = await tx.marketplacePayout.updateMany({
-          where: { id: row.id, status: "HELD" },
+          where: { id: row.id, status: "HELD", amount: row.amount },
           data: { status: "RELEASED", releasedAt: new Date() },
         });
         if (claimed.count === 0) {

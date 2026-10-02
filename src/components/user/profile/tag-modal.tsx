@@ -52,7 +52,7 @@ export function TagModal({
         })}
       </div>
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-white">
+        <button onClick={onClose} disabled={busy} className="px-4 py-2 text-sm text-(--app-ink-3) hover:text-(--app-ink)">
           Cancel
         </button>
         <button

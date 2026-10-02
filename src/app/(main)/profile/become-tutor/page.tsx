@@ -36,7 +36,7 @@ export default async function BecomeTutorPage() {
       <div>
         <Link
           href="/profile"
-          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-white"
+          className="inline-flex items-center gap-1 text-xs text-(--app-ink-3) hover:text-(--app-ink)"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to profile

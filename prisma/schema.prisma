@@ -1662,6 +1662,18 @@ model User {
   // the play was: set your country to match a high-paying geo-targeted task,
   // complete it, set it back. See src/lib/profile-targeting.ts.
   targetingChangedAt                DateTime?
+  // Installed-app (PWA) tracking, written by /api/pwa/seen when the app is
+  // opened in standalone mode (src/lib/pwa-install.ts). `pwaDays` counts
+  // DISTINCT UTC days seen standalone — the install reward needs at least
+  // `pwa.install_reward_min_days` of them, so one spoofed request pays nothing.
+  // `pwaRewardedAt` is the once-only CAS guard for that reward.
+  pwaFirstSeenAt                    DateTime?
+  pwaLastSeenAt                     DateTime?
+  pwaPlatform                       String?
+  pwaDays                           Int                          @default(0)
+  pwaRewardedAt                     DateTime?
+  // Host the app was last opened on in standalone (legacy www installs).
+  pwaHost                           String?
   isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render
@@ -1851,6 +1863,8 @@ model User {
   @@index([customRoleId])
   // The Fraud Monitor lists users by risk, highest first.
   @@index([fraudRisk])
+  // /admin/users/app-installs lists and counts installs by first-seen date.
+  @@index([pwaFirstSeenAt])
 }
 
 model Account {
@@ -4700,6 +4714,7 @@ enum EventActionType {
   FEED_POST
   FEED_VOTE
   REFERRAL_SIGNUP
+  PWA_INSTALLED // opened the installed app on enough distinct days (lib/pwa-install.ts)
 }
 
 model Event {
@@ -5414,6 +5429,50 @@ model RecurringEntry {
   @@index([payeeId])
 }
 
+/// A tool the company pays for — a domain, hosting, a SaaS seat — and when it
+/// renews or expires. Read by the Subscriptions tab of /admin/finance/company
+/// and the "finance-subscription-reminders" scheduler job. Plain id columns, no
+/// Prisma relations, so the table can be added without touching User / Payee /
+/// FinanceCategory. Never holds passwords: `accountRef` is a login id only.
+model CompanySubscription {
+  id              String    @id @default(cuid())
+  name            String
+  /// Domain | Hosting | SaaS/Software | Email | Cloud | Design/Media | Marketing | Other — or free text.
+  category        String
+  vendor          String?
+  /// Login / account id at the vendor. NOT a password.
+  accountRef      String?
+  cost            Decimal?  @db.Decimal(18, 2)
+  currency        String    @default("USD")
+  /// MONTHLY | QUARTERLY | YEARLY | ONE_TIME | CUSTOM
+  billingCycle    String
+  customCycleDays Int?
+  startDate       DateTime
+  /// Expiry / next renewal. Empty = no end (one-time purchase, lifetime licence).
+  endDate         DateTime?
+  autoRenew       Boolean   @default(false)
+  paymentMethod   String?
+  /// Who is responsible for renewing it.
+  ownerUserId     String?
+  /// ACTIVE | CANCELLED | EXPIRED
+  status          String    @default("ACTIVE")
+  remindDaysBefore Int[]    @default([30, 7, 1])
+  /// "<endDate yyyy-mm-dd>:<threshold>" of the last reminder sent — the dedupe key.
+  lastRemindedFor String?
+  notes           String?   @db.Text
+  url             String?
+  /// [{ label, type: text|number|date|url|money, value }]
+  customFields    Json?
+  payeeId         String?
+  categoryId      String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([endDate])
+  @@index([status])
+}
+
 // ─── CPA offers ──────────────────────────────────────────────────────────────
 // A module of its own, deliberately separate from the Offerwall (owner's call,
 // 2026-09-29). Admin adds a network offer with a macro tracking link; the user
@@ -5576,4 +5635,25 @@ model AbuseEvidence {
 
   @@index([caseId, createdAt])
   @@index([kind])
+}
+
+/// Reusable task-instruction text, organised by category. Admins pick one in
+/// the task form, edit it, and the task keeps its OWN copy — editing a task
+/// never changes the template, and editing a template never changes a task.
+/// `contentHtml` is sanitised (sanitizeRichHtml) on every write.
+model InstructionTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String
+  /// Optional task type (VIDEO, ARTICLE, SOCIAL, …) for filtering; null = any.
+  taskType    String?
+  contentHtml String   @db.Text
+  /// Tasks created from this template (bumped by POST /api/admin/tasks).
+  usageCount  Int      @default(0)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
 }

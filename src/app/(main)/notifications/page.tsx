@@ -291,7 +291,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-(--app-surface-2) text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-hover) rounded-lg text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-(--app-surface-2) text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-hover) rounded-lg text-sm font-medium transition-colors"
             >
               <CheckCheck className="w-4 h-4" />
               Mark all read
@@ -325,7 +325,7 @@ export default function NotificationsPage() {
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-(--app-ink-3) hover:text-white"
+            className="text-sm text-(--app-ink-3) hover:text-(--app-ink)"
           >
             Clear selection
           </button>

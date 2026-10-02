@@ -53,7 +53,7 @@ export default async function BrandStorefrontPage({
     <div className="space-y-5 p-4 sm:p-6 max-w-6xl mx-auto">
       <Link
         href="/marketplace"
-        className="inline-flex items-center gap-2 text-sm text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-2 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ArrowLeft className="w-4 h-4" />
         Marketplace
@@ -74,7 +74,7 @@ export default async function BrandStorefrontPage({
                 href={brand.website}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex items-center gap-1 hover:text-white"
+                className="inline-flex items-center gap-1 hover:text-(--app-ink)"
               >
                 <Globe className="w-3.5 h-3.5" />
                 Website

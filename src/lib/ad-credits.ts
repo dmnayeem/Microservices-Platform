@@ -247,9 +247,17 @@ export async function refundCampaignBudgetToCredit(
       data: { budget: 0 },
     });
     if (zeroed.count === 0) return 0; // someone else already refunded it
+    // The budget CAS above is the once-only guard. The reference must still be
+    // unique per refund: an admin can re-activate an ENDED campaign and fund it
+    // again, and a second end reusing `campaign_refund_<id>` hit the ledger's
+    // unique key, rolled back, and left that budget locked in the campaign.
+    const base = `campaign_refund_${campaignId}`;
+    const prior = await tx.adCreditLedger.count({
+      where: { userId: c.advertiserId as string, reference: { startsWith: base } },
+    });
     await creditAdCreditTx(tx, c.advertiserId as string, remaining, {
       kind: "REFUND",
-      reference: `campaign_refund_${campaignId}`,
+      reference: prior === 0 ? base : `${base}_${prior + 1}`,
       metadata: { campaignId },
     });
     return remaining;

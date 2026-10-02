@@ -187,7 +187,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
     <div className="space-y-4">
       <Link
         href="/marketplace/messages"
-        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
       >
         <ChevronLeft className="w-4 h-4" /> All messages
       </Link>
@@ -210,7 +210,7 @@ export function DealThreadView({ threadId, viewerId }: { threadId: string; viewe
               {thread.listing && (
                 <Link
                   href={`/marketplace/${thread.listing.id}`}
-                  className="text-xs text-(--app-ink-3) hover:text-white truncate block"
+                  className="text-xs text-(--app-ink-3) hover:text-(--app-ink) truncate block"
                 >
                   {thread.listing.title}
                 </Link>

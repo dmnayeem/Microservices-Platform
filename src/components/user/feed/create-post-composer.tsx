@@ -423,7 +423,7 @@ export function CreatePostComposer({
             <button
               key={a.label}
               onClick={a.onClick}
-              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-xs font-bold text-(--app-ink-2) hover:bg-(--app-surface-2) hover:text-white"
+              className="app-tap-row app-press inline-flex items-center justify-center gap-1.5 rounded-(--app-r-chip) text-xs font-bold text-(--app-ink-2) hover:bg-(--app-surface-2) hover:text-(--app-ink)"
             >
               <a.icon className="w-4 h-4 text-(--app-ink-3)" />
               {a.label}
@@ -443,11 +443,15 @@ export function CreatePostComposer({
           size={40}
           className="shrink-0"
         />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-white">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">
             {user.name ?? "You"}
           </p>
-          <p className="text-[11px] text-(--app-ink-3)">Posting publicly</p>
+          {/* Mirrors the "Who can read this" choice below — posts default to
+              members only, so this must not claim "publicly". */}
+          <p className="text-[11px] text-(--app-ink-3)">
+            {audience === "PUBLIC" ? "Posting publicly" : "Posting to members only"}
+          </p>
         </div>
         <button
           onClick={reset}
@@ -481,8 +485,8 @@ export function CreatePostComposer({
               className={cn(
                 "flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border",
                 isActive
-                  ? "bg-(--app-cta)/15 text-(--app-on-cta) border-(--app-accent-edge)/40"
-                  : "bg-(--app-page) text-(--app-ink-3) border-(--app-line) hover:text-white"
+                  ? "bg-(--app-nav-wash) text-(--app-nav-on) border-(--app-accent-edge)/40"
+                  : "bg-(--app-page) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
               )}
             >
               <m.icon className="w-3.5 h-3.5" />
@@ -726,9 +730,9 @@ export function CreatePostComposer({
                   title={b.label}
                   onClick={() => setBg(b.id)}
                   className={cn(
-                    "w-7 h-7 rounded-full",
+                    "w-7 h-7 rounded-full border border-(--app-line)",
                     b.className,
-                    bg === b.id && "ring-2 ring-white ring-offset-2 ring-offset-(--app-surface)"
+                    bg === b.id && "ring-2 ring-(--app-ink) ring-offset-2 ring-offset-(--app-surface)"
                   )}
                 />
               ))}
@@ -779,7 +783,7 @@ export function CreatePostComposer({
       )}
 
       {canAnnounce && (
-        <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-3 py-2">
+        <label className="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-3 py-2">
           <input
             type="checkbox"
             checked={postAsAnnouncement}
@@ -788,10 +792,10 @@ export function CreatePostComposer({
             className="rounded bg-(--app-surface-2) border-(--app-line) text-cyan-500 focus:ring-cyan-500"
           />
           <Megaphone className="w-3.5 h-3.5 text-cyan-300" />
-          <span className="text-xs font-semibold text-cyan-200">
-            Post as Official Announcement
+          <span className="whitespace-nowrap text-xs font-semibold text-cyan-200">
+            Official announcement
           </span>
-          <span className="text-[11px] text-cyan-400/70 ml-auto">
+          <span className="ml-auto whitespace-nowrap text-[11px] text-cyan-400/70">
             Pinned to top • OFFICIAL badge
           </span>
         </label>
@@ -968,7 +972,7 @@ function PollComposer({
               "px-2.5 py-1 rounded-md text-xs font-bold",
               duration === d
                 ? "bg-(--app-cta) text-(--app-on-cta)"
-                : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-white"
+                : "bg-(--app-surface-2) text-(--app-ink-3) hover:text-(--app-ink)"
             )}
           >
             {d}h

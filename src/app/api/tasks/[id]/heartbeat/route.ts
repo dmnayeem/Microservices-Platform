@@ -31,6 +31,10 @@ export async function POST(
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const submissionId = String(body?.submissionId ?? "");
+    // Sent when playback (re)starts — after a pause, a hidden tab or lost
+    // focus. It restarts the clock without crediting the gap, so time spent
+    // paused is never counted. It can only lower credit, never raise it.
+    const anchor = body?.anchor === true;
     if (!submissionId) {
       return NextResponse.json(
         { error: "submissionId is required" },
@@ -85,7 +89,7 @@ export async function POST(
     // so accrued time reflects only actual foreground playback between beats.
     const now = Date.now();
     const step =
-      submission.lastBeatAt === null
+      submission.lastBeatAt === null || anchor
         ? 0
         : Math.max(
             0,

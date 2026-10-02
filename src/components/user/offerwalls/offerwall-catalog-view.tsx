@@ -243,7 +243,7 @@ export function OfferwallCatalogView() {
       {detail && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4" onClick={() => setDetail(null)}>
           <div className="mx-auto my-6 w-full max-w-lg rounded-xl border border-(--app-line) bg-(--app-surface) p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setDetail(null)} className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-white"><ArrowLeft className="w-4 h-4" /> Back</button>
+            <button onClick={() => setDetail(null)} className="inline-flex items-center gap-1.5 text-sm text-(--app-ink-3) hover:text-(--app-ink)"><ArrowLeft className="w-4 h-4" /> Back</button>
             <div className="flex items-center gap-3">
               <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-(--app-surface-2) overflow-hidden">
                 {detail.imageUrl ? <SmartImage src={detail.imageUrl} alt={detail.title} width={56} height={56} className="h-14 w-14 object-cover" /> : <Gift className="w-6 h-6 text-emerald-400" />}
@@ -309,7 +309,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   return (
     <button onClick={onClick}
       className={`shrink-0 whitespace-nowrap px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
-        active ? "border-emerald-500 text-white" : "border-transparent text-(--app-ink-3) hover:text-white"}`}>
+        active ? "border-emerald-500 text-white" : "border-transparent text-(--app-ink-3) hover:text-(--app-ink)"}`}>
       {children}
     </button>
   );

@@ -10,6 +10,7 @@ import {
 } from "@/lib/system-settings";
 import { invalidateUiTogglesCache } from "@/lib/ui-toggles-server";
 import { validateSettingValues } from "@/lib/setting-guards";
+import { TEST_USERS_SETTING_KEY } from "@/lib/finance/test-users-core";
 
 export async function GET() {
   try {
@@ -76,6 +77,17 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: `Only a super admin can change ${reserved.join(", ")}` },
+        { status: 403 }
+      );
+    }
+
+    // The finance test-user list hides those accounts from every finance
+    // report. It is written only by /api/admin/finance/test-users (finance
+    // permission, per-user audit, 500 cap) — never by `settings.edit` here,
+    // which would let a non-finance admin hide real users' money.
+    if (TEST_USERS_SETTING_KEY in settings) {
+      return NextResponse.json(
+        { error: "Finance test users are managed on the Finance screen." },
         { status: 403 }
       );
     }

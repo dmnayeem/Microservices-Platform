@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { subscribeToPush } from "@/lib/push-client";
 import {
   useTheme,
   ACCENTS,
@@ -138,6 +139,58 @@ export function SettingsView({
   const onPushNotif = async (v: boolean) => {
     setPushNotif(v);
     if (!(await patchProfile({ pushNotifications: v }))) setPushNotif(!v);
+  };
+
+  // Whether THIS browser actually receives push. The toggle above is only the
+  // account preference; without a browser subscription nothing arrives. The
+  // "Turn on notifications" reminder links here, so this is where it gets fixed.
+  const [devicePush, setDevicePush] = useState<"unknown" | "unsupported" | "denied" | "off" | "on">("unknown");
+  const [enablingPush, setEnablingPush] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        if (alive) setDevicePush("unsupported");
+        return;
+      }
+      if (Notification.permission === "denied") {
+        if (alive) setDevicePush("denied");
+        return;
+      }
+      let sub: PushSubscription | null = null;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        sub = reg ? await reg.pushManager.getSubscription() : null;
+      } catch {
+        /* treat as not subscribed */
+      }
+      if (alive) setDevicePush(Notification.permission === "granted" && sub ? "on" : "off");
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const enableDevicePush = async () => {
+    setEnablingPush(true);
+    try {
+      const result = await Notification.requestPermission();
+      if (result !== "granted") {
+        setDevicePush(result === "denied" ? "denied" : "off");
+        if (result === "denied") toast.error("Notifications are blocked", { description: "Allow notifications for this site in your browser settings, then try again." });
+        return;
+      }
+      if (!(await subscribeToPush())) {
+        toast.error("Couldn't turn on notifications", { description: "Try again in a moment." });
+        return;
+      }
+      setDevicePush("on");
+      if (!pushNotif) await onPushNotif(true);
+      else toast.success("Notifications enabled");
+    } catch {
+      toast.error("Couldn't turn on notifications", { description: "Try again in a moment." });
+    } finally {
+      setEnablingPush(false);
+    }
   };
   const onLanguage = async (v: string) => {
     const prev = language;
@@ -277,7 +330,7 @@ export function SettingsView({
                 <a
                   key={item.label}
                   href={item.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-(--app-ink-3) hover:text-white hover:bg-(--app-surface-2) transition-colors"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-(--app-ink-3) hover:text-(--app-ink) hover:bg-(--app-surface-2) transition-colors"
                 >
                   <item.icon className="w-5 h-5" />
                   {item.label}
@@ -332,6 +385,23 @@ export function SettingsView({
                   </div>
                   <Toggle checked={pushNotif} onChange={onPushNotif} disabled={savingPref} />
                 </div>
+                {(devicePush === "off" || devicePush === "denied" || (devicePush === "on" && !pushNotif)) && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--app-line) bg-(--app-surface-2) p-3">
+                    <p className="text-sm text-(--app-ink-2)">
+                      {devicePush === "denied"
+                        ? "Notifications are blocked in this browser. Allow them for this site in your browser settings, then tap the button."
+                        : "Be first to new offers, tasks and events — turn notifications on to earn more."}
+                    </p>
+                    <button
+                      onClick={devicePush === "on" ? () => onPushNotif(true) : enableDevicePush}
+                      disabled={enablingPush || savingPref}
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-(--app-cta) px-3 py-1.5 text-sm font-bold text-(--app-on-cta) disabled:opacity-50"
+                    >
+                      {enablingPush ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                      Turn on notifications
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-white">Email Notifications</p>
@@ -480,8 +550,8 @@ export function SettingsView({
                         className={cn(
                           "flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-all",
                           theme === id
-                            ? "border-(--app-accent-edge) bg-(--app-cta)/10 text-(--app-on-cta)"
-                            : "border-(--app-line) bg-(--app-surface-2)/40 text-(--app-ink-3) hover:text-white hover:border-(--app-line)"
+                            ? "border-(--app-accent-edge) bg-(--app-nav-wash) text-(--app-nav-on)"
+                            : "border-(--app-line) bg-(--app-surface-2)/40 text-(--app-ink-3) hover:text-(--app-ink) hover:border-(--app-line)"
                         )}
                       >
                         <Icon className="w-5 h-5" />
@@ -523,8 +593,8 @@ export function SettingsView({
                           className={cn(
                             "w-8 h-8 rounded-full ring-2 ring-offset-2 ring-offset-(--app-surface) transition-all capitalize",
                             accent === id && !accentIsDefault
-                              ? "ring-white"
-                              : "ring-transparent hover:ring-white/40"
+                              ? "ring-(--app-ink)"
+                              : "ring-transparent hover:ring-(--app-ink)/40"
                           )}
                           title={id}
                         />

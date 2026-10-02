@@ -257,7 +257,7 @@ export function QuizPlayer({ quizId, onClose }: QuizPlayerProps) {
                   )
                     onClose();
                 }}
-                className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-white"
+                className="p-1.5 rounded-lg text-(--app-ink-3) hover:text-(--app-ink)"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -127,7 +127,7 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
               </p>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-1 text-(--app-ink-3) hover:text-white"
+                className="p-1 text-(--app-ink-3) hover:text-(--app-ink)"
               >
                 <X className="w-4 h-4" />
               </button>

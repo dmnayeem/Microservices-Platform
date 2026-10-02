@@ -192,7 +192,7 @@ export function CommentsSection({
           </span>
           <button
             onClick={() => setReplyTo(null)}
-            className="ml-2 text-(--app-accent-ink) hover:text-white"
+            className="ml-2 text-(--app-accent-ink) hover:text-(--app-ink)"
           >
             <X className="w-3 h-3" />
           </button>

@@ -85,6 +85,9 @@ export function deriveSource(type: string, reference?: string | null): SourceKey
     case "EARNING":
       if (ref.startsWith("social_")) return "social";
       if (ref.startsWith("cpa_")) return "cpa";
+      // The one-time app-install bonus (src/lib/pwa-install.ts) is a bonus,
+      // not task income.
+      if (ref.startsWith("pwa_")) return "bonus";
       // A leaderboard prize is a bonus, not task income — it was tagged "Tasks".
       if (ref.startsWith("leaderboard_")) return "bonus";
       if (ref.startsWith("daily_")) return "checkin";

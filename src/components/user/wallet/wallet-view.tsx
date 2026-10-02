@@ -427,10 +427,10 @@ function BalanceTab({
             { label: "7 days", pts: earnPeriods.week },
             { label: "30 days", pts: earnPeriods.month },
           ].map((p) => (
-            <div key={p.label} className="app-tile min-w-0">
+            <div key={p.label} className="app-tile min-w-0 @container">
               <p className="t-meta text-(--app-ink-3)">{p.label}</p>
               {/* Clamped, not truncated: at 320px "12,450" was cut to "12,4…". */}
-              <p className={cn(STAT_VALUE_CLASS_SM, "mt-1")}>{p.pts.toLocaleString()}</p>
+              <p className={cn(STAT_VALUE_CLASS_SM, "mt-1 text-[clamp(0.75rem,20cqi,1.125rem)]")}>{p.pts.toLocaleString()}</p>
               <p className="t-meta text-(--app-ink-3) whitespace-nowrap">≈ {usd(p.pts / (pointsPerUsd || 1))}</p>
             </div>
           ))}
@@ -508,7 +508,7 @@ function BalanceTab({
             ))}
           </div>
           {/* Legend */}
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {breakdown.map((b) => (
               <div key={b.key} className="flex items-center justify-between gap-1.5 text-xs min-w-0">
                 <div className="flex items-center gap-1.5 text-(--app-ink-2) min-w-0">
@@ -629,7 +629,7 @@ function DepositsTab({ deposits }: { deposits: WalletDeposit[] }) {
                   <meta.icon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-white truncate" title={d.method.replace("MANUAL_", "")}>
                     {usd(d.amount)}
                     <span className="ml-2 text-xs font-medium text-(--app-ink-3)">
                       {d.method.replace("MANUAL_", "")}
@@ -688,17 +688,17 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
       {/* Compact table — the admin's levels and rates. Ten identical cards
           took a whole screen to say "3%" ten times. */}
       <div className="overflow-hidden rounded-(--app-r-control) border border-(--app-line) bg-(--app-surface)">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 bg-(--app-surface-2) px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 bg-(--app-surface-2) px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-(--app-ink-3)">
           <span>Level</span>
           <span className="text-right">Rate</span>
           <span className="text-right">Members</span>
-          <span className="w-16 text-right">Earned</span>
+          <span className="w-20 text-right">Earned</span>
         </div>
         {stats.levels.map((l) => (
           <div
             key={l.level}
             className={cn(
-              "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-4 border-t border-(--app-line) px-3 py-2 text-sm",
+              "grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 border-t border-(--app-line) px-3 py-2 text-sm text-(--app-ink)",
               l.count === 0 && "text-(--app-ink-3)"
             )}
           >
@@ -708,7 +708,7 @@ function ReferralTab({ stats }: { stats: ReferralStats }) {
             </span>
             <span className="text-right font-bold tabular-nums text-(--app-accent-ink)">{l.rateLabel}</span>
             <span className="text-right tabular-nums">{l.count.toLocaleString()}</span>
-            <span className="w-16 text-right font-bold tabular-nums">{usd(l.earnedUsd)}</span>
+            <span className="w-20 whitespace-nowrap text-right font-bold tabular-nums">{usd(l.earnedUsd)}</span>
           </div>
         ))}
       </div>

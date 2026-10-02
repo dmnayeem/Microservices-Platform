@@ -391,7 +391,7 @@ export function Modal({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1 text-(--app-ink-3) hover:text-white rounded-lg hover:bg-(--app-surface-2)"
+              className="p-1 text-(--app-ink-3) hover:text-(--app-ink) rounded-lg hover:bg-(--app-surface-2)"
             >
               <X className="w-5 h-5" />
             </button>

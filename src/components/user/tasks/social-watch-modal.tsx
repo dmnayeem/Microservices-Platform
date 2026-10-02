@@ -198,7 +198,7 @@ export function SocialWatchModal({
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/80 to-transparent">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-(--app-ink-3) uppercase tracking-wider font-bold">
+          <p className="text-xs text-white/60 uppercase tracking-wider font-bold">
             Watch to unlock
           </p>
           {title && (
@@ -249,7 +249,7 @@ export function SocialWatchModal({
             config={{ youtube: { disablekb: 1, rel: 0, fs: 0 } }}
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center text-(--app-ink-3)">
+          <div className="absolute inset-0 grid place-items-center text-white/60">
             <p>No target URL configured.</p>
           </div>
         )}
@@ -322,7 +322,7 @@ export function SocialWatchModal({
               <p className="text-7xl font-black text-white tabular-nums">
                 {warmupLeft}
               </p>
-              <p className="text-sm text-(--app-ink-3) mt-3">
+              <p className="text-sm text-white/60 mt-3">
                 Stay on this screen.
               </p>
             </div>
@@ -359,7 +359,7 @@ export function SocialWatchModal({
       {phase === "watch" && (
         <div className="absolute bottom-0 inset-x-0 z-20 bg-linear-to-t from-black via-black/90 to-transparent px-4 pt-6 pb-5 space-y-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-(--app-ink-2) inline-flex items-center gap-1.5">
+            <span className="text-white/70 inline-flex items-center gap-1.5">
               <PlayCircle className="w-4 h-4 text-(--app-accent-ink)" />
               Watching
             </span>
@@ -367,7 +367,7 @@ export function SocialWatchModal({
               {formatDuration(watched)} / {formatDuration(target)}
             </span>
           </div>
-          <div className="h-1.5 rounded-full bg-(--app-surface-2) overflow-hidden">
+          <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
             <div
               className="h-full bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) transition-[width] duration-300"
               style={{ width: `${(watched / target) * 100}%` }}

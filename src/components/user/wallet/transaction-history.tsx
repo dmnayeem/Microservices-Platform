@@ -181,7 +181,7 @@ export function TransactionHistory({
                 "px-3 py-1.5 text-xs font-semibold transition-colors",
                 kind === k
                   ? "bg-(--app-cta)/15 text-(--app-accent-ink)"
-                  : "text-(--app-ink-3) hover:text-white"
+                  : "text-(--app-ink-3) hover:text-(--app-ink)"
               )}
             >
               {label}
@@ -199,7 +199,7 @@ export function TransactionHistory({
             "px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-colors",
             source === "all"
               ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
-              : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white"
+              : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
           )}
         >
           All
@@ -212,7 +212,7 @@ export function TransactionHistory({
               "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-colors",
               source === s
                 ? "bg-(--app-cta) text-(--app-on-cta) border-(--app-accent-edge)"
-                : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-white"
+                : "bg-(--app-surface) text-(--app-ink-3) border-(--app-line) hover:text-(--app-ink)"
             )}
           >
             <span className={cn("w-2 h-2 rounded-full", SOURCE_META[s].swatch)} />

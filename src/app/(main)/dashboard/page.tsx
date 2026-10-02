@@ -45,6 +45,8 @@ import { getKycPromptState } from "@/lib/kyc-prompt-server";
 import { summarizeEarnings } from "@/lib/dashboard-earnings";
 import { EarningsOverview } from "@/components/user/dashboard/earnings-overview";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
+import { PwaRewardCard } from "@/components/pwa/pwa-reward-card";
+import { getPwaRewardConfig, pwaRewardStatus } from "@/lib/pwa-install";
 import { getHiddenPaths } from "@/lib/page-visibility-server";
 import { isPathHidden, taskTypePage } from "@/lib/page-visibility";
 
@@ -93,6 +95,7 @@ export default async function DashboardPage() {
     features,
     convertThreshold,
     hiddenPaths,
+    pwaCfg,
   ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
@@ -107,6 +110,12 @@ export default async function DashboardPage() {
           level: true,
           streak: true,
           referralCode: true,
+          // App install bonus card — read here so the card needs no request.
+          status: true,
+          role: true,
+          pwaDays: true,
+          pwaFirstSeenAt: true,
+          pwaRewardedAt: true,
         },
       }),
       // One groupBy instead of a count: approved (AUTO_APPROVED too — quiz,
@@ -160,6 +169,8 @@ export default async function DashboardPage() {
       getPointsConvertThreshold(),
       // Request-cached: the (main) layout already resolved it.
       getHiddenPaths(session.user.id),
+      // Settings reads are cached — no database query.
+      getPwaRewardConfig(),
     ]);
 
   // Super-admin page visibility: a shortcut to a hidden page is a side door.
@@ -219,6 +230,9 @@ export default async function DashboardPage() {
           Here&apos;s what&apos;s happening with your earnings today.
         </p>
       </div>
+
+      {/* App install bonus — renders nothing unless the reward is on and unpaid. */}
+      <PwaRewardCard status={userData ? pwaRewardStatus(pwaCfg, userData) : null} />
 
       {/* Balance hero + stat strip */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -319,7 +333,7 @@ export default async function DashboardPage() {
               <div className="app-icon">
                 <qa.icon className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-white text-center leading-tight">
+              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-(--app-ink) text-center leading-tight">
                 {qa.label}
               </span>
             </Link>
@@ -338,7 +352,7 @@ export default async function DashboardPage() {
               className="group app-card app-press app-lift app-tap-row flex items-center gap-2 p-2.5"
             >
               <e.icon className="w-4 h-4 shrink-0 text-(--app-ink-3)" />
-              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-white truncate min-w-0">
+              <span className="text-[11px] font-bold text-(--app-ink-2) group-hover:text-(--app-ink) truncate min-w-0">
                 {e.label}
               </span>
             </Link>

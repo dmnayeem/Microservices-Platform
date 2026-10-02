@@ -19,6 +19,10 @@ import {
   generateRecurring,
   summariseRecurring,
 } from "@/lib/company-finance/recurring";
+import {
+  runSubscriptionReminders,
+  summariseReminders,
+} from "@/lib/company-finance/subscriptions";
 import { expireDueTasks } from "@/lib/task-expiry";
 import { runSubscriptionExpiry } from "@/lib/subscription-expiry";
 import {
@@ -173,6 +177,18 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await generateRecurring();
       return { ok: s.failed.length === 0, summary: summariseRecurring(s), result: s };
+    },
+  },
+  {
+    name: "finance-subscription-reminders",
+    label: "Subscription renewal reminders",
+    description:
+      "Tells the finance team, and whoever is responsible for it, when a domain, hosting plan or other subscription on the company books is coming up for renewal (by default 30, 7 and 1 day before), and marks one that lapsed without auto-renew as Expired. Each reminder is sent once per due date and threshold: running it again sends nothing new. Does nothing until the subscriptions migration is applied.",
+    intervalMs: DAY,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const s = await runSubscriptionReminders();
+      return { ok: true, summary: summariseReminders(s), result: s };
     },
   },
   // ── Moved here from Inngest ───────────────────────────────────────────────

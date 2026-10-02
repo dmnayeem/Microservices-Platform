@@ -293,7 +293,16 @@ export async function POST(
           taskId: id,
           userId: session.user.id,
           createdAt: { gte: dayStart },
-          status: { in: ["APPROVED", "AUTO_APPROVED", "PENDING"] },
+          // A failed QUIZ is the day's attempt too: /api/tasks/quiz answers a
+          // fail with the full answer key ("try again tomorrow"), so letting a
+          // REJECTED quiz free the slot let the user restart here and resubmit
+          // the revealed key through /submit for the full reward.
+          status: {
+            in:
+              task.type === TaskType.QUIZ
+                ? ["APPROVED", "AUTO_APPROVED", "PENDING", "REJECTED"]
+                : ["APPROVED", "AUTO_APPROVED", "PENDING"],
+          },
         },
       });
 

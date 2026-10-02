@@ -15,7 +15,8 @@ export type EventActionType =
   | "FEED_SHARE"
   | "FEED_POST"
   | "FEED_VOTE"
-  | "REFERRAL_SIGNUP";
+  | "REFERRAL_SIGNUP"
+  | "PWA_INSTALLED";
 
 /**
  * The single list both admin event routes validate against. It used to be
@@ -33,6 +34,7 @@ export const EVENT_ACTION_TYPES: EventActionType[] = [
   "FEED_POST",
   "FEED_VOTE",
   "UPLOAD_PROOF",
+  "PWA_INSTALLED",
   "TEAM_ADD",
   "SOCIAL_ACTION",
 ];
@@ -123,6 +125,11 @@ export const EVENT_ACTION_META: Record<
     label: "Upload proof",
     unit: "upload",
     hint: "Upload the required image/screenshot. Note this is claimed on trust — there is no review step.",
+  },
+  PWA_INSTALLED: {
+    label: "Install the app",
+    unit: "install",
+    hint: "Counts once per user, when they open the installed app (home-screen / PWA) on enough separate days — the same rule as the install bonus (Admin -> App Installs). Use target 1. Someone who installed before the event counts the next time they open the app during it.",
   },
   TEAM_ADD: {
     label: "Invite to team (old)",

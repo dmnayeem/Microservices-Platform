@@ -83,7 +83,7 @@ export function PromoteModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-(--app-ink-3) hover:text-white"
+            className="p-1 text-(--app-ink-3) hover:text-(--app-ink)"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -118,7 +118,7 @@ export function PromoteModal({
                       "px-2 py-1.5 rounded-md text-xs font-bold border",
                       duration === d
                         ? "bg-amber-500 border-amber-500 text-(--app-on-bright)"
-                        : "bg-(--app-surface) border-(--app-line) text-(--app-ink-3) hover:text-white"
+                        : "bg-(--app-surface) border-(--app-line) text-(--app-ink-3) hover:text-(--app-ink)"
                     )}
                   >
                     {d === "forever" ? "Forever" : d.toUpperCase()}

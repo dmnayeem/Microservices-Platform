@@ -20,7 +20,7 @@ export default async function HashtagPage({
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/social"
-          className="p-2 rounded-lg hover:bg-white/5 text-(--app-ink-3) hover:text-white transition-colors"
+          className="p-2 rounded-lg hover:bg-white/5 text-(--app-ink-3) hover:text-(--app-ink) transition-colors"
           aria-label="Back to feed"
         >
           <ArrowLeft className="w-5 h-5" />
