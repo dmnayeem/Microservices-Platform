@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeAudit } from "@/lib/audit";
 import { CPA_MANAGE, requireCpaAdmin } from "@/lib/cpa/admin";
 import { ensureCpaPostbackSecret, rotateCpaPostbackSecret } from "@/lib/cpa/postback";
+import { publicOrigin } from "@/lib/public-origin";
 
 function postbackInfo(request: NextRequest, secret: string) {
-  const origin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || new URL(request.url).origin;
+  const origin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || publicOrigin(request);
   const base = `${origin}/api/cpa/postback`;
   return {
     secret,

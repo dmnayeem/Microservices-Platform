@@ -5,6 +5,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { USER_HOME } from "@/lib/routes";
 import { signIn } from "next-auth/react";
+import { useGoogleEnabled } from "@/hooks/use-google-enabled";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +18,8 @@ import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Hidden when the server has no Google provider configured.
+  const googleOn = useGoogleEnabled();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -238,6 +241,8 @@ function RegisterForm() {
             preferred Google had to detour via /login — losing the referral code
             on the way. The middleware stores the code in a cookie, so the
             attribution now survives the trip to Google and back. */}
+        {googleOn && (
+          <>
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-(--app-line)" />
@@ -278,6 +283,8 @@ function RegisterForm() {
         >
           Continue with Google
         </Button>
+          </>
+        )}
 
         {referralCode && (
           <p className="text-center text-xs text-emerald-400">
