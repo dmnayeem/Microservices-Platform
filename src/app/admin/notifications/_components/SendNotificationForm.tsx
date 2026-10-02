@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { DateField } from "@/components/ui/date-field";
+import { EmailComposer } from "./EmailComposer";
 
 const NOTIFICATION_TYPES = [
   { value: "SYSTEM", label: "System", icon: AlertCircle, color: "text-gray-400" },
@@ -182,6 +183,10 @@ export function SendNotificationForm() {
     sendEmail: false,
     emailSubject: "",
     emailBody: "",
+    // Rich email body (editor HTML) and inbox preview line.
+    emailFormat: "text" as "text" | "rich",
+    emailHtml: "",
+    emailPreheader: "",
     important: false,
     style: "PLAIN",
     kicker: "",
@@ -345,8 +350,14 @@ export function SendNotificationForm() {
         ...(formData.sendEmail && formData.emailSubject.trim()
           ? { emailSubject: formData.emailSubject.trim() }
           : {}),
-        ...(formData.sendEmail && formData.emailBody.trim()
+        ...(formData.sendEmail && formData.emailFormat === "text" && formData.emailBody.trim()
           ? { emailBody: formData.emailBody.trim() }
+          : {}),
+        ...(formData.sendEmail && formData.emailFormat === "rich" && formData.emailHtml.trim()
+          ? { emailHtml: formData.emailHtml }
+          : {}),
+        ...(formData.sendEmail && formData.emailPreheader.trim()
+          ? { emailPreheader: formData.emailPreheader.trim() }
           : {}),
       };
       if (formData.target === "package") {
@@ -1072,27 +1083,35 @@ export function SendNotificationForm() {
                     {/* An email is not a notification row. Reusing the 80/500
                         limits above makes a mail with nothing to say, which is
                         exactly what the email channel used to send. */}
-                    <p className="text-[11px] text-slate-500">
-                      Optional — leave blank to email the title and message above.
-                    </p>
-                    <input
-                      value={formData.emailSubject}
-                      onChange={(e) =>
-                        setFormData({ ...formData, emailSubject: e.target.value })
+                    <EmailComposer
+                      draft={{
+                        format: formData.emailFormat,
+                        subject: formData.emailSubject,
+                        body: formData.emailBody,
+                        html: formData.emailHtml,
+                        preheader: formData.emailPreheader,
+                      }}
+                      onDraft={(p) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          ...(p.format !== undefined ? { emailFormat: p.format } : {}),
+                          ...(p.subject !== undefined ? { emailSubject: p.subject } : {}),
+                          ...(p.body !== undefined ? { emailBody: p.body } : {}),
+                          ...(p.html !== undefined ? { emailHtml: p.html } : {}),
+                          ...(p.preheader !== undefined ? { emailPreheader: p.preheader } : {}),
+                        }))
                       }
-                      maxLength={150}
-                      placeholder="Email subject"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
-                    />
-                    <textarea
-                      value={formData.emailBody}
-                      onChange={(e) =>
-                        setFormData({ ...formData, emailBody: e.target.value })
-                      }
-                      rows={5}
-                      maxLength={5000}
-                      placeholder="Email body — say as much as you need here."
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+                      ctx={{
+                        title: formData.title,
+                        message: formData.message,
+                        actionUrl: formData.actionUrl,
+                        actionLabel: formData.actionLabel,
+                        imageUrl: formData.imageUrl,
+                        style: formData.style,
+                        kicker: formData.kicker,
+                        important: formData.important,
+                      }}
+                      onCta={(p) => setFormData((prev) => ({ ...prev, ...p }))}
                     />
                     {budget && (
                       <p className="text-[11px] text-slate-400">

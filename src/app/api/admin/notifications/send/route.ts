@@ -12,6 +12,7 @@ import {
   targetFromRequest,
 } from "@/lib/broadcast";
 import { isNotificationStyle } from "@/lib/notification-styles";
+import { prepareBroadcastEmail } from "@/lib/broadcast-email";
 import type { NotificationType } from "@/generated/prisma/client";
 
 /**
@@ -62,6 +63,10 @@ interface SendNotificationBody {
   /** Email may say more than a notification row can. Falls back to title/message. */
   emailSubject?: string;
   emailBody?: string;
+  /** Rich email body (editor HTML). Wins over emailBody when present. */
+  emailHtml?: string;
+  /** Inbox preview line for the email. */
+  emailPreheader?: string;
 
   sendInApp?: boolean;
   sendPush?: boolean;
@@ -158,6 +163,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rich body → sanitised, absolute-https, link-screened (flag only), and
+    // packed into `emailBody` with its preheader. Plain text passes through.
+    const prepared = await prepareBroadcastEmail(
+      {
+        emailBody,
+        emailHtml: sendEmail ? body.emailHtml : undefined,
+        emailPreheader: sendEmail ? body.emailPreheader : undefined,
+        actionUrl: actionUrl || url,
+      },
+      { userId: session.user.id }
+    );
+    if ("error" in prepared) {
+      return NextResponse.json({ error: prepared.error }, { status: 400 });
+    }
+
     const when = scheduledFor ? new Date(scheduledFor) : null;
     if (when && Number.isNaN(when.getTime())) {
       return NextResponse.json({ error: "That scheduled time is not a date" }, { status: 400 });
@@ -169,7 +189,7 @@ export async function POST(request: NextRequest) {
       message: message.trim(),
       type: type as NotificationType,
       emailSubject: emailSubject?.trim() || null,
-      emailBody: emailBody?.trim() || null,
+      emailBody: prepared.emailBody,
       priority,
       // An unknown template renders as PLAIN rather than failing the send —
       // a notification with no decoration is a far better outcome than one
@@ -184,6 +204,8 @@ export async function POST(request: NextRequest) {
       ...target_,
       scheduledFor: when,
     });
+
+    prepared.reportLinks(broadcast.id);
 
     await writeAudit({
       actorId: session.user.id,
@@ -203,7 +225,14 @@ export async function POST(request: NextRequest) {
             ]
               .filter(Boolean)
               .join(" + ")}`,
-      meta: { targetKind, expected, style, important: !!important, channels: { sendInApp, sendPush, sendEmail } },
+      meta: {
+        targetKind,
+        expected,
+        style,
+        important: !!important,
+        channels: { sendInApp, sendPush, sendEmail },
+        ...(prepared.flaggedLinks.length ? { flaggedLinks: prepared.flaggedLinks } : {}),
+      },
     });
 
     if (broadcast.status === "SCHEDULED") {
