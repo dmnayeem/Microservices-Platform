@@ -38,6 +38,11 @@ set_dist() {
   else
     printf '\nNEXT_DIST_DIR="%s"\n' "$1" >> .env
   fi
+  # The shell too. `source ./.env` above exported the OLD value, and compose
+  # interpolates ${NEXT_DIST_DIR} from the shell before the .env file — so
+  # every deploy restarted the app on the PREVIOUS build (2026-10-04: PR #79
+  # "deployed" green while #78's code kept serving).
+  export NEXT_DIST_DIR="$1"
 }
 
 if [[ $MODE == rollback ]]; then
