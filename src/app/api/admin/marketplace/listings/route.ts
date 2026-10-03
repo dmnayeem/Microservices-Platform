@@ -14,6 +14,7 @@ import {
   resolveSaleMode,
   canBeUnlimited,
 } from "@/lib/marketplace-categories";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 const ASSET_TYPES = [
   "DOMAIN",
@@ -235,6 +236,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       message: "Listing created successfully",
       listing: {

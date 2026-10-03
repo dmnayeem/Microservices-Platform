@@ -445,7 +445,7 @@ export function EarningsCalculator(props: Props) {
                   <div className="text-center">
                     <p className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold text-(--mk-subtle)">
                       <TrendingUp className="w-3.5 h-3.5" />
-                      Monthly Potential
+                      Illustrative monthly total
                     </p>
                     <p className="mt-2 text-[clamp(2rem,11vw,3.75rem)] font-extrabold bg-linear-to-r from-(--mk-rail-a) via-(--mk-rail-b) to-(--mk-rail-b) bg-clip-text text-transparent tabular-nums leading-none">
                       ${formatCurrency(animatedMonthly)}
@@ -456,6 +456,9 @@ export function EarningsCalculator(props: Props) {
                         ${formatCompact(dailyTotal)}
                       </span>{" "}
                       per day
+                    </p>
+                    <p className="mt-2 text-[11px] text-(--mk-subtle)">
+                      Example only — not a forecast or a guarantee of earnings.
                     </p>
                   </div>
 

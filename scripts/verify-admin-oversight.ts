@@ -58,7 +58,7 @@ check(
 const bulk = code("src/app/api/admin/users/bulk/route.ts");
 check(
   "a bulk action writes one row PER USER, not one for the batch",
-  /writeAuditMany\(/.test(bulk) && /targetIds\.map\(\(uid\) => \(\{/.test(bulk),
+  /writeAuditMany\(/.test(bulk) && /(?:targetIds|auditIds)\.map\(\(uid\) => \(\{/.test(bulk),
   "the single batch row named nobody, so a bulk ban left no trace on any account it banned"
 );
 check(

@@ -49,14 +49,14 @@ const STEPS = [
 ];
 
 const PROMOTE = [
-  { icon: ShoppingBag, title: "Marketplace products", body: "Promote digital products from thousands of sellers and earn the reward each seller sets.", href: "/features/marketplace" },
-  { icon: GraduationCap, title: "Online courses", body: "Recommend courses from expert tutors and earn a commission on every enrollment you drive.", href: "/features/courses" },
+  { icon: ShoppingBag, title: "Marketplace products", body: "Promote reviewed digital products and services from marketplace sellers and earn the reward each seller sets.", href: "/features/marketplace" },
+  { icon: GraduationCap, title: "Online courses", body: "Recommend courses from approved tutors and earn a commission on enrolments you refer.", href: "/features/courses" },
 ];
 
 const WHY = [
   { icon: Percent, title: "Seller-set rewards", body: "Each product carries its own reward — a percentage of the sale or a fixed amount per order." },
   { icon: BarChart3, title: "Transparent tracking", body: "See your clicks, sales, and commissions in real time from a clean affiliate dashboard." },
-  { icon: Globe2, title: "Promote anywhere", body: "Your links work across 180+ countries — share them wherever your audience already is." },
+  { icon: Globe2, title: "Promote anywhere", body: "Share your links on social media, a blog, a video description or a group chat — wherever your audience already is. Spam is not allowed." },
 ];
 
 export default function AffiliateFeaturePage() {
@@ -181,8 +181,9 @@ export default function AffiliateFeaturePage() {
             <div className="rounded-xl bg-(--mk-surface-2) border border-(--mk-border) p-4">
               <p className="font-bold text-(--mk-text)">Referrals</p>
               <p className="mt-1 text-sm text-(--mk-muted) leading-relaxed">
-                Invite friends to join and earn passive commission on their
-                everyday activity across a 3-level team.
+                Invite people to join and earn referral rewards tied to their
+                genuine activity on the platform.{" "}
+                <Link href="/referral" className="font-semibold text-(--mk-accent) hover:underline">How referral rewards work</Link>
               </p>
             </div>
           </div>

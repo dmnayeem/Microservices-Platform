@@ -8,7 +8,7 @@ import { HELP_CATEGORIES } from "./help-articles";
 // structured data live here.
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "Help Center — Answers About Earning, Tasks and Withdrawals",
+    title: "Help Center — Earning, Tasks and Withdrawals",
     description: `How ${COMPANY_NAME} works: creating an account, earning from tasks, withdrawals and payments, and keeping your account secure.`,
     path: "/help",
   });

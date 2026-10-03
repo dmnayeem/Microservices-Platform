@@ -88,7 +88,7 @@ export const PAGE_API_PREFIXES: Record<string, string[]> = {
   "/social-tasks": ["/api/tasks/social"],
   "/create-task": ["/api/tasks/create"],
   "/offerwalls": ["/api/offerwalls", "/api/offerwall/catalog", "/api/offerwall/history", "/api/offerwall/offers"],
-  "/cpa": ["/api/cpa/offers", "/api/cpa/my"],
+  "/cpa": ["/api/cpa/offers", "/api/cpa/my", "/go/cpa/[id]"],
   "/lottery": ["/api/lottery"],
   "/games": ["/api/games/[id]/session"],
   "/quizzes": ["/api/quizzes"],

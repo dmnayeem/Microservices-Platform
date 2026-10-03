@@ -107,7 +107,7 @@ export default async function QuizzesAdminPage({ searchParams }: PageProps) {
           <p className="text-slate-400 text-sm mt-1">
             Standalone AI-powered quiz games. Quiz <b>tasks</b> are a separate
             system —{" "}
-            <Link href="/admin/tasks?type=QUIZ" className="text-blue-400 hover:text-blue-300 underline">
+            <Link href="/admin/tasks?status=all&type=QUIZ" className="text-blue-400 hover:text-blue-300 underline">
               manage those under Tasks ({quizTaskCount})
             </Link>
             .

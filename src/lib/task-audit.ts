@@ -1,3 +1,5 @@
+import type { TaskStatus } from "@/generated/prisma/enums";
+
 /**
  * Who did what to a task.
  *
@@ -33,6 +35,7 @@ export const TASK_AUDIT_ACTIONS = [
   "ARTICLE_KEYS_CLEARED",
   "TASK_REVIEWED",
   "TASK_ARCHIVED",
+  "TASK_REMOVED",
   "TASK_DELETED",
 ] as const;
 
@@ -49,6 +52,7 @@ export const TASK_ACTION_LABEL: Record<string, string> = {
   ARTICLE_KEYS_CLEARED: "Answer keys cleared",
   TASK_REVIEWED: "Reviewed",
   TASK_ARCHIVED: "Archived",
+  TASK_REMOVED: "Deleted (records kept)",
   TASK_DELETED: "Deleted",
 };
 
@@ -58,15 +62,48 @@ export const TASK_ACTION_LABEL: Record<string, string> = {
  * a task went away.
  */
 export function taskActionTone(action: string): string {
-  if (action === "TASK_DELETED") return "text-red-400 bg-red-500/10";
+  if (action === "TASK_DELETED" || action === "TASK_REMOVED")
+    return "text-red-400 bg-red-500/10";
   if (action === "TASK_ARCHIVED") return "text-amber-400 bg-amber-500/10";
   if (action === "TASK_CREATED" || action === "TASK_DUPLICATED")
     return "text-emerald-400 bg-emerald-500/10";
   return "text-blue-400 bg-blue-500/10";
 }
 
-/** The two events that mean "this task is no longer in the catalogue". */
-export const TASK_REMOVAL_ACTIONS = ["TASK_ARCHIVED", "TASK_DELETED"] as const;
+/** The events that mean "this task is no longer in the catalogue". */
+export const TASK_REMOVAL_ACTIONS = [
+  "TASK_ARCHIVED",
+  "TASK_REMOVED",
+  "TASK_DELETED",
+] as const;
+
+/**
+ * Every task status that may appear in a task LIST — i.e. all but REMOVED.
+ *
+ * REMOVED is what "delete" does to an archived task that has submissions: the
+ * row must stay (its submissions back real payments) but it should be gone from
+ * every list. Lists that used to pass no status filter at all ("All" tabs,
+ * totals) filter with this instead.
+ *
+ * Deliberately an explicit `in` list rather than `not: "REMOVED"`: naming the
+ * new enum value in a query fails on a database where the migration adding it
+ * has not run yet, and this list never names it.
+ */
+export const LISTED_TASK_STATUSES = [
+  "DRAFT",
+  "ACTIVE",
+  "PAUSED",
+  "COMPLETED",
+  "EXPIRED",
+  "PENDING_REVIEW",
+  "REJECTED",
+  "ARCHIVED",
+] as const satisfies readonly Exclude<TaskStatus, "REMOVED">[];
+
+/** Prisma filter for "any task that may appear in a list". */
+export const LISTED_TASK_WHERE = {
+  status: { in: [...LISTED_TASK_STATUSES] as TaskStatus[] },
+};
 
 export interface TaskSnapshotSource {
   id: string;

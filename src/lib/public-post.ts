@@ -6,6 +6,7 @@ import {
   PUBLIC_AUDIENCE_EPOCH_KEY,
 } from "@/lib/public-post-gate";
 import { getSetting } from "@/lib/system-settings";
+import { mediaSrc } from "@/lib/media-url";
 
 // The gate itself lives in `public-post-gate.ts` — no imports, so the
 // verification script can exercise the real rule rather than a copy of it.
@@ -184,7 +185,9 @@ export function postSummary(content: string, max = 180): string {
 }
 
 /** An absolute URL for a stored image path (og: tags must be absolute). */
-export function absoluteMediaUrl(src: string): string {
+export function absoluteMediaUrl(raw: string): string {
+  // Our private-bucket URLs 403 when fetched directly → the same-origin proxy.
+  const src = mediaSrc(raw);
   if (/^https?:\/\//i.test(src)) return src;
   return `${SITE_URL}${src.startsWith("/") ? "" : "/"}${src}`;
 }

@@ -10,6 +10,7 @@ import {
   Hash,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { compressForPurpose } from "@/lib/image-compress";
 import type { CategoryField } from "@/lib/marketplace-categories";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { DateField } from "@/components/ui/date-field";
@@ -220,8 +221,10 @@ export function CategoryFieldInput({
 }
 
 async function uploadFile(file: File): Promise<string> {
+  // SCREENSHOT fields are display images (src/lib/image-policy.ts).
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("file", await compressForPurpose(file, "proof"));
+  fd.append("purpose", "proof");
   const res = await fetch("/api/media/upload", { method: "POST", body: fd });
   const d = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);

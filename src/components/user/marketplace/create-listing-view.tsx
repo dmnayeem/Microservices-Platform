@@ -66,6 +66,10 @@ const DELIVERABLE_ACCEPT: Record<string, string> = {
 
 type Tier = { id: string; name: string; price: number; description?: string };
 
+/** Category screenshot fields are display images (proof-legible, ≤ 100 KB). */
+const uploadListingScreenshot = (file: File) =>
+  uploadUserFile(file, "marketplace", { purpose: "proof" });
+
 export function CreateListingView({
   licenseTiersEnabled = false,
   suggestedTiers = [],
@@ -120,7 +124,7 @@ export function CreateListingView({
     if (arr.length === 0) return;
     setUploadingGallery(true);
     try {
-      const urls = await Promise.all(arr.map((f) => uploadUserFile(f)));
+      const urls = await Promise.all(arr.map((f) => uploadUserFile(f, "marketplace", { purpose: "cover" })));
       setImages((prev) => [...prev, ...urls]);
     } catch (err) {
       toast.error("Image upload failed", {
@@ -134,7 +138,8 @@ export function CreateListingView({
   const addDeliverable = async (file: File) => {
     setUploadingFile(true);
     try {
-      const url = await uploadUserFile(file);
+      // The product itself: stored byte-for-byte, never compressed.
+      const url = await uploadUserFile(file, "marketplace", { purpose: "deliverable" });
       setFiles([url]); // one deliverable per stock-media listing
       toast.success("File uploaded — we'll analyse it on submit");
     } catch (err) {
@@ -430,7 +435,7 @@ export function CreateListingView({
                   field={f}
                   value={details[f.key]}
                   onChange={(v) => setField(f.key, v)}
-                  uploadFn={uploadUserFile}
+                  uploadFn={uploadListingScreenshot}
                 />
               ))}
             </section>

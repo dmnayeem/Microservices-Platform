@@ -140,9 +140,9 @@ const STEPS = [
 export function generateMetadata(): Promise<Metadata> {
   const title = "Referral Program — Every Way Inviting People Pays";
   const description =
-    `${COMPANY_NAME} runs ${MODELS.length} different referral models, from a ` +
-    `two-way welcome bonus to commission ten levels deep, plus a share of what ` +
-    `the people you invite deposit and withdraw. Here is how each one works.`;
+    // ≤155 chars — what Google shows uncut.
+    `${COMPANY_NAME} runs ${MODELS.length} referral models, from a two-way ` +
+    `welcome bonus to multi-level commission. Here is how each one works.`;
   return pageMeta({ title, description, path: "/referral" });
 }
 

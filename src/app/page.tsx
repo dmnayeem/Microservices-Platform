@@ -20,6 +20,7 @@ import { publicLanding, sectionOn } from "@/lib/landing-content";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo/page-meta";
 
 // The landing content comes from a raw Prisma read, not a tracked `fetch`, so
 // Next cannot infer whether this page is static or dynamic — it would either
@@ -32,11 +33,12 @@ export const revalidate = 60;
 // they were hard-coded here, overriding whatever the settings said.
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSeoSettings();
-  return {
-    title: { absolute: s["seo.default_title"] },
+  return pageMeta({
+    title: s["seo.default_title"] || s["seo.site_name"] || "RevType",
+    absoluteTitle: true,
     description: s["seo.description"],
-    alternates: { canonical: "/" },
-  };
+    path: "/",
+  });
 }
 
 export default async function Home() {

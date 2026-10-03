@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { z } from "zod";
+import { isPublicCatalogPath } from "@/lib/public-catalog";
 
 /**
  * Cookie that carries a `?ref=` referral code across an OAuth round trip.
@@ -119,12 +120,19 @@ export const authConfig: NextAuthConfig = {
       // Admin routes that require admin role
       const adminRoutes = ["/admin"];
 
-      const isPublicRoute = publicRoutes.some(
-        (route) =>
-          pathname === route ||
-          pathname.startsWith(`${route}?`) ||
-          (route !== "/" && pathname.startsWith(`${route}/`))
-      );
+      const isPublicRoute =
+        publicRoutes.some(
+          (route) =>
+            pathname === route ||
+            pathname.startsWith(`${route}?`) ||
+            (route !== "/" && pathname.startsWith(`${route}/`))
+        ) ||
+        // The public catalog: marketplace + course browse, category, brand and
+        // detail pages. EXACT patterns (lib/public-catalog.ts), not prefixes —
+        // a "/marketplace" prefix here would also open the cart, orders,
+        // messages and create-listing. Buying, enrolling and messaging still
+        // need a session: their pages and APIs are not on any public list.
+        isPublicCatalogPath(pathname);
 
       const isAdminRoute = adminRoutes.some(
         (route) => pathname === route || pathname.startsWith(`${route}/`)
@@ -140,6 +148,7 @@ export const authConfig: NextAuthConfig = {
         "/api/deposits/gateway/callback", // gateway return: cross-site POST, no Lax cookie
         "/api/analytics/pageview", // visitor traffic beacon (root layout)
         "/api/media/", // public post images for logged-out readers
+        "/api/og/", // share images for link unfurlers (signed URLs only — lib/seo/og-image.ts)
         "/api/withdrawal-ticker/recent", // landing page ticker
         "/api/splash",
         "/api/config/antifraud",

@@ -11,6 +11,7 @@ import {
 } from "@/lib/marketplace-categories";
 import { buildListingPayload } from "@/lib/marketplace-studio";
 import { z } from "zod";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 /**
  * Publish one studio draft as a marketplace listing.
@@ -168,6 +169,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
   return NextResponse.json({
     listing: { ...listing, price: toNum(listing.price) },
   });

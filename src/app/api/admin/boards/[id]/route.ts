@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { z } from "zod";
 import { sanitizeTaskAudience, hasAudienceKeys } from "@/lib/task-targeting";
 
@@ -49,7 +50,7 @@ export async function GET(
   }
 
   const tasks = await prisma.task.findMany({
-    where: { boardId: id },
+    where: { boardId: id, ...LISTED_TASK_WHERE },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

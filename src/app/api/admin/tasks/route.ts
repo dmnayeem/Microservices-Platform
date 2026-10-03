@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can, canAny } from "@/lib/permissions";
 import { taskCreatePermFor, TASK_CREATE_PERMISSIONS } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { writeAudit } from "@/lib/audit";
 import { taskSnapshot } from "@/lib/task-audit";
 import { sanitizeTaskAudience } from "@/lib/task-targeting";
@@ -314,11 +315,11 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type");
     const search = searchParams.get("search");
 
-    const where: Record<string, unknown> = {};
-
-    if (status && status !== "all") {
-      where.status = status;
-    }
+    // REMOVED (a deleted archived task) is never listed, "all" included.
+    const where: Record<string, unknown> =
+      status && status !== "all" && status !== "REMOVED"
+        ? { status }
+        : { ...LISTED_TASK_WHERE };
 
     if (type && type !== "all") {
       where.type = type;

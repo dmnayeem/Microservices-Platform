@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { compressForPurpose } from "@/lib/image-compress";
 import { cn } from "@/lib/utils";
 import {
   VerifiedBadge,
@@ -1841,8 +1842,10 @@ function PhotoField({
     }
     setBusy(true);
     try {
+      const purpose = kind === "avatar" ? "avatar" : "cover";
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", await compressForPurpose(file, purpose));
+      fd.append("purpose", purpose);
       const res = await fetch("/api/media/upload", {
         method: "POST",
         body: fd,

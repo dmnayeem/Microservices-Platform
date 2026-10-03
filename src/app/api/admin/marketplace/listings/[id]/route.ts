@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -123,6 +124,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       message: "Listing updated successfully",
       listing,
@@ -165,6 +167,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: { id },
     });
 
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       success: true,
       message: "Listing deleted successfully",

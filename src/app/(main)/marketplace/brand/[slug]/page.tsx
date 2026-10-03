@@ -1,56 +1,93 @@
 import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo/page-meta";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { FeatureLock } from "@/components/user/primitives/feature-lock";
-import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
-import { usd } from "@/lib/utils";
-import { toNum } from "@/lib/money";
 import { ArrowLeft, Globe, Package } from "lucide-react";
-import { ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
-
-export const dynamic = "force-dynamic";
+import { JsonLd } from "@/components/seo/json-ld";
+import { ListingGrid, Pagination } from "@/components/public/catalog-lists";
+import { canonicalUrl, indexPageSeo, plainSummary } from "@/lib/public-catalog";
+import { absoluteImage, getPublicBrand, getPublicListingPage } from "@/lib/public-catalog-data";
+import { breadcrumbLd, itemListLd } from "@/lib/public-catalog-schema";
 
 /**
  * Public storefront for one brand — "show me everything this company sells".
+ * Readable logged out (cached reads, real links); signed-in users get the
+ * same page inside the app.
  *
  * Deactivating a brand hides the storefront but leaves its listings reachable
  * by their own URLs, because a buyer who already paid still needs the listing
  * page to download from.
  */
-export default async function BrandStorefrontPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
 
-  const { enabled } = await getEffectiveFeatures(session.user.id);
-  if (!enabled.has("marketplace")) return <FeatureLock title="Marketplace" />;
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const brand = await getPublicBrand(slug);
+  if (!brand || !brand.isActive) notFound();
+  const seo = indexPageSeo(`/marketplace/brand/${slug}`, await searchParams);
+  const title = `${brand.name} – Store${seo.page > 1 ? ` – Page ${seo.page}` : ""}`;
+  const description =
+    plainSummary(brand.bio) || `Everything ${brand.name} sells on the RevType marketplace.`;
+  // The logo only when it is one of our stored files — an external logo is
+  // never hot-linked; the brand card is used instead.
+  return pageMeta({
+    title,
+    description,
+    path: `/marketplace/brand/${slug}`,
+    canonical: seo.canonical,
+    robots: seo.robots,
+    image: brand.logo ?? null,
+    imageAlt: brand.name,
+    cardKicker: "Marketplace store",
+  });
+}
+
+export default async function BrandStorefrontPage({ params, searchParams }: Props) {
+  const session = await auth();
+  if (session?.user?.id) {
+    const { enabled } = await getEffectiveFeatures(session.user.id);
+    if (!enabled.has("marketplace")) return <FeatureLock title="Marketplace" />;
+  }
 
   const { slug } = await params;
-  const brand = await prisma.marketplaceBrand.findUnique({ where: { slug } });
+  const brand = await getPublicBrand(slug);
   if (!brand || !brand.isActive) notFound();
 
-  const listings = await prisma.marketplaceListing.findMany({
-    where: { brandId: brand.id, status: "ACTIVE" },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    take: 60,
-    select: {
-      id: true,
-      title: true,
-      price: true,
-      images: true,
-      assetType: true,
-      niche: true,
-    },
-  });
+  const base = `/marketplace/brand/${slug}`;
+  const { page } = indexPageSeo(base, await searchParams);
+  const list = await getPublicListingPage(null, slug, page);
 
   return (
     <div className="space-y-5 p-4 sm:p-6 max-w-6xl mx-auto">
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: brand.name,
+            url: canonicalUrl(base),
+            ...(brand.logo && absoluteImage(brand.logo) ? { logo: absoluteImage(brand.logo) } : {}),
+            ...(brand.bio ? { description: plainSummary(brand.bio, 500) } : {}),
+            ...(brand.website ? { sameAs: [brand.website] } : {}),
+          },
+          breadcrumbLd([
+            { name: "Marketplace", path: "/marketplace" },
+            { name: brand.name, path: base },
+          ]),
+          itemListLd(
+            `${brand.name} listings`,
+            list.items.map((l) => ({ path: `/marketplace/${l.id}`, name: l.title }))
+          ),
+        ]}
+      />
       <Link
         href="/marketplace"
         className="inline-flex items-center gap-2 text-sm text-(--app-ink-3) hover:text-(--app-ink)"
@@ -67,7 +104,7 @@ export default async function BrandStorefrontPage({
           <div className="flex flex-wrap items-center gap-3 mt-2 text-[12px] text-(--app-ink-3)">
             <span className="inline-flex items-center gap-1">
               <Package className="w-3.5 h-3.5" />
-              {listings.length} listing{listings.length === 1 ? "" : "s"}
+              {list.total} listing{list.total === 1 ? "" : "s"}
             </span>
             {brand.website && (
               <a
@@ -77,52 +114,15 @@ export default async function BrandStorefrontPage({
                 className="inline-flex items-center gap-1 hover:text-(--app-ink)"
               >
                 <Globe className="w-3.5 h-3.5" />
-                Website
+                {brand.name} website
               </a>
             )}
           </div>
         </div>
       </section>
 
-      {listings.length === 0 ? (
-        <p className="text-sm text-(--app-ink-3)">Nothing on sale from this store yet.</p>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {listings.map((l) => (
-            <Link
-              key={l.id}
-              href={`/marketplace/${l.id}`}
-              className="glass rounded-xl overflow-hidden hover:ring-1 hover:ring-(--app-accent) transition"
-            >
-              <div className="aspect-square bg-black/30">
-                {l.images[0] ? (
-                  <SmartImage
-                    src={l.images[0]}
-                    alt={l.title}
-                    width={400}
-                    height={400}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-(--app-ink-3) text-xs">
-                    No preview
-                  </div>
-                )}
-              </div>
-              <div className="p-3 space-y-1">
-                <p className="text-[11px] text-(--app-ink-3)">
-                  {ASSET_TYPE_LABEL[l.assetType] ?? l.assetType}
-                  {l.niche ? ` · ${l.niche}` : ""}
-                </p>
-                <p className="text-sm font-medium text-white line-clamp-2">{l.title}</p>
-                <p className="text-sm font-bold text-(--app-accent-ink)">
-                  {usd(toNum(l.price))}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <ListingGrid items={list.items} />
+      <Pagination basePath={base} page={page} total={list.total} />
     </div>
   );
 }

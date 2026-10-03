@@ -98,7 +98,13 @@ export function TaskActions({ task, canEdit, canDelete, canCreate }: TaskActions
       // The route decides which of the two happened — a task with submissions
       // is archived rather than deleted, because those rows back real payments.
       // Report what it actually did instead of always claiming a delete.
-      if (data.archived) {
+      if (data.removed) {
+        toast.success("Task deleted", {
+          description: `${data.submissions} submission${
+            data.submissions === 1 ? "" : "s"
+          } kept for the payment records; it no longer appears in any list.`,
+        });
+      } else if (data.archived) {
         toast.success("Task archived", {
           description: `It's hidden from users. ${data.submissions} submission${
             data.submissions === 1 ? "" : "s"
@@ -218,12 +224,23 @@ export function TaskActions({ task, canEdit, canDelete, canCreate }: TaskActions
                   "will also be affected" — neither was true. A task with
                   submissions cannot be deleted at all (those rows back real
                   payments), so it is archived instead, and nothing is lost. */}
-              <p className="text-gray-400 text-sm mt-2">
-                If anyone has submitted to it, the task is{" "}
-                <span className="text-amber-300 font-medium">archived</span> —
-                hidden from users, with every submission and payment record
-                kept. If it has no submissions, it is deleted outright.
-              </p>
+              {task.status === "ARCHIVED" ? (
+                // Deleting an archived task: a task with work behind it still
+                // cannot be hard-deleted, so it is hidden for good instead.
+                <p className="text-gray-400 text-sm mt-2">
+                  Tasks with completed work are kept for the payment records
+                  but <span className="text-red-300 font-medium">disappear from every list</span>,
+                  this Archived tab included. A task nobody submitted to is
+                  deleted permanently. This cannot be undone.
+                </p>
+              ) : (
+                <p className="text-gray-400 text-sm mt-2">
+                  If anyone has submitted to it, the task is{" "}
+                  <span className="text-amber-300 font-medium">archived</span> —
+                  hidden from users, with every submission and payment record
+                  kept. If it has no submissions, it is deleted outright.
+                </p>
+              )}
             </div>
             <div className="flex gap-3 p-6 border-t border-gray-800">
               <Button

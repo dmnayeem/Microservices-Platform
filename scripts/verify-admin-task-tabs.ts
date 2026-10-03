@@ -81,9 +81,15 @@ async function main() {
       !/params\.page/.test(builder),
       "carrying the page over lands the admin on an empty page of a shorter list"
     );
+    // The page opens on Active (the live tasks), so Active is the tab written
+    // as no parameter and All needs an explicit `?status=all`.
     check(
-      "All drops the status parameter instead of passing 'all'",
-      /if \(status !== "all"\) q\.set\("status", status\)/.test(src)
+      "Active is the default — it drops the status parameter",
+      /if \(status !== "ACTIVE"\) q\.set\("status", status\)/.test(src)
+    );
+    check(
+      "no ?status= opens the Active tab",
+      /: "ACTIVE";/.test(src.slice(src.indexOf("const status ="), src.indexOf("const tabHref")))
     );
   }
 
@@ -100,9 +106,10 @@ async function main() {
     );
     // `totalCount` is the count of the current filter, so reusing it for All
     // would make the All tab read as whatever tab is open.
+    // REMOVED (a deleted archived task) is left out of All and its count.
     check(
-      "All has an unfiltered count of its own",
-      /prisma\.task\.count\(\),/.test(src),
+      "All has a count of its own, without deleted (REMOVED) tasks",
+      /prisma\.task\.count\(\{ where: LISTED_TASK_WHERE \}\),/.test(src),
       "totalCount is filtered — it would show the open tab's number"
     );
   }
@@ -118,6 +125,8 @@ async function main() {
     const stranded: string[] = [];
     for (const r of rows) {
       if (r._count._all === 0) continue;
+      // REMOVED is "deleted": hidden from every list on purpose.
+      if (r.status === "REMOVED") continue;
       if (!tabs.includes(r.status)) stranded.push(`${r.status} (${r._count._all})`);
     }
     // "All" technically reaches everything, so this is about a status having

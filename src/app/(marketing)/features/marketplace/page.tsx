@@ -31,15 +31,16 @@ import { pageMeta } from "@/lib/seo/page-meta";
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: "Digital Marketplace — Sell & Buy Digital Products",
-    description: `Sell templates, graphics, ebooks, stock photos, and music to buyers worldwide on ${COMPANY_NAME} — or shop thousands of ready-made digital assets. Secure escrow, instant delivery, your price.`,
+    title: "Digital Marketplace — Products & Services",
+    // ≤155 chars — what Google shows uncut.
+    description: `Sell digital products and freelance services on ${COMPANY_NAME}: reviewed listings, automatic download delivery and escrow for service deals.`,
     path: "/features/marketplace",
   });
 }
 
 const STATS = [
-  { value: "180+", label: "Countries you can sell to" },
-  { value: "Instant", label: "Automatic delivery" },
+  { value: "Reviewed", label: "Every listing, before it goes live" },
+  { value: "Automatic", label: "Delivery of digital downloads" },
   { value: "Escrow", label: "Protected payments" },
   { value: "Yours", label: "You set every price" },
 ];
@@ -50,20 +51,20 @@ const CATEGORIES = [
   { icon: Music, title: "Music & Audio", body: "Beats, loops, sound effects, and background tracks for creators and businesses." },
   { icon: FileText, title: "Ebooks & Guides", body: "Sell knowledge as downloadable ebooks, playbooks, and study material." },
   { icon: Code2, title: "Software & Digital Tools", body: "Scripts, plugins, spreadsheets, and digital utilities delivered as secure downloads." },
-  { icon: Handshake, title: "Services & Custom Work", body: "Offer custom work through escrow-protected deals with built-in chat and admin mediation." },
+  { icon: Handshake, title: "Services & Custom Work", body: "Offer freelance services — design, writing, editing, development and more. Each service listing states what you deliver, the turnaround and the revisions included, and deals run through escrow with built-in chat and admin mediation." },
 ];
 
 const STEPS = [
-  { icon: Upload, title: "Create your listing", body: "Upload your files, write a description, and set your own price. It takes minutes." },
-  { icon: BadgeCheck, title: "Get approved", body: "Our team runs a quick quality-and-safety review so buyers always trust what they get." },
-  { icon: CreditCard, title: "Buyers purchase", body: "Shoppers check out securely. Funds are held in escrow until delivery is confirmed." },
-  { icon: Wallet, title: "Get paid", body: "Files deliver automatically and your earnings land in your wallet, ready to withdraw." },
+  { icon: Upload, title: "Apply and list", body: "Apply to sell, then upload your files or describe your service, write a clear description, and set your own price." },
+  { icon: BadgeCheck, title: "Get approved", body: "Every listing gets a quality-and-safety review before it is published, so buyers know what they are getting." },
+  { icon: CreditCard, title: "Buyers purchase", body: "Digital downloads unlock after payment. Service work and negotiated deals are paid into escrow and released when delivery is confirmed." },
+  { icon: Wallet, title: "Get paid", body: "Your share of each sale, after the platform fee, lands in your wallet, ready to withdraw under the usual withdrawal rules." },
 ];
 
 const BUYER = [
-  { icon: Zap, title: "Instant delivery", body: "Downloads unlock the moment payment clears — no waiting, no back-and-forth." },
-  { icon: ShieldCheck, title: "Buyer protection", body: "Every purchase is backed by escrow and admin mediation if anything goes wrong." },
-  { icon: Globe2, title: "Global catalog", body: "Thousands of digital assets from creators around the world, added every day." },
+  { icon: Zap, title: "Automatic delivery", body: "Digital downloads unlock as soon as payment clears — no waiting for the seller." },
+  { icon: ShieldCheck, title: "Escrow for services", body: "Custom work and negotiated deals are held in escrow, with admin mediation if a delivery is disputed." },
+  { icon: Globe2, title: "Reviewed listings", body: "Every product and service is checked by the team before it appears in the marketplace." },
 ];
 
 export default function MarketplaceFeaturePage() {
@@ -86,9 +87,10 @@ export default function MarketplaceFeaturePage() {
             </span>
           </h1>
           <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            Templates, graphics, ebooks, stock photos, music, and more — list
-            your work once and earn on every sale. Or shop thousands of
-            ready-made digital assets for your next project.
+            A peer-to-peer marketplace for digital products and freelance
+            services. Sell templates, graphics, ebooks, stock media, audio, code
+            or your own services — or buy ready-made assets and custom work for
+            your next project.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
             <PrimaryButton href="/register">
@@ -109,7 +111,7 @@ export default function MarketplaceFeaturePage() {
           badge="What you can sell"
           tone="emerald"
           title="A storefront for every kind of digital work"
-          subtitle="If it's digital, you can sell it. Keep 100% ownership and set your own prices."
+          subtitle="Digital goods and services only — no physical products. You set your own prices."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CATEGORIES.map((c) => (
@@ -197,15 +199,16 @@ export default function MarketplaceFeaturePage() {
             Turn your digital work into income
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-emerald-50">
-            Create a free account and open your storefront today. It only takes a
-            few minutes to list your first product.
+            Create a free account and apply to sell. Have questions about fees,
+            delivery or disputes? The <Link href="/help" className="font-semibold text-white underline">Help Center</Link> covers them, and you can also{" "}
+            <Link href="/features/courses" className="font-semibold text-white underline">teach a course</Link>.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
               href="/register"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-colors shadow-sm"
             >
-              <ShoppingBag className="h-4 w-4" /> Start selling free
+              <ShoppingBag className="h-4 w-4" /> Create a free account
             </Link>
             <Link
               href="/features/affiliate"

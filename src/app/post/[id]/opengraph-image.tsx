@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getPublicPost, postSummary } from "@/lib/public-post";
+import { toOgJpeg } from "@/lib/seo/og-render";
 
 /**
  * The generated share card, for posts with no image of their own.
@@ -21,7 +22,7 @@ import { getPublicPost, postSummary } from "@/lib/public-post";
 
 export const alt = "Post on RevType";
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const contentType = "image/jpeg";
 
 export default async function OgImage({
   params,
@@ -34,7 +35,7 @@ export default async function OgImage({
   const body = post ? postSummary(post.content, 220) : "";
   const author = post ? post.author.name : "";
 
-  return new ImageResponse(
+  const png = new ImageResponse(
     (
       <div
         style={{
@@ -44,14 +45,14 @@ export default async function OgImage({
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 72,
-          background: "linear-gradient(135deg, #1e1b4b 0%, #030712 55%, #111827 100%)",
+          background: "linear-gradient(135deg, #052e22 0%, #06140f 55%, #0b1220 100%)",
           color: "#ffffff",
           fontFamily: "sans-serif",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", fontSize: 34, fontWeight: 800 }}>
-          <span>Earn</span>
-          <span style={{ color: "#818cf8" }}>GPT</span>
+          <span>Rev</span>
+          <span style={{ color: "#34d399" }}>Type</span>
         </div>
 
         <div
@@ -73,4 +74,15 @@ export default async function OgImage({
     ),
     size
   );
+
+  // JPEG well under WhatsApp's ~300 KB thumbnail ceiling. Cached for an hour
+  // only — the card is re-checked against the privacy gate after that.
+  const bytes = Buffer.from(await png.arrayBuffer());
+  const jpeg = await toOgJpeg(bytes, "fill");
+  return new Response(new Uint8Array(jpeg ?? bytes), {
+    headers: {
+      "Content-Type": jpeg ? "image/jpeg" : "image/png",
+      "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+    },
+  });
 }

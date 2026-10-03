@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { courseWriteSchema, saveCourse } from "@/lib/course-write";
+import { revalidatePublicCourses } from "@/lib/public-catalog-data";
 
 async function loadOwnedCourse(courseId: string, userId: string) {
   const c = await prisma.course.findUnique({
@@ -85,6 +86,7 @@ export async function PATCH(
       userId: session.user.id,
       courseId: id,
     });
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ success: true, course });
   } catch (error) {
     console.error("Update tutor course failed:", error);
@@ -146,6 +148,7 @@ export async function DELETE(
       where: { userId: session.user.id },
       data: { totalCourses: { decrement: 1 } },
     });
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Delete tutor course failed:", error);

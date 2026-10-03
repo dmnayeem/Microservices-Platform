@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { courseWriteSchema, saveCourse } from "@/lib/course-write";
+import { revalidatePublicCourses } from "@/lib/public-catalog-data";
 
 // GET /api/admin/courses/:id — full record for the edit page
 export async function GET(
@@ -84,6 +85,7 @@ export async function PATCH(
         newData: { status: course.status, title: course.title },
       },
     });
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ success: true, course });
   } catch (error) {
     console.error("Update course failed:", error);
@@ -128,6 +130,7 @@ export async function DELETE(
         entityId: id,
       },
     });
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Delete course failed:", error);

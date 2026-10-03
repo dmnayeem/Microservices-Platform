@@ -1,80 +1,67 @@
 import type { Metadata } from "next";
-import { CheckCircle2, Activity } from "lucide-react";
+import Link from "next/link";
+import { Activity, Info } from "lucide-react";
 import { Section } from "@/components/marketing/ui";
-import { COMPANY_NAME } from "@/config/company";
+import { COMPANY_NAME, SUPPORT_EMAIL } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
 
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "System Status",
-    description: `Live operational status for ${COMPANY_NAME} services.`,
+    description: `The services that make up ${COMPANY_NAME} and how to report a problem with any of them.`,
     path: "/status",
   });
 }
 
+/*
+ * This page used to show "All systems operational", a 99.9x% uptime figure per
+ * service and "No incidents in the last 90 days" — all hard-coded, none of it
+ * measured. Until a real monitor feeds this page, it describes the services
+ * and how to report a fault, and claims nothing about their current state.
+ */
 const COMPONENTS = [
-  { name: "Website & app", uptime: "99.99%" },
-  { name: "API", uptime: "99.98%" },
-  { name: "Task engine", uptime: "99.99%" },
-  { name: "Withdrawals & payouts", uptime: "99.97%" },
-  { name: "Payments & deposits", uptime: "99.98%" },
-  { name: "Offerwall & surveys", uptime: "99.95%" },
-  { name: "Notifications", uptime: "99.99%" },
+  { name: "Website & app", body: "Sign-in, the dashboard and every public page." },
+  { name: "Task engine", body: "Task lists, proof submission, automatic checks and reviews." },
+  { name: "Marketplace & courses", body: "Listings, purchases, downloads, escrow deals and course playback." },
+  { name: "Wallet & withdrawals", body: "Balances, point conversion and payout requests." },
+  { name: "Deposits & plans", body: "Adding funds and buying optional paid plans." },
+  { name: "Offerwalls & partner offers", body: "Offers from partner networks and their completion callbacks." },
+  { name: "Notifications", body: "In-app notifications, push and email." },
 ];
-
-// 90-day uptime bar (all-nominal presentation).
-function UptimeBar() {
-  return (
-    <div className="flex gap-[2px]" aria-hidden>
-      {Array.from({ length: 90 }).map((_, i) => (
-        <span key={i} className="h-7 flex-1 rounded-[2px] bg-emerald-500/70" />
-      ))}
-    </div>
-  );
-}
 
 export default function StatusPage() {
   return (
     <Section width="narrow">
       <div className="text-center">
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/15 border border-(--mk-success)/30">
-          <Activity className="h-7 w-7 text-(--mk-success)" />
+          <Activity className="h-7 w-7 text-(--mk-success)" aria-hidden />
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-(--mk-text) tracking-tight">System status</h1>
+        <p className="mt-4 text-(--mk-muted)">The services that make up {COMPANY_NAME}, and what to do if one of them is not working for you.</p>
       </div>
 
-      <div className="mt-8 flex items-center gap-3 rounded-2xl bg-(--mk-success)/10 border border-(--mk-success)/30 p-5">
-        <CheckCircle2 className="h-7 w-7 text-(--mk-success) shrink-0" />
+      <div className="mt-8 flex items-start gap-3 rounded-2xl mk-card p-5">
+        <Info className="mt-0.5 h-5 w-5 text-(--mk-accent) shrink-0" aria-hidden />
         <div>
-          <p className="text-lg font-bold text-(--mk-text)">All systems operational</p>
-          <p className="text-sm text-(--mk-success)">Everything is running smoothly.</p>
+          <h2 className="text-base font-bold text-(--mk-text)">Something not working?</h2>
+          <p className="mt-1 text-sm text-(--mk-muted) leading-relaxed">
+            Maintenance and known problems may be announced to members in the app. If you hit an error that is not explained there, tell us what you were doing and when through the{" "}
+            <Link href="/contact" className="font-semibold text-(--mk-accent) hover:underline">contact form</Link>{" "}
+            or at <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-(--mk-accent) hover:underline">{SUPPORT_EMAIL}</a>. The{" "}
+            <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">Help Center</Link>{" "}
+            covers common account, task and payout questions.
+          </p>
         </div>
       </div>
 
-      <div className="mt-6 space-y-3">
+      <h2 className="mt-8 mb-3 text-sm font-bold uppercase tracking-wider text-(--mk-subtle)">Services</h2>
+      <div className="space-y-3">
         {COMPONENTS.map((c) => (
           <div key={c.name} className="rounded-2xl mk-card p-5">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-(--mk-text)">{c.name}</p>
-              <span className="inline-flex items-center gap-1.5 text-sm text-(--mk-success)">
-                <CheckCircle2 className="h-4 w-4" /> Operational
-              </span>
-            </div>
-            <div className="mt-3"><UptimeBar /></div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-(--mk-subtle)">
-              <span>90 days ago</span>
-              <span className="text-(--mk-muted)">{c.uptime} uptime</span>
-              <span>Today</span>
-            </div>
+            <h3 className="font-semibold text-(--mk-text)">{c.name}</h3>
+            <p className="mt-1 text-sm text-(--mk-muted)">{c.body}</p>
           </div>
         ))}
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-(--mk-subtle) mb-3">Incident history</h2>
-        <div className="rounded-2xl mk-card p-6 text-center text-sm text-(--mk-muted)">
-          No incidents reported in the last 90 days.
-        </div>
       </div>
     </Section>
   );

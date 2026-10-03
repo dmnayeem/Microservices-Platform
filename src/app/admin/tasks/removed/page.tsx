@@ -50,7 +50,7 @@ export default async function RemovedTasksPage({
   const skip = (page - 1) * pageSize;
   const kind =
     params.kind === "deleted"
-      ? ["TASK_DELETED"]
+      ? ["TASK_DELETED", "TASK_REMOVED"]
       : params.kind === "archived"
         ? ["TASK_ARCHIVED"]
         : [...TASK_REMOVAL_ACTIONS];
@@ -74,7 +74,11 @@ export default async function RemovedTasksPage({
       },
     }),
     prisma.auditLog.count({ where }),
-    prisma.auditLog.count({ where: { entity: "Task", action: "TASK_DELETED" } }),
+    // "Deleted" covers both kinds: gone for good, and deleted-but-kept
+    // (REMOVED — the row stays because its submissions back payments).
+    prisma.auditLog.count({
+      where: { entity: "Task", action: { in: ["TASK_DELETED", "TASK_REMOVED"] } },
+    }),
     prisma.auditLog.count({ where: { entity: "Task", action: "TASK_ARCHIVED" } }),
   ]);
 
@@ -89,10 +93,15 @@ export default async function RemovedTasksPage({
     : [];
   const actorMap = new Map(actors.map((a) => [a.id, a]));
 
-  // An archived task still has a row, so its title can link somewhere. A
-  // deleted one does not — the snapshot is all there is, and a link would 404.
+  // An archived task still has a row, so its title can link somewhere — so
+  // does a REMOVED one (deleted, but kept for its payment records). A hard-
+  // deleted one does not: the snapshot is all there is, and a link would 404.
   const archivedIds = rows
-    .filter((r) => r.action === "TASK_ARCHIVED" && r.entityId)
+    .filter(
+      (r) =>
+        (r.action === "TASK_ARCHIVED" || r.action === "TASK_REMOVED") &&
+        r.entityId
+    )
     .map((r) => r.entityId as string);
   const stillThere = archivedIds.length
     ? await prisma.task.findMany({
@@ -168,7 +177,8 @@ export default async function RemovedTasksPage({
                 cell: (r) => {
                   const snap = readTaskSnapshot(r.newData);
                   const linkable =
-                    r.action === "TASK_ARCHIVED" &&
+                    (r.action === "TASK_ARCHIVED" ||
+                      r.action === "TASK_REMOVED") &&
                     r.entityId &&
                     alive.has(r.entityId);
                   return (
@@ -203,7 +213,7 @@ export default async function RemovedTasksPage({
                       r.action
                     )}`}
                   >
-                    {r.action === "TASK_DELETED" ? (
+                    {r.action === "TASK_DELETED" || r.action === "TASK_REMOVED" ? (
                       <Trash2 className="w-3 h-3" />
                     ) : (
                       <Archive className="w-3 h-3" />

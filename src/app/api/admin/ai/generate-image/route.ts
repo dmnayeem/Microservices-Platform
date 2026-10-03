@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { generateImage } from "@/lib/gemini";
+import { enforceDisplayImage } from "@/lib/image-compress-server";
 import {
   uploadFile,
   isS3Configured,
@@ -53,9 +54,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const mimeType = result.mimeType || "image/png";
-    const ext = mimeType.split("/")[1]?.split("+")[0] || "png";
-    const buffer = Buffer.from(result.imageBase64, "base64");
+    const rawMime = result.mimeType || "image/png";
+    const rawExt = rawMime.split("/")[1]?.split("+")[0] || "png";
+    // Library images are display images → ≤ 100 KB WebP (src/lib/image-policy.ts).
+    const stored = await enforceDisplayImage(
+      Buffer.from(result.imageBase64, "base64"),
+      rawMime,
+      `ai-generated.${rawExt}`,
+      "media"
+    );
+    const mimeType = stored.mime;
+    const ext = stored.fileName.split(".").pop() || rawExt;
+    const buffer = stored.buffer;
 
     const uniqueFilename = generateMediaFilename(`ai-generated.${ext}`);
     const s3Key = getMediaS3KeyPath(mimeType, uniqueFilename);

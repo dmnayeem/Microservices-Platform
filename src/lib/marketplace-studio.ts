@@ -29,6 +29,7 @@ import {
   type StockKind,
 } from "@/lib/magnific";
 import { makeWatermarkedPreview, readImageSize } from "@/lib/watermark";
+import { enforceDisplayImage } from "@/lib/image-compress-server";
 import { generateFileKey, uploadFile, isS3Configured, getDownloadUrl } from "@/lib/s3";
 import { getCategory, ASSET_TYPE_LABEL } from "@/lib/marketplace-categories";
 
@@ -287,11 +288,16 @@ export async function storeStockAsset(input: {
       // `/api/media` proxy route and `mediaSrc()` agree to serve, and the
       // bucket is private so an un-proxied URL renders blank. The two
       // allowlists have to match — see lib/media-url.ts.
-      const previewKey = generateFileKey(
-        "media/marketplace-previews",
-        input.filename.replace(/\.[^.]+$/, "") + "-preview.jpg"
+      // The PREVIEW is a display image → ≤ 100 KB WebP (src/lib/image-policy.ts).
+      // The deliverable above was stored byte-for-byte and is never touched.
+      const small = await enforceDisplayImage(
+        wm.buffer,
+        "image/jpeg",
+        input.filename.replace(/\.[^.]+$/, "") + "-preview.jpg",
+        "cover"
       );
-      const pUp = await uploadFile(previewKey, wm.buffer, "image/jpeg");
+      const previewKey = generateFileKey("media/marketplace-previews", small.fileName);
+      const pUp = await uploadFile(previewKey, small.buffer, small.mime);
       // A missing preview is recoverable (the admin can upload a cover), a
       // missing deliverable is not — so this failure is not fatal. It is
       // reported, though: see `previewError`.

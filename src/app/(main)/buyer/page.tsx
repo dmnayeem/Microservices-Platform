@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getBuyerSettings } from "@/lib/buyer-settings";
@@ -64,7 +65,9 @@ export default async function BuyerHubPage() {
       select: { cashBalance: true, taskCreditPoints: true },
     }),
     prisma.task.findMany({
-      where: { fundedByUserId: userId },
+      // A task an admin deleted (REMOVED) leaves this list too; the money it
+      // moved stays in the invoice history below, which reads transactions.
+      where: { fundedByUserId: userId, ...LISTED_TASK_WHERE },
       orderBy: { createdAt: "desc" },
       take: 100,
       select: {

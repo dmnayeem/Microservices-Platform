@@ -9,6 +9,7 @@ import { parseCustomCode } from "@/lib/custom-code";
 import { SiteTracking, CustomCode } from "@/components/providers/site-tracking";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { JsonLd } from "@/components/seo/json-ld";
+import { siteShareImage } from "@/lib/seo/page-meta";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
@@ -45,7 +46,8 @@ import { getLevelCurve } from "@/lib/level-curve-server";
 import { kickScheduler } from "@/lib/scheduler/run";
 import "./globals.css";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://revtype.com";
+// Never localhost: a dev .env must not reach canonical tags (lib/seo/site-url).
+import { SITE_URL } from "@/lib/seo/site-url";
 
 /**
  * Title, description, icons, share image, verification tags and indexing all
@@ -58,7 +60,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const name = s["seo.site_name"] || "RevType";
   const title = s["seo.default_title"] || name;
   const description = s["seo.description"];
-  const og = seoImage(s["seo.og_image_url"], "/icon-512.png");
+  // Resized to 1200×630 JPEG (the upload itself can be 4800px wide), or the
+  // branded card when no share image was uploaded — lib/seo/og-image.ts.
+  const og = siteShareImage(s["seo.og_image_url"], { title: "", alt: title });
   const favicon = seoImage(s["seo.favicon_url"], "/icon-192.png");
   const other: Record<string, string> = {};
   if (s["seo.verify_bing"]) other["msvalidate.01"] = s["seo.verify_bing"];
@@ -109,16 +113,20 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: name,
       title,
       description,
-      images: [{ url: og, alt: name }],
+      images: [og],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [og],
+      images: [{ url: og.url, alt: og.alt }],
       ...(s["seo.twitter_handle"] ? { site: `@${s["seo.twitter_handle"].replace(/^@/, "")}` } : {}),
     },
-    robots: s["seo.indexing"] ? { index: true, follow: true } : { index: false, follow: false },
+    // Large previews let Google (Search, Discover) and AI answers show the
+    // share image and a full snippet instead of a thumbnail.
+    robots: s["seo.indexing"]
+      ? { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 }
+      : { index: false, follow: false },
     verification: {
       ...(s["seo.verify_google"] ? { google: s["seo.verify_google"] } : {}),
       ...(s["seo.verify_yandex"] ? { yandex: s["seo.verify_yandex"] } : {}),
@@ -213,8 +221,29 @@ export default async function RootLayout({
               name: seo["seo.site_name"],
               url: SITE_URL,
               inLanguage: "en",
-              // No SearchAction: its target (/marketplace search) is behind the
-              // login, so a sitelinks search box would land searchers there.
+              // No SearchAction: Google retired the sitelinks search box
+              // (Nov 2024), so it would add markup with no effect.
+              publisher: { "@type": seo["seo.org_type"] || "Organization", name: seo["seo.site_name"], url: SITE_URL },
+            },
+            // What the product IS, in the terms search and AI engines classify
+            // by. Kept strictly factual (no income claims) — the platform also
+            // shows ads and has sponsored activities, and says so in llms.txt.
+            {
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: seo["seo.site_name"],
+              url: SITE_URL,
+              applicationCategory: "BusinessApplication",
+              applicationSubCategory: "Micro-task marketplace",
+              operatingSystem: "Web, Android, iOS (installable web app)",
+              browserRequirements: "Requires a modern web browser with JavaScript.",
+              description:
+                `${seo["seo.site_name"]} is a platform for paid micro-tasks, a digital marketplace for products and services, ` +
+                "and online courses. Members complete small jobs posted by businesses, sell digital products and services, " +
+                "teach or take courses, and earn referral and affiliate commission.",
+              keywords:
+                "Freelance micro-tasks, Digital marketplace, Online courses, Micro-services, Affiliate program, Advertising",
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free to join" },
               publisher: { "@type": seo["seo.org_type"] || "Organization", name: seo["seo.site_name"], url: SITE_URL },
             },
           ]}

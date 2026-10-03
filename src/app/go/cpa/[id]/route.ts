@@ -8,6 +8,7 @@ import { checkCpaEligibility, loadCpaViewer } from "@/lib/cpa/eligibility";
 import { buildCpaTrackingUrl } from "@/lib/cpa/link";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { publicOrigin } from "@/lib/public-origin";
+import { assertPageVisible } from "@/lib/page-visibility-server";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const login = new URL("/login", publicOrigin(request));
     login.searchParams.set("callbackUrl", `/go/cpa/${id}`);
     return NextResponse.redirect(login, 302);
+  }
+
+  // Super-admin page visibility: with /cpa hidden for this user, Start must
+  // not record a click or open the offer either (the page alone is not the
+  // feature). Same landing spot as the page guard.
+  if (await assertPageVisible(userId, "/cpa")) {
+    return NextResponse.redirect(new URL("/no-access", publicOrigin(request)), 302);
   }
 
   const active = await requireActiveUser(userId);

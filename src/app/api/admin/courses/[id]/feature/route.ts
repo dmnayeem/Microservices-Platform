@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { CourseStatus, NotificationType } from "@/generated/prisma";
+import { revalidatePublicCourses } from "@/lib/public-catalog-data";
 
 const schema = z.object({
   isFeatured: z.boolean().optional(),
@@ -109,6 +110,7 @@ export async function PATCH(
         },
       });
     }
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ course: updated });
   } catch (error) {
     console.error("Feature toggle failed:", error);

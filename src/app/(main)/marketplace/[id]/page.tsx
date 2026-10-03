@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { usd } from "@/lib/utils";
 import {
   getLicenseTiersEnabled,
   readTiers,
@@ -10,41 +11,111 @@ import {
 import { resolveCommissionBps } from "@/lib/marketplace-commission";
 import { ListingDetailView } from "@/components/user/marketplace/listing-detail-view";
 import { JsonLd } from "@/components/seo/json-ld";
+import { ASSET_TYPE_LABEL, sectionForAssetType } from "@/lib/marketplace-categories";
+import { canonicalUrl, plainSummary } from "@/lib/public-catalog";
+import {
+  getPublicListing,
+  absoluteImage,
+  GUEST_LISTING_STATUSES,
+  type PublicListing,
+} from "@/lib/public-catalog-data";
+import { breadcrumbLd, listingLd } from "@/lib/public-catalog-schema";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo/page-meta";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const l = await prisma.marketplaceListing
-    .findUnique({
-      where: { id },
-      select: { title: true, description: true, images: true },
-    })
-    .catch(() => null);
-  if (!l) return { title: "Listing not found" };
-  return {
-    title: l.title,
-    description: l.description?.slice(0, 160) ?? undefined,
-    alternates: { canonical: `/marketplace/${id}` },
-    openGraph: {
-      title: l.title,
-      description: l.description?.slice(0, 160) ?? undefined,
-      images: l.images?.length ? [l.images[0]] : undefined,
-    },
-  };
+/**
+ * A marketplace listing. Public: a logged-out visitor and a search engine get
+ * the whole listing (gallery, description, price, terms, seller) from a
+ * cached read with every action turned into "sign in"; a signed-in viewer gets
+ * exactly the page they always had, with their own watch / owner state.
+ */
+
+type Props = { params: Promise<{ id: string }> };
+
+function categoryLabel(l: Pick<PublicListing, "assetType" | "category">): string {
+  return ASSET_TYPE_LABEL[l.assetType] ?? l.category ?? "Marketplace";
 }
 
-export default async function ListingDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const l = await getPublicListing(id);
+  // notFound() here, not only in the page: metadata resolves before the
+  // response starts streaming, so the status is a real 404 rather than a 200
+  // with a noindex tag.
+  if (!l) notFound();
+  if (!GUEST_LISTING_STATUSES.has(l.status) && !(await auth())?.user?.id) notFound();
+
+  const path = `/marketplace/${id}`;
+  const title = `${l.title} – ${categoryLabel(l)}`;
+  const description = plainSummary(l.description || l.richDescription) || undefined;
+  // Only a live, approved listing is indexed. Sold ones stay reachable for the
+  // people who bought them but drop out of search; anything else (pending,
+  // rejected, cancelled) is never shown to a guest at all.
+  const indexable = l.status === "ACTIVE" && !l.nsfw;
+  return pageMeta({
+    title,
+    description,
+    path,
+    robots: indexable ? { index: true, follow: true } : { index: false, follow: true },
+    // The cover, cropped to 1200×630 (lib/seo/og-image.ts); no cover → the
+    // branded card with the title and price.
+    image: l.images[0] ?? null,
+    imageAlt: l.title,
+    cardKicker: `${categoryLabel(l)} · ${usd(l.price)}`,
+  });
+}
+
+function structuredData(l: PublicListing) {
+  const section = sectionForAssetType(l.assetType);
+  const path = `/marketplace/${l.id}`;
+  return [
+    listingLd({
+      id: l.id,
+      title: l.title,
+      description: l.description || l.richDescription || l.title,
+      assetType: l.assetType,
+      categoryLabel: categoryLabel(l),
+      price: l.price,
+      currency: l.currency,
+      status: l.status,
+      images: l.images.map((s) => absoluteImage(s)).filter((s): s is string => !!s),
+      seller: l.brand
+        ? { name: l.brand.name, isBrand: true, url: canonicalUrl(`/marketplace/brand/${l.brand.slug}`) }
+        : { name: l.seller.name || "RevType seller", isBrand: false },
+      createdAt: l.createdAt,
+    }),
+    breadcrumbLd([
+      { name: "Marketplace", path: "/marketplace" },
+      ...(section ? [{ name: section.label, path: `/marketplace/section/${section.slug}` }] : []),
+      { name: l.title, path },
+    ]),
+  ];
+}
+
+export default async function ListingDetailPage({ params }: Props) {
+  const session = await auth();
+  const { id } = await params;
+
+  // ── Logged-out visitor: the cached public listing ─────────────────────────
+  if (!session?.user?.id) {
+    const l = await getPublicListing(id);
+    if (!l || !GUEST_LISTING_STATUSES.has(l.status)) notFound();
+    return (
+      <>
+        <JsonLd data={structuredData(l)} />
+        <ListingDetailView
+          listing={l}
+          isOwner={false}
+          isWatched={false}
+          hideFinancials={l.ndaGated}
+          viewerId=""
+          guest
+        />
+      </>
+    );
+  }
+
+  // ── Signed in: unchanged ──────────────────────────────────────────────────
 
   const listing = await prisma.marketplaceListing.findUnique({
     where: { id },
@@ -110,26 +181,12 @@ export default async function ListingDetailPage({
     listing.seller as unknown as { _count: { marketplaceListings: number } }
   )._count;
 
-  const productLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: listing.title,
-    description: listing.description ?? undefined,
-    image: listing.images?.length ? listing.images : undefined,
-    offers: {
-      "@type": "Offer",
-      price: toNum(listing.price),
-      priceCurrency: (listing.currency || "USD").toUpperCase(),
-      availability:
-        listing.status === "ACTIVE"
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
-    },
-  };
+  // Structured data from the same cached public read the metadata used.
+  const pub = await getPublicListing(id);
 
   return (
     <>
-      <JsonLd data={productLd} />
+      {pub && <JsonLd data={structuredData(pub)} />}
       <ListingDetailView
         listing={{
           id: listing.id,

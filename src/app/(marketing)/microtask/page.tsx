@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   ClipboardList,
   Share2,
@@ -50,11 +51,12 @@ const PLATFORM_COUNT = SOCIAL_PLATFORMS.length;
 const ACTION_COUNT = SOCIAL_PLATFORMS.reduce((n, p) => n + p.actions.length, 0);
 
 export function generateMetadata(): Promise<Metadata> {
-  const title = "Micro Tasks — Every Small Job You Can Get Paid For";
+  const title = "Freelance Micro-Tasks — How They Work";
+  // ≤155 chars — what Google shows uncut.
   const description =
-    `See every kind of micro task on ${COMPANY_NAME}: social actions across ` +
-    `${PLATFORM_COUNT} platforms, video watching, surveys, articles, quizzes, ` +
-    `app installs, offerwalls and daily missions — and exactly how each one pays.`;
+    `Every freelance micro-task on ${COMPANY_NAME}: social actions on ` +
+    `${PLATFORM_COUNT} platforms, surveys, videos, quizzes, app installs and ` +
+    `offers, and how each is verified.`;
   return pageMeta({ title, description, path: "/microtask" });
 }
 
@@ -107,7 +109,7 @@ const MORE_WAYS = [
   {
     icon: Globe,
     title: "Browse & Earn",
-    body: "A passive surface: ads rotate, you keep the page in view, and each rotation is a paid impression. No proof to submit.",
+    body: "A time-based sponsored browsing activity: advertisers' content rotates while you keep the page in view, and each rotation is paid as an ad impression. It is funded by advertisers, so availability and rates vary.",
   },
   {
     icon: Flame,
@@ -202,14 +204,15 @@ export default function MicroTaskPage() {
             </span>
           </h1>
           <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            A micro task is a job that takes a minute or two — follow a page,
-            watch a video, answer a survey, install an app. {COMPANY_NAME} runs
-            eight kinds of them, plus half a dozen ways to earn that are not
-            tasks at all. Here is all of it, in plain language.
+            A micro task is a small freelance job that takes a few minutes —
+            follow a page, review an app, answer a survey, watch a product
+            video. Businesses and advertisers post them on {COMPANY_NAME}, the
+            work is checked, and approved work is paid. Some tasks are
+            sponsored by advertisers. Here is every kind, in plain language.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
             <PrimaryButton href="/register">
-              <ClipboardList className="h-4 w-4" /> Start earning free
+              <ClipboardList className="h-4 w-4" /> Create a free account
             </PrimaryButton>
             <GhostButton href="/advertise">Need work done instead? →</GhostButton>
           </div>
@@ -234,7 +237,7 @@ export default function MicroTaskPage() {
           badge="What you can do"
           tone="blue"
           title="Eight kinds of micro task"
-          subtitle="Each type asks for different work and different proof. Every task tells you which before you start it."
+          subtitle="Each type asks for different work and different proof. Every task tells you which before you start it. Tasks are created by businesses, advertisers and partner networks; some are sponsored."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TASK_TYPES.map((t) => (
@@ -380,15 +383,26 @@ export default function MicroTaskPage() {
             <li className="flex gap-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
               <span>
-                Identity verification is required before a payout. One verified
-                identity belongs to one account.
+                Identity verification is required for larger withdrawals and
+                can be required for all of them. One verified identity belongs
+                to one account.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <Ticket className="mt-0.5 h-4 w-4 shrink-0 text-(--mk-success)" />
+              <span>
+                Withdrawals can require an active paid plan. When that setting
+                is on, the withdrawal screen tells you before you request a
+                payout. Earnings are never guaranteed — see the{" "}
+                <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">FAQ</Link>{" "}
+                for details.
               </span>
             </li>
           </ul>
         </GlassCard>
         <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
           <PrimaryButton href="/register">Create your free account</PrimaryButton>
-          <GhostButton href="/referral">Earn by inviting people →</GhostButton>
+          <GhostButton href="/referral">How referral rewards work →</GhostButton>
         </div>
       </Section>
 
@@ -409,6 +423,14 @@ export default function MicroTaskPage() {
               </span>
             ))}{" "}
             tasks and have real people complete them.
+          </p>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-(--mk-muted)">
+            Prefer to earn from your skills instead? You can also{" "}
+            <Link href="/features/marketplace" className="font-semibold text-(--mk-accent) hover:underline">sell digital products and services</Link>{" "}
+            or{" "}
+            <Link href="/features/courses" className="font-semibold text-(--mk-accent) hover:underline">teach a course</Link>, and the{" "}
+            <Link href="/blog" className="font-semibold text-(--mk-accent) hover:underline">blog</Link>{" "}
+            has guides for getting started.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
             <PrimaryButton href="/advertise">See advertising options</PrimaryButton>

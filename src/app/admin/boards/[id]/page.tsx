@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { BoardDetailClient } from "@/components/admin/boards/board-detail-client";
 
 export default async function BoardDetailPage({
@@ -20,7 +21,7 @@ export default async function BoardDetailPage({
 
   const [assigned, available, totalCompletions] = await Promise.all([
     prisma.task.findMany({
-      where: { boardId: id },
+      where: { boardId: id, ...LISTED_TASK_WHERE },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,

@@ -9,6 +9,7 @@ import type { UserRole } from "@/generated/prisma";
 import { z } from "zod";
 import { inspectStoredFiles, reportStoredFiles } from "@/lib/upload-safety";
 import { screenLinks } from "@/lib/link-safety";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -285,6 +286,7 @@ export async function PUT(
       },
     });
 
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       listing: updatedListing,
       message: "Listing updated successfully",
@@ -337,6 +339,7 @@ export async function DELETE(
       data: { status: MarketplaceListingStatus.CANCELLED },
     });
 
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       message: "Listing deleted successfully",
     });

@@ -99,6 +99,7 @@ export function CourseCurriculum({
               <button
                 type="button"
                 onClick={() => toggle(m.id)}
+                aria-expanded={open}
                 className="w-full flex items-center gap-2 p-3 text-left"
               >
                 {open ? (
@@ -116,8 +117,11 @@ export function CourseCurriculum({
                   {m.lessons.length} lessons · {Math.round(moduleDur / 60) || moduleDur} min
                 </span>
               </button>
-              {open && (
-                <ul className="border-t border-(--app-line) divide-y divide-(--app-line)/60">
+              {/* Always rendered, hidden when collapsed: the whole outline is
+                  in the page for search engines and screen readers, and the
+                  section still opens and closes exactly as before. */}
+              {(
+                <ul hidden={!open} className="border-t border-(--app-line) divide-y divide-(--app-line)/60">
                   {m.lessons.map((l, li) => {
                     const meta = LESSON_ICONS[l.lessonType] ?? LESSON_ICONS.VIDEO;
                     const Icon = meta.icon;

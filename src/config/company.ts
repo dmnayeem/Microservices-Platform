@@ -18,13 +18,19 @@ export const CAREERS_EMAIL = "careers@revtype.com";
 export const LEGAL_EMAIL = "legal@revtype.com";
 
 /** Neutral, remote-first global framing (no fabricated registration data). */
-export const COMPANY_TAGLINE = "The global platform for earning online.";
+export const COMPANY_TAGLINE =
+  "A freelance micro-task marketplace and digital skill-sharing community.";
+/** One-paragraph description used by the About and Press pages (and llms.txt
+ *  as a fallback). Every clause must stay true of the product — no member
+ *  counts, payout totals or country counts. */
 export const COMPANY_BOILERPLATE =
-  `${COMPANY_NAME} is a global rewards platform where people earn by completing ` +
-  `simple online tasks, surveys, and offers — and cash out in their local ` +
-  `currency or crypto. Operated by ${COMPANY_LEGAL}, a remote-first company, ` +
-  `${COMPANY_NAME} serves members across 180+ countries with round-the-clock ` +
-  `support and secure, on-time payouts.`;
+  `${COMPANY_NAME} is a freelance micro-task marketplace and digital ` +
+  `skill-sharing community. Members complete short paid tasks posted by ` +
+  `businesses and advertisers, sell digital products and freelance services, ` +
+  `take or teach online courses, and earn affiliate commissions on sales they ` +
+  `refer. The platform is funded by advertising, sponsored tasks and ` +
+  `campaigns, marketplace fees and optional paid plans. ${COMPANY_NAME} is ` +
+  `operated by ${COMPANY_LEGAL}.`;
 
 /** Owner-claimable brand handles — replace with your real profile URLs. */
 export const SOCIALS: Array<{ name: string; href: string }> = [
@@ -57,14 +63,16 @@ export const GLOBAL_COUNTRIES: Array<{ name: string; flag: string }> = [
   { name: "France", flag: "🇫🇷" },
 ];
 
-/** Global payout rails advertised on marketing pages (not the payment backend). */
+/**
+ * Payout methods the withdrawal flow supports (the `PaymentMethod` enum). Which
+ * of them are switched on is an admin setting, so marketing copy must say
+ * "where enabled" next to this list.
+ */
 export const PAYOUT_METHODS = [
   "PayPal",
-  "Visa / Mastercard",
-  "Bank transfer",
-  "Wise",
-  "Payoneer",
-  "Skrill",
-  "Apple Pay",
-  "Crypto (USDT / BTC)",
+  "Binance",
+  "Bitget",
+  "bKash",
+  "Nagad",
+  "Rocket",
 ];

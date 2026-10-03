@@ -46,6 +46,7 @@ import {
   getFieldsFor,
   type CategoryField,
 } from "@/lib/marketplace-categories";
+import { loginHref, registerHref } from "@/lib/public-catalog";
 
 interface Listing {
   id: string;
@@ -121,6 +122,12 @@ interface Props {
   isWatched: boolean;
   hideFinancials: boolean;
   viewerId: string;
+  /**
+   * A logged-out visitor (public catalog). Everything is readable; every
+   * action — cart, buy, watch, message, bid, offer — becomes a link to sign in
+   * that returns here afterwards. Nothing that needs a session is called.
+   */
+  guest?: boolean;
 }
 
 export function ListingDetailView({
@@ -129,8 +136,11 @@ export function ListingDetailView({
   isWatched: initialWatched,
   hideFinancials,
   viewerId,
+  guest = false,
 }: Props) {
   const router = useRouter();
+  const here = `/marketplace/${listing.id}`;
+  const signIn = loginHref(here);
   const [zoom, setZoom] = useState<{ list: string[]; idx: number } | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [msgBusy, setMsgBusy] = useState(false);
@@ -177,12 +187,14 @@ export function ListingDetailView({
 
   // Record a unique view on mount (deduped by sessionHash server-side)
   useEffect(() => {
+    // A guest has no session, and this endpoint requires one.
+    if (guest) return;
     fetch(`/api/marketplace/listings/${listing.id}/view`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ source: "detail" }),
     }).catch(() => {});
-  }, [listing.id]);
+  }, [listing.id, guest]);
 
   const toggleWatch = async () => {
     if (watchBusy || isOwner) return;
@@ -352,7 +364,7 @@ export function ListingDetailView({
             {listing.images[0] ? (
               <SmartImage
                 src={listing.images[0]}
-                alt=""
+                alt={listing.title}
                 fill
                 sizes="100vw"
                 className="object-cover"
@@ -393,10 +405,11 @@ export function ListingDetailView({
                   type="button"
                   onClick={() => setZoom({ list: listing.images, idx: i })}
                   className="relative aspect-square bg-(--app-page) rounded-lg overflow-hidden border border-(--app-line) hover:border-(--app-accent-edge)/50"
+                  aria-label={`View image ${i + 1} of ${listing.images.length}`}
                 >
                   <SmartImage
                     src={url}
-                    alt=""
+                    alt={`${listing.title} — image ${i + 1}`}
                     fill
                     sizes="(max-width: 768px) 50vw, 25vw"
                     className="object-cover"
@@ -528,7 +541,33 @@ export function ListingDetailView({
                 )}
               </div>
             )}
-            {!isOwner && (
+            {guest && (
+              <div className="flex gap-2 pt-2">
+                <Link
+                  href={signIn}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-bold"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Sign in to add to cart
+                </Link>
+                <Link
+                  href={signIn}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-linear-to-r from-(--app-grad-a) to-(--app-grad-b) hover:opacity-90 text-white text-sm font-bold"
+                >
+                  {listing.assetType === "SERVICE" ? "Sign in to order" : "Sign in to buy"}
+                </Link>
+              </div>
+            )}
+            {guest && (
+              <p className="text-[11px] text-(--app-ink-3)">
+                New here?{" "}
+                <Link href={registerHref(here)} className="font-semibold text-(--app-accent-ink) hover:underline">
+                  Create a free account
+                </Link>{" "}
+                to buy, message the seller or make an offer.
+              </p>
+            )}
+            {!isOwner && !guest && (
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={addToCart}
@@ -559,7 +598,26 @@ export function ListingDetailView({
 
           {/* Action row */}
           <div className="flex items-center gap-2">
-            {!isOwner && (
+            {guest && (
+              <Link
+                href={signIn}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-bold bg-(--app-surface) text-(--app-ink-2) border-(--app-line)"
+              >
+                <Heart className="w-4 h-4" />
+                Watch
+                <span className="text-[10px] opacity-70 tabular-nums ml-1">{watchCount}</span>
+              </Link>
+            )}
+            {guest && (
+              <Link
+                href={signIn}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-(--app-accent-edge)/40 bg-(--app-cta)/15 text-(--app-accent-ink) hover:bg-(--app-cta)/25 text-sm font-bold"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Message seller
+              </Link>
+            )}
+            {!isOwner && !guest && (
               <button
                 onClick={toggleWatch}
                 disabled={watchBusy}
@@ -582,7 +640,7 @@ export function ListingDetailView({
                 </span>
               </button>
             )}
-            {!isOwner && (
+            {!isOwner && !guest && (
               <button
                 onClick={messageSeller}
                 disabled={msgBusy}
@@ -603,7 +661,7 @@ export function ListingDetailView({
               <Share2 className="w-4 h-4" />
               Share
             </button>
-            {!isOwner && (
+            {!isOwner && !guest && (
               <button
                 onClick={() => setShowReport(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-(--app-line) bg-(--app-surface) hover:border-(--app-line) text-sm text-(--app-ink-2)"
@@ -626,8 +684,26 @@ export function ListingDetailView({
         </div>
       </div>
 
+      {/* A guest sees the terms above; bidding and offers need an account. */}
+      {guest && listing.status === "ACTIVE" && (
+        <section className="glass rounded-xl p-4 sm:p-5 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-(--app-ink-2) flex-1 min-w-48">
+            {listing.auctionMode
+              ? "Sign in to place a bid or make the seller an offer."
+              : "Sign in to make the seller an offer."}
+          </p>
+          <Link
+            href={signIn}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
+          >
+            {listing.auctionMode ? <Gavel className="w-4 h-4" /> : <Coins className="w-4 h-4" />}
+            {listing.auctionMode ? "Sign in to bid" : "Sign in to make an offer"}
+          </Link>
+        </section>
+      )}
+
       {/* Auction bidding (only when in auction mode) */}
-      {listing.auctionMode && (
+      {listing.auctionMode && !guest && (
         <BidPanel
           listingId={listing.id}
           startingBid={listing.startingBid}
@@ -641,7 +717,7 @@ export function ListingDetailView({
       )}
 
       {/* Make-an-offer / offers inbox — works for any listing */}
-      {listing.status === "ACTIVE" && (
+      {listing.status === "ACTIVE" && !guest && (
         <OfferPanel
           listingId={listing.id}
           askingPrice={listing.price}
@@ -715,7 +791,7 @@ export function ListingDetailView({
       {/* Rich description */}
       {listing.richDescription && (
         <section className="glass rounded-xl p-4 sm:p-5">
-          <h3 className="text-base font-bold text-white mb-2">About this asset</h3>
+          <h2 className="text-base font-bold text-white mb-2">About this asset</h2>
           <p className="text-sm text-(--app-ink-2) whitespace-pre-wrap leading-relaxed">
             {listing.richDescription}
           </p>
@@ -746,9 +822,9 @@ export function ListingDetailView({
       {/* Category-specific details */}
       {groupedFields.length > 0 && (
         <section className="glass rounded-xl p-4 sm:p-5">
-          <h3 className="text-base font-bold text-white mb-3">
+          <h2 className="text-base font-bold text-white mb-3">
             Asset details
-          </h3>
+          </h2>
           <div className="space-y-4">
             {groupedFields.map((g) => (
               <div key={g.group}>
@@ -774,10 +850,10 @@ export function ListingDetailView({
       {/* Proof screenshots */}
       {listing.screenshots.length > 0 && (
         <section className="glass rounded-xl p-4 sm:p-5">
-          <h3 className="text-base font-bold text-white mb-3 inline-flex items-center gap-2">
+          <h2 className="text-base font-bold text-white mb-3 inline-flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             Proof screenshots
-          </h3>
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {listing.screenshots.map((url, i) => (
               <button
@@ -802,10 +878,10 @@ export function ListingDetailView({
       {/* Attachments */}
       {listing.attachments.length > 0 && (
         <section className="glass rounded-xl p-4 sm:p-5">
-          <h3 className="text-base font-bold text-white mb-3 inline-flex items-center gap-2">
+          <h2 className="text-base font-bold text-white mb-3 inline-flex items-center gap-2">
             <Paperclip className="w-4 h-4 text-(--app-accent-ink)" />
             Attachments
-          </h3>
+          </h2>
           <ul className="space-y-1">
             {listing.attachments.map((url, i) => (
               <li key={i}>

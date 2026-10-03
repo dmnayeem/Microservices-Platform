@@ -13,19 +13,20 @@ import { pageMeta } from "@/lib/seo/page-meta";
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "Press Kit",
-    description: `Media resources, brand assets, and fast facts about ${COMPANY_NAME}.`,
+    description: `Company boilerplate, fast facts and brand assets for ${COMPANY_NAME}, a freelance micro-task marketplace and digital skill-sharing community.`,
     path: "/press",
   });
 }
 
+// Only facts the platform can stand behind. Member counts, country counts and
+// a "paid to members" total used to be listed here without any data behind
+// them; add a figure back only when it is computed from real records.
 const FACTS = [
   { k: "Company", v: COMPANY_LEGAL },
-  { k: "Product", v: `${COMPANY_NAME} — global earning platform` },
+  { k: "Product", v: `${COMPANY_NAME} — freelance micro-task marketplace and digital skill-sharing community` },
   { k: "Founded", v: `${FOUNDED_YEAR}` },
-  { k: "Model", v: "Remote-first, worldwide" },
-  { k: "Members", v: "100,000+" },
-  { k: "Reach", v: "180+ countries" },
-  { k: "Paid to members", v: "$2M+" },
+  { k: "What members do", v: "Micro-tasks, digital products & services, courses, creator commissions" },
+  { k: "Funded by", v: "Advertising, sponsored tasks, marketplace fees, optional paid plans" },
   { k: "Press contact", v: PRESS_EMAIL },
 ];
 
@@ -43,7 +44,7 @@ export default function PressPage() {
         badge="Press & media"
         title="Press"
         highlight="kit"
-        subtitle={`Everything you need to write about ${COMPANY_NAME} — boilerplate, fast facts, and brand assets. For interviews or additional materials, get in touch.`}
+        subtitle={`Boilerplate, fast facts and brand assets for writing about ${COMPANY_NAME}. For interviews or additional materials, get in touch.`}
       />
 
       <Section width="narrow">

@@ -50,11 +50,11 @@ const SLOT_COUNT = SELLABLE.length;
 const NETWORK_SPACES = SELLABLE.filter((p) => placementSpec(p.name).networkAllowed);
 
 export function generateMetadata(): Promise<Metadata> {
-  const title = "Advertise — Reach an Audience That Is Already Paying Attention";
+  // ≤50 chars + " | RevType", description ≤155 — what Google shows uncut.
+  const title = "Advertise — Ads, Sponsorships and Paid Tasks";
   const description =
     `Run ads across ${SLOT_COUNT} placements on ${COMPANY_NAME}, sponsor a space ` +
-    `outright, or pay real people to complete tasks for your brand. Every space, ` +
-    `every format and every control, explained.`;
+    `outright, or pay real people to complete tasks for your brand.`;
   return pageMeta({ title, description, path: "/advertise" });
 }
 

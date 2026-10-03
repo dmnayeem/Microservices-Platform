@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Loader2, Upload, X, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { compressForPurpose } from "@/lib/image-compress";
 import type { CustomField, CustomAnswer } from "@/lib/custom-tasks";
 
 interface Props {
@@ -228,9 +229,13 @@ export function CustomFieldInput({ field, value, onChange, disabled }: Props) {
   }
 }
 
-async function uploadFile(file: File): Promise<string> {
+async function uploadFile(file: File, original = false): Promise<string> {
+  // Proof images → ≤ 100 KB, still legible (src/lib/image-policy.ts). A FILE
+  // field keeps the user's file as sent.
+  const purpose = original ? "document" : "proof";
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("file", await compressForPurpose(file, purpose));
+  fd.append("purpose", purpose);
   const res = await fetch("/api/media/upload", { method: "POST", body: fd });
   const d = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
@@ -274,7 +279,7 @@ function SingleFileField({
     }
     setBusy(true);
     try {
-      const url = await uploadFile(file);
+      const url = await uploadFile(file, field.type === "FILE");
       onChange(url);
       toast.success("Uploaded");
     } catch (err) {
@@ -395,7 +400,7 @@ function MultiImageField({
     if (valid.length === 0) return;
     setBusy(true);
     try {
-      const urls = await Promise.all(valid.map(uploadFile));
+      const urls = await Promise.all(valid.map((f) => uploadFile(f)));
       onChange([...value, ...urls]);
       toast.success(`Uploaded ${urls.length}`);
     } catch (err) {

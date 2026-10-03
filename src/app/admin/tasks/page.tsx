@@ -35,6 +35,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { TaskActions } from "@/components/admin/task-actions";
 import { TaskReviewActions } from "@/components/admin/task-review-actions";
 import { AWAITING_REVIEW_WHERE } from "@/lib/submission-status";
+import { ArchivedBulkDelete } from "@/components/admin/task-archived-bulk-delete";
+import { LISTED_TASK_STATUSES, LISTED_TASK_WHERE } from "@/lib/task-audit";
 
 interface PageProps {
   searchParams: Promise<{
@@ -102,6 +104,18 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
   /**
+   * The open tab. No `?status=` means ACTIVE — the live tasks are what an
+   * admin opens this page to manage; "All" is an explicit `?status=all`.
+   * REMOVED (a deleted archived task) is never listable, so it and anything
+   * unknown fall back to the default.
+   */
+  const status =
+    params.status === "all" ||
+    (LISTED_TASK_STATUSES as readonly string[]).includes(params.status ?? "")
+      ? (params.status as string)
+      : "ACTIVE";
+
+  /**
    * A tab link that keeps every other filter.
    *
    * The old stat-card links were bare `/admin/tasks?status=X`, so switching
@@ -110,7 +124,8 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
    */
   const tabHref = (status: string) => {
     const q = new URLSearchParams();
-    if (status !== "all") q.set("status", status);
+    // Active is the default, so it is the one written as no parameter.
+    if (status !== "ACTIVE") q.set("status", status);
     if (params.type) q.set("type", params.type);
     if (params.difficulty) q.set("difficulty", params.difficulty);
     if (params.board) q.set("board", params.board);
@@ -123,11 +138,11 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   const skip = (page - 1) * pageSize;
 
   // Build where clause based on filters
-  const where: Prisma.TaskWhereInput = {};
-
-  if (params.status && params.status !== "all") {
-    where.status = params.status as Prisma.EnumTaskStatusFilter["equals"];
-  }
+  // "All" still leaves out REMOVED: a deleted task must not come back here.
+  const where: Prisma.TaskWhereInput =
+    status === "all"
+      ? { ...LISTED_TASK_WHERE }
+      : { status: status as Prisma.EnumTaskStatusFilter["equals"] };
 
   if (params.type && params.type !== "all") {
     where.type = params.type as Prisma.EnumTaskTypeFilter["equals"];
@@ -187,7 +202,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
     prisma.task.count({ where: { status: "EXPIRED" } }),
     // "All" needs its own count: `totalCount` is the count of the CURRENT
     // filter, so it would read as whatever tab is open.
-    prisma.task.count(),
+    prisma.task.count({ where: LISTED_TASK_WHERE }),
     // Sent in and waiting — not every task someone merely opened. This button
     // said 408 while the queue it opens held 52.
     prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }),
@@ -257,7 +272,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   const buildQueryString = (newPage: number) => {
     const queryParams = new URLSearchParams();
     queryParams.set("page", newPage.toString());
-    if (params.status) queryParams.set("status", params.status);
+    if (status !== "ACTIVE") queryParams.set("status", status);
     if (params.type) queryParams.set("type", params.type);
     if (params.difficulty) queryParams.set("difficulty", params.difficulty);
     if (params.board) queryParams.set("board", params.board);
@@ -340,7 +355,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
       >
         {STATUS_TABS.map((t) => {
           const current =
-            (params.status ?? "all").toUpperCase() === t.value.toUpperCase();
+            status.toUpperCase() === t.value.toUpperCase();
           const count =
             t.value === "all"
               ? allCount
@@ -382,6 +397,17 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
         })}
       </div>
 
+      {/* Archived tab: delete them all. Same permission as the per-task delete. */}
+      {status === "ARCHIVED" && canDelete && archivedCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
+          <p className="text-sm text-slate-300">
+            Tasks with completed work are kept for the payment records but
+            disappear from every list when deleted.
+          </p>
+          <ArchivedBulkDelete count={archivedCount} />
+        </div>
+      )}
+
       {/* Filters — 5 filters per spec: Search, Type, Status, Difficulty, Board */}
       <form className="bg-slate-900 rounded-xl border border-slate-800 p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-2">
         <div className="relative lg:col-span-2">
@@ -411,7 +437,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
         </select>
         <select
           name="status"
-          defaultValue={params.status || "all"}
+          defaultValue={status}
           className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
         >
           <option value="all">All Status</option>
@@ -421,6 +447,7 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
           <option value="PAUSED">Paused</option>
           <option value="COMPLETED">Completed</option>
           <option value="EXPIRED">Expired</option>
+          <option value="ARCHIVED">Archived</option>
         </select>
         <select
           name="difficulty"
@@ -633,11 +660,11 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
           <ListTodo className="w-12 h-12 mx-auto mb-4 text-gray-600" />
           <h3 className="text-lg font-medium text-white mb-2">No tasks found</h3>
           <p className="text-gray-400">
-            {params.search || params.status || params.type
+            {allCount > 0
               ? "Try adjusting your filters"
               : "Create your first task to get started"}
           </p>
-          {canCreate && !params.search && !params.status && !params.type && (
+          {canCreate && allCount === 0 && (
             <Link
               href="/admin/tasks/new"
               className="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"

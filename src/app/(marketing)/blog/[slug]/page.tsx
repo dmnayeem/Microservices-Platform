@@ -23,7 +23,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const a = await getArticle((await params).slug);
-  if (!a) return { title: "Article" };
+  if (!a) return { title: { absolute: "Article not found · RevType" }, robots: { index: false, follow: true } };
   return pageMeta({
     title: a.metaTitle || a.title,
     description: a.metaDescription || a.excerpt,
@@ -32,7 +32,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     publishedTime: a.publishedAt,
     modifiedTime: a.updatedAt,
     authors: [a.author],
-    image: a.coverImage ? new URL(mediaSrc(a.coverImage), SITE_URL).toString() : undefined,
+    // The cover cropped to 1200×630; no cover → the site share image.
+    image: a.coverImage || undefined,
+    imageAlt: a.coverAlt || a.title,
     noindex: a.noindex,
     canonical: a.canonicalUrl ?? undefined,
     keywords: [a.focusKeyword, ...a.tags].filter((k): k is string => !!k),

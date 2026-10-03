@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { USER_HOME } from "@/lib/routes";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { toNum, type MoneyInput } from "@/lib/money";
 import { isAdmin, type UserRole } from "@/lib/rbac";
 import { Users, Activity, DollarSign, GitBranch, Clock, TrendingUp, CalendarDays, ListTodo, ClipboardCheck, Wallet, CheckCircle, Banknote, ArrowDownToLine, Megaphone } from "lucide-react";
@@ -143,7 +144,7 @@ export default async function AdminDashboardPage() {
       select: { createdAt: true },
     }),
 
-    prisma.task.count(),
+    prisma.task.count({ where: LISTED_TASK_WHERE }),
     // Auto-approved completions are the majority here and were being left
     // out; see lib/submission-status.ts.
     prisma.taskSubmission.count({ where: completedBetween(todayStart) }),

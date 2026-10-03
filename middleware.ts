@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { authConfig, REFERRAL_COOKIE } from "@/lib/auth/config";
 import { publicHost } from "@/lib/public-origin";
+import { isNoindexPath } from "@/lib/seo/indexing-policy";
 
 /**
  * Auth middleware, plus the two things `authorized()` cannot do by itself.
@@ -84,6 +85,14 @@ export default async function middleware(
     for (const [k, v] of authResult.headers.entries()) {
       if (k.toLowerCase() === "set-cookie") res.headers.append(k, v);
     }
+  }
+
+  // Signed-in app, admin, auth flows: never indexed. robots.txt already keeps
+  // crawlers out and logged-out requests are redirected to /login, so this is
+  // the backstop for anything that slips through (a page made public later, a
+  // link a crawler reaches some other way). Same list as robots.txt.
+  if (isNoindexPath(request.nextUrl.pathname)) {
+    res.headers.set("X-Robots-Tag", "noindex, follow");
   }
 
   // Persist a referral code for the round trip through Google.
