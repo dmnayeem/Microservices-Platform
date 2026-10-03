@@ -99,6 +99,12 @@ const nextConfig: NextConfig = {
   // Lets a verification build run to a separate folder (NEXT_DIST_DIR=.next-verify)
   // so it never clobbers a running `next dev` server's `.next`. Unset → default.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // Link unfurlers that read only the first HTML they get: they must receive
+  // the metadata in <head>, not streamed later. Next's default list plus the
+  // ones it lacks (Pinterest, Telegram, Viber, Snapchat, Embedly/Iframely,
+  // Mastodon). Setting this REPLACES the default, so the default is restated.
+  htmlLimitedBots:
+    /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|meta-externalagent|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight|Pinterest|TelegramBot|Viber|Snap URL Preview|Embedly|Iframely|Mastodon/i,
   // jimp must not be bundled. `jimp/fonts` exports ABSOLUTE filesystem paths to
   // the bitmap `.fnt`/`.png` glyph files inside node_modules, and the bundler
   // rewrites them to `<distDir>/node_modules/@jimp/...`, which does not exist —
