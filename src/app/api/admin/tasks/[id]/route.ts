@@ -98,6 +98,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    // Saving the edit form would write its status back and undo the delete.
+    if (existingTask.status === "REMOVED") {
+      return NextResponse.json({ error: "This task was deleted" }, { status: 409 });
+    }
 
     const {
       title,
@@ -362,12 +366,45 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     if (submissions > 0) {
-      if (existingTask.status === "ARCHIVED") {
+      if (existingTask.status === "REMOVED") {
         return NextResponse.json({
           success: true,
-          archived: true,
+          removed: true,
           submissions,
-          message: "Task is already archived",
+          message: "Task is already deleted",
+        });
+      }
+      // Deleting an ARCHIVED task. It still cannot be hard-deleted (same money
+      // trail), so it moves to REMOVED: the row and its submissions stay, but
+      // it leaves every task list — the Archived tab included. CAS on the
+      // status so a concurrent restore is not silently overwritten.
+      if (existingTask.status === "ARCHIVED") {
+        const moved = await prisma.task.updateMany({
+          where: { id, status: "ARCHIVED" },
+          data: { status: "REMOVED" },
+        });
+        if (moved.count === 0) {
+          return NextResponse.json(
+            { error: "The task changed while you were deleting it. Reload and try again." },
+            { status: 409 }
+          );
+        }
+        await writeAudit({
+          actorId: session.user.id,
+          action: "TASK_REMOVED",
+          entity: "Task",
+          entityId: id,
+          summary: `Deleted archived "${existingTask.title}" — ${submissions} submission${
+            submissions === 1 ? "" : "s"
+          } kept for the payment records`,
+          meta: { ...taskSnapshot(existingTask), submissions, reversible: false },
+        });
+        return NextResponse.json({
+          success: true,
+          archived: false,
+          removed: true,
+          submissions,
+          message: "Deleted — its payment records are kept",
         });
       }
       const archived = await prisma.task.update({
@@ -468,6 +505,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // A deleted (REMOVED) task stays deleted: resuming it would put a task the
+    // admin removed straight back in front of users.
+    if (existingTask.status === "REMOVED") {
+      return NextResponse.json({ error: "This task was deleted" }, { status: 409 });
     }
 
     let newStatus: "ACTIVE" | "PAUSED" | "COMPLETED" | "EXPIRED";
