@@ -187,10 +187,11 @@ function buildScript(origin: string, appOrigin: string): string {
   // in the URL — a search result and a public post hand the same link to
   // everyone — so for those the journey begins here, by asking the server
   // whether this arrival counts.
-  if (!token && !visitToken) {
-    askTheDoor();
-    return;
-  }
+  //
+  // The door is asked from ready() below, NOT here with an early return:
+  // returning here left "state" and the position tables below unassigned, so
+  // every search/social arrival the door let in crashed in begin() ("Cannot
+  // set properties of undefined (setting 'config')") and no popup ever showed.
 
   /**
    * Ask whether this arrival counts, BEFORE anything else happens.
@@ -291,7 +292,10 @@ function buildScript(origin: string, appOrigin: string): string {
   // Fetch the embed-config and render once DOM is ready. The door calls this
   // too, once it has decided the arrival counts.
   ready(function() {
-    if (!token && !visitToken) return;   // the door will call begin() itself
+    if (!token && !visitToken) {
+      askTheDoor();                      // the door calls begin() itself
+      return;
+    }
     begin();
   });
 

@@ -276,7 +276,9 @@ function main() {
     // what lets a local test talk to a local server.
     check(
       "the script's API base still comes from the request's origin",
-      /req\.nextUrl\.origin/.test(routeSrc)
+      // sitePublicOrigin(req): the request's public origin behind the proxy
+      // (src/lib/public-origin.ts) — nextUrl.origin there is localhost.
+      /sitePublicOrigin\(req\)/.test(routeSrc)
     );
   }
 
@@ -480,6 +482,7 @@ function main() {
     for (const p of [
       "/embed/article.js",
       "/api/article-tasks/abc/embed-config",
+      "/api/article-tasks/abc/landing",
       "/api/article-tasks/abc/popup-progress",
       "/api/article-tasks/abc/generate-key",
     ]) {
@@ -505,4 +508,104 @@ function main() {
   if (failures.length) process.exitCode = 1;
 }
 
-main();
+/**
+ * Run the WHOLE served script, end to end, the way a reader's browser does.
+ *
+ * 2026-10-04: every search/social task was dead. A worker arriving from a
+ * Pinterest (or any) post carries no ?eg= token, so the script asked the door
+ * and then hit an early `return` at the top level — which left `var state` and
+ * the position tables below it unassigned. The door said "start", begin()
+ * crashed on `state.config = …`, and no popup ever appeared. Every check above
+ * passed throughout, because they lift single functions out of the source.
+ * This one executes the bootstrap itself, for each way a reader can arrive.
+ */
+async function runWholeScript() {
+  console.log("\nWhole script, per arrival:");
+  const vm = await import("vm");
+  const { NextRequest } = await import("next/server");
+  const { GET } = await import("../src/app/embed/article.js/route");
+  const js = await GET(new NextRequest("https://revtype.com/embed/article.js")).text();
+
+  const config = {
+    taskId: "t1", pageNumber: 1, pageCount: 1, isFinal: true, popupCount: 1,
+    popups: [{ text: "Hello", position: "middle", delaySeconds: null }],
+    engagement: { mode: "natural", minDwellSeconds: 0, minScrollPercent: 0, popupOrder: [0] },
+    popupTiming: { firstDelaySeconds: 5, intervalSeconds: 5 },
+    theme: {}, progress: { popupsCompleted: 0, pageCompleted: false },
+  };
+
+  const arrivals = [
+    { label: "direct link (?eg= token)", query: "?eg=TOKEN", door: false },
+    { label: "from a social post (?src= tag, no token)", query: "?src=k7m2qp4x&utm_source=Pinterest", door: true },
+    { label: "from a search result (no token, no tag)", query: "", door: true },
+  ];
+
+  for (const a of arrivals) {
+    const calls: string[] = [];
+    const logs: string[] = [];
+    const el = (): Record<string, unknown> => {
+      const node: Record<string, unknown> = {
+        style: { setProperty() {}, cssText: "" },
+        classList: { add() {}, remove() {}, contains: () => false },
+        setAttribute() {}, getAttribute: () => null, appendChild: (c: unknown) => c,
+        addEventListener() {}, removeEventListener() {}, insertBefore: (c: unknown) => c,
+        querySelectorAll: () => [], querySelector: () => null,
+        getBoundingClientRect: () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 800, height: 2000 }),
+        children: [], childNodes: [], parentNode: null, textContent: "",
+      };
+      return node;
+    };
+    const tag = el();
+    tag.getAttribute = (n: string) => (n === "data-task" ? "t1" : n === "data-page" ? "1" : null);
+    const body = el();
+    const sandbox: Record<string, unknown> = {
+      console: { info: (...x: unknown[]) => logs.push(x.map(String).join(" ")), log() {}, warn() {}, error() {} },
+      setTimeout, clearTimeout, setInterval: () => 0, clearInterval() {},
+      requestAnimationFrame: () => 0, URL, URLSearchParams, JSON, Math, Date, Promise,
+      navigator: { userAgent: "test", language: "en", hardwareConcurrency: 4 },
+      screen: { width: 1280, height: 900 },
+      location: { href: `https://blog.example.com/post/${a.query}` },
+      innerHeight: 900, innerWidth: 1280, scrollY: 0, pageYOffset: 0,
+      addEventListener() {}, removeEventListener() {},
+      getComputedStyle: () => ({ getPropertyValue: () => "" }),
+      fetch: async (u: string) => {
+        calls.push(u.includes("/landing") ? "landing" : u.includes("/embed-config") ? "embed-config" : u);
+        const data = u.includes("/landing")
+          ? { mode: "referral", start: true, autoApprove: true, visitToken: "VT" }
+          : u.includes("/embed-config") ? config : {};
+        return { ok: true, status: 200, json: async () => data };
+      },
+      document: {
+        readyState: "complete", currentScript: tag, referrer: a.door ? "https://www.pinterest.com/" : "",
+        visibilityState: "visible", hidden: false, body, documentElement: Object.assign(el(), { scrollHeight: 2000, clientHeight: 900 }),
+        head: el(), createElement: el, createTextNode: el, getElementById: () => null,
+        querySelectorAll: (s: string) => (s.includes("data-task") ? [tag] : []), querySelector: () => null,
+        addEventListener() {}, removeEventListener() {},
+      },
+    };
+    sandbox.window = sandbox;
+    let thrown = "";
+    try {
+      vm.runInNewContext(js, sandbox, { timeout: 2000 });
+    } catch (e) {
+      thrown = String(e);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Errors from this stub DOM's thinness are not the point; an error about
+    // the script's OWN state being unassigned is exactly the 2026-10-04 bug.
+    const stateCrash = logs.find((l) =>
+      /of undefined \((setting|reading) '|is not defined|is not a function/.test(l)
+    );
+    check(`${a.label}: the script runs without throwing`, !thrown, thrown);
+    if (a.door) check(`${a.label}: asks the door`, calls[0] === "landing", calls.join(","));
+    check(
+      `${a.label}: reaches the popup config`,
+      calls.includes("embed-config"),
+      `calls: ${calls.join(",") || "none"}`
+    );
+    check(`${a.label}: no crash on the script's own state`, !stateCrash, stateCrash);
+  }
+}
+
+runWholeScript().then(main);

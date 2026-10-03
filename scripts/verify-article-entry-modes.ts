@@ -398,6 +398,47 @@ const REFERRAL: ArticleEntryConfig = {
 
   const bare = evaluateArticleEntry(REFERRAL, "", "https://example.com/a");
   check("untagged and no referrer is unknown", bare.verdict === "unknown");
+
+  /* Every platform the owner posts on (2026-10-04): Facebook, YouTube,
+     Pinterest, Threads, Twitter/X, Quora, Medium, Minds — and any other
+     website. Each one, with the post on that platform, must accept: the tagged
+     link with whatever referrer the platform sends (or none), and — when the
+     tag was lost — the referrer hosts that platform actually sends. */
+  const platforms: Array<{ name: string; post: string; referrers: string[] }> = [
+    { name: "Facebook", post: "https://www.facebook.com/page/posts/1", referrers: ["https://l.facebook.com/l.php?u=x", "https://lm.facebook.com/", "https://www.facebook.com/", "https://m.facebook.com/"] },
+    { name: "Instagram", post: "https://www.instagram.com/p/abc/", referrers: ["https://l.instagram.com/", "https://www.instagram.com/"] },
+    { name: "YouTube", post: "https://www.youtube.com/watch?v=abc", referrers: ["https://www.youtube.com/", "https://m.youtube.com/", "https://youtu.be/"] },
+    { name: "Pinterest", post: "https://www.pinterest.com/pin/1038361257862425302/", referrers: ["https://www.pinterest.com/", "https://www.pinterest.co.uk/", "https://pin.it/", "https://in.pinterest.com/"] },
+    { name: "Threads", post: "https://www.threads.net/@me/post/abc", referrers: ["https://www.threads.net/", "https://www.threads.com/", "https://l.threads.net/"] },
+    { name: "Twitter/X", post: "https://x.com/me/status/1", referrers: ["https://t.co/abc", "https://x.com/", "https://twitter.com/"] },
+    { name: "Quora", post: "https://www.quora.com/What-is/answer/me", referrers: ["https://www.quora.com/", "https://qr.ae/abc"] },
+    { name: "Medium", post: "https://medium.com/@me/story-abc", referrers: ["https://medium.com/", "https://me.medium.com/"] },
+    { name: "Minds", post: "https://www.minds.com/newsfeed/1", referrers: ["https://www.minds.com/"] },
+    { name: "another website", post: "https://myblog.example.org/2026/post", referrers: ["https://myblog.example.org/", "https://www.myblog.example.org/"] },
+  ];
+  for (const p of platforms) {
+    const entry = { ...REFERRAL, postUrl: p.post };
+    const tag = REFERRAL.srcTag;
+    for (const ref of ["", ...p.referrers]) {
+      const tagged = evaluateArticleEntry(entry, ref, `https://example.com/a?src=${tag}&utm_source=x&fbclid=y`);
+      check(`${p.name}: tagged link from "${ref || "no referrer"}" counts`, tagged.verdict === "referral");
+    }
+    for (const ref of p.referrers) {
+      const untagged = evaluateArticleEntry(entry, ref, "https://example.com/a");
+      check(`${p.name}: tag lost, referrer ${new URL(ref).host} still counts`, untagged.verdict === "referral", untagged.verdict);
+    }
+  }
+  // The other direction must hold too: a search engine or an unrelated site is
+  // not a post, whatever platform the post is on.
+  for (const p of platforms) {
+    const entry = { ...REFERRAL, postUrl: p.post };
+    for (const ref of ["https://www.google.com/", "https://www.bing.com/", "https://unrelated-site.example.net/"]) {
+      check(
+        `${p.name}: arriving from ${new URL(ref).host} untagged is a mismatch`,
+        evaluateArticleEntry(entry, ref, "https://example.com/a").verdict === "mismatch"
+      );
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
