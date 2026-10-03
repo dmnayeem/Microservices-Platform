@@ -1612,14 +1612,15 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8da699; 
      size, and with tracking tightening as size grows (large text set at 0
      tracking is the single most common "not a real product" tell). */
   .mk-h1 {
-    font-size: clamp(2rem, 6.2vw, 4.25rem);
+    font-size: clamp(1.75rem, 0.75rem + 4.4vw, 4.25rem);
     font-weight: 800;
-    line-height: 1.05;
+    line-height: 1.08;
     letter-spacing: -0.032em;
-    text-wrap: pretty;
+    text-wrap: balance;
+    overflow-wrap: break-word;
   }
   .mk-h2 {
-    font-size: clamp(1.75rem, 4vw, 3rem);
+    font-size: clamp(1.625rem, 1rem + 2.6vw, 3rem);
     font-weight: 800;
     line-height: 1.1;
     letter-spacing: -0.026em;
@@ -1632,8 +1633,8 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8da699; 
     letter-spacing: -0.012em;
   }
   .mk-lead {
-    font-size: clamp(1rem, 1.5vw, 1.1875rem);
-    line-height: 1.65;
+    font-size: clamp(0.9375rem, 0.85rem + 0.45vw, 1.1875rem);
+    line-height: 1.6;
     color: var(--mk-muted);
     text-wrap: pretty;
   }

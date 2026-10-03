@@ -76,14 +76,14 @@ export function Hero(props: Props) {
               </span>
             </div>
 
-            <h1 className="mk-h1 mb-5 break-words">
+            <h1 className="mk-h1 mb-5 break-words lg:text-[clamp(2.5rem,4.2vw,3.5rem)]">
               <span className="block text-(--mk-text)">{v.title_line1}</span>
               <span className="block bg-linear-to-r from-(--mk-rail-a) via-(--mk-rail-b) to-(--mk-rail-b) bg-clip-text text-transparent">
                 {v.title_line2}
               </span>
             </h1>
 
-            <p className="mk-lead mk-measure mx-auto lg:mx-0 mb-7 sm:mb-8">
+            <p className="mk-lead mk-measure mx-auto lg:mx-0 mb-7 sm:mb-8 line-clamp-4 sm:line-clamp-none">
               {v.subtitle}
             </p>
 
@@ -136,15 +136,15 @@ export function Hero(props: Props) {
                 key={i}
                 /* One axis. The icon was centred and the figure and label
                    were not, so each card read as two different layouts. */
-                className="mk-card mk-press group min-w-0 rounded-2xl p-4 sm:p-5 text-center hover:border-(--mk-border-strong)"
+                className="mk-card mk-press group flex min-w-0 flex-col items-center rounded-2xl px-3 py-4 sm:p-5 text-center hover:border-(--mk-border-strong)"
               >
-                <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-(--mk-accent-soft) text-(--mk-accent)">
+                <span className="mx-auto mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--mk-accent-soft) text-(--mk-accent)">
                   <Icon className="w-5 h-5" />
                 </span>
-                <div className="mk-figure text-2xl sm:text-3xl text-(--mk-text)">
+                <div className="mk-figure max-w-full text-lg sm:text-2xl md:text-xl lg:text-2xl xl:text-3xl leading-tight text-(--mk-text) wrap-break-word">
                   {stat.value}
                 </div>
-                <div className="text-xs sm:text-sm text-(--mk-subtle) mt-1 text-balance">
+                <div className="text-xs sm:text-sm text-(--mk-subtle) mt-1 text-balance line-clamp-2">
                   {stat.label}
                 </div>
               </div>

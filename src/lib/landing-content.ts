@@ -464,9 +464,9 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   hero: {
     badge: "Micro-tasks · Marketplace · Courses",
     title_line1: "Get Paid for Real Work.",
-    title_line2: "Sell Your Skills. Learn and Teach.",
+    title_line2: "Sell, Learn and Teach.",
     subtitle:
-      "RevType is a freelance micro-task marketplace and digital skill-sharing community. Complete small paid jobs posted by businesses and advertisers, sell digital products and freelance services, teach online courses, and earn creator commissions — all from one account.",
+      "Do small paid tasks for real businesses, sell digital products and services, and take or teach courses — all from one free account.",
     cta_primary_label: "Create a Free Account",
     cta_primary_href: "/register",
     cta_secondary_label: "See how it works",
@@ -474,7 +474,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     // No member counts, payout totals or ratings here: a number on the home
     // page has to be one the platform can stand behind on the day it is read.
     stats: [
-      { iconKey: "CheckCircle", value: "Micro-tasks", label: "Pay shown before you start" },
+      { iconKey: "CheckCircle", value: "Micro-tasks", label: "Pay shown up front" },
       { iconKey: "Sparkles", value: "Marketplace", label: "Digital products & services" },
       { iconKey: "Trophy", value: "Courses", label: "Learn a skill or teach one" },
       { iconKey: "Users", value: "Free", label: "To create an account" },
@@ -486,13 +486,13 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     heading_line1: "One Account,",
     heading_line2: "Several Ways to Work",
     subheading:
-      "Take on freelance micro-tasks, sell digital products and services, teach or take courses, and earn commissions as a creator. Use one, or combine them — your income comes from the work you complete and the things you sell.",
+      "Micro-tasks, a digital marketplace, courses and creator commissions. Use one or combine them — you earn from the work you complete.",
     items: [
       {
         iconKey: "ClipboardList",
         title: "Micro Tasks",
         description:
-          "Short freelance jobs posted by businesses and advertisers: social actions, app testing, surveys, articles and video reviews. Every task states its pay and the proof it needs before you start. Some tasks are sponsored.",
+          "Short jobs from businesses: social actions, app tests, surveys and video reviews. Pay and proof are shown before you start.",
         gradient: "from-blue-500 to-indigo-600",
         href: "/microtask",
       },
@@ -500,7 +500,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "ShoppingBag",
         title: "Digital Marketplace",
         description:
-          "Sell digital products and freelance services — templates, graphics, ebooks, code, audio and custom work. Every listing is reviewed before it goes live, and service deals run through escrow.",
+          "Sell templates, graphics, ebooks, code and services. Every listing is reviewed, and service deals use escrow.",
         gradient: "from-emerald-500 to-teal-600",
         href: "/features/marketplace",
       },
@@ -508,7 +508,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "GraduationCap",
         title: "Online Courses",
         description:
-          "Learn practical skills with structured lessons and a completion certificate — or apply as a tutor and sell your own courses and live classes.",
+          "Learn practical skills and earn a certificate — or apply as a tutor and sell your own courses.",
         gradient: "from-amber-500 to-orange-600",
         href: "/features/courses",
       },
@@ -516,7 +516,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Handshake",
         title: "Affiliate Commissions",
         description:
-          "Recommend marketplace products and courses with your personal link and earn the commission the seller set on each sale you refer.",
+          "Share products and courses with your personal link and earn the seller's commission on each referred sale.",
         gradient: "from-fuchsia-500 to-pink-600",
         href: "/features/affiliate",
       },
@@ -524,7 +524,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Users",
         title: "Team & Referrals",
         description:
-          "Invite people you know. Referral rewards are tied to their genuine activity on the platform, with caps and anti-abuse checks so the programme cannot be farmed.",
+          "Invite people you know. Rewards follow their genuine activity, with caps and anti-abuse checks.",
         gradient: "from-purple-500 to-violet-600",
         href: "/referral",
       },
@@ -532,7 +532,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "MessageSquare",
         title: "Social Feed",
         description:
-          "A creator community feed for sharing posts, tips and work. Engagement rewards are based on genuine activity, not raw volume.",
+          "A community feed for posts, tips and work. Rewards follow genuine engagement, not raw volume.",
         gradient: "from-sky-500 to-blue-600",
         href: "/microtask#feed",
       },
@@ -540,7 +540,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Gamepad2",
         title: "Games & Tournaments",
         description:
-          "Optional community extras: quiz competitions, HTML5 games, leaderboards and prize draws, each with its own published rules.",
+          "Optional extras: quizzes, HTML5 games, leaderboards and prize draws, each with published rules.",
         gradient: "from-rose-500 to-red-600",
         href: "/microtask#more-ways",
       },
@@ -548,7 +548,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Megaphone",
         title: "Advertiser Slots",
         description:
-          "For businesses: run reviewed ad campaigns in specific placements, or post paid tasks and have real, verified people complete them.",
+          "For businesses: run reviewed ad campaigns, or post paid tasks for verified people to complete.",
         gradient: "from-cyan-500 to-sky-600",
         href: "/advertise",
       },
@@ -556,7 +556,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Wallet",
         title: "Withdrawals",
         description:
-          "Request payouts to PayPal, crypto (Binance, Bitget) or mobile wallets such as bKash, Nagad and Rocket, where enabled. The minimum, fee, processing time and any plan requirement are shown before you confirm.",
+          "Cash out to PayPal, crypto or mobile wallets where enabled. Minimum, fee and requirements are shown first.",
         gradient: "from-indigo-500 to-blue-600",
         href: "/microtask#payout",
       },
@@ -564,17 +564,17 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   },
   how_it_works: {
     badge: "How it works",
-    heading_line1: "From Sign-Up to Payout",
-    heading_line2: "in 4 Steps",
+    heading_line1: "From Sign-Up",
+    heading_line2: "to Payout",
     subheading:
-      "The same flow applies whether you complete micro-tasks, sell a product or teach a course.",
+      "Four steps — the same for tasks, products and courses.",
     steps: [
       {
         iconKey: "UserPlus",
         step_number: "01",
         title: "Create an account",
         description:
-          "Sign up with your email or Google account. Joining is free and needs no credit card.",
+          "Sign up free with email or Google. No credit card needed.",
         gradient: "from-blue-500 to-blue-600",
       },
       {
@@ -582,15 +582,15 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         step_number: "02",
         title: "Choose your work",
         description:
-          "Pick a micro-task you are eligible for, list a digital product or service, or enrol in or publish a course.",
+          "Pick an eligible task, list a product or service, or join a course.",
         gradient: "from-indigo-500 to-purple-600",
       },
       {
         iconKey: "Coins",
         step_number: "03",
-        title: "Get verified and credited",
+        title: "Get verified",
         description:
-          "Task proof is checked automatically or by a reviewer; sales and course enrolments settle to your wallet. Rejected work is not paid, and the reason is shown.",
+          "Proof is checked before you are paid. Rejected work is not paid, and you see why.",
         gradient: "from-purple-500 to-pink-500",
       },
       {
@@ -598,7 +598,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         step_number: "04",
         title: "Withdraw",
         description:
-          "Convert points to cash and request a payout. Minimums, fees, processing time and whether an active plan is required are shown on the withdrawal screen.",
+          "Convert points to cash and request a payout. Minimum, fee and requirements are shown first.",
         gradient: "from-pink-500 to-rose-500",
       },
     ],
@@ -607,7 +607,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     badge: "Illustrative calculator",
     heading: "How task rates and plans add up",
     subheading:
-      "An illustration only, not a forecast or a promise. Real pay is set per task and can change, and what you actually earn depends on which tasks are available to you, whether your work is approved, and how much time you put in.",
+      "An illustration, not a forecast. Real pay is set per task and depends on availability, approval and your time.",
     points_per_dollar: 1000,
     commission_l1: 10,
     commission_l2: 5,
@@ -629,7 +629,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     subheading:
       "Joining and earning are free. Optional paid plans raise daily task limits and unlock extra features.",
     guarantee_text:
-      "Withdrawals may require an active paid plan — the withdrawal screen shows whether this applies to you before you request one. Plan purchases follow our Refund Policy.",
+      "Withdrawals may need an active paid plan — the withdrawal screen tells you first. Plan purchases follow our Refund Policy.",
     plans: [
       {
         iconKey: "Zap",
@@ -716,17 +716,17 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   },
   trust_badges: {
     items: [
-      { iconKey: "Shield", label: "Encrypted HTTPS connections" },
-      { iconKey: "BadgeCheck", label: "Work reviewed before payout" },
-      { iconKey: "Lock", label: "Identity checks on payouts" },
-      { iconKey: "Headphones", label: "Email & in-app support" },
+      { iconKey: "Shield", label: "Encrypted HTTPS" },
+      { iconKey: "BadgeCheck", label: "Work reviewed" },
+      { iconKey: "Lock", label: "ID-checked payouts" },
+      { iconKey: "Headphones", label: "Email support" },
     ],
   },
   faq: {
     badge: "FAQ",
     heading_line1: "Common",
     heading_line2: "Questions",
-    subheading: "Straight answers about how RevType works, how it is funded, and how you get paid.",
+    subheading: "How RevType works, how it is funded, and how you get paid.",
     contact_prompt: "Still have questions?",
     contact_label: "Contact our support team →",
     contact_email: "support@revtype.com",
@@ -767,14 +767,14 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     heading_line1: "Put Your Skills",
     heading_line2: "to Work",
     subheading:
-      "Create a free account to browse the micro-tasks available to you, open a marketplace storefront, or enrol in a course. What you earn depends on the work you complete.",
+      "Create a free account to browse tasks, open a storefront or join a course. You earn from the work you complete.",
     cta_label: "Create Free Account",
     cta_href: "/register",
     disclaimer: "Free to join · No credit card required",
   },
   footer: {
     brand_description:
-      "RevType is a freelance micro-task marketplace and digital skill-sharing community: paid micro-tasks from real businesses, a marketplace for digital products and services, online courses, and creator commissions.",
+      "Paid micro-tasks from real businesses, a marketplace for digital products and services, online courses and creator commissions.",
     payment_methods_label: "Payout methods (where enabled)",
     payment_methods: ["PayPal", "Binance", "Bitget", "bKash", "Nagad", "Rocket"],
     link_groups: [

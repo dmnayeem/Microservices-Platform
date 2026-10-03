@@ -51,7 +51,7 @@ export function HowItWorks(props: Props) {
               return (
                 <div
                   key={i}
-                  className="mk-zoom mk-press relative p-6 pt-8 rounded-2xl mk-card text-center"
+                  className="mk-zoom mk-press relative h-full min-w-0 p-5 pt-8 sm:p-6 sm:pt-8 rounded-2xl mk-card text-center"
                 >
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <span
@@ -67,10 +67,10 @@ export function HowItWorks(props: Props) {
                     <Icon className="w-8 h-8 text-white" />
                   </div>
 
-                  <h3 className="text-lg font-bold text-(--mk-text) mb-2">
+                  <h3 className="text-base sm:text-lg font-bold text-(--mk-text) mb-2 text-balance">
                     {step.title}
                   </h3>
-                  <p className="text-sm text-(--mk-muted) leading-relaxed">
+                  <p className="text-sm sm:text-[0.9375rem] text-(--mk-muted) leading-relaxed text-pretty line-clamp-4">
                     {step.description}
                   </p>
                 </div>

@@ -85,6 +85,31 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
   const [shortcutHint, setShortcutHint] = useState("Ctrl K");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  // Close the bell / profile panels on a tap anywhere outside them. The old
+  // full-screen click-catcher sat inside the header, whose backdrop blur makes
+  // `fixed` children size to the header — so taps below it did nothing.
+  const notifWrapRef = useRef<HTMLDivElement | null>(null);
+  const profileWrapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isNotificationOpen && !isProfileOpen) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (notifWrapRef.current && !notifWrapRef.current.contains(t)) setIsNotificationOpen(false);
+      if (profileWrapRef.current && !profileWrapRef.current.contains(t)) setIsProfileOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsNotificationOpen(false);
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isNotificationOpen, isProfileOpen]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   // Mirror the unread count onto the installed app's icon badge.
@@ -382,7 +407,7 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
                   <Fragment key={item.id}>
             {/* Notifications */}
             {shows("/notifications") && (
-            <div className="relative">
+            <div ref={notifWrapRef} className="relative">
               <button
                 onClick={() => {
                   const opening = !isNotificationOpen;
@@ -507,7 +532,7 @@ export function Header({ user, avatar, hiddenPaths, config = DEFAULT_HEADER, tab
             })}
 
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div ref={profileWrapRef} className="relative">
               <button
                 onClick={() => {
                   setIsProfileOpen(!isProfileOpen);

@@ -74,25 +74,25 @@ export function Features(props: Props) {
             const Icon = ICONS[feature.iconKey] ?? Sparkles;
             const href = feature.href?.trim();
             const cardClass =
-              "mk-zoom mk-press group relative flex flex-col h-full p-6 rounded-2xl mk-card hover:border-(--mk-border-strong)";
+              "mk-zoom mk-press group relative flex flex-col h-full min-w-0 p-5 sm:p-6 rounded-2xl mk-card hover:border-(--mk-border-strong)";
             const inner = (
               <>
                 <div
-                  className={`w-14 h-14 rounded-2xl bg-linear-to-br ${feature.gradient} flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform`}
+                  className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-linear-to-br ${feature.gradient} flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform`}
                 >
-                  <Icon className="w-7 h-7 text-white" />
+                  <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-(--mk-text) mb-2 flex items-center gap-1.5">
-                  {feature.title}
+                <h3 className="text-base sm:text-lg font-bold text-(--mk-text) mb-2 flex items-center gap-1.5 text-balance">
+                  <span className="min-w-0">{feature.title}</span>
                   {href && (
-                    <ArrowUpRight className="w-4 h-4 text-(--mk-subtle) group-hover:text-(--mk-accent) transition-colors" />
+                    <ArrowUpRight className="w-4 h-4 shrink-0 text-(--mk-subtle) group-hover:text-(--mk-accent) transition-colors" />
                   )}
                 </h3>
-                <p className="text-sm text-(--mk-muted) leading-relaxed">
+                <p className="text-sm sm:text-[0.9375rem] text-(--mk-muted) leading-relaxed text-pretty line-clamp-4">
                   {feature.description}
                 </p>
                 {href && (
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-(--mk-accent)">
+                  <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-semibold text-(--mk-accent)">
                     Learn more
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </span>
