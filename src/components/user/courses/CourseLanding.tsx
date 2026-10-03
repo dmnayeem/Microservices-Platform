@@ -20,21 +20,25 @@ import { StatCard } from "@/components/user/primitives/stat-card";
 import { AffiliateAttribution } from "@/components/user/affiliate/affiliate-attribution";
 import { AffiliateShareButton } from "@/components/user/affiliate/affiliate-share-button";
 import { AffiliateRewardBadge } from "@/components/user/affiliate/affiliate-reward-badge";
+import { loginHref, registerHref } from "@/lib/public-catalog";
 
 interface Props {
   // From loadCourseLanding — shape is encapsulated here on purpose
   data: Awaited<ReturnType<typeof import("@/lib/course-landing").loadCourseLanding>>;
   viewerId: string;
+  /** Logged-out visitor (public catalog): Enrol / Save become "sign in". */
+  guest?: boolean;
 }
 
-export function CourseLanding({ data, viewerId }: Props) {
+export function CourseLanding({ data, viewerId, guest = false }: Props) {
   // Fire-and-forget view tracker. Server-side dedupes by sessionHash so an
   // anonymous reload won't double-count.
   useEffect(() => {
-    if (!data) return;
+    // The tracker needs a session; a guest's request would only be redirected.
+    if (!data || guest) return;
     const id = data.course.id;
     fetch(`/api/courses/${id}/view`, { method: "POST" }).catch(() => {});
-  }, [data]);
+  }, [data, guest]);
 
   if (!data) return null;
 
@@ -288,6 +292,8 @@ export function CourseLanding({ data, viewerId }: Props) {
             certificateEnabled={course.certificateEnabled}
             totalLessons={course.totalLessons}
             totalDuration={course.totalDuration}
+            signInHref={guest ? loginHref(`/courses/${course.slug ?? course.id}`) : undefined}
+            registerHref={guest ? registerHref(`/courses/${course.slug ?? course.id}`) : undefined}
           />
         </aside>
       </div>

@@ -1,6 +1,60 @@
 import { prisma } from "@/lib/prisma";
-import { toNumOrNull } from "@/lib/money";
+import { toNum, toNumOrNull } from "@/lib/money";
 import { isAffiliateEligible, formatAffiliateReward } from "@/lib/affiliate";
+
+/**
+ * Lesson fields the landing page may carry. The landing page is a SALES page —
+ * it is now served to logged-out visitors and search engines too — so it gets
+ * the outline only: never a lesson's body, transcript, resources, quiz link or
+ * video URL. (It used to `include` whole lesson rows, which put every paid
+ * lesson's `content` and `videoUrl` into the page payload of anyone who could
+ * open it.) The curriculum component never read any of those fields.
+ */
+const LESSON_OUTLINE = {
+  id: true,
+  title: true,
+  description: true,
+  duration: true,
+  isPreview: true,
+  lessonType: true,
+} as const;
+
+/** Course columns the landing page uses — and nothing internal (revenue, commission, creator). */
+const COURSE_PUBLIC = {
+  id: true,
+  slug: true,
+  title: true,
+  subtitle: true,
+  description: true,
+  thumbnail: true,
+  bannerUrl: true,
+  promoVideoUrl: true,
+  category: true,
+  skillLevel: true,
+  language: true,
+  isFree: true,
+  price: true,
+  originalPrice: true,
+  discountPrice: true,
+  discountEndsAt: true,
+  learningOutcomes: true,
+  requirements: true,
+  whatsIncluded: true,
+  faqs: true,
+  seoTitle: true,
+  seoDescription: true,
+  totalLessons: true,
+  totalDuration: true,
+  enrollmentCount: true,
+  avgRating: true,
+  totalReviews: true,
+  certificateEnabled: true,
+  publishedAt: true,
+  lastContentUpdate: true,
+  tutorId: true,
+  affiliateCommissionType: true,
+  affiliateCommissionValue: true,
+} as const;
 
 /** Load the full landing-page payload for a course (by slug or id) + the
  *  current user's enrollment / bookmark / review status. Used by the
@@ -15,12 +69,18 @@ export async function loadCourseLanding(opts: {
       OR: [{ slug: opts.slugOrId }, { id: opts.slugOrId }],
       status: "PUBLISHED",
     },
-    include: {
+    select: {
+      ...COURSE_PUBLIC,
       modules: {
         orderBy: { order: "asc" },
-        include: { lessons: { orderBy: { order: "asc" } } },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          lessons: { orderBy: { order: "asc" }, select: LESSON_OUTLINE },
+        },
       },
-      lessons: { where: { moduleId: null }, orderBy: { order: "asc" } },
+      lessons: { where: { moduleId: null }, orderBy: { order: "asc" }, select: LESSON_OUTLINE },
       tutor: {
         select: {
           id: true,
@@ -47,8 +107,34 @@ export async function loadCourseLanding(opts: {
   });
   if (!courseRaw) return null;
 
-  // Type assertion — Prisma Accelerate collapses include payloads
-  const course = courseRaw as unknown as {
+  type LessonOutline = {
+    id: string;
+    title: string;
+    description: string | null;
+    duration: number;
+    isPreview: boolean;
+    lessonType: string;
+    /** Always null here — kept for the curriculum component's shape. */
+    videoUrl: string | null;
+  };
+  const outline = (l: Omit<LessonOutline, "videoUrl">): LessonOutline => ({ ...l, videoUrl: null });
+  const raw = courseRaw as unknown as {
+    modules: Array<{ id: string; title: string; description: string | null; lessons: Omit<LessonOutline, "videoUrl">[] }>;
+    lessons: Omit<LessonOutline, "videoUrl">[];
+  };
+
+  // Type assertion — Prisma Accelerate collapses include payloads. Money is
+  // converted to plain numbers here: the type always said `number`, and a
+  // Decimal object cannot be cached or handed to a client component.
+  const course = {
+    ...(courseRaw as unknown as Record<string, unknown>),
+    price: toNum(courseRaw.price),
+    originalPrice: toNumOrNull(courseRaw.originalPrice),
+    discountPrice: toNumOrNull(courseRaw.discountPrice),
+    affiliateCommissionValue: toNumOrNull(courseRaw.affiliateCommissionValue),
+    modules: raw.modules.map((m) => ({ ...m, lessons: m.lessons.map(outline) })),
+    lessons: raw.lessons.map(outline),
+  } as unknown as {
     id: string;
     slug: string | null;
     title: string;
@@ -230,6 +316,12 @@ export async function loadCourseLanding(opts: {
     },
   });
 
+  const related = relatedRaw.map((r) => ({
+    ...r,
+    price: toNum(r.price),
+    discountPrice: toNumOrNull(r.discountPrice),
+  }));
+
   return {
     course,
     affiliateEligible: isAffiliateEligible(
@@ -249,6 +341,6 @@ export async function loadCourseLanding(opts: {
     reviews,
     questions,
     ratingBreakdown: breakdown,
-    related: relatedRaw,
+    related,
   };
 }

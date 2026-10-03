@@ -38,10 +38,17 @@ interface Props {
   certificateEnabled: boolean;
   totalLessons: number;
   totalDuration: number;
+  /**
+   * Set for a logged-out visitor: Enrol and Save become links to sign in that
+   * come back to this course, and nothing that needs a session is called.
+   */
+  signInHref?: string;
+  registerHref?: string;
 }
 
 export function CourseEnrollCta({
   courseId,
+  title,
   isFree,
   price,
   originalPrice,
@@ -53,6 +60,8 @@ export function CourseEnrollCta({
   certificateEnabled,
   totalLessons,
   totalDuration,
+  signInHref,
+  registerHref,
 }: Props) {
   const router = useRouter();
   const [enrolling, setEnrolling] = useState(false);
@@ -197,7 +206,7 @@ export function CourseEnrollCta({
         ) : thumbnail ? (
           <Image
             src={thumbnail}
-            alt=""
+            alt={title}
             fill
             sizes="360px"
             className="object-cover"
@@ -232,7 +241,7 @@ export function CourseEnrollCta({
         </div>
 
         {/* Coupon — paid only, not-yet-enrolled */}
-        {!isFree && !isEnrolled && (
+        {!isFree && !isEnrolled && !signInHref && (
           <div className="rounded-xl border border-(--app-line) bg-(--app-page) p-2.5 space-y-1.5">
             {applied ? (
               <div className="flex items-center gap-2 text-xs">
@@ -287,7 +296,25 @@ export function CourseEnrollCta({
           </div>
         )}
 
-        {isEnrolled ? (
+        {signInHref ? (
+          <>
+            <Link
+              href={signInHref}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+            >
+              <PlayCircle className="w-5 h-5" />
+              {isFree ? "Sign in to enrol — it's free" : `Sign in to enrol — ${usd(finalPrice)}`}
+            </Link>
+            {registerHref && (
+              <p className="text-center text-[11px] text-(--app-ink-3)">
+                New here?{" "}
+                <Link href={registerHref} className="font-semibold text-(--app-accent-ink) hover:underline">
+                  Create a free account
+                </Link>
+              </p>
+            )}
+          </>
+        ) : isEnrolled ? (
           <Link
             href={`/learn/${courseId}`}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold"
@@ -317,6 +344,7 @@ export function CourseEnrollCta({
           </button>
         )}
 
+        {!signInHref && (
         <button
           type="button"
           onClick={toggleBookmark}
@@ -337,6 +365,7 @@ export function CourseEnrollCta({
           )}
           {bookmarked ? "Saved" : "Save to wishlist"}
         </button>
+        )}
 
         {isEnrolled && !isFree && (
           <button

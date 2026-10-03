@@ -1,18 +1,110 @@
 import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { redirect, notFound, permanentRedirect } from "next/navigation";
+import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo/page-meta";
 import { loadCourseLanding } from "@/lib/course-landing";
 import { CourseLanding } from "@/components/user/courses/CourseLanding";
 import { JsonLd } from "@/components/seo/json-ld";
+import { plainSummary } from "@/lib/public-catalog";
+import { absoluteImage, getPublicCourseLanding } from "@/lib/public-catalog-data";
+import { breadcrumbLd, courseLd } from "@/lib/public-catalog-schema";
 
-export default async function CourseLandingPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+/**
+ * A course's landing (sales) page. Public: a logged-out visitor and a search
+ * engine get the full page — outline, tutor, reviews, Q&A, FAQ — from a
+ * cached read, with Enrol / Save turned into "sign in". The curriculum is an
+ * outline only (no lesson bodies or video URLs, for anyone). A signed-in
+ * viewer gets the page they always had, with their enrolment state.
+ */
 
+type Props = { params: Promise<{ slug: string }> };
+type Landing = NonNullable<Awaited<ReturnType<typeof getPublicCourseLanding>>>;
+
+function coursePath(c: Landing["course"]): string {
+  return `/courses/${c.slug ?? c.id}`;
+}
+
+function structuredData(data: Landing) {
+  const c = data.course;
+  const path = coursePath(c);
+  const reviewCount = Object.values(data.ratingBreakdown ?? {}).reduce((a, b) => a + Number(b || 0), 0);
+  const images = [c.bannerUrl, c.thumbnail]
+    .map((s) => absoluteImage(s))
+    .filter((s): s is string => !!s);
+  return [
+    courseLd({
+      path,
+      title: c.title,
+      description: c.seoDescription || c.subtitle || c.description || c.title,
+      language: c.language,
+      isFree: c.isFree,
+      price: Number(c.discountPrice ?? c.price ?? 0),
+      images,
+      tutorName: c.tutor?.name ?? null,
+      category: c.category_rel?.name ?? c.category ?? null,
+      skillLevel: c.skillLevel ?? null,
+      totalDuration: c.totalDuration,
+      avgRating: Number(c.avgRating || 0),
+      reviewCount,
+      reviews: data.reviews.map((r) => ({
+        author: r.user?.name || "Student",
+        rating: r.rating,
+        body: r.comment ?? r.title,
+        date: new Date(r.createdAt).toISOString().slice(0, 10),
+      })),
+      datePublished: c.publishedAt ? new Date(c.publishedAt).toISOString().slice(0, 10) : null,
+    }),
+    breadcrumbLd([
+      { name: "Courses", path: "/courses" },
+      ...(c.category_rel ? [{ name: c.category_rel.name, path: `/courses/category/${c.category_rel.slug}` }] : []),
+      { name: c.title, path },
+    ]),
+  ];
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const data = await getPublicCourseLanding(slug);
+  // Thrown here so the response is a real 404, not a streamed 200.
+  if (!data) notFound();
+  const c = data.course;
+  const path = coursePath(c);
+  const category = c.category_rel?.name ?? c.category ?? "Online course";
+  const title = c.seoTitle || `${c.title} – ${category} Course`;
+  const description = plainSummary(c.seoDescription || c.subtitle || c.description) || undefined;
+  return pageMeta({
+    title,
+    description,
+    path,
+    // Only PUBLISHED courses load at all; anything else is a 404.
+    robots: { index: true, follow: true },
+    image: c.bannerUrl || c.thumbnail || null,
+    imageAlt: c.title,
+    cardKicker: `${category} course`,
+  });
+}
+
+export default async function CourseLandingPage({ params }: Props) {
+  const session = await auth();
+  const { slug } = await params;
+
+  // ── Logged-out visitor: the cached public payload ────────────────────────
+  if (!session?.user?.id) {
+    const data = await getPublicCourseLanding(slug);
+    if (!data) notFound();
+    // The legacy /courses/<id> address of a course that has a slug.
+    if (data.course.slug && data.course.slug !== slug && slug === data.course.id) {
+      permanentRedirect(`/courses/${data.course.slug}`);
+    }
+    return (
+      <>
+        <JsonLd data={structuredData(data)} />
+        <CourseLanding data={data} viewerId="" guest />
+      </>
+    );
+  }
+
+  // ── Signed in: unchanged ─────────────────────────────────────────────────
   const data = await loadCourseLanding({ slugOrId: slug, userId: session.user.id });
   if (!data) notFound();
 
@@ -22,57 +114,13 @@ export default async function CourseLandingPage({
     redirect(`/courses/${data.course.slug}`);
   }
 
-  const c = data.course;
-  const reviewCount = Object.values(
-    (data.ratingBreakdown ?? {}) as Record<string, number>
-  ).reduce((a, b) => a + Number(b || 0), 0);
-  const courseLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "Course",
-    name: c.title,
-    description: c.seoDescription ?? c.subtitle ?? undefined,
-    provider: { "@type": "Organization", name: "RevType" },
-    ...(c.avgRating && reviewCount > 0
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: Number(c.avgRating).toFixed(1),
-            reviewCount,
-          },
-        }
-      : {}),
-  };
+  // Structured data from the same cached public read the metadata used.
+  const pub = await getPublicCourseLanding(slug);
 
   return (
     <>
-      <JsonLd data={courseLd} />
+      {pub && <JsonLd data={structuredData(pub)} />}
       <CourseLanding data={data} viewerId={session.user.id} />
     </>
   );
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const data = await loadCourseLanding({ slugOrId: slug, userId: null });
-  if (!data) return { title: "Course not found" };
-  return {
-    title: data.course.seoTitle ?? data.course.title,
-    description: data.course.seoDescription ?? data.course.subtitle ?? undefined,
-    alternates: {
-      canonical: `/courses/${data.course.slug ?? data.course.id}`,
-    },
-    openGraph: {
-      title: data.course.seoTitle ?? data.course.title,
-      description: data.course.seoDescription ?? data.course.subtitle ?? undefined,
-      images: data.course.bannerUrl
-        ? [data.course.bannerUrl]
-        : data.course.thumbnail
-        ? [data.course.thumbnail]
-        : undefined,
-    },
-  };
 }
