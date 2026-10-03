@@ -42,7 +42,7 @@ export function TrustBadges(props: Props) {
                   className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-center sm:text-left"
                 >
                   <Icon className="w-7 h-7 text-(--mk-accent) shrink-0" />
-                  <span className="text-(--mk-text) text-sm font-semibold">
+                  <span className="min-w-0 text-(--mk-text) text-sm font-semibold text-balance">
                     {b.label}
                   </span>
                 </div>

@@ -13,7 +13,7 @@ export function CTA(props: Props) {
   return (
     <section className="mk-section">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-8 sm:p-12 lg:p-16 text-center shadow-xl shadow-(--app-cta)/25">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) px-5 py-8 sm:p-12 lg:p-16 text-center shadow-xl shadow-(--app-cta)/25">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute top-0 left-1/4 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
@@ -24,14 +24,14 @@ export function CTA(props: Props) {
               <Rocket className="w-8 h-8 text-white" />
             </div>
 
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-4">
+            <h2 className="mk-h2 text-white mb-4">
               {v.heading_line1}{" "}
               <span className="bg-linear-to-r from-(--mk-rail-a) to-white bg-clip-text text-transparent">
                 {v.heading_line2}
               </span>
             </h2>
 
-            <p className="text-lg text-(--mk-accent) mb-8 max-w-xl mx-auto">
+            <p className="text-base sm:text-lg text-(--mk-accent) mb-8 max-w-xl mx-auto text-pretty">
               {v.subheading}
             </p>
 

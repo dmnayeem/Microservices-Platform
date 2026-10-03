@@ -54,8 +54,8 @@ export function SectionHeading({
         <p
           className={
             centered
-              ? "mk-lead mk-measure mx-auto"
-              : "mk-lead mk-measure"
+              ? "mk-lead mk-measure mx-auto line-clamp-4 sm:line-clamp-none"
+              : "mk-lead mk-measure line-clamp-4 sm:line-clamp-none"
           }
         >
           {sub}
