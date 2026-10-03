@@ -474,10 +474,10 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     // No member counts, payout totals or ratings here: a number on the home
     // page has to be one the platform can stand behind on the day it is read.
     stats: [
-      { iconKey: "CheckCircle", value: "Micro-tasks", label: "Pay shown up front" },
-      { iconKey: "Sparkles", value: "Marketplace", label: "Digital products & services" },
-      { iconKey: "Trophy", value: "Courses", label: "Learn a skill or teach one" },
-      { iconKey: "Users", value: "Free", label: "To create an account" },
+      { iconKey: "Users", value: "$0", label: "To create an account" },
+      { iconKey: "CheckCircle", value: "Tasks", label: "Pay shown before you start" },
+      { iconKey: "Sparkles", value: "Shop", label: "Digital products & services" },
+      { iconKey: "Trophy", value: "Learn", label: "Courses — take or teach" },
     ],
     animation: DEFAULT_HERO_ANIMATION,
   },

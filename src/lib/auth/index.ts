@@ -12,6 +12,7 @@ import {
   type GoogleDbUser,
 } from "@/lib/auth/google-provisioning";
 import { authConfig } from "./config";
+import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "@/lib/auth/google-env";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -52,11 +53,11 @@ const providers: NextAuthConfig["providers"] = [
 ];
 
 // Only add Google provider if credentials are configured
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
   providers.unshift(
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
     })
   );
 }
