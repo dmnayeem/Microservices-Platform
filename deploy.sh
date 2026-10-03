@@ -119,7 +119,7 @@ else                                                    printf 'CURRENT_DIST=%s\
 fi
 set -a; source "$STATE"; set +a
 # Everything else that accumulates (old build dirs, docker leftovers) is one job.
-[[ -x ./housekeeping.sh ]] && bash ./housekeeping.sh | sed 's/^/  /' || true
+[[ -x ./housekeeping.sh ]] && FROM_DEPLOY=1 bash ./housekeeping.sh | sed 's/^/  /' || true
 
 rc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://${APP_DOMAIN}/api/health" || echo 000)
 [[ "$rc" == 200 ]] && log "https://${APP_DOMAIN}/api/health -> 200" || printf '\033[33m  WARN\033[0m external check -> %s\n' "$rc"

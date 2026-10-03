@@ -10,7 +10,9 @@ before=$(df --output=avail -BM / | tail -1 | tr -d ' M')
 # --- build directories --------------------------------------------------------
 set -a; source ./.deploy-state 2>/dev/null || true; set +a
 CUR="${CURRENT_DIST:-}"; PREV="${PREVIOUS_DIST:-}"
-if pgrep -f 'bash ./deploy.sh' >/dev/null 2>&1; then
+# When deploy.sh itself calls this (FROM_DEPLOY=1) the switch is already done,
+# so the "deploy in progress" guard must not trip on the caller.
+if [[ "${FROM_DEPLOY:-0}" != 1 ]] && pgrep -f 'bash ./deploy.sh' >/dev/null 2>&1; then
   log "deploy in progress - leaving build dirs alone"
 else
   for d in .next-*/; do
