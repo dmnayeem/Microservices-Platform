@@ -8,6 +8,8 @@ import {
   decideUploadName,
   scanStoredUploadInBackground,
 } from "@/lib/upload-safety";
+import { resolvePurpose } from "@/lib/image-policy";
+import { enforceDisplayImage } from "@/lib/image-compress-server";
 
 // Maximum file size for direct upload (5MB)
 const MAX_DIRECT_UPLOAD_SIZE = 5 * 1024 * 1024;
@@ -150,11 +152,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Generate file key
-    const key = generateFileKey(folder, file.name, session.user.id);
-
     // Read file content
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Key for the safety log; replaced below if the image is re-encoded.
+    let key = generateFileKey(folder, file.name, session.user.id);
 
     // What is it REALLY? A program/script/web page, or bytes that don't match
     // the name/type, is refused. Archive findings follow the admin's policy
@@ -170,8 +172,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: gate.reject }, { status: 400 });
     }
 
+    // Display images → ≤ 100 KB WebP (src/lib/image-policy.ts). Marketplace
+    // deliverables and documents ("original" purposes) pass through untouched.
+    const stored = await enforceDisplayImage(
+      buffer,
+      file.type,
+      file.name,
+      resolvePurpose(formData.get("purpose"), folder)
+    );
+    if (stored.changed) key = generateFileKey(folder, stored.fileName, session.user.id);
+
     // Upload to S3
-    const result = await uploadFile(key, buffer, file.type);
+    const result = await uploadFile(key, stored.buffer, stored.mime);
 
     if (!result.success) {
       return NextResponse.json(
@@ -193,9 +205,9 @@ export async function PUT(request: NextRequest) {
       success: true,
       url: result.url,
       key,
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
+      fileName: stored.fileName,
+      fileType: stored.mime,
+      fileSize: stored.buffer.length,
     });
   } catch (error) {
     console.error("Error uploading file:", error);

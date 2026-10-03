@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { hasPermission, type UserRole } from "@/lib/rbac";
 import { uploadFile, isS3Configured, getMediaUrl, getMediaFileType, generateMediaFilename, getMediaS3KeyPath, validateMediaFile } from "@/lib/s3";
 import { inspectUpload, decideUpload } from "@/lib/upload-safety";
+import { resolvePurpose } from "@/lib/image-policy";
+import { enforceDisplayImage } from "@/lib/image-compress-server";
 
 // POST /api/media/upload - Upload media file (for small files < 1MB)
 export async function POST(request: NextRequest) {
@@ -51,12 +53,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: gate.reject }, { status: 400 });
     }
 
+    // Display images → ≤ 100 KB WebP (src/lib/image-policy.ts). Callers send
+    // `purpose` (or a `folder` that implies one); "document" (attachments,
+    // assignment/tutor files) and "deliverable" are stored byte-for-byte.
+    // Default: library media image.
+    const stored = await enforceDisplayImage(
+      buffer,
+      file.type,
+      file.name,
+      resolvePurpose(
+        formData.get("purpose"),
+        // tutor-applications / assignment-submissions → document (original)
+        typeof formData.get("folder") === "string" ? (formData.get("folder") as string) : "media"
+      )
+    );
+
     // Generate unique filename and S3 key
-    const uniqueFilename = generateMediaFilename(file.name);
-    const s3Key = getMediaS3KeyPath(file.type, uniqueFilename);
+    const uniqueFilename = generateMediaFilename(stored.fileName);
+    const s3Key = getMediaS3KeyPath(stored.mime, uniqueFilename);
 
     // Upload to S3
-    const uploadResult = await uploadFile(s3Key, buffer, file.type, {
+    const uploadResult = await uploadFile(s3Key, stored.buffer, stored.mime, {
       originalFilename: file.name,
       uploadedBy: session.user.id,
     });
@@ -69,7 +86,7 @@ export async function POST(request: NextRequest) {
     const { s3Url, cloudFrontUrl } = getMediaUrl(s3Key);
 
     // Get file type
-    const fileType = getMediaFileType(file.type);
+    const fileType = getMediaFileType(stored.mime);
 
     // Save to database
     const mediaItem = await prisma.media.create({
@@ -77,8 +94,8 @@ export async function POST(request: NextRequest) {
         filename: uniqueFilename,
         originalFilename: file.name,
         fileType,
-        mimeType: file.type,
-        fileSize: file.size,
+        mimeType: stored.mime,
+        fileSize: stored.buffer.length,
         s3Key,
         s3Url,
         cloudFrontUrl,
@@ -103,8 +120,8 @@ export async function POST(request: NextRequest) {
       cloudFrontUrl,
       s3Key,
       filename: uniqueFilename,
-      fileType: file.type,
-      fileSize: file.size,
+      fileType: stored.mime,
+      fileSize: stored.buffer.length,
       mediaItem,
     });
   } catch (error) {

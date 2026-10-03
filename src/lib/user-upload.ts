@@ -5,20 +5,35 @@
  * stock videos / lossless audio don't hit the direct-upload cap. Returns the
  * public URL of the stored object.
  */
-import { compressForUpload } from "@/lib/image-compress";
+import { compressForPurpose } from "@/lib/image-compress";
+import { resolvePurpose, type ImagePurpose } from "@/lib/image-policy";
 
 const DIRECT_MAX = 5 * 1024 * 1024;
 
+export interface UserUploadOptions {
+  /**
+   * What the image is FOR (src/lib/image-policy.ts). Display purposes are
+   * compressed to ≤ 100 KB here and again on the server; "deliverable" (the
+   * product a buyer downloads) and "document" are stored byte-for-byte.
+   * Omitted → derived from the folder ("marketplace" → deliverable, so a sold
+   * file can never be compressed by accident).
+   */
+  purpose?: ImagePurpose;
+}
+
 export async function uploadUserFile(
   file: File,
-  folder = "marketplace"
+  folder = "marketplace",
+  opts: UserUploadOptions = {}
 ): Promise<string> {
-  // Shrink raster images before upload (no-op for video/audio/gif/svg).
-  file = await compressForUpload(file, folder);
+  const purpose = resolvePurpose(opts.purpose, folder);
+  // Shrink display images before upload (no-op for originals/video/audio/gif/svg).
+  file = await compressForPurpose(file, purpose);
   if (file.size <= DIRECT_MAX) {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("folder", folder);
+    fd.append("purpose", purpose);
     const res = await fetch("/api/upload", { method: "PUT", body: fd });
     const d = await res.json().catch(() => ({}));
     if (!res.ok || !d.url) {

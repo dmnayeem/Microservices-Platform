@@ -17,6 +17,8 @@
  */
 
 import type { UploadConfig, UploadResult, UploadOptions } from "@/types/media";
+import { compressForPurpose } from "@/lib/image-compress";
+import type { ImagePurpose } from "@/lib/image-policy";
 
 // S3 multipart minimum part size (5MB minimum, except last part)
 export const S3_PART_SIZE = 5 * 1024 * 1024;
@@ -292,9 +294,16 @@ export const mediaUploadConfig: UploadConfig = {
 /**
  * Upload media file to Media Library
  */
-export function uploadMediaFile(
+export async function uploadMediaFile(
   file: File,
-  options: UploadOptions = {}
+  options: UploadOptions = {},
+  purpose: ImagePurpose = "media"
 ): Promise<UploadResult> {
-  return uploadFileWithMultipart(file, file.name, mediaUploadConfig, options);
+  // Display images → ≤ 100 KB WebP before upload (src/lib/image-policy.ts), so
+  // they always take the direct route, where the server re-checks them.
+  const out = await compressForPurpose(file, purpose);
+  return uploadFileWithMultipart(out, out.name, mediaUploadConfig, {
+    ...options,
+    extraFields: { ...options.extraFields, purpose },
+  });
 }

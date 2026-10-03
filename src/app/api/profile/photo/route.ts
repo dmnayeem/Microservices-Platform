@@ -10,6 +10,7 @@ import {
   validateMediaFile,
 } from "@/lib/s3";
 import { inspectUpload, decideUpload } from "@/lib/upload-safety";
+import { enforceDisplayImage } from "@/lib/image-compress-server";
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -75,10 +76,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: gate.reject }, { status: 400 });
     }
 
-    const uniqueFilename = generateMediaFilename(file.name);
-    const s3Key = getMediaS3KeyPath(file.type, uniqueFilename);
+    // Avatar ≤ 512 px, cover ≤ 1600 px, both ≤ 100 KB WebP (src/lib/image-policy.ts).
+    const stored = await enforceDisplayImage(
+      buffer,
+      file.type,
+      file.name,
+      target === "avatar" ? "avatar" : "cover"
+    );
 
-    const uploadResult = await uploadFile(s3Key, buffer, file.type, {
+    const uniqueFilename = generateMediaFilename(stored.fileName);
+    const s3Key = getMediaS3KeyPath(stored.mime, uniqueFilename);
+
+    const uploadResult = await uploadFile(s3Key, stored.buffer, stored.mime, {
       originalFilename: file.name,
       uploadedBy: session.user.id,
       profileTarget: target,
