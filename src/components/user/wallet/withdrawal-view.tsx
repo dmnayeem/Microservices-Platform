@@ -69,7 +69,16 @@ export function WithdrawalView({
   // open to them on purpose: they see what they would receive first, and the
   // subscription is asked for at the moment it matters.
   const [needSub, setNeedSub] = useState(false);
+  // Same idea for KYC, and KYC is asked for FIRST: nothing on the page is
+  // hidden up front — the request itself says what is still missing.
+  const [needKyc, setNeedKyc] = useState(false);
   const subCardRef = useRef<HTMLDivElement | null>(null);
+  const askForKyc = () => {
+    setNeedKyc(true);
+    requestAnimationFrame(() =>
+      subCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    );
+  };
   const askForSubscription = () => {
     setNeedSub(true);
     // The card sits above the form; bring it into view on a phone.
@@ -101,7 +110,6 @@ export function WithdrawalView({
   const overBalance = amount > cashBalance;
   const valid =
     formOpen &&
-    !kycLocked &&
     amount > 0 &&
     !tooLow &&
     !tooHigh &&
@@ -110,6 +118,10 @@ export function WithdrawalView({
 
   const submit = async () => {
     if (!valid) return;
+    if (kycLocked) {
+      askForKyc();
+      return;
+    }
     if (subscriptionRequired) {
       askForSubscription();
       return;
@@ -182,34 +194,7 @@ export function WithdrawalView({
         </div>
       )}
 
-      {withdrawalsEnabled && kycLocked && (
-        <div className="rounded-xl bg-(--app-cta)/10 border border-(--app-accent-edge)/30 p-4">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-(--app-accent-ink) shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-(--app-accent-ink)">
-                {kycPending ? "KYC under review" : "Verify your identity to withdraw"}
-              </p>
-              <p className="text-xs text-(--app-accent-ink)/80 mt-0.5">
-                {kycPending
-                  ? "Your KYC is being reviewed. Withdrawals unlock once it's approved."
-                  : "Complete identity verification (KYC) to unlock withdrawals. Earning tasks are unaffected."}
-              </p>
-              {!kycPending && (
-                <Link
-                  href="/kyc"
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-xs font-bold"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Verify identity
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {formOpen && !kycLocked && cashBalance < min && (
+      {formOpen && cashBalance < min && (
         <div className="glass rounded-xl p-4">
           <p className="text-sm font-bold text-white">
             {usd(Math.max(0, min - cashBalance))} more to your first withdrawal
@@ -229,8 +214,29 @@ export function WithdrawalView({
         </div>
       )}
 
-      {formOpen && !kycLocked && cashBalance >= min && (
+      {formOpen && cashBalance >= min && (
         <>
+          {needKyc && (
+            <div
+              ref={subCardRef}
+              role="status"
+              className="scroll-mt-20 rounded-xl bg-(--app-cta)/10 border border-(--app-accent-edge)/30 p-4"
+            >
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-(--app-accent-ink) shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-(--app-accent-ink)">
+                    {kycPending ? "KYC under review" : "Verify your identity to withdraw"}
+                  </p>
+                  <p className="text-xs text-(--app-accent-ink)/80 mt-0.5">
+                    {kycPending
+                      ? "Your KYC is being reviewed. Come back and submit this request once it's approved."
+                      : "Nothing was sent and your balance is untouched. Complete identity verification (KYC), then submit this same request."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {needSub && (
             <div
               ref={subCardRef}
@@ -387,7 +393,16 @@ export function WithdrawalView({
             </div>
           )}
 
-          {needSub ? (
+          {needKyc && !kycPending ? (
+            <Link
+              href="/kyc"
+              className="w-full py-3 rounded-xl bg-(--app-cta) hover:opacity-90 text-(--app-on-cta) font-bold text-sm inline-flex items-center justify-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Verify identity
+              <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          ) : needSub ? (
             <Link
               href="/packages"
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-(--app-on-bright) font-bold text-sm inline-flex items-center justify-center gap-2"
