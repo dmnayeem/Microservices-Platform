@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { toNum } from "@/lib/money";
 import { Users, DollarSign, TrendingUp, Activity, ArrowUpRight, ArrowDownRight, Eye, Clock, MousePointer2, FileText, ListChecks } from "lucide-react";
 import Link from "next/link";
@@ -275,7 +276,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       _sum: { views: true, uniqueVisitors: true },
       orderBy: { date: "asc" },
     }),
-    prisma.task.groupBy({ by: ["type"], _count: { _all: true } }),
+    prisma.task.groupBy({ by: ["type"], where: LISTED_TASK_WHERE, _count: { _all: true } }),
   ])) as unknown as TrafficBatch;
 
   // Resolve task titles for the task-page rows.

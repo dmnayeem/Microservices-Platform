@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Globe2, Rocket, GraduationCap, HeartPulse, Coins, Clock, MapPin, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { Code2, ShieldCheck, Headphones, PenLine, Mail } from "lucide-react";
 import {
   MarketingHero,
   Section,
@@ -13,34 +14,22 @@ import { pageMeta } from "@/lib/seo/page-meta";
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "Careers",
-    description: `Join ${COMPANY_NAME} — a remote-first team building the global platform for earning online.`,
+    description: `Work with ${COMPANY_NAME}, a freelance micro-task marketplace and digital skill-sharing community. How to get in touch about future roles.`,
     path: "/careers",
   });
 }
 
-const PERKS = [
-  { icon: Globe2, title: "Remote-first, worldwide", body: "Work from anywhere. We hire across timezones and optimize for async, not attendance." },
-  { icon: Coins, title: "Competitive pay + equity", body: "Fair, location-aware compensation and meaningful ownership in what you help build." },
-  { icon: GraduationCap, title: "Learning budget", body: "An annual stipend for courses, conferences, and books — plus time to use it." },
-  { icon: HeartPulse, title: "Health & wellness", body: "Health coverage, generous paid time off, and a genuine no-burnout culture." },
-  { icon: Clock, title: "Flexible hours", body: "Own your schedule. We care about impact and outcomes, not clocked hours." },
-  { icon: Rocket, title: "Real impact, fast", body: "Small team, big product. Your work reaches members in 180+ countries within weeks." },
-];
-
-const ROLES = [
-  { title: "Senior Frontend Engineer", team: "Engineering", location: "Remote · Global", type: "Full-time", blurb: "Own high-impact surfaces in our Next.js/React app used by 100K+ members." },
-  { title: "Backend Engineer (Payments)", team: "Engineering", location: "Remote · Global", type: "Full-time", blurb: "Build the payout and fraud systems that move money reliably across borders." },
-  { title: "Community Manager", team: "Community", location: "Remote · LATAM / Asia", type: "Full-time", blurb: "Grow and support our member communities across regions and languages." },
-  { title: "Trust & Safety Analyst", team: "Operations", location: "Remote · Global", type: "Full-time", blurb: "Keep the platform clean — detect abuse, protect members, refine our policies." },
-  { title: "Product Designer", team: "Design", location: "Remote · Global", type: "Full-time", blurb: "Shape simple, delightful earning experiences that work in every market." },
-  { title: "Customer Support Specialist", team: "Support", location: "Remote · Multiple regions", type: "Full-time", blurb: "Be the human, 24/7 voice members reach when they need help." },
-];
-
-const HIRING = [
-  { step: "1", title: "Apply", body: "Send your CV/portfolio to our careers inbox with the role in the subject." },
-  { step: "2", title: "Intro call", body: "A 30-minute chat to get to know each other and the role." },
-  { step: "3", title: "Practical", body: "A short, paid take-home or live exercise that mirrors real work." },
-  { step: "4", title: "Team & offer", body: "Meet the team, then an offer — usually within two weeks end to end." },
+/*
+ * There are no open positions to advertise. The page used to list six roles
+ * and a benefits package (equity, health cover, a learning budget) that were
+ * placeholders, not real offers — a job advert that is not real misleads the
+ * people who apply. List a role here only when it is actually open.
+ */
+const AREAS = [
+  { icon: Code2, title: "Engineering", body: "The web app, the task and verification engine, payouts, and the marketplace and course systems." },
+  { icon: ShieldCheck, title: "Trust & safety", body: "Reviewing task proof, catching fraud and fake accounts, and keeping the marketplace clean." },
+  { icon: Headphones, title: "Member support", body: "Helping members, sellers, tutors and advertisers by email and in-app tickets." },
+  { icon: PenLine, title: "Content & community", body: "Guides for the blog and Help Center, and looking after the creator community." },
 ];
 
 export default function CareersPage() {
@@ -48,18 +37,34 @@ export default function CareersPage() {
     <>
       <MarketingHero
         badge="Careers"
-        title="Build the future of"
-        highlight="online earning"
-        subtitle={`${COMPANY_NAME} is a remote-first team on a mission to give everyone, everywhere a fair way to earn online. If that excites you, we'd love to meet you.`}
+        title="Work on"
+        highlight={COMPANY_NAME}
+        subtitle={`${COMPANY_NAME} is a freelance micro-task marketplace and digital skill-sharing community. We do not have open positions listed right now, but we are always glad to hear from people who want to help build it.`}
       />
 
+      <Section width="narrow">
+        <GlassCard className="sm:p-8">
+          <h2 className="text-xl font-bold text-(--mk-text)">No open roles at the moment</h2>
+          <p className="mt-3 text-sm leading-relaxed text-(--mk-muted)">
+            When a position opens it will be listed on this page with its responsibilities, location and type. Until then, you are welcome to send a short introduction and your CV or portfolio — tell us which area below interests you and what you would bring to it. We keep promising introductions on file for future roles.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-(--mk-muted)">
+            New to the platform? Read{" "}
+            <Link href="/about" className="font-semibold text-(--mk-accent) hover:underline">about {COMPANY_NAME}</Link>{" "}
+            and{" "}
+            <Link href="/microtask" className="font-semibold text-(--mk-accent) hover:underline">how micro-tasks work</Link>{" "}
+            first.
+          </p>
+        </GlassCard>
+      </Section>
+
       <Section>
-        <SectionHeading badge="Why us" tone="purple" title="Life at RevType" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {PERKS.map((p) => (
+        <SectionHeading badge="Where help is needed" tone="purple" title="Areas of work" subtitle="The kinds of work that keep the platform running." />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {AREAS.map((p) => (
             <GlassCard key={p.title}>
               <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
-                <p.icon className="h-5 w-5 text-white" />
+                <p.icon className="h-5 w-5 text-white" aria-hidden />
               </div>
               <h3 className="text-lg font-bold text-(--mk-text)">{p.title}</h3>
               <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{p.body}</p>
@@ -69,51 +74,13 @@ export default function CareersPage() {
       </Section>
 
       <Section>
-        <SectionHeading badge="Open roles" tone="cyan" title="Come build with us" subtitle="Don't see a perfect fit? Send us a note anyway — great people make their own roles." />
-        <div className="space-y-3">
-          {ROLES.map((r) => (
-            <a
-              key={r.title}
-              href={`mailto:${CAREERS_EMAIL}?subject=${encodeURIComponent("Application: " + r.title)}`}
-              className="group block rounded-2xl mk-card backdrop-blur-xl p-5 hover:bg-(--mk-surface-2) hover:border-blue-500/30 transition-all"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-lg font-bold text-(--mk-text)">{r.title}</h3>
-                  <p className="mt-1 text-sm text-(--mk-muted)">{r.blurb}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--mk-muted)">
-                    <span className="rounded-full mk-card px-2.5 py-1">{r.team}</span>
-                    <span className="inline-flex items-center gap-1 rounded-full mk-card px-2.5 py-1"><MapPin className="h-3 w-3" /> {r.location}</span>
-                    <span className="rounded-full mk-card px-2.5 py-1">{r.type}</span>
-                  </div>
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-linear-to-r from-(--mk-grad-a) to-(--mk-grad-b) px-4 py-2 text-sm font-bold text-white shrink-0">
-                  Apply <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                </span>
-              </div>
-            </a>
-          ))}
-        </div>
-      </Section>
-
-      <Section width="narrow">
-        <SectionHeading badge="Process" title="How hiring works" />
-        <div className="grid gap-4 sm:grid-cols-2">
-          {HIRING.map((h) => (
-            <GlassCard key={h.step}>
-              <div className="mb-2 grid h-9 w-9 place-items-center rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-sm font-bold text-white">{h.step}</div>
-              <h3 className="font-bold text-(--mk-text)">{h.title}</h3>
-              <p className="mt-1 text-sm text-(--mk-muted)">{h.body}</p>
-            </GlassCard>
-          ))}
-        </div>
-      </Section>
-
-      <Section>
         <GlassCard className="text-center sm:p-12">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">Ready to apply?</h2>
+          <div className="mb-3 inline-flex items-center gap-2 text-(--mk-accent)">
+            <Mail className="h-5 w-5" aria-hidden /><span className="text-sm font-bold uppercase tracking-wider">Get in touch</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">Send an introduction</h2>
           <p className="mx-auto mt-3 max-w-xl text-(--mk-muted)">
-            Email your CV or portfolio and tell us why you&apos;re excited. We read every application.
+            Email your CV or portfolio with the area you are interested in as the subject.
           </p>
           <div className="mt-7 flex justify-center">
             <PrimaryButton href={`mailto:${CAREERS_EMAIL}`}>{CAREERS_EMAIL}</PrimaryButton>

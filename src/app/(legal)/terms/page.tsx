@@ -23,7 +23,7 @@ export default function TermsPage() {
     <article>
       <LegalHeader
         title="Terms of Service"
-        intro="These Terms (including the End-User Licence Agreement and Community Standards below) are a legal agreement between you and RevType. By creating an account or using the Platform, you agree to them. If you do not agree, do not use RevType."
+        intro="RevType is a freelance micro-task marketplace and digital skill-sharing community. These Terms (including the End-User Licence Agreement and Community Standards below) are a legal agreement between you and RevType. By creating an account or using the Platform, you agree to them. If you do not agree, do not use RevType."
       />
 
       <LegalSection id="eligibility" title="1. Eligibility">

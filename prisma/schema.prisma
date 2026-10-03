@@ -79,6 +79,12 @@ enum TaskStatus {
   /// them would orphan the money trail. `visibleTaskWhere()` only matches
   /// ACTIVE, so an archived task leaves every user-facing list on its own.
   ARCHIVED
+  /// An ARCHIVED task an admin then deleted, kept only because it has
+  /// submissions (the payment trail above). Hidden from EVERY task list, the
+  /// admin ones included — use `LISTED_TASK_STATUSES` (src/lib/task-audit.ts)
+  /// rather than "no status filter" for anything that lists tasks. Money
+  /// views read submissions/ledger, never this, so payouts still count.
+  REMOVED
 }
 
 enum SubmissionStatus {

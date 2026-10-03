@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 // PATCH /api/admin/marketplace/:id/feature
 // Toggle isFeatured / isPromoted and optionally set an "until" date.
@@ -81,6 +82,7 @@ export async function PATCH(
       },
     });
 
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ listing });
   } catch (error) {
     console.error("Feature toggle failed:", error);

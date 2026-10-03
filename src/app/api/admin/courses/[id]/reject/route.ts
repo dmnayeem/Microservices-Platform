@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { CourseStatus, NotificationType } from "@/generated/prisma";
+import { revalidatePublicCourses } from "@/lib/public-catalog-data";
 
 const rejectSchema = z.object({
   adminNote: z.string().max(2000).optional().nullable(),
@@ -75,6 +76,7 @@ export async function POST(
       },
     });
 
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ course: updated });
   } catch (error) {
     console.error("Reject course failed:", error);

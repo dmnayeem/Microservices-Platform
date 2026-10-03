@@ -25,6 +25,7 @@ import {
   Package,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { compressForPurpose } from "@/lib/image-compress";
 import { format } from "date-fns";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
@@ -1132,7 +1133,8 @@ function GiftThumbnailUploader({
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", await compressForPurpose(file, "thumbnail"));
+      fd.append("purpose", "thumbnail");
       const res = await fetch("/api/media/upload", {
         method: "POST",
         body: fd,

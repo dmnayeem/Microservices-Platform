@@ -1,12 +1,25 @@
 import type { Metadata } from "next";
-import { Users, Globe2, ShieldCheck, Zap, HeartHandshake, Target, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import {
+  Users,
+  ShieldCheck,
+  HeartHandshake,
+  Target,
+  ClipboardList,
+  ShoppingBag,
+  GraduationCap,
+  Handshake,
+  Megaphone,
+  Scale,
+  BadgeCheck,
+  ArrowRight,
+  Info,
+} from "lucide-react";
 import {
   MarketingHero,
   Section,
   SectionHeading,
   GlassCard,
-  StatGrid,
-  CountryFlags,
   PrimaryButton,
   GhostButton,
 } from "@/components/marketing/ui";
@@ -15,7 +28,6 @@ import {
   COMPANY_LEGAL,
   COMPANY_BOILERPLATE,
   FOUNDED_YEAR,
-  GLOBAL_COUNTRIES,
   SUPPORT_EMAIL,
 } from "@/config/company";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -26,30 +38,64 @@ import { pageMeta } from "@/lib/seo/page-meta";
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "About Us",
-    description: `${COMPANY_NAME} is a global rewards platform helping people in 180+ countries earn online and cash out securely.`,
+    // ≤155 chars — what Google shows uncut.
+    description: `${COMPANY_NAME} is a freelance micro-task marketplace and digital skill-sharing community: micro-tasks, digital products, services and courses.`,
     path: "/about",
   });
 }
 
-const STATS = [
-  { value: "100K+", label: "Active members" },
-  { value: "$2M+", label: "Paid to members" },
-  { value: "180+", label: "Countries" },
-  { value: "4.9/5", label: "Member rating" },
+/*
+ * Copy rule for this page: every sentence has to be true of the product as it
+ * is built. The old version carried a member count, a "$2M+ paid" figure, a
+ * 4.9/5 rating, a "crossed $1M" milestone and a list of "largest communities" —
+ * none of which came from data. If a number is ever added back, it must be
+ * computed, not typed.
+ */
+
+/** The four things a member can actually do here, each with its own page. */
+const PILLARS = [
+  {
+    icon: ClipboardList,
+    title: "Freelance micro-tasks",
+    body: "Short, defined jobs posted by businesses and advertisers — social actions, app testing, surveys, articles, video reviews and custom work. Each task shows its pay and the proof it needs before you start, and the proof is checked before it is paid.",
+    href: "/microtask",
+    link: "How micro-tasks work",
+  },
+  {
+    icon: ShoppingBag,
+    title: "Digital products and services",
+    body: "Sellers list templates, graphics, ebooks, audio, code and freelance services. Every listing is reviewed before it goes live, and custom service deals run through escrow with admin mediation.",
+    href: "/features/marketplace",
+    link: "About the marketplace",
+  },
+  {
+    icon: GraduationCap,
+    title: "Online courses",
+    body: "Learners take structured courses and receive a completion certificate. Approved tutors build and sell their own courses and live classes.",
+    href: "/features/courses",
+    link: "About courses",
+  },
+  {
+    icon: Handshake,
+    title: "Creator commissions",
+    body: "Affiliates earn the commission a seller sets when someone buys through their link. Referral rewards are tied to the genuine activity of the people you invite.",
+    href: "/features/affiliate",
+    link: "About the affiliate program",
+  },
+];
+
+const AUDIENCES = [
+  { title: "People with spare time and a phone", body: "Pick up micro-tasks that fit around the rest of your day. You see the pay and the rules before you commit." },
+  { title: "Designers, writers, developers and other creators", body: "Sell digital products once and deliver them automatically, or offer custom services with escrow-protected payment." },
+  { title: "Teachers and subject experts", body: "Turn what you know into a course with lessons, resources and quizzes, and set your own price." },
+  { title: "Businesses and advertisers", body: "Have real, verified people complete tasks for your brand, or run reviewed ad campaigns in specific placements.", href: "/advertise" },
 ];
 
 const VALUES = [
-  { icon: ShieldCheck, title: "Trust first", body: "Every payout is real and on time. We hold ourselves to bank-grade security and transparent rules — no hidden conditions, ever." },
-  { icon: Globe2, title: "Borderless by design", body: "One platform, every timezone. Members earn and cash out in their local currency or crypto, wherever they are." },
-  { icon: Zap, title: "Simple, not shallow", body: "Earning should take minutes to understand. Behind that simplicity is serious engineering for fraud protection and fast payments." },
-  { icon: HeartHandshake, title: "Members over metrics", body: "We win when our members do. Support is 24/7 and human, and the product is shaped by community feedback." },
-];
-
-const MILESTONES = [
-  { year: `${FOUNDED_YEAR}`, title: "Founded", body: "A small remote team set out to make online earning honest, simple, and truly global." },
-  { year: `${FOUNDED_YEAR + 1}`, title: "Went global", body: "Localized payouts and support rolled out across the Americas, Europe, the Middle East, and Asia." },
-  { year: `${FOUNDED_YEAR + 2}`, title: "Crossed $1M paid", body: "Millions of tasks completed and our first million dollars sent to members worldwide." },
-  { year: "Today", title: "100K+ members, 180+ countries", body: "A trusted community earning every day — and we're just getting started." },
+  { icon: ShieldCheck, title: "Pay for verified work", body: "A task is paid once its proof is checked — automatically where a link can be read, by a person where it cannot. Each approval is written to the ledger once, so the same work is never paid twice." },
+  { icon: Scale, title: "Rules stated up front", body: "Task pay, proof requirements, withdrawal minimums, fees and any plan requirement are shown before you act, not discovered afterwards." },
+  { icon: BadgeCheck, title: "Fraud stays out", body: "Bots, duplicate accounts and fake proof are rejected and can close an account. Identity verification protects payouts, and one verified identity belongs to one account." },
+  { icon: HeartHandshake, title: "Members over metrics", body: "Rejections come with a reason, appeals are possible, and support is reachable by email and from inside the app." },
 ];
 
 export default function AboutPage() {
@@ -74,15 +120,11 @@ export default function AboutPage() {
         }}
       />
       <MarketingHero
-        badge="About us"
-        title="Earning online, made"
-        highlight="honest and global"
-        subtitle={`${COMPANY_NAME} is a worldwide rewards platform where anyone can turn spare time into real income — completing simple tasks, surveys, and offers, then cashing out securely in their local currency or crypto.`}
+        badge="About RevType"
+        title="A marketplace for small jobs"
+        highlight="and real skills"
+        subtitle={`${COMPANY_NAME} is a freelance micro-task marketplace and digital skill-sharing community. People complete paid micro-tasks for real businesses, sell digital products and services, teach and take courses, and earn commissions as creators.`}
       />
-
-      <Section>
-        <StatGrid stats={STATS} />
-      </Section>
 
       <Section width="narrow">
         <GlassCard className="sm:p-10">
@@ -90,69 +132,118 @@ export default function AboutPage() {
             <Target className="w-5 h-5" />
             <span className="text-sm font-bold uppercase tracking-wider">Our mission</span>
           </div>
-          <p className="text-xl sm:text-2xl font-semibold text-(--mk-text) leading-relaxed">
-            To give everyone, everywhere, a fair and simple way to earn online — with payouts they can trust and rules they can understand.
-          </p>
+          <h2 className="text-xl sm:text-2xl font-semibold text-(--mk-text) leading-relaxed">
+            To give people a fair, transparent place to earn from their time and skills — with clear rules, verified work and payouts they can follow from start to finish.
+          </h2>
           <p className="mt-5 text-(--mk-muted) leading-relaxed">
-            {COMPANY_NAME} began in {FOUNDED_YEAR} with a frustration shared by millions: the internet is full of &ldquo;earn money online&rdquo; promises, and almost none of them pay. We built the opposite — a platform where the tasks are real, the payments are guaranteed, and it works the same whether you&apos;re in New York, Lagos, Dhaka, Berlin, or Manila. Operated by {COMPANY_LEGAL}, a remote-first company with team members across continents, we serve a community that never sleeps.
+            The internet is full of &ldquo;earn online&rdquo; offers that hide how they work. {COMPANY_NAME} takes the opposite approach: every way to earn here is tied to something real — a task a business needs done, a product or service someone buys, a course someone enrols in. {COMPANY_NAME} is operated by {COMPANY_LEGAL}.
           </p>
         </GlassCard>
       </Section>
 
       <Section>
-        <SectionHeading badge="Where we operate" tone="cyan" title="Trusted across the globe" subtitle="Members earn and get paid in 180+ countries. A few of our largest communities:" />
-        <CountryFlags countries={GLOBAL_COUNTRIES} />
+        <SectionHeading
+          badge="What RevType is"
+          tone="blue"
+          title="Four ways to work, one account"
+          subtitle="Use one of them or combine them. Each has its own page with the details."
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {PILLARS.map((p) => (
+            <GlassCard key={p.title}>
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
+                <p.icon className="h-5 w-5 text-white" aria-hidden />
+              </div>
+              <h3 className="text-lg font-bold text-(--mk-text)">{p.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{p.body}</p>
+              <Link href={p.href} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-(--mk-accent) hover:underline">
+                {p.link} <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </GlassCard>
+          ))}
+        </div>
       </Section>
 
-      <Section>
-        <SectionHeading badge="What we stand for" tone="purple" title="Our values" />
+      <Section className="bg-(--mk-band)">
+        <SectionHeading badge="Who it is for" tone="cyan" title="Built for people who do the work — and the businesses that need it" />
         <div className="grid gap-4 sm:grid-cols-2">
-          {VALUES.map((v) => (
-            <GlassCard key={v.title}>
-              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
-                <v.icon className="h-5 w-5 text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-(--mk-text)">{v.title}</h3>
-              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{v.body}</p>
+          {AUDIENCES.map((a) => (
+            <GlassCard key={a.title}>
+              <h3 className="text-base font-bold text-(--mk-text)">{a.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{a.body}</p>
+              {a.href && (
+                <Link href={a.href} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-(--mk-accent) hover:underline">
+                  Advertising and paid tasks for businesses <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              )}
             </GlassCard>
           ))}
         </div>
       </Section>
 
       <Section width="narrow">
-        <SectionHeading badge="Our story" title="How we got here" />
-        <div className="space-y-4">
-          {MILESTONES.map((m) => (
-            <div key={m.title} className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) text-xs font-bold text-white">
-                  {m.year}
-                </div>
-              </div>
-              <GlassCard className="flex-1">
-                <h3 className="font-bold text-(--mk-text)">{m.title}</h3>
-                <p className="mt-1 text-sm text-(--mk-muted)">{m.body}</p>
-              </GlassCard>
+        <SectionHeading badge="Transparency" tone="purple" title="How RevType is funded" />
+        <GlassCard className="sm:p-8">
+          <div className="space-y-4 text-sm leading-relaxed text-(--mk-muted)">
+            <p>
+              Payments to members come out of real revenue. {COMPANY_NAME} earns from:
+            </p>
+            <ul className="list-disc space-y-1.5 pl-5">
+              <li><strong className="text-(--mk-text)">Advertising</strong> — the platform displays ads, and some tasks and activities are sponsored by advertisers.</li>
+              <li><strong className="text-(--mk-text)">Businesses that fund tasks and campaigns</strong> — a buyer pays up front for the work they want done.</li>
+              <li><strong className="text-(--mk-text)">Marketplace fees</strong> — a platform fee on product and service sales.</li>
+              <li><strong className="text-(--mk-text)">Optional paid plans</strong> — plans raise daily limits and unlock features. Withdrawals can require an active plan; the withdrawal screen tells you if they do.</li>
+              <li><strong className="text-(--mk-text)">Withdrawal fees</strong> — shown to you before you confirm a payout.</li>
+            </ul>
+            <div className="flex gap-3 rounded-xl border border-(--mk-border) bg-(--mk-surface) p-4">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-(--mk-accent)" aria-hidden />
+              <p>
+                <strong className="text-(--mk-text)">What {COMPANY_NAME} is not:</strong> it is not a paid-to-click site, not an investment scheme and not a guaranteed income. What you earn depends on the tasks available to you, the quality of your work and what you sell or teach. The{" "}
+                <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">Help Center</Link>{" "}
+                answers the common questions in detail.
+              </p>
             </div>
+          </div>
+        </GlassCard>
+      </Section>
+
+      <Section>
+        <SectionHeading badge="What we stand for" tone="purple" title="How we keep it fair" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {VALUES.map((v) => (
+            <GlassCard key={v.title}>
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)">
+                <v.icon className="h-5 w-5 text-white" aria-hidden />
+              </div>
+              <h3 className="text-lg font-bold text-(--mk-text)">{v.title}</h3>
+              <p className="mt-2 text-sm text-(--mk-muted) leading-relaxed">{v.body}</p>
+            </GlassCard>
           ))}
         </div>
+        <p className="mt-6 text-center text-sm text-(--mk-muted)">
+          Seen something that breaks the rules?{" "}
+          <Link href="/abuse" className="font-semibold text-(--mk-accent) hover:underline">Report abuse or copyright infringement</Link>.
+        </p>
       </Section>
 
       <Section>
         <GlassCard className="text-center sm:p-12">
           <div className="mb-3 inline-flex items-center gap-2 text-(--mk-success)">
-            <TrendingUp className="w-5 h-5" />
-            <span className="text-sm font-bold uppercase tracking-wider">Join us</span>
+            <Megaphone className="w-5 h-5" aria-hidden />
+            <span className="text-sm font-bold uppercase tracking-wider">Get started</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">Start earning in minutes</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-(--mk-text)">Put your time and skills to work</h2>
           <p className="mx-auto mt-3 max-w-xl text-(--mk-muted)">
-            Create a free account and complete your first task today — or join the team building the future of online earning.
+            Create a free account to see the micro-tasks available to you, open a storefront, or enrol in a course. Questions first? Read the{" "}
+            <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">FAQ</Link>{" "}
+            or the{" "}
+            <Link href="/blog" className="font-semibold text-(--mk-accent) hover:underline">blog</Link>.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <PrimaryButton href="/register">
               <Users className="h-4 w-4" /> Create free account
             </PrimaryButton>
-            <GhostButton href="/careers">We&apos;re hiring →</GhostButton>
+            <GhostButton href="/contact">Contact us →</GhostButton>
           </div>
         </GlassCard>
       </Section>

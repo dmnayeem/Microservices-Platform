@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -107,6 +108,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           data: { listingId: id, approvedBy: session.user.id },
         },
       });
+      revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
         listing: updatedListing,
@@ -137,6 +139,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           data: { listingId: id, reason: String(reason).trim(), rejectedBy: session.user.id },
         },
       });
+      revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
         listing: updatedListing,
@@ -166,6 +169,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       });
 
+      revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
         listing: updatedListing,
@@ -187,6 +191,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       });
 
+      revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
         listing: updatedListing,

@@ -20,6 +20,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { compressForPurpose } from "@/lib/image-compress";
+import type { ImagePurpose } from "@/lib/image-policy";
 import {
   CATEGORIES,
   getCategory,
@@ -620,6 +622,7 @@ function StepMedia({
           value={form.images}
           onChange={(next) => set("images", next)}
           uploadEnabled
+          purpose="cover"
         />
       </Section>
 
@@ -629,6 +632,7 @@ function StepMedia({
           value={form.screenshots}
           onChange={(next) => set("screenshots", next)}
           uploadEnabled
+          purpose="proof"
         />
       </Section>
 
@@ -638,6 +642,7 @@ function StepMedia({
           value={form.attachments}
           onChange={(next) => set("attachments", next)}
           uploadEnabled
+          purpose="document"
         />
       </Section>
     </div>
@@ -992,11 +997,14 @@ function UrlListEditor({
   value,
   onChange,
   uploadEnabled,
+  purpose,
 }: {
   label: string;
   value: string[];
   onChange: (next: string[]) => void;
   uploadEnabled?: boolean;
+  /** Gallery/screenshots are display images (≤ 100 KB); attachments stay original. */
+  purpose: ImagePurpose;
 }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1023,7 +1031,8 @@ function UrlListEditor({
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", await compressForPurpose(file, purpose));
+      fd.append("purpose", purpose);
       const r = await fetch("/api/media/upload", { method: "POST", body: fd });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);

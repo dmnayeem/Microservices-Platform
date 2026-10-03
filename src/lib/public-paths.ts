@@ -1,3 +1,4 @@
+import { isPublicCatalogPath } from "@/lib/public-catalog";
 /**
  * The public (not signed-in) pages: the landing page, marketing and legal
  * pages, and the auth screens. Used to scope tracking tags and custom code to
@@ -8,11 +9,13 @@ const PUBLIC_PREFIXES = [
   "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/appeal",
   "/privacy", "/terms", "/refund", "/cookies", "/offer",
   "/features", "/about", "/careers", "/blog", "/press", "/help", "/contact", "/status",
-  "/microtask", "/advertise", "/referral", "/post",
+  "/microtask", "/advertise", "/referral", "/post", "/abuse",
 ];
 
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/") return true;
+  // The public marketplace / services / course pages (lib/public-catalog.ts).
+  if (isPublicCatalogPath(pathname)) return true;
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

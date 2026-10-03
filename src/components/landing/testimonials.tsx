@@ -13,6 +13,9 @@ export function Testimonials(props: Props) {
     ...props,
   };
 
+  // No stories, no section: an empty heading reads as a placeholder.
+  if (v.items.length === 0) return null;
+
   return (
     <section id="testimonials" className="mk-section bg-(--mk-band)">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

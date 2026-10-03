@@ -214,6 +214,10 @@ export function modulesSharingPermissions(): Record<string, string[]> {
  */
 export const API_MODULE_PREFIXES: Record<string, string> = {
   "/api/admin/cpa": "/admin/cpa",
+  // Templates are one feature: the Templates page manages them and the task
+  // form's picker / "save as template" use them. Switching the page off
+  // switches the feature off too; the task form itself keeps working.
+  "/api/admin/task-templates": "/admin/tasks/templates",
   "/api/admin/offerwall-callbacks": "/admin/offerwall-callbacks",
   "/api/admin/offerwalls": "/admin/offerwalls",
   "/api/admin/offerwall": "/admin/offerwalls",

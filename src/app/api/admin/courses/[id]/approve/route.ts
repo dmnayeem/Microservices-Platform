@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { CourseStatus, NotificationType } from "@/generated/prisma";
+import { revalidatePublicCourses } from "@/lib/public-catalog-data";
 
 // POST /api/admin/courses/:id/approve
 // Flips PENDING_REVIEW (or DRAFT, with `force`) → PUBLISHED.
@@ -70,6 +71,7 @@ export async function POST(
       },
     });
 
+    revalidatePublicCourses(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({ course: updated });
   } catch (error) {
     console.error("Approve course failed:", error);

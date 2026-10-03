@@ -59,6 +59,9 @@ import {
   DollarSign,
   Eye,
   LayoutGrid,
+  BadgeDollarSign,
+  Rocket,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -141,6 +144,11 @@ export const iconMap: Record<string, LucideIcon> = {
   DollarSign,
   Eye,
   LayoutGrid,
+  // Payroll, Missions, Daily Missions — were missing, so those nav items drew
+  // the Dashboard icon. scripts/verify-page-registry.ts now checks this map.
+  BadgeDollarSign,
+  Rocket,
+  ListChecks,
 };
 
 /** Which sidebar groups this admin has open (per browser). */

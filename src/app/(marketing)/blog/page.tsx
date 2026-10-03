@@ -14,7 +14,7 @@ export const revalidate = 300;
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "Blog",
-    description: `Guides, tips, and stories from ${COMPANY_NAME} on earning online safely and getting the most from the platform.`,
+    description: `Guides from ${COMPANY_NAME} on freelance micro-tasks, selling digital products and services, teaching online courses, and staying safe on the platform.`,
     path: "/blog",
   });
 }
@@ -42,7 +42,7 @@ export default async function BlogIndexPage() {
         badge="Blog"
         title="Ideas, guides &"
         highlight="honest advice"
-        subtitle="Practical, no-hype writing on earning online, staying safe, and making the most of your time."
+        subtitle="Practical guides on freelance micro-tasks, selling digital products and services, teaching online courses, and staying safe on the platform."
       />
 
       <Section>

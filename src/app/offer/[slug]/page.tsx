@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo/page-meta";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -22,18 +23,20 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const offer = await loadOffer(slug);
-  if (!offer) return { title: "Offer not found" };
-  return {
+  // A draft says nothing about itself — its title would otherwise leak to
+  // anyone (or any unfurler) holding the address before it is published.
+  if (!offer || offer.status !== "PUBLISHED") {
+    return { title: { absolute: "Offer not found · RevType" }, robots: { index: false, follow: false } };
+  }
+  return pageMeta({
     title: offer.title,
     description: offer.description ?? undefined,
     // Its own address — without it the page inherited no canonical at all.
-    alternates: { canonical: `/offer/${slug}` },
-    openGraph: {
-      title: offer.title,
-      description: offer.description ?? undefined,
-      images: offer.thumbnailUrl ? [{ url: offer.thumbnailUrl }] : undefined,
-    },
-  };
+    path: `/offer/${slug}`,
+    image: offer.thumbnailUrl ?? null,
+    imageAlt: offer.title,
+    cardKicker: "Offer",
+  });
 }
 
 export default async function OfferPage({ params, searchParams }: PageProps) {

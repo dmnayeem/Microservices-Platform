@@ -29,7 +29,7 @@ import { pageMeta } from "@/lib/seo/page-meta";
 export function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: "Online Courses — Learn Skills or Teach & Earn",
-    description: `Take expert-led courses and earn certificates on ${COMPANY_NAME}, or become a tutor and sell your own courses and live classes to students worldwide.`,
+    description: `Take structured online courses with completion certificates on ${COMPANY_NAME}, or apply as a tutor to build and sell your own courses and live classes.`,
     path: "/features/courses",
   });
 }
@@ -42,22 +42,22 @@ const STATS = [
 ];
 
 const LEARNER = [
-  { icon: BookOpen, title: "Expert-led courses", body: "Structured video lessons across skills, business, tech, and creative topics — added continuously." },
-  { icon: Award, title: "Recognized certificates", body: "Finish a course and earn a verifiable certificate you can share on your profile and CV." },
+  { icon: BookOpen, title: "Tutor-built courses", body: "Structured video lessons, resources and quizzes on practical skills — business, tech, creative work and more — built by approved tutors." },
+  { icon: Award, title: "Completion certificates", body: "Finish a course that offers one and receive a certificate you can share on your profile and CV." },
   { icon: Video, title: "Live classes", body: "Join scheduled live sessions, ask questions in real time, and learn directly from tutors." },
   { icon: Clock, title: "Learn at your pace", body: "Start, pause, and resume anytime. Your progress is saved across every device." },
 ];
 
 const STEPS = [
-  { icon: Handshake, title: "Apply to teach", body: "Tell us about your expertise. Once approved, your tutor console unlocks." },
+  { icon: Handshake, title: "Apply to teach", body: "Tell us about your subject and experience. Once your application is approved, your tutor console unlocks." },
   { icon: PenTool, title: "Build your course", body: "Add video lessons, resources, quizzes, and set your price with our course builder." },
-  { icon: Rocket, title: "Publish & go live", body: "Launch your course to a global audience and schedule live classes whenever you like." },
+  { icon: Rocket, title: "Publish & go live", body: "Publish your course to learners on the platform and schedule live classes when it suits you." },
   { icon: Wallet, title: "Earn on every enrollment", body: "Get paid for each student who enrolls — earnings flow straight to your wallet." },
 ];
 
 const TUTOR = [
   { icon: Wallet, title: "Set your own price", body: "You decide what your course is worth. Run discounts and promotions whenever you want." },
-  { icon: Globe2, title: "Reach students worldwide", body: "Sell to learners across 180+ countries — your classroom is never closed." },
+  { icon: Globe2, title: "Learners on the platform", body: "Your course is listed alongside the micro-task and marketplace community already using RevType, and learners can study at any hour." },
   { icon: Handshake, title: "Affiliate promotion", body: "Let affiliates promote your course for a commission and grow enrollments hands-free." },
 ];
 
@@ -81,9 +81,13 @@ export default function CoursesFeaturePage() {
             </span>
           </h1>
           <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            Take expert-led courses and earn recognized certificates — or become
-            a tutor and turn your knowledge into income with your own courses and
-            live classes.
+            Take structured courses and earn a completion certificate — or apply
+            as a tutor and turn what you know into income with your own courses
+            and live classes. Teaching is one of the skill-based ways to earn on
+            RevType, alongside the{" "}
+            <Link href="/features/marketplace" className="font-semibold text-(--mk-accent) hover:underline">digital marketplace</Link>{" "}
+            and{" "}
+            <Link href="/microtask" className="font-semibold text-(--mk-accent) hover:underline">freelance micro-tasks</Link>.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
             <PrimaryButton href="/register">
@@ -103,7 +107,7 @@ export default function CoursesFeaturePage() {
         <SectionHeading
           badge="For learners"
           title="Everything you need to grow your skills"
-          subtitle="Learn from real experts, at your own pace, and walk away with proof you can show."
+          subtitle="Learn from approved tutors, at your own pace, and come away with a certificate you can show."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {LEARNER.map((c) => (
@@ -182,8 +186,9 @@ export default function CoursesFeaturePage() {
             Start learning — or start teaching
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-orange-50">
-            Join free today. Take your first course in minutes, or apply to
-            become a tutor and open your own classroom.
+            Joining is free. Enrol in your first course, or apply to become a
+            tutor and open your own classroom. Questions? See the{" "}
+            <Link href="/help" className="font-semibold text-white underline">Help Center</Link>.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link

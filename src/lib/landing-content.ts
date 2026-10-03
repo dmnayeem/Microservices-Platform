@@ -462,35 +462,37 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     cta_signup_href: "/register",
   },
   hero: {
-    badge: "Trusted by 100,000+ earners worldwide",
-    title_line1: "Earn Smarter. Scale Faster.",
-    title_line2: "All in One Platform.",
+    badge: "Micro-tasks · Marketplace · Courses",
+    title_line1: "Get Paid for Real Work.",
+    title_line2: "Sell Your Skills. Learn and Teach.",
     subtitle:
-      "Tasks, digital sales, courses, affiliate, team, and games — every way to earn, in one platform built to grow your passive income.",
-    cta_primary_label: "Get Started Free",
+      "RevType is a freelance micro-task marketplace and digital skill-sharing community. Complete small paid jobs posted by businesses and advertisers, sell digital products and freelance services, teach online courses, and earn creator commissions — all from one account.",
+    cta_primary_label: "Create a Free Account",
     cta_primary_href: "/register",
     cta_secondary_label: "See how it works",
     cta_secondary_href: "#how-it-works",
+    // No member counts, payout totals or ratings here: a number on the home
+    // page has to be one the platform can stand behind on the day it is read.
     stats: [
-      { iconKey: "Users", value: "100K+", label: "Active Users" },
-      { iconKey: "DollarSign", value: "$2M+", label: "Paid Out" },
-      { iconKey: "CheckCircle", value: "5M+", label: "Tasks Completed" },
-      { iconKey: "Star", value: "4.9/5", label: "User Rating" },
+      { iconKey: "CheckCircle", value: "Micro-tasks", label: "Pay shown before you start" },
+      { iconKey: "Sparkles", value: "Marketplace", label: "Digital products & services" },
+      { iconKey: "Trophy", value: "Courses", label: "Learn a skill or teach one" },
+      { iconKey: "Users", value: "Free", label: "To create an account" },
     ],
     animation: DEFAULT_HERO_ANIMATION,
   },
   features: {
-    badge: "Multiple Ways to Earn",
+    badge: "What you can do on RevType",
     heading_line1: "One Account,",
-    heading_line2: "Every Way to Earn",
+    heading_line2: "Several Ways to Work",
     subheading:
-      "Mix and match income streams — from quick micro-tasks to selling your own products. The more surfaces you use, the more you earn.",
+      "Take on freelance micro-tasks, sell digital products and services, teach or take courses, and earn commissions as a creator. Use one, or combine them — your income comes from the work you complete and the things you sell.",
     items: [
       {
         iconKey: "ClipboardList",
         title: "Micro Tasks",
         description:
-          "Watch videos, take surveys, test apps, read articles, and complete social actions. Hundreds of quick tasks refreshed daily.",
+          "Short freelance jobs posted by businesses and advertisers: social actions, app testing, surveys, articles and video reviews. Every task states its pay and the proof it needs before you start. Some tasks are sponsored.",
         gradient: "from-blue-500 to-indigo-600",
         href: "/microtask",
       },
@@ -498,7 +500,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "ShoppingBag",
         title: "Digital Marketplace",
         description:
-          "Buy and sell digital products — templates, graphics, ebooks, music, and more. Turn your skills into a global storefront.",
+          "Sell digital products and freelance services — templates, graphics, ebooks, code, audio and custom work. Every listing is reviewed before it goes live, and service deals run through escrow.",
         gradient: "from-emerald-500 to-teal-600",
         href: "/features/marketplace",
       },
@@ -506,7 +508,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "GraduationCap",
         title: "Online Courses",
         description:
-          "Learn new skills and earn certificates — or become a tutor and sell your own courses and live classes to students worldwide.",
+          "Learn practical skills with structured lessons and a completion certificate — or apply as a tutor and sell your own courses and live classes.",
         gradient: "from-amber-500 to-orange-600",
         href: "/features/courses",
       },
@@ -514,7 +516,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Handshake",
         title: "Affiliate Commissions",
         description:
-          "Promote products and courses with your personal link and earn a commission on every sale you drive — paid to your wallet.",
+          "Recommend marketplace products and courses with your personal link and earn the commission the seller set on each sale you refer.",
         gradient: "from-fuchsia-500 to-pink-600",
         href: "/features/affiliate",
       },
@@ -522,7 +524,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Users",
         title: "Team & Referrals",
         description:
-          "Invite friends, build a 3-level team, and earn passive commission on their activity — build it once, earn forever.",
+          "Invite people you know. Referral rewards are tied to their genuine activity on the platform, with caps and anti-abuse checks so the programme cannot be farmed.",
         gradient: "from-purple-500 to-violet-600",
         href: "/referral",
       },
@@ -530,7 +532,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "MessageSquare",
         title: "Social Feed",
         description:
-          "Post like on a social network and get paid for it. Earn from the likes, comments, and engagement your content receives.",
+          "A creator community feed for sharing posts, tips and work. Engagement rewards are based on genuine activity, not raw volume.",
         gradient: "from-sky-500 to-blue-600",
         href: "/microtask#feed",
       },
@@ -538,7 +540,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Gamepad2",
         title: "Games & Tournaments",
         description:
-          "Play HTML5 games, enter quiz competitions and tournaments, and win from prize pools, lotteries, and daily draws.",
+          "Optional community extras: quiz competitions, HTML5 games, leaderboards and prize draws, each with its own published rules.",
         gradient: "from-rose-500 to-red-600",
         href: "/microtask#more-ways",
       },
@@ -546,65 +548,66 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         iconKey: "Megaphone",
         title: "Advertiser Slots",
         description:
-          "Run your own ads and campaigns across the platform, or create paid tasks to reach a global, engaged audience.",
+          "For businesses: run reviewed ad campaigns in specific placements, or post paid tasks and have real, verified people complete them.",
         gradient: "from-cyan-500 to-sky-600",
         href: "/advertise",
       },
       {
         iconKey: "Wallet",
-        title: "Instant Withdrawals",
+        title: "Withdrawals",
         description:
-          "Cash out to PayPal, bank, Wise, Payoneer, crypto, and more — fast, secure, and available across 180+ countries.",
+          "Request payouts to PayPal, crypto (Binance, Bitget) or mobile wallets such as bKash, Nagad and Rocket, where enabled. The minimum, fee, processing time and any plan requirement are shown before you confirm.",
         gradient: "from-indigo-500 to-blue-600",
         href: "/microtask#payout",
       },
     ],
   },
   how_it_works: {
-    badge: "Simple Process",
-    heading_line1: "Start Earning in",
-    heading_line2: "4 Easy Steps",
-    subheading: "From sign-up to first payout in under 24 hours.",
+    badge: "How it works",
+    heading_line1: "From Sign-Up to Payout",
+    heading_line2: "in 4 Steps",
+    subheading:
+      "The same flow applies whether you complete micro-tasks, sell a product or teach a course.",
     steps: [
       {
         iconKey: "UserPlus",
         step_number: "01",
-        title: "Create Account",
+        title: "Create an account",
         description:
-          "Sign up in seconds with just your email — no credit card required.",
+          "Sign up with your email or Google account. Joining is free and needs no credit card.",
         gradient: "from-blue-500 to-blue-600",
       },
       {
         iconKey: "ListTodo",
         step_number: "02",
-        title: "Complete Tasks",
+        title: "Choose your work",
         description:
-          "Choose from hundreds of opportunities — videos, surveys, social, and more.",
+          "Pick a micro-task you are eligible for, list a digital product or service, or enrol in or publish a course.",
         gradient: "from-indigo-500 to-purple-600",
       },
       {
         iconKey: "Coins",
         step_number: "03",
-        title: "Earn Points",
+        title: "Get verified and credited",
         description:
-          "Accumulate points with every task. Watch your balance grow in real-time.",
+          "Task proof is checked automatically or by a reviewer; sales and course enrolments settle to your wallet. Rejected work is not paid, and the reason is shown.",
         gradient: "from-purple-500 to-pink-500",
       },
       {
         iconKey: "Wallet",
         step_number: "04",
-        title: "Cash Out",
+        title: "Withdraw",
         description:
-          "Withdraw to PayPal, bank transfer, Wise, Payoneer, crypto, or gift cards — fast and secure.",
+          "Convert points to cash and request a payout. Minimums, fees, processing time and whether an active plan is required are shown on the withdrawal screen.",
         gradient: "from-pink-500 to-rose-500",
       },
     ],
   },
   calculator: {
-    badge: "Earnings Calculator",
-    heading: "See your earning potential",
+    badge: "Illustrative calculator",
+    heading: "How task rates and plans add up",
     subheading:
-      "Adjust your plan, daily tasks, and team size to estimate your monthly earnings.",
+      "An illustration only, not a forecast or a promise. Real pay is set per task and can change, and what you actually earn depends on which tasks are available to you, whether your work is approved, and how much time you put in.",
     points_per_dollar: 1000,
     commission_l1: 10,
     commission_l2: 5,
@@ -624,22 +627,20 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     heading_line1: "Choose Your",
     heading_line2: "Perfect Plan",
     subheading:
-      "Upgrade to unlock more earning opportunities and exclusive benefits.",
+      "Joining and earning are free. Optional paid plans raise daily task limits and unlock extra features.",
     guarantee_text:
-      "All paid plans come with a 7-day money-back guarantee. No questions asked.",
+      "Withdrawals may require an active paid plan — the withdrawal screen shows whether this applies to you before you request one. Plan purchases follow our Refund Policy.",
     plans: [
       {
         iconKey: "Zap",
         name: "Free",
         price: "$0",
         period: "forever",
-        description: "Perfect for getting started",
+        description: "Join, explore and complete tasks",
         features: [
           "5 tasks per day",
           "Basic video rewards",
           "3-level referral bonus",
-          "$10 minimum withdrawal",
-          "5% withdrawal fee",
           "Email support",
         ],
         cta_label: "Start Free",
@@ -651,13 +652,11 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         name: "Basic",
         price: "$4.99",
         period: "/month",
-        description: "For regular earners",
+        description: "For regular task takers",
         features: [
           "20 tasks per day",
           "Premium video rewards",
           "5-level referral bonus",
-          "$5 minimum withdrawal",
-          "3% withdrawal fee",
           "Priority support",
           "Exclusive tasks",
         ],
@@ -670,14 +669,12 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         name: "Standard",
         price: "$9.99",
         period: "/month",
-        description: "Most popular choice",
+        description: "Higher daily limits",
         features: [
           "50 tasks per day",
           "2x video rewards",
           "7-level referral bonus",
-          "$3 minimum withdrawal",
-          "2% withdrawal fee",
-          "24/7 priority support",
+          "Priority support",
           "VIP tasks access",
           "Weekly bonus rewards",
         ],
@@ -690,14 +687,11 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         name: "Premium",
         price: "$19.99",
         period: "/month",
-        description: "For serious earners",
+        description: "For full-time freelancers",
         features: [
           "Unlimited tasks",
           "3x video rewards",
           "10-level referral bonus",
-          "$1 minimum withdrawal",
-          "0% withdrawal fee",
-          "Dedicated manager",
           "Exclusive VIP tasks",
           "Daily bonus rewards",
           "Early feature access",
@@ -709,185 +703,91 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     ],
   },
   testimonials: {
-    badge: "Success Stories",
-    heading_line1: "Loved by",
-    heading_line2: "100,000+ Users",
-    subheading: "Real stories from real earners across 180+ countries.",
-    items: [
-      {
-        name: "Sarah M.",
-        avatar: "SM",
-        country: "🇺🇸 United States",
-        earned: "$2,450",
-        rating: 5,
-        quote:
-          "I was skeptical at first, but RevType actually pays. Withdrew to PayPal three times already with zero issues.",
-        gradient: "from-pink-500 to-rose-500",
-      },
-      {
-        name: "James K.",
-        avatar: "JK",
-        country: "🇬🇧 United Kingdom",
-        earned: "$1,890",
-        rating: 5,
-        quote:
-          "The tasks pay really well. I do them during my commute and earn enough to cover my phone bill every month.",
-        gradient: "from-blue-500 to-cyan-500",
-      },
-      {
-        name: "Lukas B.",
-        avatar: "LB",
-        country: "🇩🇪 Germany",
-        earned: "$2,780",
-        rating: 5,
-        quote:
-          "Clean interface, fast payouts to my bank via Wise. This is the first site of its kind I actually trust.",
-        gradient: "from-amber-500 to-orange-500",
-      },
-      {
-        name: "Emily R.",
-        avatar: "ER",
-        country: "🇨🇦 Canada",
-        earned: "$1,640",
-        rating: 5,
-        quote:
-          "I earn on the side while watching TV. Cashed out to PayPal within a day, every single time.",
-        gradient: "from-emerald-500 to-teal-500",
-      },
-      {
-        name: "Daniel W.",
-        avatar: "DW",
-        country: "🇦🇺 Australia",
-        earned: "$2,120",
-        rating: 5,
-        quote:
-          "Surveys and offers add up faster than I expected. Support answered me at 2am — genuinely 24/7.",
-        gradient: "from-sky-500 to-blue-500",
-      },
-      {
-        name: "Sofia G.",
-        avatar: "SG",
-        country: "🇲🇽 Mexico",
-        earned: "$1,375",
-        rating: 5,
-        quote:
-          "Por fin una plataforma que paga de verdad. Retiré a mi cuenta sin problemas.",
-        gradient: "from-rose-500 to-pink-500",
-      },
-      {
-        name: "Omar A.",
-        avatar: "OA",
-        country: "🇦🇪 UAE",
-        earned: "$3,050",
-        rating: 5,
-        quote:
-          "Been using it for months. Payouts are on time and the referral income keeps growing every week.",
-        gradient: "from-violet-500 to-purple-500",
-      },
-      {
-        name: "Priya S.",
-        avatar: "PS",
-        country: "🇮🇳 India",
-        earned: "$3,200",
-        rating: 5,
-        quote:
-          "The referral program is amazing. My team earns passive income for me — it's life-changing.",
-        gradient: "from-purple-500 to-violet-500",
-      },
-      {
-        name: "Rahim H.",
-        avatar: "RH",
-        country: "🇧🇩 Bangladesh",
-        earned: "$1,980",
-        rating: 5,
-        quote:
-          "Started with a few tasks a day. Now the passive referral income covers most of my monthly expenses.",
-        gradient: "from-green-500 to-emerald-500",
-      },
-      {
-        name: "Yuki T.",
-        avatar: "YT",
-        country: "🇯🇵 Japan",
-        earned: "$2,300",
-        rating: 5,
-        quote:
-          "Simple, fast, and it actually pays out. The crypto withdrawal option is a huge plus for me.",
-        gradient: "from-red-500 to-rose-500",
-      },
-    ],
+    // Off, and empty, by default. The stories that used to ship here were
+    // invented: names, countries and "earned" amounts nobody had verified.
+    // Switch the section on from the landing editor only with real members'
+    // stories, published with their permission.
+    enabled: false,
+    badge: "Member stories",
+    heading_line1: "From the",
+    heading_line2: "RevType Community",
+    subheading: "Experiences shared by members, published with their permission.",
+    items: [],
   },
   trust_badges: {
     items: [
-      { iconKey: "Shield", label: "SSL Secured" },
-      { iconKey: "Lock", label: "GDPR & CCPA Ready" },
-      { iconKey: "Globe", label: "180+ Countries" },
-      { iconKey: "Trophy", label: "24/7 Support" },
+      { iconKey: "Shield", label: "Encrypted HTTPS connections" },
+      { iconKey: "BadgeCheck", label: "Work reviewed before payout" },
+      { iconKey: "Lock", label: "Identity checks on payouts" },
+      { iconKey: "Headphones", label: "Email & in-app support" },
     ],
   },
   faq: {
     badge: "FAQ",
     heading_line1: "Common",
     heading_line2: "Questions",
-    subheading: "Everything you want to know — and a few you didn't.",
+    subheading: "Straight answers about how RevType works, how it is funded, and how you get paid.",
     contact_prompt: "Still have questions?",
     contact_label: "Contact our support team →",
     contact_email: "support@revtype.com",
     items: [
       {
-        question: "How much can I realistically earn?",
+        question: "What is RevType?",
         answer:
-          "Active users earn $50–$500/mo from tasks alone. With an active referral team, top earners pull in $1,000+/mo from passive commission across 3 levels (10% / 5% / 2%).",
+          "RevType is a freelance micro-task marketplace and digital skill-sharing community. Members complete short paid tasks posted by businesses and advertisers, sell digital products and freelance services in the marketplace, take or teach online courses, and earn affiliate commissions on sales they refer.",
       },
       {
-        question: "When can I withdraw my earnings?",
+        question: "Is RevType a PTC (paid-to-click) site?",
         answer:
-          "The minimum withdrawal is 5,000 points (≈ $5). Most withdrawals to PayPal, bank transfer, Wise, Payoneer, crypto, or gift cards are processed within 24–48 hours.",
+          "No. Pay on RevType comes from completed work, marketplace sales and teaching: tasks have defined instructions and are verified before they are paid. Like many free platforms, RevType does display ads, and some tasks and activities are sponsored by advertisers. Earnings are never guaranteed.",
       },
       {
-        question: "Is RevType available worldwide?",
+        question: "How does RevType make money?",
         answer:
-          "Yes — RevType works in 180+ countries. Some tasks are region-specific, but every plan has plenty of global tasks plus referral commission that works everywhere.",
+          "From advertising, from businesses that fund tasks and campaigns, from a platform fee on marketplace sales, from optional paid membership plans, and from a withdrawal fee. That revenue is what funds the payments made to members.",
       },
       {
-        question: "How does the referral program work?",
+        question: "How much can I earn?",
         answer:
-          "When friends sign up with your code, you earn passive commission on their activity: 10% from Level 1 (direct), 5% from Level 2, and 2% from Level 3. Build a team once, earn forever.",
+          "There is no fixed or guaranteed amount. Each task shows its pay before you start, and income depends on which tasks are available in your region, whether your work is approved, and what you sell or teach. Treat it as flexible side income, not a salary.",
       },
       {
-        question: "Is RevType legit and safe to use?",
+        question: "Do I have to pay to join or withdraw?",
         answer:
-          "Yes. Every account is protected with SSL encryption, we follow GDPR & CCPA data standards, and withdrawals are reviewed by a real team before payout. You never share your bank or card details to earn — you only add a payout method when you're ready to cash out.",
+          "Creating an account and completing tasks is free. Withdrawals can require an active paid plan; this is a platform setting, and when it is on the withdrawal screen tells you before you request a payout. A withdrawal fee and a minimum amount also apply and are shown before you confirm.",
       },
       {
-        question: "Do I need to pay anything to start?",
+        question: "How are payouts made and how long do they take?",
         answer:
-          "No. Creating an account and earning from tasks, the social feed, referrals, and more is completely free — no credit card required. Paid plans are optional and simply unlock higher daily limits and lower withdrawal fees.",
+          "You convert points to cash in your wallet, then request a payout to an enabled method such as PayPal, Binance, Bitget, bKash, Nagad or Rocket. Each request is reviewed by the team; the current processing time is shown on the withdrawal screen and can be several business days.",
       },
     ],
   },
   cta: {
-    heading_line1: "Ready to Start",
-    heading_line2: "Earning?",
+    heading_line1: "Put Your Skills",
+    heading_line2: "to Work",
     subheading:
-      "Join 100,000+ users already earning money online. No experience needed. Start in minutes.",
+      "Create a free account to browse the micro-tasks available to you, open a marketplace storefront, or enrol in a course. What you earn depends on the work you complete.",
     cta_label: "Create Free Account",
     cta_href: "/register",
-    disclaimer: "No credit card required",
+    disclaimer: "Free to join · No credit card required",
   },
   footer: {
     brand_description:
-      "The #1 platform for earning money online. Complete tasks, watch videos, refer friends, and withdraw your earnings instantly.",
-    payment_methods_label: "Supported Payments",
-    payment_methods: ["PayPal", "Visa", "Mastercard", "Wise", "Payoneer", "Skrill", "Crypto"],
+      "RevType is a freelance micro-task marketplace and digital skill-sharing community: paid micro-tasks from real businesses, a marketplace for digital products and services, online courses, and creator commissions.",
+    payment_methods_label: "Payout methods (where enabled)",
+    payment_methods: ["PayPal", "Binance", "Bitget", "bKash", "Nagad", "Rocket"],
     link_groups: [
       {
         title: "Product",
         links: [
           { label: "Features", href: "#features" },
+          { label: "Micro-tasks", href: "/microtask" },
           { label: "Marketplace", href: "/features/marketplace" },
           { label: "Courses", href: "/features/courses" },
           { label: "Affiliate", href: "/features/affiliate" },
-          { label: "Calculator", href: "#calculator" },
+          { label: "Referral", href: "/referral" },
+          { label: "Advertise", href: "/advertise" },
           { label: "Pricing", href: "#pricing" },
         ],
       },
@@ -914,13 +814,13 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
         links: [
           { label: "Help Center", href: "/help" },
           { label: "Contact Us", href: "/contact" },
-          { label: "Live Chat", href: "/contact" },
+          { label: "FAQ", href: "/help" },
           { label: "Status", href: "/status" },
         ],
       },
     ],
     copyright_notice: "© {year} RevType. All rights reserved.",
-    tagline: "",
+    tagline: "A freelance micro-task marketplace and digital skill-sharing community.",
   },
   appearance: {
     theme: "dark",
@@ -981,6 +881,8 @@ export const EARN_CARD_LINKS: Readonly<Record<string, string>> = {
   "Social Feed": "/microtask#feed",
   "Games & Tournaments": "/microtask#more-ways",
   "Advertiser Slots": "/advertise",
+  "Withdrawals": "/microtask#payout",
+  // The card's title before 2026-10; kept so a saved card with the old name still links.
   "Instant Withdrawals": "/microtask#payout",
 };
 

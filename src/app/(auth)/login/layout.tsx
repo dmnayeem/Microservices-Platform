@@ -7,6 +7,8 @@ export function generateMetadata(): Promise<Metadata> {
     title: "Log In",
     description: "Log in to your RevType account to complete tasks, track your earnings and withdraw.",
     path: "/login",
+    // An auth screen, not content: followed, never listed.
+    noindex: true,
   });
 }
 

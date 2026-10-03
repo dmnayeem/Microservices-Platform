@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound, permanentRedirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
@@ -23,6 +23,9 @@ import { isStaffRole } from "@/lib/staff";
 import { maintenanceFor } from "@/lib/maintenance";
 import { MaintenanceScreen } from "@/components/dashboard/maintenance-screen";
 import { getAppNavConfig, DEFAULT_APP_NAV } from "@/lib/nav-config-server";
+import { isPublicCatalogPath } from "@/lib/public-catalog";
+import { GuestShell } from "@/components/public/guest-shell";
+import { guestCatalogStatus } from "@/lib/public-catalog-data";
 
 export default async function MainLayout({
   children,
@@ -34,6 +37,22 @@ export default async function MainLayout({
   // Server-side redirect if not authenticated
   // This prevents any flash - user never sees the page
   if (!session?.user) {
+    // Except the public catalog (marketplace / course browse + detail pages),
+    // which a logged-out visitor and a search engine get in a small guest
+    // frame. `x-pathname` is set from the real URL by middleware.ts, which
+    // also only lets a guest through to these exact paths
+    // (lib/public-catalog.ts) — every other page still redirects here.
+    const guestPath = (await headers()).get("x-pathname") ?? "";
+    if (guestPath && isPublicCatalogPath(guestPath)) {
+      const maintenance = await maintenanceFor(null).catch(() => ({ active: false, message: "" }));
+      if (maintenance.active) return <MaintenanceScreen message={maintenance.message} />;
+      // Decided here, above loading.tsx's Suspense boundary, so a missing or
+      // unpublished item is a real 404 (not a streamed 200) for crawlers.
+      const status = await guestCatalogStatus(guestPath);
+      if ("redirect" in status) permanentRedirect(status.redirect);
+      if (!status.ok) notFound();
+      return <GuestShell>{children}</GuestShell>;
+    }
     redirect("/login");
   }
 

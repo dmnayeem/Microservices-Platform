@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSetting } from "@/lib/system-settings";
 import { mediaSrc } from "@/lib/media-url";
 
@@ -17,10 +18,12 @@ export const SEO_DEFAULTS = {
   // The home page's title and description — what Google shows for the site.
   "seo.default_title": "RevType — Earn Money Online with Tasks, Videos, Surveys & Courses",
   "seo.title_template": "%s | RevType",
+  // ≤155 chars (what Google shows uncut) and strictly factual — no income
+  // promises. The stored /admin/seo value wins over this default.
   "seo.description":
-    "Earn real money online with RevType: complete micro-tasks, watch videos, take surveys, sell in the marketplace, learn with courses, and earn from referrals & affiliates. Join free and cash out.",
+    "RevType: paid micro-tasks, a digital marketplace for products and services, and online courses. Earn from completed tasks, sales, referrals and affiliates.",
   "seo.keywords":
-    "earn money online, make money online, online earning, paid tasks, watch videos for money, rewards, cashout, referral program, affiliate program, micro tasks, surveys for money, GPT site",
+    "micro tasks, freelance micro-tasks, online side work, digital marketplace, sell digital products, freelance services, online courses, affiliate program, referral program",
   "seo.logo_url": "/icon-512.png",
   "seo.favicon_url": "/icon-192.png",
   "seo.apple_icon_url": "/apple-touch-icon.png",
@@ -40,7 +43,8 @@ export const SEO_DEFAULTS = {
 
   "seo.org_type": "Organization",
   "seo.org_legal_name": "",
-  "seo.org_description": "Complete tasks, watch videos, take surveys and courses, and earn real money with RevType.",
+  "seo.org_description":
+    "RevType is a platform for paid micro-tasks, a digital marketplace for products and services, and online courses.",
   "seo.org_founding_date": "",
   "seo.org_email": "",
   "seo.org_phone": "",
@@ -88,7 +92,15 @@ export const SUPER_ONLY_KEYS: SeoKey[] = ["code.head", "code.body", "code.scope"
 
 export type SeoSettings = { [K in SeoKey]: (typeof SEO_DEFAULTS)[K] extends boolean ? boolean : string };
 
-export async function getSeoSettings(): Promise<SeoSettings> {
+/**
+ * One read per request. The root layout's metadata, its body, the page's own
+ * metadata (pageMeta) and the JSON-LD all ask for these; `cache()` makes that
+ * one call. Each key is also in getSetting's in-memory cache with an
+ * Accelerate cacheStrategy behind it, so a crawler hit is not a DB query.
+ */
+export const getSeoSettings = cache(loadSeoSettings);
+
+async function loadSeoSettings(): Promise<SeoSettings> {
   const values = await Promise.all(
     SEO_KEYS.map((k) => getSetting<unknown>(k, SEO_DEFAULTS[k]).catch(() => SEO_DEFAULTS[k]))
   );

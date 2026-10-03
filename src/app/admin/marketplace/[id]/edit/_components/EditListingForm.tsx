@@ -56,7 +56,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   const uploadProductFile = async (file: File) => {
     setUploadingFile(true);
     try {
-      const url = await uploadUserFile(file, "marketplace");
+      const url = await uploadUserFile(file, "marketplace", { purpose: "deliverable" });
       setFormData((f) => ({ ...f, files: [...f.files, url] }));
       toast.success("File uploaded");
     } catch (err) {

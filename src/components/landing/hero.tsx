@@ -116,7 +116,7 @@ export function Hero(props: Props) {
               <span aria-hidden>·</span>
               <span>Free to start</span>
               <span aria-hidden>·</span>
-              <span>Withdraw anytime</span>
+              <span>Pay shown before you start</span>
             </p>
           </div>
 

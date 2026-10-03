@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { z } from "zod";
+import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 const patchSchema = z.object({
   name: z.string().min(2).max(60).optional(),
@@ -62,6 +63,7 @@ export async function PATCH(
     meta: { before: { name: before.name, isActive: before.isActive }, after: v.data },
   });
 
+  revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
   return NextResponse.json({ brand });
 }
 
@@ -96,6 +98,7 @@ export async function DELETE(
       entityId: id,
       summary: `Deactivated marketplace brand "${brand.name}" (${listingCount} listing(s) keep it)`,
     });
+    revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       brand: deactivated,
       deactivated: true,
@@ -112,5 +115,6 @@ export async function DELETE(
     summary: `Deleted unused marketplace brand "${brand.name}"`,
   });
 
+  revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
   return NextResponse.json({ deleted: true });
 }

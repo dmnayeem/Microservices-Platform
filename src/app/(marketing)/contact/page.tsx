@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Mail, MessageSquare, Clock, Globe2, Loader2, CheckCircle2, LifeBuoy } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { SUPPORT_EMAIL, COMPANY_NAME } from "@/config/company";
@@ -38,7 +39,7 @@ export default function ContactPage() {
       <div className="text-center">
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b)"><MessageSquare className="h-7 w-7 text-white" /></div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-(--mk-text) tracking-tight">Get in touch</h1>
-        <p className="mt-4 text-(--mk-muted) max-w-xl mx-auto">Questions, feedback, or need a hand? Our team is here 24/7 and typically replies within a few hours.</p>
+        <p className="mt-4 text-(--mk-muted) max-w-xl mx-auto">Questions about tasks, selling, courses, payouts or advertising? Send us a message and we will reply by email. Many answers are already in the <Link href="/help" className="font-semibold text-(--mk-accent) hover:underline">Help Center</Link>.</p>
       </div>
 
       <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -46,8 +47,8 @@ export default function ContactPage() {
         <div className="space-y-4">
           {[
             { icon: Mail, title: "Email us", body: SUPPORT_EMAIL, href: `mailto:${SUPPORT_EMAIL}` },
-            { icon: Clock, title: "Response time", body: "Under a few hours, 24/7" },
-            { icon: Globe2, title: "Where we are", body: "Remote-first, worldwide" },
+            { icon: Clock, title: "Response time", body: "Replies by email, in the order received" },
+            { icon: Globe2, title: "Businesses & advertisers", body: "Advertising and paid tasks", href: "/advertise" },
             { icon: LifeBuoy, title: "Help Center", body: "Browse guides & FAQs", href: "/help" },
           ].map((c) => (
             <a key={c.title} href={c.href ?? "#"} className={`flex items-start gap-3 rounded-2xl mk-card p-4 ${c.href ? "hover:border-blue-500/30 transition-all" : ""}`}>

@@ -245,7 +245,8 @@ check(
 );
 
 /* ── the leak side ── */
-const userTasks = code("src/app/api/tasks/route.ts");
+// The list query moved into src/lib/task-list.ts; the route is a thin wrapper.
+const userTasks = code("src/app/api/tasks/route.ts") + code("src/lib/task-list.ts");
 check(
   "the user task list selects explicit columns",
   /select: \{[\s\S]{0,900}pointsReward: true/.test(userTasks),
@@ -253,7 +254,7 @@ check(
 );
 check(
   "…and createdById is not among them",
-  !/createdById/.test(userTasks),
+  !/createdById:\s*true/.test(userTasks),
   "which admin made a task is not a user's business"
 );
 for (const f of [

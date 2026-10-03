@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo/page-meta";
+import { storedImageKey } from "@/lib/seo/og-image";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -45,45 +47,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // which is exactly the leak this page exists to avoid.
   if (!post) {
     return {
-      title: "Post not found · RevType",
+      title: { absolute: "Post not found · RevType" },
       robots: { index: false, follow: false },
     };
   }
 
-  const url = publicPostUrl(post.id);
   const description =
-    postSummary(post.content) ||
+    postSummary(post.content, 155) ||
     `A post by ${post.author.name} on RevType.`;
-  const title = `${post.author.name} on RevType`;
 
-  // Only a real post image is set here. When there is none, this key is left
-  // undefined so Next's file convention (`opengraph-image.tsx`, next door) fills
-  // it with the generated card — a text-only post still unfurls with a picture
-  // rather than the bare site icon.
-  const images = post.images.length
-    ? [{ url: absoluteMediaUrl(post.images[0]), alt: description.slice(0, 120) }]
-    : undefined;
+  // The post's own photo, resized to 1200×630, when it has one of ours.
+  // Otherwise the generated text card (`opengraph-image.tsx`, next door) —
+  // rendered per request through the same privacy gate, so a post made
+  // private stops showing there too.
+  const photo = post.images.find((src) => storedImageKey(src)) ?? null;
 
-  return {
-    title,
+  return pageMeta({
+    title: `${post.author.name} on RevType`,
     description,
-    alternates: { canonical: url },
-    openGraph: {
-      type: "article",
-      url,
-      siteName: "RevType",
-      title,
-      description,
-      images,
-      publishedTime: post.createdAt.toISOString(),
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: images?.map((i) => i.url),
-    },
-  };
+    path: `/post/${post.id}`,
+    type: "article",
+    publishedTime: post.createdAt.toISOString(),
+    ...(photo ? { image: photo, imageAlt: description.slice(0, 120) } : { generatedImage: `/post/${post.id}/opengraph-image` }),
+  });
 }
 
 function formatDate(d: Date): string {
@@ -169,12 +155,13 @@ export default async function PublicPostPage({ params }: PageProps) {
               </span>
             )}
             <div className="min-w-0">
-              <p className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-white">
+              {/* The page's one <h1> — same look as before (preflight resets h1). */}
+              <h1 className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-white">
                 <span className="truncate">{post.author.name}</span>
                 {post.author.isBlueVerified && (
                   <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" />
                 )}
-              </p>
+              </h1>
               {/* No profile link: every profile route lives under the
                   authenticated shell, so linking it would send a logged-out
                   reader straight into a login redirect. */}
