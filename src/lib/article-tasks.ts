@@ -303,24 +303,70 @@ export const SEARCH_ENGINE_HOSTS: Record<ArticleSearchEngine, string[]> = {
 };
 
 /**
- * Link shims the social platforms bounce outbound clicks through. A reader who
- * taps a link in a Facebook post does not arrive with `facebook.com` as the
- * referrer — they arrive from `l.facebook.com`, or from nothing at all if the
- * in-app browser stripped it. These are corroboration only: the `srcTag` on
- * the link is what actually carries the proof.
+ * Hosts a click out of a social post can arrive from, per platform. A reader
+ * who taps a link in a post rarely arrives with the post's own host as the
+ * referrer: Facebook bounces through l.facebook.com, X through t.co, Threads
+ * through l.threads.net, Pinterest serves a country domain (pinterest.co.uk)
+ * or the pin.it short link, Quora shares as qr.ae, Medium as *.medium.com — or
+ * the in-app browser strips the referrer entirely.
+ *
+ * These are corroboration only: the `srcTag` on the link is what actually
+ * carries the proof, and a tagged arrival is accepted whatever the referrer.
+ * This list only matters when the tag was lost on the way. A host matches the
+ * entry itself or any subdomain of it; an entry ending in "." matches that
+ * brand under any country TLD. A post on any other website still counts by
+ * the post's own host (see `isSocialReferrerHost`).
  */
-export const SOCIAL_REFERRER_SHIMS = [
-  "l.facebook.com",
-  "lm.facebook.com",
-  "m.facebook.com",
-  "l.instagram.com",
-  "t.co",
-  "out.reddit.com",
-  "lnkd.in",
-  "away.vk.com",
-  "youtube.com",
-  "t.me",
-];
+export const SOCIAL_REFERRER_HOSTS: Record<string, string[]> = {
+  facebook: ["facebook.com", "fb.com", "fb.me", "fb.watch", "messenger.com"],
+  instagram: ["instagram.com"],
+  youtube: ["youtube.com", "youtu.be", "youtube-nocookie.com"],
+  pinterest: ["pinterest.", "pin.it"],
+  threads: ["threads.net", "threads.com"],
+  x: ["x.com", "twitter.com", "t.co"],
+  quora: ["quora.com", "qr.ae"],
+  medium: ["medium.com"],
+  minds: ["minds.com"],
+  linkedin: ["linkedin.com", "lnkd.in"],
+  reddit: ["reddit.com", "redd.it"],
+  tiktok: ["tiktok.com"],
+  telegram: ["t.me", "telegram.me", "telegram.org"],
+  discord: ["discord.com", "discord.gg", "discordapp.com"],
+  whatsapp: ["whatsapp.com", "wa.me"],
+  vk: ["vk.com"],
+  tumblr: ["tumblr.com"],
+  snapchat: ["snapchat.com"],
+  bluesky: ["bsky.app"],
+  mastodon: ["mastodon.social"],
+};
+
+function hostMatches(bare: string, entry: string): boolean {
+  return entry.endsWith(".")
+    ? bare.startsWith(entry) || bare.includes(`.${entry}`)
+    : bare === entry || bare.endsWith(`.${entry}`);
+}
+
+/**
+ * Does a referrer host count as "came from the post"? True when it is the
+ * post's own site (either one a subdomain of the other — a blog, a Medium
+ * publication, any website), or any known social platform's host.
+ */
+export function isSocialReferrerHost(referrerHost: string, postUrl?: string): boolean {
+  const bare = referrerHost.toLowerCase().replace(/^www\./, "");
+  if (!bare) return false;
+  let post = "";
+  try {
+    if (postUrl) post = new URL(postUrl).host.toLowerCase().replace(/^www\./, "");
+  } catch {
+    post = "";
+  }
+  if (post && (bare === post || bare.endsWith(`.${post}`) || post.endsWith(`.${bare}`))) {
+    return true;
+  }
+  return Object.values(SOCIAL_REFERRER_HOSTS).some((hosts) =>
+    hosts.some((h) => hostMatches(bare, h))
+  );
+}
 
 /** Does `host` count as an arrival from `engine`? */
 export function isSearchEngineHost(
@@ -529,19 +575,8 @@ export function evaluateArticleEntry(
   }
   if (!referrerHost) return { verdict: "unknown", referrerHost, taggedMatch };
 
-  let postHost = "";
-  try {
-    if (entry.postUrl) postHost = new URL(entry.postUrl).host.toLowerCase();
-  } catch {
-    postHost = "";
-  }
-  const bare = referrerHost.replace(/^www\./, "");
-  const fromSocial =
-    (postHost && (bare === postHost.replace(/^www\./, "") || bare.endsWith(`.${postHost.replace(/^www\./, "")}`))) ||
-    SOCIAL_REFERRER_SHIMS.some((h) => bare === h || bare.endsWith(`.${h}`));
-
   return {
-    verdict: fromSocial ? "referral" : "mismatch",
+    verdict: isSocialReferrerHost(referrerHost, entry.postUrl) ? "referral" : "mismatch",
     referrerHost,
     taggedMatch,
   };

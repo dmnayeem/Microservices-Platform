@@ -320,7 +320,13 @@ export async function listTasksForUser(
       dailyLimit,
       remainingToday,
       hasPending,
-      userStatus: userStatusByTask.get(task.id) ?? "AVAILABLE",
+      // A task done before that may be done AGAIN (a daily limit above 1, or
+      // a new day) is available, not "completed" — a ✓ on it read as "nothing
+      // to do here".
+      userStatus:
+        userStatusByTask.get(task.id) === "COMPLETED" && canStart
+          ? "AVAILABLE"
+          : (userStatusByTask.get(task.id) ?? "AVAILABLE"),
       dailyLimitReached,
       totalLimitReached: !!reachedTotalLimit,
       canStart,
@@ -342,8 +348,14 @@ export async function listTasksForUser(
   // badge shows instead of the task silently vanishing. Only globally
   // unavailable tasks with no user history stay hidden.
   // Locked tasks stay visible (shown with a lock) instead of vanishing.
+  //
+  // EXCEPT a completed task the user cannot do again (owner, 2026-10-04): left
+  // in the Available list it mixed in with the tasks still to do. It lives on
+  // the Approved tab; it comes back here only when the user may repeat it.
   const visibleTasks = processedTasks.filter(
-    (t) => t.canStart || t.locked || t.userStatus !== "AVAILABLE",
+    (t) =>
+      (t.canStart || t.locked || t.userStatus !== "AVAILABLE") &&
+      !(t.userStatus === "COMPLETED" && !t.canStart && !t.locked),
   );
 
   return {
