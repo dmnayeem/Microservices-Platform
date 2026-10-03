@@ -141,7 +141,7 @@ export function Hero(props: Props) {
                 <span className="mx-auto mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-(--mk-accent-soft) text-(--mk-accent)">
                   <Icon className="w-5 h-5" />
                 </span>
-                <div className="mk-figure max-w-full text-lg sm:text-2xl md:text-xl lg:text-2xl xl:text-3xl leading-tight text-(--mk-text) wrap-break-word">
+                <div className="mk-figure max-w-full truncate whitespace-nowrap text-2xl sm:text-3xl text-(--mk-text)">
                   {stat.value}
                 </div>
                 <div className="text-xs sm:text-sm text-(--mk-subtle) mt-1 text-balance line-clamp-2">
