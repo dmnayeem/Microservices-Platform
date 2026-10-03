@@ -63,13 +63,18 @@ else
     log "Dependencies unchanged - skipping npm ci"
   fi
 
-  # ---- 2. carry the Turbopack cache forward ---------------------------------
+  # ---- 2. build cache -------------------------------------------------------
+  # Turbopack's persistent cache (~900 MB on disk) needs ~5.7 GB of RAM to use,
+  # which this 8 GB box cannot give it alongside the live app: a "warm" build
+  # thrashes swap and ends up SLOWER than cold. So builds start cold here.
+  # With 16 GB of RAM, set CARRY_CACHE=1 below and warm builds drop to 1-3 min.
+  CARRY_CACHE=${CARRY_CACHE:-0}
   rm -rf "$TARGET"; mkdir -p "$TARGET"
-  if [[ -n "$CURRENT" && -d "$CURRENT/cache" ]]; then
+  if [[ "$CARRY_CACHE" == 1 && -n "$CURRENT" && -d "$CURRENT/cache" ]]; then
     cp -a "$CURRENT/cache" "$TARGET/cache"
     log "Build cache carried from $CURRENT ($(du -sh "$TARGET/cache" | cut -f1))"
   else
-    log "No previous build cache - this build is cold"
+    log "Cold build (cache carry-forward off: CARRY_CACHE=$CARRY_CACHE)"
   fi
 
   # ---- 3. build into the new dir; the live one is untouched -----------------
