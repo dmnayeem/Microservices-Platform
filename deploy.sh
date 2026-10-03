@@ -45,6 +45,8 @@ if [[ $MODE == rollback ]]; then
   TARGET="$PREVIOUS"
   log "Rolling back to $TARGET"
 else
+  free_gb=$(( $(df --output=avail -BM / | tail -1 | tr -d ' M') / 1024 ))
+  (( free_gb >= 5 )) || fail "only ${free_gb} GB free on / - refusing to build into a full disk (run ./housekeeping.sh)"
   SHA=$(git rev-parse --short=12 HEAD)
   TARGET=".next-$SHA"
   log "Deploying $SHA  ($(git log -1 --format=%s | cut -c1-70))"
@@ -81,7 +83,9 @@ else
   t=$(date +%s)
   BUILD_DIST_DIR="$TARGET" docker compose run --rm --no-deps -T builder npm run build \
     || { rm -rf "$TARGET"; fail "build failed after $(secs $t)s - $CURRENT still serving, nothing changed"; }
-  log "Built in $(secs $t)s  ($(du -sh "$TARGET" | cut -f1), cache $(du -sh "$TARGET/cache" 2>/dev/null | cut -f1 || echo 0))"
+  # Compile cache is only worth keeping if the next build will read it.
+  [[ "$CARRY_CACHE" == 1 ]] || rm -rf "$TARGET/cache/turbopack"
+  log "Built in $(secs $t)s  ($(du -sh "$TARGET" | cut -f1))"
 fi
 
 # ---- 4. switch ------------------------------------------------------------
@@ -114,11 +118,8 @@ elif [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" ]]; then printf 'CURRENT_DIST=%
 else                                                    printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$PREVIOUS" > "$STATE"
 fi
 set -a; source "$STATE"; set +a
-for d in .next-*/; do
-  d="${d%/}"
-  [[ "$d" == "$CURRENT_DIST" || "$d" == "${PREVIOUS_DIST:-}" ]] && continue
-  rm -rf "$d" && echo "  removed old build $d"
-done
+# Everything else that accumulates (old build dirs, docker leftovers) is one job.
+[[ -x ./housekeeping.sh ]] && bash ./housekeeping.sh | sed 's/^/  /' || true
 
 rc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://${APP_DOMAIN}/api/health" || echo 000)
 [[ "$rc" == 200 ]] && log "https://${APP_DOMAIN}/api/health -> 200" || printf '\033[33m  WARN\033[0m external check -> %s\n' "$rc"
