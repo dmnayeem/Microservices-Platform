@@ -43,3 +43,10 @@ next-env.d.ts
 
 /src/generated/prisma
 /md
+/.next-*/
+/.npm-cache/
+/.lock-hash
+/.deploy-state
+/docker-compose.v1.yml
+/deploy.v1.sh
+/.deploy-state.v1

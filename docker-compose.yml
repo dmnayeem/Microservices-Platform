@@ -1,40 +1,73 @@
 name: revtype
 
+# Vercel-style deploys: no image is built. The source is bind-mounted, the
+# `builder` service runs `next build` into a per-commit dist dir, and `app`
+# is pointed at it. node_modules and the Turbopack cache persist on disk, so
+# a code-only push costs an incremental compile and a 5-second restart.
+
+x-node: &node
+  image: node:24-bookworm
+  working_dir: /app
+  # The deploy user's uid/gid, so everything written to the bind mount is
+  # owned by the account that git and CI run as.
+  user: "1001:1001"
+  volumes:
+    - ./:/app
+
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-RevType}
-        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-        NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}
-        DATABASE_URL: ${DATABASE_URL}
-    # deploy.sh sets APP_IMAGE to the tag CI just pushed; a manual
-    # `docker compose build` falls back to the local tag.
-    image: ${APP_IMAGE:-revtype-app:latest}
-    pull_policy: ${APP_PULL_POLICY:-missing}
+    <<: *node
     restart: unless-stopped
     env_file: [.env]
-    expose: ["3000"]            # reachable by Caddy only; never published
-    # Hardening. Node needs no Linux capabilities; the only thing it may not do
-    # is acquire new ones. 4 GB keeps a runaway process from taking the host.
+    environment:
+      HOME: /tmp
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Which build to serve. deploy.sh writes this into .env on every
+      # switch, so a plain `docker compose up -d` always picks the live one.
+      NEXT_DIST_DIR: ${NEXT_DIST_DIR:-.next}
+    command: ["npm", "run", "start"]
+    expose: ["3000"]
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
     mem_limit: 4g
     pids_limit: 512
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "5" }
 
+  builder:
+    <<: *node
+    profiles: ["build"]          # never started by `up`; only by deploy.sh
+    env_file: [.env]
+    environment:
+      HOME: /tmp
+      npm_config_cache: /app/.npm-cache
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      NEXT_DIST_DIR: ${BUILD_DIST_DIR:-.next-build}
+    # Lower CPU weight than the live app: full speed when the site is idle,
+    # yields when real users are being served.
+    cpu_shares: 256
+    mem_limit: 6g
+    pids_limit: 2048
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    ports: ["80:80", "443:443", "443:443/udp"]   # udp ??? HTTP/3
+    ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data        # certificates
+      - caddy_data:/data
       - caddy_config:/config
     environment:
       APP_DOMAIN: ${APP_DOMAIN}

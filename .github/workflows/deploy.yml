@@ -22,7 +22,7 @@ jobs:
   deploy:
     name: Build on VPS and deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     environment: production
     steps:
       - name: Build and deploy over SSH
@@ -31,7 +31,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 20m
+          command_timeout: 30m
           script: |
             set -e
             cd /opt/revtype

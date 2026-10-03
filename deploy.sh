@@ -1,52 +1,91 @@
 #!/usr/bin/env bash
-# Build on this VPS and deploy. Run from /opt/revtype (CI does this over SSH).
+# Vercel-style deploy on this VPS. No image is built.
 #
-#   ./deploy.sh              build the current checkout, deploy, health-gate
-#   ./deploy.sh --rollback   switch back to the previous image (no build)
+#   ./deploy.sh              build the current checkout, switch the app to it
+#   ./deploy.sh --rollback   switch back to the previous build (no build)
 #
-# Every build is tagged with its git SHA. The previous image is kept, so an
-# unhealthy start reverts automatically and a bad release is one command back.
+# How it works:
+#   node_modules/      persistent; `npm ci` runs only when package-lock changes
+#   .next-<sha>/       one build output per commit; the app serves one of them
+#   .next-<sha>/cache  Turbopack's incremental cache, carried forward each build
+#   .deploy-state      CURRENT_DIST / PREVIOUS_DIST, the rollback pointer
+#
+# The live build is never touched: the new one goes to its own directory and
+# the app container is re-pointed only after it builds. Unhealthy start ->
+# automatic switch back. A failed build changes nothing at all.
 set -euo pipefail
 cd "$(dirname "$0")"
 MODE=build; [[ "${1:-}" == --rollback ]] && MODE=rollback
 
 log()  { printf '\n\033[1;32m==>\033[0m %s\n' "$*"; }
 fail() { printf '\n\033[1;31mFAILED:\033[0m %s\n' "$*" >&2; exit 1; }
+secs() { echo $(( $(date +%s) - $1 )); }
+
 [[ -f .env ]] || fail ".env not found in $(pwd)"
 set -a; source ./.env; set +a
 : "${APP_DOMAIN:?APP_DOMAIN missing from .env}"
 : "${DATABASE_URL:?DATABASE_URL missing from .env}"
 
 STATE=.deploy-state; touch "$STATE"; set -a; source "$STATE"; set +a
-CURRENT="${CURRENT_IMAGE:-}"; PREVIOUS="${PREVIOUS_IMAGE:-}"
+CURRENT="${CURRENT_DIST:-}"; PREVIOUS="${PREVIOUS_DIST:-}"
+T0=$(date +%s)
+
+# Point NEXT_DIST_DIR in .env at a build dir (compose reads .env, so a plain
+# `docker compose up -d` later always serves the right one).
+set_dist() {
+  if grep -qE '^NEXT_DIST_DIR=' .env; then
+    sed -i -E "s|^NEXT_DIST_DIR=.*|NEXT_DIST_DIR=\"$1\"|" .env
+  else
+    printf '\nNEXT_DIST_DIR="%s"\n' "$1" >> .env
+  fi
+}
 
 if [[ $MODE == rollback ]]; then
-  [[ -n "$PREVIOUS" ]] || fail "no previous image recorded in $STATE"
-  docker image inspect "$PREVIOUS" >/dev/null 2>&1 || fail "previous image $PREVIOUS no longer on disk"
-  TARGET="$PREVIOUS"; log "Rolling back to $TARGET"
+  [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]] || fail "no previous build to roll back to (state: current=$CURRENT previous=$PREVIOUS)"
+  TARGET="$PREVIOUS"
+  log "Rolling back to $TARGET"
 else
   SHA=$(git rev-parse --short=12 HEAD)
-  TARGET="revtype-app:$SHA"
-  log "Building $TARGET  ($(git log -1 --format='%s' | cut -c1-70))"
-  t0=$(date +%s)
-  # Build BEFORE touching the running container: a failed build changes nothing.
-  APP_IMAGE="$TARGET" docker compose build app \
-    || fail "build failed after $(( $(date +%s) - t0 ))s â€” old container still serving, nothing changed"
-  docker tag "$TARGET" revtype-app:latest
-  log "Built in $(( $(date +%s) - t0 ))s"
+  TARGET=".next-$SHA"
+  log "Deploying $SHA  ($(git log -1 --format=%s | cut -c1-70))"
+
+  # ---- 1. dependencies: only when the lockfile changed ---------------------
+  LOCK_HASH=$(sha256sum package-lock.json | cut -c1-16)
+  if [[ ! -d node_modules/next || "$(cat .lock-hash 2>/dev/null)" != "$LOCK_HASH" ]]; then
+    log "package-lock.json changed (or first run) - npm ci"
+    t=$(date +%s)
+    docker compose run --rm --no-deps -T builder sh -c \
+      'npm ci --include=dev --prefer-offline --no-audit --no-fund && npm install --no-save --include=dev --prefer-offline --no-audit --no-fund sharp' \
+      || fail "npm ci failed after $(secs $t)s - $CURRENT still serving, nothing changed"
+    echo "$LOCK_HASH" > .lock-hash
+    log "Dependencies installed in $(secs $t)s"
+  else
+    log "Dependencies unchanged - skipping npm ci"
+  fi
+
+  # ---- 2. carry the Turbopack cache forward ---------------------------------
+  rm -rf "$TARGET"; mkdir -p "$TARGET"
+  if [[ -n "$CURRENT" && -d "$CURRENT/cache" ]]; then
+    cp -a "$CURRENT/cache" "$TARGET/cache"
+    log "Build cache carried from $CURRENT ($(du -sh "$TARGET/cache" | cut -f1))"
+  else
+    log "No previous build cache - this build is cold"
+  fi
+
+  # ---- 3. build into the new dir; the live one is untouched -----------------
+  t=$(date +%s)
+  BUILD_DIST_DIR="$TARGET" docker compose run --rm --no-deps -T builder npm run build \
+    || { rm -rf "$TARGET"; fail "build failed after $(secs $t)s - $CURRENT still serving, nothing changed"; }
+  log "Built in $(secs $t)s  ($(du -sh "$TARGET" | cut -f1), cache $(du -sh "$TARGET/cache" 2>/dev/null | cut -f1 || echo 0))"
 fi
-export APP_IMAGE="$TARGET" APP_PULL_POLICY=never
 
-# Migrations are NOT run here. The schema lives in Prisma Postgres and is
-# managed from your machine with `npx prisma migrate deploy`, exactly as it was
-# on Vercel. Apply the migration first, then push the code.
+# ---- 4. switch ------------------------------------------------------------
+log "Switching app -> $TARGET"
+set_dist "$TARGET"
+docker compose up -d --no-deps --force-recreate app >/dev/null 2>&1
 
-log "Starting $TARGET"
-docker compose up -d --remove-orphans
-
-log "Waiting for health"
 healthy=0
-for i in $(seq 1 48); do
+for i in $(seq 1 36); do
   cid=$(docker compose ps -q app)
   st=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" 2>/dev/null || echo starting)
   [[ "$st" == healthy ]] && { healthy=1; log "Healthy after $((i*5))s"; break; }
@@ -54,32 +93,28 @@ for i in $(seq 1 48); do
   sleep 5
 done
 if [[ $healthy -ne 1 ]]; then
-  docker compose logs --tail=120 app
+  docker compose logs --tail=80 app
   if [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" && $MODE != rollback ]]; then
-    log "Unhealthy â€” reverting to $CURRENT"
-    APP_IMAGE="$CURRENT" docker compose up -d
+    log "Unhealthy - switching back to $CURRENT"
+    set_dist "$CURRENT"
+    docker compose up -d --no-deps --force-recreate app >/dev/null 2>&1
     fail "deploy reverted to $CURRENT"
   fi
   fail "unhealthy and nothing to revert to"
 fi
 
-# Record state: what runs now, and what to go back to.
-if [[ $MODE == rollback ]]; then
-  printf 'CURRENT_IMAGE=%s\nPREVIOUS_IMAGE=%s\n' "$TARGET" "$CURRENT" > "$STATE"
-elif [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" ]]; then
-  printf 'CURRENT_IMAGE=%s\nPREVIOUS_IMAGE=%s\n' "$TARGET" "$CURRENT" > "$STATE"
-else
-  printf 'CURRENT_IMAGE=%s\nPREVIOUS_IMAGE=%s\n' "$TARGET" "$PREVIOUS" > "$STATE"
+# ---- 5. record state, prune old builds ------------------------------------
+if   [[ $MODE == rollback ]];                      then printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$CURRENT"  > "$STATE"
+elif [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" ]]; then printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$CURRENT"  > "$STATE"
+else                                                    printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$PREVIOUS" > "$STATE"
 fi
 set -a; source "$STATE"; set +a
-
-# Keep only the two images that matter (current + previous); drop the rest.
-for img in $(docker image ls --format '{{.Repository}}:{{.Tag}}' revtype-app | grep -v ':latest$'); do
-  [[ "$img" == "$CURRENT_IMAGE" || "$img" == "${PREVIOUS_IMAGE:-}" ]] && continue
-  docker image rm -f "$img" >/dev/null 2>&1 && echo "  removed $img"
+for d in .next-*/; do
+  d="${d%/}"
+  [[ "$d" == "$CURRENT_DIST" || "$d" == "${PREVIOUS_DIST:-}" ]] && continue
+  rm -rf "$d" && echo "  removed old build $d"
 done
-docker image prune -f >/dev/null 2>&1 || true
 
 rc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://${APP_DOMAIN}/api/health" || echo 000)
-[[ "$rc" == 200 ]] && log "https://${APP_DOMAIN}/api/health â†’ 200" || printf '\033[33m  WARN\033[0m external check â†’ %s\n' "$rc"
-log "Deployed: $CURRENT_IMAGE   (rollback target: ${PREVIOUS_IMAGE:-none})"
+[[ "$rc" == 200 ]] && log "https://${APP_DOMAIN}/api/health -> 200" || printf '\033[33m  WARN\033[0m external check -> %s\n' "$rc"
+log "Done in $(secs $T0)s.  Serving $CURRENT_DIST   (rollback: ${PREVIOUS_DIST:-none})"
