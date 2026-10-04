@@ -117,6 +117,25 @@ if [[ $healthy -ne 1 ]]; then
   fail "unhealthy and nothing to revert to"
 fi
 
+# ---- 4b. Caddy: apply a changed Caddyfile ----------------------------------
+# The Caddyfile is bind-mounted as a single FILE. `git reset --hard` replaces
+# that file, and a running container keeps reading the old one — so a changed
+# Caddyfile used to need a manual restart on the VPS. Now: only when it
+# changed, validate it in a throwaway container (which sees the new file), and
+# recreate Caddy only if it is valid. An invalid one leaves the running Caddy
+# untouched and says so; the site never goes down over a typo.
+CADDY_HASH=$(sha256sum Caddyfile | cut -c1-16)
+if [[ "$(cat .caddy-hash 2>/dev/null)" != "$CADDY_HASH" ]]; then
+  if docker compose run --rm --no-deps -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
+    docker compose up -d --no-deps --force-recreate caddy >/dev/null 2>&1 \
+      && echo "$CADDY_HASH" > .caddy-hash \
+      && log "Caddyfile changed - Caddy reloaded" \
+      || printf '\033[33m  WARN\033[0m Caddy could not be recreated - previous Caddy still running\n'
+  else
+    printf '\033[33m  WARN\033[0m Caddyfile is INVALID - not applied, previous Caddy still running. Check: docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile\n'
+  fi
+fi
+
 # ---- 5. record state, prune old builds ------------------------------------
 if   [[ $MODE == rollback ]];                      then printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$CURRENT"  > "$STATE"
 elif [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" ]]; then printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$CURRENT"  > "$STATE"
