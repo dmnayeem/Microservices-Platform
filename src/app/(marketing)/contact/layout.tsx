@@ -1,3 +1,4 @@
+import { OFFICIAL_SOCIAL_PROFILES } from "@/lib/seo/social-profiles";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -24,8 +25,10 @@ export default function ContactLayout({ children }: { children: React.ReactNode 
           url: `${SITE_URL}/contact`,
           about: {
             "@type": "Organization",
+            "@id": `${SITE_URL}/#organization`,
             name: COMPANY_NAME,
             url: SITE_URL,
+            sameAs: [...OFFICIAL_SOCIAL_PROFILES],
             contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: SUPPORT_EMAIL, availableLanguage: ["English"] },
           },
         }}

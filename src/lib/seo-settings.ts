@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { getSetting } from "@/lib/system-settings";
 import { mediaSrc } from "@/lib/media-url";
+import { OFFICIAL_SOCIAL_PROFILES, OFFICIAL_X_HANDLE } from "@/lib/seo/social-profiles";
 
 /**
  * Site identity, search appearance, verification, the Knowledge Panel entity,
@@ -32,7 +33,7 @@ export const SEO_DEFAULTS = {
   // and the app (sidebar, top bar). Bounds in LOGO_HEIGHT_RANGE.
   "seo.logo_height_site": "44",
   "seo.logo_height_app": "40",
-  "seo.twitter_handle": "",
+  "seo.twitter_handle": OFFICIAL_X_HANDLE,
   "seo.indexing": true,
 
   "seo.verify_google": "",
@@ -50,7 +51,8 @@ export const SEO_DEFAULTS = {
   "seo.org_phone": "",
   "seo.org_address": "",
   "seo.org_country": "",
-  "seo.org_same_as": "",
+  // The official profiles (lib/seo/social-profiles.ts), one per line.
+  "seo.org_same_as": OFFICIAL_SOCIAL_PROFILES.join("\n"),
 
   "tracking.ga4_id": "",
   "tracking.gtm_id": "",
@@ -108,7 +110,17 @@ async function loadSeoSettings(): Promise<SeoSettings> {
   SEO_KEYS.forEach((k, i) => {
     const d = SEO_DEFAULTS[k];
     const v = values[i];
-    out[k] = typeof d === "boolean" ? v !== false && v !== "false" : typeof v === "string" ? v : String(v ?? d);
+    // A BLANK stored string falls back to the default. The /admin/seo form
+    // saves every field, so a field left empty was stored as "" — and "" for
+    // the site name put `"name": ""` on the Organization, WebSite and
+    // WebApplication markup on every page (2026-10-04): the brand had no name
+    // in Google's entity graph. A key whose default is "" is unaffected.
+    out[k] =
+      typeof d === "boolean"
+        ? v !== false && v !== "false"
+        : typeof v === "string"
+          ? v.trim() || d
+          : String(v ?? d);
   });
   // An ID that fails its format (typed before validation existed, say) is
   // treated as empty rather than injected.

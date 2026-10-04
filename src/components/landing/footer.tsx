@@ -7,11 +7,18 @@ import type { FooterContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { MarketingNavLink } from "./marketing-link";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import { socialProfileOf } from "@/lib/seo/social-profiles";
 
-type Props = Partial<FooterContent>;
+type Props = Partial<FooterContent> & {
+  /** Official social profiles (/admin/seo → seo.org_same_as). */
+  socials?: string[];
+};
 
-export function Footer(props: Props) {
+export function Footer({ socials = [], ...props }: Props) {
   const v: FooterContent = { ...DEFAULT_LANDING_CONTENT.footer, ...props };
+  const profiles = socials
+    .map((url) => ({ url, p: socialProfileOf(url) }))
+    .filter((x): x is { url: string; p: { key: string; label: string } } => !!x.p);
   const currentYear = new Date().getFullYear();
   const copyright = v.copyright_notice.replace("{year}", String(currentYear));
 
@@ -31,6 +38,27 @@ export function Footer(props: Props) {
             <p className="text-(--mk-muted) mb-6 max-w-sm leading-relaxed">
               {v.brand_description}
             </p>
+
+            {/* The official profiles, with their real logos. rel="me" tells
+                crawlers these accounts belong to this site. */}
+            {profiles.length > 0 && (
+              <ul className="flex flex-wrap gap-2 mb-6" aria-label="RevType on social media">
+                {profiles.map(({ url, p }) => (
+                  <li key={url}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="me noopener noreferrer"
+                      aria-label={`RevType on ${p.label}`}
+                      title={`RevType on ${p.label}`}
+                      className="grid place-items-center w-10 h-10 rounded-full bg-white shadow-sm ring-1 ring-black/5 hover:scale-105 transition-transform"
+                    >
+                      <BrandIcon brand={p.key} colored className="w-5 h-5" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
 
             {v.payment_methods.length > 0 && (
               <div>

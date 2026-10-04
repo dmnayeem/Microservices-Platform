@@ -6,6 +6,7 @@ import {
 import { getLandingContent } from "@/lib/landing-content-server";
 import { publicLanding, sectionOn } from "@/lib/landing-content";
 import { AutoAds } from "@/components/providers/auto-ads";
+import { getSeoSettings, sameAsList } from "@/lib/seo-settings";
 
 // Shared chrome for public marketing pages (About, Careers, Blog, Press, Help,
 // Contact, Status, and the /features/* pages) — the content-driven Navbar and
@@ -17,7 +18,10 @@ export default async function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const content = publicLanding(await getLandingContent());
+  const [content, seo] = await Promise.all([
+    getLandingContent().then(publicLanding),
+    getSeoSettings(),
+  ]);
   const { theme, animations } = content.appearance;
   return (
     <main
@@ -34,7 +38,7 @@ export default async function MarketingLayout({
       <div className="relative z-10">
         {sectionOn(content, "navbar") && <Navbar {...content.navbar} themeToggle={content.appearance.themeToggle !== false} />}
         <div className={sectionOn(content, "navbar") ? "pt-16 lg:pt-20" : ""}>{children}</div>
-        {sectionOn(content, "footer") && <Footer {...content.footer} />}
+        {sectionOn(content, "footer") && <Footer {...content.footer} socials={sameAsList(seo["seo.org_same_as"])} />}
       </div>
     </main>
   );

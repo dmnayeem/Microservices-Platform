@@ -1,6 +1,7 @@
 import { getLandingContent } from "@/lib/landing-content-server";
 import { publicLanding } from "@/lib/landing-content";
-import { getSeoSettings } from "@/lib/seo-settings";
+import { getSeoSettings, sameAsList } from "@/lib/seo-settings";
+import { OFFICIAL_SOCIAL_PROFILES, socialProfileOf } from "@/lib/seo/social-profiles";
 import { getSetting } from "@/lib/system-settings";
 import { getArticles } from "@/lib/blog";
 import { COMPANY_LEGAL, SUPPORT_EMAIL } from "@/config/company";
@@ -96,6 +97,14 @@ export async function GET() {
     `- [Contact](${u("/contact")}): email ${SUPPORT_EMAIL}`,
     `- [Status](${u("/status")}): service status`,
   ];
+  // The official accounts, so an answer engine can tell the real RevType
+  // from look-alikes. Same list as the Organization sameAs and the footer.
+  const profiles = seo ? sameAsList(seo["seo.org_same_as"]) : [...OFFICIAL_SOCIAL_PROFILES];
+  if (profiles.length) {
+    lines.push("", "## Official profiles", `The only official ${name} accounts. The website is ${SITE_URL}.`);
+    for (const url of profiles) lines.push(`- [${socialProfileOf(url)?.label ?? url}](${url})`);
+  }
+  lines.push("", "## Sitemap", `- [Sitemap](${u("/sitemap.xml")}): every public page, by section`);
   const guides = articles.filter((a) => !a.noindex);
   if (guides.length) {
     lines.push("", "## Guides");

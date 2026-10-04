@@ -17,7 +17,7 @@ import {
 } from "@/components/landing/marketing-shell";
 import { getLandingContent } from "@/lib/landing-content-server";
 import { publicLanding, sectionOn } from "@/lib/landing-content";
-import { getSeoSettings } from "@/lib/seo-settings";
+import { getSeoSettings, sameAsList } from "@/lib/seo-settings";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
@@ -86,7 +86,7 @@ export default async function Home() {
         {on("trust_badges") && <TrustBadges {...content.trust_badges} />}
         {on("faq") && <FAQ {...content.faq} />}
         {on("cta") && <CTA {...content.cta} />}
-        {on("footer") && <Footer {...content.footer} />}
+        {on("footer") && <Footer {...content.footer} socials={sameAsList((await getSeoSettings())["seo.org_same_as"])} />}
       </div>
     </main>
   );
