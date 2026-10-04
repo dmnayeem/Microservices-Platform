@@ -687,7 +687,7 @@ async function main() {
     check(
       "the sitemap applies the epoch too",
       /createdAt: \{ gte: new Date\(epochMs\) \}/.test(
-        code("src/app/sitemap.ts")
+        code("src/lib/seo/sitemap-data.ts")
       )
     );
     check(

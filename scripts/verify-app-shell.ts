@@ -795,7 +795,7 @@ function main() {
     );
 
     /* Sitemap: all three, including the one that is not in the menu. */
-    const sm = code("src/app/sitemap.ts");
+    const sm = code("src/lib/seo/sitemap-data.ts");
     for (const p of PAGES) {
       check(`${p.route} is in the sitemap`, sm.includes(`"${p.route}"`));
     }
