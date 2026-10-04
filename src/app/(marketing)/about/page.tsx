@@ -1,3 +1,4 @@
+import { OFFICIAL_SOCIAL_PROFILES } from "@/lib/seo/social-profiles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -109,6 +110,8 @@ export default function AboutPage() {
           url: `${SITE_URL}/about`,
           mainEntity: {
             "@type": "Organization",
+            // The same entity as the site-wide Organization (app/layout.tsx).
+            "@id": `${SITE_URL}/#organization`,
             name: COMPANY_NAME,
             legalName: COMPANY_LEGAL,
             url: SITE_URL,
@@ -116,6 +119,7 @@ export default function AboutPage() {
             foundingDate: String(FOUNDED_YEAR),
             description: COMPANY_BOILERPLATE,
             email: SUPPORT_EMAIL,
+            sameAs: [...OFFICIAL_SOCIAL_PROFILES],
           },
         }}
       />

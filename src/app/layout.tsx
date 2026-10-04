@@ -188,10 +188,26 @@ export default async function RootLayout({
             {
               "@context": "https://schema.org",
               "@type": seo["seo.org_type"] || "Organization",
+              // One id for the brand, so the WebSite, the app and every page's
+              // publisher point at the SAME entity instead of three nameless ones.
+              "@id": `${SITE_URL}/#organization`,
               name: seo["seo.site_name"],
+              alternateName: ["RevType", "revtype.com"].filter((n) => n !== seo["seo.site_name"]),
               ...(seo["seo.org_legal_name"] ? { legalName: seo["seo.org_legal_name"] } : {}),
               url: SITE_URL,
-              logo: new URL(seoImage(seo["seo.logo_url"], "/icon-512.png"), SITE_URL).toString(),
+              // The square brand mark, not the uploaded header logo: that one is
+              // a WHITE wordmark for the dark site, and Google shows the logo
+              // on white — where it is invisible.
+              logo: {
+                "@type": "ImageObject",
+                "@id": `${SITE_URL}/#logo`,
+                url: `${SITE_URL}/icon-512.png`,
+                contentUrl: `${SITE_URL}/icon-512.png`,
+                width: 512,
+                height: 512,
+                caption: seo["seo.site_name"],
+              },
+              image: { "@id": `${SITE_URL}/#logo` },
               description: seo["seo.org_description"],
               ...(seo["seo.org_founding_date"] ? { foundingDate: seo["seo.org_founding_date"] } : {}),
               ...(sameAsList(seo["seo.org_same_as"]).length ? { sameAs: sameAsList(seo["seo.org_same_as"]) } : {}),
@@ -218,12 +234,14 @@ export default async function RootLayout({
             {
               "@context": "https://schema.org",
               "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
               name: seo["seo.site_name"],
+              alternateName: "revtype.com",
               url: SITE_URL,
               inLanguage: "en",
               // No SearchAction: Google retired the sitelinks search box
               // (Nov 2024), so it would add markup with no effect.
-              publisher: { "@type": seo["seo.org_type"] || "Organization", name: seo["seo.site_name"], url: SITE_URL },
+              publisher: { "@id": `${SITE_URL}/#organization` },
             },
             // What the product IS, in the terms search and AI engines classify
             // by. Kept strictly factual (no income claims) — the platform also
@@ -244,7 +262,7 @@ export default async function RootLayout({
               keywords:
                 "Freelance micro-tasks, Digital marketplace, Online courses, Micro-services, Affiliate program, Advertising",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free to join" },
-              publisher: { "@type": seo["seo.org_type"] || "Organization", name: seo["seo.site_name"], url: SITE_URL },
+              publisher: { "@id": `${SITE_URL}/#organization` },
             },
           ]}
         />

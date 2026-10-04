@@ -20,7 +20,14 @@
 # Caddy issues the certificate, renews it, redirects http???https (308) and
 # answers the ACME challenge on :80 ??? all automatic. No separate :80 block;
 # one would shadow the implicit site Caddy uses for exactly those two jobs.
-{$APP_DOMAIN}, www.{$APP_DOMAIN} {
+# www -> apex for EVERY path, here rather than in the app: the middleware
+# skips .xml/.txt, so www.<domain>/robots.txt, /sitemap.xml and /llms.txt were
+# served on www as a second copy of the site. One host for search engines.
+www.{$APP_DOMAIN} {
+	redir https://{$APP_DOMAIN}{uri} permanent
+}
+
+{$APP_DOMAIN} {
 	encode zstd gzip
 
 	@dotfiles path_regexp dotfile (^|/)\.

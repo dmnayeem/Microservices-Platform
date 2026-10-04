@@ -46,6 +46,7 @@ next-env.d.ts
 /.next-*/
 /.npm-cache/
 /.lock-hash
+/.caddy-hash
 /.deploy-state
 /docker-compose.v1.yml
 /deploy.v1.sh

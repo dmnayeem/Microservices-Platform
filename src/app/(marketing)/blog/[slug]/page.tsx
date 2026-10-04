@@ -78,7 +78,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
             mainEntityOfPage: { "@type": "WebPage", "@id": url },
             url,
             author: { "@type": "Organization", name: post.author || `The ${COMPANY_NAME} Team`, url: `${SITE_URL}/about` },
-            publisher: { "@type": "Organization", name: COMPANY_NAME, url: SITE_URL, logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` } },
+            publisher: { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: COMPANY_NAME, url: SITE_URL, logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-512.png` } },
           },
           {
             "@context": "https://schema.org",
