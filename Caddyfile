@@ -1,13 +1,9 @@
-# No `file_server` anywhere in this file: Caddy only ever proxies. Directory
-# listing is therefore impossible by construction, not switched off. Next.js
-# serves only public/ and .next/static; .env, Dockerfile, src/ and the rest
-# of the repo are unreachable by any URL. The denials below are belt-and-braces
-# for scanners, which start hitting a box within hours of DNS resolving.
+# No `file_server` on the app: Caddy only proxies, so directory listing is
+# impossible by construction. Next.js serves only public/ and .next/static;
+# .env, src/ and the rest of the repo are unreachable by any URL.
 {
 	email noreply@revtype.com
 	servers {
-		# Real visitor IP from Cloudflare, so rate limiting and geoip in the
-		# app see the visitor, not a Cloudflare edge address.
 		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 \
 			103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 \
 			188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 \
@@ -17,17 +13,7 @@
 	}
 }
 
-# Caddy issues the certificate, renews it, redirects http???https (308) and
-# answers the ACME challenge on :80 ??? all automatic. No separate :80 block;
-# one would shadow the implicit site Caddy uses for exactly those two jobs.
-# www -> apex for EVERY path, here rather than in the app: the middleware
-# skips .xml/.txt, so www.<domain>/robots.txt, /sitemap.xml and /llms.txt were
-# served on www as a second copy of the site. One host for search engines.
-www.{$APP_DOMAIN} {
-	redir https://{$APP_DOMAIN}{uri} permanent
-}
-
-{$APP_DOMAIN} {
+{$APP_DOMAIN}, www.{$APP_DOMAIN} {
 	encode zstd gzip
 
 	@dotfiles path_regexp dotfile (^|/)\.
@@ -38,6 +24,25 @@ www.{$APP_DOMAIN} {
 		/prisma/* /src/* /node_modules/*
 	respond @forbidden 404
 
+	# Service worker, served from the copy deploy.sh stamps with the build id.
+	# A new build therefore ships a NEW service worker, whose activate() drops
+	# every cache the previous build left behind. Never cached by browser or
+	# edge, so the update is seen on the very next check. Falls back to the
+	# app until the first stamped copy exists.
+	handle /sw.js {
+		root * /srv/sw
+		@stamped file
+		route @stamped {
+			header Cache-Control "no-cache, max-age=0, must-revalidate"
+			header Content-Type "application/javascript; charset=utf-8"
+			file_server
+		}
+		reverse_proxy app:3000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+
 	reverse_proxy app:3000 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
@@ -46,6 +51,14 @@ www.{$APP_DOMAIN} {
 	request_body {
 		max_size 100MB
 	}
+
+	# Vercel parity for browsers. Next emits `s-maxage=N, stale-while-revalidate`
+	# on ISR pages - a hint meant for a CDN - and Vercel rewrites it to
+	# max-age=0 before any browser sees it. Self-hosted Next sends it raw and
+	# Chrome will serve the stale copy first. `>` defers this until the upstream
+	# response exists; the regex matches only those ISR headers, so no-store
+	# pages and immutable assets are untouched.
+	header >Cache-Control "^s-maxage=\d+, stale-while-revalidate=\d+$" "public, max-age=0, must-revalidate"
 
 	header {
 		-Server

@@ -67,6 +67,7 @@ services:
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sw:/srv/sw:ro             # build-stamped service worker, written by deploy.sh
       - caddy_data:/data
       - caddy_config:/config
     environment:

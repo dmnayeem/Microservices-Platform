@@ -1,10 +1,16 @@
-// RevType service worker — web-push notifications + minimal offline shell +
+// RevType service worker - web-push notifications + minimal offline shell +
 // runtime asset caching for offline depth.
-const CACHE = "revtype-shell-v5";
+//
+// BUILD is stamped by deploy.sh (it replaces __BUILD_ID__ in the copy Caddy
+// serves). Every deploy is therefore a new service worker, and activate()
+// below deletes the previous build's caches - nothing stale outlives a deploy.
+// In dev the placeholder stays, which simply means one fixed cache name.
+const BUILD = "__BUILD_ID__";
+const CACHE = "revtype-shell-" + BUILD;
 // Separate cache for hashed static assets / images / fonts served
 // stale-while-revalidate. Kept apart from the shell so a shell bump doesn't
 // throw away already-fetched bundles.
-const RUNTIME = "revtype-runtime-v5";
+const RUNTIME = "revtype-runtime-" + BUILD;
 // Soft cap so the runtime cache can't grow unbounded on a long session.
 const RUNTIME_MAX_ENTRIES = 160;
 const OFFLINE_URL = "/";

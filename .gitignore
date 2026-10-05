@@ -51,3 +51,4 @@ next-env.d.ts
 /docker-compose.v1.yml
 /deploy.v1.sh
 /.deploy-state.v1
+/sw/

@@ -142,6 +142,28 @@ elif [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" ]]; then printf 'CURRENT_DIST=%
 else                                                    printf 'CURRENT_DIST=%s\nPREVIOUS_DIST=%s\n' "$TARGET" "$PREVIOUS" > "$STATE"
 fi
 set -a; source "$STATE"; set +a
+# ---- 6. make the new build visible IMMEDIATELY (what Vercel does on deploy)
+# (a) Service worker: stamp the build id into the copy Caddy serves. New bytes
+#     = new SW; its activate() deletes the previous build's caches.
+BUILD_ID=$(cat "$TARGET/BUILD_ID" 2>/dev/null || echo "${TARGET#.next-}")
+mkdir -p sw
+sed "s/__BUILD_ID__/$BUILD_ID/g" public/sw.js > sw/sw.js.tmp && mv -f sw/sw.js.tmp sw/sw.js
+log "Service worker stamped with build $BUILD_ID"
+# (b) Caddy: apply any Caddyfile / compose change without dropping connections.
+docker compose up -d --no-deps caddy >/dev/null 2>&1 || true
+docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 && log "Caddy config reloaded"
+# (c) Cloudflare: purge the edge, exactly like Vercel purges its CDN.
+#     Needs CF_ZONE_ID + CF_API_TOKEN (token permission: Zone > Cache Purge) in .env.
+if [[ -n "${CF_ZONE_ID:-}" && -n "${CF_API_TOKEN:-}" ]]; then
+  r=$(curl -sS --max-time 20 -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache" \
+        -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+        --data '{"purge_everything":true}' 2>&1 || true)
+  if echo "$r" | grep -q '"success":true'; then log "Cloudflare edge cache purged"
+  else printf '\033[33m  WARN\033[0m Cloudflare purge failed: %s\n' "$(echo "$r" | tr -d '\n' | cut -c1-200)"; fi
+else
+  log "Cloudflare purge skipped - add CF_ZONE_ID and CF_API_TOKEN to .env to enable"
+fi
+
 # Everything else that accumulates (old build dirs, docker leftovers) is one job.
 [[ -x ./housekeeping.sh ]] && FROM_DEPLOY=1 bash ./housekeeping.sh | sed 's/^/  /' || true
 
