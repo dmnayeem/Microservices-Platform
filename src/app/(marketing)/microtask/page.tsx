@@ -24,8 +24,7 @@ import {
   GlassCard,
   StatGrid,
   PrimaryButton,
-  GhostButton,
-  BadgePill,
+  GhostButton, MarketingHero
 } from "@/components/marketing/ui";
 import { SOCIAL_PLATFORMS } from "@/lib/social-tasks";
 import { BUYER_TASK_TYPES, BUYER_TASK_TYPE_META } from "@/lib/buyer-task-types";
@@ -182,42 +181,24 @@ const FAIRNESS = [
 export default function MicroTaskPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-grad-a)/10 to-transparent"
-        />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="mb-5">
-            <BadgePill tone="blue">Micro Tasks</BadgePill>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
-            {/* Not "paid the same day". Approval turnaround is per task —
-                some auto-approve, some wait for a human — so a same-day promise
-                on a public page is one the platform has no code to keep. What
-                IS true of every task is that the reward is stated before you
-                start, so that is what the headline says. */}
-            Small jobs,{" "}
-            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              and you know the pay before you start
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            A micro task is a small freelance job that takes a few minutes —
-            follow a page, review an app, answer a survey, watch a product
-            video. Businesses and advertisers post them on {COMPANY_NAME}, the
-            work is checked, and approved work is paid. Some tasks are
-            sponsored by advertisers. Here is every kind, in plain language.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+      {/* Hero. Not "paid the same day": approval turnaround is per task — some
+          auto-approve, some wait for a human — so a same-day promise is one the
+          platform has no code to keep. What IS true of every task is that the
+          reward is stated before you start, so that is what the headline says. */}
+      <MarketingHero
+        badge="Micro Tasks"
+        title="Small jobs,"
+        highlight="and you know the pay before you start"
+        subtitle="Do short online jobs for real businesses — follow a page, test an app, answer a survey, watch a product video. Every task shows its reward up front, and approved work is paid to your wallet. Some tasks are sponsored by advertisers."
+        actions={
+          <>
             <PrimaryButton href="/register">
               <ClipboardList className="h-4 w-4" /> Create a free account
             </PrimaryButton>
             <GhostButton href="/advertise">Need work done instead? →</GhostButton>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <Section className="bg-(--mk-band)">
         <StatGrid

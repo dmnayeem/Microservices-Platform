@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { PackagePublishToggle } from "./_components/PackagePublishToggle";
+import { CompareRowsEditor } from "./_components/CompareRowsEditor";
 
 export default async function AdminPackagesPage() {
   const session = await auth();
@@ -368,6 +369,7 @@ export default async function AdminPackagesPage() {
           Tip: Plans are evaluated by <strong>accessLevel</strong>. Tasks with <code>requiredAccessLevel ≥ N</code> only show to users on plans with <code>accessLevel ≥ N</code>.
         </p>
       </div>
+      <CompareRowsEditor canEdit={await can(session.user.id, "packages.edit")} />
     </div>
   );
 }

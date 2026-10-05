@@ -92,6 +92,13 @@ export type Permission =
   | "users.ban"
   | "users.delete"
   | "users.adjust_balance"
+  // One per kind of hand adjustment (owner, 2026-10-05), so a super admin
+  // can let someone fix XP without also letting them mint cash.
+  | "users.adjust_points"
+  | "users.adjust_cash"
+  | "users.adjust_xp"
+  | "users.adjust_level"
+  | "users.adjust_followers"
   | "users.impersonate"
   // KYC / Verification
   | "kyc.view"
@@ -287,6 +294,16 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
     ],
   },
   {
+    label: "User adjustments",
+    permissions: [
+      "users.adjust_points",
+      "users.adjust_cash",
+      "users.adjust_xp",
+      "users.adjust_level",
+      "users.adjust_followers",
+    ],
+  },
+  {
     label: "KYC & Verification",
     permissions: ["kyc.view", "kyc.approve", "kyc.reject"],
   },
@@ -448,6 +465,9 @@ export const FINANCE_PERMISSIONS: Permission[] = [
   // permission, and 260,000 points were added that way — money is money
   // whichever form it is typed into.
   "users.adjust_balance",
+  // Its money halves, one at a time. XP, level and followers are not money.
+  "users.adjust_points",
+  "users.adjust_cash",
 ];
 
 // admins.manage (editing roles / custom roles / per-user overrides) and
@@ -500,6 +520,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "dashboard.view",
     "users.view", "users.edit", "users.ban", "users.delete",
     // (users.adjust_balance is finance now — granted by a super admin by name.)
+    // What users.edit always allowed in practice, now named so it can be denied.
+    "users.adjust_xp", "users.adjust_level", "users.adjust_followers",
     "kyc.view", "kyc.approve", "kyc.reject",
     "tasks.view", "tasks.create", "tasks.edit", "tasks.delete",
     ...TASK_CREATE_PERMISSIONS,
@@ -544,6 +566,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "payroll.view", "payroll.manage",
     "users.view",
     "users.adjust_balance",
+    "users.adjust_points", "users.adjust_cash", "users.adjust_xp", "users.adjust_level",
     "withdrawals.view", "withdrawals.process", "withdrawals.approve", "withdrawals.reject",
     "payment_methods.view", "payment_methods.manage",
     "packages.view", "packages.edit",
@@ -598,6 +621,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   SUPPORT_ADMIN: [
     "dashboard.view",
     "users.view", "users.edit", "users.ban", "users.impersonate",
+    "users.adjust_xp", "users.adjust_level", "users.adjust_followers",
     "kyc.view", "kyc.approve", "kyc.reject",
     "tasks.view",
     "marketplace.view", "marketplace.disputes", "marketplace.mediate",
@@ -713,6 +737,39 @@ export const FINANCE_ADMIN_GRANTABLE: Permission[] = [
   "finance.hr.view",
 ];
 
+/**
+ * The granular adjustment permissions (2026-10-05) split two older ones:
+ * `users.adjust_balance` covered points, cash, XP and level, and `users.edit`
+ * was all it took to set XP/level or boost followers. A permission set saved
+ * BEFORE the split (a role matrix in settings, a custom role, a finance grant
+ * list) names neither, so those people would silently lose what they could
+ * do. Such a set is expanded here — but only when it holds none of the new
+ * names, so a set saved after the split means exactly what it says and a
+ * super admin's "no" to one of them sticks.
+ */
+export const GRANULAR_ADJUST_PERMISSIONS: Permission[] = [
+  "users.adjust_points",
+  "users.adjust_cash",
+  "users.adjust_xp",
+  "users.adjust_level",
+  "users.adjust_followers",
+];
+export function expandLegacyPermissions<T extends string>(perms: Set<T>): Set<T> {
+  const has = (p: string) => perms.has(p as T);
+  // Decided BEFORE adding anything: the shorthand below adds granular names.
+  const savedBeforeSplit = !GRANULAR_ADJUST_PERMISSIONS.some(has);
+  // users.adjust_balance stays the shorthand for all four balance kinds.
+  if (has("users.adjust_balance")) {
+    for (const p of ["users.adjust_points", "users.adjust_cash", "users.adjust_xp", "users.adjust_level"]) {
+      perms.add(p as T);
+    }
+  }
+  if (savedBeforeSplit && has("users.edit")) {
+    for (const p of ["users.adjust_xp", "users.adjust_level", "users.adjust_followers"]) perms.add(p as T);
+  }
+  return perms;
+}
+
 export function stripProtectedForRole(
   perms: Set<Permission>,
   role: UserRole | undefined,
@@ -739,7 +796,7 @@ export function stripProtectedForRole(
   //    role already has it, so the role matrix can narrow a moderator but can
   //    never widen one past the ceiling.
   if (role !== "FINANCE_ADMIN") {
-    const granted = new Set<string>(financeGrants);
+    const granted = expandLegacyPermissions(new Set<string>(financeGrants));
     for (const p of FINANCE_SET) {
       const fromCeiling =
         role === "FINANCE_MODERATOR" && FINANCE_MODERATOR_CEILING_SET.has(p) && perms.has(p);
@@ -976,7 +1033,12 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
   "users.edit": { label: "Edit users", description: "Change a user's profile, role, package, verification and seller access." },
   "users.ban": { label: "Ban / unban users", description: "Suspend or restore a user account." },
   "users.delete": { label: "Delete users", description: "Permanently delete a user account (destructive)." },
-  "users.adjust_balance": { label: "Adjust balances", description: "Manually add or deduct a user's points, cash, XP or level." },
+  "users.adjust_balance": { label: "Adjust all balances", description: "Shorthand for all four below at once: points, cash, XP and level." },
+  "users.adjust_points": { label: "Adjust points", description: "Add or deduct a user's points by hand. Money — granted by name." },
+  "users.adjust_cash": { label: "Adjust cash", description: "Add or deduct a user's cash balance by hand. Money — granted by name." },
+  "users.adjust_xp": { label: "Adjust XP", description: "Add, deduct or set a user's XP." },
+  "users.adjust_level": { label: "Adjust level", description: "Raise, lower or set a user's level." },
+  "users.adjust_followers": { label: "Adjust followers", description: "Change a user's shown follower/following/post counts and run follower boosts." },
   "users.impersonate": { label: "Impersonate users", description: "Log in as a user to see the app exactly as they do." },
 
   // ── KYC & Verification ──
@@ -1319,6 +1381,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     name: "Packages",
     href: "/admin/packages",
     icon: "Package",
+    permissions: ["packages.view"],
+    category: "FINANCE",
+  },
+  {
+    // The blue badge shop: prices, which styles are on sale, sales.
+    name: "Blue Badges",
+    href: "/admin/badges",
+    icon: "BadgeCheck",
     permissions: ["packages.view"],
     category: "FINANCE",
   },
@@ -1705,6 +1775,16 @@ export const ADMIN_MODULES: AdminModule[] = [
     icon: "Shield",
     permissions: ["admins.view"],
     category: "SYSTEM",
+  },
+  {
+    // Every access control in one place, and per-admin allow/block — super
+    // admin only (the page redirects anyone else).
+    name: "Control Center",
+    href: "/admin/control-center",
+    icon: "Shield",
+    permissions: ["admins.manage"],
+    category: "SYSTEM",
+    superAdminOnly: true,
   },
   {
     name: "Page Visibility",

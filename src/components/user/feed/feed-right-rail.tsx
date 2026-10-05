@@ -17,7 +17,7 @@ import {
   Flame,
   UserPlus,
   Check,
-  BadgeCheck,
+  
   Coins,
   Gift,
   Target,
@@ -54,6 +54,7 @@ import {
   type QuickEarnTile,
 } from "@/lib/feed-quick-earn";
 import type { CustomWidget } from "@/lib/feed-custom-widgets";
+import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 
 export interface RailEarner {
   id: string;
@@ -70,6 +71,7 @@ export interface RailFollowUser {
   avatar: string | null;
   level: number;
   isBlueVerified?: boolean;
+  verifiedBadgeStyle?: string | null;
   followersCount: number;
 }
 
@@ -547,15 +549,7 @@ export function FeedRightRail({
                     className="text-sm font-semibold text-(--app-ink) truncate inline-flex items-center gap-1 hover:text-(--app-accent-ink)"
                   >
                     <span className="truncate min-w-0">{u.name ?? "Anonymous"}</span>
-                    {u.isBlueVerified && (
-                      <span
-                        title="Verified"
-                        aria-label="Verified"
-                        className="inline-flex shrink-0"
-                      >
-                        <BadgeCheck className="w-3.5 h-3.5 text-sky-400" />
-                      </span>
-                    )}
+                    {u.isBlueVerified && <VerifiedBadge style={u.verifiedBadgeStyle} size="sm" />}
                   </Link>
                   <p className="text-[11px] text-(--app-ink-3) truncate">
                     {u.username ? `@${u.username}` : `Level ${u.level}`} ·{" "}

@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
+import { PLAN_ICONS } from "@/lib/plan-compare";
 
 const PLAN_INPUT = z
   .object({
@@ -85,6 +86,9 @@ const PLAN_INPUT = z
       .regex(/^#[0-9a-fA-F]{6}$/)
       .optional()
       .nullable(),
+    // Plan card: the "Most popular" ribbon (one plan at a time) and its icon.
+    isPopular: z.boolean().optional(),
+    icon: z.enum(PLAN_ICONS).nullable().optional(),
   })
   .strict();
 
@@ -150,6 +154,9 @@ export async function POST(req: NextRequest) {
   }
 
   const created = await prisma.$transaction(async (tx) => {
+    if (data.isPopular) {
+      await tx.package.updateMany({ where: { isPopular: true }, data: { isPopular: false } });
+    }
     if (data.isDefault) {
       await tx.package.updateMany({
         where: { isDefault: true },
@@ -216,6 +223,8 @@ export async function POST(req: NextRequest) {
 
         features: data.features ?? [],
         badgeColor: data.badgeColor ?? null,
+        isPopular: data.isPopular ?? false,
+        icon: data.icon ?? null,
       },
     });
   });

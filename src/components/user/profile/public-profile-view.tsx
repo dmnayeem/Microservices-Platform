@@ -28,7 +28,7 @@ import {
   Pin,
   X,
 } from "lucide-react";
-import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { VerifiedBadge, badgeRingStyle } from "@/components/user/profile/verified-badge";
 import { RenderedContent } from "@/components/user/feed/feed-content";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
@@ -272,7 +272,13 @@ export function PublicProfileView({ userId, viewerId }: Props) {
           )}
         </div>
         <div className="bg-(--app-surface) px-4 sm:px-6 pt-12 pb-5 relative">
-          <div className="absolute -top-12 left-4 sm:left-6">
+          <div
+            className={
+              "absolute -top-12 left-4 sm:left-6" +
+              (user.isBlueVerified && badgeRingStyle(user.verifiedBadgeStyle) ? " vb-ring vb-ring-rounded" : "")
+            }
+            style={user.isBlueVerified ? badgeRingStyle(user.verifiedBadgeStyle) : undefined}
+          >
             <Avatar
               src={user.avatar}
               size="w-24 h-24 sm:w-28 sm:h-28"

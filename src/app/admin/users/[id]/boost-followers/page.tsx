@@ -12,7 +12,7 @@ export default async function BoostFollowersPage({ params }: PageProps) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  if (!(await can(session.user.id, "users.edit"))) redirect("/admin/users");
+  if (!(await can(session.user.id, "users.adjust_followers"))) redirect("/admin/users");
 
   const { id } = await params;
   const user = await prisma.user.findUnique({

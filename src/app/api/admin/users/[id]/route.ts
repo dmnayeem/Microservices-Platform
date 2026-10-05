@@ -411,8 +411,14 @@ export async function PATCH(
       updateData.twoFactorEnabled = false;
       updateData.twoFactorSecret = null;
     }
-    if (data.isBlueVerified !== undefined)
+    if (data.isBlueVerified !== undefined) {
       updateData.isBlueVerified = data.isBlueVerified;
+      // An admin's grant is permanent (no expiry), and an admin's removal ends
+      // a bought badge too — otherwise a stale purchase date would let the
+      // hourly badge sweep undo the admin's grant.
+      updateData.blueBadgeExpiresAt = null;
+      if (!data.isBlueVerified) updateData.blueBadgeAutoRenew = false;
+    }
     if (data.verifiedBadgeStyle !== undefined)
       updateData.verifiedBadgeStyle = data.verifiedBadgeStyle;
 
@@ -480,11 +486,20 @@ export async function PATCH(
     // need only `users.edit`, so any admin could mint points from the edit
     // form and step around `users.adjust_balance` — which is finance, held by
     // the super admin, the finance admin, or someone granted it by name.
-    if ((settingPoints || settingCash) && !(await can(session.user.id, "users.adjust_balance"))) {
-      return NextResponse.json(
-        { error: "Changing a balance needs the balance permission — ask a super admin." },
-        { status: 403 }
-      );
+    // One permission per field (2026-10-05). Level and XP used to need only
+    // users.edit here, though the add/deduct buttons needed the balance one.
+    for (const [field, perm] of [
+      [settingPoints, "users.adjust_points"],
+      [settingCash, "users.adjust_cash"],
+      [data.level !== undefined, "users.adjust_level"],
+      [data.xp !== undefined, "users.adjust_xp"],
+    ] as const) {
+      if (field && !(await can(session.user.id, perm))) {
+        return NextResponse.json(
+          { error: `Changing this needs the "${perm}" permission — ask a super admin.` },
+          { status: 403 }
+        );
+      }
     }
     const priorBal =
       settingPoints || settingCash

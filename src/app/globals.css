@@ -1596,15 +1596,18 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #8da699; 
      Every landing section used a hand-typed py-20 sm:py-28 (or py-16, or
      py-12), so the gaps between sections were four different sizes. One
      fluid step, and one tight variant for the narrow bands. */
+  /* 2026-10-05: tightened (was 3.5–7rem). Two stacked sections left up to
+     14rem of empty band between them, and the owner read it as "the page
+     does not pull". */
   .mk-section {
-    padding-block: clamp(3.5rem, 8vw, 7rem);
+    padding-block: clamp(2.5rem, 6vw, 5rem);
   }
   .mk-section-tight {
     padding-block: clamp(2.5rem, 5vw, 4rem);
   }
   /* The gap between a section's heading block and its content. */
   .mk-section-head {
-    margin-bottom: clamp(2.25rem, 5vw, 4rem);
+    margin-bottom: clamp(1.5rem, 3.5vw, 2.75rem);
   }
 
   /* ── Type scale ───────────────────────────────────────────────────────
@@ -3204,3 +3207,152 @@ mark {
   border-radius: 0.2em;
   padding: 0 0.1em;
 }
+
+/* ── Task instructions (components/user/tasks/task-instructions.tsx) ─────────
+   Unlayered on purpose: it must win over OFFER_RICHTEXT_CLASS's list rules,
+   which live in the utilities layer. A numbered list in an admin's rich text
+   becomes one tile per step with a numbered badge — users skimmed a plain
+   1. 2. list as one paragraph and missed steps (owner, 2026-10-05). */
+.task-steps ol {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.75rem 0;
+  counter-reset: task-step;
+  display: grid;
+  gap: 0.5rem;
+}
+.task-steps ol > li {
+  counter-increment: task-step;
+  position: relative;
+  margin: 0;
+  padding: 0.65rem 0.8rem 0.65rem 2.9rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, #0ea5e9 8%, transparent);
+  border: 1px solid color-mix(in srgb, #0ea5e9 22%, transparent);
+}
+.task-steps ol > li::before {
+  content: counter(task-step);
+  position: absolute;
+  left: 0.75rem;
+  top: 0.6rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: #0ea5e9;
+  color: #ffffff;
+}
+.task-steps ol > li > p { margin: 0; }
+.task-steps ul > li::marker { color: #0ea5e9; }
+/* An H1 sized for a blog post shouts in a task card on a phone. */
+.task-steps h1 { font-size: 1.4rem; line-height: 1.3; margin: 0.25rem 0 0.75rem; }
+.task-steps h2 { font-size: 1.2rem; line-height: 1.35; margin: 0.25rem 0 0.6rem; }
+
+/* Rich text: a highlight inside a text colour keeps that colour.
+   OFFER_RICHTEXT_CLASS gives <mark> a dark ink so a pale highlight stays
+   readable — but the editor nests the highlight INSIDE the colour span
+   (<span style="color:red"><mark>…</mark></span>), so that dark ink
+   overrode the colour the admin chose: red text on green came out black
+   (owner, 2026-10-05). Matches a span whose style sets `color`, not one
+   that only sets `background-color`. !important because the rule above
+   (`mark { color: #1f2937 !important }`) is; this selector is more
+   specific, so it wins exactly when a colour was chosen. */
+span[style^="color"] mark,
+span[style*=" color:"] mark,
+span[style*=";color:"] mark {
+  color: inherit !important;
+}
+
+/* ── Paid animated verified-badge styles (components/user/profile/verified-badge.tsx)
+   Effects sit on the badge wrapper's ::before/::after, BEHIND the badge body
+   (which carries z-index:1), so the tick itself always stays crisp and
+   readable. Sized in em/percent so they scale from the 16px feed badge to the
+   28px profile badge. Owner, 2026-10-05: "blue agun jolte thakbe". */
+.vb-fx { isolation: isolate; }
+.vb-fx::before, .vb-fx::after { content: ""; position: absolute; pointer-events: none; z-index: 0; }
+
+/* Flames: two tongues, out of phase, rising from behind the badge. */
+.vb-fx-flame::before, .vb-fx-fire::before {
+  left: 50%; bottom: 20%; width: 120%; height: 165%;
+  border-radius: 50% 50% 42% 42% / 64% 64% 36% 36%;
+  transform-origin: 50% 100%;
+  filter: blur(1.2px);
+  animation: vb-flicker 0.9s ease-in-out infinite;
+}
+.vb-fx-flame::after, .vb-fx-fire::after {
+  left: 50%; bottom: 24%; width: 80%; height: 135%;
+  border-radius: 50% 50% 42% 42% / 64% 64% 36% 36%;
+  transform-origin: 50% 100%;
+  filter: blur(0.8px);
+  animation: vb-flicker 0.7s ease-in-out -0.35s infinite;
+}
+.vb-fx-flame::before { background: radial-gradient(ellipse at 50% 92%, #e0f2fe 0%, #38bdf8 30%, #2563eb 58%, transparent 74%); }
+.vb-fx-flame::after { background: radial-gradient(ellipse at 50% 92%, #ffffff 0%, #67e8f9 35%, transparent 70%); }
+.vb-fx-fire::before { background: radial-gradient(ellipse at 50% 92%, #fef9c3 0%, #fbbf24 28%, #ef4444 58%, transparent 74%); }
+.vb-fx-fire::after { background: radial-gradient(ellipse at 50% 92%, #ffffff 0%, #fde047 35%, transparent 70%); }
+@keyframes vb-flicker {
+  0%, 100% { transform: translateX(-50%) scale(1, 1); opacity: 0.85; }
+  25% { transform: translateX(-54%) scale(0.95, 1.08); opacity: 1; }
+  50% { transform: translateX(-50%) scale(0.9, 1.16); opacity: 0.9; }
+  75% { transform: translateX(-46%) scale(0.96, 1.05); opacity: 1; }
+}
+
+/* Rotating rings. */
+.vb-fx-aurora::before, .vb-fx-galaxy::before {
+  inset: -22%; border-radius: 9999px; filter: blur(1.5px);
+  animation: vb-spin 2.6s linear infinite;
+}
+.vb-fx-aurora::before { background: conic-gradient(#22d3ee, #a78bfa, #34d399, #f472b6, #22d3ee); }
+.vb-fx-galaxy::before { background: conic-gradient(#312e81, #7c3aed, #ec4899, #1e1b4b, #6366f1, #312e81); animation-duration: 4s; }
+@keyframes vb-spin { to { transform: rotate(360deg); } }
+
+/* Twinkling sparkles (galaxy, ice). */
+.vb-fx-galaxy::after, .vb-fx-ice::after {
+  inset: -35%;
+  background:
+    radial-gradient(circle at 18% 22%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 82% 30%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 70% 85%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 25% 78%, #fff 0 0.8px, transparent 1.4px);
+  animation: vb-twinkle 1.6s ease-in-out infinite;
+}
+@keyframes vb-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+
+/* Neon / plasma / ice glow pulse. */
+.vb-fx-neon::before, .vb-fx-plasma::before, .vb-fx-ice::before {
+  inset: -12%; border-radius: 9999px;
+  animation: vb-pulse 1.6s ease-in-out infinite;
+}
+.vb-fx-neon::before { box-shadow: 0 0 6px 2px #f0abfc, 0 0 12px 4px #22d3ee88; }
+.vb-fx-plasma::before { box-shadow: 0 0 6px 2px #a78bfa, 0 0 12px 4px #06b6d488; }
+.vb-fx-ice::before { box-shadow: 0 0 6px 2px #bae6fd, 0 0 10px 3px #e0f2fe88; }
+@keyframes vb-pulse { 0%, 100% { opacity: 0.55; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1.08); } }
+
+/* Body effects: a light sweep (gold shimmer) and a moving gradient (plasma). */
+.vb-body-shine::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.85) 48%, transparent 64%);
+  background-size: 260% 100%;
+  animation: vb-shine 2.4s ease-in-out infinite;
+}
+@keyframes vb-shine { 0% { background-position: 130% 0; } 60%, 100% { background-position: -130% 0; } }
+.vb-body-plasma { background-size: 300% 300% !important; animation: vb-plasma 3s ease-in-out infinite; }
+@keyframes vb-plasma { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+/* A matching glow ring around the profile photo (premium profile). */
+.vb-ring { isolation: isolate; border-radius: 9999px; } /* the wrapper is already positioned */
+.vb-ring::before {
+  content: ""; position: absolute; inset: -5px; border-radius: 9999px; z-index: -1;
+  background: var(--vb-ring, conic-gradient(#38bdf8, #2563eb, #38bdf8));
+  animation: vb-spin 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vb-fx::before, .vb-fx::after, .vb-body-shine::after, .vb-body-plasma, .vb-ring::before { animation: none !important; }
+}
+/* Profile photos are rounded squares, not circles. */
+.vb-ring-rounded, .vb-ring-rounded::before { border-radius: 1.4rem; }

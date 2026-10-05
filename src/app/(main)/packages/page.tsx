@@ -5,13 +5,14 @@ import { toNum, toNumOrNull } from "@/lib/money";
 import { getEffectivePackage } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
 import { PackagesView } from "@/components/user/packages/packages-view";
+import { getPlansForDisplay } from "@/lib/plans-display";
 import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 export default async function PackagesPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [packages, user, effectivePkg, pointsPerUsd] = await Promise.all([
+  const [packages, user, effectivePkg, pointsPerUsd, display] = await Promise.all([
     prisma.package.findMany({
       where: { isActive: true },
       orderBy: { priceMonthly: "asc" },
@@ -28,6 +29,7 @@ export default async function PackagesPage() {
     // default — so the "Current" badge is correct even for implicit-free users.
     getEffectivePackage(session.user.id),
     getPointsPerUsd(),
+    getPlansForDisplay(),
   ]);
 
   return (
@@ -49,6 +51,8 @@ export default async function PackagesPage() {
       cashBalance={Number(user?.cashBalance ?? 0)}
       pointsBalance={user?.pointsBalance ?? 0}
       pointsPerUsd={pointsPerUsd}
+      cards={display.plans}
+      compareRows={display.rows}
       />
     </>
   );

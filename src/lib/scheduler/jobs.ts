@@ -25,6 +25,7 @@ import {
 } from "@/lib/company-finance/subscriptions";
 import { expireDueTasks } from "@/lib/task-expiry";
 import { runSubscriptionExpiry } from "@/lib/subscription-expiry";
+import { runBadgeExpiry } from "@/lib/badges-server";
 import {
   runCourseReminders,
   runFeaturedExpiry,
@@ -228,6 +229,22 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
       return {
         ok: true,
         summary: `Renewed ${r.renewed}, ended ${r.expired}${r.drained ? "." : " — more left for the next run."}`,
+        result: r,
+      };
+    },
+  },
+  {
+    name: "badge-expiry",
+    label: "Renew or end blue badges",
+    description:
+      "When a bought blue badge or badge style reaches the end of its month, this renews it from the member’s cash balance if auto-renew is on and they can afford it, and otherwise ends it (a lapsed style falls back to the plain blue badge). Badges an admin granted never end. Hourly.",
+    intervalMs: HOUR,
+    leaseMs: 2 * MINUTE,
+    async run() {
+      const r = await runBadgeExpiry();
+      return {
+        ok: true,
+        summary: `Renewed ${r.renewed}, ended ${r.ended}${r.drained ? "." : " — more left for the next run."}`,
         result: r,
       };
     },

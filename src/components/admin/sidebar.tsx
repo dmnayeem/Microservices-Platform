@@ -230,8 +230,9 @@ function AdminSidebarContent({
         .filter((g) => g.modules.length > 0)
     : groupedModules;
 
-  // Which groups are open. The one holding the current page always is; the
-  // rest remember what this admin last opened or closed.
+  // Which groups are open. The one holding the current page starts open (see
+  // activeClosedAt below); the rest remember what this admin last opened or
+  // closed.
   // Read after mount: the server render has no localStorage, and reading it in
   // the initial state would make the first client render disagree with it.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -244,9 +245,22 @@ function AdminSidebarContent({
       }
     });
   }, []);
+  // The current page's group opens by default but can be closed (owner,
+  // 2026-10-04 — it used to be locked open). Closing is remembered for THIS
+  // page only: open another page and its group opens again, so the page you
+  // are on is never hidden by an old choice.
+  const [activeClosedAt, setActiveClosedAt] = useState<string | null>(null);
   const isOpen = (category: string) =>
-    !!q || collapsed || category === activeGroup || (openGroups[category] ?? category === "OVERVIEW");
+    !!q ||
+    collapsed ||
+    (category === activeGroup
+      ? activeClosedAt !== pathname
+      : (openGroups[category] ?? category === "OVERVIEW"));
   const toggleGroup = (category: string) => {
+    if (category === activeGroup) {
+      setActiveClosedAt((cur) => (cur === pathname ? null : pathname));
+      return;
+    }
     setOpenGroups((cur) => {
       const next = { ...cur, [category]: !isOpen(category) };
       try {
@@ -346,12 +360,27 @@ function AdminSidebarContent({
                 onClick={() => toggleGroup(group.category)}
                 aria-expanded={isOpen(group.category)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wider transition-colors",
-                  group.category === activeGroup ? "text-indigo-300" : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                  // Gold so a category reads as a heading, not as one more page
+                  // link (owner, 2026-10-04). NOT green: the selected page is
+                  // the accent colour (`indigo` is remapped to the admin's
+                  // accent, green by default), and the two ran together. Amber
+                  // is never remapped, so it stays distinct whatever the
+                  // accent. A plain heading, where the selected page is a pill.
+                  "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-bold uppercase tracking-[0.12em] transition-colors",
+                  group.category === activeGroup
+                    ? "text-amber-200"
+                    : "text-amber-300/80 hover:text-amber-200 hover:bg-amber-400/5"
                 )}
               >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-3 w-0.5 shrink-0 rounded-full",
+                    group.category === activeGroup ? "bg-amber-300" : "bg-amber-300/40"
+                  )}
+                />
                 <span className="flex-1 truncate">{group.label}</span>
-                <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 tabular-nums">
+                <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 tabular-nums">
                   {group.modules.length}
                 </span>
                 <ChevronDown
@@ -383,7 +412,7 @@ function AdminSidebarContent({
                         <Icon className="w-5 h-5" />
                         {/* Collapsed rail: a compact count badge on the icon corner. */}
                         {collapsed && pending > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 grid place-items-center text-[9px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded-full tabular-nums">
+                          <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 grid place-items-center text-[9px] font-bold bg-(--app-cta) text-(--app-on-cta) rounded-full tabular-nums">
                             {badgeText(pending)}
                           </span>
                         )}
@@ -392,12 +421,12 @@ function AdminSidebarContent({
                         <>
                           <span className="flex-1 min-w-0 truncate">{module.name}</span>
                           {pending > 0 ? (
-                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded tabular-nums">
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-(--app-cta) text-(--app-on-cta) rounded tabular-nums">
                               {badgeText(pending)}
                             </span>
                           ) : (
                             module.badge && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-linear-to-r from-indigo-500 to-purple-600 text-white rounded">
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-(--app-cta) text-(--app-on-cta) rounded">
                                 {module.badge}
                               </span>
                             )

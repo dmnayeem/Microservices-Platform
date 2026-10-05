@@ -109,6 +109,9 @@ export interface EditUserData {
 interface UserEditFormProps {
   user: EditUserData;
   isSuperAdmin: boolean;
+  /** Which values this admin may change by hand (users.adjust_*). A field
+   *  they may not change is shown read-only instead of failing on save. */
+  adjust?: { points: boolean; cash: boolean; level: boolean; xp: boolean };
   /**
    * The signed-in admin's role. Drives the role picker through the SAME
    * functions the API uses, so the dropdown offers exactly what the server
@@ -196,6 +199,7 @@ const PROFESSIONS = [
 export function UserEditForm({
   user,
   isSuperAdmin,
+  adjust = { points: true, cash: true, level: true, xp: true },
   actorRole,
   plans,
   customRoles = [],
@@ -1033,8 +1037,9 @@ export function UserEditForm({
           {tab === "balance" && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Level (1-100)">
+                <Field label={adjust.level ? "Level (1-100)" : "Level (1-100) · no permission"}>
                   <input
+                    disabled={!adjust.level}
                     type="number"
                     min={1}
                     max={100}
@@ -1043,8 +1048,9 @@ export function UserEditForm({
                     className={fieldCls}
                   />
                 </Field>
-                <Field label="XP">
+                <Field label={adjust.xp ? "XP" : "XP · no permission"}>
                   <input
+                    disabled={!adjust.xp}
                     type="number"
                     min={0}
                     value={form.xp}
@@ -1054,8 +1060,9 @@ export function UserEditForm({
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Points Balance">
+                <Field label={adjust.points ? "Points Balance" : "Points Balance · no permission"}>
                   <input
+                    disabled={!adjust.points}
                     type="number"
                     min={0}
                     value={form.pointsBalance}
@@ -1065,8 +1072,9 @@ export function UserEditForm({
                     className={fieldCls}
                   />
                 </Field>
-                <Field label="Cash Balance ($)">
+                <Field label={adjust.cash ? "Cash Balance ($)" : "Cash Balance ($) · no permission"}>
                   <input
+                    disabled={!adjust.cash}
                     type="number"
                     min={0}
                     step={0.01}
@@ -1794,7 +1802,7 @@ export function UserEditForm({
 }
 
 const fieldCls =
-  "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
+  "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed";
 
 function Field({
   label,

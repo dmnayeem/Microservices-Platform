@@ -8,7 +8,16 @@ export type VerifiedBadgeStyle =
   | "EMERALD"
   | "PURPLE"
   | "ROSE"
-  | "OCEAN";
+  | "OCEAN"
+  // Animated (paid, 2026-10-05) — effects live in globals.css (.vb-fx-*).
+  | "BLUE_FLAME"
+  | "FIRE"
+  | "AURORA"
+  | "NEON"
+  | "GALAXY"
+  | "GOLD_SHIMMER"
+  | "ICE"
+  | "PLASMA";
 
 export const VERIFIED_BADGE_STYLES: Record<
   VerifiedBadgeStyle,
@@ -19,6 +28,12 @@ export const VERIFIED_BADGE_STYLES: Record<
     glow: string;
     /** Display label used in the admin picker. */
     label: string;
+    /** Animated effect behind the badge (`.vb-fx-<fx>` in globals.css). */
+    fx?: "flame" | "fire" | "aurora" | "neon" | "galaxy" | "ice" | "plasma";
+    /** Effect on the badge body itself. */
+    bodyFx?: "shine" | "plasma";
+    /** Matching ring around the profile photo (a CSS background). */
+    ring?: string;
   }
 > = {
   BLUE: {
@@ -57,6 +72,63 @@ export const VERIFIED_BADGE_STYLES: Record<
     glow: "bg-cyan-400/60",
     label: "Ocean",
   },
+  BLUE_FLAME: {
+    gradient: "bg-linear-to-br from-sky-300 via-sky-500 to-blue-700",
+    glow: "bg-sky-400/70",
+    label: "Blue Flame",
+    fx: "flame",
+    ring: "conic-gradient(#38bdf8, #1d4ed8, #67e8f9, #38bdf8)",
+  },
+  FIRE: {
+    gradient: "bg-linear-to-br from-yellow-300 via-orange-500 to-red-600",
+    glow: "bg-orange-400/70",
+    label: "Fire",
+    fx: "fire",
+    ring: "conic-gradient(#fde047, #f97316, #dc2626, #fde047)",
+  },
+  AURORA: {
+    gradient: "bg-linear-to-br from-teal-300 via-sky-500 to-violet-600",
+    glow: "bg-teal-300/70",
+    label: "Aurora",
+    fx: "aurora",
+    ring: "conic-gradient(#22d3ee, #a78bfa, #34d399, #f472b6, #22d3ee)",
+  },
+  NEON: {
+    gradient: "bg-linear-to-br from-fuchsia-400 via-pink-500 to-cyan-400",
+    glow: "bg-fuchsia-400/70",
+    label: "Neon",
+    fx: "neon",
+    ring: "conic-gradient(#f0abfc, #22d3ee, #f0abfc)",
+  },
+  GALAXY: {
+    gradient: "bg-linear-to-br from-indigo-500 via-violet-600 to-fuchsia-600",
+    glow: "bg-violet-500/70",
+    label: "Galaxy",
+    fx: "galaxy",
+    ring: "conic-gradient(#312e81, #7c3aed, #ec4899, #312e81)",
+  },
+  GOLD_SHIMMER: {
+    gradient: "bg-linear-to-br from-yellow-200 via-amber-400 to-yellow-600",
+    glow: "bg-amber-300/70",
+    label: "Gold Shimmer",
+    bodyFx: "shine",
+    ring: "conic-gradient(#fde68a, #f59e0b, #fef3c7, #fde68a)",
+  },
+  ICE: {
+    gradient: "bg-linear-to-br from-cyan-200 via-sky-400 to-blue-500",
+    glow: "bg-cyan-200/70",
+    label: "Ice",
+    fx: "ice",
+    ring: "conic-gradient(#e0f2fe, #7dd3fc, #ffffff, #e0f2fe)",
+  },
+  PLASMA: {
+    gradient: "bg-[linear-gradient(135deg,#7c3aed,#06b6d4,#ec4899,#7c3aed)]",
+    glow: "bg-violet-400/70",
+    label: "Plasma",
+    fx: "plasma",
+    bodyFx: "plasma",
+    ring: "conic-gradient(#7c3aed, #06b6d4, #ec4899, #7c3aed)",
+  },
 };
 
 const SIZES = {
@@ -90,6 +162,7 @@ export function VerifiedBadge({
     <span
       className={cn(
         "relative inline-flex items-center justify-center group/vb shrink-0",
+        resolved.fx && `vb-fx vb-fx-${resolved.fx}`,
         className
       )}
       aria-label={tooltip}
@@ -107,9 +180,11 @@ export function VerifiedBadge({
       <span
         title={tooltip}
         className={cn(
-          "relative rounded-full ring-1 ring-inset ring-white/40 shadow-md flex items-center justify-center transition-transform duration-200 group-hover/vb:scale-110",
+          "relative z-1 rounded-full ring-1 ring-inset ring-white/40 shadow-md flex items-center justify-center transition-transform duration-200 group-hover/vb:scale-110",
           sz.box,
-          resolved.gradient
+          resolved.gradient,
+          resolved.bodyFx === "shine" && "vb-body-shine overflow-hidden",
+          resolved.bodyFx === "plasma" && "vb-body-plasma"
         )}
       >
         {/* Glossy top highlight — adds a 3D feel */}
@@ -144,4 +219,10 @@ export function VerifiedBadge({
       </span>
     </span>
   );
+}
+
+/** The profile-photo ring for a badge style, or undefined for the plain ones. */
+export function badgeRingStyle(style: string | null | undefined): React.CSSProperties | undefined {
+  const r = style ? (VERIFIED_BADGE_STYLES as Record<string, { ring?: string }>)[style]?.ring : undefined;
+  return r ? ({ ["--vb-ring" as string]: r } as React.CSSProperties) : undefined;
 }

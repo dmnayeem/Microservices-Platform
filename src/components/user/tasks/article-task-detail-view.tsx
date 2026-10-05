@@ -3,6 +3,7 @@
 import { isStandaloneApp } from "@/lib/standalone";
 import { useEffect, useState } from "react";
 import { TaskInstructions } from "@/components/user/tasks/task-instructions";
+import { TaskSection } from "@/components/user/tasks/task-section";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -394,32 +395,34 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
       {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
       <TaskInstructions
         value={task.instructions}
-        className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 sm:p-5"
       />
 
       {task.instructionVideoUrl && (
-        <section className="space-y-2">
-          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold inline-flex items-center gap-1.5">
-            <VideoIcon className="w-3.5 h-3.5" />
-            Instruction video
-          </h2>
+        <TaskSection
+          tone="rose"
+          icon={<VideoIcon className="w-5 h-5" />}
+          title="Instruction video"
+          hint="Watch how it's done"
+        >
           <div className="max-w-2xl mx-auto rounded-xl overflow-hidden">
             <InlineVideoEmbed
               url={task.instructionVideoUrl}
               title={`Instruction video — ${task.title}`}
             />
           </div>
-        </section>
+        </TaskSection>
       )}
 
       {/* Article links — only shown in legacy (non-pool) mode. In pool mode
           the user must go through the embed flow which inserts the session
           token into each URL; bypassing the embed wouldn't earn the key. */}
       {cfg && !cfg.useKeyPool && cfg.links.length > 0 && (
-        <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 sm:p-5">
-          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 sm:mb-3">
-            Article Links
-          </h2>
+        <TaskSection
+          tone="violet"
+          icon={<ExternalLink className="w-5 h-5" />}
+          title="Article links"
+          hint="Open these pages"
+        >
           <div className="space-y-2">
             {cfg.links.map((link, i) => (
               <a
@@ -442,16 +445,18 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
               </a>
             ))}
           </div>
-        </section>
+        </TaskSection>
       )}
 
       {/* Pool-mode page list (read-only preview). The user clicks "Start"
           below to begin the embed-driven journey. */}
       {cfg?.useKeyPool && (cfg.pages?.length ?? 0) > 0 && (
-        <section className="rounded-xl border border-(--app-line) bg-(--app-surface) p-3 sm:p-5">
-          <h2 className="text-[11px] uppercase tracking-wider text-(--app-ink-3) font-bold mb-2 sm:mb-3">
-            Article Journey ({cfg.pages?.length ?? 0} pages)
-          </h2>
+        <TaskSection
+          tone="violet"
+          icon={<FileText className="w-5 h-5" />}
+          title={`Article journey · ${cfg.pages?.length ?? 0} page${(cfg.pages?.length ?? 0) === 1 ? "" : "s"}`}
+          hint="Pages you'll visit, in order"
+        >
           <ol className="space-y-2 text-sm text-(--app-ink-2)">
             {(cfg.pages ?? []).map((p, i) => {
               const isFinal = i === (cfg.pages?.length ?? 0) - 1;
@@ -480,16 +485,17 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
               );
             })}
           </ol>
-        </section>
+        </TaskSection>
       )}
 
       {/* Keywords */}
       {cfg && cfg.keywords.length > 0 && (
-        <section className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 sm:p-5">
-          <h2 className="text-[11px] uppercase tracking-wider text-amber-400/80 font-bold mb-2 inline-flex items-center gap-1">
-            <Hash className="w-3 h-3" />
-            Keywords to look for
-          </h2>
+        <TaskSection
+          tone="amber"
+          icon={<Hash className="w-5 h-5" />}
+          title="Keywords to look for"
+          hint="Find these words on the page"
+        >
           <div className="flex flex-wrap gap-1.5">
             {cfg.keywords.map((k) => (
               <span
@@ -500,7 +506,7 @@ export function ArticleTaskDetailView({ taskId }: { taskId: string }) {
               </span>
             ))}
           </div>
-        </section>
+        </TaskSection>
       )}
 
       {/* Submission section — depends on state */}

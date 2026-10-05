@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { PLAN_ICONS } from "@/lib/plan-compare";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -84,6 +85,9 @@ const PLAN_PATCH = z
       .regex(/^#[0-9a-fA-F]{6}$/)
       .optional()
       .nullable(),
+    // Plan card: the "Most popular" ribbon (one plan at a time) and its icon.
+    isPopular: z.boolean().optional(),
+    icon: z.enum(PLAN_ICONS).nullable().optional(),
   })
   .strict();
 
@@ -164,6 +168,10 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 
   const updated = await prisma.$transaction(async (tx) => {
+    // One "Most popular" plan at a time.
+    if (data.isPopular === true) {
+      await tx.package.updateMany({ where: { isPopular: true, id: { not: id } }, data: { isPopular: false } });
+    }
     // Promoting another plan to default — clear the existing default first.
     if (data.isDefault === true && !existing.isDefault) {
       await tx.package.updateMany({

@@ -19,6 +19,7 @@ import {
   PanelBottom,
   Palette,
   type LucideIcon,
+  Users,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import { NavbarEditor } from "./sections/navbar-editor";
 import { HeroEditor } from "./sections/hero-editor";
 import { FeaturesEditor } from "./sections/features-editor";
 import { HowItWorksEditor } from "./sections/how-it-works-editor";
+import { AudiencesEditor } from "./sections/audiences-editor";
 import { CalculatorEditor } from "./sections/calculator-editor";
 import { PackagesEditor } from "./sections/packages-editor";
 import { TestimonialsEditor } from "./sections/testimonials-editor";
@@ -60,7 +62,7 @@ const ICONS: Record<string, LucideIcon> = {
   HelpCircle,
   Rocket,
   PanelBottom,
-  Palette,
+  Palette, Users,
 };
 
 export function LandingEditor({ initial, canEdit }: Props) {
@@ -267,6 +269,13 @@ export function LandingEditor({ initial, canEdit }: Props) {
             <FeaturesEditor
               value={content.features}
               onChange={(v) => setSection("features", v)}
+              disabled={!canEdit}
+            />
+          )}
+          {active === "audiences" && (
+            <AudiencesEditor
+              value={content.audiences}
+              onChange={(v) => setSection("audiences", v)}
               disabled={!canEdit}
             />
           )}

@@ -191,7 +191,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (
         pointsOverride != null &&
         pointsOverride > standardPoints &&
-        !(await can(session.user.id, "users.adjust_balance"))
+        !(await can(session.user.id, "users.adjust_points"))
       ) {
         return NextResponse.json(
           {

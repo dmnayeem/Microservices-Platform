@@ -11,7 +11,7 @@ import {
   MoreHorizontal,
   Sparkles,
   BarChart3,
-  CheckCircle,
+  
   Bookmark,
   Flag,
   X,
@@ -55,6 +55,7 @@ import {
   isEmbeddableVideoUrl,
 } from "@/components/user/primitives/inline-video-embed";
 import type { FeedPost } from "./social-feed-view.types";
+import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 
 // URL detection lives in `@/lib/post-urls`, shared with the composer so that
 // what previews there is what links here. The local copy this replaced required
@@ -530,13 +531,7 @@ export const FeedPostCard = memo(function FeedPostCard({
                 {post.user?.name ?? "Anonymous"}
               </Link>
               {post.user?.isBlueVerified && (
-                <span
-                  title="Verified"
-                  aria-label="Verified"
-                  className="inline-flex shrink-0"
-                >
-                  <CheckCircle className="w-4 h-4 text-(--app-accent-ink)" />
-                </span>
+                <VerifiedBadge style={post.user.verifiedBadgeStyle} size="sm" />
               )}
               {/* Was an amber pill. A level is not a warning, and on a feed
                   where a third of authors are level 10+ it was a wall of amber

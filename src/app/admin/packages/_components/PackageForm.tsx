@@ -19,6 +19,12 @@ import {
   Wallet,
   Power,
   ListChecks,
+  Shield,
+  Zap,
+  Crown,
+  Rocket,
+  Gem,
+  Star,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 
@@ -89,7 +95,20 @@ export interface PackageFormPkg {
 
   features: string[];
   badgeColor: string | null;
+  isPopular: boolean;
+  icon: string | null;
 }
+
+const ICON_CHOICES: Array<{ key: string; Icon: typeof Shield }> = [
+  { key: "shield", Icon: Shield },
+  { key: "zap", Icon: Zap },
+  { key: "sparkles", Icon: Sparkles },
+  { key: "crown", Icon: Crown },
+  { key: "rocket", Icon: Rocket },
+  { key: "gem", Icon: Gem },
+  { key: "star", Icon: Star },
+];
+const COLOR_CHOICES = ["#64748b", "#10b981", "#0ea5e9", "#6366f1", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899"];
 
 // Per-action recipient point overrides shown in the Social Earning section.
 const SOCIAL_POINT_FIELDS: Array<{ key: string; label: string }> = [
@@ -456,8 +475,58 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
         )}
       </Section>
 
+      {/* How the plan card looks to users (/packages and the landing page). */}
+      <Section title="Plan card" description="How this plan looks to users on the plans page and the home page. The comparison table under the cards is built from the switches above, so it is always true." icon={<Star className="w-5 h-5 text-amber-400" />}>
+        <label className="flex items-start gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-3 cursor-pointer">
+          <input type="checkbox" checked={data.isPopular} onChange={(e) => setField("isPopular", e.target.checked)} className="mt-1 h-4 w-4 accent-amber-500" />
+          <span>
+            <span className="block text-sm font-semibold text-white">Mark as &ldquo;Most popular&rdquo;</span>
+            <span className="block text-xs text-gray-400">Adds a ribbon and highlights the card. Only one plan can have it — saving this removes it from the others.</span>
+          </span>
+        </label>
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-gray-300">Icon</p>
+          <div className="flex flex-wrap gap-2">
+            {ICON_CHOICES.map(({ key, Icon }) => (
+              <button
+                key={key}
+                type="button"
+                title={key}
+                onClick={() => setField("icon", key)}
+                className={"grid h-11 w-11 place-items-center rounded-xl border transition-colors " + (data.icon === key ? "border-white text-white" : "border-gray-700 text-gray-400 hover:text-white")}
+                style={data.icon === key ? { background: data.badgeColor ?? "#6366f1" } : undefined}
+              >
+                <Icon className="h-5 w-5" />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-gray-300">Colour</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {COLOR_CHOICES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                title={c}
+                onClick={() => setField("badgeColor", c)}
+                className={"h-8 w-8 rounded-full border-2 " + (data.badgeColor?.toLowerCase() === c ? "border-white" : "border-transparent")}
+                style={{ background: c }}
+              />
+            ))}
+            <input
+              type="color"
+              value={data.badgeColor && /^#[0-9a-f]{6}$/i.test(data.badgeColor) ? data.badgeColor : "#6366f1"}
+              onChange={(e) => setField("badgeColor", e.target.value)}
+              className="h-8 w-10 cursor-pointer rounded bg-transparent"
+              title="Any colour"
+            />
+          </div>
+        </div>
+      </Section>
+
       {/* Features (marketing) */}
-      <Section title="Features (marketing copy)" description="Free-form bullet list shown on the public packages page. No functional effect." icon={<Sparkles className="w-5 h-5 text-indigo-400" />}>
+      <Section title="Selling points" description="Short lines shown on this plan's card, under the price (e.g. &ldquo;Priority support&rdquo;). Keep them true — the switches above decide what the plan actually does." icon={<Sparkles className="w-5 h-5 text-indigo-400" />}>
         <div className="flex gap-2">
           <input
             type="text"
@@ -489,11 +558,6 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
           </ul>
         )}
 
-        <div className="mt-4">
-          <Field label="Badge Color (hex)" htmlFor="bc" tooltip="Optional accent color used by the user-side plan badge in the feed.">
-            <input id="bc" type="text" pattern="#[0-9a-fA-F]{6}" placeholder="#6366f1" value={data.badgeColor ?? ""} onChange={(e) => setField("badgeColor", e.target.value || null)} className={inputCls + " max-w-xs"} />
-          </Field>
-        </div>
       </Section>
 
       <div className="flex items-center justify-between pt-2">

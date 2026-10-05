@@ -188,6 +188,23 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
 
   const taskFeePoints = Math.abs(taskFees._sum.points ?? 0);
 
+  // Blue badge + badge-style sales (lib/badges-server). Paid from the wallet
+  // in cash or points; every sale is one PURCHASE row whose reference starts
+  // with "badge_". Signs are not trusted (abs), points convert at the rate.
+  const badgeSales = (await prisma.transaction.aggregate({
+    where: x({
+      type: "PURCHASE",
+      status: "COMPLETED",
+      reference: { startsWith: "badge_" },
+      ...(created ? { createdAt: created } : {}),
+    }),
+    _sum: { amount: true, points: true },
+    _count: true,
+  })) as unknown as SumCount<{ amount: unknown; points: number | null }>;
+  const badgeUsd =
+    Math.abs(toNum(badgeSales._sum.amount as never)) +
+    Math.abs(badgeSales._sum.points ?? 0) / pointsPerUsd;
+
   const lotteryPoints =
     (lottery._sum.houseCutPoints ?? 0) + (lottery._sum.overflowToHouse ?? 0);
 
@@ -275,6 +292,15 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
       from: "Subscription.amount",
       measured: subs._count > 0,
       note: "Read from Subscription, not the ledger: plans paid offline are activated without a Transaction row.",
+    },
+    {
+      key: "badges",
+      label: "Blue badges",
+      usd: badgeUsd,
+      count: badgeSales._count,
+      from: "Transaction PURCHASE badge_*",
+      measured: badgeSales._count > 0,
+      note: "Blue badge and badge-style sales, paid from the wallet (points at the published rate).",
     },
   ];
 

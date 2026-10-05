@@ -225,6 +225,37 @@ export interface FeaturesContent {
   items: FeatureItem[];
 }
 
+/**
+ * "Who it's for" (owner, 2026-10-05: visitors could not tell what the platform
+ * IS, what they would do here, or what they would get). One card per kind of
+ * visitor — someone who wants to earn, someone who makes things, a business —
+ * each with what they do and what they get, right under the hero.
+ */
+export interface AudienceItem {
+  /** Switched off in the editor: kept, but not shown on the site. */
+  hidden?: boolean;
+  iconKey: string;
+  title: string;
+  /** One line: who this card is for. */
+  who: string;
+  /** Short steps — what you actually do. */
+  does: string[];
+  /** One line: what you get. */
+  gets: string;
+  cta_label: string;
+  cta_href: string;
+}
+
+export interface AudiencesContent {
+  /** False = the whole section is switched off (kept, not shown). Missing = on. */
+  enabled?: boolean;
+  badge: string;
+  heading_line1: string;
+  heading_line2: string;
+  subheading: string;
+  items: AudienceItem[];
+}
+
 export interface HowItWorksStep {
   /** Switched off in the editor: kept, but not shown on the site. */
   hidden?: boolean;
@@ -395,6 +426,7 @@ export interface AppearanceContent {
 export interface LandingContent {
   navbar: NavbarContent;
   hero: HeroContent;
+  audiences: AudiencesContent;
   features: FeaturesContent;
   how_it_works: HowItWorksContent;
   calculator: CalculatorContent;
@@ -421,6 +453,7 @@ export const LANDING_SECTIONS: ReadonlyArray<{
 }> = [
   { key: "navbar",       label: "Navbar",       description: "Top nav links + sign-in / sign-up CTAs", icon: "Menu" },
   { key: "hero",         label: "Hero",         description: "Trust badge, headline, CTAs, stat cards", icon: "Star" },
+  { key: "audiences",    label: "Who it's for", description: "What each kind of visitor does here and gets", icon: "Users" },
   { key: "features",     label: "Features",     description: "Earning method cards", icon: "Sparkles" },
   { key: "how_it_works", label: "How It Works", description: "4-step onboarding flow", icon: "ListOrdered" },
   { key: "calculator",   label: "Calculator",   description: "Plans, commissions, team economics", icon: "Calculator" },
@@ -559,6 +592,53 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Cash out to PayPal, crypto or mobile wallets where enabled. Minimum, fee and requirements are shown first.",
         gradient: "from-indigo-500 to-blue-600",
         href: "/microtask#payout",
+      },
+    ],
+  },
+  audiences: {
+    badge: "What you can do here",
+    heading_line1: "One platform,",
+    heading_line2: "three ways to use it",
+    subheading: "Earn from small online jobs, sell what you make, or grow your business. Pick the one that fits you.",
+    items: [
+      {
+        iconKey: "Coins",
+        title: "Earn from small tasks",
+        who: "For anyone with a phone and a few spare minutes.",
+        does: [
+          "Pick a task: follow a page, test an app, answer a survey",
+          "Send the proof it asks for",
+          "Approved work is paid to your wallet",
+        ],
+        gets: "Every task shows its reward before you start.",
+        cta_label: "See the tasks",
+        cta_href: "/microtask",
+      },
+      {
+        iconKey: "ShoppingBag",
+        title: "Sell your skills & products",
+        who: "For creators, freelancers and teachers.",
+        does: [
+          "List templates, designs, ebooks or a service",
+          "Publish a course or teach live classes",
+          "Share affiliate links to other sellers' products",
+        ],
+        gets: "You set the price; buyers pay through escrow and the platform keeps a commission.",
+        cta_label: "Explore the marketplace",
+        cta_href: "/features/marketplace",
+      },
+      {
+        iconKey: "Megaphone",
+        title: "Grow your business",
+        who: "For brands, shops and anyone who needs people to act.",
+        does: [
+          "Post a paid task and get real people to do it",
+          "Run ads across the feed and the app",
+          "Choose who sees them by country, age and more",
+        ],
+        gets: "Real actions from real members, and ad space where they spend their time.",
+        cta_label: "Advertise with us",
+        cta_href: "/advertise",
       },
     ],
   },
@@ -918,7 +998,7 @@ export function withEarnCardLinks(features: FeaturesContent): FeaturesContent {
 
 /** Sections with an on/off switch — every visible one (Appearance is settings). */
 export const TOGGLEABLE_SECTIONS: SectionKey[] = [
-  "navbar", "hero", "features", "how_it_works", "calculator", "packages",
+  "navbar", "hero", "audiences", "features", "how_it_works", "calculator", "packages",
   "testimonials", "trust_badges", "faq", "cta", "footer",
 ];
 
@@ -936,6 +1016,7 @@ export function publicLanding(c: LandingContent): LandingContent {
     ...c,
     navbar: { ...c.navbar, nav_links: visible(c.navbar.nav_links) },
     hero: { ...c.hero, stats: visible(c.hero.stats) },
+    audiences: { ...c.audiences, items: visible(c.audiences.items) },
     features: { ...c.features, items: visible(c.features.items) },
     how_it_works: { ...c.how_it_works, steps: visible(c.how_it_works.steps) },
     calculator: { ...c.calculator, plans: visible(c.calculator.plans) },

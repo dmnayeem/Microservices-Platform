@@ -74,6 +74,8 @@ export interface FeedPost {
     level: number;
     packageTier: string;
     isBlueVerified?: boolean;
+    /** The badge style shown (paid animated styles included). */
+    verifiedBadgeStyle?: string | null;
     role?: string | null;
   };
   isLiked: boolean;
@@ -96,6 +98,8 @@ export interface FeedComment {
     name: string | null;
     avatar: string | null;
     level: number;
+    isBlueVerified?: boolean;
+    verifiedBadgeStyle?: string | null;
   };
   isOwner: boolean;
 }

@@ -90,6 +90,8 @@ export default async function EditPackagePage({ params }: PageProps) {
 
     features: pkg.features,
     badgeColor: pkg.badgeColor,
+    isPopular: pkg.isPopular,
+    icon: pkg.icon,
   };
 
   return (

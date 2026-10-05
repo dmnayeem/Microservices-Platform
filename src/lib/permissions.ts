@@ -11,6 +11,7 @@ import {
   isPermission,
   parsePermissionOverrides,
   stripProtectedForRole,
+  expandLegacyPermissions,
   moduleForPath,
   ADMIN_MODULES,
   CATEGORY_LABELS,
@@ -185,10 +186,14 @@ const resolveAccess = cache(async function resolveAccess(
   // Base = active custom-role permissions when assigned, else the configured
   // (or default) role set. Custom-role users carry role="ADMIN" as baseline.
   const customRole = user.customRole;
-  const perms =
+  // A set saved before the adjustment permissions were split gets them back
+  // here (see expandLegacyPermissions); the per-user overrides below still
+  // have the last word.
+  const perms = expandLegacyPermissions(
     user.customRoleId && customRole?.isActive
       ? new Set(customRole.permissions.filter(isPermission))
-      : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
+      : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? [])
+  );
 
   const overrides = parsePermissionOverrides(user.permissionOverrides);
   for (const [perm, granted] of Object.entries(overrides)) {
@@ -215,6 +220,42 @@ const resolveAccess = cache(async function resolveAccess(
     moduleOverrides,
   };
 });
+
+/**
+ * Where one admin's access comes from, for the Control Center: what their
+ * role (or custom role) gives them, what the super admin granted or blocked
+ * on top, their finance grants, and the result. `base` is the role's set
+ * BEFORE per-user overrides, so the editor can show "Default" truthfully.
+ */
+export async function getAccessBreakdown(userId: string): Promise<{
+  role: UserRole;
+  base: Permission[];
+  overrides: Record<string, boolean>;
+  financeGrants: string[];
+  effective: Permission[];
+} | null> {
+  const [configured, user] = await Promise.all([
+    getConfiguredRolePermissions(),
+    loadAccessUser(userId),
+  ]);
+  if (!user) return null;
+  const role = user.role as UserRole;
+  const base =
+    role === "SUPER_ADMIN"
+      ? new Set(ROLE_PERMISSIONS.SUPER_ADMIN)
+      : expandLegacyPermissions(
+          user.customRoleId && user.customRole?.isActive
+            ? new Set(user.customRole.permissions.filter(isPermission))
+            : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? [])
+        );
+  return {
+    role,
+    base: [...base],
+    overrides: parsePermissionOverrides(user.permissionOverrides),
+    financeGrants: user.financeGrants ?? [],
+    effective: [...(await resolveAccess(userId)).perms],
+  };
+}
 
 /**
  * A user's effective permission set = configured role perms ± per-user

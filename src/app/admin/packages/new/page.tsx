@@ -70,6 +70,8 @@ export default async function NewPackagePage() {
 
     features: [],
     badgeColor: "#6366f1",
+    isPopular: false,
+    icon: "zap",
   };
 
   return (

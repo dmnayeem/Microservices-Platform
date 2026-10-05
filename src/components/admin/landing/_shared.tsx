@@ -283,6 +283,7 @@ const TRUST_ICON_KEYS = [
   "Headphones",
 ];
 const PACKAGE_ICON_KEYS = ["Zap", "Star", "Sparkles", "Crown", "Trophy"];
+const AUDIENCE_ICON_KEYS = ["Coins", "ShoppingBag", "Megaphone", "GraduationCap", "Users", "Wallet", "Sparkles"];
 
 export const ICON_KEYS_BY_GROUP = {
   hero: HERO_ICON_KEYS,
@@ -290,6 +291,7 @@ export const ICON_KEYS_BY_GROUP = {
   step: STEP_ICON_KEYS,
   trust: TRUST_ICON_KEYS,
   package: PACKAGE_ICON_KEYS,
+  audience: AUDIENCE_ICON_KEYS,
 } as const;
 
 export function IconKeyPicker({
