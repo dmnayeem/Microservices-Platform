@@ -149,8 +149,10 @@ BUILD_ID=$(cat "$TARGET/BUILD_ID" 2>/dev/null || echo "${TARGET#.next-}")
 mkdir -p sw
 sed "s/__BUILD_ID__/$BUILD_ID/g" public/sw.js > sw/sw.js.tmp && mv -f sw/sw.js.tmp sw/sw.js
 log "Service worker stamped with build $BUILD_ID"
-# (b) Caddy: apply any Caddyfile / compose change without dropping connections.
-docker compose up -d --no-deps caddy >/dev/null 2>&1 || true
+# (b) Caddy: graceful reload picks up Caddyfile changes with zero dropped
+#     connections. (--no-recreate: a change to caddy's compose definition is
+#     rare and is applied by hand with `docker compose up -d caddy`.)
+docker compose up -d --no-deps --no-recreate caddy >/dev/null 2>&1 || true
 docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 && log "Caddy config reloaded"
 # (c) Cloudflare: purge the edge, exactly like Vercel purges its CDN.
 #     Needs CF_ZONE_ID + CF_API_TOKEN (token permission: Zone > Cache Purge) in .env.
