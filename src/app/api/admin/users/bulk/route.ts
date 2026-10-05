@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     } else if (action === "adjustPoints") {
       // Adding or removing points is money — the same finance permission the
       // single-user balance route needs, not plain `users.edit`.
-      if (!(await can(session.user.id, "users.adjust_balance"))) {
+      if (!(await can(session.user.id, "users.adjust_points"))) {
         return NextResponse.json({ error: "Adjusting points needs the balance permission — ask a super admin." }, { status: 403 });
       }
     } else if (!(await can(session.user.id, "users.edit"))) {

@@ -78,6 +78,7 @@ export const USER_PAGES: UserPage[] = [
   { path: "/marketplace", label: "Marketplace", group: "Buy & sell" },
   { path: "/packages", label: "Packages", group: "Buy & sell" },
   { path: "/my-package", label: "My Package", group: "Buy & sell" },
+  { path: "/badge", label: "Blue Badge shop", group: "Buy & sell" },
   { path: "/subscriptions", label: "Subscriptions", group: "Buy & sell" },
   { path: "/advertiser", label: "Create Ad", group: "Buy & sell" },
   { path: "/create-task", label: "Create Task", group: "Buy & sell" },

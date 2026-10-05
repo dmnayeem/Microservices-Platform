@@ -22,7 +22,7 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!(await can(session.user.id, "users.edit"))) {
+  if (!(await can(session.user.id, "users.adjust_followers"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

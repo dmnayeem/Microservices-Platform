@@ -13,6 +13,8 @@ import Link from "next/link";
 import type { PackagesContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { SectionHeading } from "./section-heading";
+import { PlanCardView, PlanCompareTable, type PlanCardData } from "@/components/plans/plan-display";
+import type { CompareRowDef } from "@/lib/plan-compare";
 
 const ICONS: Record<string, LucideIcon> = {
   Zap,
@@ -22,10 +24,59 @@ const ICONS: Record<string, LucideIcon> = {
   Trophy,
 };
 
-type Props = Partial<PackagesContent>;
+type Props = Partial<PackagesContent> & {
+  /**
+   * The live plans from the database (lib/plans-display). When present they
+   * replace the hand-typed plans below, so the home page can never quote a
+   * price or feature the real plan does not have.
+   */
+  livePlans?: PlanCardData[];
+  compareRows?: CompareRowDef[];
+};
 
-export function Packages(props: Props) {
+export function Packages({ livePlans, compareRows, ...props }: Props) {
   const v: PackagesContent = { ...DEFAULT_LANDING_CONTENT.packages, ...props };
+
+  if (livePlans && livePlans.length > 0) {
+    return (
+      <section id="pricing" className="mk-section">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <SectionHeading eyebrow={v.badge} line1={v.heading_line1} line2={v.heading_line2} sub={v.subheading} />
+          <div
+            className={`mk-rise grid grid-cols-1 gap-6 pt-3 md:grid-cols-2 ${
+              livePlans.length >= 3 ? "xl:grid-cols-3" : ""
+            } ${livePlans.length === 2 ? "max-w-4xl mx-auto" : ""}`}
+          >
+            {livePlans.map((plan, i) => (
+              <PlanCardView
+                key={plan.id}
+                plan={plan}
+                index={i}
+                variant="marketing"
+                footer={
+                  <Link
+                    href="/register"
+                    className={`block w-full rounded-xl py-3 text-center font-semibold transition-all ${
+                      plan.isPopular
+                        ? "bg-(--mk-cta) text-(--mk-on-cta) hover:opacity-90"
+                        : "bg-(--mk-surface) text-(--mk-text) hover:bg-(--mk-surface-2) border border-(--mk-border-strong)"
+                    }`}
+                  >
+                    {plan.priceMonthly <= 0 ? "Start free" : `Get ${plan.name}`}
+                  </Link>
+                }
+              />
+            ))}
+          </div>
+          {compareRows && compareRows.length > 0 && livePlans.length > 1 && (
+            <div className="mk-rise mt-10">
+              <PlanCompareTable plans={livePlans} rows={compareRows} variant="marketing" />
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="pricing" className="mk-section">

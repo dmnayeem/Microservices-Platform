@@ -1685,6 +1685,10 @@ model User {
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render
   // a richer gradient — set by admin from the user-edit screen.
   verifiedBadgeStyle                String?                      @default("BLUE")
+  /// A BOUGHT blue badge lapses at this time; null = granted by an admin, permanent.
+  blueBadgeExpiresAt                DateTime?
+  blueBadgeAutoRenew                Boolean                      @default(false)
+  badgeStyleSubscriptions           BadgeStyleSubscription[]
   twoFactorEnabled                  Boolean                      @default(false)
   twoFactorSecret                   String?
   referralCode                      String                       @unique
@@ -2528,6 +2532,10 @@ model Package {
   // Marketing
   features   String[]
   badgeColor String?
+  /// Plan card: the "Most popular" ribbon (one plan, by convention).
+  isPopular                  Boolean                @default(false)
+  /// Plan card icon key (shield, zap, sparkles, crown, rocket, gem, star).
+  icon                       String?
 
   // System
   isActive  Boolean  @default(true)
@@ -5662,4 +5670,21 @@ model InstructionTemplate {
   updatedAt   DateTime @updatedAt
 
   @@index([category])
+}
+
+/// A paid animated / premium badge style (blue flame, fire, aurora…), monthly.
+/// The style is usable while expiresAt is in the future AND the blue badge is
+/// active. Money lives in Transaction (PURCHASE); this row is the entitlement.
+model BadgeStyleSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  style     String
+  expiresAt DateTime
+  autoRenew Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, style])
+  @@index([expiresAt])
 }

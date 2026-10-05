@@ -19,8 +19,7 @@ import {
   GlassCard,
   StatGrid,
   PrimaryButton,
-  GhostButton,
-  BadgePill,
+  GhostButton, MarketingHero
 } from "@/components/marketing/ui";
 import { AD_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { BUYER_TASK_TYPES, BUYER_TASK_TYPE_META } from "@/lib/buyer-task-types";
@@ -130,35 +129,20 @@ const RULES = [
 export default function AdvertisePage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-accent)/10 to-transparent"
-        />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="mb-5">
-            <BadgePill tone="cyan">Advertise</BadgePill>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
-            Put your brand{" "}
-            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              where people are already looking
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            {COMPANY_NAME} has {SLOT_COUNT} ad spaces across the platform, from
-            the feed to the withdrawal page. Buy clicks, sponsor a space
-            outright, or pay real people to complete tasks for you.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+      <MarketingHero
+        badge="Advertise"
+        title="Put your brand"
+        highlight="where people are already looking"
+        subtitle={`${COMPANY_NAME} has ${SLOT_COUNT} ad spaces, from the feed to the withdrawal page. Buy clicks, sponsor a space outright, or pay real people to complete tasks for you.`}
+        actions={
+          <>
             <PrimaryButton href="/profile/become-creator">
               <Megaphone className="h-4 w-4" /> Apply to advertise
             </PrimaryButton>
             <GhostButton href="/contact">Talk to us about sponsorship →</GhostButton>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <Section className="bg-(--mk-band)">
         <StatGrid

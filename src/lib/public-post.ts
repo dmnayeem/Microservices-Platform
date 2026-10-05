@@ -53,6 +53,7 @@ export interface PublicPost {
     /** null when the author's "Profile photo" privacy is not Everyone. */
     avatar: string | null;
     isBlueVerified: boolean;
+    verifiedBadgeStyle: string | null;
   };
 }
 
@@ -119,6 +120,7 @@ export async function getPublicPost(id: string): Promise<PublicPost | null> {
             username: true,
             avatar: true,
             isBlueVerified: true,
+            verifiedBadgeStyle: true,
             status: true,
             privacyAvatar: true,
             privacyFields: true,
@@ -155,6 +157,7 @@ export async function getPublicPost(id: string): Promise<PublicPost | null> {
       username: row.user.username,
       avatar: avatarPublic ? row.user.avatar : null,
       isBlueVerified: row.user.isBlueVerified,
+      verifiedBadgeStyle: row.user.verifiedBadgeStyle,
     },
   };
 }

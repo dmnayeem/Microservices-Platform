@@ -1,6 +1,7 @@
 import {
   Navbar,
   Hero,
+  Audiences,
   Features,
   HowItWorks,
   EarningsCalculator,
@@ -18,6 +19,7 @@ import {
 import { getLandingContent } from "@/lib/landing-content-server";
 import { publicLanding, sectionOn } from "@/lib/landing-content";
 import { getSeoSettings, sameAsList } from "@/lib/seo-settings";
+import { getPlansForDisplay } from "@/lib/plans-display";
 import { JsonLd } from "@/components/seo/json-ld";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
@@ -44,7 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   // Hidden items dropped, switched-off sections skipped — set in the editor
   // without deleting anything.
-  const content = publicLanding(await getLandingContent());
+  const [content, plans] = await Promise.all([
+    getLandingContent().then(publicLanding),
+    getPlansForDisplay().catch(() => ({ plans: [], rows: [] })),
+  ]);
   const on = (k: Parameters<typeof sectionOn>[1]) => sectionOn(content, k);
   const { theme, animations } = content.appearance;
   const faqItems = (on("faq") ? content.faq?.items ?? [] : []).filter(
@@ -78,10 +83,11 @@ export default async function Home() {
       <div className="relative z-10">
         {on("navbar") && <Navbar {...content.navbar} themeToggle={content.appearance.themeToggle !== false} />}
         {on("hero") && <Hero {...content.hero} />}
+        {on("audiences") && <Audiences {...content.audiences} />}
         {on("features") && <Features {...content.features} />}
         {on("how_it_works") && <HowItWorks {...content.how_it_works} />}
         {on("calculator") && <EarningsCalculator {...content.calculator} />}
-        {on("packages") && <Packages {...content.packages} />}
+        {on("packages") && <Packages {...content.packages} livePlans={plans.plans} compareRows={plans.rows} />}
         {on("testimonials") && <Testimonials {...content.testimonials} />}
         {on("trust_badges") && <TrustBadges {...content.trust_badges} />}
         {on("faq") && <FAQ {...content.faq} />}

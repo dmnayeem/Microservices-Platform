@@ -44,6 +44,7 @@ const FEATURES: Array<{
   { key: "marketplace", label: "Marketplace", revenue: ["marketplace", "mediation"], payouts: [], note: "In: the platform fee on each sale and deal mediation. Seller proceeds are the buyer's money, not a cost.", href: "/admin/marketplace" },
   { key: "courses", label: "Courses", revenue: ["course"], payouts: [], note: "In: the platform's commission on course sales.", href: "/admin/courses" },
   { key: "subscriptions", label: "Subscriptions (plans)", revenue: ["subscription"], payouts: [], note: "In: plan purchases and renewals.", href: "/admin/packages" },
+  { key: "badges", label: "Blue badges", revenue: ["badges"], payouts: [], note: "In: blue badge and animated badge-style sales and renewals.", href: "/admin/badges" },
   { key: "ads", label: "Ads", revenue: ["ads"], payouts: ["browse"], note: "In: advertiser spend. Out: Browse & Earn points paid for viewing ads.", href: "/admin/ads" },
   { key: "offerwalls", label: "Offerwalls", revenue: ["offerwall"], payouts: [], note: "In: the margin — what the network paid minus the user's share (already net).", href: "/admin/offerwalls" },
   { key: "withdrawals", label: "Withdrawal fees", revenue: ["withdrawal"], payouts: [], note: "In: the fee kept on each paid withdrawal.", href: "/admin/withdrawals" },

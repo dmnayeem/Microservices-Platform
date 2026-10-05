@@ -145,14 +145,21 @@ export default async function EditUserPage({
   // `can()` (effective: role table + custom role + per-user overrides) — the
   // API gates on this, and gating the page on the static role table instead
   // rendered buttons that then 403'd for custom-role admins.
-  const canBalance = await can(session.user.id, "users.adjust_balance");
-
+  // One permission per kind (users.adjust_points / _cash / _level / _xp);
+  // only the kinds this admin may change are shown.
+  const [canPoints, canCash, canLevel, canXp] = await Promise.all([
+    can(session.user.id, "users.adjust_points"),
+    can(session.user.id, "users.adjust_cash"),
+    can(session.user.id, "users.adjust_level"),
+    can(session.user.id, "users.adjust_xp"),
+  ]);
   const BALANCE_FIELDS = [
-    { key: "points" as const, value: user.pointsBalance },
-    { key: "cash" as const, value: user.cashBalance },
-    { key: "level" as const, value: user.level },
-    { key: "xp" as const, value: user.xp },
-  ];
+    { key: "points" as const, value: user.pointsBalance, ok: canPoints },
+    { key: "cash" as const, value: user.cashBalance, ok: canCash },
+    { key: "level" as const, value: user.level, ok: canLevel },
+    { key: "xp" as const, value: user.xp, ok: canXp },
+  ].filter((f) => f.ok);
+  const canBalance = BALANCE_FIELDS.length > 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -232,6 +239,7 @@ export default async function EditUserPage({
       <UserEditForm
         user={user}
         isSuperAdmin={isSuperAdmin}
+        adjust={{ points: canPoints, cash: canCash, level: canLevel, xp: canXp }}
         actorRole={adminRole}
         plans={plans}
         customRoles={customRolesRaw}

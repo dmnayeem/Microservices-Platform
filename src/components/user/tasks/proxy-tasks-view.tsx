@@ -407,7 +407,6 @@ export function ProxyTasksView() {
             {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
             <TaskInstructions
               value={active.instructions}
-              className="rounded-lg bg-(--app-page) border border-(--app-line) p-3"
             />
 
             {active.instructionVideoUrl && (

@@ -74,6 +74,14 @@ export function PackagesEditor({ value, onChange, disabled }: Props) {
       </SectionCard>
 
       <SectionCard title="Plans">
+        {/* The home page shows the LIVE plans from Plan Management whenever
+            any exist; these hand-typed plans are only the fallback. */}
+        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+          The home page now shows your real plans from{" "}
+          <a href="/admin/packages" className="font-semibold underline">Plan Management</a> — prices, selling
+          points, &ldquo;Most popular&rdquo; and the comparison table all come from there. The plans below are
+          only used if no plan is live.
+        </p>
         <RepeatingList
           items={value.plans}
           onChange={(next) => set("plans", next)}

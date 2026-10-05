@@ -21,8 +21,7 @@ import {
   GlassCard,
   StatGrid,
   PrimaryButton,
-  GhostButton,
-  BadgePill,
+  GhostButton, MarketingHero
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
@@ -149,35 +148,20 @@ export function generateMetadata(): Promise<Metadata> {
 export default function ReferralPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-grad-a)/10 to-transparent"
-        />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="mb-5">
-            <BadgePill tone="purple">Referral Program</BadgePill>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
-            Invite once,{" "}
-            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              earn from {MODELS.length} different rewards
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            {COMPANY_NAME} does not have one referral bonus — it has{" "}
-            {MODELS.length} separate models, and they stack. This page explains
-            what each one rewards and what has to happen for it to pay.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+      <MarketingHero
+        badge="Referral Program"
+        title="Invite once,"
+        highlight={`earn from ${MODELS.length} different rewards`}
+        subtitle={`${COMPANY_NAME} has ${MODELS.length} referral rewards, and they stack. Here is what each one pays for — and what has to happen first.`}
+        actions={
+          <>
             <PrimaryButton href="/register">
               <UserPlus className="h-4 w-4" /> Get your referral link
             </PrimaryButton>
             <GhostButton href="/microtask">See how people earn here →</GhostButton>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <Section className="bg-(--mk-band)">
         <StatGrid

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Heart, MessageCircle, Share2, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Share2 } from "lucide-react";
 import {
   absoluteMediaUrl,
   getPublicPost,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/public-post";
 import { getPostBackground } from "@/lib/post-backgrounds";
 import { PublicPostShare } from "@/components/public/public-post-share";
+import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 
 /**
  * The logged-out post page — the address every Share button hands out.
@@ -159,7 +160,7 @@ export default async function PublicPostPage({ params }: PageProps) {
               <h1 className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-white">
                 <span className="truncate">{post.author.name}</span>
                 {post.author.isBlueVerified && (
-                  <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" />
+                  <VerifiedBadge style={post.author.verifiedBadgeStyle} size="sm" />
                 )}
               </h1>
               {/* No profile link: every profile route lives under the

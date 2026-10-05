@@ -2,28 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ArrowRight, Loader2, Sparkles, Crown, Zap, Shield, Lock } from "lucide-react";
+import { Check, ArrowRight, Loader2, Lock } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import { TIER_GRADIENT } from "@/lib/tiers";
+import { PlanCardView, PlanCompareTable, type PlanCardData } from "@/components/plans/plan-display";
+import type { CompareRowDef } from "@/lib/plan-compare";
 import { BrandIcon } from "@/components/ui/brand-icon";
 
-type Tier = "FREE" | "STARTER" | "PRO" | "ELITE" | "VIP";
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
 type Method = "POINTS" | "CASH" | "CARD" | "BKASH" | "NAGAD" | "BINANCE" | "BITGET";
-
-// Hardcoded display sets per legacy tier slug. Falls back to the FREE entry
-// when the plan slug isn't one of the original 5 (since admin can now create
-// arbitrary slugs like "pro-monthly").
-function tierVisualKey(slug: string): Tier {
-  const upper = slug.toUpperCase();
-  if (upper === "FREE" || upper === "STARTER" || upper === "PRO" || upper === "ELITE" || upper === "VIP") {
-    return upper;
-  }
-  return "FREE";
-}
 
 interface PackageRow {
   id: string;
@@ -51,32 +40,15 @@ interface PackagesViewProps {
    * and took another.
    */
   pointsPerUsd: number;
+  /** Plan cards + comparison, from lib/plans-display (real plan columns). */
+  cards: PlanCardData[];
+  compareRows: CompareRowDef[];
 }
 
 /** A free/default plan — no monthly price and no yearly price. */
 function isFreePkg(p: PackageRow): boolean {
   return p.priceMonthly === 0 && !p.priceYearly;
 }
-
-const TIER_ICON: Record<Tier, React.ReactNode> = {
-  FREE: <Shield className="w-5 h-5" />,
-  STARTER: <Zap className="w-5 h-5" />,
-  PRO: <Sparkles className="w-5 h-5" />,
-  ELITE: <Crown className="w-5 h-5" />,
-  VIP: <Crown className="w-5 h-5" />,
-};
-
-// NOTE: these marketing blurbs diverge from the real economics in
-// @/lib/tiers (e.g. FREE advertises a "$5–$500 withdrawal range" but
-// TIER_LIMITS.FREE is actually {min:0,max:0}). Kept local on purpose —
-// reconciling the copy is a product decision, not a mechanical dedup.
-const FEATURES: Record<Tier, string[]> = {
-  FREE: ["$5–$500 withdrawal range", "1× earning multiplier", "0% fee discount", "Standard support"],
-  STARTER: ["$5–$1,000 withdrawal", "1.1× multiplier", "10% fee discount", "Standard support"],
-  PRO: ["$10–$5,000 withdrawal", "1.25× multiplier", "25% fee discount", "Priority support"],
-  ELITE: ["$20–$25,000 withdrawal", "1.5× multiplier", "40% fee discount", "High priority support"],
-  VIP: ["$50–$100,000 withdrawal", "2× multiplier", "50% fee discount", "Dedicated support"],
-};
 
 const DURATION_DISCOUNT: Record<Duration, number> = {
   MONTHLY: 0,
@@ -92,6 +64,8 @@ export function PackagesView({
   cashBalance,
   pointsBalance,
   pointsPerUsd,
+  cards,
+  compareRows,
 }: PackagesViewProps) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -101,7 +75,6 @@ export function PackagesView({
   const [busy, setBusy] = useState(false);
 
   const selectedPkg = packages.find((p) => p.tier === selectedTier);
-  const selectedIsFree = selectedPkg ? isFreePkg(selectedPkg) : false;
 
   const calcPrice = () => {
     if (!selectedPkg) return 0;
@@ -121,6 +94,27 @@ export function PackagesView({
   const ptCost = Math.ceil(price * pointsPerUsd);
   const insufficientCash = method === "CASH" && cashBalance < price;
   const insufficientPts = method === "POINTS" && pointsBalance < ptCost;
+
+  const purchaseFree = async (slug: string) => {
+    const pkg = packages.find((x) => x.tier === slug);
+    if (!pkg) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/packages/purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        body: JSON.stringify({ packageId: pkg.id, duration: "MONTHLY", method: "CASH" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setStep(5);
+    } catch (err) {
+      toast.error("Could not switch plan", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const purchase = async () => {
     if (!selectedPkg) return;
@@ -181,84 +175,62 @@ export function PackagesView({
       </p>
 
       {step === 1 && (
-        <div className="space-y-3">
-          {packages.map((p) => {
-            const isCurrent = currentPackageId
-              ? p.id === currentPackageId
-              : p.tier === currentTier;
-            const selected = p.tier === selectedTier;
-            return (
-              <button
-                key={p.id}
-                disabled={isCurrent}
-                onClick={() => setSelectedTier(p.tier)}
-                className={cn(
-                  "w-full text-left rounded-2xl p-4 border transition-all",
-                  selected
-                    ? "border-(--app-accent-edge) bg-(--app-cta)/5 scale-[1.01]"
-                    : "glass glass-hover border-transparent",
-                  isCurrent && "opacity-60"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-xl bg-linear-to-br text-white flex items-center justify-center shrink-0",
-                      TIER_GRADIENT[tierVisualKey(p.tier)]
-                    )}
-                  >
-                    {TIER_ICON[tierVisualKey(p.tier)]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-bold text-white">{p.name}</p>
-                      {isCurrent && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/20 text-emerald-400">
-                          Current
-                        </span>
+        <div className="space-y-6">
+          <div className="grid gap-5 pt-3 md:grid-cols-2 xl:grid-cols-3">
+            {cards.map((c, i) => {
+              const p = packages.find((x) => x.id === c.id);
+              const isCurrent = currentPackageId ? c.id === currentPackageId : c.slug === currentTier;
+              const free = p ? isFreePkg(p) : c.priceMonthly <= 0;
+              return (
+                <PlanCardView
+                  key={c.id}
+                  plan={c}
+                  index={i}
+                  variant="app"
+                  current={isCurrent}
+                  selected={c.slug === selectedTier}
+                  footer={
+                    <button
+                      type="button"
+                      disabled={isCurrent || busy || !p}
+                      onClick={() => {
+                        setSelectedTier(c.slug);
+                        if (free) {
+                          // Free activates straight away (no duration/payment).
+                          setTimeout(() => void purchaseFree(c.slug), 0);
+                        } else {
+                          setStep(2);
+                        }
+                      }}
+                      className={cn(
+                        "inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors disabled:opacity-60",
+                        c.isPopular
+                          ? "bg-(--app-cta) text-(--app-on-cta) hover:opacity-90"
+                          : "bg-(--app-surface-2) text-(--app-ink) hover:bg-(--app-cta)/15"
                       )}
-                    </div>
-                    {p.description && (
-                      <p className="text-xs text-(--app-ink-3) mt-0.5">
-                        {p.description}
-                      </p>
-                    )}
-                    <p className="text-xl font-extrabold text-white mt-2 tabular-nums">
-                      {usd(p.priceMonthly)}
-                      <span className="text-xs text-(--app-ink-3) font-normal">
-                        /mo
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                <ul className="mt-3 grid grid-cols-2 gap-1 text-[11px]">
-                  {FEATURES[tierVisualKey(p.tier)].map((f: string) => (
-                    <li
-                      key={f}
-                      className="inline-flex items-start gap-1 text-(--app-ink-2)"
                     >
-                      <Check className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </button>
-            );
-          })}
-          <button
-            disabled={!selectedTier || busy}
-            onClick={() => (selectedIsFree ? purchase() : setStep(2))}
-            className="w-full py-3 rounded-xl bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {busy && selectedIsFree ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                {selectedIsFree ? "Activate Free Plan" : "Continue"}
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+                      {isCurrent ? (
+                        "Your current plan"
+                      ) : busy && c.slug === selectedTier ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          {free ? "Switch to Free" : `Choose ${c.name}`}
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  }
+                />
+              );
+            })}
+          </div>
+
+          <div>
+            <h2 className="mb-1 text-base font-bold text-white">Compare plans</h2>
+            <p className="mb-3 text-xs text-(--app-ink-3)">What each plan includes, side by side.</p>
+            <PlanCompareTable plans={cards} rows={compareRows} variant="app" />
+          </div>
         </div>
       )}
 

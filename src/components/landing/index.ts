@@ -1,5 +1,6 @@
 export { Navbar } from "./navbar";
 export { Hero } from "./hero";
+export { Audiences } from "./audiences";
 export { Features } from "./features";
 export { HowItWorks } from "./how-it-works";
 export { EarningsCalculator } from "./earnings-calculator";

@@ -129,6 +129,7 @@ export default async function SocialPage() {
             avatar: true,
             level: true,
             isBlueVerified: true,
+            verifiedBadgeStyle: true,
             followersCount: true,
           },
           cacheStrategy: { ttl: 60, swr: 120 },

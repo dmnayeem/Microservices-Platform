@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
-  CheckCircle,
+  
   ExternalLink,
   MoreVertical,
   Play,
@@ -12,6 +12,7 @@ import {
 import { mediaSrc } from "@/lib/media-url";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { placementSpec } from "@/lib/ad-placements";
+import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 
 /** A native feed ad, shaped by GET /api/ads/feed. */
 export interface FeedAd {
@@ -364,7 +365,7 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
           <span>Sponsored ·</span>
           <span className="truncate">{brand}</span>
           {ad.author.isBlueVerified && (
-            <CheckCircle className="h-3 w-3 shrink-0 fill-blue-500/30 text-blue-400" />
+            <VerifiedBadge style={ad.author.verifiedBadgeStyle} size="sm" />
           )}
         </p>
         {showWhy && (

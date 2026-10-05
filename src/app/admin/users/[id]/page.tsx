@@ -639,8 +639,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           </div>
           <p className="text-xl font-bold text-white">{user.level}</p>
           <div className="flex gap-1 mt-1">
-            <AdjustBalanceButton userId={id} type="level" action="add" canAdjust={await can(session.user.id, "users.adjust_balance")} />
-            <AdjustBalanceButton userId={id} type="level" action="deduct" canAdjust={await can(session.user.id, "users.adjust_balance")} />
+            <AdjustBalanceButton userId={id} type="level" action="add" canAdjust={await can(session.user.id, "users.adjust_level")} />
+            <AdjustBalanceButton userId={id} type="level" action="deduct" canAdjust={await can(session.user.id, "users.adjust_level")} />
           </div>
         </div>
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
@@ -650,8 +650,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           </div>
           <p className="text-xl font-bold text-white">{user.xp.toLocaleString()}</p>
           <div className="flex gap-1 mt-1">
-            <AdjustBalanceButton userId={id} type="xp" action="add" canAdjust={await can(session.user.id, "users.adjust_balance")} />
-            <AdjustBalanceButton userId={id} type="xp" action="deduct" canAdjust={await can(session.user.id, "users.adjust_balance")} />
+            <AdjustBalanceButton userId={id} type="xp" action="add" canAdjust={await can(session.user.id, "users.adjust_xp")} />
+            <AdjustBalanceButton userId={id} type="xp" action="deduct" canAdjust={await can(session.user.id, "users.adjust_xp")} />
           </div>
         </div>
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
@@ -661,8 +661,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           </div>
           <p className="text-xl font-bold text-white">{user.pointsBalance.toLocaleString()}</p>
           <div className="flex gap-1 mt-1">
-            <AdjustBalanceButton userId={id} type="points" action="add" canAdjust={await can(session.user.id, "users.adjust_balance")} />
-            <AdjustBalanceButton userId={id} type="points" action="deduct" canAdjust={await can(session.user.id, "users.adjust_balance")} />
+            <AdjustBalanceButton userId={id} type="points" action="add" canAdjust={await can(session.user.id, "users.adjust_points")} />
+            <AdjustBalanceButton userId={id} type="points" action="deduct" canAdjust={await can(session.user.id, "users.adjust_points")} />
           </div>
         </div>
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
@@ -674,8 +674,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
             {seesMoney ? usd(user.cashBalance) : <span className="text-sm font-medium text-gray-500">Finance only</span>}
           </p>
           <div className="flex gap-1 mt-1">
-            <AdjustBalanceButton userId={id} type="cash" action="add" canAdjust={await can(session.user.id, "users.adjust_balance")} />
-            <AdjustBalanceButton userId={id} type="cash" action="deduct" canAdjust={await can(session.user.id, "users.adjust_balance")} />
+            <AdjustBalanceButton userId={id} type="cash" action="add" canAdjust={await can(session.user.id, "users.adjust_cash")} />
+            <AdjustBalanceButton userId={id} type="cash" action="deduct" canAdjust={await can(session.user.id, "users.adjust_cash")} />
           </div>
         </div>
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
@@ -777,8 +777,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </div>
       </div>
 
-      {/* Display Boost panel + Bulk follow link */}
-      {await can(session.user.id, "users.edit") && (
+      {/* Display Boost panel + Bulk follow link — users.adjust_followers. */}
+      {await can(session.user.id, "users.adjust_followers") && (
         <div className="space-y-4">
           <DisplayBoostPanel
             userId={id}
@@ -790,7 +790,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               following: user.displayFollowingBoost,
               posts: user.displayPostsBoost,
             }}
-            canEdit={await can(session.user.id, "users.edit")}
+            canEdit
           />
           <Link
             href={`/admin/users/${id}/boost-followers`}

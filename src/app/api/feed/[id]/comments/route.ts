@@ -79,6 +79,8 @@ export async function GET(
         name: true,
         avatar: true,
         level: true,
+        isBlueVerified: true,
+        verifiedBadgeStyle: true,
       },
     });
     const userMap = new Map(users.map((u) => [u.id, u]));
@@ -195,6 +197,8 @@ export async function POST(
             name: true,
             avatar: true,
             level: true,
+            isBlueVerified: true,
+            verifiedBadgeStyle: true,
           },
         },
       },

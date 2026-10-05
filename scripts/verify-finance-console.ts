@@ -268,11 +268,12 @@ async function main() {
     );
   }
   check(
-    // Nine since the buyer task commission joined them. The count is asserted
-    // rather than the labels: a stream deleted or quietly dropped from the
-    // tuple is exactly the failure this console exists to prevent.
-    "all nine streams are reported",
-    rev.streams.length === 9,
+    // Ten since blue badge sales joined them (2026-10-05); nine since the buyer
+    // task commission. The count is asserted rather than the labels: a stream
+    // deleted or quietly dropped from the tuple is exactly the failure this
+    // console exists to prevent.
+    "all ten streams are reported",
+    rev.streams.length === 10,
     String(rev.streams.length)
   );
   check(

@@ -20,8 +20,7 @@ import {
   GlassCard,
   StatGrid,
   PrimaryButton,
-  GhostButton,
-  BadgePill,
+  GhostButton, MarketingHero, CtaBand
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
@@ -62,35 +61,20 @@ const WHY = [
 export default function AffiliateFeaturePage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-accent)/10 to-transparent"
-        />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="mb-5">
-            <BadgePill tone="purple">Affiliate Program</BadgePill>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
-            Promote great products,{" "}
-            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              earn on every sale
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            Share products and courses with your personal link. When someone buys
-            through it, you earn the commission the seller set — paid straight to
-            your wallet. No inventory, no upfront cost.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+      <MarketingHero
+        badge="Affiliate Program"
+        title="Promote great products,"
+        highlight="earn on every sale"
+        subtitle="Share products and courses with your personal link. When someone buys through it, you earn the commission the seller set — paid to your wallet. No stock, no upfront cost."
+        actions={
+          <>
             <PrimaryButton href="/profile/become-creator">
               <Handshake className="h-4 w-4" /> Apply to become an affiliate
             </PrimaryButton>
             <GhostButton href="/register">Create free account →</GhostButton>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <Section className="bg-(--mk-band)">
         <StatGrid stats={STATS} />
@@ -195,29 +179,12 @@ export default function AffiliateFeaturePage() {
 
       {/* Final CTA */}
       <Section>
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) p-8 sm:p-12 text-center shadow-xl shadow-fuchsia-600/20">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Ready to earn from what you share?
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-white/85">
-            Apply to join the affiliate program and start turning your audience
-            into commission today.
-          </p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/profile/become-creator"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-(--mk-accent) hover:bg-(--mk-accent-soft) transition-colors shadow-sm"
-            >
-              <Handshake className="h-4 w-4" /> Apply to become an affiliate
-            </Link>
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-            >
-              Create free account →
-            </Link>
-          </div>
-        </div>
+        <CtaBand
+          title="Ready to earn from what you share?"
+          subtitle="Apply to join the affiliate program and start turning your audience into commission."
+          primary={{ href: "/profile/become-creator", label: <><Handshake className="h-4 w-4" /> Apply to become an affiliate</> }}
+          secondary={{ href: "/register", label: "Create free account →" }}
+        />
       </Section>
     </>
   );

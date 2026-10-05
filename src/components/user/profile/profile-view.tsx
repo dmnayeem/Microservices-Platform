@@ -33,7 +33,7 @@ import {
   LevelBadge,
   RankBadge,
 } from "@/components/user/profile/badges";
-import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { VerifiedBadge, badgeRingStyle } from "@/components/user/profile/verified-badge";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
 import type {
@@ -276,7 +276,13 @@ export function ProfileView() {
         </div>
         <div className="bg-(--app-surface) px-4 sm:px-6 pt-14 sm:pt-16 pb-5 relative">
           <div className="absolute -top-14 sm:-top-16 left-4 sm:left-6">
-            <div className="relative">
+            <div
+              className={
+                "relative" +
+                (verification.isBlueVerified && badgeRingStyle(verification.verifiedBadgeStyle) ? " vb-ring vb-ring-rounded" : "")
+              }
+              style={verification.isBlueVerified ? badgeRingStyle(verification.verifiedBadgeStyle) : undefined}
+            >
               <Avatar
                 src={profile.avatar}
                 size="w-28 h-28 sm:w-32 sm:h-32"
@@ -323,6 +329,17 @@ export function ProfileView() {
                     size="md"
                   />
                 )}
+                {/* The way into the badge shop (/badge). */}
+                <Link
+                  href="/badge"
+                  className={
+                    verification.isBlueVerified
+                      ? "inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20"
+                      : "inline-flex items-center gap-1 rounded-full bg-sky-500 px-3 py-1 text-[11px] font-bold text-white hover:bg-sky-400"
+                  }
+                >
+                  {verification.isBlueVerified ? "Badge styles" : "Get verified"}
+                </Link>
               </div>
               <p className="text-(--app-ink-3) text-sm mt-0.5">
                 @{profile.username ?? profile.email?.split("@")[0] ?? "user"}

@@ -50,17 +50,26 @@ export function BadgePill({
   );
 }
 
-/** Page hero: badge + big headline (with gradient highlight) + subtitle, centered. */
+/**
+ * Page hero: badge + big headline (with gradient highlight) + subtitle, centered.
+ * The ONE hero for every marketing page — `actions` takes the buttons and
+ * `children` anything under them (a stat strip, flags). Pages used to hand-copy
+ * this markup six times, each with its own sizes.
+ */
 export function MarketingHero({
   badge,
   title,
   highlight,
   subtitle,
+  actions,
+  children,
 }: {
   badge?: string;
   title: string;
   highlight?: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <section className="relative overflow-hidden">
@@ -68,14 +77,14 @@ export function MarketingHero({
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-(--mk-grad-a)/10 to-transparent"
       />
-      <div className="relative pt-16 pb-10 sm:pt-24 sm:pb-14">
+      <div className="relative pt-10 pb-8 sm:pt-16 sm:pb-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {badge && (
-            <div className="mb-5">
+            <div className="mb-4">
               <BadgePill>{badge}</BadgePill>
             </div>
           )}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
+          <h1 className="mk-h1 text-(--mk-text)">
             {title}
             {highlight && (
               <>
@@ -86,11 +95,11 @@ export function MarketingHero({
               </>
             )}
           </h1>
-          {subtitle && (
-            <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-              {subtitle}
-            </p>
+          {subtitle && <p className="mk-lead mt-4 sm:mt-5 max-w-2xl mx-auto">{subtitle}</p>}
+          {actions && (
+            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">{actions}</div>
           )}
+          {children && <div className="mt-8 sm:mt-10">{children}</div>}
         </div>
       </div>
     </section>
@@ -108,7 +117,9 @@ export function Section({
 }) {
   const w = width === "narrow" ? "max-w-3xl" : "max-w-7xl";
   return (
-    <section className={`py-14 sm:py-20 ${className}`}>
+    // Fluid and tighter than it was (py-14 sm:py-20): two stacked sections
+    // now leave 3–6rem between them, not 7–10rem.
+    <section className={`py-[clamp(1.5rem,3.5vw,3rem)] ${className}`}>
       <div className={`${w} mx-auto px-4 sm:px-6 lg:px-8`}>{children}</div>
     </section>
   );
@@ -126,20 +137,14 @@ export function SectionHeading({
   tone?: "blue" | "purple" | "cyan" | "emerald";
 }) {
   return (
-    <div className="text-center mb-12">
+    <div className="text-center mk-section-head">
       {badge && (
-        <div className="mb-4">
+        <div className="mb-3">
           <BadgePill tone={tone}>{badge}</BadgePill>
         </div>
       )}
-      <h2 className="text-3xl sm:text-4xl font-extrabold text-(--mk-text) tracking-tight">
-        {title}
-      </h2>
-      {subtitle && (
-        <p className="mt-4 text-(--mk-muted) max-w-2xl mx-auto leading-relaxed">
-          {subtitle}
-        </p>
-      )}
+      <h2 className="mk-h2 text-(--mk-text)">{title}</h2>
+      {subtitle && <p className="mk-lead mt-3 max-w-2xl mx-auto">{subtitle}</p>}
     </div>
   );
 }
@@ -154,7 +159,9 @@ export function GlassCard({
 }) {
   return (
     <div
-      className={`rounded-2xl bg-(--mk-surface) border border-(--mk-border) shadow-sm p-6 ${className}`}
+      // mk-card: the themed surface + shadow the home page uses (shadow-sm
+      // was all but invisible on the dark theme).
+      className={`mk-card rounded-2xl p-5 sm:p-6 ${className}`}
     >
       {children}
     </div>
@@ -173,7 +180,7 @@ export function StatGrid({
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((s) => (
         <GlassCard key={s.label} className="text-center">
-          <p className="text-3xl sm:text-4xl font-extrabold bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
+          <p className="mk-figure text-2xl sm:text-3xl bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
             {s.value}
           </p>
           <p className="mt-1 text-sm text-(--mk-subtle)">{s.label}</p>
@@ -235,5 +242,49 @@ export function GhostButton({
     >
       {children}
     </Link>
+  );
+}
+
+/**
+ * The closing call-to-action band. One component, in the brand gradient, so
+ * the last thing on every page looks the same — each page used to hand-roll
+ * its own (emerald, orange, fuchsia literals that ignored the theme).
+ */
+export function CtaBand({
+  title,
+  subtitle,
+  primary,
+  secondary,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  primary: { href: string; label: ReactNode };
+  secondary?: { href: string; label: ReactNode };
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-(--mk-grad-a) to-(--mk-grad-b) px-6 py-10 sm:p-12 text-center shadow-xl shadow-black/10">
+      <h2 className="mk-h2 text-white">{title}</h2>
+      {subtitle && (
+        <p className="mx-auto mt-3 max-w-xl text-white/85 text-pretty [&_a]:font-semibold [&_a]:text-white [&_a]:underline">
+          {subtitle}
+        </p>
+      )}
+      <div className="mt-7 flex flex-col sm:flex-row justify-center gap-3">
+        <Link
+          href={primary.href}
+          className="mk-press inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-(--mk-accent) hover:bg-(--mk-accent-soft) transition-colors shadow-sm"
+        >
+          {primary.label}
+        </Link>
+        {secondary && (
+          <Link
+            href={secondary.href}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+          >
+            {secondary.label}
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

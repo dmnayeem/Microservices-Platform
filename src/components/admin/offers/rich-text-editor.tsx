@@ -52,13 +52,145 @@ import { cn } from "@/lib/utils";
 import { OFFER_RICHTEXT_CLASS } from "@/lib/offers";
 import { looksLikeMarkdown, markdownToHtml } from "@/lib/markdown-paste";
 
-const TEXT_COLORS = [
-  "#ffffff", "#94a3b8", "#ef4444", "#f59e0b",
-  "#eab308", "#22c55e", "#06b6d4", "#3b82f6",
-  "#8b5cf6", "#ec4899",
+/**
+ * A full palette (owner, 2026-10-04: five highlight colours and ten text
+ * colours were too few). One row of greys, then ten hues in six shades —
+ * plus any colour through the picker or a typed hex, and the last few used.
+ */
+const GREYS = ["#ffffff", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#475569", "#334155", "#1e293b", "#0f172a", "#000000"];
+const HUES: string[][] = [
+  ["#fee2e2", "#fca5a5", "#f87171", "#ef4444", "#dc2626", "#991b1b"],
+  ["#ffedd5", "#fdba74", "#fb923c", "#f97316", "#ea580c", "#9a3412"],
+  ["#fef3c7", "#fcd34d", "#fbbf24", "#f59e0b", "#d97706", "#92400e"],
+  ["#fef9c3", "#fde047", "#facc15", "#eab308", "#ca8a04", "#854d0e"],
+  ["#dcfce7", "#86efac", "#4ade80", "#22c55e", "#16a34a", "#166534"],
+  ["#ccfbf1", "#5eead4", "#2dd4bf", "#14b8a6", "#0d9488", "#115e59"],
+  ["#cffafe", "#67e8f9", "#22d3ee", "#06b6d4", "#0891b2", "#155e75"],
+  ["#dbeafe", "#93c5fd", "#60a5fa", "#3b82f6", "#2563eb", "#1e40af"],
+  ["#ede9fe", "#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed", "#5b21b6"],
+  ["#fce7f3", "#f9a8d4", "#f472b6", "#ec4899", "#db2777", "#9d174d"],
 ];
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+const RECENT_KEY = "rte-recent-colors";
 
-const HIGHLIGHTS = ["#fde68a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#ddd6fe"];
+function readRecent(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(v)
+      ? v.filter((c): c is string => typeof c === "string" && HEX.test(c)).slice(0, 8)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The colour popover for text colour and highlight alike. `onPick` applies a
+ * colour; `onClear` removes it. The native picker applies live as it moves;
+ * a typed hex applies on Enter.
+ */
+function ColorPopover({
+  kind,
+  current,
+  onPick,
+  onClear,
+  onClose,
+}: {
+  kind: "text" | "highlight";
+  current?: string;
+  onPick: (c: string, close: boolean) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const [recent, setRecent] = useState<string[]>(() => readRecent());
+  const [hex, setHex] = useState(current && HEX.test(current) ? current : "");
+  const remember = (c: string) => {
+    const lc = c.toLowerCase();
+    const next = [lc, ...recent.filter((r) => r !== lc)].slice(0, 8);
+    setRecent(next);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    } catch {
+      /* private mode — the colour still applies */
+    }
+  };
+  const pick = (c: string, close = true) => {
+    remember(c);
+    onPick(c, close);
+  };
+  // Highlights read best light, so their light shades come first; text the
+  // other way round.
+  const rows = Array.from({ length: 6 }, (_, i) =>
+    HUES.map((hue) => (kind === "highlight" ? hue[i] : hue[5 - i]))
+  );
+  const swatch = (c: string, key: string) => (
+    <button
+      key={key}
+      type="button"
+      title={c}
+      aria-label={c}
+      onClick={() => pick(c)}
+      className={cn(
+        "w-5 h-5 rounded-md border border-white/10 hover:scale-125 transition-transform",
+        current?.toLowerCase() === c.toLowerCase() && "ring-2 ring-white ring-offset-1 ring-offset-slate-900"
+      )}
+      style={{ backgroundColor: c }}
+    />
+  );
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute left-0 top-full mt-1 z-50 w-62 p-2.5 rounded-xl bg-slate-900 border border-slate-700 shadow-xl space-y-2">
+        <div className="grid grid-cols-10 gap-1">{GREYS.map((c) => swatch(c, `g${c}`))}</div>
+        <div className="grid grid-cols-10 gap-1">
+          {rows.flatMap((row, i) => row.map((c) => swatch(c, `h${i}${c}`)))}
+        </div>
+        {recent.length > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Recent</p>
+            <div className="flex gap-1">{recent.map((c) => swatch(c, `r${c}`))}</div>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5 pt-2 border-t border-slate-800">
+          <input
+            type="color"
+            value={HEX.test(hex) && hex.length === 7 ? hex : "#22c55e"}
+            onChange={(e) => {
+              setHex(e.target.value);
+              onPick(e.target.value, false);
+            }}
+            onBlur={(e) => remember(e.target.value)}
+            className="w-8 h-8 shrink-0 rounded bg-transparent cursor-pointer"
+            title="Any colour"
+          />
+          <input
+            type="text"
+            value={hex}
+            placeholder="#hex"
+            maxLength={7}
+            aria-label="Hex colour"
+            onChange={(e) => setHex(e.target.value.trim())}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const v = hex.startsWith("#") ? hex : `#${hex}`;
+                if (HEX.test(v)) pick(v);
+              }
+            }}
+            className="min-w-0 flex-1 h-8 px-2 rounded bg-slate-800 text-xs text-white font-mono outline-none focus:ring-1 focus:ring-slate-500"
+          />
+          <button
+            type="button"
+            onClick={onClear}
+            className="h-8 px-2 text-xs text-slate-300 hover:text-white rounded bg-slate-800"
+          >
+            {kind === "text" ? "Default" : "None"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 /**
  * The one rich-text editor for staff-written content: task instructions,
@@ -376,44 +508,19 @@ function Toolbar({
           <Baseline className="w-4 h-4" style={{ color: currentColor }} />
         </Btn>
         {colorOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setColorOpen(false)} />
-            <div className="absolute left-0 top-full mt-1 z-50 w-48 p-2 rounded-lg bg-slate-900 border border-slate-700 shadow-xl">
-              <div className="grid grid-cols-5 gap-1.5">
-                {TEXT_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    title={c}
-                    onClick={() => {
-                      editor.chain().focus().setColor(c).run();
-                      setColorOpen(false);
-                    }}
-                    className="w-7 h-7 rounded-full border border-white/10"
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="color"
-                  onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-                  className="w-8 h-8 rounded bg-transparent cursor-pointer"
-                  title="Custom color"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    editor.chain().focus().unsetColor().run();
-                    setColorOpen(false);
-                  }}
-                  className="flex-1 text-xs text-slate-300 hover:text-white rounded bg-slate-800 py-1.5"
-                >
-                  Default
-                </button>
-              </div>
-            </div>
-          </>
+          <ColorPopover
+            kind="text"
+            current={currentColor}
+            onPick={(c, close) => {
+              editor.chain().focus().setColor(c).run();
+              if (close) setColorOpen(false);
+            }}
+            onClear={() => {
+              editor.chain().focus().unsetColor().run();
+              setColorOpen(false);
+            }}
+            onClose={() => setColorOpen(false)}
+          />
         )}
       </div>
 
@@ -423,34 +530,21 @@ function Toolbar({
           <Highlighter className="w-4 h-4" />
         </Btn>
         {markOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setMarkOpen(false)} />
-            <div className="absolute left-0 top-full mt-1 z-50 p-2 rounded-lg bg-slate-900 border border-slate-700 shadow-xl flex items-center gap-1.5">
-              {HIGHLIGHTS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  title={c}
-                  onClick={() => {
-                    editor.chain().focus().toggleHighlight({ color: c }).run();
-                    setMarkOpen(false);
-                  }}
-                  className="w-7 h-7 rounded-full border border-white/10"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  editor.chain().focus().unsetHighlight().run();
-                  setMarkOpen(false);
-                }}
-                className="px-2 h-7 text-xs text-slate-300 hover:text-white rounded bg-slate-800"
-              >
-                None
-              </button>
-            </div>
-          </>
+          <ColorPopover
+            kind="highlight"
+            current={editor.getAttributes("highlight").color as string | undefined}
+            onPick={(c, close) => {
+              // setHighlight, not toggle: picking another colour on already
+              // highlighted text recolours it instead of removing it.
+              editor.chain().focus().setHighlight({ color: c }).run();
+              if (close) setMarkOpen(false);
+            }}
+            onClear={() => {
+              editor.chain().focus().unsetHighlight().run();
+              setMarkOpen(false);
+            }}
+            onClose={() => setMarkOpen(false)}
+          />
         )}
       </div>
 

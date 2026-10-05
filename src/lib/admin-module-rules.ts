@@ -250,6 +250,7 @@ export const API_MODULE_PREFIXES: Record<string, string> = {
   "/api/admin/leaderboard": "/admin/leaderboard",
   "/api/admin/withdrawals": "/admin/withdrawals",
   "/api/admin/packages": "/admin/packages",
+  "/api/admin/badges": "/admin/badges",
   "/api/admin/referrals": "/admin/referrals",
 };
 

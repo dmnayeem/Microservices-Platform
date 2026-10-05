@@ -262,7 +262,6 @@ export function ManualTasksView() {
           {/* One renderer for every surface — see components/user/tasks/task-instructions. */}
           <TaskInstructions
             value={submitting?.instructions}
-            className="rounded-lg bg-(--app-page) border border-(--app-line) p-3"
           />
 
           {submitting?.instructionVideoUrl && (

@@ -12,6 +12,7 @@ import {
 } from "./mention-autocomplete";
 import { RenderedContent } from "./feed-content";
 import { Avatar } from "@/components/user/primitives/avatar";
+import { VerifiedBadge } from "@/components/user/profile/verified-badge";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Comments
@@ -147,8 +148,9 @@ export function CommentsSection({
               : "bg-(--app-surface)"
           )}
         >
-          <p className="text-xs font-semibold text-white">
+          <p className="flex items-center gap-1 text-xs font-semibold text-white">
             {c.user?.name ?? "Anonymous"}
+            {c.user?.isBlueVerified && <VerifiedBadge style={c.user.verifiedBadgeStyle} size="sm" />}
           </p>
           <p className="text-sm text-(--app-ink) mt-0.5 break-words">
             <RenderedContent content={c.content} />

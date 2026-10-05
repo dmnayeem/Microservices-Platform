@@ -31,7 +31,9 @@ export function CTA(props: Props) {
               </span>
             </h2>
 
-            <p className="text-base sm:text-lg text-(--mk-accent) mb-8 max-w-xl mx-auto text-pretty">
+            {/* White, not --mk-accent: the band IS the accent colour, so accent
+                text on it was invisible in the light theme. */}
+            <p className="text-base sm:text-lg text-white/85 mb-8 max-w-xl mx-auto text-pretty">
               {v.subheading}
             </p>
 
@@ -43,7 +45,7 @@ export function CTA(props: Props) {
               <ArrowRight className="w-5 h-5" />
             </Link>
 
-            <p className="text-sm text-(--mk-accent) mt-4">{v.disclaimer}</p>
+            <p className="text-sm text-white/75 mt-4">{v.disclaimer}</p>
           </div>
         </div>
       </div>

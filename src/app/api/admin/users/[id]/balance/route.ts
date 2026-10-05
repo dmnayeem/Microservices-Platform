@@ -26,10 +26,6 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await can(session.user.id, "users.adjust_balance"))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { id } = await params;
     const body = await request.json();
     const validation = adjustBalanceSchema.safeParse(body);
@@ -42,6 +38,21 @@ export async function POST(
     }
 
     const { type, action, amount, reason } = validation.data;
+
+    // One permission per kind, so a super admin can allow XP fixes without
+    // allowing cash. Points and cash are money (granted by name).
+    const perm = ({
+      points: "users.adjust_points",
+      cash: "users.adjust_cash",
+      xp: "users.adjust_xp",
+      level: "users.adjust_level",
+    } as const)[type];
+    if (!perm || !(await can(session.user.id, perm))) {
+      return NextResponse.json(
+        { error: `You do not have permission to adjust ${type} — ask a super admin.` },
+        { status: 403 }
+      );
+    }
 
     // Check if user exists
     const user = await prisma.user.findUnique({

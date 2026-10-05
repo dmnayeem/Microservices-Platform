@@ -23,8 +23,7 @@ import {
   GlassCard,
   StatGrid,
   PrimaryButton,
-  GhostButton,
-  BadgePill,
+  GhostButton, MarketingHero, CtaBand
 } from "@/components/marketing/ui";
 import { COMPANY_NAME } from "@/config/company";
 import { pageMeta } from "@/lib/seo/page-meta";
@@ -70,36 +69,20 @@ const BUYER = [
 export default function MarketplaceFeaturePage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-emerald-500/10 to-transparent"
-        />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-16 pb-10 sm:pt-24 sm:pb-14">
-          <div className="mb-5">
-            <BadgePill tone="emerald">Digital Marketplace</BadgePill>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-(--mk-text) tracking-tight leading-[1.1]">
-            Sell your digital products to{" "}
-            <span className="bg-linear-to-r from-(--mk-rail-a) to-(--mk-rail-b) bg-clip-text text-transparent">
-              buyers worldwide
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-(--mk-muted) leading-relaxed max-w-2xl mx-auto">
-            A peer-to-peer marketplace for digital products and freelance
-            services. Sell templates, graphics, ebooks, stock media, audio, code
-            or your own services — or buy ready-made assets and custom work for
-            your next project.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+      <MarketingHero
+        badge="Digital Marketplace"
+        title="Sell your digital products to"
+        highlight="buyers worldwide"
+        subtitle="Sell templates, graphics, ebooks, stock media, code or your own services — or buy ready-made work for your next project."
+        actions={
+          <>
             <PrimaryButton href="/register">
               <ShoppingBag className="h-4 w-4" /> Start selling
             </PrimaryButton>
-            <GhostButton href="/register">Browse the marketplace →</GhostButton>
-          </div>
-        </div>
-      </section>
+            <GhostButton href="/marketplace">Browse the marketplace →</GhostButton>
+          </>
+        }
+      />
 
       <Section className="bg-(--mk-band)">
         <StatGrid stats={STATS} />
@@ -194,30 +177,17 @@ export default function MarketplaceFeaturePage() {
 
       {/* Final CTA */}
       <Section>
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-emerald-600 to-teal-600 p-8 sm:p-12 text-center shadow-xl shadow-emerald-600/20">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Turn your digital work into income
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-emerald-50">
-            Create a free account and apply to sell. Have questions about fees,
-            delivery or disputes? The <Link href="/help" className="font-semibold text-white underline">Help Center</Link> covers them, and you can also{" "}
-            <Link href="/features/courses" className="font-semibold text-white underline">teach a course</Link>.
-          </p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-colors shadow-sm"
-            >
-              <ShoppingBag className="h-4 w-4" /> Create a free account
-            </Link>
-            <Link
-              href="/features/affiliate"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-            >
-              Explore affiliate →
-            </Link>
-          </div>
-        </div>
+        <CtaBand
+          title="Turn your digital work into income"
+          subtitle={
+            <>
+              Create a free account and apply to sell. Questions about fees, delivery or disputes? The{" "}
+              <Link href="/help">Help Center</Link> covers them — or <Link href="/features/courses">teach a course</Link>.
+            </>
+          }
+          primary={{ href: "/register", label: <><ShoppingBag className="h-4 w-4" /> Create a free account</> }}
+          secondary={{ href: "/features/affiliate", label: "Explore affiliate →" }}
+        />
       </Section>
     </>
   );
