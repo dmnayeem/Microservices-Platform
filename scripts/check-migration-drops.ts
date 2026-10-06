@@ -27,6 +27,7 @@ export const PROTECTED_INDEXES = [
   "MarketplaceDispute_one_open_per_purchase", // 20261006400300_unique_guards — partial unique
   "CreatorApplication_one_pending_per_user_type", // 20261006400300_unique_guards — partial unique
   "TutorApplication_one_pending_per_user", // 20261006400300_unique_guards — partial unique
+  "ArticleTaskKey_fresh_idx", // 20261006800100_article_key_pool — partial; key claims depend on it
 ];
 
 const protectedSet = new Set(PROTECTED_INDEXES.map((n) => n.toLowerCase()));

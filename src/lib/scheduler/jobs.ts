@@ -459,6 +459,23 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     },
   },
   {
+    name: "article-key-pool",
+    label: "Article key pools",
+    description:
+      "Keeps every running article task's key pool topped up (keys are created on demand, only a small buffer is stored), finishes purges that ran out of time, and deletes the finished keys of tasks that ended longer ago than their auto-purge setting. Keys tied to a submission still under review are never deleted.",
+    intervalMs: 10 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const { runArticleKeyMaintenance } = await import("@/lib/article-key-pool");
+      const r = await runArticleKeyMaintenance();
+      return {
+        ok: true,
+        summary: `Minted ${r.keysMinted} key(s) across ${r.toppedUp} pool(s); deleted ${r.keysDeleted} key(s) across ${r.purged} purge(s).`,
+        result: r,
+      };
+    },
+  },
+  {
     name: "cpa-hold-release",
     label: "Pay held CPA offers",
     description:

@@ -2255,6 +2255,7 @@ model Task {
   // Article-task key-pool relations (only used when articleConfig.useKeyPool=true)
   articleKeys         ArticleTaskKey[]
 
+  articleKeyPool    ArticleKeyPool?
   @@index([status])
   @@index([type])
   @@index([requiredAccessLevel])
@@ -2370,6 +2371,29 @@ model SocialProofFingerprint {
 // Pool of one-time-use unique keys for an ARTICLE task. Keys are claimed
 // atomically by the cross-domain embed flow on the final article page; once
 // claimed, the row is locked to the user + submission.
+/// Settings + counters for an article task's key pool. Keys are minted on
+/// demand: only `buffer` unused keys are stored at any time, while `target` is
+/// how many keys the task may hand out in total (a hard cap). `minted` counts
+/// every key ever created for the task and survives a purge, so deleting old
+/// keys never lets the pool mint past its target. See src/lib/article-key-pool.ts.
+model ArticleKeyPool {
+  taskId           String    @id
+  task             Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  target           Int       @default(0)
+  buffer           Int       @default(2000)
+  minted           Int       @default(0)
+  /// Days after the task stops running before its finished keys are purged
+  /// automatically. 0 = never (admin purges by hand).
+  autoPurgeDays    Int       @default(7)
+  purgedTotal      Int       @default(0)
+  lastPurgedAt     DateTime?
+  /// Set while a purge still has rows left (it works in time-boxed chunks);
+  /// the scheduler finishes it and clears this.
+  purgeRequestedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
 model ArticleTaskKey {
   id              String          @id @default(cuid())
   taskId          String

@@ -1721,6 +1721,7 @@ interface KeyRow {
   keyValue: string;
   claimedByUserId: string | null;
   claimedAt: string | null;
+  issuedAt: string | null;
   submissionId: string | null;
   createdAt: string;
   claimer: { id: string; name: string | null; email: string | null } | null;
@@ -1729,10 +1730,29 @@ interface KeyRow {
 interface KeyPoolStats {
   total: number;
   unused: number;
+  stored: number;
+  readyNow: number;
+  issued: number;
   claimed: number;
   submitted: number;
+  pool: {
+    target: number;
+    minted: number;
+    remaining: number;
+    buffer: number;
+    autoPurgeDays: number;
+    purgedTotal: number;
+    lastPurgedAt: string | null;
+    purging: boolean;
+  } | null;
+  limits: { maxGeneratePerAction: number; minBuffer: number; maxBuffer: number; maxAutoPurgeDays: number };
+  page: number;
+  hasMore: boolean;
   keys: KeyRow[];
 }
+
+type KeyFilter = "all" | "unused" | "issued" | "claimed" | "submitted";
+const fmt = (n: number) => n.toLocaleString();
 
 function KeyPoolManager({
   taskId,
@@ -1744,19 +1764,29 @@ function KeyPoolManager({
   const [data, setData] = useState<KeyPoolStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [genCount, setGenCount] = useState(50);
+  const [genCount, setGenCount] = useState(1000);
   const [pasteText, setPasteText] = useState("");
   const [pasteMode, setPasteMode] = useState<"append" | "replace">("append");
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<KeyFilter>("all");
+  const [q, setQ] = useState("");
+  const [appliedQ, setAppliedQ] = useState("");
+  const [bufferDraft, setBufferDraft] = useState<string>("");
+  const [purgeDaysDraft, setPurgeDaysDraft] = useState<string>("");
 
   const load = useCallback(async () => {
     if (!taskId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/tasks/${taskId}/article-keys`);
+      const qs = new URLSearchParams({ page: String(page), filter, ...(appliedQ ? { q: appliedQ } : {}) });
+      const res = await fetch(`/api/admin/tasks/${taskId}/article-keys?${qs}`);
       if (!res.ok) throw new Error(await res.text());
       const d = (await res.json()) as KeyPoolStats;
       setData(d);
+      if (d.pool) {
+        setBufferDraft(String(d.pool.buffer));
+        setPurgeDaysDraft(String(d.pool.autoPurgeDays));
+      }
     } catch (err) {
       toast.error("Couldn't load keys", {
         description: err instanceof Error ? err.message : "Try again",
@@ -1764,19 +1794,31 @@ function KeyPoolManager({
     } finally {
       setLoading(false);
     }
-  }, [taskId]);
+  }, [taskId, page, filter, appliedQ]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   // Lift stats up so Step 3's Continue button and Step 4's Test button
-  // can gate on `unused > 0` without owning the fetch.
+  // can gate on `unused > 0` without owning the fetch. `unused` includes keys
+  // still to be minted under the allowance.
   useEffect(() => {
     if (data && onStatsChange) {
       onStatsChange({ unused: data.unused, total: data.total });
     }
   }, [data, onStatsChange]);
+
+  const post = async (body: Record<string, unknown>) => {
+    const res = await fetch(`/api/admin/tasks/${taskId}/article-keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+    return d;
+  };
 
   const generate = async () => {
     if (!taskId) {
@@ -1785,19 +1827,63 @@ function KeyPoolManager({
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/tasks/${taskId}/article-keys`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate", count: genCount }),
+      const d = await post({ action: "generate", count: genCount });
+      toast.success(`Added ${fmt(d.added)} keys`, {
+        description: `Allowance is now ${fmt(d.allowance)}. ${fmt(d.created)} are stored ready; the rest are created as workers need them.`,
       });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
-      toast.success(`Generated ${d.created} new keys`);
       await load();
     } catch (err) {
-      toast.error("Generation failed", {
-        description: err instanceof Error ? err.message : String(err),
+      toast.error("Generation failed", { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    const buffer = parseInt(bufferDraft, 10);
+    const autoPurgeDays = parseInt(purgeDaysDraft, 10);
+    setBusy(true);
+    try {
+      await post({
+        action: "settings",
+        ...(Number.isFinite(buffer) ? { buffer } : {}),
+        ...(Number.isFinite(autoPurgeDays) ? { autoPurgeDays } : {}),
       });
+      toast.success("Key pool settings saved");
+      await load();
+    } catch (err) {
+      toast.error("Save failed", { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const purge = async () => {
+    if (!taskId) return;
+    if (
+      !(await confirmDialog({
+        title: "Purge finished keys?",
+        description:
+          "Deletes unused keys, keys that were handed out but never submitted (on a running task only after 48 h), and keys whose submission is already approved or rejected. Keys under review are kept. A deleted key can never be submitted again. On an ended task, no new keys are created afterwards.",
+        tone: "danger",
+        confirmLabel: "Purge",
+      }))
+    )
+      return;
+    setBusy(true);
+    try {
+      const d = await post({ action: "purge" });
+      toast.success(`Deleted ${fmt(d.deleted)} keys`, {
+        description: d.more
+          ? "More remain — the scheduler is finishing the purge in the background."
+          : d.keptPending
+          ? `${fmt(d.keptPending)} kept because their submission is still under review.`
+          : undefined,
+      });
+      setPage(1);
+      await load();
+    } catch (err) {
+      toast.error("Purge failed", { description: err instanceof Error ? err.message : String(err) });
     } finally {
       setBusy(false);
     }
@@ -1818,13 +1904,7 @@ function KeyPoolManager({
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/tasks/${taskId}/article-keys`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: pasteMode, keys: lines }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      const d = await post({ action: pasteMode, keys: lines });
       toast.success(
         `${pasteMode === "replace" ? "Replaced" : "Added"} keys: ${d.created} new${
           d.skipped ? `, ${d.skipped} duplicates skipped` : ""
@@ -1833,9 +1913,7 @@ function KeyPoolManager({
       setPasteText("");
       await load();
     } catch (err) {
-      toast.error("Save failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
+      toast.error("Save failed", { description: err instanceof Error ? err.message : String(err) });
     } finally {
       setBusy(false);
     }
@@ -1843,26 +1921,31 @@ function KeyPoolManager({
 
   const previewKeys = () => {
     const set = new Set<string>();
-    while (set.size < Math.min(genCount, 5)) set.add(generateRandomArticleKey());
+    while (set.size < 3) set.add(generateRandomArticleKey());
     return Array.from(set);
   };
 
   const clearUnused = async () => {
     if (!taskId) return;
-    if (!(await confirmDialog({ title: "Delete all UNUSED keys for this task?", description: "Claimed keys are kept.", tone: "danger", confirmLabel: "Delete" }))) return;
+    if (
+      !(await confirmDialog({
+        title: "Delete all UNUSED keys and stop creating new ones?",
+        description: "Keys already handed out are kept. Generate again to re-open the pool.",
+        tone: "danger",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/admin/tasks/${taskId}/article-keys`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/admin/tasks/${taskId}/article-keys`, { method: "DELETE" });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
-      toast.success(`Deleted ${d.deleted} unused keys`);
+      toast.success(`Deleted ${fmt(d.deleted)} unused keys`);
+      setPage(1);
       await load();
     } catch (err) {
-      toast.error("Delete failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
+      toast.error("Delete failed", { description: err instanceof Error ? err.message : String(err) });
     } finally {
       setBusy(false);
     }
@@ -1883,8 +1966,8 @@ function KeyPoolManager({
     );
   }
 
-  const visibleKeys = data?.keys ?? [];
-  const shown = showAll ? visibleKeys : visibleKeys.slice(0, 20);
+  const pool = data?.pool ?? null;
+  const allowanceLabel = pool ? fmt(pool.target) : "—";
 
   return (
     <div className="rounded-lg border border-gray-800 bg-gray-950 p-4 space-y-4">
@@ -1899,54 +1982,103 @@ function KeyPoolManager({
           disabled={loading}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md disabled:opacity-50"
         >
-          {loading ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3 h-3" />
-          )}
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
           Refresh
         </button>
       </div>
 
       {data && (
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Total" value={data.total} tone="bg-gray-800" />
-          <Stat label="Unused" value={data.unused} tone="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" />
-          <Stat label="Claimed" value={data.claimed} tone="bg-amber-500/10 text-amber-300 border border-amber-500/30" />
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <Stat label="Allowance" value={allowanceLabel} tone="bg-gray-800" />
+            <Stat
+              label="Still available"
+              value={fmt(data.unused)}
+              tone="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+            />
+            <Stat label="Handed out" value={fmt(data.claimed + data.issued)} tone="bg-amber-500/10 text-amber-300 border border-amber-500/30" />
+            <Stat label="Submitted" value={fmt(data.submitted)} tone="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30" />
+          </div>
+          <p className="text-[11px] text-gray-500">
+            Stored right now: <strong className="text-gray-300">{fmt(data.stored)}</strong> rows ({fmt(data.readyNow)} ready to hand out).
+            Keys are created as workers need them, so a large allowance does not take up storage.
+            {pool && pool.purgedTotal > 0 && <> Purged so far: {fmt(pool.purgedTotal)}.</>}
+            {pool?.purging && <span className="text-amber-300"> A purge is finishing in the background.</span>}
+          </p>
+        </>
       )}
 
       {/* Generator */}
       <div className="rounded-md bg-gray-900 border border-gray-800 p-3 space-y-2">
-        <p className="text-xs font-semibold text-gray-300">Auto-generate</p>
-        <div className="flex items-center gap-2">
+        <p className="text-xs font-semibold text-gray-300">Add keys</p>
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             type="number"
             min={1}
-            max={10000}
+            max={data?.limits.maxGeneratePerAction ?? 5_000_000}
             value={genCount}
-            onChange={(e) => setGenCount(parseInt(e.target.value) || 1)}
-            className="w-24 px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 tabular-nums"
+            onChange={(e) => setGenCount(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-32 px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500 tabular-nums"
           />
-          <span className="text-xs text-gray-500">random keys</span>
+          <span className="text-xs text-gray-500">keys (up to {fmt(data?.limits.maxGeneratePerAction ?? 5_000_000)} at a time)</span>
           <button
             type="button"
             onClick={generate}
             disabled={busy}
             className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-amber-500 text-(--app-on-bright) font-bold rounded-lg hover:bg-amber-400 disabled:opacity-50"
           >
-            {busy ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5" />
-            )}
-            Generate &amp; Save
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            Add keys
           </button>
         </div>
-        <p className="text-[10px] text-gray-500 font-mono">
-          Preview: {previewKeys().join(" · ")}
-        </p>
+        <p className="text-[10px] text-gray-500 font-mono">Preview: {previewKeys().join(" · ")}</p>
       </div>
+
+      {/* Pool settings */}
+      {pool && (
+        <div className="rounded-md bg-gray-900 border border-gray-800 p-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-300">Pool settings</p>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <label className="text-[11px] text-gray-400 space-y-1">
+              <span>Keys kept ready ({fmt(data!.limits.minBuffer)}–{fmt(data!.limits.maxBuffer)})</span>
+              <input
+                type="number"
+                value={bufferDraft}
+                onChange={(e) => setBufferDraft(e.target.value)}
+                className="w-full px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white tabular-nums"
+              />
+            </label>
+            <label className="text-[11px] text-gray-400 space-y-1">
+              <span>Auto-purge days after the task ends (0 = off)</span>
+              <input
+                type="number"
+                value={purgeDaysDraft}
+                onChange={(e) => setPurgeDaysDraft(e.target.value)}
+                className="w-full px-2 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white tabular-nums"
+              />
+            </label>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={saveSettings}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Save settings
+            </button>
+            <button
+              type="button"
+              onClick={purge}
+              disabled={busy}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600/90 text-white rounded-lg hover:bg-red-600 disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Purge finished keys
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Manual paste */}
       <div className="rounded-md bg-gray-900 border border-gray-800 p-3 space-y-2">
@@ -1960,21 +2092,11 @@ function KeyPoolManager({
         />
         <div className="flex items-center gap-2 flex-wrap">
           <label className="inline-flex items-center gap-1.5 text-xs text-gray-300">
-            <input
-              type="radio"
-              name="paste-mode"
-              checked={pasteMode === "append"}
-              onChange={() => setPasteMode("append")}
-            />
+            <input type="radio" name="paste-mode" checked={pasteMode === "append"} onChange={() => setPasteMode("append")} />
             Append
           </label>
           <label className="inline-flex items-center gap-1.5 text-xs text-gray-300">
-            <input
-              type="radio"
-              name="paste-mode"
-              checked={pasteMode === "replace"}
-              onChange={() => setPasteMode("replace")}
-            />
+            <input type="radio" name="paste-mode" checked={pasteMode === "replace"} onChange={() => setPasteMode("replace")} />
             Replace unused
           </label>
           <button
@@ -1983,62 +2105,95 @@ function KeyPoolManager({
             disabled={busy}
             className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
           >
-            {busy ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Plus className="w-3.5 h-3.5" />
-            )}
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             Save Pasted Keys
           </button>
         </div>
       </div>
 
-      {/* Key list */}
-      {data && data.keys.length > 0 && (
+      {/* Key list — paged */}
+      {data && (
         <div className="rounded-md bg-gray-900 border border-gray-800 overflow-hidden">
-          <div className="px-3 py-2 flex items-center justify-between border-b border-gray-800">
-            <p className="text-xs font-semibold text-gray-300">
-              {data.keys.length} keys
-            </p>
+          <div className="px-3 py-2 flex items-center gap-2 flex-wrap border-b border-gray-800">
+            <select
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value as KeyFilter);
+                setPage(1);
+              }}
+              className="px-2 py-1 bg-gray-950 border border-gray-700 rounded text-[11px] text-gray-200"
+            >
+              <option value="all">All</option>
+              <option value="unused">Unused</option>
+              <option value="issued">Handed out (visitor)</option>
+              <option value="claimed">Handed out (user)</option>
+              <option value="submitted">Submitted</option>
+            </select>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setAppliedQ(q.trim());
+                  setPage(1);
+                }
+              }}
+              placeholder="Search key…"
+              className="flex-1 min-w-[8rem] px-2 py-1 bg-gray-950 border border-gray-700 rounded text-[11px] font-mono text-gray-200"
+            />
             <button
               type="button"
               onClick={clearUnused}
-              disabled={busy || data.unused === 0}
+              disabled={busy || data.readyNow === 0}
               className="inline-flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 disabled:opacity-30"
             >
               <Trash2 className="w-3 h-3" />
               Clear unused
             </button>
           </div>
-          <div className="divide-y divide-gray-800 max-h-72 overflow-y-auto">
-            {shown.map((k) => (
-              <div
-                key={k.id}
-                className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs"
-              >
-                <code className="font-mono text-gray-300">{k.keyValue}</code>
-                {k.claimer ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                    {k.submissionId ? "Submitted" : "Claimed"} ·{" "}
-                    {k.claimer.name ?? k.claimer.email}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                    Unused
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          {data.keys.length > 20 && (
+          {data.keys.length === 0 ? (
+            <p className="px-3 py-4 text-[11px] text-gray-500 text-center">No keys match.</p>
+          ) : (
+            <div className="divide-y divide-gray-800 max-h-72 overflow-y-auto">
+              {data.keys.map((k) => (
+                <div key={k.id} className="px-3 py-1.5 flex items-center justify-between gap-2 text-xs">
+                  <code className="font-mono text-gray-300">{k.keyValue}</code>
+                  {k.claimer ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                      {k.submissionId ? "Submitted" : "Claimed"} · {k.claimer.name ?? k.claimer.email}
+                    </span>
+                  ) : k.issuedAt ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-300 border border-sky-500/30">
+                      {k.submissionId ? "Submitted" : "Handed to a visitor"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                      Unused
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="px-3 py-2 flex items-center justify-between border-t border-gray-800 text-[11px] text-gray-400">
             <button
               type="button"
-              onClick={() => setShowAll((s) => !s)}
-              className="w-full px-3 py-2 text-[11px] text-indigo-400 hover:text-indigo-300 border-t border-gray-800"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+              className="text-indigo-400 hover:text-indigo-300 disabled:opacity-30"
             >
-              {showAll ? "Show fewer" : `Show all ${data.keys.length}`}
+              ← Newer
             </button>
-          )}
+            <span>Page {page}</span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!data.hasMore || loading}
+              className="text-indigo-400 hover:text-indigo-300 disabled:opacity-30"
+            >
+              Older →
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -2051,7 +2206,7 @@ function Stat({
   tone,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   tone: string;
 }) {
   return (
