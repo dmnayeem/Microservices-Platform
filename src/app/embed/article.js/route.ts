@@ -329,6 +329,20 @@ function buildScript(origin: string, appOrigin: string): string {
           );
           return;
         }
+        // The server may answer for a DIFFERENT task than this snippet's:
+        // the reader's link is for another task that reuses this article
+        // (admins paste only the first task's snippet). Run as that task —
+        // unless another snippet on the page already runs it.
+        if (res.data.taskId && res.data.taskId !== taskId) {
+          var adoptKey = '__egAtRun_' + res.data.taskId;
+          if (window[adoptKey]) {
+            log('another snippet on this page already runs task ' + res.data.taskId + '.');
+            return;
+          }
+          window[adoptKey] = true;
+          log('this page is shared with task ' + res.data.taskId + ' — running that task for this reader.');
+          taskId = res.data.taskId;
+        }
         window.__egAtLoaded = true;
         state.config = res.data;
         // The server works out the page from this page's URL; every later

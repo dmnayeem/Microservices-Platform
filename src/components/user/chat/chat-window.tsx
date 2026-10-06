@@ -154,7 +154,13 @@ export function ChatWindow({ conversationId, currentUserId }: ChatWindowProps) {
   };
 
   return (
-    <div className="flex flex-col -mx-4 -mt-4" style={{ height: "calc(100vh - 56px - 64px)" }}>
+    <div className="flex flex-col -mx-4 -mt-4" style={{
+        // dvh shrinks when the keyboard opens (100vh did not, so the composer
+        // slid under the keyboard), and the notch / home-indicator insets are
+        // part of the header and tab bar heights in the installed app.
+        height:
+          "calc(100dvh - 56px - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+      }}>
       {other && (
         <div className="px-4 py-3 border-b border-(--app-line) bg-(--app-surface)/70 backdrop-blur sticky top-14 z-10 flex items-center gap-3">
           <Avatar

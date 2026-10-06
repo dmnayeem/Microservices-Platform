@@ -18,6 +18,7 @@ import { AnchorAdBar } from "@/components/user/primitives/anchor-ad-bar";
 import { CelebrationHost } from "@/components/user/primitives/celebration-host";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
 import { PwaSeenBeacon } from "@/components/pwa/pwa-seen-beacon";
+import { PwaLaunchHome } from "@/components/pwa/pwa-launch-home";
 import { getPwaRewardConfig } from "@/lib/pwa-install";
 import { isStaffRole } from "@/lib/staff";
 import { maintenanceFor } from "@/lib/maintenance";
@@ -208,6 +209,9 @@ export default async function MainLayout({
       {/* Reports opening the INSTALLED app (once a day) for install tracking
           and the install reward — src/lib/pwa-install.ts. */}
       <PwaSeenBeacon />
+      {/* Installed app: reopening after it was closed lands on Home, not on
+          the page the OS restored. */}
+      <PwaLaunchHome />
 
       {/* Device id + fingerprint for the multi-account rules; reports this
           device (IP, country, browser) once per session. */}
