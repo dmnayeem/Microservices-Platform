@@ -50,6 +50,11 @@ export function AnchorAdBar() {
   // False while the slot is empty (no inventory, or still loading): the close
   // button must not float on its own over an empty strip.
   const [hasAd, setHasAd] = useState(false);
+  // A Google unit is a fixed-size block (320x50 / 468x60) that needs a real
+  // width to lay out in — inside the shrink-wrapped (`w-fit`) column a
+  // responsive unit measured 0px wide and never filled. Read off the slot
+  // shell's data attribute rather than threading the ad type up from AdRenderer.
+  const [isNetwork, setIsNetwork] = useState(false);
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   // Read the session dismissal once on mount. Starts `true` so the bar never
@@ -82,6 +87,9 @@ export function AnchorAdBar() {
     const sync = () => {
       root.style.setProperty(CSS_VAR, `${Math.round(el.offsetHeight)}px`);
       setHasAd(el.offsetHeight > 12);
+      setIsNetwork(
+        !!el.querySelector('[data-ad-network="adsense"],[data-ad-network="gam"]')
+      );
     };
     sync();
     const obs = new ResizeObserver(sync);
@@ -118,7 +126,13 @@ export function AnchorAdBar() {
         {/* Shrink-wrapped to the ad, so the close button sits on the AD's
             corner. It was on the corner of this 768px column instead, while
             the ad is a 320px card centred inside it — about 200px apart. */}
-        <div className="relative mx-auto w-fit max-w-full">
+        <div
+          className={
+            isNetwork
+              ? "relative mx-auto w-full max-w-[728px]"
+              : "relative mx-auto w-fit max-w-full"
+          }
+        >
           <AdRenderer placement="ANCHOR_BOTTOM" />
           {hasAd && (
             <button

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
+import { realMeasurementSince } from "@/lib/ad-measure";
 
 // GET /api/advertiser/campaigns/[id]/analytics?days=14
 // Time-series (from AdDailyStat) + per-ad breakdown for one campaign.
@@ -80,6 +81,9 @@ export async function GET(
   const series = [...byDay.entries()].map(([date, v]) => ({ date, ...v }));
 
   return NextResponse.json({
+    // Since this day the counters hold VALID viewable impressions and valid
+    // clicks only (bot / invalid traffic excluded) — see src/lib/ad-measure.ts.
+    measuredSince: await realMeasurementSince(),
     series,
     ads: ads.map((a) => {
       const w = perAd.get(a.id) ?? { impressions: 0, clicks: 0, spendUsd: 0 };

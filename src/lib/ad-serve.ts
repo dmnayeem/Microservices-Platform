@@ -10,9 +10,8 @@ import {
 } from "@/lib/ad-frequency";
 import { matchesTargeting, type TargetableUser } from "@/lib/ad-targeting";
 import { getSetting } from "@/lib/system-settings";
-import { bufferImpression, bufferServeOutcome } from "@/lib/ad-counters";
+import { bufferServed, bufferServeOutcome } from "@/lib/ad-counters";
 import { isBotRequest } from "@/lib/bot-detect";
-import { resolveEventCountry } from "@/lib/ad-geo";
 import { resolveCountryCode } from "@/lib/country-codes";
 import { creativeUrl, isFirstPartyAdType } from "@/lib/ad-proxy";
 import {
@@ -22,6 +21,12 @@ import {
 } from "@/lib/ad-network";
 import type { FeedAd } from "@/components/user/feed/feed-ad-card";
 import { signAdServeToken } from "@/lib/ad-serve-token";
+import { currentAdViewer, type AdViewer } from "@/lib/ad-viewer";
+import { adMayServeIn, PAGE_SCRIPT_PLACEMENT } from "@/lib/ad-placements";
+import { getNetworkSettings } from "@/lib/ad-networks/settings";
+import { adFrameUrl } from "@/lib/ad-networks/frame";
+import { getAdNetwork } from "@/lib/ad-networks/registry";
+import { parseSnippetScripts, type SnippetScript } from "@/lib/ad-networks/snippet";
 
 /** Shaped banner/interstitial ad — identical to the `/api/ads/serve` payload. */
 export interface ServedAd {
@@ -44,8 +49,48 @@ export interface ServedAd {
   allowSameOrigin?: boolean;
   /** Present only for ADSENSE / GAM — what the client needs to build a real slot. */
   network?: NetworkSlotConfig;
-  /** Serve token — a click bills only when it sends this back (see ad-serve-token). */
+  /** HTML ads: registry network id (null/absent = own / direct-sold HTML). */
+  networkId?: string;
+  /**
+   * HTML ads, when AD_FRAME_ORIGIN is configured: the frame document on the
+   * separate ad origin. Absent → the client renders `html` in an opaque srcDoc.
+   */
+  frameUrl?: string;
+  /** Optional small-screen (<728px) variant of an HTML ad. */
+  mobileHtml?: string;
+  mobileFrameUrl?: string;
+  mobileWidth?: number;
+  mobileHeight?: number;
+  /**
+   * Serve token. Nothing about this delivery is counted unless the browser
+   * returns it: a viewable-impression beacon, or the click redirect
+   * (src/lib/ad-measure.ts).
+   */
   st?: string;
+}
+
+/** Network label the measurement layer records — same as `adNetworkLabel` client-side. */
+export function adNetworkOf(ad: { type?: string | null; networkId?: string | null }): string {
+  if (ad.type === "ADSENSE") return "adsense";
+  if (ad.type === "GAM") return "gam";
+  if (ad.type === "HTML" && ad.networkId) return ad.networkId;
+  return "own";
+}
+
+/**
+ * Stamp one delivered ad: sign its serve token and count it as SERVED
+ * (buffered). Served is a delivery, not an impression — see ad-measure.ts.
+ * A crawler's delivery is not counted as served either.
+ */
+function stampDelivery(
+  viewer: AdViewer,
+  bot: boolean,
+  adId: string,
+  placement: string,
+  network: string
+): string | undefined {
+  if (!bot) bufferServed(adId, placement, network);
+  return signAdServeToken({ adId, placement, network, viewerKey: viewer.viewerKey });
 }
 
 export interface ServeResult {
@@ -179,9 +224,20 @@ async function serveAdInner(opts: {
    * makes the network spaces earn anything at all.
    */
   ownInventoryOnly?: boolean;
+  /**
+   * This request is a ROTATION of a slot that is already showing something.
+   * Google inventory is never served into a rotation: re-requesting an AdSense
+   * or Ad Manager unit on a timer is ad refresh, which Google prohibits without
+   * an approved refresh setup — so Google ads are excluded from rotation pools.
+   */
+  rotation?: boolean;
 }): Promise<ServeResult> {
   const { placement, userId, preview } = opts;
   const exclude = new Set(opts.exclude ?? []);
+
+  // Page scripts are not a visual slot; they have their own serve path
+  // (`servePageScripts`). A weighted single pick here would be meaningless.
+  if (placement === PAGE_SCRIPT_PLACEMENT) return EMPTY;
 
   // Interstitial placements (REWARD/VIDEO/GAME_INTERSTITIAL) are shown before a
   // reward, so an ad-free plan still sees them — but only HOUSE inventory. They
@@ -287,7 +343,9 @@ async function serveAdInner(opts: {
         ...(preview
           ? {}
           : { campaign: servableCampaignWhere(cost, now, houseOnly) }),
-        ...(opts.ownInventoryOnly ? { type: { notIn: ["ADSENSE", "GAM"] } } : {}),
+        ...(opts.ownInventoryOnly || opts.rotation
+          ? { type: { notIn: ["ADSENSE", "GAM"] } }
+          : {}),
       },
       include: { campaign: { select: { title: true } } },
       take: 50,
@@ -296,8 +354,17 @@ async function serveAdInner(opts: {
     preview ? Promise.resolve(null) : getActiveBooking(placementRow.id, now),
   ]);
 
+  // The space's policy, enforced at SERVE time and not only at save time.
+  //
+  // `checkAdFitsPlacement` refuses Google creatives on incentivised spaces when
+  // an ad is saved, but rows saved before a space was marked incentivised —
+  // and HTML snippets from a network the owner has not cleared for paid pages
+  // — were still served. This is the gate that reaches every existing row.
+  const networkSettings = await getNetworkSettings().catch(() => null);
+  const allowed = allAds.filter((a) => adMayServeIn(placement, a, networkSettings));
+
   // Always filter. See the note on `viewer` above.
-  const targeted = allAds.filter((a) => matchesTargeting(a.targeting, viewer));
+  const targeted = allowed.filter((a) => matchesTargeting(a.targeting, viewer));
   if (targeted.length === 0) return EMPTY;
 
   // A space rented outright belongs to its buyer for the period.
@@ -331,8 +398,6 @@ async function serveAdInner(opts: {
     }
   }
 
-  const counted = opts.countImpression !== false && !preview;
-
   const rotateSecondsRaw =
     placementRow.rotationSeconds ??
     (await getSetting<number>("ads.rotation_seconds", 12));
@@ -358,6 +423,7 @@ async function serveAdInner(opts: {
   // against the single page-level tag in the root layout — the only arrangement
   // Google supports, and the only one that fills properly.
   const html = chosen.htmlContent ?? undefined;
+  const mobileHtml = chosen.type === "HTML" ? chosen.mobileHtmlContent ?? undefined : undefined;
   let network: NetworkSlotConfig | undefined;
   if (chosen.type === "ADSENSE" || chosen.type === "GAM") {
     network =
@@ -368,56 +434,37 @@ async function serveAdInner(opts: {
     if (!network) return EMPTY;
   }
 
-  // The impression is counted HERE, after every path that can still decide not
-  // to serve.
-  //
-  // It used to be counted at the weighted pick above, which is before the
-  // network-config check — so an AdSense ad with no slot id recorded an
-  // impression for a creative the viewer never saw, and inflated the numbers of
-  // exactly the ad type that can least afford to look wrong to Google.
-  if (counted) {
-    // Buffered — see src/lib/ad-counters.ts. This used to be two hot-row writes
-    // per served ad, on the few rows currently in rotation.
-    //
-    // `viewer.country` is handed over rather than re-read: the targeting block
-    // above already selected it (VIEWER_SELECT), so the profile fallback costs
-    // nothing here. On Vercel the edge header wins anyway and the profile is
-    // never consulted — which matters, because only 18 of 48 accounts have a
-    // country set and an anonymous viewer has no profile at all.
-    // A crawler's page load is not an impression.
-    //
-    // Impressions are counted here, at delivery, which is the right ruler for
-    // an ad server — but it means every search, preview and monitoring bot
-    // that renders a page counts as a view. Against 210 deduplicated,
-    // user-attributed views this platform had 16,506 counted impressions, and
-    // inventory nobody saw is neither sellable nor a CTR the owner can read.
-    // The fill counters above still record the serve, because the ad genuinely
-    // was delivered — it is the audience number that must stay honest.
-    if (!(await isBotRequest())) {
-      bufferImpression(
-        chosen.id,
-        await resolveEventCountry({ userId, profileCountry: viewer.country })
-      );
-    }
-  }
+  // Impressions are NOT counted here any more. Until 2026-10-06 this buffered
+  // an impression at delivery, so crawlers, unfilled Google units and banners
+  // nobody scrolled to were all "impressions". A delivery is now counted as
+  // SERVED in `serveAd` below, and an impression only when the browser proves
+  // the ad was viewable (src/lib/ad-measure.ts).
 
   return {
     poolSize: ads.length,
     rotateMs: rotateSeconds * 1000,
     interstitialSeconds,
     showSeconds,
-    countedServerSide: counted,
+    // Never counted at serve any more — the client's viewability tracker is
+    // the only thing that records an impression.
+    countedServerSide: false,
     ad: {
       id: chosen.id,
       type: chosen.type,
-      imageUrl: creativeUrl(chosen.id, "img", chosen.contentUrl, proxy),
-      videoUrl: creativeUrl(chosen.id, "video", chosen.videoUrl, proxy),
+      imageUrl: creativeUrl(chosen.id, "img", chosen.contentUrl, proxy, chosen.updatedAt),
+      videoUrl: creativeUrl(chosen.id, "video", chosen.videoUrl, proxy, chosen.updatedAt),
       title: chosen.campaign.title,
       body: undefined,
       ctaLabel: "Learn More",
       ctaUrl: chosen.targetUrl ?? undefined,
       html,
       network,
+      networkId: chosen.type === "HTML" ? chosen.networkId ?? undefined : undefined,
+      frameUrl: html ? adFrameUrl(chosen.id, "d", chosen.updatedAt) : undefined,
+      mobileHtml,
+      mobileFrameUrl: mobileHtml ? adFrameUrl(chosen.id, "m", chosen.updatedAt) : undefined,
+      mobileWidth: mobileHtml ? chosen.mobileWidth ?? undefined : undefined,
+      mobileHeight: mobileHtml ? chosen.mobileHeight ?? undefined : undefined,
       sponsor: undefined,
       size: chosen.size ?? undefined,
       width: chosen.width ?? undefined,
@@ -455,6 +502,7 @@ export async function serveAd(opts: {
   countImpression?: boolean;
   preview?: boolean;
   ownInventoryOnly?: boolean;
+  rotation?: boolean;
 }): Promise<ServeResult> {
   const result = await serveAdInner(opts);
   if (!opts.preview && result !== SUPPRESSED) {
@@ -462,10 +510,14 @@ export async function serveAd(opts: {
     // `serveAdInner` just made, so this is a cache hit rather than a query.
     void recordServeOutcome(opts.placement, !!result.ad);
   }
-  // Stamp the delivery so a click on it can be billed — and only a click on
-  // an ad that was actually served to this viewer.
-  if (!opts.preview && result.ad && opts.userId) {
-    const st = signAdServeToken(result.ad.id, opts.userId);
+  // Stamp the delivery — signed-in AND anonymous viewers. The token is the
+  // only thing that lets a view or a click on this ad be counted.
+  if (!opts.preview && result.ad) {
+    const [viewer, bot] = await Promise.all([
+      currentAdViewer(opts.userId),
+      isBotRequest(),
+    ]);
+    const st = stampDelivery(viewer, bot, result.ad.id, opts.placement, adNetworkOf(result.ad));
     if (st) return { ...result, ad: { ...result.ad, st } };
   }
   return result;
@@ -536,6 +588,7 @@ export async function serveFeedAds(opts: {
   const placement = await prisma.adPlacement.findFirst({
     where: { name: "IN_FEED", isActive: true },
     select: { id: true },
+    cacheStrategy: { ttl: 30, swr: 60 },
   });
   // No row to attribute the request to — a configuration problem, not a fill
   // problem, exactly as `recordServeOutcome` treats it for the other spaces.
@@ -563,7 +616,12 @@ export async function serveFeedAds(opts: {
       targetUrl: true,
       targeting: true,
       promotedPostId: true,
+      updatedAt: true,
     },
+    // The pool is identical for every viewer — the same shared read the banner
+    // path caches. `take` keeps the payload under Accelerate's limit (P6009).
+    take: 50,
+    cacheStrategy: { ttl: 30, swr: 120 },
   });
 
   const eligible = ads.filter((a) => matchesTargeting(a.targeting, viewer));
@@ -627,15 +685,15 @@ export async function serveFeedAds(opts: {
         author: {
           name: a.brandName || "Sponsored",
           username: null,
-          avatar: creativeUrl(a.id, "logo", a.brandLogo, true) ?? null,
+          avatar: creativeUrl(a.id, "logo", a.brandLogo, true, a.updatedAt) ?? null,
           isBlueVerified: false,
           verifiedBadgeStyle: null,
         },
         content: a.headline ?? "",
-        images: [creativeUrl(a.id, "img", a.contentUrl, true)].filter(
+        images: [creativeUrl(a.id, "img", a.contentUrl, true, a.updatedAt)].filter(
           (u): u is string => !!u
         ),
-        videoUrl: creativeUrl(a.id, "video", a.videoUrl, true) ?? null,
+        videoUrl: creativeUrl(a.id, "video", a.videoUrl, true, a.updatedAt) ?? null,
         backgroundStyle: null,
         ctaLabel: a.ctaLabel || "Learn More",
         targetUrl: a.targetUrl ?? null,
@@ -670,13 +728,9 @@ export async function serveFeedAds(opts: {
   // `recordImpression` in ad-events.ts), so this does not double-count.
   // Same bot rule as the single-ad path above — one test, both rulers, or the
   // feed and every other space would be measuring different audiences again.
-  if (out.length > 0 && !(await isBotRequest())) {
-    const country = await resolveEventCountry({
-      userId,
-      profileCountry: viewer.country,
-    });
-    for (const a of out) bufferImpression(a.adId, country);
-  }
+  // Since 2026-10-06 nothing is counted as an impression here: each card is
+  // stamped as SERVED below, and counted as an impression only when the
+  // card's viewability beacon comes back (src/lib/ad-measure.ts).
   // Fill data, like every other placement. Without it a feed with no eligible
   // demand and a feed nobody opened were indistinguishable in the fill report —
   // IN_FEED was the one space in the list with no denominator at all.
@@ -684,5 +738,160 @@ export async function serveFeedAds(opts: {
 
   // Serve token per delivered ad — the only thing that makes a click on it
   // billable (see ad-serve-token).
-  return out.map((a) => ({ ...a, st: signAdServeToken(a.adId, userId) }));
+  const [adViewer, bot] = await Promise.all([currentAdViewer(userId), isBotRequest()]);
+  return out.map((a) => ({ ...a, st: stampDelivery(adViewer, bot, a.adId, "IN_FEED", "own") }));
+}
+
+/* ── Batch serve ─────────────────────────────────────────────────────────────
+ * One request for every slot that mounted in the same tick.
+ *
+ * A page with an anchor, a top slot and a few under-post banners used to send
+ * one `/api/spaces/panel` per slot, each repeating the viewer / placement /
+ * pool reads. The client now coalesces them (ad-batch-client.ts) and this
+ * serves the lot.
+ *
+ * Cross-slot exclusion: two instances of the SAME space (the under-post banner
+ * is mounted once per post) are served one after another with every id already
+ * chosen added to the exclusion list, so the same creative is not shown twice
+ * on one screen while the pool has an alternative. Different spaces hold
+ * different Ad rows, so they are served in parallel.
+ */
+export const MAX_BATCH = 12;
+
+export async function serveAdBatch(opts: {
+  placements: string[];
+  userId?: string | null;
+  exclude?: Iterable<string>;
+}): Promise<ServeResult[]> {
+  const list = opts.placements.slice(0, MAX_BATCH);
+  const baseExclude = [...(opts.exclude ?? [])];
+  const results: ServeResult[] = new Array(list.length);
+
+  const groups = new Map<string, number[]>();
+  list.forEach((p, i) => {
+    const g = groups.get(p);
+    if (g) g.push(i);
+    else groups.set(p, [i]);
+  });
+
+  await Promise.all(
+    [...groups.entries()].map(async ([placement, idxs]) => {
+      const chosen: string[] = [];
+      for (const i of idxs) {
+        try {
+          const r = await serveAd({
+            placement,
+            userId: opts.userId,
+            exclude: [...baseExclude, ...chosen],
+          });
+          results[i] = r;
+          if (r.ad) chosen.push(r.ad.id);
+        } catch {
+          results[i] = EMPTY;
+        }
+      }
+    })
+  );
+  return results;
+}
+
+/* ── Page scripts ────────────────────────────────────────────────────────────
+ * Site-wide network scripts (popunder, social bar, in-page push, vignette).
+ * Every eligible ad is returned, not one weighted pick: each is a separate
+ * network tag with its own frequency cap, enforced in the browser by
+ * `PageScriptAds`. The client decides the route (never an incentivised path)
+ * and consent; this decides who may see what.
+ */
+export interface PageScriptAd {
+  id: string;
+  networkId: string | null;
+  scripts: SnippetScript[];
+  /** Max injections per viewer per day (null = unlimited). */
+  capPerDay: number | null;
+  /** Minimum minutes between injections for one viewer (null = none). */
+  minGapMinutes: number | null;
+  /** Skip on pages that also load AdSense / Ad Manager (see registry). */
+  conflictsWithGoogle: boolean;
+  /** Serve token — returned in the "script executed" beacon. */
+  st?: string;
+}
+
+export async function servePageScripts(opts: {
+  userId?: string | null;
+}): Promise<{ scripts: PageScriptAd[]; withGoogle: boolean }> {
+  const none = { scripts: [] as PageScriptAd[], withGoogle: false };
+  const { userId } = opts;
+
+  let viewer: TargetableUser = {};
+  if (userId) {
+    const [pkg, u] = await Promise.all([
+      getEffectivePackage(userId),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: VIEWER_SELECT,
+        cacheStrategy: { ttl: 60, swr: 300 },
+      }),
+    ]);
+    // An ad-free plan buys freedom from page-level ads above all.
+    if (pkg?.adFree) return none;
+    viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
+    await syncCountryMode();
+    viewer.country = isCountryIpOnly()
+      ? effectiveCountry(u)
+      : (await normalizeViewerCountry(u?.country)) || effectiveCountry(u) || null;
+  }
+
+  const placement = await prisma.adPlacement.findFirst({
+    where: { name: PAGE_SCRIPT_PLACEMENT, isActive: true },
+    select: { id: true },
+    cacheStrategy: { ttl: 30, swr: 60 },
+  });
+  if (!placement) return none;
+
+  const [ads, settings] = await Promise.all([
+    prisma.ad.findMany({
+      where: {
+        placementId: placement.id,
+        status: "ACTIVE",
+        type: "HTML",
+        // No click is ever billed on a page script, so no budget floor.
+        campaign: servableCampaignWhere(0, new Date(), false),
+      },
+      select: {
+        id: true,
+        type: true,
+        networkId: true,
+        htmlContent: true,
+        targeting: true,
+        freqCapPerDay: true,
+        freqMinGapMinutes: true,
+      },
+      take: 20,
+      cacheStrategy: { ttl: 30, swr: 120 },
+    }),
+    getNetworkSettings().catch(() => null),
+  ]);
+
+  const out: PageScriptAd[] = [];
+  const [psViewer, psBot] = await Promise.all([currentAdViewer(userId), isBotRequest()]);
+  for (const a of ads) {
+    // Untagged page scripts count as "Custom / other" — still a third party.
+    const netId = a.networkId || "custom";
+    if (!settings?.networks[netId]?.enabled) continue;
+    const def = getAdNetwork(netId);
+    if (!def || def.google || !def.kinds.includes("PAGE_SCRIPT")) continue;
+    if (!matchesTargeting(a.targeting, viewer)) continue;
+    const scripts = parseSnippetScripts(a.htmlContent);
+    if (scripts.length === 0) continue;
+    out.push({
+      id: a.id,
+      networkId: a.networkId,
+      scripts,
+      capPerDay: a.freqCapPerDay ?? null,
+      minGapMinutes: a.freqMinGapMinutes ?? null,
+      conflictsWithGoogle: !!def.conflictsWithGoogle,
+      st: stampDelivery(psViewer, psBot, a.id, PAGE_SCRIPT_PLACEMENT, a.networkId || "custom"),
+    });
+  }
+  return { scripts: out, withGoogle: settings?.pageScriptsWithGoogle === true };
 }

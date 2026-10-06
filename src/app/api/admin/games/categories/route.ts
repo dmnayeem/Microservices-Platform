@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { gameCategorySchema, slugify } from "@/lib/games-admin";
 
 export async function GET() {
@@ -50,6 +51,14 @@ export async function POST(request: NextRequest) {
 
   const category = await prisma.gameCategory.create({
     data: { ...v.data, slug },
+  });
+  await writeAudit({
+    actorId: session.user.id,
+    action: "GAME_CATEGORY_CREATED",
+    entity: "GameCategory",
+    entityId: category.id,
+    summary: `Created game category "${category.name}"`,
+    meta: { before: null, after: category },
   });
   return NextResponse.json({ success: true, category }, { status: 201 });
 }

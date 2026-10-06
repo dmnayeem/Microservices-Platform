@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 
 // GET /api/marketplace/orders/:id - Get purchase details
+//
+// Never returns raw deliverable URLs (they are permanent and shareable) or
+// either party's email. The buyer gets download-route links instead —
+// `/api/marketplace/listings/:id/download?f=<n>` signs a short-lived URL per
+// request — and only once the purchase is COMPLETED.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -35,7 +40,6 @@ export async function GET(
                 id: true,
                 name: true,
                 avatar: true,
-                email: true,
               },
             },
           },
@@ -45,7 +49,6 @@ export async function GET(
             id: true,
             name: true,
             avatar: true,
-            email: true,
           },
         },
       },
@@ -63,8 +66,14 @@ export async function GET(
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    // Only show files to buyer after purchase
-    const files = isBuyer ? purchase.listing.files : null;
+    // Download links (not file URLs), for the buyer of a completed purchase.
+    const files =
+      isBuyer && purchase.status === "COMPLETED"
+        ? purchase.listing.files.map(
+            (_f, i) =>
+              `/api/marketplace/listings/${purchase.listing.id}/download?f=${i}`
+          )
+        : null;
 
     return NextResponse.json({
       purchase: {

@@ -890,6 +890,18 @@ model Ad {
   // ads.manage-only escape hatch: lets a trusted network creative keep
   // `allow-same-origin` while advertiser HTML never can. See sandboxed-ad-frame.
   allowSameOrigin   Boolean              @default(false)
+  /// Which ad network an HTML snippet belongs to (src/lib/ad-networks/registry.ts).
+  /// Null = own / direct-sold HTML. Drives CSP, ads.txt and whether the snippet
+  /// may run on incentivised (paid) pages.
+  networkId         String?
+  /// Optional small-screen variant of `htmlContent`, used below 728px wide.
+  mobileHtmlContent String?              @db.Text
+  mobileWidth       Int?
+  mobileHeight      Int?
+  /// PAGE_SCRIPT ads only: browser-side frequency cap per viewer.
+  /// Max injections per day (null = unlimited) and minimum gap in minutes.
+  freqCapPerDay     Int?
+  freqMinGapMinutes Int?
   reviews           AdReview[]
   engagements       AdEngagement[]
   impressions       Int                  @default(0)
@@ -1051,6 +1063,105 @@ model AdServeDailyStat {
 
   @@unique([placementId, date])
   @@index([date])
+}
+
+/// Real ad measurement — one row per measured event (2026-10-06).
+///
+/// Impressions used to be counted at SERVE time, so every crawler, every
+/// prefetched-but-never-scrolled feed card and every unfilled AdSense unit was
+/// an "impression". Now the browser proves what it saw: a signed serve token
+/// (src/lib/ad-serve-token.ts) comes back in a beacon once the ad was ≥50%
+/// visible for ≥1s (IAB), or through the click redirect, and is judged by
+/// src/lib/ad-ivt.ts. Invalid traffic is STORED with a reason, never dropped.
+///
+/// `adId` is a bare id (no FK): a forged token names no ad at all ("-"), and
+/// an ad deleted later must not erase the evidence its traffic was filtered.
+/// Raw rows are pruned after `ads.ivt.rawRetentionDays` (default 30); the
+/// `AdMeasureDaily` rollup is kept.
+model AdEvent {
+  id         String   @id @default(cuid())
+  adId       String
+  placement  String
+  network    String
+  /// VIEW | CLICK | EST_CLICK | SCRIPT_EXEC
+  kind       String
+  /// Serve-token nonce. (nonce, kind) unique = one count per delivery.
+  nonce      String
+  valid      Boolean
+  /// Why it was judged invalid (first failing rule), null when valid.
+  reason     String?
+  /// Staff traffic: valid, but never billed and reported apart.
+  internal   Boolean  @default(false)
+  billed     Boolean  @default(false)
+  costUsd    Decimal  @default(0) @db.Decimal(18, 6)
+  /// `u:<userId>` or `a:<hash(ip|ua)>` — what the per-viewer rate rules key on.
+  viewerHash String
+  /// hash(ip|ua) — the per-network burst rule.
+  netHash    String
+  userId     String?
+  country    String?  @db.VarChar(2)
+  createdAt  DateTime @default(now())
+
+  @@unique([nonce, kind])
+  @@index([createdAt])
+  @@index([viewerHash, createdAt])
+  @@index([netHash, createdAt])
+  @@index([adId, createdAt])
+}
+
+/// Daily rollup of `AdEvent` per ad × placement × network. `served` is added
+/// by the buffered serve counter; every other column is RECOMPUTED from the raw
+/// events by the `ad-measure-rollup` job (idempotent), so a lost buffer or a
+/// re-run can never double a viewable impression or a click.
+model AdMeasureDaily {
+  id                 String   @id @default(cuid())
+  adId               String
+  placement          String
+  network            String
+  date               DateTime @db.Date
+  served             Int      @default(0)
+  /// Every view beacon received, valid or not.
+  views              Int      @default(0)
+  /// Valid viewable impressions from real (non-staff) viewers.
+  validViews         Int      @default(0)
+  invalidViews       Int      @default(0)
+  internalViews      Int      @default(0)
+  /// Valid clicks through the click redirect (own / house ads).
+  validClicks        Int      @default(0)
+  invalidClicks      Int      @default(0)
+  internalClicks     Int      @default(0)
+  /// Third-party iframe clicks detected by focus change — an ESTIMATE.
+  estClicks          Int      @default(0)
+  invalidEstClicks   Int      @default(0)
+  /// PAGE_SCRIPT ads: the script loaded on a visible page (not a viewable unit).
+  scriptExecs        Int      @default(0)
+  invalidScriptExecs Int      @default(0)
+  /// Billed click cost from valid clicks only.
+  spendUsd           Decimal  @default(0) @db.Decimal(18, 6)
+  /// { reason: count } for every invalid event that day.
+  invalidReasons     Json?
+  updatedAt          DateTime @updatedAt
+
+  @@unique([adId, placement, network, date])
+  @@index([date])
+}
+
+/// Revenue a third-party ad network (AdSense, Adsterra, …) reports in its OWN
+/// dashboard, entered by hand per day so the measurement report can show eCPM
+/// beside our measured viewable impressions. `network` uses the registry id
+/// (src/lib/ad-networks/registry.ts) — the same key AdMeasureDaily stores.
+model AdNetworkRevenue {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  network     String
+  revenueUsd  Decimal  @db.Decimal(18, 6)
+  note        String?
+  enteredById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date, network])
+  @@index([network, date])
 }
 
 model AdView {
@@ -1910,7 +2021,9 @@ model LinkedPlatformAccount {
   linkedAt       DateTime @default(now())
 
   @@unique([userId, platform])
-  @@index([platform, platformUserId])
+  // One external account can be linked to ONE RevType user (replaces the plain
+  // [platform, platformUserId] index). Migration 20261006400300.
+  @@unique([platform, platformUserId])
 }
 
 // Connected social account — one row per (user × platform)
@@ -2369,6 +2482,9 @@ model Transaction {
   // one scan. Transaction is the fastest-growing table on the platform, so this
   // one matters more with every payment rather than less.
   @@index([userId, status, type, createdAt])
+  // Prefix lookups (`reference LIKE 'abc:%'` / startsWith). The plain
+  // [reference] B-tree can't serve LIKE under a non-C collation.
+  @@index([reference(ops: raw("text_pattern_ops"))], map: "Transaction_reference_pattern_idx")
 }
 
 // Client-driven request idempotency. A money POST may send an `Idempotency-Key`
@@ -2561,6 +2677,9 @@ model Subscription {
   amount        Decimal        @db.Decimal(18, 6)
   paymentMethod PaymentMethod?
   transactionId String?
+  // Off-platform (bKash/Nagad/crypto) request: the user's payment screenshot,
+  // an own upload key under task-proofs/<userId>/ (checked on submit).
+  proofUrl      String?
   isActive      Boolean        @default(true)
   autoRenew     Boolean        @default(false)
   createdAt     DateTime       @default(now())
@@ -2569,6 +2688,8 @@ model Subscription {
   @@index([userId])
   @@index([isActive])
   @@index([packageId])
+  // Expiry sweeps: isActive = true AND endDate < now.
+  @@index([isActive, endDate])
 }
 
 enum CommissionType {
@@ -2652,6 +2773,10 @@ model AffiliateCommission {
   buyerId          String
   saleAmount       Decimal  @db.Decimal(18, 6)
   commissionAmount Decimal  @db.Decimal(18, 6)
+  // ACTIVE | REVERSED — a refunded sale's commission is clawed back by
+  // reverseAffiliateCommission() and excluded from affiliate stats.
+  status           String    @default("ACTIVE")
+  reversedAt       DateTime?
   createdAt        DateTime @default(now())
 
   @@unique([sourceType, orderRef])
@@ -2885,6 +3010,7 @@ model MarketplacePurchase {
   // "has this buyer already licensed this listing?" — asked on every view of
   // an UNLIMITED listing, where repeat buyers are the normal case.
   @@index([buyerId, listingId])
+  @@index([status])
 }
 
 // Buyer↔seller conversation scoped to a listing. An admin can join a thread to
@@ -4769,6 +4895,12 @@ model UserEventProgress {
   // never write it — a claim-time snapshot would clobber the real count.
   progress         Int       @default(0)
   proofUrl         String?
+  // UPLOAD_PROOF events: an admin reviews the proof before anything is paid.
+  // null (no proof yet) | PENDING | APPROVED | REJECTED.
+  proofStatus      String?
+  proofReviewedAt  DateTime?
+  proofReviewedById String?
+  proofNote        String?
   claimedAt        DateTime?
   // Which tier thresholds this user has already claimed (multi-tier events).
   claimedTiers     Int[]     @default([])
@@ -4785,6 +4917,8 @@ model UserEventProgress {
 
   @@unique([userId, eventId])
   @@index([eventId])
+  // Admin proof review queue.
+  @@index([proofStatus])
 }
 
 // One row per action that actually counted toward an event.
@@ -5687,4 +5821,33 @@ model BadgeStyleSubscription {
 
   @@unique([userId, style])
   @@index([expiresAt])
+}
+
+/// A tutor's share of one paid enrolment, held before it reaches their wallet.
+///
+/// The tutor used to be credited the instant a student enrolled, so a refund
+/// inside the refund window had to claw money back out of a balance they may
+/// already have withdrawn — the clawback was clamped and the rest was lost.
+/// Mirrors `MarketplacePayout`: the enrol route writes a HELD row, the
+/// `course-tutor-payouts` scheduler job releases it once `releaseAt` passes,
+/// and an approved refund reverses it while still HELD.
+/// Bare ids (no relations) so the User / Course / Enrollment models stay
+/// untouched; `enrollmentId` survives the enrolment being deleted on refund.
+model CourseTutorPayout {
+  id           String    @id @default(cuid())
+  enrollmentId String    @unique
+  courseId     String
+  tutorId      String
+  amount       Decimal   @db.Decimal(18, 6)
+  /// HELD → promised, not spendable. RELEASED → paid. REVERSED → refunded first.
+  status       String    @default("HELD")
+  releaseAt    DateTime
+  releasedAt   DateTime?
+  reversedAt   DateTime?
+  reason       String?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, releaseAt])
+  @@index([tutorId, status])
+  @@index([courseId])
 }

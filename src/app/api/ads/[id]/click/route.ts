@@ -1,28 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { recordClick } from "@/lib/ad-events";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { resolveEventCountry } from "@/lib/ad-geo";
+import { ingestAdEvent } from "@/lib/ad-measure";
+import { parseSignalsBody } from "@/lib/ad-ivt";
 
 /**
- * Records an authenticated ad click and bills the owning campaign. Legacy path
- * kept for back-compat (e.g. mobile clients); the web client now posts to
- * `/api/spaces/:id/event`. Delegates to the shared recorder (per-(user,ad)
- * cooldown + no-overspend budget CAS live there).
+ * LEGACY click endpoint. Routes into the same measured-click ingestion as the
+ * `/api/spaces/go` redirect (src/lib/ad-measure.ts) — serve token required,
+ * single-use per delivery, IVT-judged. Serve token from the body or `?st=`.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export async function POST(request: NextRequest) {
+  const limited = enforceRateLimit(request, "ad-click", 30, 60_000);
+  if (limited) return limited;
 
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ success: true, billed: false });
-  }
-
-  // Serve token from the body or `?st=` — without one the click is not billed.
-  const body = await request.json().catch(() => ({}));
-  const serveToken =
-    (body as { st?: unknown }).st ?? request.nextUrl.searchParams.get("st");
-  await recordClick(id, session.user.id, { serveToken });
-  return NextResponse.json({ success: true });
+  const userId = session?.user?.id ?? null;
+  const body = (await request.json().catch(() => ({}))) as { st?: unknown; sg?: unknown };
+  const country = await resolveEventCountry({ userId }).catch(() => null);
+  const r = await ingestAdEvent({
+    st: body.st ?? request.nextUrl.searchParams.get("st"),
+    kind: "CLICK",
+    signals: parseSignalsBody(body.sg),
+    headers: request.headers,
+    sessionUserId: userId,
+    country,
+  });
+  return NextResponse.json({ success: true, billed: r.billed });
 }

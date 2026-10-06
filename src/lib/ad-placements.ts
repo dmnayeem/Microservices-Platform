@@ -6,6 +6,10 @@
  * NOTE: this file must stay client-safe (no prisma import) — it is imported by
  * the client AdManagerView. Server-only helpers live in ./ad-placements-server.
  */
+import {
+  networkAllowedOnPaid,
+  type NetworkSettings,
+} from "./ad-networks/registry";
 export const AD_PLACEMENTS = [
   { name: "TASK_LIST", label: "Task List", description: "Top of the tasks hub and task list pages.", where: "Tasks hub (/tasks) — top" },
   { name: "TASK_START", label: "Task Start", description: "Article / video / survey task detail pages.", where: "Task detail pages (/tasks/…)" },
@@ -45,6 +49,11 @@ export const AD_PLACEMENTS = [
   // Watch-to-earn video. Incentivised by definition — the user is paid points
   // for watching — so Google inventory is barred from it in code, not by memory.
   { name: "REWARDED_VIDEO", label: "Rewarded Video", description: "Watch-to-earn video ads. The user is paid points for watching, so own/direct-sold inventory only.", where: "Browse & Earn page (/watch-ads) — watch to earn" },
+
+  // Not a visual slot: site-wide network page scripts (popunder, social bar,
+  // in-page push, vignette). Injected by `PageScriptAds` in the root layout on
+  // non-incentivised pages only, with a per-ad browser frequency cap.
+  { name: "PAGE_SCRIPT", label: "Page Script (site-wide)", description: "Network page-level scripts — popunder, social bar, in-page push, vignette. Not a visual slot; never on paid pages.", where: "Every non-paid page — page level" },
 ] as const;
 
 export type AdPlacementName = (typeof AD_PLACEMENTS)[number]["name"];
@@ -138,14 +147,26 @@ const RECTANGLE_SPEC: PlacementSpec = {
   networkAllowed: true,
 };
 
+/**
+ * The same shapes, on pages that PAY the user to be there.
+ *
+ * These spaces used to say `networkAllowed: true`, so an AdSense or Ad Manager
+ * creative could be booked into the task list, the task screens, the video
+ * player and the reward screens — every one of them an incentivised surface.
+ * The page-level script was already kept off those routes; the slots were not.
+ */
+const PAID_LEADERBOARD_SPEC: PlacementSpec = { ...LEADERBOARD_SPEC, networkAllowed: false };
+const PAID_RECTANGLE_SPEC: PlacementSpec = { ...RECTANGLE_SPEC, networkAllowed: false };
+
 export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
-  TASK_LIST: LEADERBOARD_SPEC,
-  TASK_START: LEADERBOARD_SPEC,
-  VIDEO_ABOVE: LEADERBOARD_SPEC,
-  VIDEO_BELOW: LEADERBOARD_SPEC,
+  // Task surfaces — every one of these pays points on completion.
+  TASK_LIST: PAID_LEADERBOARD_SPEC,
+  TASK_START: PAID_LEADERBOARD_SPEC,
+  VIDEO_ABOVE: PAID_LEADERBOARD_SPEC,
+  VIDEO_BELOW: PAID_LEADERBOARD_SPEC,
   // A strip pinned over the player — deliberately shorter than a leaderboard.
-  VIDEO_OVERLAY: { sizes: ["mobile", "banner", "responsive"], maxHeightPx: 72, networkAllowed: true },
-  TASK_COMPLETE: RECTANGLE_SPEC,
+  VIDEO_OVERLAY: { sizes: ["mobile", "banner", "responsive"], maxHeightPx: 72, networkAllowed: false },
+  TASK_COMPLETE: PAID_RECTANGLE_SPEC,
   // The native feed card defines its own geometry and never reads `Ad.size`.
   IN_FEED: { sizes: ["responsive"], maxHeightPx: 400, networkAllowed: true },
   // Sits between a post and its like/comment row — must stay small.
@@ -155,7 +176,8 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
   // neighbours instead of pinning it to the 300px preset.
   FEED_SIDEBAR: { ...RECTANGLE_SPEC, fillsColumn: true },
   DASHBOARD: LEADERBOARD_SPEC,
-  EARN_HUB: LEADERBOARD_SPEC,
+  // /earn is incentivised (INCENTIVISED_PREFIXES).
+  EARN_HUB: PAID_LEADERBOARD_SPEC,
   // Users are paid points for viewing this page — incentivised by definition.
   EARN_BROWSE: { ...RECTANGLE_SPEC, networkAllowed: false },
   WALLET_TOP: LEADERBOARD_SPEC,
@@ -175,16 +197,19 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
 
   WITHDRAW_TOP: LEADERBOARD_SPEC,
   LEADERBOARD_TOP: LEADERBOARD_SPEC,
-  QUIZZES_TOP: LEADERBOARD_SPEC,
+  QUIZZES_TOP: PAID_LEADERBOARD_SPEC,
   DEPOSIT_TOP: LEADERBOARD_SPEC,
   PACKAGES_TOP: LEADERBOARD_SPEC,
   NOTIFICATIONS_TOP: LEADERBOARD_SPEC,
   REFERRALS_TOP: LEADERBOARD_SPEC,
-  DAILY_MISSION_TOP: LEADERBOARD_SPEC,
+  DAILY_MISSION_TOP: PAID_LEADERBOARD_SPEC,
 
   // A video player, not a banner: it sizes itself and the user is paid to watch
   // it, so no Google creative may run here.
   REWARDED_VIDEO: { sizes: ["responsive", "medium", "large_square"], maxHeightPx: 720, networkAllowed: false },
+
+  // Page-level scripts have no box. Google never (it has its own page tag).
+  PAGE_SCRIPT: { sizes: ["responsive"], maxHeightPx: 1, networkAllowed: false },
 };
 
 /** An unknown space falls back to the most restrictive sensible shape. */
@@ -213,6 +238,37 @@ export function typeFitsPlacement(placementName: string, type?: string | null): 
   return placementSpec(placementName).networkAllowed;
 }
 
+/**
+ * The serve-time gate: may this creative run in this space, given the owner's
+ * per-network settings?
+ *
+ * `typeFitsPlacement` keeps AdSense / Ad Manager off incentivised spaces. A
+ * pasted third-party snippet (`HTML` with a `networkId`) is held to the same
+ * line: on a space that pays the user it runs only if the owner switched
+ * "allowed on paid pages" on for that network. Own / direct-sold HTML (no
+ * network) and LOCAL creatives are what paid spaces exist for, so they pass.
+ */
+export function adMayServeIn(
+  placementName: string,
+  ad: { type?: string | null; networkId?: string | null },
+  settings: NetworkSettings | null
+): boolean {
+  if (!typeFitsPlacement(placementName, ad.type)) return false;
+  // A snippet tagged with a network the owner has switched off does not run,
+  // anywhere. Untagged HTML (own / direct-sold) is not governed by this.
+  if (
+    ad.type === "HTML" &&
+    ad.networkId &&
+    settings &&
+    !settings.networks[ad.networkId]?.enabled
+  ) {
+    return false;
+  }
+  if (placementSpec(placementName).networkAllowed) return true;
+  if (ad.type !== "HTML") return true;
+  return networkAllowedOnPaid(ad.networkId, settings);
+}
+
 export interface AdFitProblem {
   field: "size" | "type" | "height";
   message: string;
@@ -233,10 +289,37 @@ export function checkAdFitsPlacement(args: {
   width?: number | null;
   height?: number | null;
   type?: string | null;
+  /** `Ad.format`. Checked only when supplied (IN_FEED takes NATIVE only). */
+  format?: string | null;
 }): AdFitProblem[] {
   const spec = placementSpec(args.placementName);
   const where = args.placementLabel || args.placementName;
   const out: AdFitProblem[] = [];
+
+  // The feed renders NATIVE cards only (`serveFeedAds` filters on it), so a
+  // banner saved into IN_FEED was ACTIVE, approved, and could never serve.
+  if (
+    args.placementName === "IN_FEED" &&
+    args.format != null &&
+    args.format !== "NATIVE"
+  ) {
+    out.push({
+      field: "type",
+      message: `${where} only shows Native (post-like) ads. Switch the format to "Native (feed)", or pick a different space for a banner.`,
+    });
+  }
+
+  // A page script has no box to render into: only a pasted network snippet
+  // (type HTML) can run there.
+  if (args.placementName === "PAGE_SCRIPT") {
+    if (args.type !== "HTML") {
+      out.push({
+        field: "type",
+        message: `${where} takes a network page script only (HTML / Script creative from an ad network).`,
+      });
+    }
+    return out;
+  }
 
   if (!sizeFitsPlacement(args.placementName, args.size)) {
     out.push({
@@ -282,6 +365,8 @@ const HOUSE_ONLY_PLACEMENTS = new Set<string>([
   "REWARD_INTERSTITIAL",
   "EARN_BROWSE",
   "REWARDED_VIDEO",
+  // Site-wide third-party code — the platform's own decision, never a buyer's.
+  "PAGE_SCRIPT",
 ]);
 
 export function isAdvertiserSelectable(name: string): boolean {
@@ -379,6 +464,9 @@ export const ANCHOR_DENY_PREFIXES = INCENTIVISED_PREFIXES;
 export function anchorAllowedOnPath(pathname: string): boolean {
   return !isIncentivisedPath(pathname);
 }
+
+/** The site-wide page-script space (not a visual slot). */
+export const PAGE_SCRIPT_PLACEMENT = "PAGE_SCRIPT";
 
 /** Placements a game may be pointed at. */
 export const GAME_AD_PLACEMENTS = AD_PLACEMENTS.filter((p) =>

@@ -9,7 +9,7 @@ const PUBLIC_PREFIXES = [
   "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/appeal",
   "/privacy", "/terms", "/refund", "/cookies", "/offer",
   "/features", "/about", "/careers", "/blog", "/press", "/help", "/contact", "/status",
-  "/microtask", "/advertise", "/referral", "/post", "/abuse",
+  "/microtask", "/advertise", "/referral", "/post", "/abuse", "/pricing",
 ];
 
 export function isPublicPath(pathname: string): boolean {

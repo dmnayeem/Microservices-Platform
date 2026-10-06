@@ -91,10 +91,21 @@ export function resolveNetworkSlot(
   placementName?: string
 ): NetworkSlotConfig | null {
   if (ad.type === "ADSENSE") {
-    const client = safeToken(ad.adClient || g.adsenseClient);
+    // The GLOBAL client is required, and it is the only client a slot may use.
+    //
+    // `adsbygoogle.js` is loaded once per page, from the root layout, and only
+    // when `ads.adsense_client` is set. A per-ad client override with no global
+    // client produced an `<ins>` against a script that never loaded — a unit
+    // that could never fill and never told anyone. And an override that DIFFERS
+    // from the global one puts two publishers' units on one page, which Google
+    // does not support. So: no global client → nothing serves; an override is
+    // honoured only when it equals the global client.
+    const global = safeToken(g.adsenseClient);
     const slot = safeToken(ad.adSlot);
-    if (!client || !slot) return null;
-    return { kind: "ADSENSE", client, slot };
+    if (!global || !slot) return null;
+    const override = safeToken(ad.adClient);
+    if (override && override !== global) return null;
+    return { kind: "ADSENSE", client: global, slot };
   }
 
   if (ad.type === "GAM") {

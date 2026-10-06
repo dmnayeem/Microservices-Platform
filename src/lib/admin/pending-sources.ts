@@ -54,7 +54,7 @@ export const PENDING_SOURCES: PendingSourceMeta[] = [
   // Finance
   { key: "withdrawals", group: "finance", label: "Withdrawals", icon: "Wallet", tone: "green", permission: "withdrawals.view", href: "/admin/withdrawals", moduleHref: "/admin/withdrawals" },
   { key: "deposits", group: "finance", label: "Deposits", icon: "ArrowDownToLine", tone: "green", permission: "withdrawals.view", href: "/admin/deposits", moduleHref: "/admin/deposits" },
-  { key: "offerwallCompletions", group: "finance", label: "Offerwall Reviews", icon: "Gift", tone: "orange", permission: "offerwalls.view", href: "/admin/offerwalls", moduleHref: "/admin/offerwalls" },
+  { key: "offerwallCompletions", group: "finance", label: "Offerwall Reviews", icon: "Gift", tone: "orange", permission: "offerwalls.view", href: "/admin/offerwalls?tab=reviews", moduleHref: "/admin/offerwalls" },
   { key: "offerwallCallbacks", group: "finance", label: "Offerwall Callbacks", icon: "Gift", tone: "orange", permission: "offerwalls.view", href: "/admin/offerwall-callbacks", moduleHref: "/admin/offerwalls" },
   // Tasks
   { key: "submissions", group: "tasks", label: "Task Submissions", icon: "ClipboardCheck", tone: "blue", permission: "submissions.view", href: "/admin/submissions", moduleHref: "/admin/submissions" },

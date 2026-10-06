@@ -5,7 +5,7 @@ import { WithdrawalView } from "@/components/user/wallet/withdrawal-view";
 import { getUiToggles } from "@/lib/ui-toggles-server";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getWithdrawalConfig } from "@/lib/withdrawal";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { ServerAdSlot } from "@/components/user/primitives/server-ad-slot";
 import { ProfileGate } from "@/components/user/profile/profile-gate";
 import { getProfileGateState } from "@/lib/profile-gate-server";
 import { MyWithdrawals } from "@/components/user/wallet/my-withdrawals";
@@ -58,7 +58,7 @@ export default async function WithdrawalPage() {
   return (
     <>
       {/* Longest-dwell page on the platform by measured traffic. */}
-      <AdRenderer placement="WITHDRAW_TOP" className="mb-4" />
+      <ServerAdSlot placement="WITHDRAW_TOP" className="mb-4" />
       <WithdrawalView
       cashBalance={Number(user?.cashBalance ?? 0)}
       pointsBalance={user?.pointsBalance ?? 0}

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import type { AdPlacementName } from "@/lib/ad-placements";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import { adClickHref } from "@/lib/ad-measure-client";
+import { AdSlotShell, adNetworkLabel } from "@/components/user/primitives/ad-slot-shell";
 
 interface Ad {
   id: string;
@@ -20,6 +22,9 @@ interface Ad {
   sponsor?: string;
   impressionPixel?: string;
   allowSameOrigin?: boolean;
+  networkId?: string;
+  /** HTML ads on the separate ad origin (see sandboxed-ad-frame). */
+  frameUrl?: string;
 }
 
 /**
@@ -93,15 +98,8 @@ export function AdInterstitialOverlay({
           setLeft(secs);
           setTotal(secs);
           setShowFor(Number(d.showSeconds) > 0 ? Number(d.showSeconds) : null);
-          // The serve call already counted this impression server-side; firing
-          // the beacon too would double-count every interstitial.
-          if (!d.countedServerSide) {
-            fetch(`/api/spaces/${d.ad.id}/event`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ kind: "view" }),
-            }).catch(() => {});
-          }
+          // The impression is measured by the AdSlotShell below (viewable
+          // for ≥1s), not fired here — see src/lib/ad-measure-client.ts.
         } else {
           doneRef.current(); // no ad → don't block
         }
@@ -134,14 +132,8 @@ export function AdInterstitialOverlay({
 
   if (!open || !ad) return null;
 
-  const trackClick = () => {
-    fetch(`/api/spaces/${ad.id}/event`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // The serve token is what makes this click billable (ad-serve-token).
-      body: JSON.stringify({ kind: "open", st: ad.st }),
-    }).catch(() => {});
-  };
+  // Clicks are counted by the `/api/spaces/go` redirect the links point at.
+  const clickHref = adClickHref(ad.st, ad.id, ad.ctaUrl);
 
   const done = left <= 0;
   const progress = total > 0 ? Math.min(100, ((total - left) / total) * 100) : 100;
@@ -163,7 +155,19 @@ export function AdInterstitialOverlay({
       )}
 
       {/* Creative — pick by what the ad actually carries (a house video is
-          stored as type LOCAL with a videoUrl), so key off presence not type. */}
+          stored as type LOCAL with a videoUrl), so key off presence not type.
+          Inside the measurement shell like every other ad (ad-slot-shell). */}
+      <AdSlotShell
+        className="w-full max-w-md flex justify-center"
+        info={{
+          adId: ad.id,
+          placement,
+          slotKey: `${placement}:interstitial`,
+          network: adNetworkLabel(ad),
+          type: ad.type,
+          st: ad.st,
+        }}
+      >
       {ad.videoUrl ? (
         <div className="max-w-md w-full rounded-2xl overflow-hidden border border-white/10 bg-black">
           {/* Autoplay must be muted to satisfy browser policies. */}
@@ -179,10 +183,9 @@ export function AdInterstitialOverlay({
           />
           {ad.ctaUrl && (
             <a
-              href={ad.ctaUrl}
+              href={clickHref}
               target="_blank"
               rel="noopener sponsored noreferrer"
-              onClick={trackClick}
               className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-(--app-cta) text-(--app-on-cta) text-sm font-bold"
             >
               {ad.ctaLabel || "Learn More"}
@@ -194,18 +197,17 @@ export function AdInterstitialOverlay({
         <div className="max-w-md w-full">
           <SandboxedAdFrame
             html={ad.html}
+            frameUrl={ad.frameUrl}
             height={280}
             impressionPixel={ad.impressionPixel}
             badge={false}
-            allowSameOrigin={ad.allowSameOrigin}
           />
         </div>
       ) : (
         <a
-          href={ad.ctaUrl ?? "#"}
+          href={clickHref ?? "#"}
           target="_blank"
           rel="noopener sponsored noreferrer"
-          onClick={trackClick}
           className="max-w-md w-full rounded-2xl overflow-hidden border border-white/10 bg-(--app-surface) block"
         >
           {ad.imageUrl && (
@@ -222,6 +224,7 @@ export function AdInterstitialOverlay({
           </div>
         </a>
       )}
+      </AdSlotShell>
 
       {/* Bottom bar — the countdown runs here; a Close button appears at 0, then
           the caller reveals the reward. */}

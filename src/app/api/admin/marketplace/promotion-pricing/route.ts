@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { writeAudit } from "@/lib/audit";
 import { getPromotionPricing, savePromotionPricing } from "@/lib/promotion";
 import { z } from "zod";
 
@@ -44,6 +45,16 @@ export async function PATCH(request: NextRequest) {
   if (!v.success) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
+  const before = await getPromotionPricing();
   await savePromotionPricing(v.data.packages);
-  return NextResponse.json({ packages: await getPromotionPricing() });
+  const after = await getPromotionPricing();
+  await writeAudit({
+    actorId: session.user.id,
+    action: "MARKETPLACE_PROMOTION_PRICING_UPDATED",
+    entity: "SystemSetting",
+    entityId: "marketplace.promotion_pricing",
+    summary: `Saved promotion pricing (${after.length} package${after.length === 1 ? "" : "s"})`,
+    meta: { before, after },
+  });
+  return NextResponse.json({ packages: after });
 }

@@ -7,13 +7,15 @@ import Link from "next/link";
 import { getCourseCommissionConfig } from "@/lib/course-commission";
 import { CourseCommissionForm } from "./_components/CourseCommissionForm";
 import { RefundWindowForm } from "./_components/RefundWindowForm";
+import { CourseNumberSettingForm } from "./_components/CourseNumberSettingForm";
+import { getCourseSettings } from "@/lib/course-settings";
 
 export default async function CourseSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (!(await can(session.user.id, "courses.view"))) redirect("/admin");
 
-  const [config, categories, courseSettings] = await Promise.all([
+  const [config, categories, courseSettings, rules] = await Promise.all([
     getCourseCommissionConfig(),
     prisma.courseCategory.findMany({
       where: { isActive: true },
@@ -21,6 +23,7 @@ export default async function CourseSettingsPage() {
       select: { id: true, slug: true, name: true },
     }),
     prisma.systemSetting.findUnique({ where: { key: "course_settings" } }),
+    getCourseSettings(),
   ]);
   // Read exactly as api/courses/[id]/refund reads it — 30 days when unset.
   const storedWindow =
@@ -67,6 +70,28 @@ export default async function CourseSettingsPage() {
       />
 
       <RefundWindowForm initial={refundWindowDays} canEdit={canEdit} />
+
+      <CourseNumberSettingForm
+        field="refundMaxProgressPercent"
+        title="Refund progress limit"
+        description="A student who has completed more than this share of a course can no longer ask for a refund. 100 = no limit (progress never blocks a refund)."
+        unit="Percent"
+        min={0}
+        max={100}
+        initial={rules.refundMaxProgressPercent}
+        canEdit={canEdit}
+      />
+
+      <CourseNumberSettingForm
+        field="tutorPayoutHoldDays"
+        title="Tutor payout hold"
+        description="Days a tutor's share of a paid enrolment is held before it reaches their wallet. The hold is never shorter than the refund window, so a refund always comes out of money not yet paid. Applies to new sales only."
+        unit="Days"
+        min={0}
+        max={365}
+        initial={rules.tutorPayoutHoldDays}
+        canEdit={canEdit}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 # Vercel-style deploy on this VPS. No image is built.
 #
 #   ./deploy.sh              build the current checkout, switch the app to it
-#   ./deploy.sh --rollback   switch back to the previous build (no build)
+#   ./deploy.sh --rollback   switch back to the previous build (no build, no migrate)
 #
 # How it works:
 #   node_modules/      persistent; `npm ci` runs only when package-lock changes
@@ -91,6 +91,23 @@ else
   # Compile cache is only worth keeping if the next build will read it.
   [[ "$CARRY_CACHE" == 1 ]] || rm -rf "$TARGET/cache/turbopack"
   log "Built in $(secs $t)s  ($(du -sh "$TARGET" | cut -f1))"
+
+  # ---- 3b. database migrations, BEFORE traffic moves -------------------------
+  # Same container + same env (env_file: .env) as the build, so Prisma reads the
+  # project's own DATABASE_URL via prisma.config.ts (Prisma Postgres; the Prisma 7
+  # CLI migrates over it directly - no separate directUrl). Pending migrations are
+  # applied here; with none pending this is a no-op. On failure the new build is
+  # discarded and the live one keeps serving. Skip once with SKIP_MIGRATE=1.
+  if [[ "${SKIP_MIGRATE:-0}" == 1 ]]; then
+    printf '\033[33m  WARN\033[0m SKIP_MIGRATE=1 - not running prisma migrate deploy\n'
+  else
+    log "Applying database migrations (prisma migrate deploy)"
+    t=$(date +%s)
+    # Guard first: refuse any migration that drops a raw-SQL index (MIGRATIONS.md).
+    docker compose run --rm --no-deps -T builder sh -c 'npm run -s check:migration-drops && npx prisma migrate deploy' \
+      || { rm -rf "$TARGET"; fail "prisma migrate deploy failed after $(secs $t)s - $CURRENT still serving, app not switched. Check: docker compose run --rm --no-deps -T builder npx prisma migrate status"; }
+    log "Migrations up to date ($(secs $t)s)"
+  fi
 fi
 
 # ---- 4. switch ------------------------------------------------------------

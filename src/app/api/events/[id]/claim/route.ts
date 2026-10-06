@@ -4,8 +4,11 @@ import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { getEffectivePackage } from "@/lib/packages";
 import { claimEvent } from "@/lib/events";
+import { requireActiveUser } from "@/lib/require-active";
 
-// POST /api/events/:id/claim — claim the reward (optionally with a proof URL).
+// POST /api/events/:id/claim — claim the reward. For an UPLOAD_PROOF event this
+// SUBMITS the proof for admin review instead (`pendingReview: true`); the
+// reward is paid on approval (POST /api/admin/events/proofs).
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,6 +24,11 @@ export async function POST(
   // keeps a claim flood from being absorbed by the database.
   const limited = await enforceDbRateLimit(req, "claim", session.user.id, 30, 60_000);
   if (limited) return limited;
+  // A reward claim pays out: a banned / suspended account may not claim.
+  const active = await requireActiveUser(session.user.id);
+  if (!active.ok) {
+    return NextResponse.json({ error: active.message }, { status: active.httpStatus });
+  }
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as {

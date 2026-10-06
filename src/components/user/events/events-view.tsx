@@ -34,6 +34,9 @@ interface EventItem {
   progress: number;
   claimed: boolean;
   proofUrl: string | null;
+  /** UPLOAD_PROOF review: null | PENDING | APPROVED | REJECTED. */
+  proofStatus?: string | null;
+  proofNote?: string | null;
   completable: boolean;
   tierViews: TierView[];
 }
@@ -86,6 +89,12 @@ export function EventsView() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Couldn't claim");
+      if (d.pendingReview) {
+        // Proof events pay only after an admin approves the proof.
+        toast.success("Proof sent — you'll be paid once an admin approves it.");
+        load(true);
+        return;
+      }
       await runInterstitial();
       refreshNavCounts();
       toast.success(
@@ -133,8 +142,9 @@ export function EventsView() {
             const uploaded = isUpload
               ? !!(proofByEvent[ev.id] || ev.proofUrl)
               : false;
+            const underReview = isUpload && ev.proofStatus === "PENDING";
             const canClaim =
-              !ev.claimed && (isUpload ? uploaded : ev.completable);
+              !ev.claimed && (isUpload ? uploaded && !underReview : ev.completable);
             return (
               <div
                 key={ev.id}
@@ -166,9 +176,13 @@ export function EventsView() {
                     <span className="text-(--app-ink-3)">{meta.label}</span>
                     <span className="text-white font-bold tabular-nums">
                       {isUpload
-                        ? uploaded
-                          ? "Uploaded"
-                          : "Not uploaded"
+                        ? underReview
+                          ? "Under review"
+                          : ev.proofStatus === "REJECTED"
+                            ? "Not accepted — upload again"
+                            : uploaded
+                              ? "Uploaded"
+                              : "Not uploaded"
                         : `${ev.progress}/${ev.threshold} ${meta.unit}`}
                     </span>
                   </div>
@@ -183,7 +197,10 @@ export function EventsView() {
                 </div>
 
                 {/* Upload proof (UPLOAD_PROOF events) */}
-                {isUpload && !ev.claimed && (
+                {isUpload && ev.proofStatus === "REJECTED" && ev.proofNote && (
+                  <p className="mt-2 text-[11px] text-red-300">{ev.proofNote}</p>
+                )}
+                {isUpload && !ev.claimed && !underReview && (
                   <div className="mt-3">
                     <ProofImageUpload
                       value={proofByEvent[ev.id] ?? ev.proofUrl ?? ""}
@@ -271,7 +288,13 @@ export function EventsView() {
                         ) : (
                           <Trophy className="w-4 h-4" />
                         )}
-                        {canClaim ? "Claim" : "In progress"}
+                        {isUpload
+                          ? underReview
+                            ? "Under review"
+                            : "Submit proof"
+                          : canClaim
+                            ? "Claim"
+                            : "In progress"}
                       </button>
                     )}
                   </div>

@@ -7,6 +7,8 @@ import { format } from "date-fns";
 import { ShoppingBag, Download } from "lucide-react";
 import { EmptyState } from "@/components/user/primitives/empty-state";
 import { SmartImage } from "@/components/user/primitives/smart-image";
+import { OrderDispute } from "@/components/user/marketplace/order-dispute";
+import { getDisputeWindowDays } from "@/lib/marketplace-selling";
 
 export default async function OrdersPage() {
   const session = await auth();
@@ -30,6 +32,25 @@ export default async function OrdersPage() {
       return { ...o, listing };
     })
     .filter((o): o is NonNullable<typeof o> => o !== null);
+
+  // Latest dispute per order + the window for opening a new one.
+  const [disputeRows, disputeWindowDays] = await Promise.all([
+    prisma.marketplaceDispute.findMany({
+      where: { purchaseId: { in: orders.map((o) => o.id) } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, purchaseId: true, status: true },
+    }),
+    getDisputeWindowDays(),
+  ]);
+  const disputeByPurchase = new Map<string, { id: string; status: string }>();
+  for (const d of disputeRows) {
+    if (!disputeByPurchase.has(d.purchaseId)) {
+      disputeByPurchase.set(d.purchaseId, { id: d.id, status: d.status });
+    }
+  }
+  // eslint-disable-next-line react-hooks/purity -- server component, per request
+  const now = Date.now();
+  const windowMs = disputeWindowDays * 86_400_000;
 
   return (
     <div className="space-y-3">
@@ -81,6 +102,12 @@ export default async function OrdersPage() {
                 Download
               </a>
             )}
+            <OrderDispute
+              purchaseId={o.id}
+              dispute={disputeByPurchase.get(o.id) ?? null}
+              canOpen={now - o.createdAt.getTime() <= windowMs}
+              windowDays={disputeWindowDays}
+            />
             </div>
           ))}
         </div>

@@ -8,6 +8,7 @@ import { writeAudit } from "@/lib/audit";
 import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 import { clampRewardCooldown } from "@/lib/ad-billing";
 import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
+import { checkHtmlAd, optInt } from "@/lib/ad-networks/validate";
 
 const AD_TYPES = ["LOCAL", "HTML", "ADSENSE", "GAM"];
 const AD_STATUSES = ["ACTIVE", "INACTIVE", "PAUSED"];
@@ -109,6 +110,15 @@ export async function POST(request: NextRequest) {
     impressionPixel: body.impressionPixel ? String(body.impressionPixel) : null,
     clickTracker: body.clickTracker ? String(body.clickTracker) : null,
     allowSameOrigin: Boolean(body.allowSameOrigin),
+    // HTML network snippets: which network, an optional mobile variant, and
+    // (page scripts) the per-viewer frequency cap.
+    networkId: body.type === "HTML" && body.networkId ? String(body.networkId).slice(0, 40) : null,
+    mobileHtmlContent:
+      body.type === "HTML" && body.mobileHtmlContent ? String(body.mobileHtmlContent) : null,
+    mobileWidth: body.type === "HTML" && body.mobileHtmlContent ? optInt(body.mobileWidth, 2000) ?? null : null,
+    mobileHeight: body.type === "HTML" && body.mobileHtmlContent ? optInt(body.mobileHeight, 2000) ?? null : null,
+    freqCapPerDay: optInt(body.freqCapPerDay, 1000) ?? null,
+    freqMinGapMinutes: optInt(body.freqMinGapMinutes, 10_080) ?? null,
     size: body.size ? String(body.size) : "responsive",
     width: Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null,
     height: Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null,
@@ -159,7 +169,20 @@ export async function POST(request: NextRequest) {
       width: shared.width,
       height: shared.height,
       type: shared.type,
-    })
+      format: shared.format,
+    }).concat(
+      checkHtmlAd({
+        placementName: p.name,
+        type: shared.type,
+        size: shared.size,
+        width: shared.width,
+        height: shared.height,
+        networkId: shared.networkId,
+        mobileHtml: shared.mobileHtmlContent,
+        mobileWidth: shared.mobileWidth,
+        mobileHeight: shared.mobileHeight,
+      })
+    )
   );
   if (fitProblems.length > 0) {
     return NextResponse.json(

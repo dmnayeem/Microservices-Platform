@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import {
   SPLASH_SETTING_KEY,
   normalizeSplashConfig,
@@ -29,10 +30,22 @@ export async function PUT(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const cfg = normalizeSplashConfig(body);
   const value = JSON.parse(JSON.stringify(cfg));
+  const before = await prisma.systemSetting.findUnique({
+    where: { key: SPLASH_SETTING_KEY },
+    select: { value: true },
+  });
   await prisma.systemSetting.upsert({
     where: { key: SPLASH_SETTING_KEY },
     create: { key: SPLASH_SETTING_KEY, value, category: "splash", description: null },
     update: { value, category: "splash" },
+  });
+  await writeAudit({
+    actorId: session.user.id,
+    action: "SPLASH_UPDATED",
+    entity: "SystemSetting",
+    entityId: SPLASH_SETTING_KEY,
+    summary: "Edited the splash screen",
+    meta: { before: before?.value ?? null, after: value },
   });
   invalidateSettingsCache();
   return NextResponse.json({ success: true, config: cfg });

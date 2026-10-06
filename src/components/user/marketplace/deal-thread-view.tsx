@@ -381,9 +381,18 @@ function DealActions({
       {/* Contextual actions */}
       {deal.status === "PROPOSED" && (
         <div className="space-y-2">
-          {isBuyer && (
+          {/* Buyer-proposed terms need the seller's acceptance before funding. */}
+          {isBuyer && deal.proposedById !== viewerId && (
             <button disabled={busy} onClick={() => onAction(deal.id, "fund")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
               Fund escrow {usd((deal.amount + deal.adminFee))}
+            </button>
+          )}
+          {isBuyer && deal.proposedById === viewerId && (
+            <p className="text-[11px] text-(--app-ink-3)">Waiting for the seller to accept your proposal.</p>
+          )}
+          {isSeller && deal.proposedById !== viewerId && (
+            <button disabled={busy} onClick={() => onAction(deal.id, "accept")} className={cn(btn, "bg-(--app-cta) text-(--app-on-cta) hover:bg-(--app-cta)")}>
+              <CheckCircle2 className="w-4 h-4" /> Accept {usd(deal.amount)}
             </button>
           )}
           {(isBuyer || isSeller) && (
@@ -391,7 +400,7 @@ function DealActions({
               Cancel
             </button>
           )}
-          {isSeller && <p className="text-[11px] text-(--app-ink-3)">Waiting for the buyer to fund.</p>}
+          {isSeller && deal.proposedById === viewerId && <p className="text-[11px] text-(--app-ink-3)">Waiting for the buyer to fund.</p>}
         </div>
       )}
 

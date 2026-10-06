@@ -1,34 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { ipSubject, recordImpression, recordClick } from "@/lib/ad-events";
+import { ipSubject, recordImpression } from "@/lib/ad-events";
 import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
+import { resolveEventCountry } from "@/lib/ad-geo";
+import { ingestAdEvent } from "@/lib/ad-measure";
+import { parseSignalsBody } from "@/lib/ad-ivt";
 
 /**
- * Unified ad-engagement endpoint. The web client posts here (via the neutral
- * `/api/spaces/:id/event` rewrite) instead of the legacy `/click` + `/impression`
- * paths — neither the URL nor the body contains an ad-blocker filter token.
+ * LEGACY ad-engagement endpoint (`/api/spaces/:id/event`).
  *
- * Body: `{ kind: "view" | "open" }`  (view = impression, open = click).
+ * The web client no longer calls this: viewable impressions go to
+ * `/api/spaces/m` and clicks through the `/api/spaces/go` redirect (see
+ * src/lib/ad-measure.ts). It stays for older clients, and routes into the SAME
+ * ingestion, so nothing here can count or bill on a different basis:
  *
- * Views used to be recorded with no auth, no dedup and no rate limit, so anyone
- * could inflate their own ad's impressions or tank a rival's CTR in a loop. Now
- * every view is attributed to a subject (user, else hashed IP), deduped per
- * minute in the DB, and rate limited per IP.
+ *  - `view` with a serve token → a measured view (judged by the IVT rules; a
+ *    caller that sends no page signals is recorded as invalid);
+ *    without one → the old per-minute `AdEngagement` row only, counting nothing.
+ *  - `open` → a measured click, single-use per delivery.
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json().catch(() => ({}));
-  const kind = (body as { kind?: string }).kind;
+  const body = (await request.json().catch(() => ({}))) as { kind?: string; st?: unknown; sg?: unknown };
+  const kind = body.kind;
+  if (kind !== "view" && kind !== "open") {
+    return NextResponse.json({ error: "bad kind" }, { status: 400 });
+  }
 
-  if (kind === "view") {
-    const limited = enforceRateLimit(request, "ad-view", 60, 60_000);
-    if (limited) return limited;
+  const limited = enforceRateLimit(request, kind === "view" ? "ad-view" : "ad-click", kind === "view" ? 60 : 30, 60_000);
+  if (limited) return limited;
 
-    const session = await auth();
-    const userId = session?.user?.id ?? null;
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  if (kind === "view" && !body.st) {
     const { counted } = await recordImpression(id, {
       subject: userId ?? ipSubject(clientIp(request)),
       userId,
@@ -36,20 +44,14 @@ export async function POST(
     return NextResponse.json({ success: true, counted });
   }
 
-  if (kind === "open") {
-    // Only logged-in users can bill a click (ads are served to authed users).
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: true, billed: false });
-    }
-    const limited = enforceRateLimit(request, "ad-click", 30, 60_000);
-    if (limited) return limited;
-
-    const { billed } = await recordClick(id, session.user.id, {
-      serveToken: (body as { st?: unknown }).st,
-    });
-    return NextResponse.json({ success: true, billed });
-  }
-
-  return NextResponse.json({ error: "bad kind" }, { status: 400 });
+  const country = await resolveEventCountry({ userId }).catch(() => null);
+  const r = await ingestAdEvent({
+    st: body.st,
+    kind: kind === "view" ? "VIEW" : "CLICK",
+    signals: parseSignalsBody(body.sg),
+    headers: request.headers,
+    sessionUserId: userId,
+    country,
+  });
+  return NextResponse.json({ success: true, counted: r.counted && r.valid, billed: r.billed });
 }

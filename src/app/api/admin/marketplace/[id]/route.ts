@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
 
 interface RouteParams {
@@ -88,6 +89,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
+    // Every moderation verb lands in the audit log, on the seller's account.
+    const auditListing = (after: { status: string; rejectionReason?: string | null }) =>
+      writeAudit({
+        actorId: session.user.id,
+        action: `MARKETPLACE_LISTING_${String(action).toUpperCase()}`,
+        entity: "MarketplaceListing",
+        entityId: id,
+        targetUserId: listing.sellerId,
+        summary: `${String(action).charAt(0).toUpperCase()}${String(action).slice(1)} listing "${listing.title}"${reason ? ` — ${String(reason).trim()}` : ""}`,
+        meta: {
+          before: { status: listing.status, rejectionReason: listing.rejectionReason },
+          after: { status: after.status, rejectionReason: after.rejectionReason ?? null },
+          reason: reason ? String(reason).trim() : null,
+        },
+      });
+
     if (action === "approve") {
       // Approve a pending seller listing → goes live.
       const updatedListing = await prisma.marketplaceListing.update({
@@ -108,6 +125,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           data: { listingId: id, approvedBy: session.user.id },
         },
       });
+      await auditListing(updatedListing);
       revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
@@ -139,6 +157,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           data: { listingId: id, reason: String(reason).trim(), rejectedBy: session.user.id },
         },
       });
+      await auditListing(updatedListing);
       revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
@@ -169,6 +188,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       });
 
+      await auditListing(updatedListing);
       revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,
@@ -191,6 +211,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       });
 
+      await auditListing(updatedListing);
       revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
       return NextResponse.json({
         success: true,

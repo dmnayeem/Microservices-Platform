@@ -141,7 +141,7 @@ async function main() {
   // by /api/ads/rewarded, which selects on `rewardPoints > 0` across all ads
   // rather than by placement. An "empty" entry there renders nothing anywhere,
   // so it cannot leave a hole on a page.
-  const NOT_A_RENDERED_SLOT = new Set(["REWARDED_VIDEO"]);
+  const NOT_A_RENDERED_SLOT = new Set(["REWARDED_VIDEO", "PAGE_SCRIPT"]); // PAGE_SCRIPT is site-wide, not a visual slot
   const empty = AD_PLACEMENTS.filter((p) => {
     if (NOT_A_RENDERED_SLOT.has(p.name)) return false;
     const row = byName.get(p.name);

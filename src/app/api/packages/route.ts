@@ -1,5 +1,4 @@
-import { usd } from "@/lib/utils";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { PACKAGES_TAG } from "@/lib/cache-tags";
 import { auth } from "@/lib/auth";
@@ -108,132 +107,15 @@ export async function GET() {
   }
 }
 
-// POST /api/packages - Subscribe to a package (submit payment request with transaction ID)
-export async function POST(request: NextRequest) {
-  try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { packageId, packageSlug, billingPeriod, paymentMethod, transactionId, paymentScreenshot: _paymentScreenshot } = body;
-
-    if ((!packageId && !packageSlug) || !paymentMethod || !transactionId) {
-      return NextResponse.json(
-        { error: "Package, payment method, and transaction ID are required" },
-        { status: 400 }
-      );
-    }
-
-    const pkg = await prisma.package.findFirst({
-      where: packageId ? { id: packageId } : { slug: packageSlug },
-    });
-
-    if (!pkg || !pkg.isActive) {
-      return NextResponse.json({ error: "Invalid package" }, { status: 400 });
-    }
-
-    const price = billingPeriod === "yearly" && pkg.priceYearly
-      ? pkg.priceYearly
-      : pkg.priceMonthly;
-
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        packageId: true,
-        packageExpiresAt: true,
-        package: { select: { accessLevel: true } },
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Reject downgrade-or-same purchases (except from default plan upward).
-    const userLevel = user.package?.accessLevel ?? 0;
-    if (pkg.accessLevel <= userLevel && user.packageId === pkg.id) {
-      return NextResponse.json(
-        { error: "You're already on this plan." },
-        { status: 400 }
-      );
-    }
-
-    const pendingSubscription = await prisma.subscription.findFirst({
-      where: {
-        userId: session.user.id,
-        isActive: false,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (pendingSubscription) {
-      return NextResponse.json(
-        { error: "You already have a pending subscription request. Please wait for admin approval." },
-        { status: 400 }
-      );
-    }
-
-    const startDate = new Date();
-    const endDate = new Date();
-    if (billingPeriod === "yearly") {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    } else {
-      endDate.setMonth(endDate.getMonth() + 1);
-    }
-
-    const subscription = await prisma.subscription.create({
-      data: {
-        userId: session.user.id,
-        packageId: pkg.id,
-        startDate,
-        endDate,
-        amount: price,
-        paymentMethod: paymentMethod,
-        transactionId,
-        isActive: false,
-        autoRenew: false,
-      },
-    });
-
-    await prisma.notification.create({
-      data: {
-        userId: session.user.id,
-        type: "SYSTEM",
-        title: "Package Subscription Submitted",
-        message: `Your subscription request for ${pkg.name} (${usd(price)}) with transaction ID "${transactionId}" has been submitted and is pending admin verification.`,
-        data: {
-          subscriptionId: subscription.id,
-          packageId: pkg.id,
-          price,
-          billingPeriod,
-          transactionId,
-        },
-      },
-    });
-
-    return NextResponse.json({
-      subscription: {
-        id: subscription.id,
-        packageId: pkg.id,
-        packageName: pkg.name,
-        price: toNum(price),
-        billingPeriod,
-        status: "PENDING_VERIFICATION",
-        transactionId,
-        startDate,
-        endDate,
-      },
-      message: "Subscription request submitted successfully. Admin will verify your payment and activate your package.",
-    });
-  } catch (error) {
-    console.error("Error creating subscription:", error);
-    return NextResponse.json(
-      { error: "Failed to create subscription" },
-      { status: 500 }
-    );
-  }
+// POST /api/packages — retired (410).
+//
+// This was an older subscribe path that no screen calls any more. It created a
+// pending request with no ledger row, no proof check and no duration rules,
+// and its "already pending" test matched every expired plan. The plans page
+// uses POST /api/packages/purchase, which is the one place plan money moves.
+export async function POST() {
+  return NextResponse.json(
+    { error: "This endpoint was retired. Use POST /api/packages/purchase." },
+    { status: 410 }
+  );
 }

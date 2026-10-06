@@ -150,6 +150,13 @@ export interface SettingEntry {
    * the System Settings form neither renders nor saves it. One editor per key.
    */
   home?: { href: string; where: string };
+  /**
+   * "switch" = an on/off boolean. Optional: the Control Center's Feature
+   * switches list also recognises booleans by their stored value and by
+   * name ("…_enabled", "allow_…", "require_…"). Set it when a boolean key
+   * does not look like one, or "value" when a key looks like a switch but is not.
+   */
+  kind?: "switch" | "value";
 }
 
 /** Where each feature's settings moved to (Phase 3b). */
@@ -184,6 +191,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "points_convert_threshold", group: "financial", label: "Points needed before cash conversion unlocks", unit: "points", description: "A user needs at least this many points before the wallet shows the points-to-cash button.", effect: "Below this, the convert button is hidden." },
   { key: "bkash.usdToBdtRate", group: "financial", label: "bKash rate", unit: "BDT per $1", description: "bKash settles in taka; a USD deposit made through bKash is charged at this rate." },
   { key: "vat_enabled", group: "financial", label: "Charge VAT on deposits", description: "Adds VAT on top of the deposit amount, shown as its own line on the deposit page.", effect: "Off = no VAT is added to deposits." },
+  { key: "plans.auto_renew_enabled", group: "financial", label: "Allow plan auto-renew", description: "Lets members turn on auto-renew for their paid plan; at expiry the plan is renewed from their cash balance (never points) at the plan's current price for the same term length.", effect: "Off = no plan is renewed automatically (and the toggle is hidden) — every plan simply ends at its expiry date." },
   { key: "vat_pct", group: "financial", label: "VAT rate", unit: "%", description: "Applied to the deposit amount plus the payment-method charge, while VAT is switched on." },
   { key: "buyer.enabled", group: "financial", label: "Allow buyers to fund tasks", description: "Lets accounts with the buyer permission create and fund their own tasks.", effect: "Off closes the create-task API for everyone, even accounts that already hold the permission." },
   { key: "buyer.fee_percent", group: "financial", label: "Platform fee on buyer tasks", unit: "%", description: "The platform's cut when a buyer funds a task — charged on top of the points they buy.", effect: "0 = buyers pay only the rewards and the platform earns nothing on task funding." },
@@ -197,7 +205,6 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "buyer.allowed_platforms", group: "financial", label: "Social platforms buyers may target", description: "Which of the social platforms a buyer may aim a social task at.", effect: "Ticking none means all of them, now and in future." },
   { key: "buyer.require_kyc", group: "financial", label: "Require KYC before funding", description: "Checked when the buyer spends, not when they are paid — an unverified account is stopped before the money moves.", effect: "Off = any buyer may fund tasks without verifying." },
   { key: "buyer.auto_approve_tasks", group: "financial", label: "Publish buyer tasks without review", description: "Off (recommended) sends every buyer task to the admin review queue first. On means a funded task goes live immediately." },
-  { key: "buyer.refund_fee_on_reject", group: "financial", label: "Refund the fee when a task is rejected", description: "On (recommended): a buyer whose task you turn down gets the fee back too. Off keeps it as a review charge." },
 
   // ── Limits & anti-fraud ──
   { key: "max_withdrawals_per_day", group: "limits", label: "Max Withdrawals Per Day", description: "Rolling 24h, per user · 0 = no limit", home: WITHDRAWALS_HOME },
@@ -429,6 +436,12 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         links: [PAYMENT_METHODS_CARD],
       },
       {
+        id: "plans",
+        title: "Plans",
+        blurb: "Paid plan renewals.",
+        keys: ["plans.auto_renew_enabled"],
+      },
+      {
         id: "marketplace-fee",
         title: "Marketplace",
         keys: ["marketplace.fee_percent"],
@@ -459,7 +472,6 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
           "buyer.allowed_platforms",
           "buyer.require_kyc",
           "buyer.auto_approve_tasks",
-          "buyer.refund_fee_on_reject",
         ],
       },
       {
@@ -1121,6 +1133,15 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
     status: "live",
   },
   {
+    label: "Ad invalid-traffic rules (bot filtering)",
+    description:
+      "Which bot / invalid-traffic rules filter ad impressions and clicks, the per-viewer rate limits, the fastest believable click and how long raw measured events are kept. Filtered traffic is never counted or billed.",
+    href: "/admin/ads?tab=analytics",
+    where: "Ad Manager → Analytics → Measurement settings",
+    key: "ads.ivt",
+    status: "live",
+  },
+  {
     label: "Feed ad density",
     description:
       "How often a native ad, a promoted post and the under-post banner appear in the feed",
@@ -1146,8 +1167,8 @@ export const SETTINGS_ELSEWHERE: readonly ElsewhereEntry[] = [
     status: "live",
   },
   {
-    label: "Course refund window",
-    description: "How many days after enrolling a student may ask for a refund (30 when never set)",
+    label: "Course refund window, refund progress limit & tutor payout hold",
+    description: "How many days after enrolling a student may ask for a refund (30 when never set), the course progress % above which a refund is refused (50 when never set; 100 = no limit), and how many days a tutor's share is held before payout (30 when never set; never shorter than the refund window)",
     href: "/admin/courses/settings",
     where: "Courses → Settings",
     key: "course_settings",

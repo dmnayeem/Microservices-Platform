@@ -1,5 +1,6 @@
 "use client";
 
+import { lsGet, lsRemove, lsSet } from "@/lib/safe-storage";
 import { DEFAULT_ACCENT } from "@/lib/accent-palette";
 
 import {
@@ -113,14 +114,14 @@ export function ThemeProvider({
     // With choice off, the stored preference is not read at all — the same
     // rule the pre-paint script follows, so the two never disagree.
     const storedTheme = allowUserChoice
-      ? (localStorage.getItem(storageKey) as Theme | null)
+      ? (lsGet(storageKey) as Theme | null)
       : null;
     if (storedTheme === "dark" || storedTheme === "light" || storedTheme === "system") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setThemeState(storedTheme);
     }
     const storedAccent = allowAccentChoice
-      ? (localStorage.getItem(ACCENT_KEY) as Accent | null)
+      ? (lsGet(ACCENT_KEY) as Accent | null)
       : null;
     if (storedAccent && ACCENTS.includes(storedAccent)) setAccentState(storedAccent);
   }, [storageKey, allowUserChoice, allowAccentChoice]);
@@ -128,7 +129,7 @@ export function ThemeProvider({
   const setTheme = (next: Theme) => {
     if (!allowUserChoice) return;
     setThemeState(next);
-    if (typeof window !== "undefined") localStorage.setItem(storageKey, next);
+    if (typeof window !== "undefined") lsSet(storageKey, next);
   };
 
   /**
@@ -145,8 +146,8 @@ export function ThemeProvider({
     if (!allowAccentChoice) return;
     setAccentState(next ?? (DEFAULT_ACCENT as Accent));
     if (typeof window === "undefined") return;
-    if (next) localStorage.setItem(ACCENT_KEY, next);
-    else localStorage.removeItem(ACCENT_KEY);
+    if (next) lsSet(ACCENT_KEY, next);
+    else lsRemove(ACCENT_KEY);
     // The attribute is written here as well as in the effect below, because
     // dropping it is not a state change the effect can express — `accent`
     // still holds a value, it is simply no longer the user's.
@@ -157,7 +158,7 @@ export function ThemeProvider({
   /** True when the accent on screen is the platform's, not a choice. */
   const accentIsDefault =
     !allowAccentChoice ||
-    (typeof window !== "undefined" && !localStorage.getItem(ACCENT_KEY));
+    (typeof window !== "undefined" && !lsGet(ACCENT_KEY));
 
   // Apply the resolved theme; when "system", follow OS changes live. The inline
   // script in layout.tsx already set the correct data-theme before first paint,

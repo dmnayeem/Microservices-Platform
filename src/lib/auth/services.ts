@@ -329,6 +329,24 @@ export async function completeSignupRewards(
 ): Promise<void> {
   await awardWelcomeBonus(userId);
 
+  // Self-referral on the same device: the new account shares a browser with
+  // its referrer. Held for an admin instead of paid (see selfReferralDeviceHold).
+  const held = await selfReferralDeviceHold(userId);
+  if (held) return;
+
+  await payReferralSignupRewards(userId, opts);
+}
+
+/**
+ * The referral half of completeSignupRewards: both signup bonuses plus the
+ * referrer's event progress and milestones. Also called by the Abuse Center's
+ * "release held referral bonus" action once an admin clears a device-match hold.
+ * Idempotent — every bonus is keyed on a unique ledger reference.
+ */
+export async function payReferralSignupRewards(
+  userId: string,
+  opts?: { referredById?: string | null }
+): Promise<void> {
   try {
     const {
       awardReferralSignupBonus,
@@ -374,6 +392,91 @@ export async function completeSignupRewards(
     } catch {
       /* never block on event tracking */
     }
+  }
+}
+
+/**
+ * Self-referral by device. The email guard in provisionUser only stops someone
+ * using their own link with the SAME email; a second email from the same
+ * browser sailed through and collected both halves of the referral bonus.
+ *
+ * Compares the new account's device — its UserDevice rows plus the
+ * `eg_did` / `eg_fp` cookies on the current request (verify-email click or
+ * Google callback, usually the signup browser) — with every device the
+ * referrer has been seen on. Never IP: one IP is shared by many honest people.
+ *
+ * On a match nothing referral-related is paid (referrer bonus, invitee bonus,
+ * referral event/milestone credit) and an abuse case is opened in /admin/abuse
+ * for review; the welcome bonus is unaffected. Returns true when held.
+ * Fail-open (returns false) on any error — a lookup failure must not cost an
+ * honest invitee their bonus.
+ */
+async function selfReferralDeviceHold(userId: string): Promise<boolean> {
+  try {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referredById: true },
+    });
+    const referrerId = me?.referredById;
+    if (!referrerId || referrerId === userId) return false;
+
+    const ids = new Set<string>();
+    const fps = new Set<string>();
+    try {
+      const { readDevice } = await import("@/lib/device");
+      const cur = await readDevice();
+      if (cur.deviceId) ids.add(cur.deviceId);
+      if (cur.fpHash) fps.add(cur.fpHash);
+    } catch {
+      /* outside a request (script/backfill) — rows only */
+    }
+    const mine = await prisma.userDevice.findMany({
+      where: { userId },
+      select: { deviceId: true, fpHash: true },
+      take: 20,
+    });
+    for (const d of mine) {
+      ids.add(d.deviceId);
+      if (d.fpHash) fps.add(d.fpHash);
+    }
+    if (ids.size === 0 && fps.size === 0) return false;
+
+    const match = await prisma.userDevice.findFirst({
+      where: {
+        userId: referrerId,
+        OR: [
+          ...(ids.size ? [{ deviceId: { in: [...ids] } }] : []),
+          ...(fps.size ? [{ fpHash: { in: [...fps] } }] : []),
+        ],
+      },
+      select: { deviceId: true, fpHash: true },
+    });
+    if (!match) return false;
+
+    const sameDevice = ids.has(match.deviceId);
+    const { raiseAbuseSignal } = await import("@/lib/abuse/signal");
+    raiseAbuseSignal({
+      kind: "FRAUD_PATTERN",
+      severity: sameDevice ? "HIGH" : "MEDIUM",
+      userId,
+      entityType: "referral",
+      entityId: referrerId,
+      summary: `Referral signup bonus held: the new account shares a ${
+        sameDevice ? "device" : "browser fingerprint"
+      } with its referrer`,
+      evidence: {
+        referrerId,
+        referredUserId: userId,
+        matchedOn: sameDevice ? "deviceId" : "fpHash",
+        heldBonuses: ["refbonus_signup", "refbonus_invitee", "referral_signup progress"],
+        release:
+          "If legitimate, grant the referral bonus by hand from the user's balance page.",
+      },
+    });
+    return true;
+  } catch (err) {
+    console.error("[self-referral] device check failed for", userId, err);
+    return false;
   }
 }
 

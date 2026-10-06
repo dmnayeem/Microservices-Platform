@@ -1,7 +1,8 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
+import { CourseStatus } from "@/generated/prisma";
 import { BookOpen, Plus, Star, Users, Edit3 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,10 +16,13 @@ interface PageProps {
 export default async function TutorCoursesPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  const { status } = await searchParams;
+  const { status: rawStatus } = await searchParams;
+  // A repeated or unknown ?status= used to reach Prisma as-is and crash the
+  // page; only a real CourseStatus filters.
+  const status = Array.isArray(rawStatus) ? rawStatus[0] : rawStatus;
 
   const where: Record<string, unknown> = { tutorId: session.user.id };
-  if (status) where.status = status;
+  if (status && (Object.values(CourseStatus) as string[]).includes(status)) where.status = status;
 
   const [coursesRaw, statusCounts] = await Promise.all([
     prisma.course.findMany({
@@ -28,11 +32,11 @@ export default async function TutorCoursesPage({ searchParams }: PageProps) {
         _count: { select: { lessons: true, enrollments: true, reviews: true } },
       },
     }),
-    prisma.course.groupBy({
+    safeRead(prisma.course.groupBy({
       by: ["status"],
       where: { tutorId: session.user.id },
       _count: { _all: true },
-    }),
+    }), [], "tutor courses status counts #1"),
   ]);
 
   const courses = coursesRaw as unknown as Array<{

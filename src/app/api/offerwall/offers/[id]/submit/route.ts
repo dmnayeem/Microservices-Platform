@@ -39,10 +39,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (completion.status !== "STARTED")
     return NextResponse.json({ error: "Already submitted." }, { status: 409 });
 
-  await prisma.offerwallCompletion.update({
-    where: { id: completion.id },
-    data: { status: "PENDING", proofImages },
+  // CAS on STARTED: a chargeback/rejection that landed meanwhile wins.
+  const moved = await prisma.offerwallCompletion.updateMany({
+    where: { id: completion.id, status: "STARTED" },
+    data: { status: "PENDING", proofImages, heldUntil: null },
   });
+  if (moved.count === 0)
+    return NextResponse.json({ error: "Already submitted." }, { status: 409 });
 
   return NextResponse.json({ ok: true, status: "PENDING" });
 }

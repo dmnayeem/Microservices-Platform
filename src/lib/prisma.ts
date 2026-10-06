@@ -39,6 +39,9 @@ function isTransientAccelerateError(e: unknown): boolean {
     if (code === "P6009") return false;
     return true;
   }
+  // P6004 = Accelerate query timeout. For a READ (the only thing this gate is
+  // consulted for) a retry is safe and often lands on a warmer worker.
+  if (code === "P6004") return true;
   const msg = err?.message ?? "";
   return /Accelerate|Query Engine|communicat|ETIMEDOUT|ECONNRESET|ECONNREFUSED|socket hang up|timed out/i.test(
     msg
@@ -106,6 +109,14 @@ function createPrismaClient() {
                 !isTransientAccelerateError(e)
               ) {
                 if (retryable && attempt > 0) noteFailedRead();
+                // P6009 = Accelerate's response-size cap. It is a query-shape bug
+                // (selecting too many rows/columns), never a blip — say so loudly.
+                if ((e as { code?: string } | null)?.code === "P6009") {
+                  console.error(
+                    `[prisma] P6009 response too large on ${operation} — narrow the select / add take:`,
+                    (e as { message?: string }).message
+                  );
+                }
                 throw e;
               }
               noteRetryAttempt(e);

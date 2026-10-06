@@ -156,21 +156,19 @@ async function main() {
     );
   }
 
-  /* A3 — impression inflation. */
-  console.log("\nA3. An ad that is not served counts no impression");
+  /* A3 — impression inflation. Since real measurement (2026-10-06) nothing is
+   * counted as an impression at serve time — only a valid viewable beacon. */
+  console.log("\nA3. Serving counts no impression; only a valid viewable beacon does");
   {
     const s = code("lib/ad-serve.ts");
-    const guard = s.indexOf("if (!network) return EMPTY;");
-    const count = s.indexOf("bufferImpression(");
-    check("the network guard exists", guard > 0);
+    const m = code("lib/ad-measure.ts");
+    check("the network guard exists", s.indexOf("if (!network) return EMPTY;") > 0);
+    check("the serve path never buffers an impression", !/bufferImpression\(/.test(s));
+    check("a delivery is recorded as SERVED", /bufferServed\(/.test(s));
     check(
-      "the impression is counted AFTER every path that can still refuse",
-      guard > 0 && count > guard,
-      `guard@${guard} count@${count}`
-    );
-    check(
-      "it is still counted exactly once",
-      (s.match(/bufferImpression\(\s*chosen\.id/g) ?? []).length === 1
+      "the impression counter is fed only after the valid / non-staff gate, for a VIEW",
+      m.indexOf("if (!valid || internal || !ad)") > 0 &&
+        m.indexOf("bufferImpression(ad.id, country)") > m.indexOf("if (!valid || internal || !ad)")
     );
   }
 
@@ -523,10 +521,12 @@ async function main() {
   {
     const geo = code("lib/ad-geo.ts");
     const events = code("lib/ad-events.ts");
-    const serve = code("lib/ad-serve.ts");
     const counters = code("lib/ad-counters.ts");
     const adStats = code("lib/ad-stats.ts");
-    const inRecordClick = events.split("export async function recordClick")[1] ?? "";
+    // Clicks moved from ad-events `recordClick` to ad-measure `billValidClick`
+    // (real measurement, 2026-10-06).
+    const measure = code("lib/ad-measure.ts");
+    const inBill = (measure.split("async function billValidClick")[1] ?? "").split("export async function recomputeMeasureDay")[0] ?? "";
 
     check(
       "the edge country header is the primary source",
@@ -543,12 +543,13 @@ async function main() {
       "the profile is a weak source — 18 of 48 accounts have one, anonymous viewers none"
     );
     check(
-      "both event paths resolve country through the shared resolver",
-      /resolveEventCountry/.test(events) && /resolveEventCountry/.test(serve)
+      "both measured-event routes resolve country through the shared resolver",
+      /resolveEventCountry/.test(code("app/api/spaces/m/route.ts")) &&
+        /resolveEventCountry/.test(code("app/api/spaces/go/route.ts"))
     );
     check(
-      "the served-impression counter is given a country",
-      /bufferImpression\([\s\S]{0,200}resolveEventCountry/.test(serve)
+      "the viewable-impression counter is given that country",
+      /bufferImpression\(ad\.id, country\)/.test(measure)
     );
     // Was: "the beacon impression path is given a country".
     //
@@ -559,19 +560,13 @@ async function main() {
     // only the deduped `AdEngagement` row, so the thing to assert is that it
     // does NOT count, or every feed ad would be counted twice.
     check(
-      "the beacon no longer counts — one impression basis, at delivery",
+      "the legacy beacon library no longer counts — one impression basis (viewable)",
       !/bufferImpression\(/.test(events)
     );
     check(
-      "recordClick resolves the country ONCE, above every branch",
-      (inRecordClick.match(/resolveEventCountry/g) ?? []).length === 1,
-      "resolving per-branch is how an impression and its click end up in different buckets"
-    );
-    check(
-      "every rollup write in recordClick carries that country",
-      (inRecordClick.match(/bumpAdDailyStat\(/g) ?? []).length === 4 &&
-        (inRecordClick.match(/bumpAdDailyStat\([\s\S]{0,140}?country\s*\)/g) ?? [])
-          .length === 4,
+      "every rollup write in billValidClick carries the event's country",
+      (inBill.match(/bumpAdDailyStat\(/g) ?? []).length === 4 &&
+        (inBill.match(/bumpAdDailyStat\([\s\S]{0,140}?country\s*\)/g) ?? []).length === 4,
       "a bumpAdDailyStat call without it silently files the click under Unknown"
     );
     check(
@@ -747,8 +742,8 @@ async function main() {
       serve.indexOf("export async function serveFeedAds")
     );
     check(
-      "serveFeedAds counts impressions server-side, like every other space",
-      /bufferImpression\(/.test(feedBlock)
+      "serveFeedAds stamps each card as SERVED; impressions come from the viewable beacon",
+      feedBlock.includes("stampDelivery(") && !feedBlock.includes("bufferImpression(")
     );
     check(
       "serveFeedAds records fill data, like every other placement",

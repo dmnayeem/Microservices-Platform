@@ -12,6 +12,7 @@ import {
   parsePermissionOverrides,
   stripProtectedForRole,
   expandLegacyPermissions,
+  GRANULAR_SPLIT_MARKER,
   moduleForPath,
   ADMIN_MODULES,
   CATEGORY_LABELS,
@@ -50,6 +51,12 @@ const SETTING_CATEGORY = "access";
 /** Sparse per-role permission config: a role present here REPLACES its defaults. */
 export type RolePermissionConfig = Partial<Record<UserRole, Permission[]>>;
 
+/** Was the stored role matrix saved after the adjust-permission split?
+ *  (see GRANULAR_SPLIT_MARKER in rbac.ts) */
+function isSplitMarked(raw: unknown): boolean {
+  return !!raw && typeof raw === "object" && (raw as Record<string, unknown>)[GRANULAR_SPLIT_MARKER] === true;
+}
+
 /** Sanitize a stored/submitted role→permission config (drops unknown keys). */
 export function parseRolePermissionConfig(raw: unknown): RolePermissionConfig {
   const out: RolePermissionConfig = {};
@@ -74,22 +81,35 @@ export const getConfiguredRolePermissions = cache(
   > {
     const raw = await getSetting<unknown>(ROLE_PERM_SETTING_KEY, null);
     const cfg = parseRolePermissionConfig(raw);
+    const marked = isSplitMarked(raw);
     const result = {} as Record<UserRole, Set<Permission>>;
     for (const role of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
       if (role === "SUPER_ADMIN") {
         result[role] = new Set(ROLE_PERMISSIONS.SUPER_ADMIN);
         continue;
       }
-      result[role] = new Set(cfg[role] ?? ROLE_PERMISSIONS[role]);
+      // Expanded HERE, once: a saved role in a marked matrix is literal; an
+      // unmarked (pre-split) one and the code defaults get the legacy expansion.
+      result[role] = expandLegacyPermissions(
+        new Set(cfg[role] ?? ROLE_PERMISSIONS[role]),
+        marked && cfg[role] !== undefined
+      );
     }
     return result;
   }
 );
 
-/** The raw config as stored (for the editor to seed its initial state). */
+/** The config as stored (for the editor to seed its initial state). A matrix
+ *  saved before the adjust split is shown expanded — as it is enforced — so a
+ *  plain re-save (which marks it literal) does not take anything away. */
 export async function getRolePermissionConfig(): Promise<RolePermissionConfig> {
   const raw = await getSetting<unknown>(ROLE_PERM_SETTING_KEY, null);
-  return parseRolePermissionConfig(raw);
+  const cfg = parseRolePermissionConfig(raw);
+  if (isSplitMarked(raw)) return cfg;
+  for (const role of Object.keys(cfg) as UserRole[]) {
+    cfg[role] = [...expandLegacyPermissions(new Set(cfg[role]))];
+  }
+  return cfg;
 }
 
 /** Persist the whole role→permission config. SUPER_ADMIN edits are never saved. */
@@ -98,21 +118,23 @@ export async function saveRolePermissionConfig(
 ): Promise<void> {
   const clean = parseRolePermissionConfig(cfg);
   delete clean.SUPER_ADMIN;
+  // Saved now = saved after the adjust split: every role in it is literal.
+  const stored = { ...clean, [GRANULAR_SPLIT_MARKER]: true };
   await prisma.systemSetting.upsert({
     where: { key: ROLE_PERM_SETTING_KEY },
     create: {
       key: ROLE_PERM_SETTING_KEY,
       category: SETTING_CATEGORY,
-      value: clean as unknown as object,
+      value: stored as unknown as object,
     },
-    update: { category: SETTING_CATEGORY, value: clean as unknown as object },
+    update: { category: SETTING_CATEGORY, value: stored as unknown as object },
   });
   // Clear first, then prime — priming before the clear would simply be wiped
   // by it. The read goes through an Accelerate cacheStrategy whose edge cache
   // is not ours to clear, so without the prime a permission change appeared to
   // take up to a minute to apply, or nothing at all on the very first save.
   invalidateSettingsCache();
-  primeSetting(ROLE_PERM_SETTING_KEY, clean);
+  primeSetting(ROLE_PERM_SETTING_KEY, stored);
 }
 
 /** What the effective-permission engine resolves for one user. */
@@ -141,7 +163,48 @@ type AccessUserRow = {
   moduleOverrides?: unknown;
 };
 
+// Last-known-good access row per user, so a DB blip (the prisma retry
+// extension already rode out the short ones) doesn't take down every admin
+// page. Bounded in size AND age: a memo older than ACCESS_MEMO_MAX_AGE_MS is
+// never served, so a revocation is honoured at most that long into an outage.
+// No memo → the error propagates and the caller denies; it never grants.
+//
+// No `cacheStrategy` on the read itself on purpose: an edge-cached row would
+// keep a revoked role working for its TTL even when the DB is healthy.
+const ACCESS_MEMO_MAX = 500;
+const ACCESS_MEMO_MAX_AGE_MS = 10 * 60_000;
+const accessMemo = new Map<string, { row: AccessUserRow | null; at: number }>();
+
+function rememberAccess(userId: string, row: AccessUserRow | null) {
+  accessMemo.delete(userId); // re-insert → most recent at the end
+  accessMemo.set(userId, { row, at: Date.now() });
+  if (accessMemo.size > ACCESS_MEMO_MAX) {
+    const oldest = accessMemo.keys().next().value;
+    if (oldest !== undefined) accessMemo.delete(oldest);
+  }
+}
+
 async function loadAccessUser(userId: string): Promise<AccessUserRow | null> {
+  try {
+    const row = await loadAccessUserFresh(userId);
+    rememberAccess(userId, row);
+    return row;
+  } catch (e) {
+    const memo = accessMemo.get(userId);
+    if (memo && Date.now() - memo.at < ACCESS_MEMO_MAX_AGE_MS) {
+      console.error(
+        `[permissions] access read failed for ${userId} — serving last-known-good from ${Math.round(
+          (Date.now() - memo.at) / 1000
+        )}s ago:`,
+        e
+      );
+      return memo.row;
+    }
+    throw e;
+  }
+}
+
+async function loadAccessUserFresh(userId: string): Promise<AccessUserRow | null> {
   const base = {
     role: true,
     permissionOverrides: true,
@@ -189,11 +252,15 @@ const resolveAccess = cache(async function resolveAccess(
   // A set saved before the adjustment permissions were split gets them back
   // here (see expandLegacyPermissions); the per-user overrides below still
   // have the last word.
-  const perms = expandLegacyPermissions(
+  // (The configured role sets arrive already expanded — see
+  // getConfiguredRolePermissions — so only a custom role is expanded here.)
+  const perms =
     user.customRoleId && customRole?.isActive
-      ? new Set(customRole.permissions.filter(isPermission))
-      : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? [])
-  );
+      ? expandLegacyPermissions(
+          new Set(customRole.permissions.filter(isPermission)),
+          customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
+        )
+      : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
 
   const overrides = parsePermissionOverrides(user.permissionOverrides);
   for (const [perm, granted] of Object.entries(overrides)) {
@@ -243,11 +310,12 @@ export async function getAccessBreakdown(userId: string): Promise<{
   const base =
     role === "SUPER_ADMIN"
       ? new Set(ROLE_PERMISSIONS.SUPER_ADMIN)
-      : expandLegacyPermissions(
-          user.customRoleId && user.customRole?.isActive
-            ? new Set(user.customRole.permissions.filter(isPermission))
-            : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? [])
-        );
+      : user.customRoleId && user.customRole?.isActive
+        ? expandLegacyPermissions(
+            new Set(user.customRole.permissions.filter(isPermission)),
+            user.customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
+          )
+        : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
   return {
     role,
     base: [...base],

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
 import { prisma } from "@/lib/prisma";
 import { MarketplaceView } from "@/components/user/marketplace/marketplace-view";
+import { ServerAdSlot } from "@/components/user/primitives/server-ad-slot";
 import { getEffectiveFeatures } from "@/lib/packages";
 import { FeatureLock } from "@/components/user/primitives/feature-lock";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -63,7 +64,12 @@ export default async function MarketplacePage({ searchParams }: Props) {
     }))
     .filter((s) => s.listingCount > 0);
 
-  return <MarketplaceView storefronts={storefronts} />;
+  return (
+    <MarketplaceView
+      storefronts={storefronts}
+      topAd={<ServerAdSlot placement="MARKETPLACE_TOP" />}
+    />
+  );
 }
 
 /**

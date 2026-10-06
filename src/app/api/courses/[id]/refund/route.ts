@@ -4,25 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { z } from "zod";
 import { NotificationType, CourseRefundStatus } from "@/generated/prisma";
+import { getCourseSettings } from "@/lib/course-settings";
 
 const refundSchema = z.object({
   reason: z.string().min(10).max(2000),
 });
-
-const REFUND_DEFAULT_WINDOW_DAYS = 30;
-
-async function getRefundWindowDays(): Promise<number> {
-  const setting = await prisma.systemSetting.findUnique({
-    where: { key: "course_settings" },
-  });
-  if (setting?.value && typeof setting.value === "object") {
-    const v = setting.value as { refundWindowDays?: number };
-    if (typeof v.refundWindowDays === "number" && v.refundWindowDays >= 0) {
-      return v.refundWindowDays;
-    }
-  }
-  return REFUND_DEFAULT_WINDOW_DAYS;
-}
 
 // POST /api/courses/:id/refund — student requests a refund
 export async function POST(
@@ -52,7 +38,7 @@ export async function POST(
     }
     const enrollment = await prisma.courseEnrollment.findUnique({
       where: { courseId_userId: { courseId: course.id, userId: session.user.id } },
-      select: { id: true, pricePaid: true, createdAt: true },
+      select: { id: true, pricePaid: true, createdAt: true, progress: true },
     });
     if (!enrollment) {
       return NextResponse.json(
@@ -66,7 +52,8 @@ export async function POST(
         { status: 400 }
       );
     }
-    const windowDays = await getRefundWindowDays();
+    const settings = await getCourseSettings();
+    const windowDays = settings.refundWindowDays;
     const cutoff = new Date(
       enrollment.createdAt.getTime() + windowDays * 24 * 60 * 60 * 1000
     );
@@ -74,6 +61,19 @@ export async function POST(
       return NextResponse.json(
         {
           error: `Refund window has closed. Refunds are available for ${windowDays} days after enrolment.`,
+        },
+        { status: 400 }
+      );
+    }
+    // Progress rule (admin-set, Courses → Settings): a course mostly
+    // consumed is not refundable. 100 = progress never blocks a refund.
+    if (
+      settings.refundMaxProgressPercent < 100 &&
+      enrollment.progress > settings.refundMaxProgressPercent
+    ) {
+      return NextResponse.json(
+        {
+          error: `Refunds are only available until you've completed ${settings.refundMaxProgressPercent}% of the course — you're at ${enrollment.progress}%.`,
         },
         { status: 400 }
       );

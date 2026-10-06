@@ -3,7 +3,7 @@ import { CountryFlag } from "@/components/admin/ui/country-flag";
 import { countryName } from "@/lib/country";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import {
   Users,
@@ -53,7 +53,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   if (!(await can(session.user.id, "users.view"))) redirect("/admin");
   const seesMoney = await can(session.user.id, "finance.view");
 
-  const params = await searchParams;
+  // A repeated key (?search=a&search=b) arrives as string[] at runtime whatever
+  // the type says — take the first, so `.trim()` / `.replace()` can't crash.
+  const params = Object.fromEntries(
+    Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
+  ) as Awaited<PageProps["searchParams"]>;
   const page = parsePage(params.page);
   const pageSize = 20;
   const skip = (page - 1) * pageSize;
@@ -63,13 +67,13 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   // string (e.g. ?status=active) reach Prisma and throw a validation error.
   const where: Prisma.UserWhereInput = {};
 
-  if (params.status && params.status !== "all" && params.status in UserStatus) {
+  if (params.status && params.status !== "all" && (Object.values(UserStatus) as string[]).includes(params.status)) {
     where.status = params.status as Prisma.EnumUserStatusFilter["equals"];
   }
-  if (params.role && params.role !== "all" && params.role in UserRoleEnum) {
+  if (params.role && params.role !== "all" && (Object.values(UserRoleEnum) as string[]).includes(params.role)) {
     where.role = params.role as Prisma.EnumUserRoleFilter["equals"];
   }
-  if (params.kyc && params.kyc !== "all" && params.kyc in KYCStatus) {
+  if (params.kyc && params.kyc !== "all" && (Object.values(KYCStatus) as string[]).includes(params.kyc)) {
     where.kycStatus = params.kyc as Prisma.EnumKYCStatusFilter["equals"];
   }
   if (params.package && params.package !== "all") {
@@ -162,10 +166,15 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
 
   // Where users come from — by the country of their IP (last seen, else
   // sign-up). Regular users only: staff are not the audience.
-  const geoRows = (await prisma.$queryRaw<Array<{ code: string | null; n: number }>>`
+  // Non-critical panel → degrades to empty instead of taking the page down.
+  const geoRows = await safeRead(
+    prisma.$queryRaw<Array<{ code: string | null; n: number }>>`
     SELECT COALESCE("lastCountry", "signupCountry") AS code, COUNT(*)::int AS n
     FROM "User" WHERE role = 'USER'
-    GROUP BY 1 ORDER BY n DESC`) as Array<{ code: string | null; n: number }>;
+    GROUP BY 1 ORDER BY n DESC`,
+    [] as Array<{ code: string | null; n: number }>,
+    "admin/users geo"
+  );
   const geoKnown = geoRows.filter((g) => g.code);
   const geoUnknown = geoRows.find((g) => !g.code)?.n ?? 0;
   const geoTotal = geoRows.reduce((a, g) => a + g.n, 0);

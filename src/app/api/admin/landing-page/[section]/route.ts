@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { isSectionKey, normalizeHeroAnimation, settingKeyFor } from "@/lib/landing-content";
 import { invalidateSettingsCache } from "@/lib/system-settings";
 import type { Prisma } from "@/generated/prisma/client";
@@ -51,10 +52,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   const key = settingKeyFor(section);
   const value = JSON.parse(JSON.stringify(body)) as Prisma.InputJsonValue;
 
+  const before = await prisma.systemSetting.findUnique({ where: { key }, select: { value: true } });
   await prisma.systemSetting.upsert({
     where: { key },
     create: { key, value, category: "landing", description: null },
     update: { value, category: "landing" },
+  });
+  await writeAudit({
+    actorId: session.user.id,
+    action: "LANDING_SECTION_UPDATED",
+    entity: "SystemSetting",
+    entityId: key,
+    summary: `Edited the landing page "${section}" section`,
+    meta: { before: before?.value ?? null, after: value },
   });
 
   invalidateSettingsCache();

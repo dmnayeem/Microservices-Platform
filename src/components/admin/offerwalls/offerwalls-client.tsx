@@ -17,6 +17,7 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { SIGNATURE_PRESETS } from "@/lib/offerwall-providers/signature-presets";
 
 interface Offerwall {
   id: string;
@@ -285,6 +286,10 @@ function ProviderModal({
     kind?: string;
     apiEndpoint?: string;
     holdHours?: number;
+    signatureMode?: string;
+    signatureAlgo?: string;
+    signatureTemplate?: string;
+    signatureParam?: string;
   };
   const [form, setForm] = useState({
     provider: provider?.provider ?? KNOWN_PROVIDERS[0],
@@ -300,7 +305,23 @@ function ProviderModal({
     kind: cfg.kind === "SURVEY" ? "SURVEY" : "OFFER",
     apiEndpoint: cfg.apiEndpoint ?? "",
     holdHours: cfg.holdHours ?? 0,
+    signatureMode: cfg.signatureMode ?? "HMAC_SHA256",
+    signatureAlgo: cfg.signatureAlgo ?? "md5",
+    signatureTemplate: cfg.signatureTemplate ?? "",
+    signatureParam: cfg.signatureParam ?? "",
   });
+
+  const applyPreset = (key: string) => {
+    const p = SIGNATURE_PRESETS[key];
+    if (!p) return;
+    setForm((f) => ({
+      ...f,
+      signatureMode: p.mode ?? f.signatureMode,
+      signatureAlgo: p.algo ?? f.signatureAlgo,
+      signatureTemplate: p.template ?? "",
+      signatureParam: p.param ?? "",
+    }));
+  };
 
   const autoCallback =
     typeof window !== "undefined"
@@ -331,6 +352,10 @@ function ProviderModal({
           kind: form.kind,
           apiEndpoint: form.apiEndpoint.trim() || undefined,
           holdHours: Number.isFinite(form.holdHours) ? form.holdHours : 0,
+          signatureMode: form.signatureMode,
+          signatureAlgo: form.signatureAlgo,
+          signatureTemplate: form.signatureTemplate.trim() || undefined,
+          signatureParam: form.signatureParam.trim() || undefined,
         },
       };
       const res = await fetch(
@@ -467,6 +492,75 @@ function ProviderModal({
               </button>
             </div>
           </Field>
+          <div className="rounded-lg border border-slate-700 bg-slate-950/50 p-3 space-y-3">
+            <Field label="Postback signature scheme">
+              <select
+                value=""
+                onChange={(e) => applyPreset(e.target.value)}
+                className={inp}
+              >
+                <option value="">Fill from a network preset…</option>
+                {Object.entries(SIGNATURE_PRESETS).map(([k, p]) => (
+                  <option key={k} value={k}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Mode">
+                <select
+                  value={form.signatureMode}
+                  onChange={(e) => setForm({ ...form, signatureMode: e.target.value })}
+                  className={inp}
+                >
+                  <option value="HMAC_SHA256">HMAC-SHA256 (custom default)</option>
+                  <option value="TEMPLATE">Hash of a template</option>
+                  <option value="HMAC_URL">HMAC of the full URL</option>
+                  <option value="SECRET_PARAM">Secret key param</option>
+                </select>
+              </Field>
+              <Field label="Signature param">
+                <input
+                  value={form.signatureParam}
+                  onChange={(e) => setForm({ ...form, signatureParam: e.target.value })}
+                  className={inp + " font-mono text-xs"}
+                  placeholder="signature / hash"
+                />
+              </Field>
+            </div>
+            {(form.signatureMode === "TEMPLATE" || form.signatureMode === "HMAC_URL") && (
+              <Field label="Algorithm">
+                <select
+                  value={form.signatureAlgo}
+                  onChange={(e) => setForm({ ...form, signatureAlgo: e.target.value })}
+                  className={inp}
+                >
+                  <option value="md5">md5</option>
+                  <option value="sha1">sha1</option>
+                  <option value="sha256">sha256</option>
+                  {form.signatureMode === "TEMPLATE" && <option value="sha512">sha512</option>}
+                </select>
+              </Field>
+            )}
+            {form.signatureMode === "TEMPLATE" && (
+              <Field label="Template ({param} = postback value, {secret} = secret)">
+                <input
+                  value={form.signatureTemplate}
+                  onChange={(e) => setForm({ ...form, signatureTemplate: e.target.value })}
+                  className={inp + " font-mono text-xs"}
+                  placeholder="{trans_id}-{secret}"
+                />
+              </Field>
+            )}
+            <p className="text-[11px] text-slate-500">
+              {form.signatureMode === "HMAC_SHA256"
+                ? "HMAC-SHA256(secret, transactionId + userId + userPayout + payoutAmount). Existing integrations use this."
+                : form.signatureMode === "SECRET_PARAM"
+                ? "The named param must equal the secret. Weakest option — the secret travels in the URL."
+                : "Match the network's postback docs exactly; the template must include {secret}."}
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Integration">
               <select

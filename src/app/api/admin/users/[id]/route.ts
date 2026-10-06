@@ -131,6 +131,11 @@ const updateUserSchema = z.object({
   twoFactorEnabled: z.boolean().optional(),
   tutorSuspended: z.boolean().optional(),
   isBlueVerified: z.boolean().optional(),
+  // Granting a badge needs a length: days, or an explicit lifetime. Removing a
+  // badge the user paid for needs a reason (it goes in the audit log).
+  badgeDurationDays: z.number().int().min(1).max(3650).optional(),
+  badgeLifetime: z.boolean().optional(),
+  badgeReason: z.string().trim().max(500).optional(),
   verifiedBadgeStyle: z
     .enum(["BLUE", "GOLD", "RAINBOW", "EMERALD", "PURPLE", "ROSE", "OCEAN"])
     .optional()
@@ -365,6 +370,22 @@ export async function PATCH(
           { status: 403 }
         );
       }
+      // Nobody but a super admin edits their OWN permission overrides — a
+      // manager granting itself a permission is self-escalation, whatever the
+      // permission is. (Compared as a change, so a full-form save that sends
+      // the unchanged overrides back still goes through.)
+      if (id === session.user.id && adminRole !== "SUPER_ADMIN") {
+        const canon = (v: unknown) =>
+          JSON.stringify(Object.entries(parsePermissionOverrides(v)).sort(([x], [y]) => x.localeCompare(y)));
+        const cur = canon(existingUser.permissionOverrides);
+        const next = canon(data.permissionOverrides ?? {});
+        if (cur !== next) {
+          return NextResponse.json(
+            { error: "You can't change your own permissions — ask a super admin." },
+            { status: 403 }
+          );
+        }
+      }
       let po =
         data.permissionOverrides === null
           ? {}
@@ -411,13 +432,98 @@ export async function PATCH(
       updateData.twoFactorEnabled = false;
       updateData.twoFactorSecret = null;
     }
-    if (data.isBlueVerified !== undefined) {
-      updateData.isBlueVerified = data.isBlueVerified;
-      // An admin's grant is permanent (no expiry), and an admin's removal ends
-      // a bought badge too — otherwise a stale purchase date would let the
-      // hourly badge sweep undo the admin's grant.
-      updateData.blueBadgeExpiresAt = null;
-      if (!data.isBlueVerified) updateData.blueBadgeAutoRenew = false;
+    // Blue badge. The badge is sold in the badge shop, so giving it away (or
+    // taking a bought one back) is its own permission, not part of users.edit.
+    // Only an actual change is acted on — re-sending the current value used to
+    // wipe a bought badge's expiry and turn it permanent.
+    let badgeAudit: { action: string; summary: string; meta: Record<string, unknown> } | null = null;
+    const badgeExtend =
+      data.isBlueVerified === true &&
+      existingUser.isBlueVerified &&
+      (data.badgeLifetime === true || data.badgeDurationDays !== undefined);
+    if (
+      data.isBlueVerified !== undefined &&
+      (data.isBlueVerified !== existingUser.isBlueVerified || badgeExtend)
+    ) {
+      if (!(await can(session.user.id, "users.grant_badge"))) {
+        return NextResponse.json(
+          { error: 'Granting or removing the blue badge needs the "users.grant_badge" permission — ask a super admin.' },
+          { status: 403 }
+        );
+      }
+      const before = {
+        isBlueVerified: existingUser.isBlueVerified,
+        blueBadgeExpiresAt: existingUser.blueBadgeExpiresAt?.toISOString() ?? null,
+        blueBadgeAutoRenew: existingUser.blueBadgeAutoRenew,
+      };
+      if (data.isBlueVerified) {
+        if (data.badgeLifetime !== true && data.badgeDurationDays === undefined) {
+          return NextResponse.json(
+            { error: "Choose how long the badge lasts (days) or tick Lifetime." },
+            { status: 400 }
+          );
+        }
+        // Timed grant: from now (or from the end of a still-running badge).
+        // Auto-renew stays OFF — a free grant must never turn into a charge
+        // when the hourly sweep reaches its end date.
+        const now = new Date();
+        const base =
+          existingUser.isBlueVerified &&
+          existingUser.blueBadgeExpiresAt &&
+          existingUser.blueBadgeExpiresAt > now
+            ? existingUser.blueBadgeExpiresAt
+            : now;
+        const expiresAt =
+          data.badgeLifetime === true
+            ? null
+            : new Date(base.getTime() + data.badgeDurationDays! * 86_400_000);
+        updateData.isBlueVerified = true;
+        updateData.blueBadgeExpiresAt = expiresAt;
+        updateData.blueBadgeAutoRenew = false;
+        badgeAudit = {
+          action: "USER_BADGE_GRANTED",
+          summary: expiresAt
+            ? `Granted the blue badge until ${expiresAt.toISOString().slice(0, 10)}`
+            : "Granted the blue badge for life",
+          meta: {
+            before,
+            after: { isBlueVerified: true, blueBadgeExpiresAt: expiresAt?.toISOString() ?? null, blueBadgeAutoRenew: false },
+            lifetime: expiresAt === null,
+            durationDays: data.badgeDurationDays ?? null,
+            reason: data.badgeReason || null,
+          },
+        };
+      } else {
+        // Was it bought? A running timed badge with a shop purchase behind it.
+        const paid =
+          !!existingUser.blueBadgeExpiresAt &&
+          existingUser.blueBadgeExpiresAt > new Date() &&
+          !!(await prisma.transaction.findFirst({
+            where: { userId: id, reference: { startsWith: `badge_blue_${id}_` } },
+            select: { id: true },
+          }));
+        if (paid && !data.badgeReason) {
+          return NextResponse.json(
+            { error: "This user paid for their badge — give a reason for removing it." },
+            { status: 400 }
+          );
+        }
+        // Removal ends a bought badge too (and its auto-renew), otherwise the
+        // hourly sweep would charge for a badge the admin took away.
+        updateData.isBlueVerified = false;
+        updateData.blueBadgeExpiresAt = null;
+        updateData.blueBadgeAutoRenew = false;
+        badgeAudit = {
+          action: "USER_BADGE_REMOVED",
+          summary: `Removed the blue badge${paid ? " (paid)" : ""}${data.badgeReason ? ` — ${data.badgeReason}` : ""}`,
+          meta: {
+            before,
+            after: { isBlueVerified: false, blueBadgeExpiresAt: null, blueBadgeAutoRenew: false },
+            paid,
+            reason: data.badgeReason || null,
+          },
+        };
+      }
     }
     if (data.verifiedBadgeStyle !== undefined)
       updateData.verifiedBadgeStyle = data.verifiedBadgeStyle;
@@ -597,6 +703,18 @@ export async function PATCH(
       await prisma.tutorProfile.updateMany({
         where: { userId: id },
         data: { isSuspended: data.tutorSuspended },
+      });
+    }
+
+    if (badgeAudit) {
+      await writeAudit({
+        actorId: session.user.id,
+        action: badgeAudit.action,
+        entity: "User",
+        entityId: id,
+        targetUserId: id,
+        summary: badgeAudit.summary,
+        meta: badgeAudit.meta,
       });
     }
 

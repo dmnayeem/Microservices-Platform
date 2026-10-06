@@ -108,6 +108,7 @@ const DEFAULTS: SettingsBag = {
   "bkash.usdToBdtRate": 123,
   vat_enabled: false,
   vat_pct: 15,
+  "plans.auto_renew_enabled": true,
   // Buyer & task funding
   "buyer.enabled": true,
   "buyer.fee_percent": 0,
@@ -122,7 +123,6 @@ const DEFAULTS: SettingsBag = {
   "buyer.allowed_platforms": [],
   "buyer.require_kyc": false,
   "buyer.auto_approve_tasks": false,
-  "buyer.refund_fee_on_reject": true,
   // Security
   password_min_length: 8,
   require_strong_passwords: true,
@@ -570,6 +570,13 @@ export function SystemSettingsForm({
         tone="amber"
       />
     ),
+    "plans.auto_renew_enabled": () => (
+      <SwitchRow settingKey="plans.auto_renew_enabled"
+        checked={values["plans.auto_renew_enabled"] !== false}
+        onChange={(v) => set("plans.auto_renew_enabled", v)}
+        disabled={!canEdit}
+      />
+    ),
     vat_pct: () =>
       !!values.vat_enabled && (
         <Row settingKey="vat_pct">
@@ -772,13 +779,6 @@ export function SystemSettingsForm({
         onChange={(v) => set("buyer.auto_approve_tasks", v)}
         disabled={!canEdit}
         tone="red"
-      />
-    ),
-    "buyer.refund_fee_on_reject": () => (
-      <SwitchRow settingKey="buyer.refund_fee_on_reject"
-        checked={values["buyer.refund_fee_on_reject"] !== false}
-        onChange={(v) => set("buyer.refund_fee_on_reject", v)}
-        disabled={!canEdit}
       />
     ),
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { lsGet, lsSet } from "@/lib/safe-storage";
 import { useEffect, useState } from "react";
 import { Cookie, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,14 +41,14 @@ export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
   useEffect(() => {
     if (!enabled) return;
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = lsGet(STORAGE_KEY);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!saved) setShow(true);
   }, [enabled]);
 
   const persist = (p: Prefs) => {
-    const previous = localStorage.getItem(STORAGE_KEY);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    const previous = lsGet(STORAGE_KEY);
+    lsSet(STORAGE_KEY, JSON.stringify(p));
     // Tracking tags (SiteTracking) wait for this to load without a reload.
     window.dispatchEvent(new Event("eg-consent"));
     setShow(false);

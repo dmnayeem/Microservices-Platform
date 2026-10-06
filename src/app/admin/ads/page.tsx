@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Megaphone } from "lucide-react";
+import { Globe, Megaphone } from "lucide-react";
 import { AdManagerView } from "@/components/admin/ads/ad-manager-view";
 
 export default async function AdsAdminPage() {
@@ -26,6 +26,20 @@ export default async function AdsAdminPage() {
           </span>
           <span className="block text-xs text-slate-400">
             Put a marketplace listing or a course into these ad slots. Never billed.
+          </span>
+        </span>
+      </Link>
+
+      <Link
+        href="/admin/ads/networks"
+        className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-3 hover:border-slate-500"
+      >
+        <Globe className="h-5 w-5 shrink-0 text-slate-300" />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-white">Ad networks</span>
+          <span className="block text-xs text-slate-400">
+            Enable Adsterra, Monetag, MGID and others, set publisher ids (ads.txt) and the
+            paid-page rule.
           </span>
         </span>
       </Link>

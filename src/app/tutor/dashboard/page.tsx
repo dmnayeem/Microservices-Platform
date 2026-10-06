@@ -1,7 +1,7 @@
 import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import {
   GraduationCap,
   Users,
@@ -24,14 +24,16 @@ export default async function TutorDashboardPage() {
 
   const userId = session.user.id;
 
+  // Profile + course list stay strict; the stat tiles and the two side lists
+  // degrade on their own (safeRead) instead of failing the whole dashboard.
   const [profile, courseAgg, courses, recentEnrollments, pendingQuestions] =
     await Promise.all([
       prisma.tutorProfile.findUnique({ where: { userId } }),
-      prisma.course.aggregate({
+      safeRead(prisma.course.aggregate({
         where: { tutorId: userId },
         _count: { _all: true },
         _sum: { enrollmentCount: true, totalRevenueCents: true },
-      }),
+      }), { _count: { _all: 0 }, _sum: {} } as never, "tutor dashboard #1"),
       prisma.course.findMany({
         where: { tutorId: userId },
         orderBy: { updatedAt: "desc" },
@@ -45,7 +47,7 @@ export default async function TutorDashboardPage() {
           updatedAt: true,
         },
       }),
-      prisma.courseEnrollment.findMany({
+      safeRead(prisma.courseEnrollment.findMany({
         where: { course: { tutorId: userId } },
         orderBy: { createdAt: "desc" },
         take: 5,
@@ -53,8 +55,8 @@ export default async function TutorDashboardPage() {
           user: { select: { id: true, name: true, email: true, avatar: true } },
           course: { select: { id: true, title: true } },
         },
-      }),
-      prisma.courseQuestion.findMany({
+      }), [], "tutor dashboard #3"),
+      safeRead(prisma.courseQuestion.findMany({
         where: {
           course: { tutorId: userId },
           answeredAt: null,
@@ -65,7 +67,7 @@ export default async function TutorDashboardPage() {
           course: { select: { id: true, title: true } },
           asker: { select: { id: true, name: true, avatar: true } },
         },
-      }),
+      }), [], "tutor dashboard #4"),
     ]);
 
   const totalCourses = courseAgg._count._all;

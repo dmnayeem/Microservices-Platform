@@ -9,7 +9,14 @@ import { processReferralCommissions } from "@/lib/referral-commissions";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { getPointsPerUsd } from "@/lib/economy";
-import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
+import {
+  chargeTaskCompletion,
+  claimTaskCompletionSlot,
+  CompletionRefused,
+  notifyTaskClosed,
+  unpaidCompletionMessage,
+} from "@/lib/task-credit";
+import { getPlanMultipliers } from "@/lib/plan-multipliers";
 import { getBuyerSettings } from "@/lib/buyer-settings";
 import { bumpTrust, TRUST_APPROVE, TRUST_REJECT } from "@/lib/trust";
 import { addFraudRisk } from "@/lib/fraud-risk";
@@ -165,21 +172,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const isBoardTask = !!existingSubmission.task.boardId;
       const task = existingSubmission.task;
 
-      // Apply the submitter's plan reward multiplier (matches the auto-approve
-      // path in submit/route.ts, which the admin path previously ignored).
-      const submitterPlan = await prisma.user.findUnique({
-        where: { id: existingSubmission.userId },
-        select: { package: { select: { taskRewardMultiplier: true } } },
-      });
-      const multiplier =
-        (
-          submitterPlan as unknown as {
-            package: { taskRewardMultiplier: number } | null;
-          }
-        )?.package?.taskRewardMultiplier ?? 1;
+      // Apply the submitter's plan multipliers (matches the auto-approve path
+      // in submit/route.ts). From the EFFECTIVE plan — an expired plan no
+      // longer boosts; the raw `user.package` relation ignored expiry.
+      const planMult = await getPlanMultipliers(existingSubmission.userId);
+      const multiplier = planMult.taskReward;
       const basePoints =
         pointsOverride ?? Math.round(task.pointsReward * multiplier);
-      const baseXp = Math.round(task.xpReward * multiplier);
+      const baseXp = Math.round(task.xpReward * planMult.xp);
 
       // A points override ABOVE the task's own reward is a hand grant of
       // points, not a review decision. It was gated only by
@@ -297,8 +297,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // commission is a share of THAT payment; it was paid even when the
       // worker got nothing (already paid, or the funder's budget ran dry).
       let workerPaid = false;
+      // Why the worker was NOT paid, when awardsPoints but !workerPaid.
+      let unpaidReason: "ALREADY_PAID" | "NO_CREDIT" | "DELIVERED" | null = null;
 
-      const submission = await prisma.$transaction(async (tx) => {
+      let submission;
+      try {
+      submission = await prisma.$transaction(async (tx) => {
         const claim = await tx.taskSubmission.updateMany({
           where: { id, status: "PENDING" },
           data: {
@@ -315,10 +319,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (claim.count === 0) return null; // lost the race — already reviewed
 
         if (finalStatus === "APPROVED") {
-          await tx.task.update({
-            where: { id: existingSubmission.taskId },
-            data: { completedCount: { increment: 1 } },
-          });
+          // Conditional slot claim: an approval past `totalLimit` rolls the
+          // whole review back (the admin is told to reject or raise the limit).
+          if (!(await claimTaskCompletionSlot(tx, existingSubmission.taskId))) {
+            throw new CompletionRefused("TASK_FULL");
+          }
         }
         if (awardsPoints) {
           // Has this submission already been paid? Checked BEFORE the budget
@@ -342,6 +347,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           // Only credit the worker with what the pool actually covers — never
           // mint unfunded points. Unfunded (admin) tasks always credit.
           let credit = !alreadyPaid;
+          if (alreadyPaid) unpaidReason = "ALREADY_PAID";
           if (credit && task.fundedByUserId) {
             const charge = await chargeTaskCompletion(tx, {
               taskId: task.id,
@@ -352,6 +358,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
               remainingBudget: task.remainingBudget,
             });
             credit = charge.paid;
+            if (!charge.paid) {
+              unpaidReason = charge.reason ?? "NO_CREDIT";
+              // The claim above wrote the full reward on the row; nothing was
+              // paid, so the row must not read as paid in any history or list.
+              await tx.taskSubmission.update({
+                where: { id },
+                data: {
+                  pointsEarned: 0,
+                  xpEarned: 0,
+                  feedback: unpaidCompletionMessage(charge.reason),
+                },
+              });
+            }
             if (charge.closeTask) {
               await tx.task.update({
                 where: { id: task.id },
@@ -408,7 +427,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           }
         }
         return tx.taskSubmission.findUnique({ where: { id } });
-      });
+      }, { timeout: 15_000, maxWait: 10_000 });
+      } catch (err) {
+        if (err instanceof CompletionRefused && err.reason === "TASK_FULL") {
+          await closeTaskIfFull(existingSubmission.taskId);
+          return NextResponse.json(
+            {
+              error: `This task already reached its completion limit (${task.totalLimit ?? "—"}). Nothing was approved or paid — reject this submission, or raise the task's limit first.`,
+            },
+            { status: 409 }
+          );
+        }
+        throw err;
+      }
 
       if (!submission) {
         return NextResponse.json(
@@ -481,6 +512,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
 
+      // What the worker actually received in THIS approval. When the funder's
+      // credit/budget could not cover it (or it was paid before), the notice,
+      // the audit line and the admin's response must not claim a credit.
+      const paidPoints = awardsPoints && !workerPaid ? 0 : earnedPoints;
+      const unpaidWarning =
+        awardsPoints && !workerPaid
+          ? unpaidReason === "ALREADY_PAID"
+            ? "This submission was already paid earlier — it was not paid again."
+            : unpaidCompletionMessage(unpaidReason === "DELIVERED" ? "DELIVERED" : "NO_CREDIT")
+          : null;
+
       // Audit log
       await writeAudit({
         actorId: session.user.id,
@@ -488,12 +530,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         entity: "TaskSubmission",
         entityId: id,
         targetUserId: existingSubmission.userId,
-        summary: `Approved a task submission (+${earnedPoints} pts)`,
+        summary: `Approved a task submission (+${paidPoints} pts)${unpaidWarning ? " — not paid" : ""}`,
         meta: {
           taskId: existingSubmission.taskId,
           feedback: feedback ?? null,
           score: score ?? null,
-          pointsAwarded: earnedPoints,
+          pointsAwarded: paidPoints,
+          unpaidReason,
           finalStatus,
         },
       });
@@ -507,7 +550,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           title: "Task approved 🎉",
           message:
             `Your submission for "${task.title}" was approved` +
-            (earnedPoints > 0 ? ` — ${earnedPoints} pts credited.` : ".") +
+            (paidPoints > 0
+              ? ` — ${paidPoints} pts credited.`
+              : unpaidWarning && unpaidReason !== "ALREADY_PAID"
+                ? `, but no reward was paid: ${unpaidWarning}`
+                : ".") +
             (score != null ? ` Marks: ${score}/100.` : "") +
             (feedback ? `\n\n${feedback}` : ""),
           link: `/tasks/${existingSubmission.taskId}`,
@@ -527,10 +574,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({
         success: true,
         submission,
-        pointsAwarded: earnedPoints,
+        pointsAwarded: paidPoints,
+        ...(unpaidWarning ? { warning: unpaidWarning } : {}),
         message:
           finalStatus === "APPROVED"
-            ? `Approved — ${earnedPoints} pts awarded`
+            ? unpaidWarning
+              ? `Approved — but not paid. ${unpaidWarning}`
+              : `Approved — ${paidPoints} pts awarded`
             : "All actions rejected — no points awarded",
       });
     } else if (normalized === "rejected") {

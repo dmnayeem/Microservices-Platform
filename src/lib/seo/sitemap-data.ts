@@ -21,7 +21,7 @@ import { SITE_URL } from "@/lib/seo/site-url";
  * costs a database read.
  */
 
-export const SITEMAP_SECTIONS = ["pages", "blog", "marketplace", "courses", "posts"] as const;
+export const SITEMAP_SECTIONS = ["pages", "blog", "marketplace", "courses", "posts", "offers"] as const;
 export type SitemapSection = (typeof SITEMAP_SECTIONS)[number];
 
 export type ChangeFreq = "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
@@ -66,6 +66,24 @@ const courseRows = unstable_cache(
       .catch(() => []),
   ["sitemap:courses:v1"],
   { revalidate: HOUR, tags: [PUBLIC_COURSES_TAG] }
+);
+
+/**
+ * Published offer pages (/offer/<slug>). Same rule as src/app/offer/[slug]:
+ * anything but PUBLISHED is a 404 there, so it is never listed here.
+ */
+const offerRows = unstable_cache(
+  async (): Promise<Array<{ slug: string; updatedAt: Date }>> =>
+    prisma.offer
+      .findMany({
+        where: { status: "PUBLISHED" },
+        select: { slug: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+        take: 5000,
+      })
+      .catch(() => []),
+  ["sitemap:offers:v1"],
+  { revalidate: HOUR }
 );
 
 /** Active brand storefronts (/marketplace/brand/<slug>). */
@@ -141,6 +159,7 @@ export async function sitemapSection(section: SitemapSection): Promise<SitemapEn
         ["/features/courses", 0.9, "weekly"],
         ["/features/affiliate", 0.8, "weekly"],
         ["/advertise", 0.8, "weekly"],
+        ["/pricing", 0.8, "weekly"],
         // Not in the public menu (by request) — which makes listing it here
         // the only way a crawler ever finds it.
         ["/referral", 0.7, "weekly"],
@@ -231,6 +250,16 @@ export async function sitemapSection(section: SitemapSection): Promise<SitemapEn
         lastModified: d(p.updatedAt),
         changeFrequency: "daily" as const,
         priority: 0.4,
+      }));
+    }
+
+    case "offers": {
+      const offers = await offerRows();
+      return offers.map((o) => ({
+        url: u(`/offer/${encodeURIComponent(o.slug)}`),
+        lastModified: d(o.updatedAt),
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
       }));
     }
   }

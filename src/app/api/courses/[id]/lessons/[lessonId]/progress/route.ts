@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { maybeIssueCertificate } from "@/lib/course-certificate";
+import { lessonCompletionBlock } from "@/lib/course-access";
 
 const patchSchema = z.object({
   watchedSeconds: z.number().int().min(0).optional(),
@@ -51,14 +52,21 @@ export async function PATCH(
     }
     const lesson = await prisma.courseLesson.findFirst({
       where: { id: lessonId, courseId: course.id },
-      select: { id: true, duration: true },
+      select: {
+        id: true,
+        duration: true,
+        lessonType: true,
+        videoUrl: true,
+        quizId: true,
+        assignmentId: true,
+      },
     });
     if (!lesson) {
       return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
     }
 
     // Upsert the progress row
-    const data = v.data;
+    const data = { ...v.data };
     const existing = await prisma.courseLessonProgress.findUnique({
       where: {
         enrollmentId_lessonId: {
@@ -66,9 +74,23 @@ export async function PATCH(
           lessonId: lesson.id,
         },
       },
-      select: { id: true, isCompleted: true },
+      select: { id: true, isCompleted: true, createdAt: true },
     });
     const wasCompleted = existing?.isCompleted ?? false;
+
+    // Completion is no longer a bare client claim: it needs real,
+    // server-observed progress (first-open time on this row, quiz pass,
+    // assignment submission — see course-access). A blocked completion still
+    // saves the rest of the patch (and so records the first open).
+    let completionBlock: string | null = null;
+    if (data.isCompleted === true && !wasCompleted) {
+      completionBlock = await lessonCompletionBlock({
+        userId: session.user.id,
+        lesson,
+        openedAt: existing?.createdAt ?? null,
+      });
+      if (completionBlock) data.isCompleted = undefined;
+    }
 
     const updated = await prisma.courseLessonProgress.upsert({
       where: {
@@ -128,6 +150,13 @@ export async function PATCH(
       if (pct >= 100) {
         await maybeIssueCertificate(enrollment.id);
       }
+    }
+
+    if (completionBlock) {
+      return NextResponse.json(
+        { error: completionBlock, progress: updated },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({ progress: updated });

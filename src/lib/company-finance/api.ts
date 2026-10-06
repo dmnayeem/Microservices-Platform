@@ -89,13 +89,17 @@ export function auditFinance(
   entity: string,
   entityId: string | null,
   summary: string,
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
+  /** The account the action was about (team actions), so it shows on that
+   *  user's own activity history too. */
+  targetUserId?: string | null
 ) {
   return writeAudit({
     actorId: caller.id,
     action: `FINANCE_${action}`,
     entity,
     entityId,
+    targetUserId: targetUserId ?? null,
     summary,
     ...(meta ? { meta } : {}),
   });

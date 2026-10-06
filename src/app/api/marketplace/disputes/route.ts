@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 import { DisputeReason, DisputeStatus, NotificationType } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { toNum, toNumOrNull } from "@/lib/money";
+import { getDisputeWindowDays } from "@/lib/marketplace-selling";
+import { ACTIVE_DISPUTE_STATUSES } from "@/lib/marketplace-payouts";
 
 // GET /api/marketplace/disputes - Get user's disputes
+//
+// Filtered through the purchase relation. This used to load the id of EVERY
+// purchase the user had ever made or sold into memory and pass them back as
+// an `IN (...)` list — unbounded for a busy seller — and `limit` was not
+// clamped at all.
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -12,58 +21,49 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const me = session.user.id;
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status") as DisputeStatus | null;
+    const statusParam = searchParams.get("status");
+    const status =
+      statusParam && (Object.values(DisputeStatus) as string[]).includes(statusParam)
+        ? (statusParam as DisputeStatus)
+        : null;
     const role = searchParams.get("role"); // buyer, seller, or all
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
     const skip = (page - 1) * limit;
 
-    // Get user's purchases (as buyer) and sales (as seller)
-    const [userPurchases, userListings] = await Promise.all([
-      prisma.marketplacePurchase.findMany({
-        where: { buyerId: session.user.id },
-        select: { id: true },
+    const purchaseFilter: Prisma.MarketplacePurchaseWhereInput =
+      role === "buyer"
+        ? { buyerId: me }
+        : role === "seller"
+        ? { listing: { sellerId: me } }
+        : { OR: [{ buyerId: me }, { listing: { sellerId: me } }] };
+    const scope: Prisma.MarketplaceDisputeWhereInput = { purchase: purchaseFilter };
+    const where: Prisma.MarketplaceDisputeWhereInput = status
+      ? { ...scope, status }
+      : scope;
+
+    const [disputes, total, open, inReview, resolved] = await Promise.all([
+      prisma.marketplaceDispute.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
       }),
-      prisma.marketplaceListing.findMany({
-        where: { sellerId: session.user.id },
-        select: { id: true, purchases: { select: { id: true } } },
+      prisma.marketplaceDispute.count({ where }),
+      prisma.marketplaceDispute.count({ where: { ...scope, status: DisputeStatus.OPEN } }),
+      prisma.marketplaceDispute.count({ where: { ...scope, status: DisputeStatus.IN_REVIEW } }),
+      prisma.marketplaceDispute.count({
+        where: {
+          ...scope,
+          status: {
+            in: [DisputeStatus.RESOLVED_BUYER, DisputeStatus.RESOLVED_SELLER, DisputeStatus.CLOSED],
+          },
+        },
       }),
     ]);
-
-    const buyerPurchaseIds = userPurchases.map((p) => p.id);
-    const sellerPurchaseIds = userListings.flatMap((l) =>
-      l.purchases.map((p) => p.id)
-    );
-
-    // Build query based on role filter
-    let purchaseIds: string[] = [];
-    if (role === "buyer") {
-      purchaseIds = buyerPurchaseIds;
-    } else if (role === "seller") {
-      purchaseIds = sellerPurchaseIds;
-    } else {
-      purchaseIds = [...new Set([...buyerPurchaseIds, ...sellerPurchaseIds])];
-    }
-
-    const where: Record<string, unknown> = {
-      purchaseId: { in: purchaseIds },
-    };
-
-    if (status) {
-      where.status = status;
-    }
-
-    // Get disputes
-    const disputes = await prisma.marketplaceDispute.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-    });
-
-    const total = await prisma.marketplaceDispute.count({ where });
 
     // Get related purchase and listing info
     const relatedPurchaseIds = disputes.map((d) => d.purchaseId);
@@ -130,10 +130,8 @@ export async function GET(request: NextRequest) {
           resolvedAmount: toNumOrNull(dispute.resolvedAmount),
           createdAt: dispute.createdAt,
           resolvedAt: dispute.resolvedAt,
-          isMyDispute: dispute.initiatorId === session.user.id,
-          myRole: buyerPurchaseIds.includes(dispute.purchaseId)
-            ? "BUYER"
-            : "SELLER",
+          isMyDispute: dispute.initiatorId === me,
+          myRole: purchase?.buyerId === me ? "BUYER" : "SELLER",
         };
       }),
       pagination: {
@@ -142,23 +140,7 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / limit),
       },
-      stats: {
-        open: await prisma.marketplaceDispute.count({
-          where: { purchaseId: { in: purchaseIds }, status: DisputeStatus.OPEN },
-        }),
-        inReview: await prisma.marketplaceDispute.count({
-          where: {
-            purchaseId: { in: purchaseIds },
-            status: DisputeStatus.IN_REVIEW,
-          },
-        }),
-        resolved: await prisma.marketplaceDispute.count({
-          where: {
-            purchaseId: { in: purchaseIds },
-            status: { in: [DisputeStatus.RESOLVED_BUYER, DisputeStatus.RESOLVED_SELLER, DisputeStatus.CLOSED] },
-          },
-        }),
-      },
+      stats: { open, inReview, resolved },
     });
   } catch (error) {
     console.error("Error fetching disputes:", error);
@@ -169,6 +151,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const createSchema = z.object({
+  purchaseId: z.string().min(1),
+  reason: z.nativeEnum(DisputeReason),
+  description: z.string().trim().min(10).max(5000),
+  evidence: z.array(z.string().url().max(2000)).max(10).optional(),
+});
+
 // POST /api/marketplace/disputes - Create a new dispute
 export async function POST(request: NextRequest) {
   try {
@@ -178,21 +167,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { purchaseId, reason, description, evidence } = body;
-
-    // Validate required fields
-    if (!purchaseId || !reason || !description) {
+    const v = createSchema.safeParse(await request.json().catch(() => null));
+    if (!v.success) {
       return NextResponse.json(
-        { error: "Purchase ID, reason, and description are required" },
+        {
+          error:
+            "Pick a reason and describe the problem (at least 10 characters).",
+        },
         { status: 400 }
       );
     }
-
-    // Validate reason
-    if (!Object.values(DisputeReason).includes(reason)) {
-      return NextResponse.json({ error: "Invalid dispute reason" }, { status: 400 });
-    }
+    const { purchaseId, reason, description, evidence } = v.data;
 
     // Get the purchase
     const purchase = await prisma.marketplacePurchase.findUnique({
@@ -224,42 +209,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if dispute already exists for this purchase
-    const existingDispute = await prisma.marketplaceDispute.findFirst({
-      where: {
-        purchaseId,
-        status: { notIn: [DisputeStatus.CLOSED, DisputeStatus.RESOLVED_BUYER, DisputeStatus.RESOLVED_SELLER] },
-      },
-    });
-
-    if (existingDispute) {
+    // Dispute window (admin-set, Marketplace → Settings).
+    const windowDays = await getDisputeWindowDays();
+    if (Date.now() - purchase.createdAt.getTime() > windowDays * 86_400_000) {
       return NextResponse.json(
-        { error: "An active dispute already exists for this purchase" },
+        {
+          error: `Disputes can only be opened within ${windowDays} days of the purchase.`,
+        },
         { status: 400 }
       );
     }
 
-    // Create the dispute
-    const dispute = await prisma.marketplaceDispute.create({
-      data: {
-        purchaseId,
-        initiatorId: session.user.id,
-        initiatorType: isBuyer ? "BUYER" : "SELLER",
-        reason: reason as DisputeReason,
-        description,
-        evidence: evidence || [],
-        status: DisputeStatus.OPEN,
-      },
-    });
+    // Create the dispute. The duplicate check runs INSIDE the transaction,
+    // after locking the purchase row: as a separate read, two clicks both saw
+    // "no active dispute" and both opened one.
+    const dispute = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "MarketplacePurchase" WHERE "id" = ${purchaseId} FOR UPDATE`;
+      const existingDispute = await tx.marketplaceDispute.findFirst({
+        where: { purchaseId, status: { in: ACTIVE_DISPUTE_STATUSES } },
+        select: { id: true },
+      });
+      if (existingDispute) throw new Error("DISPUTE_EXISTS");
 
-    // Create initial system message
-    await prisma.disputeMessage.create({
-      data: {
-        disputeId: dispute.id,
-        senderId: "SYSTEM",
-        senderType: "SYSTEM",
-        message: `Dispute opened by ${isBuyer ? "buyer" : "seller"} for order "${listing.title}". Reason: ${reason.replace(/_/g, " ")}`,
-      },
+      const d = await tx.marketplaceDispute.create({
+        data: {
+          purchaseId,
+          initiatorId: session.user.id,
+          initiatorType: isBuyer ? "BUYER" : "SELLER",
+          reason,
+          description,
+          evidence: evidence ?? [],
+          status: DisputeStatus.OPEN,
+        },
+      });
+
+      // Initial system message
+      await tx.disputeMessage.create({
+        data: {
+          disputeId: d.id,
+          senderId: "SYSTEM",
+          senderType: "SYSTEM",
+          message: `Dispute opened by ${isBuyer ? "buyer" : "seller"} for order "${listing.title}". Reason: ${reason.replace(/_/g, " ")}`,
+        },
+      });
+      return d;
     });
 
     // Notify the other party
@@ -291,6 +284,12 @@ export async function POST(request: NextRequest) {
       message: "Dispute created successfully. The other party has been notified.",
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "DISPUTE_EXISTS") {
+      return NextResponse.json(
+        { error: "An active dispute already exists for this purchase" },
+        { status: 409 }
+      );
+    }
     console.error("Error creating dispute:", error);
     return NextResponse.json(
       { error: "Failed to create dispute" },

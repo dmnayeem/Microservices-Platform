@@ -28,6 +28,8 @@ interface QuizPayload {
   passMarkPercent: number;
   timeLimitMinutes: number | null;
   shuffleQuestions: boolean;
+  /** null = unlimited. */
+  attemptsLeft?: number | null;
   questions: QuizQuestion[];
 }
 
@@ -35,6 +37,7 @@ interface AttemptResult {
   score: number;
   passed: boolean;
   correctIds: string[];
+  attemptsLeft?: number | null;
 }
 
 interface Props {
@@ -50,6 +53,8 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<AttemptResult | null>(null);
+  // Bumped by "Try again" so a fresh GET starts a new server-timed attempt.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +77,7 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [courseId, quizId]);
+  }, [courseId, quizId, reloadKey]);
 
   const toggleAnswer = (qid: string, opt: string, multi: boolean) => {
     setAnswers((prev) => {
@@ -148,6 +153,9 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
         <p className="text-xs text-(--app-ink-3) mt-2">
           {quiz.questions.length} questions · Pass mark {quiz.passMarkPercent}%
           {quiz.timeLimitMinutes ? ` · ${quiz.timeLimitMinutes} min time limit` : ""}
+          {typeof quiz.attemptsLeft === "number"
+            ? ` · ${quiz.attemptsLeft} attempt${quiz.attemptsLeft === 1 ? "" : "s"} left`
+            : ""}
         </p>
       </header>
 
@@ -182,12 +190,18 @@ export function QuizPlayer({ courseId, quizId, onPassed }: Props) {
               </p>
             </div>
           </div>
-          {!result.passed && (
+          {!result.passed && result.attemptsLeft === 0 && (
+            <p className="mt-3 text-xs text-rose-200">
+              No attempts left for this quiz.
+            </p>
+          )}
+          {!result.passed && result.attemptsLeft !== 0 && (
             <button
               type="button"
               onClick={() => {
                 setAnswers({});
                 setResult(null);
+                setReloadKey((k) => k + 1);
               }}
               className="mt-4 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold"
             >

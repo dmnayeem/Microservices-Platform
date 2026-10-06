@@ -16,7 +16,11 @@ export const dynamic = "force-dynamic";
  */
 export default async function EntriesPrint({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const g = await printGuard("finance.view");
-  const sp = await searchParams;
+  // A repeated key arrives as string[] at runtime — take the first, so the
+  // `.trim()` / `.toLowerCase()` below can't crash the page.
+  const sp = Object.fromEntries(
+    Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
+  ) as Record<string, string | undefined>;
 
   const where: Prisma.FinanceEntryWhereInput = {
     AND: [

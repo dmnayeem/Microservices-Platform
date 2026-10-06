@@ -31,6 +31,7 @@ export const ROBOTS_DISALLOW = [
   "/affiliate",
   "/agency",
   "/app-install-tasks",
+  "/badge",
   "/article-tasks",
   "/board-tasks",
   "/buy-points",

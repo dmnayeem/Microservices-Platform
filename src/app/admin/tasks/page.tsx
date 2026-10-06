@@ -2,7 +2,7 @@ import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import { DELIVERED_SUBMISSION } from "@/lib/delivered-submission";
 import {
   ListTodo,
@@ -166,6 +166,8 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
   }
 
   // Fetch tasks and stats
+  // The task list + its total stay strict; the status counts are display-only
+  // and each degrades on its own (safeRead → 0) instead of failing the page.
   const [
     tasksRaw,
     totalCount,
@@ -194,19 +196,19 @@ export default async function AdminTasksPage({ searchParams }: PageProps) {
       },
     }),
     prisma.task.count({ where }),
-    prisma.task.count({ where: { status: "ACTIVE" } }),
-    prisma.task.count({ where: { status: "PAUSED" } }),
-    prisma.task.count({ where: { status: "COMPLETED" } }),
-    prisma.task.count({ where: { status: "DRAFT" } }),
-    prisma.task.count({ where: { status: "ARCHIVED" } }),
-    prisma.task.count({ where: { status: "EXPIRED" } }),
+    safeRead(prisma.task.count({ where: { status: "ACTIVE" } }), 0, "admin tasks stats #2"),
+    safeRead(prisma.task.count({ where: { status: "PAUSED" } }), 0, "admin tasks stats #3"),
+    safeRead(prisma.task.count({ where: { status: "COMPLETED" } }), 0, "admin tasks stats #4"),
+    safeRead(prisma.task.count({ where: { status: "DRAFT" } }), 0, "admin tasks stats #5"),
+    safeRead(prisma.task.count({ where: { status: "ARCHIVED" } }), 0, "admin tasks stats #6"),
+    safeRead(prisma.task.count({ where: { status: "EXPIRED" } }), 0, "admin tasks stats #7"),
     // "All" needs its own count: `totalCount` is the count of the CURRENT
     // filter, so it would read as whatever tab is open.
-    prisma.task.count({ where: LISTED_TASK_WHERE }),
+    safeRead(prisma.task.count({ where: LISTED_TASK_WHERE }), 0, "admin tasks stats #8"),
     // Sent in and waiting — not every task someone merely opened. This button
     // said 408 while the queue it opens held 52.
-    prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }),
-    prisma.task.count({ where: { status: "PENDING_REVIEW" } }),
+    safeRead(prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }), 0, "admin tasks stats #9"),
+    safeRead(prisma.task.count({ where: { status: "PENDING_REVIEW" } }), 0, "admin tasks stats #10"),
   ]);
 
   const boards = await prisma.taskBoard.findMany({

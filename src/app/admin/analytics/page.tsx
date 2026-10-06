@@ -3,9 +3,9 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import { LISTED_TASK_WHERE } from "@/lib/task-audit";
-import { toNum } from "@/lib/money";
+import { toNum, type MoneyInput } from "@/lib/money";
 import { Users, DollarSign, TrendingUp, Activity, ArrowUpRight, ArrowDownRight, Eye, Clock, MousePointer2, FileText, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
@@ -81,6 +81,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   }
 
   // Fetch current period stats
+  // Header stats are display-only: each degrades on its own (safeRead → 0)
+  // rather than one failed count taking the whole page to the error screen.
   const [
     totalUsers,
     newUsers,
@@ -95,32 +97,32 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
     activeUsers,
     previousActiveUsers,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({
+    safeRead(prisma.user.count(), 0, "admin analytics #0"),
+    safeRead(prisma.user.count({
       where: { createdAt: { gte: startDate } },
-    }),
-    prisma.user.count({
+    }), 0, "admin analytics #1"),
+    safeRead(prisma.user.count({
       where: { createdAt: { gte: previousStartDate, lt: previousEndDate } },
-    }),
-    prisma.task.count({ where: { status: "ACTIVE" } }),
+    }), 0, "admin analytics #2"),
+    safeRead(prisma.task.count({ where: { status: "ACTIVE" } }), 0, "admin analytics #3"),
     // APPROVED alone missed auto-approvals — 45 of the 54 completions in one
     // 30-day window. See lib/submission-status.ts.
-    prisma.taskSubmission.count({
+    safeRead(prisma.taskSubmission.count({
       where: {
         status: { in: COMPLETED_STATUSES },
         createdAt: { gte: startDate },
       },
-    }),
-    prisma.taskSubmission.count({
+    }), 0, "admin analytics #4"),
+    safeRead(prisma.taskSubmission.count({
       where: {
         status: { in: COMPLETED_STATUSES },
         createdAt: { gte: previousStartDate, lt: previousEndDate },
       },
-    }),
+    }), 0, "admin analytics #5"),
     // Finance sees withdrawals; everyone else, task points paid in the same
     // windows. Same shape ({ _sum.amount, _count.id }) so the card below reads
     // one value either way.
-    seesMoney
+    safeRead<{ _sum: { amount: MoneyInput | null }; _count: { id: number } }>(seesMoney
       ? prisma.withdrawal.aggregate({
           where: {
             status: "COMPLETED",
@@ -134,8 +136,8 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
           .then((a) => {
             const x = a as unknown as { _sum: { pointsEarned: number | null }; _count: { id: number } };
             return { _sum: { amount: x._sum.pointsEarned ?? 0 }, _count: { id: x._count.id } };
-          }),
-    seesMoney
+          }), { _sum: {}, _count: { id: 0 } } as never, "admin analytics #6"),
+    safeRead<{ _sum: { amount: MoneyInput | null } }>(seesMoney
       ? prisma.withdrawal.aggregate({
           where: {
             status: "COMPLETED",
@@ -145,23 +147,23 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
         })
       : prisma.taskSubmission
           .aggregate({ where: { AND: [completedBetween(previousStartDate, previousEndDate)] }, _sum: { pointsEarned: true } })
-          .then((a) => ({ _sum: { amount: (a as unknown as { _sum: { pointsEarned: number | null } })._sum.pointsEarned ?? 0 } })),
-    prisma.referralEarning.aggregate({
+          .then((a) => ({ _sum: { amount: (a as unknown as { _sum: { pointsEarned: number | null } })._sum.pointsEarned ?? 0 } })), { _sum: {} } as never, "admin analytics #7"),
+    safeRead(prisma.referralEarning.aggregate({
       where: { createdAt: { gte: startDate } },
       _sum: { amount: true },
-    }),
-    prisma.referralEarning.aggregate({
+    }), { _sum: {} } as never, "admin analytics #8"),
+    safeRead(prisma.referralEarning.aggregate({
       where: { createdAt: { gte: previousStartDate, lt: previousEndDate } },
       _sum: { amount: true },
-    }),
-    prisma.taskSubmission.groupBy({
+    }), { _sum: {} } as never, "admin analytics #9"),
+    safeRead(prisma.taskSubmission.groupBy({
       by: ["userId"],
       where: { createdAt: { gte: startDate } },
-    }),
-    prisma.taskSubmission.groupBy({
+    }), [], "admin analytics #10"),
+    safeRead(prisma.taskSubmission.groupBy({
       by: ["userId"],
       where: { createdAt: { gte: previousStartDate, lt: previousEndDate } },
-    }),
+    }), [], "admin analytics #11"),
   ]);
 
   // Calculate percentage changes
@@ -189,16 +191,16 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
       const dayEnd = endOfDay(date);
 
       const [users, tasks, withdrawals] = await Promise.all([
-        prisma.user.count({
+        safeRead(prisma.user.count({
           where: { createdAt: { gte: dayStart, lte: dayEnd } },
-        }),
-        prisma.taskSubmission.count({
+        }), 0, "admin analytics daily #0"),
+        safeRead(prisma.taskSubmission.count({
           where: {
             status: { in: COMPLETED_STATUSES },
             createdAt: { gte: dayStart, lte: dayEnd },
           },
-        }),
-        seesMoney
+        }), 0, "admin analytics daily #1"),
+        safeRead(seesMoney
           ? prisma.withdrawal.aggregate({
               where: {
                 status: "COMPLETED",
@@ -209,7 +211,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
           : prisma.taskSubmission.aggregate({
               where: { AND: [completedBetween(dayStart, dayEnd)] },
               _sum: { pointsEarned: true },
-            }),
+            }), { _sum: {} } as never, "admin analytics daily #2"),
       ]);
 
       const sum = (withdrawals as unknown as { _sum: { amount?: unknown; pointsEarned?: number | null } })._sum;
@@ -248,35 +250,35 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
     trafficDailyRaw,
     taskTypeDist,
   ] = (await Promise.all([
-    prisma.pageDailyStat.aggregate({
+    safeRead(prisma.pageDailyStat.aggregate({
       where: { kind: "PAGE", date: { gte: trafficStart } },
       _sum: { views: true, uniqueVisitors: true, totalDwellSec: true },
-    }),
-    prisma.pageDailyStat.aggregate({
+    }), { _sum: {} } as never, "admin analytics traffic #0"),
+    safeRead(prisma.pageDailyStat.aggregate({
       where: { kind: "PAGE", date: { gte: prevTrafficStart, lt: prevTrafficEnd } },
       _sum: { views: true, uniqueVisitors: true },
-    }),
-    prisma.pageDailyStat.groupBy({
+    }), { _sum: {} } as never, "admin analytics traffic #1"),
+    safeRead(prisma.pageDailyStat.groupBy({
       by: ["key"],
       where: { kind: "PAGE", date: { gte: trafficStart } },
       _sum: { views: true, uniqueVisitors: true, totalDwellSec: true },
       orderBy: { _sum: { views: "desc" } },
       take: 20,
-    }),
-    prisma.pageDailyStat.groupBy({
+    }), [], "admin analytics traffic #2"),
+    safeRead(prisma.pageDailyStat.groupBy({
       by: ["key", "label"],
       where: { kind: "TASK", date: { gte: trafficStart } },
       _sum: { views: true, uniqueVisitors: true, totalDwellSec: true },
       orderBy: { _sum: { views: "desc" } },
       take: 20,
-    }),
-    prisma.pageDailyStat.groupBy({
+    }), [], "admin analytics traffic #3"),
+    safeRead(prisma.pageDailyStat.groupBy({
       by: ["date"],
       where: { kind: "PAGE", date: { gte: trafficStart } },
       _sum: { views: true, uniqueVisitors: true },
       orderBy: { date: "asc" },
-    }),
-    prisma.task.groupBy({ by: ["type"], where: LISTED_TASK_WHERE, _count: { _all: true } }),
+    }), [], "admin analytics traffic #4"),
+    safeRead(prisma.task.groupBy({ by: ["type"], where: LISTED_TASK_WHERE, _count: { _all: true } }), [], "admin analytics traffic #5"),
   ])) as unknown as TrafficBatch;
 
   // Resolve task titles for the task-page rows.

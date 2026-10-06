@@ -98,6 +98,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
       | { action: "accept" }
       | { action: "reject" }
       | { action: "withdraw" }
+      | { action: "accept_counter" }
       | { action: "counter"; counterAmount: number; counterMessage?: string }
   ) => {
     setBusy(`${offerId}:${payload.action}`);
@@ -119,6 +120,8 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
           ? "Offer rejected"
           : payload.action === "counter"
           ? "Counter-offer sent"
+          : payload.action === "accept_counter"
+          ? "Counter-offer accepted — it's yours"
           : "Offer withdrawn"
       );
       setCounterDraft(null);
@@ -411,6 +414,22 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                       </button>
                     </>
                   ) : o.isOwnOffer ? (
+                    <>
+                    {o.status === "COUNTERED" && o.counterAmount != null && (
+                      <button
+                        type="button"
+                        disabled={busy === `${o.id}:accept_counter`}
+                        onClick={() => action(o.id, { action: "accept_counter" })}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold disabled:opacity-50"
+                      >
+                        {busy === `${o.id}:accept_counter` ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
+                        Accept ${o.counterAmount.toLocaleString()}
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={busy === `${o.id}:withdraw`}
@@ -424,6 +443,7 @@ export function OfferPanel({ listingId, askingPrice, isOwner, isSold }: Props) {
                       )}
                       Withdraw
                     </button>
+                    </>
                   ) : null}
                 </div>
               )}

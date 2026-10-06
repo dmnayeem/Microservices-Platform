@@ -51,7 +51,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Only a live, approved listing is indexed. Sold ones stay reachable for the
   // people who bought them but drop out of search; anything else (pending,
   // rejected, cancelled) is never shown to a guest at all.
-  const indexable = l.status === "ACTIVE" && !l.nsfw;
+  // Same rule as the sitemap (lib/seo/sitemap-data.ts): seller must be ACTIVE.
+  const indexable = l.status === "ACTIVE" && !l.nsfw && l.sellerActive === true;
   return pageMeta({
     title,
     description,

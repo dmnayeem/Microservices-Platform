@@ -1,5 +1,6 @@
 "use client";
 
+import { lsGet, lsSet } from "@/lib/safe-storage";
 import { ENGAGED_EVENT } from "@/lib/header-data";
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
@@ -30,7 +31,7 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
     // task, the user shouldn't get a "Enable Notifications?" banner).
     const path = window.location.pathname || "";
     if (SUPPRESSED_PATHS.some((p) => path.startsWith(p))) return;
-    const dismissed = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
+    const dismissed = Number(lsGet(STORAGE_KEY) ?? 0);
     if (Date.now() - dismissed < 7 * 24 * 60 * 60 * 1000) return;
     const t = setTimeout(() => setShow(true), 6000);
     return () => clearTimeout(t);
@@ -43,7 +44,7 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
     if (!enabled || typeof window === "undefined" || !("Notification" in window)) return;
     const onEngaged = () => {
       if (Notification.permission !== "default") return;
-      const dismissed = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
+      const dismissed = Number(lsGet(STORAGE_KEY) ?? 0);
       if (Date.now() - dismissed < 24 * 60 * 60 * 1000) return;
       setShow(true);
     };
@@ -67,7 +68,7 @@ export function PushPermissionPrompt({ enabled = true }: { enabled?: boolean }) 
   };
 
   const dismiss = () => {
-    localStorage.setItem(STORAGE_KEY, String(Date.now()));
+    lsSet(STORAGE_KEY, String(Date.now()));
     setShow(false);
   };
 

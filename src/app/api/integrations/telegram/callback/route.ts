@@ -73,7 +73,10 @@ export async function GET(request: NextRequest) {
       },
       update: { platformUserId: id, username, linkedAt: new Date() },
     });
-  } catch {
+  } catch (err) {
+    // @@unique([platform, platformUserId]) — this Telegram user is already
+    // linked to a different RevType account.
+    if ((err as { code?: string })?.code === "P2002") return back(false, "already_linked");
     return back(false, "save_failed");
   }
   return back(true);

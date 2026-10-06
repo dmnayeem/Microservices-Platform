@@ -7,12 +7,14 @@ import Link from "next/link";
 import { OfferwallsClient } from "@/components/admin/offerwalls/offerwalls-client";
 import { OfferwallCategoriesManager } from "@/components/admin/offerwalls/categories-manager";
 import { OfferwallOffersManager } from "@/components/admin/offerwalls/offers-manager";
+import { OfferwallCompletionsReview } from "@/components/admin/offerwalls/completions-review";
 import { toNumOrNull } from "@/lib/money";
 
 const TABS = [
   { id: "providers", label: "Providers" },
   { id: "categories", label: "Categories" },
   { id: "offers", label: "Offers" },
+  { id: "reviews", label: "Reviews" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -43,7 +45,7 @@ export default async function OfferwallsAdminPage({
         : null,
   }));
 
-  const [callbackCount, categoriesRaw, offersRaw] = await Promise.all([
+  const [callbackCount, categoriesRaw, offersRaw, pendingReviews] = await Promise.all([
     prisma.offerwallCallback.count(),
     prisma.offerwallCategory.findMany({
       orderBy: [{ order: "asc" }, { name: "asc" }],
@@ -54,6 +56,7 @@ export default async function OfferwallsAdminPage({
           orderBy: [{ categoryId: "asc" }, { order: "asc" }, { createdAt: "desc" }],
         })
       : Promise.resolve([]),
+    prisma.offerwallCompletion.count({ where: { status: "PENDING" } }),
   ]);
 
   const categories = (
@@ -124,6 +127,7 @@ export default async function OfferwallsAdminPage({
           >
             {t.label}
             {t.id === "categories" && ` (${categories.length})`}
+            {t.id === "reviews" && pendingReviews > 0 && ` (${pendingReviews})`}
           </Link>
         ))}
       </div>
@@ -146,6 +150,7 @@ export default async function OfferwallsAdminPage({
           canManage={canManage}
         />
       )}
+      {tab === "reviews" && <OfferwallCompletionsReview canManage={canManage} />}
     </div>
   );
 }

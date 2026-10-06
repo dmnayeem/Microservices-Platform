@@ -131,9 +131,9 @@ export async function reverseAffiliateCommission(
   try {
     const comm = await prisma.affiliateCommission.findUnique({
       where: { sourceType_orderRef: { sourceType, orderRef } },
-      select: { affiliateUserId: true, commissionAmount: true },
+      select: { id: true, affiliateUserId: true, commissionAmount: true, status: true },
     });
-    if (!comm) return;
+    if (!comm || comm.status === "REVERSED") return;
     const ref = `affiliate_reversal_${sourceType}_${orderRef}`;
     const already = await prisma.transaction.findFirst({
       where: { userId: comm.affiliateUserId, reference: ref },
@@ -143,6 +143,13 @@ export async function reverseAffiliateCommission(
 
     const amount = Number(comm.commissionAmount);
     await prisma.$transaction(async (tx) => {
+      // Status CAS first: two concurrent refunds cannot both claw back, and
+      // affiliate stats stop counting the commission.
+      const flipped = await tx.affiliateCommission.updateMany({
+        where: { id: comm.id, status: "ACTIVE" },
+        data: { status: "REVERSED", reversedAt: new Date() },
+      });
+      if (flipped.count === 0) return;
       const u = await tx.user.findUnique({
         where: { id: comm.affiliateUserId },
         select: { cashBalance: true },

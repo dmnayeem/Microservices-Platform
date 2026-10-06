@@ -9,6 +9,8 @@ import {
   getOfferChainState,
   offerAllowsCountry,
   buildTrackingUrl,
+  OFFER_DAILY_COUNTED,
+  offerDayStart,
 } from "@/lib/offerwall";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 
@@ -58,47 +60,85 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (chain.lockedOfferIds.has(id))
     return NextResponse.json({ error: "Complete the previous offer to unlock this one.", code: "OFFER_LOCKED" }, { status: 403 });
 
-  // Already-completed one-time offers can't be restarted.
-  const existing = await prisma.offerwallCompletion.findFirst({
-    where: { userId, offerId: id, status: { in: ["APPROVED", "PENDING"] } },
-    orderBy: { createdAt: "desc" },
-  });
-  if (existing) {
-    if (existing.status === "APPROVED" && offer.oneTimePerUser)
-      return NextResponse.json({ error: "You've already completed this offer." }, { status: 409 });
-    // Resume an in-flight completion.
-    const clickId = existing.clickId ?? existing.id;
-    return NextResponse.json({
-      completionId: existing.id,
-      clickId,
-      trackingUrl: buildTrackingUrl(offer.trackingUrlTemplate, userId, clickId),
-      completionMode: offer.completionMode,
-      instructions: offer.instructions,
-      status: existing.status,
-    });
-  }
-
   const ip = (request.headers.get("x-forwarded-for")?.split(",")[0] ?? "").trim() || null;
-  const click = await prisma.offerwallClick.create({ data: { userId, offerId: id, ip } });
-  const completion = await prisma.offerwallCompletion.create({
-    data: {
-      userId,
-      offerId: id,
-      categoryId: offer.categoryId,
-      status: "STARTED",
-      points: offer.points,
-      payoutUsd: offer.payoutUsd,
-      providerId: offer.providerId,
-      clickId: click.id,
+
+  // Everything below runs under a lock on the user's row, so two concurrent
+  // "Start" taps cannot both pass the one-time / daily-limit checks and both
+  // insert (the old check-then-create raced, and every tap also minted a fresh
+  // STARTED completion instead of resuming the open one).
+  type Outcome =
+    | { kind: "resume"; completionId: string; clickId: string; status: string }
+    | { kind: "created"; completionId: string; clickId: string }
+    | { kind: "done" }
+    | { kind: "daily" };
+  const outcome: Outcome = await prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+
+      // Resume an in-flight completion (STARTED, or PENDING = submitted/held).
+      const open = await tx.offerwallCompletion.findFirst({
+        where: { userId, offerId: id, status: { in: ["STARTED", "PENDING"] } },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, clickId: true, status: true },
+      });
+      if (open) {
+        return { kind: "resume", completionId: open.id, clickId: open.clickId ?? open.id, status: open.status };
+      }
+
+      // Already-completed one-time offers can't be restarted.
+      if (offer.oneTimePerUser) {
+        const done = await tx.offerwallCompletion.findFirst({
+          where: { userId, offerId: id, status: "APPROVED" },
+          select: { id: true },
+        });
+        if (done) return { kind: "done" };
+      }
+
+      // Per-user daily limit for this offer (UTC day).
+      if (offer.dailyLimit && offer.dailyLimit > 0) {
+        const today = await tx.offerwallCompletion.count({
+          where: {
+            userId,
+            offerId: id,
+            status: { in: OFFER_DAILY_COUNTED },
+            createdAt: { gte: offerDayStart() },
+          },
+        });
+        if (today >= offer.dailyLimit) return { kind: "daily" };
+      }
+
+      const click = await tx.offerwallClick.create({ data: { userId, offerId: id, ip } });
+      const completion = await tx.offerwallCompletion.create({
+        data: {
+          userId,
+          offerId: id,
+          categoryId: offer.categoryId,
+          status: "STARTED",
+          points: offer.points,
+          payoutUsd: offer.payoutUsd,
+          providerId: offer.providerId,
+          clickId: click.id,
+        },
+      });
+      return { kind: "created", completionId: completion.id, clickId: click.id };
     },
-  });
+    { timeout: 15_000, maxWait: 10_000 }
+  );
+
+  if (outcome.kind === "done")
+    return NextResponse.json({ error: "You've already completed this offer." }, { status: 409 });
+  if (outcome.kind === "daily")
+    return NextResponse.json(
+      { error: "You've reached today's limit for this offer. Try again tomorrow.", code: "OFFER_DAILY_LIMIT" },
+      { status: 429 }
+    );
 
   return NextResponse.json({
-    completionId: completion.id,
-    clickId: click.id,
-    trackingUrl: buildTrackingUrl(offer.trackingUrlTemplate, userId, click.id),
+    completionId: outcome.completionId,
+    clickId: outcome.clickId,
+    trackingUrl: buildTrackingUrl(offer.trackingUrlTemplate, userId, outcome.clickId),
     completionMode: offer.completionMode,
     instructions: offer.instructions,
-    status: "STARTED",
+    status: outcome.kind === "resume" ? outcome.status : "STARTED",
   });
 }

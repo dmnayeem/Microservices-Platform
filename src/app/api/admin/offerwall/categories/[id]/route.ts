@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { z } from "zod";
 
@@ -38,7 +39,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (d.isActive !== undefined) data.isActive = d.isActive;
 
   try {
+    const before = await prisma.offerwallCategory.findUnique({ where: { id } });
     const category = await prisma.offerwallCategory.update({ where: { id }, data });
+    await writeAudit({
+      actorId: session.user.id,
+      action: "OFFERWALL_CATEGORY_UPDATED",
+      entity: "OfferwallCategory",
+      entityId: id,
+      summary: `Edited offerwall category "${category.name}"`,
+      meta: { before, after: category },
+    });
     return NextResponse.json({ category });
   } catch {
     return NextResponse.json({ error: "Category not found or name taken." }, { status: 400 });
@@ -53,6 +63,17 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  await prisma.offerwallCategory.delete({ where: { id } }).catch(() => null);
+  const before = await prisma.offerwallCategory.findUnique({ where: { id } });
+  const deleted = await prisma.offerwallCategory.delete({ where: { id } }).catch(() => null);
+  if (deleted) {
+    await writeAudit({
+      actorId: session.user.id,
+      action: "OFFERWALL_CATEGORY_DELETED",
+      entity: "OfferwallCategory",
+      entityId: id,
+      summary: `Deleted offerwall category "${before?.name ?? id}" (and its offers)`,
+      meta: { before, after: null },
+    });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -39,8 +39,10 @@ export interface BuyerSettings {
   requireKyc: boolean;
   /** Skip the admin review queue and publish straight to ACTIVE. */
   autoApproveTasks: boolean;
-  /** On rejection, give the fee back too (default) or keep it. */
-  refundFeeOnReject: boolean;
+  // (`buyer.refund_fee_on_reject` was removed 2026-10-06: buyers are charged
+  // per APPROVED completion — reward + fee together — so a rejected task or
+  // submission was never charged a fee and there was nothing to refund. The
+  // switch did nothing.)
 }
 
 export { BUYER_TASK_TYPES } from "@/lib/buyer-task-types";
@@ -57,7 +59,6 @@ const DEFAULTS: BuyerSettings = {
   allowedTaskTypes: [...BUYER_TASK_TYPES],
   requireKyc: false,
   autoApproveTasks: false,
-  refundFeeOnReject: true,
 };
 
 function num(v: unknown, fallback: number, min: number, max: number): number {
@@ -79,7 +80,6 @@ export async function getBuyerSettings(): Promise<BuyerSettings> {
     allowedTypes,
     requireKyc,
     autoApprove,
-    refundFee,
   ] = await Promise.all([
     getSetting<boolean>("buyer.enabled", DEFAULTS.enabled),
     getSetting<number>("buyer.fee_percent", DEFAULTS.feePercent),
@@ -92,7 +92,6 @@ export async function getBuyerSettings(): Promise<BuyerSettings> {
     getSetting<unknown>("buyer.allowed_task_types", null),
     getSetting<boolean>("buyer.require_kyc", DEFAULTS.requireKyc),
     getSetting<boolean>("buyer.auto_approve_tasks", DEFAULTS.autoApproveTasks),
-    getSetting<boolean>("buyer.refund_fee_on_reject", DEFAULTS.refundFeeOnReject),
   ]);
 
   const minPurchase_ = Math.floor(
@@ -136,7 +135,6 @@ export async function getBuyerSettings(): Promise<BuyerSettings> {
     allowedTaskTypes: [...new Set(allowed)],
     requireKyc: requireKyc === true,
     autoApproveTasks: autoApprove === true,
-    refundFeeOnReject: refundFee !== false,
   };
 }
 

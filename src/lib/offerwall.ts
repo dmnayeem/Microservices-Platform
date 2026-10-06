@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getPointsPerUsd } from "@/lib/economy";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { processOfferwallReferralCommissions } from "@/lib/referral-commissions";
+import { clawbackReferralCommissions } from "@/lib/referral-clawback";
 
 export type OfferSource = "MANUAL" | "PROVIDER";
 export type CompletionMode = "PROOF" | "POSTBACK" | "MANUAL";
@@ -170,7 +171,22 @@ export async function releaseHeldCompletion(
   } | null;
   if (!c || c.status !== "PENDING") return false;
 
+  // Only an ACTIVE account is paid. A suspended/banned user's completion stays
+  // PENDING (the cron retries it; an admin can reject it) rather than minting
+  // points onto an account under review.
+  const owner = await prisma.user.findUnique({
+    where: { id: c.userId },
+    select: { status: true },
+  });
+  if (!owner || owner.status !== "ACTIVE") return false;
+
+  // Ledger `amount` stays the network payout (finance reads offerwall_* rows
+  // as provider revenue), but `totalEarnings` is what the USER earned — points
+  // ÷ pointsPerUsd, like every other earn path. Incrementing it by the network
+  // payout inflated lifetime earnings (and leaderboards) by the platform margin.
   const amount = Number(c.payoutUsd ?? 0) || 0;
+  const pointsPerUsd = await getPointsPerUsd();
+  const earnedUsd = pointsPerUsd > 0 ? c.points / pointsPerUsd : 0;
   try {
     const paid = await prisma.$transaction(async (tx) => {
       // Guarded: only fires while still PENDING, so two releasers race safely.
@@ -184,7 +200,7 @@ export async function releaseHeldCompletion(
         where: { id: c.userId },
         data: {
           pointsBalance: { increment: c.points },
-          totalEarnings: { increment: amount },
+          totalEarnings: { increment: earnedUsd },
         },
       });
       await tx.transaction.create({
@@ -234,4 +250,43 @@ export async function releaseHeldOfferwallCompletions(now = new Date()): Promise
     if (await releaseHeldCompletion(c.id, now)) released++;
   }
   return released;
+}
+
+/**
+ * Reject a PENDING completion (proof review, or an admin killing a held one).
+ * Status CAS only — nothing is ever credited while a completion is PENDING, so
+ * no money moves. Returns false when it was no longer PENDING.
+ */
+export async function rejectPendingCompletion(
+  completionId: string,
+  reviewerId: string | null,
+  reason: string
+): Promise<boolean> {
+  const moved = await prisma.offerwallCompletion.updateMany({
+    where: { id: completionId, status: "PENDING" },
+    data: {
+      status: "REJECTED",
+      reviewedById: reviewerId,
+      rejectionReason: reason.slice(0, 1000),
+      heldUntil: null,
+    },
+  });
+  return moved.count > 0;
+}
+
+/** Completion statuses that count toward OfferwallOffer.dailyLimit for the day. */
+export const OFFER_DAILY_COUNTED = ["STARTED", "PENDING", "APPROVED"];
+
+/** Start of the current UTC day — offer daily limits reset at 00:00 UTC. */
+export function offerDayStart(now = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+/**
+ * Take back upline commissions paid on an offerwall completion. They are keyed
+ * `referral_ow_<eventKey>_L<n>`: the completion id (catalog offers) or
+ * `tx_<transactionId>` (legacy pure-wall credits) — see the callback route.
+ */
+export function clawbackOfferwallReferrals(eventKey: string, reason: string) {
+  return clawbackReferralCommissions(`referral_ow_${eventKey}`, reason);
 }

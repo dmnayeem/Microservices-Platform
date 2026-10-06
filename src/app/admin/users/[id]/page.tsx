@@ -6,7 +6,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import { getUserActivity } from "@/lib/user-activity";
 import { UserActivityTimeline } from "@/components/admin/activity/user-activity-timeline";
@@ -96,6 +96,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   }
 
   // Fetch user with related data using separate queries
+  // The user row and counts stay strict (they decide 404); the two side
+  // figures degrade via safeRead instead of failing the page.
   const [userData, counts, coursesCreatedCount, marketplaceSalesAgg] =
     await Promise.all([
       prisma.user.findUnique({
@@ -171,12 +173,12 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           },
         },
       }),
-      prisma.course.count({ where: { createdById: id } }),
-      prisma.marketplacePurchase.aggregate({
+      safeRead(prisma.course.count({ where: { createdById: id } }), 0, "admin user detail #2"),
+      safeRead(prisma.marketplacePurchase.aggregate({
         where: { listing: { sellerId: id }, status: "COMPLETED" },
         _count: { _all: true },
         _sum: { sellerAmount: true },
-      }),
+      }), { _sum: {}, _count: { _all: 0 } } as never, "admin user detail #3"),
     ]);
 
   if (!userData || !counts) {

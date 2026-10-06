@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { QUIZ_TIME_GRACE_MS } from "@/lib/course-access";
 
 // GET /api/courses/:id/quiz/:quizId
 // Returns the quiz + questions (correctAnswers omitted client-side).
@@ -57,6 +58,7 @@ export async function GET(
       description: string | null;
       passMarkPercent: number;
       timeLimitMinutes: number | null;
+      maxAttempts: number | null;
       shuffleQuestions: boolean;
       questions: Array<{
         id: string;
@@ -73,6 +75,47 @@ export async function GET(
       options: Array.isArray(q.options) ? (q.options as string[]) : [],
       points: q.points,
     }));
+    // Attempts + server-side timer. Only submitted attempts count; for a
+    // timed quiz an open (unsubmitted) attempt row marks when the clock
+    // started, so the submit route can enforce the limit server-side.
+    const maxAttempts =
+      quiz.maxAttempts && quiz.maxAttempts > 0 ? quiz.maxAttempts : null;
+    let attemptsUsed = 0;
+    let startedAt: Date | null = null;
+    if (!isOwner) {
+      attemptsUsed = await prisma.courseQuizAttempt.count({
+        where: { quizId, userId: session.user.id, submittedAt: { not: null } },
+      });
+      const canAttempt = maxAttempts === null || attemptsUsed < maxAttempts;
+      if (quiz.timeLimitMinutes && quiz.timeLimitMinutes > 0 && canAttempt) {
+        const open = await prisma.courseQuizAttempt.findFirst({
+          where: { quizId, userId: session.user.id, submittedAt: null },
+          orderBy: { startedAt: "desc" },
+          select: { id: true, startedAt: true },
+        });
+        const limitMs = quiz.timeLimitMinutes * 60_000 + QUIZ_TIME_GRACE_MS;
+        if (open && Date.now() - open.startedAt.getTime() <= limitMs) {
+          startedAt = open.startedAt;
+        } else {
+          if (open) {
+            // Expired without a submission — close it as a failed attempt.
+            await prisma.courseQuizAttempt.updateMany({
+              where: { id: open.id, submittedAt: null },
+              data: { submittedAt: new Date(), score: 0, passed: false },
+            });
+            attemptsUsed += 1;
+          }
+          if (maxAttempts === null || attemptsUsed < maxAttempts) {
+            const created = await prisma.courseQuizAttempt.create({
+              data: { quizId, userId: session.user.id, answers: {} },
+              select: { startedAt: true },
+            });
+            startedAt = created.startedAt;
+          }
+        }
+      }
+    }
+
     if (quiz.shuffleQuestions) {
       // Stable-enough shuffle for v1
       questions.sort(() => Math.random() - 0.5);
@@ -85,6 +128,10 @@ export async function GET(
         passMarkPercent: quiz.passMarkPercent,
         timeLimitMinutes: quiz.timeLimitMinutes,
         shuffleQuestions: quiz.shuffleQuestions,
+        maxAttempts,
+        attemptsLeft:
+          maxAttempts === null ? null : Math.max(0, maxAttempts - attemptsUsed),
+        startedAt: startedAt?.toISOString() ?? null,
         questions,
       },
     });

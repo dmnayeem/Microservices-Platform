@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       });
       if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
       await auditFinance(g.caller, "MODERATOR_CREATED", "User", res.data.id,
-        `Created finance moderator ${body.name} <${body.email}>`, { grants: body.grants ?? [] });
+        `Created finance moderator ${body.name} <${body.email}>`, { grants: body.grants ?? [] }, res.data.id);
       return NextResponse.json({ ok: true, id: res.data.id }, { status: 201 });
     }
     case "grants": {
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
       await auditFinance(g.caller, "ACCESS_GRANTED", "User", body.userId,
         res.data.grants.length ? `Set ${who}'s finance access: ${res.data.grants.join(", ")}` : `Removed all of ${who}'s finance access`,
-        { grants: res.data.grants });
+        { grants: res.data.grants }, body.userId);
       return NextResponse.json({ ok: true, grants: res.data.grants });
     }
     case "promote":
@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
       const res = await setModeratorRole(actor, body.userId, body.action === "promote");
       if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
       await auditFinance(g.caller, body.action === "promote" ? "MODERATOR_PROMOTED" : "MODERATOR_REMOVED", "User",
-        body.userId, body.action === "promote" ? `Made ${who} a finance moderator` : `Removed ${who} from the finance team`);
+        body.userId, body.action === "promote" ? `Made ${who} a finance moderator` : `Removed ${who} from the finance team`,
+        undefined, body.userId);
       return NextResponse.json({ ok: true, role: res.data.role });
     }
     case "suspend":
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       const res = await setModeratorStatus(actor, body.userId, body.action === "activate");
       if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
       await auditFinance(g.caller, body.action === "activate" ? "MODERATOR_ACTIVATED" : "MODERATOR_SUSPENDED", "User",
-        body.userId, `${body.action === "activate" ? "Reactivated" : "Suspended"} ${who}`);
+        body.userId, `${body.action === "activate" ? "Reactivated" : "Suspended"} ${who}`, undefined, body.userId);
       return NextResponse.json({ ok: true, status: res.data.status });
     }
     default:

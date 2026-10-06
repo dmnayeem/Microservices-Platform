@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Loader2, Lock } from "lucide-react";
 import { cn, usd } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { newIdempotencyKey } from "@/lib/idempotency-key";
-import { PlanCardView, PlanCompareTable, type PlanCardData } from "@/components/plans/plan-display";
-import type { CompareRowDef } from "@/lib/plan-compare";
+import { PlanCardView, type PlanCardData } from "@/components/plans/plan-display";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import { ProofImageUpload } from "@/components/user/tasks/proof-image-upload";
+import {
+  isFreePlan,
+  planDurations,
+  planPriceUsd,
+  planSavingFraction,
+} from "@/lib/plan-pricing";
 
 type Duration = "MONTHLY" | "QUARTERLY" | "YEARLY" | "LIFETIME";
 type Method = "POINTS" | "CASH" | "CARD" | "BKASH" | "NAGAD" | "BINANCE" | "BITGET";
@@ -42,20 +48,26 @@ interface PackagesViewProps {
   pointsPerUsd: number;
   /** Plan cards + comparison, from lib/plans-display (real plan columns). */
   cards: PlanCardData[];
-  compareRows: CompareRowDef[];
 }
 
-/** A free/default plan — no monthly price and no yearly price. */
+/** A free/default plan — the same definition the purchase API uses. */
 function isFreePkg(p: PackageRow): boolean {
-  return p.priceMonthly === 0 && !p.priceYearly;
+  return isFreePlan(p);
 }
 
-const DURATION_DISCOUNT: Record<Duration, number> = {
-  MONTHLY: 0,
-  QUARTERLY: 0.1,
-  YEARLY: 0.2,
-  LIFETIME: 0.5,
-};
+const OFF_PLATFORM: Method[] = ["CARD", "BKASH", "NAGAD", "BINANCE", "BITGET"];
+
+/** The server's quote: price, credit for the plan being replaced, the charge. */
+interface Quote {
+  priceUsd: number;
+  creditUsd: number;
+  payUsd: number;
+  payPoints: number;
+  samePlan: boolean;
+  switching: boolean;
+  endDate: string;
+  cardAvailable: boolean;
+}
 
 export function PackagesView({
   packages,
@@ -65,7 +77,6 @@ export function PackagesView({
   pointsBalance,
   pointsPerUsd,
   cards,
-  compareRows,
 }: PackagesViewProps) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -73,27 +84,63 @@ export function PackagesView({
   const [duration, setDuration] = useState<Duration>("MONTHLY");
   const [method, setMethod] = useState<Method>("CASH");
   const [busy, setBusy] = useState(false);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [transactionId, setTransactionId] = useState("");
+  const [proofUrl, setProofUrl] = useState("");
+  // ONE key per intended purchase: made when the review step opens and reused
+  // by every click on Confirm, so a double click / retry replays the first
+  // request instead of buying twice. Renewed only after a refused request, so
+  // a corrected retry (topped-up wallet, fixed txn id) is not stuck replaying.
+  const [purchaseKey, setPurchaseKey] = useState<string | null>(null);
 
   const selectedPkg = packages.find((p) => p.tier === selectedTier);
+  const isOffPlatform = OFF_PLATFORM.includes(method);
 
-  const calcPrice = () => {
-    if (!selectedPkg) return 0;
-    const monthly = selectedPkg.priceMonthly;
-    const months =
-      duration === "MONTHLY"
-        ? 1
-        : duration === "QUARTERLY"
-          ? 3
-          : duration === "YEARLY"
-            ? 12
-            : 36;
-    return monthly * months * (1 - DURATION_DISCOUNT[duration]);
-  };
-
-  const price = calcPrice();
-  const ptCost = Math.ceil(price * pointsPerUsd);
+  // Price from the shared plan math; the server quote (below) adds any credit
+  // for the plan being replaced and is what Confirm actually charges.
+  const listPrice = selectedPkg ? (planPriceUsd(selectedPkg, duration) ?? 0) : 0;
+  const price = quote ? quote.payUsd : listPrice;
+  const ptCost = quote ? quote.payPoints : Math.ceil(price * pointsPerUsd);
   const insufficientCash = method === "CASH" && cashBalance < price;
   const insufficientPts = method === "POINTS" && pointsBalance < ptCost;
+  const offPlatformIncomplete =
+    isOffPlatform && (transactionId.trim().length < 4 || !proofUrl);
+
+  // Fetch the quote whenever plan / duration / method change past step 1.
+  useEffect(() => {
+    if (!selectedPkg || step < 2 || isFreePkg(selectedPkg)) return;
+    let cancelled = false;
+    const qs = new URLSearchParams({ packageId: selectedPkg.id, duration, method });
+    fetch(`/api/packages/purchase?${qs}`, { cache: "no-store" })
+      .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (!cancelled) setQuote(ok ? (d as Quote) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setQuote(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPkg, duration, method, step]);
+
+  // A plan sold only yearly (or a duration no longer valid) snaps to one it has.
+  useEffect(() => {
+    if (selectedPkg && !planDurations(selectedPkg).includes(duration)) {
+      setDuration(planDurations(selectedPkg)[0]);
+    }
+  }, [selectedPkg, duration]);
+
+  // Card is offered only while a payment gateway is configured.
+  const cardAvailable = quote?.cardAvailable ?? false;
+  useEffect(() => {
+    if (method === "CARD" && quote && !quote.cardAvailable) setMethod("CASH");
+  }, [method, quote]);
+
+  const openReview = () => {
+    setPurchaseKey(newIdempotencyKey());
+    setStep(4);
+  };
 
   const purchaseFree = async (slug: string) => {
     const pkg = packages.find((x) => x.tier === slug);
@@ -119,18 +166,25 @@ export function PackagesView({
   const purchase = async () => {
     if (!selectedPkg) return;
     setBusy(true);
+    const key = purchaseKey ?? newIdempotencyKey();
+    if (!purchaseKey) setPurchaseKey(key);
     try {
       const res = await fetch("/api/packages/purchase", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": key },
         body: JSON.stringify({
           packageId: selectedPkg.id,
           duration,
           method,
+          ...(isOffPlatform ? { transactionId: transactionId.trim(), proofUrl } : {}),
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // A refused request is memoized under its key — use a new one next time.
+        setPurchaseKey(newIdempotencyKey());
+        throw new Error(d.details ? `${d.error} — ${d.details}` : d.error || "Try again");
+      }
       if (d.checkoutUrl) {
         window.location.href = d.checkoutUrl;
       } else {
@@ -226,23 +280,15 @@ export function PackagesView({
             })}
           </div>
 
-          <div>
-            <h2 className="mb-1 text-base font-bold text-white">Compare plans</h2>
-            <p className="mb-3 text-xs text-(--app-ink-3)">What each plan includes, side by side.</p>
-            <PlanCompareTable plans={cards} rows={compareRows} variant="app" />
-          </div>
         </div>
       )}
 
       {step === 2 && selectedPkg && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            {(["MONTHLY", "QUARTERLY", "YEARLY", "LIFETIME"] as const).map((d) => {
-              const months =
-                d === "MONTHLY" ? 1 : d === "QUARTERLY" ? 3 : d === "YEARLY" ? 12 : 36;
-              const total =
-                selectedPkg.priceMonthly * months * (1 - DURATION_DISCOUNT[d]);
-              const discount = DURATION_DISCOUNT[d];
+            {planDurations(selectedPkg).map((d) => {
+              const total = planPriceUsd(selectedPkg, d) ?? 0;
+              const discount = planSavingFraction(selectedPkg, d);
               return (
                 <button
                   key={d}
@@ -262,7 +308,7 @@ export function PackagesView({
                   </p>
                   {discount > 0 && (
                     <p className="text-[10px] font-bold text-emerald-400">
-                      Save {discount * 100}%
+                      Save {Math.round(discount * 100)}%
                     </p>
                   )}
                 </button>
@@ -298,7 +344,7 @@ export function PackagesView({
               { value: "BINANCE", label: "Binance Pay", info: "Crypto" },
               { value: "BITGET", label: "Bitget", info: "Crypto" },
             ] as const
-          ).map((m) => (
+          ).filter((m) => m.value !== "CARD" || cardAvailable).map((m) => (
             <label
               key={m.value}
               className={cn(
@@ -323,11 +369,27 @@ export function PackagesView({
               </div>
             </label>
           ))}
-          {["CARD", "BKASH", "NAGAD", "BINANCE"].includes(method) && (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
-              Fastest: <Link href="/deposit" className="font-bold underline">add funds to your wallet</Link> via
-              Binance / bKash / manual, then pay with <b>Cash Balance</b>. Otherwise an admin verifies your
-              payment before activating.
+          {isOffPlatform && (
+            <div className="space-y-2">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
+                Fastest: <Link href="/deposit" className="font-bold underline">add funds to your wallet</Link> via
+                Binance / bKash / manual, then pay with <b>Cash Balance</b>. Otherwise send the payment, then
+                enter its transaction ID and upload a screenshot — an admin verifies it before activating.
+                {quote?.switching && " Credit for your current plan applies to Cash / Points payments only."}
+              </div>
+              <input
+                type="text"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="Transaction ID of your payment"
+                maxLength={120}
+                className="w-full rounded-xl border border-(--app-line) bg-(--app-surface) px-3 py-2.5 text-sm text-white placeholder:text-(--app-ink-3)"
+              />
+              <ProofImageUpload
+                value={proofUrl}
+                onChange={setProofUrl}
+                placeholder="Upload a screenshot of your payment"
+              />
             </div>
           )}
           <div className="flex gap-2">
@@ -338,8 +400,9 @@ export function PackagesView({
               Back
             </button>
             <button
-              onClick={() => setStep(4)}
-              className="flex-1 py-3 rounded-xl bg-(--app-cta) text-(--app-on-cta) font-bold"
+              onClick={openReview}
+              disabled={offPlatformIncomplete}
+              className="flex-1 py-3 rounded-xl bg-(--app-cta) text-(--app-on-cta) font-bold disabled:opacity-50"
             >
               Continue
             </button>
@@ -364,6 +427,30 @@ export function PackagesView({
               <span className="text-(--app-ink-3)">Payment Method</span>
               <span className="font-bold text-white">{method}</span>
             </div>
+            {quote && quote.creditUsd > 0 && !isOffPlatform && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-(--app-ink-3)">Plan price</span>
+                  <span className="font-bold text-white tabular-nums">{usd(quote.priceUsd)}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-(--app-ink-3)">Credit for unused time on your current plan</span>
+                  <span className="font-bold text-emerald-400 tabular-nums">-{usd(quote.creditUsd)}</span>
+                </div>
+              </>
+            )}
+            {quote?.switching && (
+              <p className="text-[11px] text-amber-300">
+                Your current plan ends now and the new one starts today. Unused time is only ever
+                taken off this price - it is never paid out or added as extra days.
+              </p>
+            )}
+            {quote?.samePlan && (
+              <p className="text-[11px] text-(--app-ink-3)">
+                Added on top of your current plan - it runs until{" "}
+                {new Date(quote.endDate).toLocaleDateString()}.
+              </p>
+            )}
             <div className="flex justify-between pt-2 border-t border-(--app-line)">
               <span className="text-(--app-ink-2) font-semibold">Total</span>
               <span className="font-extrabold text-emerald-400 text-lg tabular-nums">
@@ -409,10 +496,14 @@ export function PackagesView({
             <Check className="w-10 h-10" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-1">
-            Welcome to {selectedPkg?.name}!
+            {isOffPlatform && selectedPkg && !isFreePkg(selectedPkg)
+              ? "Request sent"
+              : `Welcome to ${selectedPkg?.name}!`}
           </h2>
           <p className="text-(--app-ink-3) mb-6">
-            Your upgrade is active. Enjoy your new benefits.
+            {isOffPlatform && selectedPkg && !isFreePkg(selectedPkg)
+              ? "An admin will check your payment and activate the plan shortly."
+              : "Your upgrade is active. Enjoy your new benefits."}
           </p>
           <button
             onClick={() => router.push("/my-package")}

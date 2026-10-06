@@ -48,7 +48,13 @@ export default async function MainLayout({
       if (maintenance.active) return <MaintenanceScreen message={maintenance.message} />;
       // Decided here, above loading.tsx's Suspense boundary, so a missing or
       // unpublished item is a real 404 (not a streamed 200) for crawlers.
-      const status = await guestCatalogStatus(guestPath);
+      // A DB failure here must not throw from the layout (that takes the guest
+      // frame down with it). Let the page render and decide — its own read
+      // either 404s or lands on the (main) error boundary with a Retry.
+      const status = await guestCatalogStatus(guestPath).catch((e) => {
+        console.error("[main/layout] guestCatalogStatus failed:", e);
+        return { ok: true } as const;
+      });
       if ("redirect" in status) permanentRedirect(status.redirect);
       if (!status.ok) notFound();
       return <GuestShell>{children}</GuestShell>;

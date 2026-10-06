@@ -23,10 +23,24 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
 
+    // "Pending" = an off-platform request whose PENDING ledger row is still
+    // open. `isActive: false` alone also matched every expired, replaced and
+    // cancelled plan, so the queue filled with rows that must not be approved.
+    const pendingLedger = await prisma.transaction.findMany({
+      where: { status: "PENDING", reference: { startsWith: "subscription_" } },
+      select: { reference: true },
+      take: 1000,
+    });
+    const pendingIds = pendingLedger
+      .map((t) => t.reference?.slice("subscription_".length))
+      .filter((x): x is string => !!x);
+    const pendingSet = new Set(pendingIds);
+
     // Build where clause
     const where: Record<string, unknown> = {};
     if (status === "pending") {
       where.isActive = false;
+      where.id = { in: pendingIds };
     } else if (status === "active") {
       where.isActive = true;
     }
@@ -78,12 +92,17 @@ export async function GET(request: NextRequest) {
           amount: toNum(sub.amount),
           paymentMethod: sub.paymentMethod,
           transactionId: sub.transactionId,
+          proofUrl: sub.proofUrl,
           startDate: sub.startDate,
           endDate: sub.endDate,
           isActive: sub.isActive,
           autoRenew: sub.autoRenew,
           createdAt: sub.createdAt,
-          status: sub.isActive ? "ACTIVE" : "PENDING_VERIFICATION",
+          status: sub.isActive
+            ? "ACTIVE"
+            : pendingSet.has(sub.id)
+              ? "PENDING_VERIFICATION"
+              : "ENDED",
         };
       }),
       pagination: {
@@ -93,7 +112,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
       stats: {
-        pending: await prisma.subscription.count({ where: { isActive: false } }),
+        pending: await prisma.subscription.count({ where: { isActive: false, id: { in: pendingIds } } }),
         active: await prisma.subscription.count({ where: { isActive: true } }),
       },
     });

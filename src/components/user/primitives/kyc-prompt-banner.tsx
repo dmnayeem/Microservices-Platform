@@ -1,5 +1,6 @@
 "use client";
 
+import { ssGet, ssSet } from "@/lib/safe-storage";
 import { useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, X } from "lucide-react";
@@ -14,7 +15,7 @@ const DISMISS_KEY = "kyc_prompt_dismissed";
 export function KycPromptBanner() {
   const [hidden, setHidden] = useState(() => {
     if (typeof window === "undefined") return false;
-    return sessionStorage.getItem(DISMISS_KEY) === "1";
+    return ssGet(DISMISS_KEY) === "1";
   });
 
   if (hidden) return null;
@@ -44,7 +45,7 @@ export function KycPromptBanner() {
         <button
           onClick={() => {
             try {
-              sessionStorage.setItem(DISMISS_KEY, "1");
+              ssSet(DISMISS_KEY, "1");
             } catch {
               /* ignore */
             }

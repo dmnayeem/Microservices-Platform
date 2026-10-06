@@ -1,6 +1,6 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
-import { openSubmission } from "@/lib/open-submission";
+import { openSubmission, OpenSubmissionBlocked } from "@/lib/open-submission";
 import { taskStartFraudGate, taskStartPlanGate } from "@/lib/task-start-gates";
 import { getEffectivePackage } from "@/lib/packages";
 import { auth } from "@/lib/auth";
@@ -226,7 +226,45 @@ export async function POST(
       }
     }
 
-    submission = await openSubmission(task.id, session.user.id);
+    // Daily limit + cooldown re-checked under the user-row lock, in the same
+    // transaction as the insert (count-then-insert raced) — see openSubmission.
+    const startUserId = session.user.id;
+    try {
+      submission = await openSubmission(task.id, startUserId, async (tx) => {
+        const n = await tx.taskSubmission.count({
+          where: {
+            taskId: task.id,
+            userId: startUserId,
+            createdAt: { gte: todayStart },
+            status: {
+              in: [
+                SubmissionStatus.APPROVED,
+                SubmissionStatus.AUTO_APPROVED,
+                SubmissionStatus.PENDING,
+              ],
+            },
+          },
+        });
+        if (n >= dailyLimit) return "Daily limit reached for this task";
+        if (task.cooldownMinutes > 0) {
+          const recent = await tx.taskSubmission.findFirst({
+            where: {
+              taskId: task.id,
+              userId: startUserId,
+              createdAt: { gte: new Date(Date.now() - task.cooldownMinutes * 60 * 1000) },
+            },
+            select: { id: true },
+          });
+          if (recent) return "Please wait before starting this task again";
+        }
+        return null;
+      });
+    } catch (err) {
+      if (err instanceof OpenSubmissionBlocked) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+      throw err;
+    }
   }
 
   const token = signArticleTaskToken({

@@ -37,7 +37,6 @@ function check(label: string, ok: boolean, detail = "") {
 const SOLD_WRITE_SITES = [
   "src/app/api/marketplace/[id]/checkout/route.ts",
   "src/app/api/cart/checkout/route.ts",
-  "src/app/api/marketplace/orders/route.ts",
   "src/app/api/marketplace/listings/[id]/offers/[offerId]/route.ts",
   "src/lib/marketplace-auctions.ts",
   "src/lib/marketplace-deal.ts",

@@ -32,7 +32,8 @@ export async function PATCH(
 
   const item = await prisma.cartItem.update({
     where: { id },
-    data: { quantity: v.data.quantity },
+    // Pinned to 1: every listing is a single asset and checkout sells one.
+    data: { quantity: 1 },
   });
   return NextResponse.json({ success: true, item });
 }

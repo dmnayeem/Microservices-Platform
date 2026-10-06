@@ -100,6 +100,9 @@ export type Permission =
   | "users.adjust_level"
   | "users.adjust_followers"
   | "users.impersonate"
+  // Granting / removing the blue badge by hand. The badge is a paid product
+  // (badge shop), so this is not part of users.edit (2026-10-06).
+  | "users.grant_badge"
   // KYC / Verification
   | "kyc.view"
   | "kyc.approve"
@@ -291,6 +294,7 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
       "users.delete",
       "users.adjust_balance",
       "users.impersonate",
+      "users.grant_badge",
     ],
   },
   {
@@ -511,7 +515,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
    * refuses to let a Manager near a FINANCE_ADMIN account. Three layers,
    * because only the last one is visible in the UI.
    */
-  MANAGER: ALL_PERMISSIONS.filter((p) => !FINANCE_PERMISSIONS.includes(p)),
+  // `users.grant_badge` is also left out: giving away a paid badge defaults to
+  // the super admin only (tick it in the role matrix to hand it on).
+  MANAGER: ALL_PERMISSIONS.filter(
+    (p) => !FINANCE_PERMISSIONS.includes(p) && p !== "users.grant_badge"
+  ),
 
   // Generic admin — broad by default, but NEVER finance and NEVER admins.manage
   // (super admin tunes it down further via the editor; the resolver also strips
@@ -754,10 +762,30 @@ export const GRANULAR_ADJUST_PERMISSIONS: Permission[] = [
   "users.adjust_level",
   "users.adjust_followers",
 ];
-export function expandLegacyPermissions<T extends string>(perms: Set<T>): Set<T> {
+/**
+ * Written into a permission set when the role matrix or a custom role is saved
+ * (2026-10-06): "this set was saved after the split — take it literally".
+ * Without it, a super admin who unticked all five granular adjust permissions
+ * saved a set holding none of them, which is exactly what a pre-split set
+ * looks like, so `users.edit` gave XP/level/followers straight back.
+ *
+ *  - Custom roles: stored as an extra entry in `CustomRole.permissions`
+ *    (not a Permission, so `isPermission` filters it out of every check).
+ *  - Role matrix: a top-level key in the `rbac.role_permissions` setting.
+ *
+ * Sets saved before this marker existed keep the legacy expansion, so no saved
+ * role changes effective permissions on deploy.
+ */
+export const GRANULAR_SPLIT_MARKER = "_granularSplit";
+
+export function expandLegacyPermissions<T extends string>(
+  perms: Set<T>,
+  /** True when the set carries GRANULAR_SPLIT_MARKER — saved after the split. */
+  savedAfterSplit = false
+): Set<T> {
   const has = (p: string) => perms.has(p as T);
   // Decided BEFORE adding anything: the shorthand below adds granular names.
-  const savedBeforeSplit = !GRANULAR_ADJUST_PERMISSIONS.some(has);
+  const savedBeforeSplit = !savedAfterSplit && !GRANULAR_ADJUST_PERMISSIONS.some(has);
   // users.adjust_balance stays the shorthand for all four balance kinds.
   if (has("users.adjust_balance")) {
     for (const p of ["users.adjust_points", "users.adjust_cash", "users.adjust_xp", "users.adjust_level"]) {
@@ -768,6 +796,18 @@ export function expandLegacyPermissions<T extends string>(perms: Set<T>): Set<T>
     for (const p of ["users.adjust_xp", "users.adjust_level", "users.adjust_followers"]) perms.add(p as T);
   }
   return perms;
+}
+
+/**
+ * A stored custom-role permission list as the editor should show it: legacy
+ * (unmarked) lists expanded the same way the resolver expands them, marker
+ * removed. Seeding the editor with the raw legacy list would make a plain
+ * re-save (which adds the marker) silently drop what the role could do.
+ */
+export function customRolePermissionsForEditor(stored: readonly string[]): string[] {
+  const marked = stored.includes(GRANULAR_SPLIT_MARKER);
+  const set = new Set(stored.filter(isPermission));
+  return [...expandLegacyPermissions(set, marked)];
 }
 
 export function stripProtectedForRole(
@@ -995,8 +1035,9 @@ export function isPermission(v: unknown): v is Permission {
 export function sanitizeCustomRolePermissions(raw: unknown): string[] {
   const list = Array.isArray(raw) ? raw : [];
   const set = new Set<Permission>(list.filter(isPermission) as Permission[]);
-  // "ADMIN" role → strips finance + admins.manage.
-  return Array.from(stripProtectedForRole(set, "ADMIN"));
+  // "ADMIN" role → strips finance + admins.manage. The marker says "saved
+  // after the adjust split — take literally" (see GRANULAR_SPLIT_MARKER).
+  return [...Array.from(stripProtectedForRole(set, "ADMIN")), GRANULAR_SPLIT_MARKER];
 }
 
 /** Sparse per-user permission grants/denials (true = grant, false = deny). */
@@ -1039,6 +1080,7 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
   "users.adjust_xp": { label: "Adjust XP", description: "Add, deduct or set a user's XP." },
   "users.adjust_level": { label: "Adjust level", description: "Raise, lower or set a user's level." },
   "users.adjust_followers": { label: "Adjust followers", description: "Change a user's shown follower/following/post counts and run follower boosts." },
+  "users.grant_badge": { label: "Grant blue badge", description: "Give or remove a user's blue badge by hand (timed or lifetime). The badge is sold in the badge shop — this gives it away free." },
   "users.impersonate": { label: "Impersonate users", description: "Log in as a user to see the app exactly as they do." },
 
   // ── KYC & Verification ──
@@ -1673,6 +1715,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     name: "Promote Products",
     href: "/admin/ads/promote",
     icon: "Megaphone",
+    permissions: ["ads.view"],
+    category: "ADS",
+  },
+  {
+    // Third-party ad networks: enable, publisher ids (ads.txt), paid-page rule.
+    name: "Ad Networks",
+    href: "/admin/ads/networks",
+    icon: "Globe",
     permissions: ["ads.view"],
     category: "ADS",
   },

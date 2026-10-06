@@ -14,6 +14,28 @@ import { enforceDisplayImage } from "@/lib/image-compress-server";
 // Maximum file size for direct upload (5MB)
 const MAX_DIRECT_UPLOAD_SIZE = 5 * 1024 * 1024;
 
+// The only S3 prefixes a user may write to — enforced on BOTH the pre-signed
+// POST and the direct PUT. The PUT used to take any `folder` from the form,
+// so a user could write into a prefix the /api/media proxy serves publicly
+// (e.g. `media/`, the admin library) or anywhere else in the bucket.
+//
+// `marketplace-media` holds listing cover / gallery images: public, and served
+// by /api/media (keep in step with its allowlist and `ownMediaKey()`).
+// `marketplace` stays private — sellable deliverables, only ever handed out
+// as short-lived signed URLs by the purchase-gated download route.
+const ALLOWED_FOLDERS = [
+  "ads",
+  "avatars",
+  "kyc",
+  "task-proofs",
+  "marketplace",
+  "marketplace-media",
+  "posts",
+  "courses",
+  "disputes",
+  "uploads",
+];
+
 // Allowed file types (image / document / video / audio) — the list lives in
 // src/lib/upload-safety.ts. The declared type is only the first gate: the
 // bytes are sniffed (PUT) or the name is checked (pre-signed POST, where the
@@ -54,17 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate folder
-    const allowedFolders = [
-      "avatars",
-      "kyc",
-      "task-proofs",
-      "marketplace",
-      "posts",
-      "courses",
-      "disputes",
-      "uploads",
-    ];
-    if (!allowedFolders.includes(folder)) {
+    if (!ALLOWED_FOLDERS.includes(folder)) {
       return NextResponse.json(
         { error: "Invalid upload folder" },
         { status: 400 }
@@ -132,6 +144,13 @@ export async function PUT(request: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { error: "No file provided" },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_FOLDERS.includes(folder)) {
+      return NextResponse.json(
+        { error: "Invalid upload folder" },
         { status: 400 }
       );
     }

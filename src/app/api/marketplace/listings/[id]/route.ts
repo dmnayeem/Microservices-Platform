@@ -10,6 +10,19 @@ import { z } from "zod";
 import { inspectStoredFiles, reportStoredFiles } from "@/lib/upload-safety";
 import { screenLinks } from "@/lib/link-safety";
 import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
+import { readTiers } from "@/lib/marketplace-selling";
+
+/**
+ * Statuses in which the seller may still change what is sold (`files`) or
+ * what it costs (`price`). A SOLD / CANCELLED / EXPIRED listing has buyers
+ * whose downloads read `files` live, so swapping them afterwards changed what
+ * those buyers had paid for.
+ */
+const DELIVERABLE_EDITABLE: MarketplaceListingStatus[] = [
+  MarketplaceListingStatus.ACTIVE,
+  MarketplaceListingStatus.PENDING_REVIEW,
+  MarketplaceListingStatus.REJECTED,
+];
 
 // GET /api/marketplace/listings/:id - Get listing details
 export async function GET(
@@ -220,6 +233,30 @@ export async function PUT(
 
     const { title, description, images, files, price, category } = parsed.data;
 
+    if (
+      (files !== undefined || price !== undefined) &&
+      !DELIVERABLE_EDITABLE.includes(listing.status)
+    ) {
+      return NextResponse.json(
+        {
+          error: `Files and price can't be changed on a ${listing.status.toLowerCase().replace("_", " ")} listing.`,
+        },
+        { status: 409 }
+      );
+    }
+    // A tiered listing's headline price IS its cheapest tier; editing one
+    // without the other let the card advertise a price checkout never charged.
+    const tiers = readTiers(listing.licenseTiers);
+    if (price !== undefined && tiers.length > 0 && price !== tiers[0].price) {
+      return NextResponse.json(
+        {
+          error:
+            "This listing is priced by its licence tiers — its price is always the cheapest tier.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Phishing / malware links — the same screen as creating a listing.
     const links = await screenLinks(
       { texts: [title, description] },
@@ -281,6 +318,8 @@ export async function PUT(
         ...(images !== undefined && { images }),
         ...(files !== undefined && { files }),
         ...(price !== undefined && { price }),
+        // Re-sync any drift on every write: headline price = cheapest tier.
+        ...(tiers.length > 0 && { price: tiers[0].price }),
         ...(category !== undefined && { category }),
         ...(needsReview && { status: MarketplaceListingStatus.PENDING_REVIEW }),
       },

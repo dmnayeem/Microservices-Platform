@@ -35,12 +35,12 @@ Shared `TaskSubmissionRow` primitive added. Phase 1: Notifications (glass card +
 
 ## #7 Sequential Task Unlock (feature shipped 2026-07-29) — বাদ রাখা অংশ
 
-- [ ] **D7.1 — Per-type task page-গুলোতে LOCKED badge**
+- [x] **D7.1 — Per-type task page-গুলোতে LOCKED badge** — ✅ done (verified 2026-10-06: article/custom/manual/proxy/quiz/social/video/board views all render `t.locked` → LOCKED)
   Dedicated pages (`/video-tasks`, `/article-tasks`, `/quiz-tasks`, `/social-tasks`, `/manual-tasks`, `/proxy-tasks`, `/board-tasks`)-এ locked task-এ 🔒 badge দেখানো হয়নি।
   *এখন কী হয়:* server gate (`start` + `quiz` route) locked task start করতে দেয় না — তাই নিরাপদ, শুধু ঐ পেজে ভিজ্যুয়ালি lock দেখায় না।
   *করতে হলে:* প্রতিটা view যেখানে `/api/tasks` থেকে `TaskCard` render হয়, সেখানে `t.locked ? status="LOCKED"` pattern (hub-view-এর মতো) বসাতে হবে।
 
-- [ ] **D7.2 — TASK_LOCKED-এর জন্য আলাদা client notice**
+- [x] **D7.2 — TASK_LOCKED-এর জন্য আলাদা client notice** — ✅ done (verified 2026-10-06: `task-upgrade-notice.tsx` handles `code:"TASK_LOCKED"`, used by every task detail view)
   এখন locked task-এ সরাসরি গেলে generic error message দেখায় (`code:"TASK_LOCKED"`)। `UPGRADE_REQUIRED`-এর মতো একটা সুন্দর dedicated notice/টোস্ট বানানো যেতে পারে।
 
 - [ ] **D7.3 — Admin-এ task order drag-to-reorder UI**

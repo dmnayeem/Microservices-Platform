@@ -16,7 +16,8 @@ import {
 import { normalizeSocialConfig } from "@/lib/social-tasks";
 import { verifyCodeFor, contentHasCode } from "@/lib/task-verify-code";
 import { getPointsPerUsd } from "@/lib/economy";
-import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
+import { chargeTaskCompletion, claimTaskCompletionSlot, notifyTaskClosed } from "@/lib/task-credit";
+import { getPlanMultipliers } from "@/lib/plan-multipliers";
 import { getBuyerSettings } from "@/lib/buyer-settings";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { closeTaskIfFull } from "@/lib/task-slots";
@@ -277,10 +278,15 @@ export async function recheckPendingSocialSubmissions(opts?: {
       // three separate writes: an error after the charge (any DB blip) left the
       // buyer charged, the submission AUTO_APPROVED — so never re-checked — and
       // the worker never paid. The outer catch just counted it as an error.
-      const points = sub.task.pointsReward;
-      const xp = sub.task.xpReward;
+      // Plan multipliers from the worker's EFFECTIVE plan — the same rule as
+      // the submit, admin-review and quiz paths (this path paid the bare
+      // reward, so which path approved a submission decided what it paid).
+      // The buyer is charged the multiplied reward, as on the main path.
+      const planMult = await getPlanMultipliers(sub.userId);
+      const points = Math.round(sub.task.pointsReward * planMult.taskReward);
+      const xp = Math.round(sub.task.xpReward * planMult.xp);
       let closedTask: { buyerId: string; taskTitle: string; reason: "NO_CREDIT" | "DELIVERED" } | null = null;
-      let outcome: "lost" | "unfunded" | "paid";
+      let outcome: "lost" | "unfunded" | "full" | "paid";
       try {
         outcome = await prisma.$transaction(async (tx) => {
           const claimed = await tx.taskSubmission.updateMany({
@@ -292,6 +298,16 @@ export async function recheckPendingSocialSubmissions(opts?: {
             },
           });
           if (claimed.count === 0) return "lost" as const; // somebody else got there first
+
+          // The task's global completion cap, claimed conditionally (it was
+          // only checked at start). Full → hand the submission back to a human.
+          if (!(await claimTaskCompletionSlot(tx, sub.taskId))) {
+            await tx.taskSubmission.update({
+              where: { id: sub.id },
+              data: { status: SubmissionStatus.PENDING, reviewedAt: null },
+            });
+            return "full" as const;
+          }
 
           // A user-funded task is paid for by its BUYER, so charge the buyer
           // first — exactly as the submit and admin-review paths do, through
@@ -320,6 +336,11 @@ export async function recheckPendingSocialSubmissions(opts?: {
             if (!charge.paid) {
               // The buyer cannot pay. Leave the submission for a human rather
               // than paying money that does not exist: hand it back to PENDING.
+              // (The slot claimed above is given back with it.)
+              await tx.task.updateMany({
+                where: { id: sub.taskId, completedCount: { gt: 0 } },
+                data: { completedCount: { decrement: 1 } },
+              });
               await tx.taskSubmission.update({
                 where: { id: sub.id },
                 data: { status: SubmissionStatus.PENDING, reviewedAt: null },
@@ -350,15 +371,13 @@ export async function recheckPendingSocialSubmissions(opts?: {
                 taskType: sub.task.type,
                 submissionId: sub.id,
                 viaRecheck: true,
+                multiplier: planMult.taskReward,
+                xpMultiplier: planMult.xp,
               },
             },
           });
-          await tx.task.update({
-            where: { id: sub.taskId },
-            data: { completedCount: { increment: 1 } },
-          });
           return "paid" as const;
-        });
+        }, { timeout: 15_000, maxWait: 10_000 });
       } catch (e) {
         // Already paid under this reference by another path. The whole
         // transaction (claim + charge) rolled back with it, so the buyer is not
@@ -368,6 +387,11 @@ export async function recheckPendingSocialSubmissions(opts?: {
       }
       if (closedTask) void notifyTaskClosed(closedTask);
       if (outcome === "lost") continue;
+      if (outcome === "full") {
+        await closeTaskIfFull(sub.taskId).catch(() => {});
+        summary.nowFailing++;
+        continue;
+      }
       if (outcome === "unfunded") {
         summary.nowFailing++;
         continue;

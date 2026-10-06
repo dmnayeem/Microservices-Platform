@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "verify:registry": "tsx --tsconfig tsconfig.script.json scripts/verify-page-registry.ts",
+    "check:migration-drops": "tsx --tsconfig tsconfig.script.json scripts/check-migration-drops.ts",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:migrate:deploy": "npx prisma migrate deploy",

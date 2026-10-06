@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { parseEventTiers, EVENT_ACTION_TYPES } from "@/lib/events-shared";
 import { maxPackageAccessLevel } from "@/lib/events";
 import type { Prisma } from "@/generated/prisma/client";
@@ -98,6 +99,8 @@ export async function POST(request: NextRequest) {
     maxLevel
   );
   const event = await prisma.event.create({ data: parsed.data });
+  await writeAudit({ actorId: session.user.id, action: "EVENT_CREATED", entity: "Event", entityId: event.id,
+    summary: `Created event "${event.title}"`, meta: { before: null, after: event } });
   // The recorder reads a cached index of active events to decide whether an
   // action needs tracking at all. Without this the new event records nothing
   // for up to 60s — long enough for the admin to test it and conclude it's

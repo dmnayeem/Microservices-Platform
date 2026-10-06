@@ -1,19 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
+import { hardReload, useErrorRecovery } from "@/lib/error-recovery";
 
 export default function MainError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
+  useErrorRecovery(error);
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] px-4">
@@ -32,11 +30,17 @@ export default function MainError({
         )}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button
-            onClick={reset}
+            onClick={() => retry()}
             className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold"
           >
             <RotateCcw className="w-4 h-4" />
             Try again
+          </button>
+          <button
+            onClick={hardReload}
+            className="px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
+          >
+            Reload
           </button>
           <Link
             href="/dashboard"

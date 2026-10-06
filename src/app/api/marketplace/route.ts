@@ -1,12 +1,7 @@
-import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import { z } from "zod";
-import { userCanFeature } from "@/lib/packages";
 import { toNum } from "@/lib/money";
-import { screenLinks } from "@/lib/link-safety";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -63,64 +58,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-const createSchema = z.object({
-  title: z.string().min(2).max(120),
-  description: z.string().min(10),
-  category: z.string().min(1),
-  price: z.number().positive(),
-  currency: z.string().default("USD"),
-  images: z.array(z.string()).default([]),
-});
-
-export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // Super-admin page visibility: refuse when /marketplace is hidden for this user.
-  const pageHidden = await assertPageVisible(session.user.id, "/marketplace");
-  if (pageHidden) return pageHidden;
-  // Selling is an admin-granted capability.
-  if (!(await userCanFeature(session.user.id, "sellMarketplace"))) {
-    return NextResponse.json(
-      { error: "Selling on the marketplace isn't enabled for your account." },
-      { status: 403 }
-    );
-  }
-  const body = await request.json();
-  const v = createSchema.safeParse(body);
-  if (!v.success) {
-    return NextResponse.json(
-      { error: v.error.issues[0]?.message ?? "Invalid input" },
-      { status: 400 }
-    );
-  }
-
-  // Phishing / malware links anywhere a buyer will read.
-  const links = await screenLinks(
-    { texts: [v.data.title, v.data.description] },
-    { userId: session.user.id, entityType: "listing" }
-  );
-  if (!links.ok) {
-    return NextResponse.json({ error: links.message }, { status: 400 });
-  }
-
-  const listing = await prisma.marketplaceListing.create({
-    data: {
-      sellerId: session.user.id,
-      title: v.data.title,
-      description: v.data.description,
-      category: v.data.category,
-      price: v.data.price,
-      currency: v.data.currency,
-      images: v.data.images,
-      status: "ACTIVE",
-    },
-  });
-  links.report(listing.id);
-
-  return NextResponse.json(
-    { success: true, listing: { id: listing.id, title: listing.title } },
-    { status: 201 }
-  );
-}
+// POST /api/marketplace (a legacy "create listing" path) was removed. Nothing
+// called it, and it published straight to ACTIVE — skipping the
+// PENDING_REVIEW moderation, typed categories and file checks of
+// POST /api/marketplace/listings, which is the only way to list now.

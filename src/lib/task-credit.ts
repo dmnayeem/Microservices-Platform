@@ -171,8 +171,59 @@ export interface CompletionCharge {
    * ones that stalled sit dead and they never find out why.
    */
   closeReason?: "NO_CREDIT" | "DELIVERED";
-  /** Set when `paid` is false, for the message shown to the worker. */
-  reason?: "NO_CREDIT";
+  /**
+   * Set when `paid` is false, for the message shown to the worker:
+   * NO_CREDIT = the buyer's balance could not cover it; DELIVERED = the task's
+   * funded completions were already all used up.
+   */
+  reason?: "NO_CREDIT" | "DELIVERED";
+}
+
+/** What to tell the worker when chargeTaskCompletion did not pay. */
+export function unpaidCompletionMessage(reason: CompletionCharge["reason"]): string {
+  return reason === "DELIVERED"
+    ? "This task already reached the number of completions its advertiser paid for — no reward was paid."
+    : "The advertiser ran out of credit for this task — no reward was paid.";
+}
+
+/**
+ * Claim ONE completion slot on a task, inside the approval transaction.
+ *
+ * `totalLimit` used to be checked only at START, then `completedCount` was
+ * incremented unconditionally at approval — so every approval of an attempt
+ * started before the cap filled paid past it. The increment is now conditional
+ * (`completedCount < totalLimit`); false = the task is full and this
+ * completion must not be paid. Shared by every approval path (admin review,
+ * auto-approve on submit, the social re-check, the quiz route).
+ */
+export async function claimTaskCompletionSlot(
+  db: LedgerDb,
+  taskId: string
+): Promise<boolean> {
+  const t = await db.task.findUnique({
+    where: { id: taskId },
+    select: { totalLimit: true },
+  });
+  if (t?.totalLimit && t.totalLimit > 0) {
+    const r = await db.task.updateMany({
+      where: { id: taskId, completedCount: { lt: t.totalLimit } },
+      data: { completedCount: { increment: 1 } },
+    });
+    return r.count > 0;
+  }
+  await db.task.updateMany({
+    where: { id: taskId },
+    data: { completedCount: { increment: 1 } },
+  });
+  return true;
+}
+
+/** Thrown inside an approval transaction to roll it back without paying. */
+export class CompletionRefused extends Error {
+  constructor(public reason: "TASK_FULL" | "NO_CREDIT" | "DELIVERED") {
+    super(reason);
+    this.name = "CompletionRefused";
+  }
 }
 
 /**
@@ -218,8 +269,59 @@ export async function chargeTaskCompletion(
       : 0;
   const total = rewardPoints + feePoints;
 
+  // Draw the PROMISE first. `remainingBudget` is how many completions the buyer
+  // agreed to fund; once it is spent, a further approval is over-delivery the
+  // buyer never asked for. It used to clamp to 0 and pay anyway, so every
+  // concurrent or late approval past the end was charged to the buyer.
+  //
+  // The guarded decrement lets only one of two concurrent approvals win the
+  // subtraction. The last completion may legitimately cost more than what is
+  // left (a plan multiplier raises a worker's reward above the standard one),
+  // so a shortfall is still allowed as long as at least one STANDARD reward
+  // remained — that clamps to 0. Less than that left = the task is delivered.
+  const drawn = await db.task.updateMany({
+    where: { id: args.taskId, remainingBudget: { gte: rewardPoints } },
+    data: { remainingBudget: { decrement: rewardPoints } },
+  });
+  let drewPoints = rewardPoints;
+  if (drawn.count === 0) {
+    const lastSlot = Math.max(1, Math.min(rewardPoints, Math.floor(args.standardReward)));
+    const before = await db.task.findUnique({
+      where: { id: args.taskId },
+      select: { remainingBudget: true },
+    });
+    const left = before?.remainingBudget ?? 0;
+    const clamped =
+      left >= lastSlot
+        ? await db.task.updateMany({
+            where: { id: args.taskId, remainingBudget: left },
+            data: { remainingBudget: 0 },
+          })
+        : { count: 0 };
+    if (clamped.count === 0) {
+      return {
+        paid: false,
+        rewardPoints,
+        feePoints,
+        closeTask: true,
+        closeReason: "DELIVERED",
+        reason: "DELIVERED",
+      };
+    }
+    drewPoints = left;
+  }
+
   const paid = await spendTaskCredit(db, args.buyerId, total);
   if (!paid) {
+    // Give the promise back — nothing was delivered on it. (Inside the
+    // caller's transaction this is a no-op either way; outside one it keeps
+    // the counter honest.)
+    if (drewPoints > 0) {
+      await db.task.updateMany({
+        where: { id: args.taskId },
+        data: { remainingBudget: { increment: drewPoints } },
+      });
+    }
     // Out of credit. Close the task so nobody else works for nothing.
     return {
       paid: false,
@@ -231,28 +333,11 @@ export async function chargeTaskCompletion(
     };
   }
 
-  // Track the promise separately from the money: `remainingBudget` is how many
-  // completions this task still advertises, and it is what tells a buyer "40 of
-  // 100 left". It is not a reserved pool any more — nothing is held.
-  //
-  // Written as an atomic decrement, never as `set` to a value computed from the
-  // `remainingBudget` the CALLER read. All three payout paths read the task
-  // first and pass that snapshot in, so two approvals landing together both
-  // computed `snapshot - reward` and the second overwrote the first: the task
-  // kept advertising completions the buyer never agreed to fund, and the buyer
-  // was charged for every one of them. The guarded decrement lets only one of
-  // the two win the subtraction; the clamp handles the last completion, which
-  // can legitimately exceed what is left.
-  const drawn = await db.task.updateMany({
-    where: { id: args.taskId, remainingBudget: { gte: rewardPoints } },
-    data: { remainingBudget: { decrement: rewardPoints } },
-  });
-  if (drawn.count === 0) {
-    await db.task.updateMany({
-      where: { id: args.taskId },
-      data: { remainingBudget: 0 },
-    });
-  }
+  // `remainingBudget` (drawn above) is how many completions this task still
+  // advertises — it tells a buyer "40 of 100 left". It is not a reserved pool:
+  // nothing is held. Always an atomic decrement, never a `set` computed from
+  // the snapshot the CALLER read (two approvals landing together used to both
+  // compute `snapshot - reward` and the second overwrote the first).
 
   // The buyer's record of where their credit went.
   //
