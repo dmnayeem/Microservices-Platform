@@ -34,7 +34,11 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const { taskId } = await params;
+  const { taskId: snippetTaskId } = await params;
+  // The task this reader is actually doing. Usually the snippet's own task,
+  // but see the mismatch handling below.
+  let taskId = snippetTaskId;
+  let adopted = false;
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token") ?? searchParams.get("eg");
   const visitToken = searchParams.get("visitToken") ?? searchParams.get("egv");
@@ -60,7 +64,9 @@ export async function GET(
     const vv = verifyArticleVisitToken(visitToken);
     if (!vv.ok) return corsResponse({ error: vv.error }, { status: 401 });
     if (vv.payload.t !== taskId) {
-      return corsResponse({ error: "Visit / task mismatch" }, { status: 403 });
+      // Checked against the page below — see "adopted".
+      taskId = vv.payload.t;
+      adopted = true;
     }
     visit = vv.payload;
     seedSubject = vv.payload.f || vv.payload.v;
@@ -70,7 +76,9 @@ export async function GET(
       return corsResponse({ error: v.error }, { status: 401 });
     }
     if (v.payload.t !== taskId) {
-      return corsResponse({ error: "Token / task mismatch" }, { status: 403 });
+      // Checked against the page below — see "adopted".
+      taskId = v.payload.t;
+      adopted = true;
     }
     submissionId = v.payload.s;
     seedSubject = v.payload.u;
@@ -90,6 +98,16 @@ export async function GET(
   }
   const pages = (cfg.pages ?? []).filter((p) => p.url.trim());
   const matchedPage = visitUrl ? matchArticlePageNumber(pages, visitUrl) : null;
+  /* "Adopted": the reader's signed link is for a DIFFERENT task than the
+     snippet on this page. Admins reuse one article for several tasks but
+     only the first task's snippet is pasted on it, so every later task used
+     to get a 403 here and the embed went silent — no popups at all. Serve
+     the token's own task instead, but only when this page really is one of
+     that task's pages; anything else stays a mismatch. The token is signed
+     for that task, so nothing is granted that the link did not already carry. */
+  if (adopted && !matchedPage) {
+    return corsResponse({ error: "Token / task mismatch" }, { status: 403 });
+  }
   if (matchedPage) pageNumber = matchedPage;
   const pageIndex = pageNumber - 1;
   const page = pages[pageIndex];
@@ -99,6 +117,15 @@ export async function GET(
       { status: 404 }
     );
   }
+
+  // A link whose submission was already handed in: the page would run again
+  // and end in a key that can never be submitted. The embed says so instead.
+  const submitted = submissionId
+    ? await prisma.taskSubmission
+        .findUnique({ where: { id: submissionId }, select: { status: true, submittedAt: true } })
+        .then((sub) => !sub || sub.submittedAt !== null || sub.status !== "PENDING")
+        .catch(() => false)
+    : false;
 
   const isFinal = pageIndex === pages.length - 1;
   const next = isFinal ? null : pages[pageIndex + 1];
@@ -191,6 +218,7 @@ export async function GET(
     pageNumber,
     pageCount: pages.length,
     isFinal,
+    submitted,
     // Legacy fields (still consumed by older embed builds).
     // The number the reader will actually see, which is the same number
     // popup-progress requires — these must never disagree again.

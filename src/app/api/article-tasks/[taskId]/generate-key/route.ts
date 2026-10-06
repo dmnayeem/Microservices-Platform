@@ -53,6 +53,20 @@ export async function POST(
     return corsResponse({ error: "Token / task mismatch" }, { status: 403 });
   }
 
+  // 0. A link whose submission was already handed in gets no new key: it
+  //    could never be submitted, and every such click used to burn one from
+  //    the pool. The worker starts the task again on RevType for a fresh link.
+  const linkSubmission = await prisma.taskSubmission.findUnique({
+    where: { id: v.payload.s },
+    select: { status: true, submittedAt: true },
+  });
+  if (!linkSubmission || linkSubmission.submittedAt !== null || linkSubmission.status !== "PENDING") {
+    return corsResponse(
+      { error: "This task was already submitted with this link. Start it again on RevType to do it once more." },
+      { status: 409 }
+    );
+  }
+
   // 1. Idempotent: if this user already holds a key for this task that has
   //    NOT been submitted yet, return it instead of pulling another one.
   //    Prevents accidental double-claims after refresh.

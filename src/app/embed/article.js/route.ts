@@ -118,28 +118,52 @@ function buildScript(origin: string, appOrigin: string): string {
   function showNotice(title, detail) {
     try {
       if (document.getElementById('__eg_at_notice')) return;
+      // Its own shadow root, like the CTA: the host theme's CSS used to reach
+      // in and blow the notice up to the article's font size, underlined.
+      var host = document.createElement('eg-task-notice');
+      host.id = '__eg_at_notice';
+      host.setAttribute('role', 'status');
+      host.style.cssText = [
+        'position:fixed', 'z-index:2147483641', 'bottom:16px', 'right:16px', 'left:auto',
+        'display:block', 'width:auto', 'max-width:min(360px, calc(100vw - 32px))',
+        'margin:0', 'padding:0', 'border:0', 'background:none', 'text-decoration:none'
+      ].map(function(d) { return d + ' !important'; }).join(';');
+      var root = host;
+      try { if (host.attachShadow) root = host.attachShadow({ mode: 'open' }); } catch (e) { root = host; }
+      var style = document.createElement('style');
+      style.textContent = [
+        ':host { all: initial; }',
+        '.n { box-sizing: border-box; padding: 14px 16px 14px; border-radius: 14px;',
+        '  background: #111827; color: #f9fafb; border: 1px solid #374151;',
+        '  box-shadow: 0 10px 30px rgba(0,0,0,.35);',
+        '  font: 600 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }',
+        '.d { margin-top: 4px; font-weight: 400; color: #9ca3af; font-size: 13px; }',
+        '.r { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }',
+        '.a { color: #a5b4fc; text-decoration: none; font-weight: 700; font-size: 13px; }',
+        '.x { all: unset; cursor: pointer; color: #6b7280; font-size: 12px; }'
+      ].join('\\n');
       var box = document.createElement('div');
-      box.id = '__eg_at_notice';
-      box.setAttribute('role', 'status');
-      box.style.cssText = [
-        'position:fixed', 'z-index:2147483641', 'bottom:18px', 'right:18px',
-        'max-width:min(360px, calc(100vw - 36px))', 'box-sizing:border-box',
-        'padding:14px 16px', 'border-radius:14px',
-        'background:#111827', 'color:#f9fafb', 'border:1px solid #374151',
-        'box-shadow:0 10px 30px rgba(0,0,0,.35)',
-        'font:600 13px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif'
-      ].join(';');
+      box.className = 'n';
       var h = document.createElement('div');
       h.textContent = title;
       var p = document.createElement('div');
+      p.className = 'd';
       p.textContent = detail;
-      p.style.cssText = 'margin-top:4px;font-weight:400;color:#9ca3af';
+      var row = document.createElement('div');
+      row.className = 'r';
       var a = document.createElement('a');
+      a.className = 'a';
       a.href = APP_ORIGIN + '/article-tasks';
       a.textContent = 'Back to RevType';
-      a.style.cssText = 'display:inline-block;margin-top:10px;color:#a5b4fc;text-decoration:none';
-      box.appendChild(h); box.appendChild(p); box.appendChild(a);
-      (document.body || document.documentElement).appendChild(box);
+      var x = document.createElement('button');
+      x.className = 'x';
+      x.type = 'button';
+      x.textContent = 'Close';
+      x.addEventListener('click', function() { if (host.parentNode) host.parentNode.removeChild(host); });
+      row.appendChild(a); row.appendChild(x);
+      box.appendChild(h); box.appendChild(p); box.appendChild(row);
+      root.appendChild(style); root.appendChild(box);
+      (document.body || document.documentElement).appendChild(host);
     } catch (e) { /* never let the notice break the host page */ }
   }
 
@@ -329,6 +353,30 @@ function buildScript(origin: string, appOrigin: string): string {
           );
           return;
         }
+        // The server may answer for a DIFFERENT task than this snippet's:
+        // the reader's link is for another task that reuses this article
+        // (admins paste only the first task's snippet). Run as that task —
+        // unless another snippet on the page already runs it.
+        if (res.data.taskId && res.data.taskId !== taskId) {
+          var adoptKey = '__egAtRun_' + res.data.taskId;
+          if (window[adoptKey]) {
+            log('another snippet on this page already runs task ' + res.data.taskId + '.');
+            return;
+          }
+          window[adoptKey] = true;
+          log('this page is shared with task ' + res.data.taskId + ' — running that task for this reader.');
+          taskId = res.data.taskId;
+        }
+        // This link's submission was already handed in. Running the page again
+        // would only lead to a key that can never be submitted.
+        if (res.data.submitted) {
+          window.__egAtLoaded = true;
+          showNotice(
+            'This task is already submitted',
+            'You already finished this task with this link. Start it again on RevType to do it once more.'
+          );
+          return;
+        }
         window.__egAtLoaded = true;
         state.config = res.data;
         // The server works out the page from this page's URL; every later
@@ -461,6 +509,14 @@ function buildScript(origin: string, appOrigin: string): string {
     var total = popups.length;
     if (total === 0) {
       onAllDone();
+      return;
+    }
+    // Every popup on this page was already clicked (the reader left and came
+    // back, or pressed Back from the next page). Offer the way forward.
+    if (state.clicked >= total) {
+      state.nextPopupIndex = total;
+      if (cfg.isFinal) showFinalCta();
+      else showContinueCta();
       return;
     }
     // Already-clicked items shouldn't re-appear after a refresh.
@@ -866,52 +922,220 @@ function buildScript(origin: string, appOrigin: string): string {
     return clean + sep + 'egv=' + encodeURIComponent(visitToken);
   }
 
+  /* ── Buttons and the key card live in a SHADOW ROOT ──────────────────
+     They used to be dropped straight into the article, styled by a global
+     stylesheet, so the host theme's CSS (a { … }, button { … }, svg sizing)
+     reached into them; and the CTA also carried the popup class, which forces
+     the article's font size and an underline with !important. The result
+     looked broken. A shadow root is a box the page's CSS cannot enter. */
+
+  function hexToRgb(c) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(c || '').trim());
+    if (!m) return null;
+    var h = m[1].length === 3 ? m[1].replace(/(.)/g, '$1$1') : m[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
+  // Plain rgb()/rgba() strings — color-mix() is unsupported on older phones,
+  // and there the whole gradient was dropped, leaving a button with no colour.
+  function accentColors() {
+    var t = (state.config && state.config.theme) || DEFAULT_THEME;
+    var rgb = hexToRgb(t.accentColor) || [99, 102, 241];
+    var dark = rgb.map(function(v) { return Math.round(v * 0.62); });
+    return {
+      base: 'rgb(' + rgb.join(',') + ')',
+      dark: 'rgb(' + dark.join(',') + ')',
+      glow: 'rgba(' + rgb.join(',') + ',0.42)',
+      glowStrong: 'rgba(' + rgb.join(',') + ',0.6)'
+    };
+  }
+
+  function isolatedCss() {
+    var c = accentColors();
+    var font = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    return [
+      ':host { all: initial; display: block; }',
+      '*, *::before, *::after { box-sizing: border-box; }',
+      '.__eg_wrap { font-family: ' + font + '; text-align: center; -webkit-font-smoothing: antialiased; }',
+      '.__eg_cta {',
+      '  -webkit-appearance: none; appearance: none;',
+      '  display: inline-flex; align-items: center; justify-content: center; gap: 10px;',
+      '  min-height: 52px; padding: 14px 30px; margin: 0;',
+      '  font-family: ' + font + '; font-size: 16px; font-weight: 700; line-height: 1.2;',
+      '  letter-spacing: 0.01em; text-decoration: none; white-space: nowrap;',
+      '  color: #ffffff; border: 0; border-radius: 14px; cursor: pointer;',
+      '  background: ' + c.base + ';',
+      '  background-image: linear-gradient(135deg, ' + c.base + ' 0%, ' + c.dark + ' 100%);',
+      '  box-shadow: 0 14px 30px -10px ' + c.glowStrong + ', 0 4px 10px -2px rgba(0,0,0,0.22);',
+      '  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;',
+      '  -webkit-tap-highlight-color: transparent;',
+      '  max-width: 100%;',
+      '}',
+      '.__eg_cta:hover { transform: translateY(-2px); box-shadow: 0 18px 36px -10px ' + c.glowStrong + ', 0 6px 14px -4px rgba(0,0,0,0.25); }',
+      '.__eg_cta:active { transform: translateY(0) scale(0.98); }',
+      '.__eg_cta[disabled] { opacity: 0.75; cursor: progress; transform: none; }',
+      '.__eg_cta svg { width: 18px; height: 18px; flex: none; display: block; }',
+      '.__eg_spin { animation: __eg_spin 0.8s linear infinite; }',
+      '@keyframes __eg_spin { to { transform: rotate(360deg); } }',
+      '.__eg_at_error {',
+      '  display: block; max-width: 420px; margin: 12px auto 0; padding: 10px 14px;',
+      '  border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca;',
+      '  color: #b91c1c; font-size: 13px; line-height: 1.45; text-align: center;',
+      '}',
+      '.__eg_at_key_card {',
+      '  display: block; margin: 26px auto 0; position: relative;',
+      '  width: 100%; max-width: 460px; padding: 30px 22px 22px;',
+      '  background: #0f172a; background-image: linear-gradient(180deg, #111827 0%, #0b1220 100%);',
+      '  color: #f1f5f9; border: 1px solid rgba(99,102,241,0.28); border-radius: 18px;',
+      '  box-shadow: 0 28px 60px -12px rgba(0,0,0,0.5), 0 12px 28px -10px ' + c.glow + ';',
+      '  text-align: center; animation: __eg_in 380ms cubic-bezier(0.2,0.85,0.3,1) both;',
+      '}',
+      '@keyframes __eg_in { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }',
+      '.__eg_at_key_badge {',
+      '  width: 48px; height: 48px; margin: -54px auto 14px;',
+      '  display: flex; align-items: center; justify-content: center;',
+      '  border-radius: 999px; color: #fff; background: #10b981;',
+      '  background-image: linear-gradient(135deg, #10b981, #059669);',
+      '  box-shadow: 0 12px 28px -6px rgba(16,185,129,0.55), 0 0 0 4px #0b1220;',
+      '}',
+      '.__eg_at_key_badge svg { width: 22px; height: 22px; display: block; }',
+      '.__eg_at_key_title { font-size: 16px; font-weight: 700; line-height: 1.4; color: #f8fafc; margin: 0 0 18px; }',
+      '.__eg_at_key_head { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #94a3b8; margin: 0 0 8px; }',
+      '.__eg_at_key_value {',
+      '  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;',
+      '  font-size: 21px; font-weight: 700; letter-spacing: 0.08em; word-break: break-all;',
+      '  color: #f8fafc; background: rgba(0,0,0,0.35); border: 1px dashed rgba(148,163,184,0.3);',
+      '  padding: 14px 16px; border-radius: 12px; margin: 0 0 16px;',
+      '  -webkit-user-select: all; user-select: all;',
+      '}',
+      '.__eg_at_key_actions { display: flex; gap: 10px; flex-wrap: wrap; }',
+      '.__eg_at_btn_copy, .__eg_at_btn_submit {',
+      '  -webkit-appearance: none; appearance: none;',
+      '  flex: 1 1 150px; min-height: 46px; margin: 0;',
+      '  display: inline-flex; align-items: center; justify-content: center; gap: 8px;',
+      '  padding: 12px 16px; border-radius: 12px;',
+      '  font-family: ' + font + '; font-size: 14px; font-weight: 700; line-height: 1.2;',
+      '  cursor: pointer; text-decoration: none; white-space: nowrap;',
+      '  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;',
+      '  -webkit-tap-highlight-color: transparent;',
+      '}',
+      '.__eg_at_btn_copy svg, .__eg_at_btn_submit svg { width: 16px; height: 16px; flex: none; display: block; }',
+      '.__eg_at_btn_copy { background: rgba(148,163,184,0.14); color: #e2e8f0; border: 1px solid rgba(148,163,184,0.22); }',
+      '.__eg_at_btn_copy:hover { background: rgba(148,163,184,0.24); transform: translateY(-1px); }',
+      '.__eg_at_btn_copy.__eg_at_btn_copy_ok { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.5); color: #6ee7b7; }',
+      '.__eg_at_btn_submit {',
+      '  color: #ffffff; border: 0; background: ' + c.base + ';',
+      '  background-image: linear-gradient(135deg, ' + c.base + ' 0%, ' + c.dark + ' 100%);',
+      '  box-shadow: 0 10px 24px -8px ' + c.glowStrong + ';',
+      '}',
+      '.__eg_at_btn_submit:hover { transform: translateY(-1px); box-shadow: 0 14px 30px -8px ' + c.glowStrong + '; }',
+      '.__eg_at_key_hint { margin: 14px 0 0; font-size: 12px; color: #94a3b8; line-height: 1.5; }'
+    ].join('\\n');
+  }
+
+  /** A host element on the article with its own shadow root + stylesheet. */
+  function isolatedBox(kind) {
+    var host = document.createElement('eg-task-box');
+    host.className = '__eg_at_host';
+    host.setAttribute('data-eg', kind);
+    host.style.cssText = [
+      'display:inline-block', 'vertical-align:top', 'text-decoration:none', 'font-size:16px', 'line-height:1.4', 'clear:both', 'float:none', 'width:100%', 'max-width:100%',
+      'margin:28px auto', 'padding:0 12px', 'border:0', 'background:none',
+      'position:relative', 'z-index:2147483630', 'box-sizing:border-box'
+    ].map(function(d) { return d + ' !important'; }).join(';');
+    var root = host;
+    try {
+      if (host.attachShadow) root = host.attachShadow({ mode: 'open' });
+    } catch (e) {
+      root = host; // very old browser: prefixed classes + our own <style> still apply
+    }
+    var style = document.createElement('style');
+    style.textContent = isolatedCss();
+    root.appendChild(style);
+    var wrap = document.createElement('div');
+    wrap.className = '__eg_wrap';
+    root.appendChild(wrap);
+    return { host: host, wrap: wrap };
+  }
+
+  function placeBox(host) {
+    var anchor = pickAnchors(1)[0];
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(host, anchor.nextSibling);
+    } else {
+      (getArticleRoot() || document.body).appendChild(host);
+    }
+  }
+
+  var ICON_KEY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>';
+  var ICON_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+  var ICON_SPIN = '<svg class="__eg_spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>';
+
+  function ctaButton(iconHtml, label) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = '__eg_cta';
+    btn.innerHTML = iconHtml + '<span></span>';
+    btn.querySelector('span').textContent = label;
+    return btn;
+  }
+
+  /**
+   * Back on a page whose popups are already done (the reader left and came
+   * back, or pressed Back from the next page). Nothing used to appear at all —
+   * no popup, no way forward. Offer the way forward instead of redirecting,
+   * so Back keeps working.
+   */
+  function showContinueCta() {
+    if (document.querySelector('.__eg_at_host[data-eg="continue"]')) return;
+    var box = isolatedBox('continue');
+    var btn = ctaButton(ICON_ARROW, 'Continue to page ' + (pageNumber + 1));
+    btn.addEventListener('click', function(ev) {
+      ev.preventDefault();
+      btn.disabled = true;
+      onAllDone();
+    });
+    box.wrap.appendChild(btn);
+    placeBox(box.host);
+  }
+
   function showFinalCta() {
     var cfg = state.config;
+    if (document.querySelector('.__eg_at_host[data-eg="final"]')) return;
 
-    // Step 1: render the "Generate Key" button. Click → API → reveal the
-    // key + copy button + an "Open Task Page" link. NO auto-submit.
-    var anchor = pickAnchors(1)[0];
-    var btn = document.createElement('a');
-    btn.className = ITEM_CLASS + ' ' + FINAL_CLASS;
-    btn.setAttribute('role', 'button');
-    btn.setAttribute('href', '#');
-    btn.textContent = cfg.generateKeyButtonLabel || 'Generate My Unique Key';
+    // Step 1: the "Generate Key" button. Click → API → reveal the key + copy
+    // button + "Submit on RevType" link. NO auto-submit.
+    var box = isolatedBox('final');
+    var label = cfg.generateKeyButtonLabel || 'Generate My Unique Key';
+    var btn = ctaButton(ICON_KEY, label);
 
     btn.addEventListener('click', function(ev) {
       ev.preventDefault();
       ev.stopPropagation();
       if (state.busy) return;
       state.busy = true;
-      var oldText = btn.textContent;
-      btn.textContent = 'Generating\\u2026';
-      btn.classList.add('__eg_at_busy');
+      btn.disabled = true;
+      btn.innerHTML = ICON_SPIN + '<span>Generating\\u2026</span>';
       generateKey().then(function(result) {
         if (result.error) {
           state.busy = false;
-          btn.textContent = oldText;
-          btn.classList.remove('__eg_at_busy');
+          btn.disabled = false;
+          btn.innerHTML = ICON_KEY + '<span></span>';
+          btn.querySelector('span').textContent = label;
           showInlineError(btn, result.error);
           return;
         }
         // Replace the CTA button with the key reveal card.
         var card = buildKeyRevealCard(result.key);
-        if (btn.parentNode) {
-          btn.parentNode.insertBefore(card, btn);
-          btn.parentNode.removeChild(btn);
-        } else {
-          document.body.appendChild(card);
-        }
+        var err = box.wrap.querySelector('.__eg_at_error');
+        if (err && err.parentNode) err.parentNode.removeChild(err);
+        box.wrap.replaceChild(card, btn);
         // v3.5: no auto-scroll — user finds the key card via natural scroll.
       });
     });
 
-    if (anchor && anchor.parentNode) {
-      anchor.parentNode.insertBefore(btn, anchor.nextSibling);
-    } else {
-      floatNode(btn, 0, 1);
-      document.body.appendChild(btn);
-    }
+    box.wrap.appendChild(btn);
+    placeBox(box.host);
     // v3.5: no auto-scroll on the final-page CTA either.
   }
 
@@ -1005,15 +1229,15 @@ function buildScript(origin: string, appOrigin: string): string {
   }
 
   function showInlineError(target, message) {
-    var prev = document.getElementById('__eg_at_inline_err');
+    var parent = target.parentNode;
+    if (!parent) return;
+    var prev = parent.querySelector ? parent.querySelector('.__eg_at_error') : null;
     if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
     var div = document.createElement('div');
-    div.id = '__eg_at_inline_err';
     div.className = '__eg_at_error';
+    div.setAttribute('role', 'alert');
     div.textContent = message;
-    if (target.parentNode) {
-      target.parentNode.insertBefore(div, target.nextSibling);
-    }
+    parent.insertBefore(div, target.nextSibling);
   }
 
   // ── API calls ──────────────────────────────────────────────────────────
@@ -1307,21 +1531,6 @@ function buildScript(origin: string, appOrigin: string): string {
       '  from { opacity: 0; transform: translateY(8px) scale(0.96); }',
       '  to   { opacity: 1; transform: translateY(0) scale(1); }',
       '}',
-      // Final-page CTA — bigger, gradient background, clearly different.
-      '.' + FINAL_CLASS + ' {',
-      '  display: inline-block;',
-      '  padding: 14px 28px;',
-      '  font-size: 16px;',
-      '  font-weight: 700;',
-      '  color: white !important;',
-      '  background: linear-gradient(135deg, ' + t.accentColor + ', color-mix(in srgb, ' + t.accentColor + ' 70%, black)) !important;',
-      '  border: 0;',
-      '  border-radius: 10px;',
-      '  box-shadow: 0 12px 30px -8px ' + t.accentColor + '88, 0 4px 10px -2px rgba(0,0,0,0.25);',
-      '  letter-spacing: 0.02em;',
-      '  margin: 26px auto;',
-      '}',
-      '.' + FINAL_CLASS + ':hover { transform: translateY(-2px) scale(1.02); }',
       // Inline error
       '.__eg_at_error {',
       '  display: inline-block; margin: 8px 0;',
@@ -1330,92 +1539,6 @@ function buildScript(origin: string, appOrigin: string): string {
       '  border: 1px solid rgba(239,68,68,0.4);',
       '  color: #b91c1c; font-size: 13px;',
       '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
-      '}',
-      // v3 key reveal card — premium dark UI.
-      '.__eg_at_key_card {',
-      '  display: block; margin: 32px auto; position: relative;',
-      '  max-width: 480px; padding: 28px 24px 22px;',
-      '  background: linear-gradient(180deg, #111827 0%, #0b1220 100%);',
-      '  color: #f1f5f9;',
-      '  border: 1px solid rgba(99,102,241,0.28);',
-      '  border-radius: 18px;',
-      '  box-shadow:',
-      '    0 28px 60px -12px rgba(0,0,0,0.55),',
-      '    0 12px 28px -10px rgba(99,102,241,0.35),',
-      '    inset 0 1px 0 rgba(255,255,255,0.04);',
-      '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
-      '  text-align: center;',
-      '  animation: __eg_at_key_in 380ms cubic-bezier(0.2, 0.85, 0.3, 1) both;',
-      '}',
-      '@keyframes __eg_at_key_in {',
-      '  from { opacity: 0; transform: translateY(12px) scale(0.97); }',
-      '  to   { opacity: 1; transform: translateY(0)    scale(1); }',
-      '}',
-      '.__eg_at_key_badge {',
-      '  width: 48px; height: 48px; margin: -52px auto 14px;',
-      '  display: inline-flex; align-items: center; justify-content: center;',
-      '  border-radius: 999px; color: white;',
-      '  background: linear-gradient(135deg, #10b981, #059669);',
-      '  box-shadow:',
-      '    0 12px 28px -6px rgba(16,185,129,0.55),',
-      '    0 0 0 4px #0b1220;',
-      '}',
-      '.__eg_at_key_title {',
-      '  font-size: 15px; font-weight: 700; line-height: 1.4;',
-      '  color: #f1f5f9; margin-bottom: 18px;',
-      '}',
-      '.__eg_at_key_head {',
-      '  font-size: 10px; font-weight: 700;',
-      '  letter-spacing: 0.16em; text-transform: uppercase;',
-      '  color: #94a3b8; margin-bottom: 8px;',
-      '}',
-      '.__eg_at_key_value {',
-      '  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;',
-      '  font-size: 20px; font-weight: 700;',
-      '  letter-spacing: 0.08em; word-break: break-all;',
-      '  color: #f8fafc;',
-      '  background: rgba(0,0,0,0.35);',
-      '  border: 1px dashed rgba(148,163,184,0.25);',
-      '  padding: 14px 16px; border-radius: 10px;',
-      '  margin-bottom: 16px; user-select: all;',
-      '}',
-      '.__eg_at_key_actions {',
-      '  display: flex; gap: 10px; flex-wrap: wrap;',
-      '}',
-      '.__eg_at_btn_copy, .__eg_at_btn_submit {',
-      '  flex: 1 1 140px; min-width: 130px;',
-      '  display: inline-flex; align-items: center; justify-content: center;',
-      '  gap: 7px; padding: 11px 16px; border-radius: 10px;',
-      '  font-size: 13px; font-weight: 700; cursor: pointer;',
-      '  border: 0; font-family: inherit; text-decoration: none;',
-      '  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;',
-      '}',
-      '.__eg_at_btn_copy {',
-      '  background: rgba(148,163,184,0.12);',
-      '  color: #e2e8f0;',
-      '  border: 1px solid rgba(148,163,184,0.18);',
-      '}',
-      '.__eg_at_btn_copy:hover {',
-      '  background: rgba(148,163,184,0.22);',
-      '  transform: translateY(-1px);',
-      '}',
-      '.__eg_at_btn_copy.__eg_at_btn_copy_ok {',
-      '  background: rgba(16,185,129,0.18);',
-      '  border-color: rgba(16,185,129,0.45);',
-      '  color: #6ee7b7;',
-      '}',
-      '.__eg_at_btn_submit {',
-      '  background: linear-gradient(135deg, ' + t.accentColor + ', color-mix(in srgb, ' + t.accentColor + ' 60%, #000));',
-      '  color: white !important;',
-      '  box-shadow: 0 10px 24px -8px ' + t.accentColor + '88;',
-      '}',
-      '.__eg_at_btn_submit:hover {',
-      '  transform: translateY(-1px);',
-      '  box-shadow: 0 14px 30px -8px ' + t.accentColor + 'aa;',
-      '}',
-      '.__eg_at_key_hint {',
-      '  margin-top: 14px; font-size: 11px;',
-      '  color: #64748b; line-height: 1.5;',
       '}'
     ].join('\\n');
 
