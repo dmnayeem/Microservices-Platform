@@ -118,6 +118,15 @@ export async function GET(
     );
   }
 
+  // A link whose submission was already handed in: the page would run again
+  // and end in a key that can never be submitted. The embed says so instead.
+  const submitted = submissionId
+    ? await prisma.taskSubmission
+        .findUnique({ where: { id: submissionId }, select: { status: true, submittedAt: true } })
+        .then((sub) => !sub || sub.submittedAt !== null || sub.status !== "PENDING")
+        .catch(() => false)
+    : false;
+
   const isFinal = pageIndex === pages.length - 1;
   const next = isFinal ? null : pages[pageIndex + 1];
 
@@ -209,6 +218,7 @@ export async function GET(
     pageNumber,
     pageCount: pages.length,
     isFinal,
+    submitted,
     // Legacy fields (still consumed by older embed builds).
     // The number the reader will actually see, which is the same number
     // popup-progress requires — these must never disagree again.
