@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { pickFreshKeySql, topUpKeyPool, topUpKeyPoolSoon } from "@/lib/article-key-pool";
 import { renderedPopupCount } from "@/lib/article-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import {
@@ -118,24 +119,28 @@ export async function POST(
   //    use a raw query so the WHERE condition (claimedByUserId IS NULL)
   //    is enforced atomically — race-safe even under concurrent claims.
   //    Postgres locks the matched row in the inner SELECT.
-  const claimed = await prisma.$queryRaw<
-    Array<{ id: string; keyValue: string }>
-  >(
-    Prisma.sql`
-      UPDATE "ArticleTaskKey"
-      SET "claimedByUserId" = ${v.payload.u},
-          "claimedAt" = NOW()
-      WHERE id = (
-        SELECT id FROM "ArticleTaskKey"
-        WHERE "taskId" = ${taskId}
-          AND "claimedByUserId" IS NULL
-        ORDER BY random()
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED
-      )
-      RETURNING id, "keyValue"
-    `
-  );
+  //
+  //    Only a FRESH key (pickFreshKeySql): this used to take any key with no
+  //    claimer, which included keys already handed to an anonymous visitor on
+  //    the search/referral path — two people could be given the same key, and
+  //    the second was refused and flagged as a key thief at submit.
+  const claimUser = v.payload.u;
+  const claimOnce = () =>
+    prisma.$queryRaw<Array<{ id: string; keyValue: string }>>(
+      Prisma.sql`
+        UPDATE "ArticleTaskKey"
+        SET "claimedByUserId" = ${claimUser},
+            "claimedAt" = NOW()
+        WHERE id = (${pickFreshKeySql(taskId)})
+        RETURNING id, "keyValue"
+      `
+    );
+  let claimed = await claimOnce();
+  if (!claimed || claimed.length === 0) {
+    // Pool ran dry faster than the background top-up: mint now, try once more.
+    if ((await topUpKeyPool(taskId, 1).catch(() => 0)) > 0) claimed = await claimOnce();
+  }
+  if (claimed && claimed.length > 0) topUpKeyPoolSoon(taskId);
 
   if (!claimed || claimed.length === 0) {
     return corsResponse(
@@ -223,27 +228,24 @@ async function issueAnonymousKey(taskId: string, visitToken: string) {
     }
   }
 
-  const claimed = await prisma.$queryRaw<Array<{ id: string; keyValue: string }>>(
-    Prisma.sql`
-      UPDATE "ArticleTaskKey"
-      SET "issuedAt" = NOW(),
-          "entrySource" = ${verdict},
-          "entryReferrer" = ${vv.payload.r ?? null},
-          "entryLandingUrl" = ${vv.payload.l ?? null},
-          "visitFingerprint" = ${fingerprint || null}
-      WHERE id = (
-        SELECT id FROM "ArticleTaskKey"
-        WHERE "taskId" = ${taskId}
-          AND "claimedByUserId" IS NULL
-          AND "submissionId" IS NULL
-          AND "issuedAt" IS NULL
-        ORDER BY random()
-        LIMIT 1
-        FOR UPDATE SKIP LOCKED
-      )
-      RETURNING id, "keyValue"
-    `
-  );
+  const issueOnce = () =>
+    prisma.$queryRaw<Array<{ id: string; keyValue: string }>>(
+      Prisma.sql`
+        UPDATE "ArticleTaskKey"
+        SET "issuedAt" = NOW(),
+            "entrySource" = ${verdict},
+            "entryReferrer" = ${vv.payload.r ?? null},
+            "entryLandingUrl" = ${vv.payload.l ?? null},
+            "visitFingerprint" = ${fingerprint || null}
+        WHERE id = (${pickFreshKeySql(taskId)})
+        RETURNING id, "keyValue"
+      `
+    );
+  let claimed = await issueOnce();
+  if (!claimed || claimed.length === 0) {
+    if ((await topUpKeyPool(taskId, 1).catch(() => 0)) > 0) claimed = await issueOnce();
+  }
+  if (claimed && claimed.length > 0) topUpKeyPoolSoon(taskId);
 
   if (!claimed || claimed.length === 0) {
     return corsResponse(

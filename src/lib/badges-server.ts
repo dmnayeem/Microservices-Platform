@@ -4,6 +4,8 @@ import { getSetting } from "@/lib/system-settings";
 import { getPointsPerUsd } from "@/lib/economy";
 import { deliverToUser } from "@/lib/notify";
 import { usd } from "@/lib/utils";
+import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { requireActiveUser } from "@/lib/require-active";
 import {
   BADGE_CONFIG_SETTING,
   BADGE_PERIOD_DAYS,
@@ -115,8 +117,35 @@ async function charge(
   });
 }
 
-/** Buy (or extend by a month) the blue badge. */
+const CONFLICT: BuyResult = {
+  ok: false,
+  error: "This was already bought a moment ago — refresh to see it.",
+  status: 409,
+};
+
+/** Map a failed purchase transaction to the user-facing result. */
+function buyFailure(e: unknown, method: Method): BuyResult | null {
+  if (e instanceof Error && e.message === "INSUFFICIENT") {
+    return { ok: false, error: method === "CASH" ? "Not enough cash in your wallet." : "Not enough points.", status: 400 };
+  }
+  // The period moved under us (a concurrent buy / renewal won), or the same
+  // purchase already wrote its ledger row: nothing was charged here.
+  if ((e instanceof Error && e.message === "CONFLICT") || isDuplicateLedgerError(e)) return CONFLICT;
+  return null;
+}
+
+/**
+ * Buy (or extend by a month) the blue badge.
+ *
+ * Race-safe: the expiry is read once, and the write is a compare-and-set on
+ * exactly that value inside the transaction — a double click, a second tab or
+ * the renewal sweep running at the same moment finds it moved and charges
+ * nothing (409). The ledger reference is derived from the same old expiry, so
+ * even a duplicate that slipped past would collide on (userId, reference).
+ */
 export async function buyBadge(userId: string, method: Method): Promise<BuyResult> {
+  const active = await requireActiveUser(userId);
+  if (!active.ok) return { ok: false, error: active.message, status: active.httpStatus };
   const [cfg, rate, u] = await Promise.all([
     getBadgeConfig(),
     getPointsPerUsd(),
@@ -130,18 +159,23 @@ export async function buyBadge(userId: string, method: Method): Promise<BuyResul
   const now = new Date();
   const base = u.blueBadgeExpiresAt && u.blueBadgeExpiresAt > now ? u.blueBadgeExpiresAt : now;
   const expiresAt = addDays(base, BADGE_PERIOD_DAYS);
+  // Same shape the renewal sweep uses (`badge_blue_<user>_<oldExpiry>`): a
+  // manual buy and a renewal of the same period collide instead of both paying.
+  const reference = u.blueBadgeExpiresAt
+    ? `badge_blue_${userId}_${u.blueBadgeExpiresAt.getTime()}`
+    : `badge_blue_${userId}_new_${now.getTime()}`;
   try {
     await prisma.$transaction(async (tx) => {
-      await charge(tx, userId, cfg.badgePriceUsd, method, rate, "Blue badge (1 month)", `badge_blue_${userId}_${now.getTime()}`);
-      await tx.user.update({
-        where: { id: userId },
+      const cas = await tx.user.updateMany({
+        where: { id: userId, isBlueVerified: u.isBlueVerified, blueBadgeExpiresAt: u.blueBadgeExpiresAt },
         data: { isBlueVerified: true, blueBadgeExpiresAt: expiresAt, blueBadgeAutoRenew: true },
       });
+      if (cas.count === 0) throw new Error("CONFLICT");
+      await charge(tx, userId, cfg.badgePriceUsd, method, rate, "Blue badge (1 month)", reference);
     });
   } catch (e) {
-    if (e instanceof Error && e.message === "INSUFFICIENT") {
-      return { ok: false, error: method === "CASH" ? "Not enough cash in your wallet." : "Not enough points.", status: 400 };
-    }
+    const r = buyFailure(e, method);
+    if (r) return r;
     throw e;
   }
   return { ok: true, expiresAt };
@@ -152,6 +186,8 @@ export async function buyStyle(userId: string, style: string, method: Method): P
   if (!isBadgeStyle(style) || BADGE_STYLE_KIND[style] === "included") {
     return { ok: false, error: "That style is not for sale.", status: 400 };
   }
+  const active = await requireActiveUser(userId);
+  if (!active.ok) return { ok: false, error: active.message, status: active.httpStatus };
   const [cfg, rate, state] = await Promise.all([getBadgeConfig(), getPointsPerUsd(), getBadgeState(userId)]);
   if (!state) return { ok: false, error: "Account not found", status: 404 };
   const conf = cfg.styles[style];
@@ -160,23 +196,41 @@ export async function buyStyle(userId: string, style: string, method: Method): P
 
   const now = new Date();
   const owned = state.styles.find((s) => s.style === style);
-  const base = owned && new Date(owned.expiresAt) > now ? new Date(owned.expiresAt) : now;
+  const ownedExpiry = owned ? new Date(owned.expiresAt) : null;
+  const base = ownedExpiry && ownedExpiry > now ? ownedExpiry : now;
   const expiresAt = addDays(base, BADGE_PERIOD_DAYS);
+  // Derived from the period being extended — the same shape the renewal sweep
+  // writes — so a duplicate of this purchase collides on (userId, reference).
+  const reference = ownedExpiry
+    ? `badge_style_${style}_${userId}_${ownedExpiry.getTime()}`
+    : `badge_style_${style}_${userId}_new`;
+  const autoRenew = true; // renewal itself is cash-only — the shop says so at purchase
   try {
     await prisma.$transaction(async (tx) => {
-      await charge(tx, userId, conf.priceUsd, method, rate, `Badge style: ${styleLabel(style)} (1 month)`, `badge_style_${style}_${userId}_${now.getTime()}`);
-      await tx.badgeStyleSubscription.upsert({
-        where: { userId_style: { userId, style } },
-        create: { userId, style, expiresAt, autoRenew: true },
-        update: { expiresAt, autoRenew: true },
-      });
+      if (ownedExpiry) {
+        // Compare-and-set on the expiry read above.
+        const cas = await tx.badgeStyleSubscription.updateMany({
+          where: { userId, style, expiresAt: ownedExpiry },
+          data: { expiresAt, autoRenew },
+        });
+        if (cas.count === 0) throw new Error("CONFLICT");
+      } else {
+        // First purchase: the (userId, style) unique key makes a concurrent
+        // second create fail instead of selling the style twice.
+        try {
+          await tx.badgeStyleSubscription.create({ data: { userId, style, expiresAt, autoRenew } });
+        } catch (err) {
+          if ((err as { code?: unknown } | null)?.code === "P2002") throw new Error("CONFLICT");
+          throw err;
+        }
+      }
+      await charge(tx, userId, conf.priceUsd, method, rate, `Badge style: ${styleLabel(style)} (1 month)`, reference);
       // Show what was just bought.
       await tx.user.update({ where: { id: userId }, data: { verifiedBadgeStyle: style } });
     });
   } catch (e) {
-    if (e instanceof Error && e.message === "INSUFFICIENT") {
-      return { ok: false, error: method === "CASH" ? "Not enough cash in your wallet." : "Not enough points.", status: 400 };
-    }
+    const r = buyFailure(e, method);
+    if (r) return r;
     throw e;
   }
   return { ok: true, expiresAt };

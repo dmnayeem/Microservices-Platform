@@ -44,7 +44,10 @@ import { pageMeta } from "@/lib/seo/page-meta";
  */
 
 /** Spaces we actually offer. See the note above on REWARDED_VIDEO. */
-const SELLABLE = AD_PLACEMENTS.filter((p) => p.name !== "REWARDED_VIDEO");
+// PAGE_SCRIPT is the site-wide network page-script space — never sold.
+const SELLABLE = AD_PLACEMENTS.filter(
+  (p) => p.name !== "REWARDED_VIDEO" && p.name !== "PAGE_SCRIPT"
+);
 const SLOT_COUNT = SELLABLE.length;
 const NETWORK_SPACES = SELLABLE.filter((p) => placementSpec(p.name).networkAllowed);
 

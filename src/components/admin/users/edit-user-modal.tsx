@@ -258,6 +258,10 @@ export function UserEditForm({
     twoFactorEnabled: user.twoFactorEnabled,
     tutorSuspended: user.tutorSuspended,
     isBlueVerified: user.isBlueVerified,
+    // Badge grant length ("lifetime" or days) and the removal reason — sent
+    // only when the badge checkbox actually changes.
+    badgeDuration: "30",
+    badgeReason: "",
     verifiedBadgeStyle: user.verifiedBadgeStyle ?? "BLUE",
 
     gender: user.gender ?? "",
@@ -399,8 +403,14 @@ export function UserEditForm({
         payload.twoFactorEnabled = form.twoFactorEnabled;
       if (form.tutorSuspended !== user.tutorSuspended)
         payload.tutorSuspended = form.tutorSuspended;
-      if (form.isBlueVerified !== user.isBlueVerified)
+      if (form.isBlueVerified !== user.isBlueVerified) {
         payload.isBlueVerified = form.isBlueVerified;
+        if (form.isBlueVerified) {
+          if (form.badgeDuration === "lifetime") payload.badgeLifetime = true;
+          else payload.badgeDurationDays = Number(form.badgeDuration);
+        }
+        if (form.badgeReason.trim()) payload.badgeReason = form.badgeReason.trim();
+      }
       if (form.verifiedBadgeStyle !== (user.verifiedBadgeStyle ?? "BLUE"))
         payload.verifiedBadgeStyle = form.verifiedBadgeStyle || "BLUE";
       // Personal
@@ -906,6 +916,36 @@ export function UserEditForm({
                     </p>
                   </div>
                 </label>
+                {form.isBlueVerified !== user.isBlueVerified && (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {form.isBlueVerified && (
+                      <label className="text-[11px] text-slate-400">
+                        Badge length
+                        <select
+                          value={form.badgeDuration}
+                          onChange={(e) => set("badgeDuration", e.target.value)}
+                          className={cn(fieldCls, "mt-1")}
+                        >
+                          <option value="30">30 days</option>
+                          <option value="90">90 days</option>
+                          <option value="180">180 days</option>
+                          <option value="365">1 year</option>
+                          <option value="lifetime">Lifetime</option>
+                        </select>
+                      </label>
+                    )}
+                    <label className={cn("text-[11px] text-slate-400", !form.isBlueVerified && "sm:col-span-2")}>
+                      Reason {form.isBlueVerified ? "(optional)" : "(required if the user paid for it)"}
+                      <input
+                        value={form.badgeReason}
+                        onChange={(e) => set("badgeReason", e.target.value)}
+                        maxLength={500}
+                        className={cn(fieldCls, "mt-1")}
+                        placeholder={form.isBlueVerified ? "e.g. partner account" : "Why the badge is removed"}
+                      />
+                    </label>
+                  </div>
+                )}
                 {form.kycStatus === "APPROVED" && !form.isBlueVerified && (
                   <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-[11px] text-amber-200">
                     💡 This user has approved KYC — typically Blue Verified is enabled too.

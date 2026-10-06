@@ -56,7 +56,7 @@ async function handle(request: NextRequest) {
   const status = p.status ?? "";
 
   const secret = await getCpaPostbackSecret();
-  if (!verifyCpaPostback(secret, { click, txid, payout: payoutRaw, sig: p.sig, key: p.key })) {
+  if (!verifyCpaPostback(secret, { click, txid, payout: payoutRaw, status, sig: p.sig, key: p.key })) {
     return NextResponse.json({ ok: false, error: "Bad signature" }, { status: 403 });
   }
   if (!click || click.length > 64) {

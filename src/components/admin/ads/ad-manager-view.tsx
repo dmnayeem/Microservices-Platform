@@ -44,11 +44,17 @@ import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AD_PLACEMENTS, placementSizeKey, placementSpec } from "@/lib/ad-placements";
 import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import {
+  HtmlNetworkFields,
+  htmlNetworkInitial,
+  htmlNetworkPayload,
+} from "@/components/admin/ads/html-network-fields";
 import { AdReviewQueue } from "@/components/admin/ads/ad-review-queue";
 import { AdReviewPanel } from "@/components/admin/ads/ad-review-panel";
 import { ModalShell } from "@/components/admin/ads/modal-shell";
 import { BookingsTab } from "@/components/admin/ads/bookings-tab";
 import { InvoicesTab } from "@/components/admin/ads/invoices-tab";
+import { MeasurementPanel } from "@/components/admin/ads/measurement-panel";
 // Shared presentation so this view and the review console can't drift apart.
 import { StatusPill, targetingSummary } from "@/components/admin/ads/ad-ui";
 import { type AdTargeting } from "@/lib/ad-targeting";
@@ -135,6 +141,12 @@ interface Ad {
   creativeGroupId?: string | null;
   createdAt?: string;
   allowSameOrigin?: boolean;
+  networkId?: string | null;
+  mobileHtmlContent?: string | null;
+  mobileWidth?: number | null;
+  mobileHeight?: number | null;
+  freqCapPerDay?: number | null;
+  freqMinGapMinutes?: number | null;
   campaign: {
     id: string;
     title: string;
@@ -1572,8 +1584,15 @@ function AnalyticsTab() {
 
   return (
     <div className="space-y-3">
+      {/* Real measurement first — viewable, bot-filtered numbers. */}
+      <MeasurementPanel />
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm font-semibold text-white">Performance</p>
+        <p className="text-sm font-semibold text-white">
+          Performance
+          <span className="ml-2 text-[11px] font-normal text-slate-500">
+            impressions = viewable since real measurement began; before that, counted when sent
+          </span>
+        </p>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Ads were the one money domain with no export at all. */}
           <div className="inline-flex items-center gap-1">
@@ -2219,6 +2238,8 @@ function AdModal({
   const [adSlot, setAdSlot] = useState(ad?.adSlot ?? "");
   const [adUnitPath, setAdUnitPath] = useState(ad?.adUnitPath ?? "");
   const [adClient, setAdClient] = useState(ad?.adClient ?? "");
+  // HTML snippets: network, mobile variant, page-script frequency cap.
+  const [netFields, setNetFields] = useState(() => htmlNetworkInitial(ad));
   // Optional third-party tracking pixels (any type).
   const [impressionPixel, setImpressionPixel] = useState(ad?.impressionPixel ?? "");
   const [clickTracker, setClickTracker] = useState(ad?.clickTracker ?? "");
@@ -2303,6 +2324,7 @@ function AdModal({
         adClient: type === "ADSENSE" ? adClient : "",
         impressionPixel,
         clickTracker,
+        ...htmlNetworkPayload(netFields, type === "HTML"),
         size,
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
@@ -2419,6 +2441,18 @@ function AdModal({
             <label className="block text-xs text-slate-400 mb-1">Ad image or GIF</label>
             <ImageUploadField value={contentUrl} onChange={setContentUrl} previewSize="md" />
           </div>
+        )}
+
+        {(creative === "HTML" || (creative === "NETWORK" && provider === "custom")) && (
+          <HtmlNetworkFields
+            value={netFields}
+            onChange={setNetFields}
+            placementName={activePlacementName}
+            size={size}
+            width={width}
+            height={height}
+            inputCls={inputCls}
+          />
         )}
 
         <div className="grid grid-cols-2 gap-3">

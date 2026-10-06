@@ -8,6 +8,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { getBrowseEarnConfig } from "@/lib/browse-earn";
 import { getUserDayContext } from "@/lib/user-day";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
+import { requireActiveUser } from "@/lib/require-active";
 
 /**
  * Credit one Browse & Earn interval. The interval cooldown AND the per-local-day
@@ -28,6 +29,13 @@ export async function POST(request: NextRequest) {
   if (limited) return limited;
 
   const userId = session.user.id;
+
+  // A banned or suspended account must not earn. The JWT lives 30 days with no
+  // status claim, so without this a ban did not stop Browse & Earn credits.
+  const active = await requireActiveUser(userId);
+  if (!active.ok) {
+    return NextResponse.json({ error: active.message }, { status: active.httpStatus });
+  }
 
   const cfg = await getBrowseEarnConfig();
   if (!cfg.enabled || cfg.dailyCap <= 0) {

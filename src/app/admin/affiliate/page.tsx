@@ -23,13 +23,16 @@ export default async function AdminAffiliatePage() {
 
   const [agg, activeAffiliates, byAffiliateRaw, recentRaw, totalClicks, clicksByTargetRaw] =
     await Promise.all([
+      // Reversed (refunded) commissions were clawed back — not earned.
       prisma.affiliateCommission.aggregate({
+        where: { status: { not: "REVERSED" } },
         _sum: { commissionAmount: true },
         _count: { _all: true },
       }),
       prisma.user.count({ where: { affiliateJoinedAt: { not: null } } }),
       prisma.affiliateCommission.groupBy({
         by: ["affiliateUserId"],
+        where: { status: { not: "REVERSED" } },
         _sum: { commissionAmount: true },
         _count: { _all: true },
         orderBy: { _sum: { commissionAmount: "desc" } },
@@ -152,9 +155,10 @@ export default async function AdminAffiliatePage() {
                   </p>
                   <p className="text-[11px] text-slate-500">
                     {new Date(r.createdAt).toLocaleDateString()} · sale {money(toNum(r.saleAmount))}
+                    {r.status === "REVERSED" && <span className="text-red-400"> · reversed (refunded)</span>}
                   </p>
                 </div>
-                <span className="text-sm font-bold text-emerald-400 tabular-nums">
+                <span className={`text-sm font-bold tabular-nums ${r.status === "REVERSED" ? "text-slate-500 line-through" : "text-emerald-400"}`}>
                   {seesMoney ? `+${usd(toNum(r.commissionAmount))}` : "—"}
                 </span>
               </div>

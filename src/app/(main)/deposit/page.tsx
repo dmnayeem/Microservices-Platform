@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DepositView } from "@/components/user/wallet/deposit-view";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { ServerAdSlot } from "@/components/user/primitives/server-ad-slot";
 
 export default async function DepositPage({
   searchParams,
@@ -13,7 +13,7 @@ export default async function DepositPage({
   const { from } = await searchParams;
   return (
     <>
-      <AdRenderer placement="DEPOSIT_TOP" className="mb-4" />
+      <ServerAdSlot placement="DEPOSIT_TOP" className="mb-4" />
       <DepositView from={from} />
     </>
   );

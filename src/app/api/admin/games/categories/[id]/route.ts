@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { gameCategorySchema } from "@/lib/games-admin";
 
 interface RouteParams {
@@ -33,9 +34,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
   }
+  const before = await prisma.gameCategory.findUnique({ where: { id } });
   const category = await prisma.gameCategory.update({
     where: { id },
     data: v.data,
+  });
+  await writeAudit({
+    actorId: session.user.id,
+    action: "GAME_CATEGORY_UPDATED",
+    entity: "GameCategory",
+    entityId: id,
+    summary: `Edited game category "${category.name}"`,
+    meta: { before, after: category },
   });
   return NextResponse.json({ success: true, category });
 }
@@ -51,7 +61,16 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   // uncategorises its games. That is recoverable but surprising, so say how
   // many rather than doing it silently.
   const games = await prisma.game.count({ where: { categoryId: id } });
+  const before = await prisma.gameCategory.findUnique({ where: { id } });
   await prisma.gameCategory.delete({ where: { id } });
+  await writeAudit({
+    actorId: session.user.id,
+    action: "GAME_CATEGORY_DELETED",
+    entity: "GameCategory",
+    entityId: id,
+    summary: `Deleted game category "${before?.name ?? id}" (${games} game${games === 1 ? "" : "s"} uncategorised)`,
+    meta: { before, after: null, uncategorised: games },
+  });
   return NextResponse.json({
     success: true,
     uncategorised: games,

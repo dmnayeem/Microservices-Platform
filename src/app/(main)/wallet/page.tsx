@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { ledgerForUser } from "@/lib/ledger-display";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import {
   WalletView,
   type WalletTransaction,
@@ -70,11 +70,31 @@ export default async function WalletPage() {
       // The last 30 days of the ledger, read once: the earnings breakdown
       // (same rules as the dashboard and the admin console) and the recent
       // list both come from it.
-      prisma.transaction.findMany({
-        where: { userId, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
-        orderBy: { createdAt: "desc" },
-        take: 1000,
-      }),
+      //
+      // Non-critical (history + breakdown) → degrades to an empty list instead
+      // of failing the wallet. Only the columns the ledger code reads: the full
+      // row (1000 × every column) was the heaviest read on this page.
+      safeRead(
+        prisma.transaction.findMany({
+          where: { userId, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
+          orderBy: { createdAt: "desc" },
+          take: 1000,
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            points: true,
+            amount: true,
+            reference: true,
+            description: true,
+            // ledgerForUser reads metadata.adjustedPoints.
+            metadata: true,
+            createdAt: true,
+          },
+        }),
+        [],
+        "wallet ledger"
+      ),
       prisma.withdrawal.count({
         where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
       }),
@@ -108,13 +128,21 @@ export default async function WalletPage() {
       }),
       // The team at the depth and rates the admin set (lib/team.ts) — this
       // used to load every direct referral's id and stop at level 3.
-      getTeamSummary(userId),
-      prisma.deposit.findMany({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-        take: 30,
-        select: { id: true, amount: true, method: true, status: true, txnId: true, createdAt: true },
-      }),
+      safeRead(
+        getTeamSummary(userId),
+        { levels: [], totalCount: 0, totalEarnedUsd: 0, members: [] },
+        "wallet team summary"
+      ),
+      safeRead(
+        prisma.deposit.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: { id: true, amount: true, method: true, status: true, txnId: true, createdAt: true },
+        }),
+        [],
+        "wallet deposits"
+      ),
       // Independent of the queries above — batched here to avoid extra serial hops.
       getKycPromptState(userId),
       getPointsPerUsd(),
@@ -123,7 +151,7 @@ export default async function WalletPage() {
         where: { userId, status: "COMPLETED", createdAt: { gte: monthStart } },
         _sum: { amount: true },
       }),
-      todayRefP,
+      safeRead(todayRefP, null, "wallet today referral"),
       // Effective withdrawal fee % (admin setting − package discount) so the
       // wallet Withdraw tab can show it too, matching the /withdrawal page.
       getWithdrawalConfig(userId),

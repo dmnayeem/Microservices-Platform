@@ -6,6 +6,7 @@ import { AFFILIATE_COOKIE } from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
 import {
   fundDeal,
+  acceptDeal,
   markDelivered,
   releaseDeal,
   refundDeal,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/marketplace-deal";
 
 const schema = z.object({
-  action: z.enum(["fund", "deliver", "confirm", "cancel", "escalate", "refund"]),
+  action: z.enum(["accept", "fund", "deliver", "confirm", "cancel", "escalate", "refund"]),
   reason: z.string().max(500).optional(),
 });
 
@@ -59,6 +60,11 @@ export async function POST(
         buyerId: userId,
         affiliateCookie: request.cookies.get(AFFILIATE_COOKIE)?.value,
       });
+      break;
+    }
+    case "accept": {
+      if (!isSeller) return NextResponse.json({ error: "Only the seller can accept" }, { status: 403 });
+      result = await acceptDeal({ dealId: id, sellerId: userId });
       break;
     }
     case "deliver": {

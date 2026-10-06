@@ -15,7 +15,18 @@
 import { prisma } from "@/lib/prisma";
 import { D, toNum } from "@/lib/money";
 import { usd } from "@/lib/utils";
-import { TransactionType, TransactionStatus } from "@/generated/prisma";
+import { TransactionType, TransactionStatus, DisputeStatus } from "@/generated/prisma";
+
+/**
+ * Dispute states that freeze a held payout. While a buyer's dispute is live
+ * the money must stay held — releasing it would leave the refund (if the
+ * buyer wins) to chase a seller balance that may already be withdrawn.
+ */
+export const ACTIVE_DISPUTE_STATUSES: DisputeStatus[] = [
+  DisputeStatus.OPEN,
+  DisputeStatus.IN_REVIEW,
+  DisputeStatus.ESCALATED,
+];
 
 /** Never turn one tick into an unbounded chain of wallet writes. */
 const DEFAULT_LIMIT = 50;
@@ -41,7 +52,13 @@ export async function releaseDuePayouts(
   const summary: ReleaseSummary = { examined: 0, released: 0, amount: 0, skipped: 0 };
 
   const due = await prisma.marketplacePayout.findMany({
-    where: { status: "HELD", releaseAt: { lte: new Date() } },
+    where: {
+      status: "HELD",
+      releaseAt: { lte: new Date() },
+      // Frozen while the sale has a live dispute; released on a later tick
+      // once it is resolved (or reversed by the resolution).
+      purchase: { disputes: { none: { status: { in: ACTIVE_DISPUTE_STATUSES } } } },
+    },
     orderBy: { releaseAt: "asc" },
     take: limit,
   });
@@ -86,6 +103,12 @@ export async function releaseDuePayouts(
         if (claimed.count === 0) {
           throw new Error("ALREADY_SETTLED");
         }
+        // A dispute opened between the sweep's read and this claim: roll
+        // the claim back and leave the row HELD.
+        const live = await tx.marketplaceDispute.count({
+          where: { purchaseId: row.purchaseId, status: { in: ACTIVE_DISPUTE_STATUSES } },
+        });
+        if (live > 0) throw new Error("DISPUTED");
 
         await tx.user.update({
           where: { id: row.sellerId },
@@ -117,7 +140,7 @@ export async function releaseDuePayouts(
       summary.released++;
       summary.amount += amount;
     } catch (e) {
-      if (e instanceof Error && e.message === "ALREADY_SETTLED") {
+      if (e instanceof Error && (e.message === "ALREADY_SETTLED" || e.message === "DISPUTED")) {
         summary.skipped++;
         continue;
       }

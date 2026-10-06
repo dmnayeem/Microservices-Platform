@@ -42,17 +42,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const fieldParam = (new URL(request.url).searchParams.get("f") ??
-    "img") as AdMediaField;
+  const sp = new URL(request.url).searchParams;
+  const fieldParam = (sp.get("f") ?? "img") as AdMediaField;
+  // Immutable only when the URL is versioned (`v=<updatedAt>`). An unversioned
+  // URL names "whatever the ad holds now", which an edit changes.
+  const cacheControl = sp.get("v")
+    ? "public, max-age=31536000, s-maxage=31536000, immutable"
+    : "public, max-age=3600, s-maxage=86400";
   const column = AD_MEDIA_COLUMN[fieldParam];
   if (!column) {
     return NextResponse.json({ error: "bad field" }, { status: 400 });
   }
 
+  // Cached: this runs once per creative per page view on every ad slot. The
+  // served URL carries `v=<updatedAt>` (ad-proxy.ts), so an edited creative is
+  // a new URL and a stale cached row here can only ever answer an old one.
   const ad = await prisma.ad
     .findUnique({
       where: { id },
       select: { contentUrl: true, videoUrl: true, brandLogo: true },
+      cacheStrategy: { ttl: 300, swr: 3600 },
     })
     .catch(() => null);
 
@@ -77,7 +86,7 @@ export async function GET(
           status: 200,
           headers: {
             ...creativeHeaders(contentType, fieldParam, key),
-            "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
+            "Cache-Control": cacheControl,
           },
         });
       }
@@ -111,7 +120,7 @@ export async function GET(
         ...creativeHeaders(upstream.headers.get("content-type"), fieldParam, target.pathname),
         // Creatives are immutable per ad — cache hard so the proxy hop is paid
         // once (put a CDN in front of the origin to scale this further).
-        "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
+        "Cache-Control": cacheControl,
       },
     });
   } catch {

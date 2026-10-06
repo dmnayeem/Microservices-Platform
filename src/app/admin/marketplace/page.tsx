@@ -3,7 +3,7 @@ import { parsePage } from "@/lib/paginate";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
 import {
   Store,
@@ -133,6 +133,8 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
   const searchQuery = params.search || "";
 
   // Stats — always fetched for the top row
+  // Header stats are display-only: each degrades on its own (safeRead → 0)
+  // rather than one failed count taking the whole page to the error screen.
   const [
     totalListings,
     activeListings,
@@ -142,15 +144,15 @@ export default async function AdminMarketplacePage({ searchParams }: PageProps) 
     openDisputes,
     totalRevenue,
   ] = await Promise.all([
-    prisma.marketplaceListing.count(),
-    prisma.marketplaceListing.count({ where: { status: "ACTIVE" } }),
-    prisma.marketplaceListing.count({ where: { status: "PENDING_REVIEW" } }),
-    prisma.marketplacePurchase.count(),
-    prisma.marketplacePurchase.count({ where: { status: "PENDING" } }),
-    prisma.marketplaceDispute.count({
+    safeRead(prisma.marketplaceListing.count(), 0, "admin marketplace stats #0"),
+    safeRead(prisma.marketplaceListing.count({ where: { status: "ACTIVE" } }), 0, "admin marketplace stats #1"),
+    safeRead(prisma.marketplaceListing.count({ where: { status: "PENDING_REVIEW" } }), 0, "admin marketplace stats #2"),
+    safeRead(prisma.marketplacePurchase.count(), 0, "admin marketplace stats #3"),
+    safeRead(prisma.marketplacePurchase.count({ where: { status: "PENDING" } }), 0, "admin marketplace stats #4"),
+    safeRead(prisma.marketplaceDispute.count({
       where: { status: { in: ["OPEN", "IN_REVIEW", "ESCALATED"] } },
-    }),
-    prisma.marketplacePurchase.aggregate({ _sum: { amount: true } }),
+    }), 0, "admin marketplace stats #5"),
+    safeRead(prisma.marketplacePurchase.aggregate({ _sum: { amount: true } }), { _sum: {} } as never, "admin marketplace stats #6"),
   ]);
 
   const canManage = await can(session.user.id, "marketplace.manage");

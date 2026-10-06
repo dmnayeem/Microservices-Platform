@@ -89,8 +89,11 @@ export type Storefront = {
 
 export function MarketplaceView({
   storefronts = [],
+  topAd,
 }: {
   storefronts?: Storefront[];
+  /** Server-rendered top ad slot (ServerAdSlot); falls back to the client slot. */
+  topAd?: React.ReactNode;
 } = {}) {
   const [search, setSearch] = useState("");
   const [assetType, setAssetType] = useState<string>("");
@@ -282,7 +285,7 @@ export function MarketplaceView({
 
   return (
     <div className="space-y-4">
-      <AdRenderer placement="MARKETPLACE_TOP" />
+      {topAd ?? <AdRenderer placement="MARKETPLACE_TOP" />}
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         <h1 className="text-xl sm:text-2xl font-bold text-white flex-1 inline-flex items-center gap-2">

@@ -379,7 +379,6 @@ async function main() {
       "buyer.allowed_task_types",
       "buyer.require_kyc",
       "buyer.auto_approve_tasks",
-      "buyer.refund_fee_on_reject",
     ]) {
       // The tick-box group wraps its `set(` call across lines, so a plain
       // `includes('set("key"')` misses it. Whitespace-tolerant, no regex

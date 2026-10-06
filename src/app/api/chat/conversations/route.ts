@@ -32,11 +32,26 @@ export async function GET() {
   });
   const userMap = new Map(users.map((u) => [u.id, u]));
 
-  const lastMessages = await prisma.chatMessage.findMany({
-    where: { conversationId: { in: conversations.map((c) => c.id) } },
-    orderBy: { createdAt: "desc" },
-    distinct: ["conversationId"],
-  });
+  // Exactly one row per conversation: a LATERAL "latest message" lookup on
+  // the (conversationId, createdAt) index. Prisma's `distinct` is applied in
+  // memory AFTER fetching, so the old query pulled every message of all 50
+  // conversations on each inbox load.
+  const convIds = conversations.map((c) => c.id);
+  const lastMessages =
+    convIds.length === 0
+      ? []
+      : await prisma.$queryRaw<
+          Array<{ conversationId: string; content: string; createdAt: Date }>
+        >`
+          SELECT c.id AS "conversationId", m.content, m."createdAt"
+          FROM unnest(${convIds}::text[]) AS c(id)
+          CROSS JOIN LATERAL (
+            SELECT "content", "createdAt"
+            FROM "ChatMessage"
+            WHERE "conversationId" = c.id
+            ORDER BY "createdAt" DESC
+            LIMIT 1
+          ) m`;
   const lastMsgMap = new Map(lastMessages.map((m) => [m.conversationId, m]));
 
   const result = conversations.map((c) => {
@@ -52,7 +67,7 @@ export async function GET() {
         avatar: other?.avatar ?? null,
       },
       lastMessage: last
-        ? { content: last.content, createdAt: last.createdAt.toISOString() }
+        ? { content: last.content, createdAt: new Date(last.createdAt).toISOString() }
         : undefined,
       unread: isUser1 ? c.unreadByUser1 : c.unreadByUser2,
     };

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import {
@@ -6,6 +7,8 @@ import {
   CourseLessonType,
   NotificationType,
 } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma/client";
+import { toNum, toNumOrNull } from "@/lib/money";
 
 // ── Zod input schemas ──────────────────────────────────────────────────────
 
@@ -154,22 +157,91 @@ export async function saveCourse(input: CourseWriteInput, opts: SaveOpts) {
 
   // Resolve status against the existing course (if editing)
   let currentStatus: CourseStatus | null = null;
+  let contentChanged = false;
+  let existingModules: ExistingModule[] = [];
+  let existingLessons: ExistingLesson[] = [];
   if (opts.courseId) {
     const existing = await prisma.course.findUnique({
       where: { id: opts.courseId },
-      select: { status: true, tutorId: true, createdById: true },
+      select: {
+        status: true,
+        tutorId: true,
+        createdById: true,
+        title: true,
+        subtitle: true,
+        description: true,
+        thumbnail: true,
+        promoVideoUrl: true,
+        isFree: true,
+        price: true,
+        originalPrice: true,
+        discountPrice: true,
+      },
     });
     if (!existing) throw new Error("Course not found");
     if (opts.actor === "tutor" && existing.tutorId !== opts.userId) {
       throw new Error("You can only edit courses you own");
     }
     currentStatus = existing.status;
+    const nextPrice = input.isFree ? 0 : input.price;
+    contentChanged =
+      existing.title !== input.title ||
+      (existing.subtitle ?? null) !== (input.subtitle || null) ||
+      existing.description !== input.description ||
+      (existing.thumbnail ?? null) !== (input.thumbnail || null) ||
+      (existing.promoVideoUrl ?? null) !== (input.promoVideoUrl || null) ||
+      existing.isFree !== input.isFree ||
+      toNum(existing.price) !== nextPrice ||
+      toNumOrNull(existing.originalPrice) !== (input.originalPrice ?? null) ||
+      toNumOrNull(existing.discountPrice) !== (input.discountPrice ?? null);
+    [existingModules, existingLessons] = await Promise.all([
+      prisma.courseModule.findMany({
+        where: { courseId: opts.courseId },
+        select: { id: true, title: true, description: true, order: true },
+      }),
+      prisma.courseLesson.findMany({
+        where: { courseId: opts.courseId },
+        select: {
+          id: true,
+          moduleId: true,
+          title: true,
+          description: true,
+          content: true,
+          videoUrl: true,
+          subtitlesUrl: true,
+          duration: true,
+          order: true,
+          isPreview: true,
+          isFree: true,
+          lessonType: true,
+          resources: true,
+        },
+      }),
+    ]);
   }
-  const nextStatus = resolveStatus(
+
+  // Curriculum diff — by id, so lessons keep their ids (and with them every
+  // enrolled student's progress, quiz/assignment links and notes). The old
+  // save deleted every lesson and re-created it, which cascaded away all
+  // CourseLessonProgress rows on each edit.
+  const plan = planCurriculum(input.modules, existingModules, existingLessons);
+  if (plan.changed) contentChanged = true;
+
+  let nextStatus = resolveStatus(
     currentStatus,
     opts.actor,
     input.statusAction
   );
+  // A tutor changing the content or price of a LIVE course sends it back
+  // through review. Without this, approval was a one-time gate: anything
+  // could be swapped in afterwards.
+  if (
+    opts.actor === "tutor" &&
+    currentStatus === CourseStatus.PUBLISHED &&
+    contentChanged
+  ) {
+    nextStatus = CourseStatus.PENDING_REVIEW;
+  }
 
   // Slug — if not provided, generate from title (admin or tutor)
   let slug = input.slug ?? null;
@@ -232,67 +304,60 @@ export async function saveCourse(input: CourseWriteInput, opts: SaveOpts) {
     Object.entries(baseData).filter(([, v]) => v !== undefined)
   );
 
-  let course;
-  if (opts.courseId) {
-    course = await prisma.course.update({
-      where: { id: opts.courseId },
-      data: data as never,
-    });
-
-    // Replace curriculum: nuke + re-create modules/lessons. Simpler than
-    // computing diffs and correct for v1 (no enrolled-student progress
-    // depends on lesson ids yet — Phase 3 wires that, and by then we'll
-    // do shallow merges by id).
-    await prisma.courseLesson.deleteMany({
-      where: { courseId: opts.courseId },
-    });
-    await prisma.courseModule.deleteMany({
-      where: { courseId: opts.courseId },
-    });
-  } else {
-    const createData: Record<string, unknown> = {
-      ...data,
-      createdById: opts.userId,
-      tutorId: opts.actor === "tutor" ? opts.userId : null,
-    };
-    course = await prisma.course.create({
-      data: createData as never,
-    });
-  }
-
-  // Persist modules + lessons sequentially so we can use generated module ids.
-  for (const [mi, m] of input.modules.entries()) {
-    const mod = await prisma.courseModule.create({
-      data: {
-        courseId: course.id,
-        title: m.title,
-        description: m.description ?? null,
-        order: mi,
-      },
-    });
-    for (const [li, l] of m.lessons.entries()) {
-      await prisma.courseLesson.create({
-        data: {
-          courseId: course.id,
-          moduleId: mod.id,
-          title: l.title,
-          description: l.description ?? null,
-          content: l.content ?? null,
-          videoUrl: l.videoUrl || null,
-          subtitlesUrl: l.subtitlesUrl || null,
-          duration: l.duration ?? 0,
-          order: li,
-          isPreview: l.isPreview,
-          isFree: l.isPreview, // mirror for back-compat
-          lessonType: l.lessonType as CourseLessonType,
-          resources:
-            l.resources && l.resources.length > 0
-              ? (l.resources as unknown as object)
-              : undefined,
-        },
+  // Course row + curriculum in ONE transaction: a failure part-way used to
+  // leave a course with its lessons deleted and only some re-created.
+  // Writes are batched (createMany) and only CHANGED rows are updated, to
+  // stay well inside Accelerate's 15s interactive-transaction limit.
+  const course = await prisma.$transaction(async (tx) => {
+    let c;
+    if (opts.courseId) {
+      c = await tx.course.update({
+        where: { id: opts.courseId },
+        data: data as never,
+      });
+    } else {
+      const createData: Record<string, unknown> = {
+        ...data,
+        createdById: opts.userId,
+        tutorId: opts.actor === "tutor" ? opts.userId : null,
+      };
+      c = await tx.course.create({
+        data: createData as never,
       });
     }
-  }
+
+    if (plan.moduleCreates.length > 0) {
+      await tx.courseModule.createMany({
+        data: plan.moduleCreates.map((m) => ({ ...m, courseId: c.id })),
+      });
+    }
+    for (const m of plan.moduleUpdates) {
+      const { id: moduleId, ...rest } = m;
+      await tx.courseModule.update({ where: { id: moduleId }, data: rest });
+    }
+    if (plan.lessonCreates.length > 0) {
+      await tx.courseLesson.createMany({
+        data: plan.lessonCreates.map((l) => ({ ...l, courseId: c.id })),
+      });
+    }
+    for (const l of plan.lessonUpdates) {
+      const { id: lessonId, ...rest } = l;
+      await tx.courseLesson.update({ where: { id: lessonId }, data: rest });
+    }
+    // Removed lessons first (their progress goes with them), then the
+    // modules nothing points at any more.
+    if (plan.lessonDeletes.length > 0) {
+      await tx.courseLesson.deleteMany({
+        where: { courseId: c.id, id: { in: plan.lessonDeletes } },
+      });
+    }
+    if (plan.moduleDeletes.length > 0) {
+      await tx.courseModule.deleteMany({
+        where: { courseId: c.id, id: { in: plan.moduleDeletes } },
+      });
+    }
+    return c;
+  }, CURRICULUM_TX_OPTS);
 
   // Status-change notifications + tutor counter updates
   if (
@@ -316,6 +381,168 @@ export async function saveCourse(input: CourseWriteInput, opts: SaveOpts) {
   }
 
   return course;
+}
+
+// ── Curriculum diff ─────────────────────────────────────────────────────────
+
+const CURRICULUM_TX_OPTS = { timeout: 15_000, maxWait: 10_000 } as const;
+
+type ExistingModule = {
+  id: string;
+  title: string;
+  description: string | null;
+  order: number;
+};
+type ExistingLesson = {
+  id: string;
+  moduleId: string | null;
+  title: string;
+  description: string | null;
+  content: string | null;
+  videoUrl: string | null;
+  subtitlesUrl: string | null;
+  duration: number;
+  order: number;
+  isPreview: boolean;
+  isFree: boolean;
+  lessonType: CourseLessonType;
+  resources: unknown;
+};
+
+type ModuleFields = { title: string; description: string | null; order: number };
+type LessonFields = {
+  moduleId: string;
+  title: string;
+  description: string | null;
+  content: string | null;
+  videoUrl: string | null;
+  subtitlesUrl: string | null;
+  duration: number;
+  order: number;
+  isPreview: boolean;
+  isFree: boolean;
+  lessonType: CourseLessonType;
+  resources: Prisma.InputJsonValue | typeof Prisma.DbNull;
+};
+
+function sameJson(a: unknown, b: unknown): boolean {
+  const norm = (v: unknown) =>
+    v == null || (Array.isArray(v) && v.length === 0) ? null : JSON.stringify(v);
+  return norm(a) === norm(b);
+}
+
+/**
+ * Work out the minimal set of writes that turns the stored curriculum into
+ * `input`. An input id that matches a stored row of THIS course updates that
+ * row (only when something changed); anything else is created with a fresh
+ * id; stored rows not mentioned are deleted. Lesson ids — and so enrolled
+ * students' progress — survive every save.
+ */
+function planCurriculum(
+  input: CourseWriteInput["modules"],
+  existingModules: ExistingModule[],
+  existingLessons: ExistingLesson[]
+) {
+  const modById = new Map(existingModules.map((m) => [m.id, m]));
+  const lessonById = new Map(existingLessons.map((l) => [l.id, l]));
+  const keptModules = new Set<string>();
+  const keptLessons = new Set<string>();
+
+  const moduleCreates: Array<ModuleFields & { id: string }> = [];
+  const moduleUpdates: Array<ModuleFields & { id: string }> = [];
+  const lessonCreates: Array<LessonFields & { id: string }> = [];
+  const lessonUpdates: Array<LessonFields & { id: string }> = [];
+
+  for (const [mi, m] of input.entries()) {
+    const fields: ModuleFields = {
+      title: m.title,
+      description: m.description ?? null,
+      order: mi,
+    };
+    const prev = m.id ? modById.get(m.id) : undefined;
+    let moduleId: string;
+    if (prev && !keptModules.has(prev.id)) {
+      moduleId = prev.id;
+      if (
+        prev.title !== fields.title ||
+        (prev.description ?? null) !== fields.description ||
+        prev.order !== fields.order
+      ) {
+        moduleUpdates.push({ id: moduleId, ...fields });
+      }
+    } else {
+      moduleId = randomUUID();
+      moduleCreates.push({ id: moduleId, ...fields });
+    }
+    keptModules.add(moduleId);
+
+    for (const [li, l] of m.lessons.entries()) {
+      const resources =
+        l.resources && l.resources.length > 0
+          ? (l.resources as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull;
+      const lf: LessonFields = {
+        moduleId,
+        title: l.title,
+        description: l.description ?? null,
+        content: l.content ?? null,
+        videoUrl: l.videoUrl || null,
+        subtitlesUrl: l.subtitlesUrl || null,
+        duration: l.duration ?? 0,
+        order: li,
+        isPreview: l.isPreview,
+        isFree: l.isPreview, // mirror for back-compat
+        lessonType: l.lessonType as CourseLessonType,
+        resources,
+      };
+      const old = l.id ? lessonById.get(l.id) : undefined;
+      if (old && !keptLessons.has(old.id)) {
+        keptLessons.add(old.id);
+        const changed =
+          old.moduleId !== lf.moduleId ||
+          old.title !== lf.title ||
+          (old.description ?? null) !== lf.description ||
+          (old.content ?? null) !== lf.content ||
+          (old.videoUrl ?? null) !== lf.videoUrl ||
+          (old.subtitlesUrl ?? null) !== lf.subtitlesUrl ||
+          old.duration !== lf.duration ||
+          old.order !== lf.order ||
+          old.isPreview !== lf.isPreview ||
+          old.isFree !== lf.isFree ||
+          old.lessonType !== lf.lessonType ||
+          !sameJson(old.resources, l.resources);
+        if (changed) lessonUpdates.push({ id: old.id, ...lf });
+      } else {
+        const id = randomUUID();
+        keptLessons.add(id);
+        lessonCreates.push({ id, ...lf });
+      }
+    }
+  }
+
+  const lessonDeletes = existingLessons
+    .filter((l) => !keptLessons.has(l.id))
+    .map((l) => l.id);
+  const moduleDeletes = existingModules
+    .filter((m) => !keptModules.has(m.id))
+    .map((m) => m.id);
+
+  return {
+    moduleCreates,
+    moduleUpdates,
+    lessonCreates,
+    lessonUpdates,
+    lessonDeletes,
+    moduleDeletes,
+    changed:
+      moduleCreates.length +
+        moduleUpdates.length +
+        lessonCreates.length +
+        lessonUpdates.length +
+        lessonDeletes.length +
+        moduleDeletes.length >
+      0,
+  };
 }
 
 function slugifyTitle(title: string): string {

@@ -9,7 +9,7 @@ import {
   type AffiliateTarget,
 } from "@/lib/affiliate";
 import { toNumOrNull } from "@/lib/money";
-import { clientIp } from "@/lib/rate-limit";
+import { clientIp, enforceRateLimit } from "@/lib/rate-limit";
 import { createHash } from "crypto";
 import { z } from "zod";
 
@@ -26,6 +26,11 @@ const schema = z.object({
  * checkout when the reward is set and the buyer isn't the affiliate.
  */
 export async function POST(request: NextRequest) {
+  // Public (no session needed — listed in publicApiPrefixes so logged-out
+  // visitors' clicks are attributed). Per-IP limit keeps click spam from
+  // inflating an affiliate's stats; the only write is the click log + cookie.
+  const limited = enforceRateLimit(request, "affiliate_click", 30, 60_000);
+  if (limited) return limited;
   const parsed = schema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ ok: false }, { status: 400 });

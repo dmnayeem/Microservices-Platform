@@ -228,6 +228,10 @@ export type FeatureResult = {
 // serves the last-known set instead of crashing the whole shell to "Try again".
 const _featCache = new Map<string, { value: FeatureResult; at: number }>();
 const FEAT_TTL_MS = 20_000;
+// One entry per active user would otherwise grow for the life of the process.
+// Map keeps insertion order, so re-inserting on write + dropping the first key
+// evicts the least recently refreshed user.
+const FEAT_CACHE_MAX = 2_000;
 
 /** Drop a user's cached feature set so a plan / override change reflects at
  *  once (otherwise it self-heals within ~20-30s). No arg = clear everyone. */
@@ -281,7 +285,12 @@ export const getEffectiveFeatures = cache(async function getEffectiveFeatures(
       enabled.add(key);
     }
     const value: FeatureResult = { pkg, overrides, enabled };
+    _featCache.delete(userId);
     _featCache.set(userId, { value, at: Date.now() });
+    if (_featCache.size > FEAT_CACHE_MAX) {
+      const oldest = _featCache.keys().next().value;
+      if (oldest !== undefined) _featCache.delete(oldest);
+    }
     return value;
   } catch {
     // Fail-safe: ride out a DB blip on the last-known set, else degrade to the

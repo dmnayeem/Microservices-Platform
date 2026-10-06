@@ -74,7 +74,7 @@ export function CpaPostbackTab() {
       <UrlCard
         icon={<ShieldCheck className="w-4 h-4 text-emerald-400" />}
         title="Signed URL (sig=)"
-        note={`Stronger: the network signs each call with HMAC-SHA256(secret, "click:txid:payout") in hex, so the secret never travels in the URL. Use it when the network supports custom signing.`}
+        note={`Stronger: the network signs each call with HMAC-SHA256(secret, "click:txid:payout:status") in hex (status exactly as sent; the older "click:txid:payout" form still works for approvals but not reversals), so the secret never travels in the URL. Use it when the network supports custom signing.`}
         value={info.signedUrlTemplate}
       />
       <UrlCard title="Secret" note="Used by both methods. Keep it private." value={info.secret} />

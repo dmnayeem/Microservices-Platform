@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 
 // POST /api/admin/notifications/delete - Delete notifications (admin)
 export async function POST(request: NextRequest) {
@@ -26,11 +27,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Snapshot first — a deleted notification leaves nothing to look back at.
+    const doomed = await prisma.notification.findMany({
+      where: { id: { in: notificationIds } },
+      select: { id: true, userId: true, type: true, title: true },
+    });
+
     // Delete notifications
     const result = await prisma.notification.deleteMany({
       where: {
         id: { in: notificationIds },
       },
+    });
+
+    const owners = [...new Set(doomed.map((n) => n.userId))];
+    await writeAudit({
+      actorId: session.user.id,
+      action: "NOTIFICATIONS_DELETED",
+      entity: "Notification",
+      targetUserId: owners.length === 1 ? owners[0] : null,
+      summary: `Deleted ${result.count} notification(s)${owners.length > 1 ? ` across ${owners.length} users` : ""}`,
+      meta: { before: doomed.slice(0, 200), after: null, count: result.count, userIds: owners.slice(0, 200) },
     });
 
     return NextResponse.json({

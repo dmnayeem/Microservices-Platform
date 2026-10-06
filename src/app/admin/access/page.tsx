@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
-import { isSuperAdmin, type UserRole, ADMIN_ROLES, ROLE_CONFIG, ROLE_PERMISSIONS, PERMISSION_CATALOG, FINANCE_PERMISSIONS, SUPERADMIN_ONLY_PERMISSIONS, ROLE_META, permissionLabel, permissionDescription, ADMIN_MODULES, CATEGORY_LABELS, CATEGORY_ORDER, stripProtectedForRole } from "@/lib/rbac";
+import { isSuperAdmin, type UserRole, ADMIN_ROLES, ROLE_CONFIG, ROLE_PERMISSIONS, PERMISSION_CATALOG, FINANCE_PERMISSIONS, SUPERADMIN_ONLY_PERMISSIONS, ROLE_META, permissionLabel, permissionDescription, ADMIN_MODULES, CATEGORY_LABELS, CATEGORY_ORDER, stripProtectedForRole, customRolePermissionsForEditor } from "@/lib/rbac";
 import { FEATURES } from "@/lib/features";
 import { AccessCatalog } from "@/components/admin/access/access-catalog";
 import {
@@ -154,7 +154,7 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
     id: r.id,
     name: r.name,
     color: r.color,
-    permissions: r.permissions,
+    permissions: customRolePermissionsForEditor(r.permissions),
     isActive: r.isActive,
     userCount: r._count.users,
   }));

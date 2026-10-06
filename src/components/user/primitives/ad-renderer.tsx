@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ArrowUpRight, ExternalLink, MoreVertical, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveAdSize } from "@/lib/ad-sizes";
@@ -10,8 +10,14 @@ import {
   placementSpec,
   type AdPlacementName,
 } from "@/lib/ad-placements";
+import { requestAdBatched } from "@/lib/ad-batch-client";
+import { adClickHref } from "@/lib/ad-measure-client";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 import { NetworkAdSlot } from "@/components/user/primitives/network-ad-slot";
+import {
+  AdSlotShell,
+  adNetworkLabel,
+} from "@/components/user/primitives/ad-slot-shell";
 
 // Derive from the canonical catalog so this never drifts again (previously a
 // hand-maintained duplicate that was missing VIDEO_OVERLAY / REWARD_INTERSTITIAL).
@@ -47,8 +53,25 @@ export interface AdResponse {
   allowSameOrigin?: boolean;
   /** Present only for ADSENSE / GAM — what a real in-page slot needs. */
   network?: NetworkSlotConfig;
+  /** HTML ads: registry network id (absent = own / direct-sold HTML). */
+  networkId?: string;
+  /** HTML ads on the separate ad origin (AD_FRAME_ORIGIN); else `html` in srcDoc. */
+  frameUrl?: string;
+  /** Optional small-screen (<728px) variant of an HTML ad. */
+  mobileHtml?: string;
+  mobileFrameUrl?: string;
+  mobileWidth?: number;
+  mobileHeight?: number;
   /** Serve token — sent back on click so the click can be billed. */
   st?: string;
+}
+
+/** Below this viewport width an HTML ad's mobile variant is used, when it has one. */
+const MOBILE_VARIANT_BELOW_PX = 728;
+
+/** Google inventory — never rotated, never refreshed (see loadAd). */
+function isGoogleAd(ad: AdResponse | null): boolean {
+  return ad?.type === "ADSENSE" || ad?.type === "GAM";
 }
 
 interface AdRendererProps {
@@ -134,6 +157,54 @@ export function AdRenderer({
   dismissible = false,
 }: AdRendererProps) {
   const [ad, setAd] = useState<AdResponse | null>(initialAd);
+  // Identifies THIS instance of the space to the measurement hook (two
+  // under-post banners are the same placement). `useId` is SSR-stable.
+  const slotKey = `${placement}:${useId()}`;
+  // Google inventory on screen → no rotation, no refetch-on-focus. Read at
+  // timer fire time, so it follows the ad currently shown.
+  const googleOnScreenRef = useRef(isGoogleAd(initialAd));
+  useEffect(() => {
+    googleOnScreenRef.current = isGoogleAd(ad);
+  }, [ad]);
+  // Viewport width, for an HTML ad's mobile variant. Null until mounted so the
+  // frame is not loaded once as desktop and again as mobile after hydration.
+  const [vw, setVw] = useState<number | null>(null);
+  useEffect(() => {
+    const sync = () => setVw(window.innerWidth);
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
+  // Below-the-fold gate: the FIRST fetch waits until the slot is within 300px
+  // of the viewport. Every slot on a long page used to fetch at once on mount;
+  // most were never scrolled to, and each was a counted impression. An
+  // SSR-injected ad is already armed.
+  const [armed, setArmed] = useState(!!initialAd);
+  const gateIoRef = useRef<IntersectionObserver | null>(null);
+  const gateRef = useCallback(
+    (el: HTMLElement | null) => {
+      gateIoRef.current?.disconnect();
+      gateIoRef.current = null;
+      if (!el || armed) return;
+      if (typeof IntersectionObserver === "undefined") {
+        setArmed(true);
+        return;
+      }
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            io.disconnect();
+            setArmed(true);
+          }
+        },
+        { rootMargin: "300px 0px" }
+      );
+      io.observe(el);
+      gateIoRef.current = io;
+    },
+    [armed]
+  );
+  useEffect(() => () => gateIoRef.current?.disconnect(), []);
   const [error, setError] = useState(false);
   const [fading, setFading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -205,14 +276,24 @@ export function AdRenderer({
         recent = [];
       }
       try {
-        const qs = recent.length
-          ? `&exclude=${encodeURIComponent(recent.join(","))}`
-          : "";
-        const noNet = opts?.excludeNetwork ? "&own=1" : "";
-        const res = await fetch(
-          `/api/spaces/panel?placement=${placement}${qs}${noNet}`
-        );
-        const data = res.ok ? await res.json() : null;
+        let data;
+        if (opts?.initial && !opts.excludeNetwork) {
+          // First loads coalesce with every other slot mounting this tick into
+          // one batched request (ad-batch-client.ts).
+          data = await requestAdBatched(placement, recent);
+        } else {
+          const qs = recent.length
+            ? `&exclude=${encodeURIComponent(recent.join(","))}`
+            : "";
+          const noNet = opts?.excludeNetwork ? "&own=1" : "";
+          // `rot=1`: a timed rotation. The server never serves Google into a
+          // rotation — re-requesting a Google unit on a timer is ad refresh.
+          const rot = opts?.rotate ? "&rot=1" : "";
+          const res = await fetch(
+            `/api/spaces/panel?placement=${placement}${qs}${noNet}${rot}`
+          );
+          data = res.ok ? await res.json() : null;
+        }
         if (!data?.ad) {
           // Only hide the slot when the very first load finds nothing; a failed
           // rotation keeps the current creative on screen.
@@ -257,7 +338,8 @@ export function AdRenderer({
         // schedule time: a backgrounded tab, and a slot scrolled out of view,
         // both stop asking. Neither changes HOW an impression is recorded —
         // they stop asking for creatives nobody is looking at.
-        if (document.hidden || !onScreenRef.current) return;
+        // A Google unit on screen is never rotated away or refreshed.
+        if (document.hidden || !onScreenRef.current || googleOnScreenRef.current) return;
         void loadAd({ rotate: true });
       }, rotateMsRef.current);
     };
@@ -272,7 +354,7 @@ export function AdRenderer({
     const onVisibility = () => {
       if (document.hidden) {
         stopTimer();
-      } else if (onScreenRef.current) {
+      } else if (onScreenRef.current && !googleOnScreenRef.current) {
         // Only a slot that is actually in view refetches on return. This used
         // to fire for every mounted slot on every tab focus — seven requests
         // (and seven rate-limit upserts) for one glance at the tab bar.
@@ -299,6 +381,9 @@ export function AdRenderer({
       }
       startTimer();
       document.addEventListener("visibilitychange", onVisibility);
+    } else if (!armed) {
+      // Below the fold: wait for the gate (see `armed`).
+      return;
     } else {
       // loadAd only setState()s after an `await fetch` (a real async boundary),
       // so this is not a synchronous cascading render — the rule is a false
@@ -318,7 +403,7 @@ export function AdRenderer({
       stopTimer();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [loadAd, initialAd, placement]);
+  }, [loadAd, initialAd, placement, armed]);
 
   if (error || dismissed) return null;
   if (!ad) {
@@ -334,6 +419,7 @@ export function AdRenderer({
     const cap = placeSpec.maxHeightPx;
     return (
       <div
+        ref={gateRef}
         className={cn(
           "rounded-2xl border border-(--app-line) bg-(--app-surface)/40 animate-pulse mx-auto",
           className
@@ -352,13 +438,29 @@ export function AdRenderer({
     );
   }
 
+  /**
+   * Every layout below renders inside this — the single place viewability and
+   * click measurement attach (see ad-slot-shell.tsx). Counting is unchanged.
+   */
+  const shell = (node: React.ReactNode) => (
+    <AdSlotShell
+      info={{
+        adId: ad.id,
+        placement,
+        slotKey,
+        network: adNetworkLabel(ad),
+        type: ad.type,
+        st: ad.st,
+      }}
+    >
+      {node}
+    </AdSlotShell>
+  );
+
+  // The click itself is counted by the `/api/spaces/go` redirect the link
+  // points at (adClickHref) — server-side, before the browser leaves, for every
+  // kind of click (middle-click and "open in new tab" included).
   const trackClick = () => {
-    fetch(`/api/spaces/${ad.id}/event`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // The serve token is what makes this click billable (ad-serve-token).
-      body: JSON.stringify({ kind: "open", st: ad.st }),
-    }).catch(() => {});
     // Optional third-party click tracker.
     if (ad.clickTracker) {
       try {
@@ -494,7 +596,7 @@ export function AdRenderer({
   // has always been clickable whether or not the campaign supplied a
   // destination, and the billed event is the same event it has always been.
   const linkProps = {
-    href: ad.ctaUrl ?? "#",
+    href: adClickHref(ad.st, ad.id, ad.ctaUrl) ?? "#",
     target: "_blank",
     rel: "noopener sponsored noreferrer",
     onClick: trackClick,
@@ -630,9 +732,12 @@ export function AdRenderer({
   // Google returns nothing, the slot asks for own/direct inventory instead of
   // leaving a hole. Without it every unsold impression is simply lost.
   if ((ad.type === "ADSENSE" || ad.type === "GAM") && ad.network) {
-    return (
+    return shell(
       <div ref={attachRoot} className={cn("relative mx-auto", className)} style={outerStyle}>
+        {/* Keyed by ad: a fallback or a new serve must mount a FRESH slot —
+            the old one's push/define guard would otherwise skip it. */}
         <NetworkAdSlot
+          key={ad.id}
           config={ad.network}
           maxHeightPx={spec.maxHeightPx}
           onUnfilled={() => void loadAd({ rotate: true, excludeNetwork: true })}
@@ -643,9 +748,43 @@ export function AdRenderer({
 
   // HTML creative — runs inside the shared sandboxed iframe so injected <script>
   // actually executes (dangerouslySetInnerHTML never does).
-  if (ad.type === "HTML" && ad.html) {
-    return (
-      <div ref={attachRoot} className={cn("relative mx-auto", className)} style={outerStyle}>
+  //
+  // Sized EXACTLY from the creative's declared size (the admin form requires
+  // one for HTML), scaled down to a narrower column, and switched to the mobile
+  // variant below 728px when the ad has one. The frame mounts only once the
+  // viewport is known, so it never loads as desktop and then again as mobile.
+  if (ad.type === "HTML" && (ad.html || ad.frameUrl)) {
+    const mobile =
+      vw !== null &&
+      vw < MOBILE_VARIANT_BELOW_PX &&
+      !!(ad.mobileHtml || ad.mobileFrameUrl);
+    const fw = mobile ? ad.mobileWidth ?? dim?.w : dim?.w;
+    const fh = Math.min(
+      (mobile ? ad.mobileHeight : undefined) ?? dim?.h ?? 250,
+      spec.maxHeightPx
+    );
+    return shell(
+      <div
+        ref={attachRoot}
+        className={cn("relative mx-auto", className)}
+        style={{ ...outerStyle, ...(fw ? { maxWidth: fw } : {}) }}
+      >
+        {vw === null ? (
+          <div style={{ height: fh }} aria-hidden />
+        ) : (
+          <SandboxedAdFrame
+            key={mobile ? "m" : "d"}
+            html={mobile ? ad.mobileHtml : ad.html}
+            frameUrl={mobile ? ad.mobileFrameUrl : ad.frameUrl}
+            width={fw}
+            // Clamped by the space, not just the ad. A `custom` size could set
+            // an arbitrary pixel height here.
+            height={fh}
+            impressionPixel={ad.impressionPixel}
+            // The label sits above the frame; a strip has no room for it.
+            badge={!isStrip}
+          />
+        )}
         {dismissible && (
           <button
             type="button"
@@ -656,15 +795,6 @@ export function AdRenderer({
             <X className="w-3.5 h-3.5" />
           </button>
         )}
-        <SandboxedAdFrame
-          html={ad.html}
-          // Clamped by the space, not just the ad. A `custom` size could set an
-          // arbitrary pixel height here, and the frame applies it inline with no
-          // ceiling of its own.
-          height={Math.min(dim?.h ?? 250, spec.maxHeightPx)}
-          impressionPixel={ad.impressionPixel}
-          allowSameOrigin={ad.allowSameOrigin}
-        />
       </div>
     );
   }
@@ -685,7 +815,7 @@ export function AdRenderer({
   // Sized from the image's own shape: as wide as the space's height ceiling
   // allows, and never wider than the column.
   if (isStrip && ad.imageUrl && !ad.videoUrl && bannerImg?.id === ad.id) {
-    return (
+    return shell(
       <a
         ref={attachRoot}
         {...linkProps}
@@ -728,7 +858,7 @@ export function AdRenderer({
   }
 
   if (isStrip) {
-    return (
+    return shell(
       <a
         ref={attachRoot}
         {...linkProps}
@@ -845,7 +975,7 @@ export function AdRenderer({
   // The creative, with the chip / headline / arrow laid over it. One anchor, so
   // every pixel of it is the same recorded click.
   if (isBanner) {
-    return (
+    return shell(
       <a
         ref={attachRoot}
         {...linkProps}
@@ -875,7 +1005,7 @@ export function AdRenderer({
   // elements and nesting them inside an anchor is invalid HTML that browsers
   // reflow into something none of this markup describes. The creative keeps its
   // own anchor, and the buttons carry the same one.
-  return (
+  return shell(
     <article
       ref={attachRoot}
       style={outerStyle}

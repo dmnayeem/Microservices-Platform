@@ -21,6 +21,11 @@ import { AD_PLACEMENTS, placementSpec } from "@/lib/ad-placements";
 import { AD_SIZES } from "@/lib/ad-sizes";
 import { type AdTargeting } from "@/lib/ad-targeting";
 import { DateField } from "@/components/ui/date-field";
+import {
+  HtmlNetworkFields,
+  htmlNetworkInitial,
+  htmlNetworkPayload,
+} from "@/components/admin/ads/html-network-fields";
 
 interface WizardCampaign {
   id: string;
@@ -94,6 +99,8 @@ export function AdWizard({
   const [contentUrl, setContentUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [htmlContent, setHtmlContent] = useState("");
+  // HTML snippets: network, mobile variant, page-script frequency cap.
+  const [netFields, setNetFields] = useState(() => htmlNetworkInitial(null));
   const [size, setSize] = useState("responsive");
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
@@ -176,6 +183,7 @@ export function AdWizard({
         videoUrl: creative === "VIDEO" ? videoUrl : "",
         targetUrl,
         htmlContent: creative === "HTML" ? htmlContent : "",
+        ...htmlNetworkPayload(netFields, creative === "HTML"),
         size,
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
@@ -425,6 +433,19 @@ export function AdWizard({
                     HTML content (scripts / ad-network tags run in a sandboxed frame)
                   </label>
                   <textarea value={htmlContent} onChange={(e) => setHtmlContent(e.target.value)} rows={4} className={inputCls} placeholder="<div>...</div> or <script>…</script>" />
+                  <div className="mt-2">
+                    <HtmlNetworkFields
+                      value={netFields}
+                      onChange={setNetFields}
+                      // Checked against the first selected space; the server
+                      // checks every one of them on save.
+                      placementName={selectedNames[0] ?? ""}
+                      size={size}
+                      width={width}
+                      height={height}
+                      inputCls={inputCls}
+                    />
+                  </div>
                 </div>
               ) : creative === "VIDEO" ? (
                 <div>

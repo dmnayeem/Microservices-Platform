@@ -19,16 +19,24 @@ export async function createTutorApplication(
   if (existing) {
     throw new Error("You already have a pending application.");
   }
-  return prisma.tutorApplication.create({
-    data: {
-      userId,
-      bio: input.bio,
-      expertise: input.expertise ?? [],
-      sampleOutline: input.sampleOutline ?? null,
-      portfolioUrl: input.portfolioUrl ?? null,
-      idDocumentUrl: input.idDocumentUrl ?? null,
-    },
-  });
+  return prisma.tutorApplication
+    .create({
+      data: {
+        userId,
+        bio: input.bio,
+        expertise: input.expertise ?? [],
+        sampleOutline: input.sampleOutline ?? null,
+        portfolioUrl: input.portfolioUrl ?? null,
+        idDocumentUrl: input.idDocumentUrl ?? null,
+      },
+    })
+    .catch((err: unknown) => {
+      // Partial unique "one PENDING per user" — a double submit raced the check above.
+      if ((err as { code?: string })?.code === "P2002") {
+        throw new Error("You already have a pending application.");
+      }
+      throw err;
+    });
 }
 
 /** Approve a pending application:

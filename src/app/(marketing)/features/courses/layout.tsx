@@ -5,7 +5,7 @@ import { breadcrumbLd } from "@/lib/seo/breadcrumbs";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: "Courses", path: "/features/courses" }])} />
+      <JsonLd data={breadcrumbLd([{ name: "Courses feature", path: "/features/courses" }])} />
       {children}
     </>
   );

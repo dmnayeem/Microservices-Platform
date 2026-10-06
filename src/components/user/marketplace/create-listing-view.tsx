@@ -124,7 +124,7 @@ export function CreateListingView({
     if (arr.length === 0) return;
     setUploadingGallery(true);
     try {
-      const urls = await Promise.all(arr.map((f) => uploadUserFile(f, "marketplace", { purpose: "cover" })));
+      const urls = await Promise.all(arr.map((f) => uploadUserFile(f, "marketplace-media", { purpose: "cover" })));
       setImages((prev) => [...prev, ...urls]);
     } catch (err) {
       toast.error("Image upload failed", {

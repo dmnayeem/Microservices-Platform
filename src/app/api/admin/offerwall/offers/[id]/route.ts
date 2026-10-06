@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { offerSchema } from "../route";
 
@@ -48,7 +49,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (d.isActive !== undefined) data.isActive = d.isActive;
 
   try {
+    const before = await prisma.offerwallOffer.findUnique({ where: { id } });
     const offer = await prisma.offerwallOffer.update({ where: { id }, data });
+    await writeAudit({
+      actorId: session.user.id,
+      action: "OFFERWALL_OFFER_UPDATED",
+      entity: "OfferwallOffer",
+      entityId: id,
+      summary: `Edited offerwall offer "${offer.title}"`,
+      meta: { before, after: offer },
+    });
     return NextResponse.json({ offer });
   } catch {
     return NextResponse.json({ error: "Offer not found" }, { status: 404 });
@@ -62,6 +72,17 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  await prisma.offerwallOffer.delete({ where: { id } }).catch(() => null);
+  const before = await prisma.offerwallOffer.findUnique({ where: { id } });
+  const deleted = await prisma.offerwallOffer.delete({ where: { id } }).catch(() => null);
+  if (deleted) {
+    await writeAudit({
+      actorId: session.user.id,
+      action: "OFFERWALL_OFFER_DELETED",
+      entity: "OfferwallOffer",
+      entityId: id,
+      summary: `Deleted offerwall offer "${before?.title ?? id}"`,
+      meta: { before, after: null },
+    });
+  }
   return NextResponse.json({ ok: true });
 }

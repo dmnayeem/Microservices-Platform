@@ -36,7 +36,13 @@ export async function GET(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isSuperAdmin(session.user.role as UserRole | undefined)) {
+  // The DB role, not the JWT's: a token minted before a demotion would keep
+  // a former super admin reading every user's visibility until it expired.
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  if (!isSuperAdmin(actor?.role as UserRole | undefined)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -625,7 +625,20 @@ async function moneyBonusHistory(
   }
 }
 
-/** Bonus when a referred user buys a package/subscription. */
+/**
+ * Bonus when a referred user buys a package/subscription.
+ *
+ * Paid ONCE per referred user — for their first PAID subscription only. It
+ * used to be keyed on the subscription id, so every renewal, re-purchase or
+ * cheap plan switch paid the referrer again: two accounts could farm it by
+ * buying the cheapest plan over and over. Now:
+ *   - the subscription must have actually cost money (amount > 0) — a free
+ *     plan or a fully credit-covered switch never pays a bonus;
+ *   - any earlier subscription bonus for this invitee (old per-subscription
+ *     references included) blocks it;
+ *   - the reference is per invitee, so the unique (userId, reference) ledger
+ *     constraint makes a concurrent double award impossible.
+ */
 export async function awardReferralSubscriptionBonus(
   referredUserId: string,
   sourceRef: string
@@ -633,23 +646,47 @@ export async function awardReferralSubscriptionBonus(
   const cfg = await getReferralBonusConfig();
   if (!cfg.enabled || !cfg.subscriptionEnabled || cfg.subscriptionPoints <= 0)
     return;
-  const referred = await prisma.user
-    .findUnique({
-      where: { id: referredUserId },
-      select: { referredById: true },
-    })
-    .catch(() => null);
+  const [referred, sub] = await Promise.all([
+    prisma.user
+      .findUnique({
+        where: { id: referredUserId },
+        select: { referredById: true },
+      })
+      .catch(() => null),
+    prisma.subscription
+      .findUnique({ where: { id: sourceRef }, select: { userId: true, amount: true } })
+      .catch(() => null),
+  ]);
   if (!referred?.referredById) return;
+  // Never for a $0 subscription, and the source must be this user's own row.
+  if (!sub || sub.userId !== referredUserId || !(Number(sub.amount) > 0)) return;
+  // First paid subscription only — any earlier subscription bonus for this
+  // invitee (old per-subscription references included) means it was already
+  // paid. Read off the ledger: ReferralEarning(SUBSCRIPTION) is also written by
+  // My Team commissions, so it cannot tell a bonus from a commission.
+  const already = await prisma.transaction
+    .findFirst({
+      where: {
+        userId: referred.referredById,
+        type: TransactionType.REFERRAL,
+        reference: { startsWith: "refbonus_sub_" },
+        metadata: { path: ["referredUserId"], equals: referredUserId },
+      },
+      select: { id: true },
+    })
+    .catch(() => ({ id: "unknown" })); // fail closed: a failed read pays nothing
+  if (already) return;
   if (!(await referrerQualifies(referred.referredById, cfg))) return;
   await awardBonus({
     referrerId: referred.referredById,
     referredUserId,
     points: cfg.subscriptionPoints,
-    reference: `refbonus_sub_${sourceRef}`,
+    reference: `refbonus_sub_first_${referredUserId}`,
     sourceType: "SUBSCRIPTION",
     description: "Referral subscription bonus",
     notifyTitle: "Referral bonus!",
     notifyMessage: `Your invitee upgraded — you earned ${cfg.subscriptionPoints} points.`,
+    meta: { subscriptionId: sourceRef },
   });
 }
 

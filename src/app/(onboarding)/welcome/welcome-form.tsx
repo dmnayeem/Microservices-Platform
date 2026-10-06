@@ -12,6 +12,7 @@ const ERROR_TEXT: Record<string, string> = {
   INVALID: "Use 3-30 letters, numbers, dot, underscore or hyphen.",
   RESERVED: "That handle is reserved. Please pick another.",
   TAKEN: "Someone just took that handle. Try another.",
+  FAILED: "We couldn't save that just now. Please try again.",
 };
 
 /**
@@ -34,19 +35,40 @@ export function WelcomeForm({
   const [value, setValue] = useState(currentUsername ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // The silent loop-breaker below failed → show the form so the user can retry.
+  const [stuck, setStuck] = useState(false);
 
   // Loop-breaker: the token said "not onboarded" but the database says
   // otherwise (stale claim + cleared cookie). Silently finish and move on
   // rather than bouncing the user between /welcome and /social forever.
   useEffect(() => {
     if (!alreadyDone) return;
-    void skipOnboarding().then(() => router.replace("/social"));
+    skipOnboarding()
+      .then((res) => {
+        if (res.ok) {
+          router.replace("/social");
+          return;
+        }
+        setStuck(true);
+        setError(ERROR_TEXT[res.error] ?? ERROR_TEXT.FAILED);
+      })
+      .catch(() => {
+        setStuck(true);
+        setError(ERROR_TEXT.FAILED);
+      });
   }, [alreadyDone, router]);
 
   const submit = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
     setError(null);
     startTransition(async () => {
-      const res = await fn();
+      let res: { ok: boolean; error?: string };
+      try {
+        res = await fn();
+      } catch {
+        // Network drop / stale deploy — the action never answered.
+        setError(ERROR_TEXT.FAILED);
+        return;
+      }
       if (res.ok) {
         // refresh() so the layout picks up the re-signed session before we move.
         router.replace("/social");
@@ -57,7 +79,7 @@ export function WelcomeForm({
     });
   };
 
-  if (alreadyDone) {
+  if (alreadyDone && !stuck) {
     return (
       <div className="min-h-screen grid place-items-center bg-(--app-page)">
         <Loader2 className="w-6 h-6 animate-spin text-(--app-ink-3)" />

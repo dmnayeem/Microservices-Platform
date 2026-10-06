@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LeaderboardView } from "@/components/user/leaderboard/leaderboard-view";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { ServerAdSlot } from "@/components/user/primitives/server-ad-slot";
 import { isLeaderboardEnabled } from "@/lib/leaderboard-gate";
 
 export default async function LeaderboardPage() {
@@ -14,7 +14,7 @@ export default async function LeaderboardPage() {
 
   return (
     <>
-      <AdRenderer placement="LEADERBOARD_TOP" className="mb-4" />
+      <ServerAdSlot placement="LEADERBOARD_TOP" className="mb-4" />
       <LeaderboardView currentUserId={session.user.id} />
     </>
   );

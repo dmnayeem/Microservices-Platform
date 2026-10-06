@@ -19,8 +19,9 @@ import { cpaAttemptBoundary } from "@/lib/cpa/retry";
  *   GET|POST /api/cpa/postback?click=<clickId>&txid=<id>&payout=<usd>&status=<1|approved|reversed>&sig=<hex>
  *
  * Authentication, either of:
- *   - `sig` = hex HMAC-SHA256(secret, `${click}:${txid}:${payout}`) — for
- *     networks that can sign; each field as sent, empty when absent.
+ *   - `sig` = hex HMAC-SHA256(secret, `${click}:${txid}:${payout}:${status}`) — for
+ *     networks that can sign; each field as sent, empty when absent. The old
+ *     `${click}:${txid}:${payout}` form is still accepted, but not for reversals.
  *   - `key` = the secret itself — for networks that can only call a fixed URL
  *     with macros (most CPA networks). Weaker: anyone who sees one postback URL
  *     can forge more, so prefer `sig` where the network supports it.
@@ -57,12 +58,18 @@ export async function rotateCpaPostbackSecret(): Promise<string> {
   return fresh;
 }
 
-export function cpaSignaturePayload(click: string, txid: string, payout: string): string {
-  return `${click}:${txid}:${payout}`;
+/**
+ * The signed string. `status` is part of it: without it, a captured signed
+ * APPROVE postback could be replayed as `status=reversed` under the same
+ * valid signature. `status` undefined = the legacy three-field payload, still
+ * accepted for confirmations only (see verifyCpaPostback).
+ */
+export function cpaSignaturePayload(click: string, txid: string, payout: string, status?: string): string {
+  return status === undefined ? `${click}:${txid}:${payout}` : `${click}:${txid}:${payout}:${status}`;
 }
 
-export function signCpaPostback(secret: string, click: string, txid: string, payout: string): string {
-  return createHmac("sha256", secret).update(cpaSignaturePayload(click, txid, payout)).digest("hex");
+export function signCpaPostback(secret: string, click: string, txid: string, payout: string, status?: string): string {
+  return createHmac("sha256", secret).update(cpaSignaturePayload(click, txid, payout, status)).digest("hex");
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -73,11 +80,19 @@ function safeEqual(a: string, b: string): boolean {
 
 export function verifyCpaPostback(
   secret: string,
-  p: { click: string; txid: string; payout: string; sig?: string | null; key?: string | null }
+  p: { click: string; txid: string; payout: string; status?: string; sig?: string | null; key?: string | null }
 ): boolean {
   if (!secret) return false;
   if (p.sig) {
-    return safeEqual(p.sig.toLowerCase(), signCpaPostback(secret, p.click, p.txid, p.payout));
+    const sig = p.sig.toLowerCase();
+    const status = p.status ?? "";
+    // Current scheme: the status is signed too.
+    if (safeEqual(sig, signCpaPostback(secret, p.click, p.txid, p.payout, status))) return true;
+    // Legacy 3-field signature (networks set up before the status was signed):
+    // honoured for confirmations, never for a reversal — a reversal signed
+    // without its status may be a replayed approve.
+    if (isReversalStatus(status)) return false;
+    return safeEqual(sig, signCpaPostback(secret, p.click, p.txid, p.payout));
   }
   if (p.key) return safeEqual(p.key, secret);
   return false;

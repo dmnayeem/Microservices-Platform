@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { parseEventTiers, EVENT_ACTION_TYPES } from "@/lib/events-shared";
 import { maxPackageAccessLevel } from "@/lib/events";
 import { revalidateTag } from "next/cache";
@@ -71,7 +72,10 @@ export async function PATCH(
     data.tiers = tiers.length ? tiers : null;
   }
 
+  const before = await prisma.event.findUnique({ where: { id } });
   const event = await prisma.event.update({ where: { id }, data });
+  await writeAudit({ actorId: session.user.id, action: "EVENT_UPDATED", entity: "Event", entityId: id,
+    summary: `Edited event "${event.title}"`, meta: { before, after: event } });
   revalidateTag(EVENTS_ACTIVE_TAG, "max");
   return NextResponse.json({ event });
 }
@@ -86,7 +90,10 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
+  const before = await prisma.event.findUnique({ where: { id } });
   await prisma.event.delete({ where: { id } });
+  await writeAudit({ actorId: session.user.id, action: "EVENT_DELETED", entity: "Event", entityId: id,
+    summary: `Deleted event "${before?.title ?? id}"`, meta: { before, after: null } });
   revalidateTag(EVENTS_ACTIVE_TAG, "max");
   return NextResponse.json({ ok: true });
 }

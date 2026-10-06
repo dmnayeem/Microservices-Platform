@@ -22,6 +22,7 @@ export interface CpaReviewOutcome {
 const ERRORS: Record<string, string> = {
   NOT_FOUND: "Conversion not found",
   NOT_PENDING: "Already reviewed",
+  USER_INACTIVE: "The account is not active — reactivate it before paying",
   NOT_REJECTABLE: "Only pending or held conversions can be rejected",
   NOT_APPROVED: "Only approved conversions can be reversed",
 };

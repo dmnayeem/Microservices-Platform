@@ -58,9 +58,28 @@ export const FEED_AUTHOR_SELECT = {
   level: true,
   package: { select: { slug: true, name: true } },
   isBlueVerified: true,
+  // Read only to hide a lapsed paid badge (see liveBadgeAuthor); never sent.
+  blueBadgeExpiresAt: true,
   verifiedBadgeStyle: true,
   role: true,
 } as const;
+
+/**
+ * A bought badge lapses at `blueBadgeExpiresAt`, but `isBlueVerified` is only
+ * cleared by the hourly sweep — so for up to an hour after expiry the feed
+ * still showed it. Show it only while it is actually live; admin-granted
+ * badges (expiry null) never lapse. The expiry itself is not sent.
+ */
+function liveBadgeAuthor(user: unknown): unknown {
+  if (!user || typeof user !== "object") return user;
+  const { blueBadgeExpiresAt, ...rest } = user as Record<string, unknown> & {
+    blueBadgeExpiresAt?: Date | string | null;
+  };
+  if (blueBadgeExpiresAt && new Date(blueBadgeExpiresAt).getTime() <= Date.now()) {
+    return { ...rest, isBlueVerified: false };
+  }
+  return rest;
+}
 
 /** The per-viewer facts a list has to look up in bulk, not per post. */
 export interface FeedViewerContext {
@@ -144,7 +163,7 @@ export function formatFeedPost(post: Row, ctx: FeedViewerContext) {
     groupId: post.groupId,
     myVote: ctx.votes.get(post.id) ?? null,
     createdAt: post.createdAt,
-    user: ctx.users.get(post.userId),
+    user: liveBadgeAuthor(ctx.users.get(post.userId)),
     isLiked: ctx.liked.has(post.id),
     myReaction: ctx.myReactions.get(post.id) ?? null,
     reactionCounts: ctx.reactionCounts[post.id] ?? null,

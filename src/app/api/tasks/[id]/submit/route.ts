@@ -15,7 +15,15 @@ import {
 import { processReferralCommissions } from "@/lib/referral-commissions";
 import { notifyUser } from "@/lib/notify";
 import { getPointsPerUsd } from "@/lib/economy";
-import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
+import {
+  chargeTaskCompletion,
+  claimTaskCompletionSlot,
+  CompletionRefused,
+  notifyTaskClosed,
+  unpaidCompletionMessage,
+  type CompletionCharge,
+} from "@/lib/task-credit";
+import { getPlanMultipliers } from "@/lib/plan-multipliers";
 import { getBuyerSettings } from "@/lib/buyer-settings";
 import {
   compareUniqueKey,
@@ -1429,14 +1437,10 @@ export async function POST(
 
     // If auto-approved AND not a board task, award points and update user
     if (shouldAutoApprove && !isBoardTask) {
-      // Apply per-plan task reward multiplier
-      const userPlan = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { package: { select: { taskRewardMultiplier: true } } },
-      });
-      const multiplier =
-        (userPlan as unknown as { package: { taskRewardMultiplier: number } | null })?.package
-          ?.taskRewardMultiplier ?? 1;
+      // Per-plan multipliers from the EFFECTIVE plan (an expired plan no
+      // longer boosts) — the same rule on every approval path.
+      const planMult = await getPlanMultipliers(session.user.id);
+      const multiplier = planMult.taskReward;
       // A QUIZ pays on the score, exactly as /api/tasks/quiz does. This path
       // computed `score` above and then ignored it, paying the full reward for
       // a 0% answer sheet — so which route the client happened to use decided
@@ -1450,99 +1454,116 @@ export async function POST(
           ? quizPayout(score, task.xpReward)
           : task.xpReward;
       const effectivePoints = Math.round(rewardBase * multiplier);
-      const effectiveXp = Math.round(xpBase * multiplier);
+      const effectiveXp = Math.round(xpBase * planMult.xp);
       const pointsPerUsd = await getPointsPerUsd();
+      const feePercent = task.fundedByUserId ? (await getBuyerSettings()).feePercent : 0;
 
-      // Funded (user-created) task: draw from the pool FIRST (CAS). If the pool
-      // can't cover this reward, never mint unfunded points — close the task and
-      // return without crediting. (Funded tasks are normally manual-review; this
-      // guards the auto path against concurrent overspend.)
-      if (task.fundedByUserId) {
-        const charge = await chargeTaskCompletion(prisma, {
-          taskId: task.id,
-          buyerId: task.fundedByUserId,
-          rewardPoints: effectivePoints,
-          standardReward: task.pointsReward,
-          feePercent: (await getBuyerSettings()).feePercent,
-          remainingBudget: task.remainingBudget,
-        });
-        if (charge.closeTask) {
-          await prisma.task.update({
-            where: { id: task.id },
-            data: { status: "COMPLETED" },
-          });
-          // Outside any transaction, fire-and-forget: the buyer has to learn
-          // their task stopped, but a notification is not worth failing a
-          // payout for.
+      // ONE interactive transaction: the completion slot (totalLimit), the
+      // buyer's charge (funded task) and the worker's credit + ledger row
+      // commit together or not at all. The charge used to run in its own
+      // top-level writes before the credit: a failure in between left the
+      // buyer charged and the worker unpaid. (Same shape as social-recheck.)
+      // The CAS `submittedAt` claim above already prevents double-pay.
+      let user;
+      let charge: CompletionCharge | null = null;
+      try {
+        const out = await prisma.$transaction(
+          async (tx) => {
+            if (!(await claimTaskCompletionSlot(tx, task.id))) {
+              throw new CompletionRefused("TASK_FULL");
+            }
+            let c: CompletionCharge | null = null;
+            if (task.fundedByUserId) {
+              c = await chargeTaskCompletion(tx, {
+                taskId: task.id,
+                buyerId: task.fundedByUserId,
+                rewardPoints: effectivePoints,
+                standardReward: task.pointsReward,
+                feePercent,
+                remainingBudget: task.remainingBudget,
+              });
+              // Never mint unfunded points: roll the whole thing back.
+              if (!c.paid) throw new CompletionRefused(c.reason ?? "NO_CREDIT");
+            }
+            const u = await tx.user.update({
+              where: { id: session.user.id },
+              data: {
+                pointsBalance: { increment: effectivePoints },
+                xp: { increment: effectiveXp },
+                totalEarnings: { increment: effectivePoints / pointsPerUsd },
+              },
+            });
+            await tx.transaction.create({
+              data: {
+                userId: session.user.id,
+                type: TransactionType.EARNING,
+                status: TransactionStatus.COMPLETED,
+                points: effectivePoints,
+                amount: effectivePoints / pointsPerUsd,
+                description: `Completed task: ${task.title}`,
+                reference: `task_${task.id}_${submission.id}`,
+                metadata: {
+                  taskId: task.id,
+                  taskType: task.type,
+                  submissionId: submission.id,
+                  multiplier,
+                  xpMultiplier: planMult.xp,
+                },
+              },
+            });
+            return { u, c };
+          },
+          { timeout: 15_000, maxWait: 10_000 }
+        );
+        user = out.u;
+        charge = out.c;
+      } catch (err) {
+        if (!(err instanceof CompletionRefused)) throw err;
+        // Nothing was paid or charged. Retire the task (full / out of credit /
+        // delivered) and record on the row what actually happened — it was
+        // claimed as approved with the reward on it.
+        if (err.reason === "TASK_FULL") {
+          await closeTaskIfFull(task.id);
+        } else if (task.fundedByUserId) {
+          await prisma.task.update({ where: { id: task.id }, data: { status: "COMPLETED" } });
           void notifyTaskClosed({
             buyerId: task.fundedByUserId,
             taskTitle: task.title,
-            reason: charge.closeReason ?? "DELIVERED",
+            reason: err.reason === "NO_CREDIT" ? "NO_CREDIT" : "DELIVERED",
           });
         }
-        if (!charge.paid) {
-          // The row was claimed as approved with the full reward on it; left
-          // like that it reads as paid in the user's history and the admin's
-          // lists. Record what actually happened.
-          await prisma.taskSubmission
-            .update({
-              where: { id: updatedSubmission.id },
-              data: {
-                pointsEarned: 0,
-                xpEarned: 0,
-                feedback: "The advertiser ran out of credit for this task — no reward was paid.",
-              },
-            })
-            .catch(() => {});
-          return NextResponse.json({
-            submission: updatedSubmission,
-            status: "approved",
-            message:
-              "The advertiser has run out of credit for this task — no reward granted.",
-            rewards: { points: 0, xp: 0 },
-          });
-        }
+        const msg =
+          err.reason === "TASK_FULL"
+            ? "This task reached its completion limit — no reward was paid."
+            : unpaidCompletionMessage(err.reason);
+        await prisma.taskSubmission
+          .update({
+            where: { id: updatedSubmission.id },
+            data: { pointsEarned: 0, xpEarned: 0, feedback: msg },
+          })
+          .catch(() => {});
+        return NextResponse.json({
+          submission: updatedSubmission,
+          status: "approved",
+          message: msg,
+          rewards: { points: 0, xp: 0 },
+        });
       }
 
-      // Credit points/XP/earnings + write the ledger row + bump the task's
-      // completed counter ATOMICALLY. These were previously three independent
-      // top-level writes: a throw after the user.update credited points with
-      // NO ledger row (and 500'd the user). The CAS `submittedAt` claim above
-      // already prevents double-pay, so this transaction only needs to
-      // guarantee all-or-nothing integrity.
-      const [user] = await prisma.$transaction([
-        prisma.user.update({
-          where: { id: session.user.id },
-          data: {
-            pointsBalance: { increment: effectivePoints },
-            xp: { increment: effectiveXp },
-            totalEarnings: { increment: effectivePoints / pointsPerUsd },
-          },
-        }),
-        prisma.transaction.create({
-          data: {
-            userId: session.user.id,
-            type: TransactionType.EARNING,
-            status: TransactionStatus.COMPLETED,
-            points: effectivePoints,
-            amount: effectivePoints / pointsPerUsd,
-            description: `Completed task: ${task.title}`,
-            reference: `task_${task.id}_${submission.id}`,
-            metadata: {
-              taskId: task.id,
-              taskType: task.type,
-              submissionId: submission.id,
-              multiplier,
-            },
-          },
-        }),
-        prisma.task.update({
+      if (task.fundedByUserId && charge?.closeTask) {
+        await prisma.task.update({
           where: { id: task.id },
-          data: {
-            completedCount: { increment: 1 },
-          },
-        }),
-      ]);
+          data: { status: "COMPLETED" },
+        });
+        // Outside any transaction, fire-and-forget: the buyer has to learn
+        // their task stopped, but a notification is not worth failing a
+        // payout for.
+        void notifyTaskClosed({
+          buyerId: task.fundedByUserId,
+          taskTitle: task.title,
+          reason: charge.closeReason ?? "DELIVERED",
+        });
+      }
 
       // The slot counter just went up — retire the task if that filled its
       // global `totalLimit`. Outside the transaction on purpose: the reward is

@@ -1,5 +1,6 @@
 "use client";
 
+import { lsGet, lsSet } from "@/lib/safe-storage";
 import { ENGAGED_EVENT } from "@/lib/header-data";
 import { useEffect, useState } from "react";
 import { Download, Share, Plus, X, MoreVertical } from "lucide-react";
@@ -72,7 +73,7 @@ export function PwaInstallPrompt({
     if (isStandalone()) return; // already installed
     if ((window.location.pathname || "").startsWith("/admin")) return;
 
-    const snoozed = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+    const snoozed = Number(lsGet(SNOOZE_KEY) ?? 0);
     if (Date.now() - snoozed < SNOOZE_MS) return;
 
     const take = () => {
@@ -122,7 +123,7 @@ export function PwaInstallPrompt({
     let t: ReturnType<typeof setTimeout> | undefined;
     const onEngaged = () => {
       if (isStandalone()) return;
-      const snoozed = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+      const snoozed = Number(lsGet(SNOOZE_KEY) ?? 0);
       if (Date.now() - snoozed < SNOOZE_MS) return;
       if (window.__egBip) setDeferred(window.__egBip);
       if (t) clearTimeout(t);
@@ -137,7 +138,7 @@ export function PwaInstallPrompt({
 
   const snoozeAndClose = () => {
     try {
-      localStorage.setItem(SNOOZE_KEY, String(Date.now()));
+      lsSet(SNOOZE_KEY, String(Date.now()));
     } catch {
       /* ignore */
     }

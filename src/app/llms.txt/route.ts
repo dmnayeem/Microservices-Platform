@@ -92,6 +92,7 @@ export async function GET() {
     `- [Affiliate program](${u("/features/affiliate")}): commission on product and course sales`,
     `- [Referral program](${u("/referral")}): how referral commission works`,
     `- [Advertise](${u("/advertise")}): paid tasks and ad placements for businesses`,
+    `- [Pricing](${u("/pricing")}): membership packages, their prices and what each includes (joining is free)`,
     `- [Help center](${u("/help")}): answers to common questions`,
     `- [About](${u("/about")}): the company`,
     `- [Contact](${u("/contact")}): email ${SUPPORT_EMAIL}`,

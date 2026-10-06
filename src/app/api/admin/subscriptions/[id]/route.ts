@@ -6,6 +6,8 @@ import { NotificationType } from "@/generated/prisma";
 import { defaultPackage } from "@/lib/packages";
 import { toNum } from "@/lib/money";
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         amount: toNum(subscription.amount),
         paymentMethod: subscription.paymentMethod,
         transactionId: subscription.transactionId,
+        proofUrl: subscription.proofUrl,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
         isActive: subscription.isActive,
@@ -135,85 +138,122 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // `isActive: false` also means expired or cancelled, not only "awaiting
     // verification". The request's own ledger row tells them apart: an
     // off-platform request writes it PENDING, and only a PENDING one may be
-    // approved or rejected here. Without this an expired paid plan could be
-    // "approved" back to life for nothing. (A request with no ledger row at
-    // all comes from the older POST /api/packages path and is left as it was.)
+    // approved or rejected here. A row with NO ledger row at all (the retired
+    // POST /api/packages path, or an expired plan) is refused too — approving
+    // one would bring an expired plan back to life for nothing.
     const ledgerRef = `subscription_${subscription.id}`;
     const ledger = await prisma.transaction.findUnique({
       where: { userId_reference: { userId: subscription.userId, reference: ledgerRef } },
       select: { status: true },
     });
-    if (ledger && ledger.status !== "PENDING") {
+    if (!ledger || ledger.status !== "PENDING") {
       return NextResponse.json(
-        { error: "This subscription is not awaiting verification (it has expired or was cancelled)." },
+        { error: "This subscription is not awaiting verification (it has expired, was cancelled, or was already processed)." },
         { status: 400 }
       );
     }
-    const settleLedger = (status: "COMPLETED" | "CANCELLED") =>
-      prisma.transaction.updateMany({
+    // Compare-and-set on the PENDING ledger row: of two admins approving (or
+    // an admin approving while the user cancels) only one settles it; the
+    // other sees count 0 and the whole transaction changes nothing.
+    const settleLedger = async (tx: Tx, status: "COMPLETED" | "CANCELLED") => {
+      const r = await tx.transaction.updateMany({
         where: { userId: subscription.userId, reference: ledgerRef, status: "PENDING" },
         data: { status },
       });
+      if (r.count === 0) throw new Error("ALREADY_PROCESSED");
+    };
+    const alreadyProcessed = () =>
+      NextResponse.json({ error: "This request was already processed." }, { status: 409 });
 
     if (action === "approve") {
       // Keep the length the user paid for. This used to round every request to
       // one month or one year, so a paid QUARTERLY plan got a month and a
-      // LIFETIME plan a year. The window starts now, not when it was requested.
-      const startDate = new Date();
-      const endDate = new Date(
-        startDate.getTime() +
-          (subscription.endDate.getTime() - subscription.startDate.getTime())
-      );
+      // LIFETIME plan a year. The window starts now, not when it was requested
+      // — or, when the user is still on this same plan, where it now ends.
+      const now = new Date();
+      const termMs = subscription.endDate.getTime() - subscription.startDate.getTime();
+      let startDate = now;
+      let endDate = now;
 
-      await prisma.$transaction([
-        // The request's ledger row was left PENDING forever, so finance never
-        // saw the money for an approved plan.
-        settleLedger("COMPLETED"),
-        prisma.subscription.update({
-          where: { id },
-          data: {
-            isActive: true,
-            startDate,
-            endDate,
-          },
-        }),
-        prisma.user.update({
-          where: { id: subscription.userId },
-          data: {
-            packageId: subscription.packageId,
-            packageExpiresAt: endDate,
-          },
-        }),
-        prisma.notification.create({
-          data: {
-            userId: subscription.userId,
-            type: NotificationType.SYSTEM,
-            title: "Package Activated!",
-            message: `Your ${planLabel} package has been activated. Enjoy your premium benefits until ${endDate.toLocaleDateString()}.`,
+      try {
+        await prisma.$transaction(async (tx) => {
+          await settleLedger(tx, "COMPLETED");
+          const u = await tx.user.findUnique({
+            where: { id: subscription.userId },
+            select: { packageId: true, packageExpiresAt: true },
+          });
+          const currentEnd = u?.packageExpiresAt ?? null;
+          const extendSame =
+            u?.packageId === subscription.packageId &&
+            currentEnd != null &&
+            currentEnd.getTime() > now.getTime();
+          startDate = extendSame && currentEnd ? currentEnd : now;
+          endDate = new Date(startDate.getTime() + termMs);
+          // The approved plan replaces whatever was active: end those terms
+          // now and stop their auto-renew.
+          await tx.subscription.updateMany({
+            where: { userId: subscription.userId, isActive: true, id: { not: id }, endDate: { gt: now } },
+            data: { endDate: now },
+          });
+          await tx.subscription.updateMany({
+            where: { userId: subscription.userId, isActive: true, id: { not: id } },
+            data: { isActive: false, autoRenew: false },
+          });
+          await tx.subscription.update({
+            where: { id },
+            data: { isActive: true, startDate, endDate },
+          });
+          await tx.user.update({
+            where: { id: subscription.userId },
+            data: { packageId: subscription.packageId, packageExpiresAt: endDate },
+          });
+          await tx.notification.create({
             data: {
-              subscriptionId: subscription.id,
-              packageId: subscription.packageId,
-              expiresAt: endDate.toISOString(),
-            },
-          },
-        }),
-        prisma.auditLog.create({
-          data: {
-            userId: session.user.id,
-            action: "SUBSCRIPTION_APPROVED",
-            entity: "Subscription",
-            entityId: subscription.id,
-            targetUserId: subscription.userId,
-            summary: `Approved a ${planLabel} subscription`,
-            newData: {
               userId: subscription.userId,
-              packageId: subscription.packageId,
-              amount: subscription.amount,
-              transactionId: subscription.transactionId,
+              type: NotificationType.SYSTEM,
+              title: "Package Activated!",
+              message: `Your ${planLabel} package has been activated. Enjoy your premium benefits until ${endDate.toLocaleDateString()}.`,
+              data: {
+                subscriptionId: subscription.id,
+                packageId: subscription.packageId,
+                expiresAt: endDate.toISOString(),
+              },
             },
-          },
-        }),
-      ]);
+          });
+          await tx.auditLog.create({
+            data: {
+              userId: session.user.id,
+              action: "SUBSCRIPTION_APPROVED",
+              entity: "Subscription",
+              entityId: subscription.id,
+              targetUserId: subscription.userId,
+              summary: `Approved a ${planLabel} subscription`,
+              newData: {
+                userId: subscription.userId,
+                packageId: subscription.packageId,
+                amount: subscription.amount,
+                transactionId: subscription.transactionId,
+                proofUrl: subscription.proofUrl,
+              },
+            },
+          });
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message === "ALREADY_PROCESSED") return alreadyProcessed();
+        throw err;
+      }
+
+      // The referrer's subscription bonus — it used to be paid only for wallet
+      // purchases, so an invitee paying by bKash/crypto never earned it. Once
+      // per invitee, never for $0; best-effort.
+      if (toNum(subscription.amount) > 0) {
+        try {
+          const { awardReferralSubscriptionBonus } = await import("@/lib/referral-bonus");
+          await awardReferralSubscriptionBonus(subscription.userId, subscription.id);
+        } catch {
+          /* never fail an approval on the bonus */
+        }
+      }
 
       return NextResponse.json({
         success: true,
@@ -234,42 +274,46 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         );
       }
 
-      await prisma.$transaction([
-        settleLedger("CANCELLED"),
-        prisma.subscription.delete({
-          where: { id },
-        }),
-        prisma.notification.create({
-          data: {
-            userId: subscription.userId,
-            type: NotificationType.SYSTEM,
-            title: "Subscription Request Rejected",
-            message: `Your subscription request for ${planLabel} package has been rejected. Reason: ${rejectionReason}`,
+      try {
+        await prisma.$transaction(async (tx) => {
+          await settleLedger(tx, "CANCELLED");
+          await tx.subscription.delete({ where: { id } });
+          await tx.notification.create({
             data: {
-              subscriptionId: subscription.id,
-              packageId: subscription.packageId,
-              rejectionReason,
-            },
-          },
-        }),
-        prisma.auditLog.create({
-          data: {
-            userId: session.user.id,
-            action: "SUBSCRIPTION_REJECTED",
-            entity: "Subscription",
-            entityId: subscription.id,
-            targetUserId: subscription.userId,
-            summary: `Rejected a ${planLabel} subscription${rejectionReason ? ` — ${rejectionReason}` : ""}`,
-            newData: {
               userId: subscription.userId,
-              packageId: subscription.packageId,
-              amount: subscription.amount,
-              transactionId: subscription.transactionId,
-              rejectionReason,
+              type: NotificationType.SYSTEM,
+              title: "Subscription Request Rejected",
+              message: `Your subscription request for ${planLabel} package has been rejected. Reason: ${rejectionReason}`,
+              data: {
+                subscriptionId: subscription.id,
+                packageId: subscription.packageId,
+                rejectionReason,
+              },
             },
-          },
-        }),
-      ]);
+          });
+          await tx.auditLog.create({
+            data: {
+              userId: session.user.id,
+              action: "SUBSCRIPTION_REJECTED",
+              entity: "Subscription",
+              entityId: subscription.id,
+              targetUserId: subscription.userId,
+              summary: `Rejected a ${planLabel} subscription${rejectionReason ? ` — ${rejectionReason}` : ""}`,
+              newData: {
+                userId: subscription.userId,
+                packageId: subscription.packageId,
+                amount: subscription.amount,
+                transactionId: subscription.transactionId,
+                proofUrl: subscription.proofUrl,
+                rejectionReason,
+              },
+            },
+          });
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message === "ALREADY_PROCESSED") return alreadyProcessed();
+        throw err;
+      }
 
       return NextResponse.json({
         success: true,

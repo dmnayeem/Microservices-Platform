@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { toNum, toNumOrNull } from "@/lib/money";
 import { z } from "zod";
 import { revalidatePublicMarketplace } from "@/lib/public-catalog-data";
+import { readTiers } from "@/lib/marketplace-selling";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -109,6 +111,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const data = validation.data;
+    const tiers = readTiers(existingListing.licenseTiers);
 
     // Update the listing
     const listing = await prisma.marketplaceListing.update({
@@ -118,12 +121,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(data.description && { description: data.description }),
         ...(data.category && { category: data.category }),
         ...(data.price !== undefined && { price: data.price }),
+        // Headline price = cheapest licence tier, on every write (an admin
+        // price edit on a tiered listing would otherwise drift from checkout).
+        ...(tiers.length > 0 && { price: tiers[0].price }),
         ...(data.images !== undefined && { images: data.images }),
         ...(data.files !== undefined && { files: data.files }),
         ...(data.status && { status: data.status }),
       },
     });
 
+    await writeAudit({ actorId: session.user.id, action: "MARKETPLACE_LISTING_UPDATED", entity: "MarketplaceListing",
+      entityId: id, targetUserId: existingListing.sellerId, summary: `Edited listing "${listing.title}"`,
+      meta: { before: existingListing, after: listing } });
     revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({
       message: "Listing updated successfully",
@@ -166,6 +175,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     await prisma.marketplaceListing.delete({
       where: { id },
     });
+    await writeAudit({ actorId: session.user.id, action: "MARKETPLACE_LISTING_DELETED", entity: "MarketplaceListing",
+      entityId: id, targetUserId: existingListing.sellerId, summary: `Deleted listing "${existingListing.title}"`,
+      meta: { before: existingListing, after: null } });
 
     revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({

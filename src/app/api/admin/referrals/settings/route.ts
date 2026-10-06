@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 
 interface ReferralLevelInput {
   id: string;
@@ -104,6 +105,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const before = await prisma.referralLevel.findMany({
+      orderBy: { level: "asc" },
+      select: { level: true, commissionType: true, commissionValue: true, description: true, isActive: true },
+    });
+
     // Use transaction to update all levels
     await prisma.$transaction(async (tx) => {
       // Delete existing levels and recreate
@@ -124,6 +130,23 @@ export async function POST(request: NextRequest) {
     // Fetch updated levels
     const updatedLevels = await prisma.referralLevel.findMany({
       orderBy: { level: "asc" },
+    });
+
+    await writeAudit({
+      actorId: session.user.id,
+      action: "REFERRAL_LEVELS_UPDATED",
+      entity: "ReferralLevel",
+      summary: `Saved referral commission levels (${updatedLevels.length})`,
+      meta: {
+        before,
+        after: updatedLevels.map((l) => ({
+          level: l.level,
+          commissionType: l.commissionType,
+          commissionValue: l.commissionValue,
+          description: l.description,
+          isActive: l.isActive,
+        })),
+      },
     });
 
     return NextResponse.json({

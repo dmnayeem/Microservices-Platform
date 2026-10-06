@@ -64,22 +64,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}/wallet?deposit=failed`);
   }
 
-  // Credit once. The `status === "PENDING"` check is check-then-act, so two
-  // concurrent gateway callbacks could both pass it; the ledger's unique
-  // (userId, reference) on `deposit_<id>` makes the loser fail with P2002, which
-  // we swallow — the deposit is already credited, so fall through to success.
+  // Credit once. The `status === "PENDING"` read above is check-then-act, so
+  // two concurrent gateway callbacks could both pass it. The approve is a
+  // compare-and-set (`updateMany where status PENDING`): only the callback that
+  // actually flips the row may credit; the loser sees count 0 and credits
+  // nothing. The unique `deposit_<id>` ledger reference stays as a backstop.
   if (deposit.status === "PENDING") {
     try {
-      await prisma.$transaction([
-        prisma.deposit.update({
-          where: { id: deposit.id },
+      const credited = await prisma.$transaction(async (tx) => {
+        const flip = await tx.deposit.updateMany({
+          where: { id: deposit.id, status: "PENDING" },
           data: { status: "APPROVED", reviewedAt: new Date() },
-        }),
-        prisma.user.update({
+        });
+        if (flip.count === 0) return false;
+        await tx.user.update({
           where: { id: deposit.userId },
           data: { cashBalance: { increment: deposit.amount } },
-        }),
-        prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
             userId: deposit.userId,
             type: TransactionType.DEPOSIT,
@@ -89,14 +91,17 @@ export async function POST(request: NextRequest) {
             description: `Deposit via ${provider.label}`,
             reference: `deposit_${deposit.id}`,
           },
-        }),
-      ]);
-      void deliverToUser({
-        userId: deposit.userId,
-        title: "Deposit approved",
-        message: `${usd(deposit.amount)} has been added to your balance.`,
-        link: "/wallet",
+        });
+        return true;
       });
+      if (credited) {
+        void deliverToUser({
+          userId: deposit.userId,
+          title: "Deposit approved",
+          message: `${usd(deposit.amount)} has been added to your balance.`,
+          link: "/wallet",
+        });
+      }
     } catch (err) {
       if (!isDuplicateLedgerError(err)) throw err;
     }

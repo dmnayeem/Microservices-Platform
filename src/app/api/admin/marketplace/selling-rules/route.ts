@@ -10,6 +10,8 @@ import {
   savePayoutHoldConfig,
   getMarketplaceTaxConfig,
   saveMarketplaceTaxConfig,
+  getDisputeWindowDays,
+  saveDisputeWindowDays,
 } from "@/lib/marketplace-selling";
 import { z } from "zod";
 
@@ -32,7 +34,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [licenseTiersEnabled, payoutHold, tax, held] = await Promise.all([
+  const [licenseTiersEnabled, payoutHold, tax, held, disputeWindowDays] = await Promise.all([
     getLicenseTiersEnabled(),
     getPayoutHoldConfig(),
     getMarketplaceTaxConfig(),
@@ -41,12 +43,14 @@ export async function GET() {
       _sum: { amount: true },
       _count: { _all: true },
     }),
+    getDisputeWindowDays(),
   ]);
 
   return NextResponse.json({
     licenseTiersEnabled,
     payoutHold,
     tax,
+    disputeWindowDays,
     heldNow: {
       count: held._count._all,
       amount: Number(held._sum.amount ?? 0),
@@ -69,6 +73,7 @@ const schema = z.object({
       label: z.string().min(1).max(20),
     })
     .optional(),
+  disputeWindowDays: z.number().int().min(1).max(365).optional(),
 });
 
 export async function PATCH(request: NextRequest) {
@@ -89,6 +94,7 @@ export async function PATCH(request: NextRequest) {
     licenseTiersEnabled: await getLicenseTiersEnabled(),
     payoutHold: await getPayoutHoldConfig(),
     tax: await getMarketplaceTaxConfig(),
+    disputeWindowDays: await getDisputeWindowDays(),
   };
 
   if (v.data.licenseTiersEnabled !== undefined) {
@@ -96,6 +102,9 @@ export async function PATCH(request: NextRequest) {
   }
   if (v.data.payoutHold !== undefined) {
     await savePayoutHoldConfig(v.data.payoutHold);
+  }
+  if (v.data.disputeWindowDays !== undefined) {
+    await saveDisputeWindowDays(v.data.disputeWindowDays);
   }
   if (v.data.tax !== undefined) {
     await saveMarketplaceTaxConfig(v.data.tax);
@@ -105,6 +114,7 @@ export async function PATCH(request: NextRequest) {
     licenseTiersEnabled: await getLicenseTiersEnabled(),
     payoutHold: await getPayoutHoldConfig(),
     tax: await getMarketplaceTaxConfig(),
+    disputeWindowDays: await getDisputeWindowDays(),
   };
 
   await writeAudit({
@@ -119,6 +129,9 @@ export async function PATCH(request: NextRequest) {
       before.payoutHold.enabled !== after.payoutHold.enabled ||
       before.payoutHold.days !== after.payoutHold.days
         ? `Payout hold ${after.payoutHold.enabled ? `on, ${after.payoutHold.days} day(s)` : "off"}`
+        : null,
+      before.disputeWindowDays !== after.disputeWindowDays
+        ? `Dispute window ${after.disputeWindowDays} day(s)`
         : null,
     ]
       .filter(Boolean)

@@ -248,7 +248,7 @@ async function main() {
   const cl = read("src/components/user/marketplace/create-listing-view.tsx");
   const addDel = cl.slice(cl.indexOf("const addDeliverable"), cl.indexOf("const submit"));
   check("seller deliverable upload is purpose: deliverable", /purpose: "deliverable"/.test(addDel));
-  check("seller gallery upload is a display purpose", /uploadUserFile\(f, "marketplace", \{ purpose: "cover" \}\)/.test(cl));
+  check("seller gallery upload is a display purpose", /uploadUserFile\(f, "marketplace-media", \{ purpose: "cover" \}\)/.test(cl));
   check("seller screenshot fields are a display purpose", /purpose: "proof"/.test(cl) && !/uploadFn=\{uploadUserFile\}/.test(cl));
   const el = read("src/app/admin/marketplace/[id]/edit/_components/EditListingForm.tsx");
   const prod = el.slice(el.indexOf("const uploadProductFile"), el.indexOf("const [mediaPickerOpen"));

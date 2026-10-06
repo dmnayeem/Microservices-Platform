@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Crown,
@@ -17,6 +17,8 @@ import {
   TrendingUp,
   Receipt,
   History,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/lib/toast";
@@ -47,6 +49,17 @@ export interface SubscriptionHistoryItem {
   isActive: boolean;
   autoRenew: boolean;
   createdAt: string;
+}
+
+/** GET /api/packages/subscription — the parts this view uses. */
+interface BillingState {
+  autoRenewAllowed: boolean;
+  activeSubscription: { autoRenew: boolean; amount: number } | null;
+  pendingSubscription: {
+    packageName: string;
+    amount: number;
+    transactionId: string | null;
+  } | null;
 }
 
 export interface MyPackageViewProps {
@@ -86,28 +99,65 @@ export function MyPackageView({
   const [tab, setTab] = useState<Tab>("overview");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [billing, setBilling] = useState<BillingState | null>(null);
 
   const tierGradient = TIER_GRADIENT[packageTier] ?? TIER_GRADIENT.FREE;
   const isFree = packageTier === "FREE";
 
-  const cancel = async () => {
+  const loadBilling = useCallback(async () => {
+    try {
+      const r = await fetch("/api/packages/subscription", { cache: "no-store" });
+      if (r.ok) setBilling((await r.json()) as BillingState);
+    } catch {
+      /* the page still works without it */
+    }
+  }, []);
+  useEffect(() => {
+    void loadBilling();
+  }, [loadBilling]);
+
+  // "Cancelling" an active plan = turning auto-renew off: the plan runs to its
+  // end date and then stops. Nothing is refunded and nothing is deleted.
+  const setAutoRenew = async (on: boolean) => {
     setBusy(true);
     try {
       const res = await fetch("/api/packages/subscription", {
-        method: "DELETE",
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoRenew: on }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `HTTP ${res.status}`);
-      }
-      toast.success("Subscription cancelled", {
-        description:
-          "Your plan stays active until the end of the current billing period.",
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success(on ? "Auto-renew is on" : "Auto-renew is off", {
+        description: on
+          ? "At expiry your plan renews from your cash balance."
+          : "Your plan stays active until its end date, then stops.",
       });
       setShowCancelModal(false);
+      await loadBilling();
       router.refresh();
     } catch (err) {
-      toast.error("Couldn't cancel", {
+      toast.error("Couldn't change auto-renew", {
+        description: err instanceof Error ? err.message : "Try again",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Withdraw a payment request that an admin has not verified yet.
+  const cancelPending = async () => {
+    if (!confirm("Withdraw this plan request? If you already sent the payment, contact support instead.")) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/packages/subscription", { method: "DELETE" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+      toast.success("Request withdrawn");
+      await loadBilling();
+      router.refresh();
+    } catch (err) {
+      toast.error("Couldn't withdraw the request", {
         description: err instanceof Error ? err.message : "Try again",
       });
     } finally {
@@ -197,12 +247,40 @@ export function MyPackageView({
         })}
       </nav>
 
+      {billing?.pendingSubscription && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 text-sm">
+            <p className="font-semibold text-white">
+              {billing.pendingSubscription.packageName} request awaiting verification
+            </p>
+            <p className="text-xs text-(--app-ink-3)">
+              {usd(billing.pendingSubscription.amount)} · Txn ID{" "}
+              <span className="break-all">{billing.pendingSubscription.transactionId ?? "—"}</span>
+            </p>
+          </div>
+          <button
+            onClick={cancelPending}
+            disabled={busy}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-(--app-surface-2) text-xs font-bold text-(--app-ink-2) hover:text-red-400 disabled:opacity-50"
+          >
+            Withdraw request
+          </button>
+        </div>
+      )}
+
       {tab === "overview" && (
         <OverviewTab
           isFree={isFree}
           currentPackage={currentPackage}
           packageTier={packageTier}
           hasActivePaidSubscription={hasActivePaidSubscription}
+          autoRenew={billing?.activeSubscription?.autoRenew ?? false}
+          autoRenewAllowed={
+            !!billing?.autoRenewAllowed && (billing?.activeSubscription?.amount ?? 0) > 0
+          }
+          busy={busy}
+          onTurnOn={() => setAutoRenew(true)}
           onCancelClick={() => setShowCancelModal(true)}
         />
       )}
@@ -221,12 +299,12 @@ export function MyPackageView({
               </div>
               <div>
                 <p className="text-base font-bold text-white">
-                  Cancel subscription?
+                  Turn off auto-renew?
                 </p>
                 <p className="text-xs text-(--app-ink-3) mt-1">
-                  Your plan stays active until {packageExpiresAt
+                  Your plan will not renew. It stays active until {packageExpiresAt
                     ? format(new Date(packageExpiresAt), "PP")
-                    : "the end of the period"}, then drops to FREE. No refund
+                    : "the end of the period"}, then drops to the free plan. No refund
                   for the remaining time.
                 </p>
               </div>
@@ -240,7 +318,7 @@ export function MyPackageView({
                 Keep plan
               </button>
               <button
-                onClick={cancel}
+                onClick={() => setAutoRenew(false)}
                 disabled={busy}
                 className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
@@ -249,7 +327,7 @@ export function MyPackageView({
                 ) : (
                   <XCircle className="w-4 h-4" />
                 )}
-                Cancel
+                Turn off
               </button>
             </div>
           </div>
@@ -268,12 +346,20 @@ function OverviewTab({
   currentPackage,
   packageTier,
   hasActivePaidSubscription,
+  autoRenew,
+  autoRenewAllowed,
+  busy,
+  onTurnOn,
   onCancelClick,
 }: {
   isFree: boolean;
   currentPackage: PackageData | null;
   packageTier: string;
   hasActivePaidSubscription: boolean;
+  autoRenew: boolean;
+  autoRenewAllowed: boolean;
+  busy: boolean;
+  onTurnOn: () => void;
   onCancelClick: () => void;
 }) {
   return (
@@ -373,14 +459,32 @@ function OverviewTab({
           <ArrowUpRight className="w-4 h-4" />
         </Link>
 
-        {hasActivePaidSubscription && !isFree && (
+        {hasActivePaidSubscription && !isFree && autoRenew && (
           <button
             onClick={onCancelClick}
-            className="w-full py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-red-500/15 hover:text-red-400 text-(--app-ink-3) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors"
+            disabled={busy}
+            className="w-full py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-red-500/15 hover:text-red-400 text-(--app-ink-3) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
           >
             <XCircle className="w-4 h-4" />
-            Cancel subscription
+            Cancel auto-renew
           </button>
+        )}
+        {hasActivePaidSubscription && !isFree && !autoRenew && autoRenewAllowed && (
+          <button
+            onClick={onTurnOn}
+            disabled={busy}
+            className="w-full py-2.5 rounded-xl bg-(--app-surface-2) hover:bg-emerald-500/15 hover:text-emerald-400 text-(--app-ink-3) text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Turn on auto-renew
+          </button>
+        )}
+        {hasActivePaidSubscription && !isFree && (
+          <p className="text-[11px] text-center text-(--app-ink-3)">
+            {autoRenew
+              ? "Auto-renew is on: at expiry the plan renews from your cash balance (never points). If there is not enough cash, it simply ends."
+              : "Auto-renew is off: the plan ends on its expiry date."}
+          </p>
         )}
       </div>
 

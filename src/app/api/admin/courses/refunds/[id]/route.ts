@@ -16,6 +16,7 @@ import {
   resolveCourseCommissionBps,
   splitCoursePrice,
 } from "@/lib/course-commission";
+import { reverseHeldTutorPayout } from "@/lib/course-payouts";
 
 /** Cents precision. `round2` in `@/lib/money` returns a Decimal; these figures
  *  stay plain numbers all the way to Prisma. */
@@ -206,6 +207,16 @@ export async function PATCH(
       }
       // 2. Claw back tutor credit (debit balance + counter)
       if (c.tutorId && tutorOwed > 0) {
+        // A share still HELD (lib/course-payouts) was never paid to the tutor:
+        // reverse the row, and only claw back what was actually released.
+        const heldReversed = request.enrollmentId
+          ? await reverseHeldTutorPayout(
+              tx,
+              request.enrollmentId,
+              `Refunded to the student (request ${request.id})`
+            )
+          : 0;
+        const stillOwed = Math.max(0, money2(tutorOwed - heldReversed));
         // Clamp to the tutor's balance. This decremented unconditionally, so a
         // tutor who had already withdrawn their earnings was pushed to a
         // NEGATIVE balance — which every later credit silently paid off first.
@@ -214,7 +225,7 @@ export async function PATCH(
           where: { id: c.tutorId },
           select: { cashBalance: true },
         });
-        tutorClawback = Math.min(toNum(tutorRow?.cashBalance), tutorOwed);
+        tutorClawback = Math.max(0, Math.min(toNum(tutorRow?.cashBalance), stillOwed));
         if (tutorClawback > 0) {
           await tx.user.update({
             where: { id: c.tutorId },
@@ -238,8 +249,9 @@ export async function PATCH(
               refundRequestId: request.id,
               refundToUserId: request.userId,
               owed: tutorOwed,
+              heldReversed,
               clawedBack: tutorClawback,
-              shortfall: money2(tutorOwed - tutorClawback),
+              shortfall: money2(stillOwed - tutorClawback),
               affiliateAmount,
             },
           },
@@ -295,6 +307,11 @@ export async function PATCH(
           where: { id: request.enrollmentId },
         });
       }
+      // 4. Revoke the certificate. A refunded learner kept a verifiable
+      // certificate for a course they got their money back on.
+      await tx.courseCertificate.deleteMany({
+        where: { courseId: c.id, userId: request.userId },
+      });
     });
 
     // Reverse any affiliate commission earned on this enrolment (best-effort).

@@ -37,7 +37,10 @@ export function ownMediaKey(src?: string | null): string | null {
     const isPublic =
       u.pathname.startsWith("/media/") ||
       u.pathname.startsWith("/task-proofs/") ||
-      u.pathname.startsWith("/posts/");
+      u.pathname.startsWith("/posts/") ||
+      // Marketplace listing cover/gallery images; deliverables (`/marketplace/`)
+      // stay private.
+      u.pathname.startsWith("/marketplace-media/");
     if (ours && !u.search && isPublic) {
       return u.pathname.slice(1); // drop leading "/"
     }

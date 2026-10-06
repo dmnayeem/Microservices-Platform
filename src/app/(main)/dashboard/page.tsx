@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { ledgerForUser } from "@/lib/ledger-display";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import {
   CheckCircle,
   Users,
@@ -20,6 +20,7 @@ import {
   ArrowRightLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   AdRenderer,
   type AdResponse,
@@ -81,6 +82,13 @@ export default async function DashboardPage() {
 
   // Fetch everything in ONE batch — none of these depend on each other, so they
   // run as a single parallel round-trip instead of two serial phases.
+  //
+  // The balance row and the pending-withdrawal sum stay STRICT: a confidently
+  // wrong money figure is worse than an error. Everything else is a card the
+  // page can render without, so a single failing read degrades that card
+  // (safeRead) instead of taking the whole dashboard to the error screen. The
+  // settings-backed reads (economy, gate, KYC prompt, PWA, features) already
+  // fall back internally.
   const [
     userData,
     submissionsByStatus,
@@ -91,7 +99,6 @@ export default async function DashboardPage() {
     pointsPerUsd,
     gate,
     kycPrompt,
-    dashAd,
     features,
     convertThreshold,
     hiddenPaths,
@@ -121,23 +128,32 @@ export default async function DashboardPage() {
       // One groupBy instead of a count: approved (AUTO_APPROVED too — quiz,
       // video and every autoApprove task credits with that status), in review
       // and rejected all come from the same query.
-      prisma.taskSubmission.groupBy({
-        by: ["status"],
-        where: { userId: session.user.id },
-        _count: { _all: true },
-      }),
-      prisma.user.count({
-        where: { referredById: session.user.id },
-      }),
+      safeRead(
+        prisma.taskSubmission.groupBy({
+          by: ["status"],
+          where: { userId: session.user.id },
+          _count: { _all: true },
+        }),
+        [],
+        "dashboard submissions"
+      ),
+      safeRead(
+        prisma.user.count({
+          where: { referredById: session.user.id },
+        }),
+        0,
+        "dashboard referrals"
+      ),
       // Same visibility rules as /tasks. This used to be a bare
       // `{ status: "ACTIVE" }`, so the preview could link a user straight to a
       // task that /api/tasks/[id]/start refuses (hidden, expired, wrong plan,
       // or outside their audience).
-      getVisibleTaskPreview(session.user.id, 6),
+      safeRead(getVisibleTaskPreview(session.user.id, 6), [], "dashboard task preview"),
       // The last 30 days of the ledger, read ONCE: the earnings summary (today,
       // 7 and 30 days, the chart, the sources) and the recent-activity list
-      // below are all computed from this one query.
-      prisma.transaction.findMany({
+      // below are all computed from this one query. `metadata` stays selected:
+      // ledgerForUser reads `metadata.adjustedPoints` to show corrected rows.
+      safeRead(prisma.transaction.findMany({
         // eslint-disable-next-line react-hooks/purity -- async Server Component: runs once per request, never hydrated.
         where: { userId: session.user.id, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
         orderBy: { createdAt: "desc" },
@@ -153,7 +169,7 @@ export default async function DashboardPage() {
           metadata: true,
           createdAt: true,
         },
-      }),
+      }), [], "dashboard ledger"),
       prisma.withdrawal.aggregate({
         where: { userId: session.user.id, status: { in: ["PENDING", "PROCESSING"] } },
         _sum: { amount: true },
@@ -162,9 +178,6 @@ export default async function DashboardPage() {
       getPointsPerUsd(),
       getProfileGateState(session.user.id),
       getKycPromptState(session.user.id),
-      // SSR the dashboard banner so it's in the initial HTML (ad-blocker can't hide
-      // markup that's already there). AdRenderer paints this, then rotates client-side.
-      serveAd({ placement: "DASHBOARD", userId: session.user.id }),
       getEffectiveFeatures(session.user.id),
       getPointsConvertThreshold(),
       // Request-cached: the (main) layout already resolved it.
@@ -360,11 +373,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <AdRenderer
-        placement="DASHBOARD"
-        initialAd={dashAd.ad as AdResponse | null}
-        initialRotateMs={dashAd.rotateMs}
-      />
+      {/* Streamed on its own so a slow ad serve never holds up the dashboard. */}
+      <Suspense fallback={null}>
+        <DashboardAd userId={session.user.id} />
+      </Suspense>
 
       {/* Recent activity (real last-5 transactions) */}
       <section className="app-card">
@@ -464,5 +476,24 @@ export default async function DashboardPage() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * SSR the dashboard banner so it's in the initial HTML (an ad-blocker can't hide
+ * markup that's already there). AdRenderer paints this, then rotates
+ * client-side. A failed serve falls back to AdRenderer's own client fetch.
+ */
+async function DashboardAd({ userId }: { userId: string }) {
+  const dashAd = await serveAd({ placement: "DASHBOARD", userId }).catch((e) => {
+    console.error("[dashboard] serveAd failed:", e);
+    return null;
+  });
+  return (
+    <AdRenderer
+      placement="DASHBOARD"
+      initialAd={(dashAd?.ad ?? null) as AdResponse | null}
+      initialRotateMs={dashAd?.rotateMs}
+    />
   );
 }

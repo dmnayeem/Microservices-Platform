@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { z } from "zod";
 
@@ -81,5 +82,13 @@ export async function POST(request: NextRequest) {
   if (!cat) return NextResponse.json({ error: "Category not found" }, { status: 400 });
 
   const offer = await prisma.offerwallOffer.create({ data: clean(parsed.data) });
+  await writeAudit({
+    actorId: session.user.id,
+    action: "OFFERWALL_OFFER_CREATED",
+    entity: "OfferwallOffer",
+    entityId: offer.id,
+    summary: `Created offerwall offer "${offer.title}"`,
+    meta: { before: null, after: offer },
+  });
   return NextResponse.json({ offer });
 }

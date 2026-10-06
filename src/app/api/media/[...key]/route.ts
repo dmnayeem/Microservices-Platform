@@ -38,7 +38,10 @@ export async function GET(
   const isPublic =
     key.startsWith("media/") ||
     key.startsWith("task-proofs/") ||
-    key.startsWith("posts/");
+    key.startsWith("posts/") ||
+    // Marketplace listing cover/gallery images (shop cards). Deliverables
+    // live under `marketplace/` and stay private.
+    key.startsWith("marketplace-media/");
   if (!isPublic || key.includes("..")) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

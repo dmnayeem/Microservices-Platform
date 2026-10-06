@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -57,8 +57,23 @@ export function LessonPane({
   const isVideoLike =
     lesson.lessonType === "VIDEO" || lesson.lessonType === "LIVE";
 
-  // Persist a progress patch to the server.
-  const persist = async (patch: Partial<PlayerLessonProgress>) => {
+  // Record the server-side "first open" of this lesson. Completion needs time
+  // on the lesson since that moment (see lib/course-access.ts), and text
+  // lessons otherwise never write a progress row before "Mark complete".
+  useEffect(() => {
+    if (lesson.progress?.isCompleted) return;
+    fetch(`/api/courses/${courseId}/lessons/${lesson.id}/progress`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per lesson
+  }, [courseId, lesson.id]);
+
+  // Persist a progress patch to the server. Resolves false when it failed.
+  const persist = async (
+    patch: Partial<PlayerLessonProgress>
+  ): Promise<boolean> => {
     onProgressChange(patch);
     try {
       const res = await fetch(
@@ -73,21 +88,26 @@ export function LessonPane({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? `HTTP ${res.status}`);
       }
+      return true;
     } catch (err) {
       // We don't toast for autosaves (would be too noisy). Only for completes.
       if (patch.isCompleted !== undefined) {
+        // Undo the optimistic tick — the server did not accept it.
+        if (patch.isCompleted) onProgressChange({ isCompleted: false });
         toast.error("Couldn't save progress", {
           description: err instanceof Error ? err.message : "Try again",
         });
       }
+      return false;
     }
   };
 
   const markComplete = async () => {
     setCompleting(true);
-    await persist({ isCompleted: true });
-    toast.success("Lesson complete");
+    const ok = await persist({ isCompleted: true });
     setCompleting(false);
+    if (!ok) return;
+    toast.success("Lesson complete");
     if (hasNext) onNext();
   };
 

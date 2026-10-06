@@ -16,9 +16,22 @@ import { ONBOARDED_COOKIE } from "@/lib/auth/config";
  */
 export type FinishResult =
   | { ok: true }
-  | { ok: false; error: "AUTH" | "INVALID" | "RESERVED" | "TAKEN" };
+  | { ok: false; error: "AUTH" | "INVALID" | "RESERVED" | "TAKEN" | "FAILED" };
 
+// The actions never throw: a thrown Server Action error lands the user on the
+// error boundary mid-signup. A DB blip becomes an inline "try again" instead.
 export async function finishOnboarding(
+  username?: string
+): Promise<FinishResult> {
+  try {
+    return await finishOnboardingImpl(username);
+  } catch (err) {
+    console.error("[onboarding] finish failed:", err);
+    return { ok: false, error: "FAILED" };
+  }
+}
+
+async function finishOnboardingImpl(
   username?: string
 ): Promise<FinishResult> {
   const session = await auth();
@@ -71,15 +84,20 @@ export async function finishOnboarding(
 
 /** Skip — keep the generated handle, just stop asking. */
 export async function skipOnboarding(): Promise<FinishResult> {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return { ok: false, error: "AUTH" };
-  await prisma.user.update({
-    where: { id: userId },
-    data: { onboardedAt: new Date() },
-  });
-  await markOnboarded();
-  return { ok: true };
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId) return { ok: false, error: "AUTH" };
+    await prisma.user.update({
+      where: { id: userId },
+      data: { onboardedAt: new Date() },
+    });
+    await markOnboarded();
+    return { ok: true };
+  } catch (err) {
+    console.error("[onboarding] skip failed:", err);
+    return { ok: false, error: "FAILED" };
+  }
 }
 
 /**

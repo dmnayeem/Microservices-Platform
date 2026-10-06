@@ -58,7 +58,7 @@ export async function getAffiliateStats(userId: string): Promise<AffiliateStats>
           where: { affiliateUserId: userId, visitorHash: { not: null } },
         }) as unknown as Promise<{ visitorHash: string | null }[]>,
         prisma.affiliateCommission.aggregate({
-          where: { affiliateUserId: userId },
+          where: { affiliateUserId: userId, status: { not: "REVERSED" } },
           _count: { _all: true },
           _sum: { commissionAmount: true },
         }) as unknown as Promise<{
@@ -74,7 +74,7 @@ export async function getAffiliateStats(userId: string): Promise<AffiliateStats>
         >,
         prisma.affiliateCommission.groupBy({
           by: ["sourceType", "sourceId"],
-          where: { affiliateUserId: userId },
+          where: { affiliateUserId: userId, status: { not: "REVERSED" } },
           _count: { _all: true },
           _sum: { commissionAmount: true },
         }) as unknown as Promise<
@@ -86,7 +86,7 @@ export async function getAffiliateStats(userId: string): Promise<AffiliateStats>
           }[]
         >,
         prisma.affiliateCommission.findMany({
-          where: { affiliateUserId: userId },
+          where: { affiliateUserId: userId, status: { not: "REVERSED" } },
           orderBy: { createdAt: "desc" },
           take: 20,
           select: {

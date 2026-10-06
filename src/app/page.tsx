@@ -87,7 +87,7 @@ export default async function Home() {
         {on("features") && <Features {...content.features} />}
         {on("how_it_works") && <HowItWorks {...content.how_it_works} />}
         {on("calculator") && <EarningsCalculator {...content.calculator} />}
-        {on("packages") && <Packages {...content.packages} livePlans={plans.plans} compareRows={plans.rows} />}
+        {on("packages") && <Packages {...content.packages} livePlans={plans.plans} />}
         {on("testimonials") && <Testimonials {...content.testimonials} />}
         {on("trust_badges") && <TrustBadges {...content.trust_badges} />}
         {on("faq") && <FAQ {...content.faq} />}

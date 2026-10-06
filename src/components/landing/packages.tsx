@@ -13,8 +13,7 @@ import Link from "next/link";
 import type { PackagesContent } from "@/lib/landing-content";
 import { DEFAULT_LANDING_CONTENT } from "@/lib/landing-content";
 import { SectionHeading } from "./section-heading";
-import { PlanCardView, PlanCompareTable, type PlanCardData } from "@/components/plans/plan-display";
-import type { CompareRowDef } from "@/lib/plan-compare";
+import { PlanCardView, type PlanCardData } from "@/components/plans/plan-display";
 
 const ICONS: Record<string, LucideIcon> = {
   Zap,
@@ -31,10 +30,9 @@ type Props = Partial<PackagesContent> & {
    * price or feature the real plan does not have.
    */
   livePlans?: PlanCardData[];
-  compareRows?: CompareRowDef[];
 };
 
-export function Packages({ livePlans, compareRows, ...props }: Props) {
+export function Packages({ livePlans, ...props }: Props) {
   const v: PackagesContent = { ...DEFAULT_LANDING_CONTENT.packages, ...props };
 
   if (livePlans && livePlans.length > 0) {
@@ -68,11 +66,6 @@ export function Packages({ livePlans, compareRows, ...props }: Props) {
               />
             ))}
           </div>
-          {compareRows && compareRows.length > 0 && livePlans.length > 1 && (
-            <div className="mk-rise mt-10">
-              <PlanCompareTable plans={livePlans} rows={compareRows} variant="marketing" />
-            </div>
-          )}
         </div>
       </section>
     );

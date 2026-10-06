@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+// Relative, not `@/`: the config loader does not resolve the tsconfig alias.
+// The registry is import-free on purpose so it can be read here.
+import { allRegistryOrigins } from "./src/lib/ad-networks/registry";
 
 /**
  * Security response headers (docs/SECURITY-RUNBOOK.md).
@@ -31,18 +34,48 @@ const flagOff = (name: string) => (process.env[name] ?? "").toLowerCase() === "o
 const flagOn = (name: string) => (process.env[name] ?? "").toLowerCase() === "on";
 
 const CSP_REPORT_PATH = "/api/security/csp-report";
+
+/**
+ * Ad-network script hosts, from the registry (src/lib/ad-networks/registry.ts).
+ *
+ * Which networks are ENABLED lives in the database and cannot be known when
+ * this file is evaluated, so every registry network's hosts are allowed — the
+ * list is the set of networks the admin is able to switch on, which is exactly
+ * what must keep working the day `CSP_ENFORCE=on` is set. Networks flagged
+ * `dynamicDomains` (popunder / push networks that rotate hosts) cannot be
+ * listed in advance: add their current hosts with `CSP_AD_SCRIPT_HOSTS`
+ * (space- or comma-separated), or keep the policy report-only while they run.
+ * In-slot HTML ads are unaffected either way — they run in a frame with its
+ * own policy (/api/ads/frame/[id]) or in an opaque srcDoc frame.
+ */
+const AD_SCRIPT_HOSTS = [
+  ...allRegistryOrigins(),
+  ...(process.env.CSP_AD_SCRIPT_HOSTS ?? "")
+    .split(/[\s,]+/)
+    .map((h) => h.trim())
+    .filter((h) => /^https:\/\/[A-Za-z0-9*.-]+(:\d+)?$/.test(h)),
+];
+// The separate ad-frame origin, when configured (src/lib/ad-networks/frame.ts).
+const AD_FRAME_ORIGIN = (() => {
+  try {
+    return process.env.AD_FRAME_ORIGIN ? new URL(process.env.AD_FRAME_ORIGIN).origin : "";
+  } catch {
+    return "";
+  }
+})();
+
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // Inline boot scripts in the root layout + Next's own inline payloads, plus
   // ad networks, tag managers and video players. Ad networks load further
   // hosts at run time — the reports will name them.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.googlesyndication.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://www.googletagmanager.com https://www.google-analytics.com https://*.google.com https://*.gstatic.com https://www.youtube.com https://player.vimeo.com https://connect.facebook.net https://*.sentry.io https://static.cloudflareinsights.com https://va.vercel-scripts.com",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.googlesyndication.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://www.googletagmanager.com https://www.google-analytics.com https://*.google.com https://*.gstatic.com https://www.youtube.com https://player.vimeo.com https://connect.facebook.net https://*.sentry.io https://static.cloudflareinsights.com https://va.vercel-scripts.com ${AD_SCRIPT_HOSTS.join(" ")}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: wss:",
-  "frame-src 'self' https: blob: data:",
+  `frame-src 'self' https: blob: data:${AD_FRAME_ORIGIN ? ` ${AD_FRAME_ORIGIN}` : ""}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",

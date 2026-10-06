@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { CourseStatus, NotificationType } from "@/generated/prisma";
+import { CourseStatus } from "@/generated/prisma";
 import { toNum } from "@/lib/money";
 
 // GET /api/courses/:id - Get course details
@@ -101,121 +101,6 @@ export async function GET(
   }
 }
 
-// POST /api/courses/:id - Enroll in course
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = await params;
-
-    // Check if course exists
-    const course = await prisma.course.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        isFree: true,
-        price: true,
-        discountPrice: true,
-        tutorId: true,
-      },
-    });
-
-    if (!course || course.status !== CourseStatus.PUBLISHED) {
-      return NextResponse.json(
-        { error: "Course not found" },
-        { status: 404 }
-      );
-    }
-
-    // Free courses only. A paid course is bought through /enroll, which
-    // charges the buyer and pays the tutor; this path enrolled anyone for free.
-    const livePrice = Number(course.discountPrice ?? course.price ?? 0);
-    if (!course.isFree && livePrice > 0) {
-      return NextResponse.json(
-        { error: "This course is paid. Enroll from the course page." },
-        { status: 402 }
-      );
-    }
-
-    // Check if already enrolled
-    const existingEnrollment = await prisma.courseEnrollment.findUnique({
-      where: {
-        courseId_userId: {
-          userId: session.user.id,
-          courseId: id,
-        },
-      },
-    });
-
-    if (existingEnrollment) {
-      return NextResponse.json(
-        { error: "Already enrolled in this course" },
-        { status: 400 }
-      );
-    }
-
-    // Create enrollment and increment count. This free-enrollment path used to
-    // bump only `Course.enrollmentCount`, so a tutor's student total (read from
-    // TutorProfile) drifted below the course totals admin sees.
-    const [enrollment] = await prisma.$transaction([
-      prisma.courseEnrollment.create({
-        data: {
-          userId: session.user.id,
-          courseId: id,
-          progress: 0,
-          completedLessons: [],
-        },
-      }),
-      prisma.course.update({
-        where: { id },
-        data: {
-          enrollmentCount: { increment: 1 },
-        },
-      }),
-      ...(course.tutorId
-        ? [
-            prisma.tutorProfile.updateMany({
-              where: { userId: course.tutorId },
-              data: { totalStudents: { increment: 1 } },
-            }),
-          ]
-        : []),
-    ]);
-
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        userId: session.user.id,
-        type: NotificationType.SYSTEM,
-        title: "Course Enrolled",
-        message: `You have enrolled in "${course.title}". Start learning now!`,
-        data: { courseId: id },
-      },
-    });
-
-    return NextResponse.json({
-      enrollment: {
-        id: enrollment.id,
-        courseId: enrollment.courseId,
-        enrolledAt: enrollment.createdAt,
-        progress: 0,
-      },
-      message: "Successfully enrolled in course",
-    });
-  } catch (error) {
-    console.error("Error enrolling in course:", error);
-    return NextResponse.json(
-      { error: "Failed to enroll in course" },
-      { status: 500 }
-    );
-  }
-}
+// POST /api/courses/:id (a second, free-only enrol path) was removed: nothing
+// called it, and it duplicated /api/courses/:id/enroll without that route's
+// plan / page-visibility / idempotency checks. Enrol via /enroll.

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { X, Megaphone, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { adClickHref } from "@/lib/ad-measure-client";
+import { AdSlotShell, adNetworkLabel } from "@/components/user/primitives/ad-slot-shell";
 import type { AdResponse } from "@/components/user/primitives/ad-renderer";
 
 /**
@@ -47,13 +49,9 @@ export function VideoOverlayAd({ className }: { className?: string }) {
 
   if (!ad || dismissed) return null;
 
+  // The click itself is counted by the `/api/spaces/go` redirect (adClickHref).
+  const clickHref = adClickHref(ad.st, ad.id, ad.ctaUrl) ?? "#";
   const trackClick = () => {
-    fetch(`/api/spaces/${ad.id}/event`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // The serve token is what makes this click billable (ad-serve-token).
-      body: JSON.stringify({ kind: "open", st: ad.st }),
-    }).catch(() => {});
     if (ad.clickTracker) {
       try {
         void fetch(ad.clickTracker, { mode: "no-cors", keepalive: true });
@@ -73,6 +71,19 @@ export function VideoOverlayAd({ className }: { className?: string }) {
         className
       )}
     >
+      {/* Measured like every other ad. The token is only handed over once the
+          strip has slid in — before that it is transparent, and an invisible
+          ad must not start a viewability timer. */}
+      <AdSlotShell
+        info={{
+          adId: ad.id,
+          placement: "VIDEO_OVERLAY",
+          slotKey: `VIDEO_OVERLAY:${ad.id}`,
+          network: adNetworkLabel(ad),
+          type: ad.type,
+          st: visible ? ad.st : undefined,
+        }}
+      >
       <div className="relative flex items-center gap-2 rounded-lg border border-white/10 bg-black/70 backdrop-blur py-1.5 pl-2 pr-8 shadow-lg">
         {ad.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -86,7 +97,7 @@ export function VideoOverlayAd({ className }: { className?: string }) {
           />
         )}
         <a
-          href={ad.ctaUrl ?? "#"}
+          href={clickHref}
           target="_blank"
           rel="noopener sponsored noreferrer"
           onClick={trackClick}
@@ -98,7 +109,7 @@ export function VideoOverlayAd({ className }: { className?: string }) {
           <p className="text-xs font-semibold text-white truncate">{ad.title}</p>
         </a>
         <a
-          href={ad.ctaUrl ?? "#"}
+          href={clickHref}
           target="_blank"
           rel="noopener sponsored noreferrer"
           onClick={trackClick}
@@ -119,6 +130,7 @@ export function VideoOverlayAd({ className }: { className?: string }) {
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
+      </AdSlotShell>
       {ad.impressionPixel && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={ad.impressionPixel} alt="" width={1} height={1} className="hidden" />

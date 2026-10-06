@@ -8,6 +8,7 @@ import { normalizeTargeting, type AdTargeting } from "@/lib/ad-targeting";
 import { clampRewardCooldown } from "@/lib/ad-billing";
 import { AdReviewError, adminSetStatus, materialChanges } from "@/lib/ad-review";
 import { checkAdFitsPlacement, placementLabel } from "@/lib/ad-placements";
+import { checkHtmlAd, optInt } from "@/lib/ad-networks/validate";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -54,6 +55,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.impressionPixel !== undefined) data.impressionPixel = body.impressionPixel ? String(body.impressionPixel) : null;
   if (body.clickTracker !== undefined) data.clickTracker = body.clickTracker ? String(body.clickTracker) : null;
   if (body.allowSameOrigin !== undefined) data.allowSameOrigin = Boolean(body.allowSameOrigin);
+  if (body.networkId !== undefined) data.networkId = body.networkId ? String(body.networkId).slice(0, 40) : null;
+  if (body.mobileHtmlContent !== undefined)
+    data.mobileHtmlContent = body.mobileHtmlContent ? String(body.mobileHtmlContent) : null;
+  {
+    const mw = optInt(body.mobileWidth, 2000);
+    if (mw !== undefined) data.mobileWidth = mw;
+    const mh = optInt(body.mobileHeight, 2000);
+    if (mh !== undefined) data.mobileHeight = mh;
+    const cap = optInt(body.freqCapPerDay, 1000);
+    if (cap !== undefined) data.freqCapPerDay = cap;
+    const gap = optInt(body.freqMinGapMinutes, 10_080);
+    if (gap !== undefined) data.freqMinGapMinutes = gap;
+  }
   if (body.size !== undefined) data.size = body.size ? String(body.size) : "responsive";
   if (body.width !== undefined)
     data.width = Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null;
@@ -91,7 +105,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     data.width !== undefined ||
     data.height !== undefined ||
     data.type !== undefined ||
-    data.placementId !== undefined
+    data.placementId !== undefined ||
+    data.format !== undefined ||
+    data.networkId !== undefined ||
+    data.mobileHtmlContent !== undefined ||
+    data.mobileWidth !== undefined ||
+    data.mobileHeight !== undefined
   ) {
     const placementId = String(data.placementId ?? existing.placementId);
     const target = await prisma.adPlacement.findUnique({
@@ -106,7 +125,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         width: (data.width as number | null | undefined) ?? existing.width,
         height: (data.height as number | null | undefined) ?? existing.height,
         type: (data.type as string | undefined) ?? existing.type,
-      });
+        format: (data.format as string | undefined) ?? existing.format,
+      }).concat(
+        checkHtmlAd({
+          placementName: target.name,
+          type: (data.type as string | undefined) ?? existing.type,
+          size: (data.size as string | undefined) ?? existing.size,
+          width: (data.width as number | null | undefined) ?? existing.width,
+          height: (data.height as number | null | undefined) ?? existing.height,
+          networkId:
+            data.networkId !== undefined ? (data.networkId as string | null) : existing.networkId,
+          mobileHtml:
+            data.mobileHtmlContent !== undefined
+              ? (data.mobileHtmlContent as string | null)
+              : existing.mobileHtmlContent,
+          mobileWidth:
+            data.mobileWidth !== undefined ? (data.mobileWidth as number | null) : existing.mobileWidth,
+          mobileHeight:
+            data.mobileHeight !== undefined ? (data.mobileHeight as number | null) : existing.mobileHeight,
+        })
+      );
       if (problems.length > 0) {
         return NextResponse.json(
           { error: problems[0].message, problems },

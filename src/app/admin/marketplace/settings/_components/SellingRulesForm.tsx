@@ -15,6 +15,8 @@ interface Props {
   payoutHold: PayoutHoldConfig;
   tax: MarketplaceTaxConfig;
   heldNow: { count: number; amount: number };
+  /** Days after a purchase a dispute may be opened. */
+  disputeWindowDays?: number;
   canEdit: boolean;
 }
 
@@ -23,6 +25,7 @@ export function SellingRulesForm({
   payoutHold,
   tax,
   heldNow,
+  disputeWindowDays = 30,
   canEdit,
 }: Props) {
   const router = useRouter();
@@ -32,6 +35,7 @@ export function SellingRulesForm({
   const [taxOn, setTaxOn] = useState(tax.enabled);
   const [taxPct, setTaxPct] = useState(String(tax.pct));
   const [taxLabel, setTaxLabel] = useState(tax.label);
+  const [disputeDays, setDisputeDays] = useState(String(disputeWindowDays));
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -39,6 +43,11 @@ export function SellingRulesForm({
     const pct = Number(taxPct);
     if (taxOn && (!Number.isFinite(pct) || pct < 0 || pct > 100)) {
       toast.error("Tax rate must be between 0 and 100");
+      return;
+    }
+    const dw = parseInt(disputeDays, 10);
+    if (!Number.isFinite(dw) || dw < 1 || dw > 365) {
+      toast.error("Dispute window must be between 1 and 365 days");
       return;
     }
     if (holdOn && (!Number.isFinite(d) || d < 1 || d > 90)) {
@@ -52,6 +61,7 @@ export function SellingRulesForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           licenseTiersEnabled: tiers,
+          disputeWindowDays: dw,
           payoutHold: { enabled: holdOn, days: Number.isFinite(d) ? d : payoutHold.days },
           tax: {
             enabled: taxOn,
@@ -210,6 +220,28 @@ export function SellingRulesForm({
           Collected tax is reported separately in Finance and is never counted as
           revenue — it is money you hold for someone else.
         </p>
+      </div>
+
+      {/* Dispute window */}
+      <div className="border-t border-slate-800 pt-4 space-y-2">
+        <p className="text-sm text-white font-medium inline-flex items-center gap-1.5">
+          <Info className="w-4 h-4 text-rose-400" />
+          Dispute window
+        </p>
+        <p className="text-sm text-slate-400">
+          How long after a purchase the buyer (or seller) can open a dispute. While a
+          dispute is open, a held seller payout is not released.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            value={disputeDays}
+            onChange={(e) => setDisputeDays(e.target.value)}
+            disabled={!canEdit}
+            inputMode="numeric"
+            className="w-20 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm"
+          />
+          <span className="text-sm text-slate-400">days after the sale (1–365)</span>
+        </div>
       </div>
 
       {canEdit && (

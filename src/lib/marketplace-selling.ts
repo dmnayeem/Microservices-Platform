@@ -321,3 +321,31 @@ export async function payOrHoldSeller(
   });
   return { held: true, releaseAt };
 }
+
+/* ------------------------------------------------------------------ *
+ * Dispute window
+ * ------------------------------------------------------------------ */
+
+/**
+ * How many days after a purchase the buyer (or seller) may open a dispute.
+ * Edited on Marketplace → Settings. Without a window a dispute could be
+ * opened on a sale from years ago — long after the seller was paid.
+ */
+export const DISPUTE_WINDOW_KEY = "marketplace_dispute_window_days";
+export const DEFAULT_DISPUTE_WINDOW_DAYS = 30;
+
+export async function getDisputeWindowDays(): Promise<number> {
+  const raw = Number(await getSetting<number>(DISPUTE_WINDOW_KEY, DEFAULT_DISPUTE_WINDOW_DAYS));
+  return Number.isFinite(raw) ? Math.min(365, Math.max(1, Math.round(raw))) : DEFAULT_DISPUTE_WINDOW_DAYS;
+}
+
+export async function saveDisputeWindowDays(days: number): Promise<void> {
+  const value = Math.min(365, Math.max(1, Math.round(Number(days) || DEFAULT_DISPUTE_WINDOW_DAYS)));
+  await prisma.systemSetting.upsert({
+    where: { key: DISPUTE_WINDOW_KEY },
+    create: { key: DISPUTE_WINDOW_KEY, category: "marketplace", value },
+    update: { category: "marketplace", value },
+  });
+  invalidateSettingsCache();
+  primeSetting(DISPUTE_WINDOW_KEY, value);
+}

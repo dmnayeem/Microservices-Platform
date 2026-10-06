@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedUser } from "@/lib/require-active";
-import { toNum } from "@/lib/money";
+import { toNum, round2 } from "@/lib/money";
 import {
   WithdrawalStatus,
   PaymentMethod,
@@ -154,7 +154,12 @@ export async function POST(request: NextRequest) {
     // including `amount > 100`, which is the KYC gate. It ended in a Prisma
     // type error rather than a payout, but a money route must not depend on a
     // driver rejecting garbage that four of its own checks waved through.
-    const amount = Number(body.amount);
+    //
+    // Rounded to whole cents at this edge: a sub-cent amount (e.g. 10.004)
+    // otherwise flowed into the fee math, the balance debit and the payout as
+    // six-decimal dust the payout rail cannot send.
+    const rawAmount = Number(body.amount);
+    const amount = Number.isFinite(rawAmount) ? toNum(round2(rawAmount)) : NaN;
     let method = body.method;
     let accountDetails = body.accountDetails;
 

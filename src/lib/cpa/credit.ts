@@ -6,6 +6,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { isDuplicateLedgerError } from "@/lib/idempotency";
 import { cpaRetryState, readCpaHistory, type CpaAttemptRecord } from "@/lib/cpa/retry";
 import { processCpaReferralCommissions } from "@/lib/referral-commissions";
+import { clawbackReferralCommissions } from "@/lib/referral-clawback";
 import { raiseAbuseSignal } from "@/lib/abuse/signal";
 
 /**
@@ -366,7 +367,7 @@ export async function reopenCpaConversionByPostback(args: {
 
 export type ApproveResult =
   | { ok: true; status: "APPROVED" | "HELD"; points: number; userId: string; heldUntil?: Date }
-  | { ok: false; reason: "NOT_FOUND" | "NOT_PENDING" };
+  | { ok: false; reason: "NOT_FOUND" | "NOT_PENDING" | "USER_INACTIVE" };
 
 interface ConvRow {
   id: string;
@@ -391,6 +392,12 @@ async function loadConv(id: string): Promise<ConvRow | null> {
       offer: { select: { title: true, holdHours: true } },
     },
   });
+}
+
+/** Only ACTIVE accounts are credited CPA money. */
+async function isActiveUser(userId: string): Promise<boolean> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+  return u?.status === "ACTIVE";
 }
 
 /** Credit a conversion's points under its one ledger reference. */
@@ -452,6 +459,9 @@ export async function approveCpaConversion(
   const c = await loadConv(id);
   if (!c) return { ok: false, reason: "NOT_FOUND" };
   if (c.status !== "PENDING") return { ok: false, reason: "NOT_PENDING" };
+  // Never pay (or start a hold for) a suspended/banned account: the conversion
+  // stays PENDING for an admin to decide once the account is sorted out.
+  if (!(await isActiveUser(c.userId))) return { ok: false, reason: "USER_INACTIVE" };
 
   const holdHours = Math.max(0, c.offer.holdHours || 0);
   if (holdHours > 0 && c.points > 0) {
@@ -490,6 +500,8 @@ export async function approveCpaConversion(
 export async function releaseHeldCpaConversion(id: string, now = new Date()): Promise<boolean> {
   const c = await loadConv(id);
   if (!c || c.status !== "HELD") return false;
+  // A held conversion for an account that is no longer ACTIVE stays HELD.
+  if (!(await isActiveUser(c.userId))) return false;
   const rate = await getPointsPerUsd();
   try {
     const paid = await prisma.$transaction(async (tx) => {
@@ -650,6 +662,9 @@ export async function reverseCpaConversion(
       return { owed, clawedBack };
     }, TX_OPTS);
     if (!r) return { ok: false, reason: "NOT_APPROVED" };
+    // Upline commissions paid on this conversion are taken back too (clamped
+    // PENALTY rows, idempotent per commission row).
+    await clawbackReferralCommissions(`referral_cpa_${c.id}`, `CPA conversion reversed: ${reason.slice(0, 80)}`);
     // A chargeback is an abuse signal too: one case per account while open.
     raiseAbuseSignal({
       kind: "FRAUD_PATTERN",

@@ -54,6 +54,7 @@ const COURSE_PUBLIC = {
   tutorId: true,
   affiliateCommissionType: true,
   affiliateCommissionValue: true,
+  nsfw: true,
 } as const;
 
 /** Load the full landing-page payload for a course (by slug or id) + the
@@ -168,6 +169,8 @@ export async function loadCourseLanding(opts: {
     tutorId: string | null;
     affiliateCommissionType: string | null;
     affiliateCommissionValue: number | null;
+    /** Optional: entries cached before this field existed lack it. */
+    nsfw?: boolean;
     tutor: {
       id: string;
       name: string | null;

@@ -35,6 +35,7 @@ import {
   getMarketplaceTaxConfig,
   computeCommissionTax,
 } from "@/lib/marketplace-selling";
+import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
 
 // POST /api/marketplace/:id/checkout
 //
@@ -107,23 +108,11 @@ export async function POST(
     // same buyer paying twice for the same file gets nothing for the second
     // payment — they already hold a permanent download. Only guarded for
     // listings that hand over a file: ordering the same SERVICE again is a
-    // perfectly normal thing to want.
-    if (listing.saleMode === "UNLIMITED" && requiresDeliverable(listing.assetType)) {
-      const owned = await prisma.marketplacePurchase.findFirst({
-        where: { listingId: id, buyerId: userId, status: "COMPLETED" },
-        select: { id: true },
-      });
-      if (owned) {
-        return NextResponse.json(
-          {
-            error:
-              "You already own this — download it again from Orders, at no extra cost.",
-            alreadyOwned: true,
-          },
-          { status: 409 }
-        );
-      }
-    }
+    // perfectly normal thing to want. Checked INSIDE the transaction, after
+    // the listing row lock — a pre-check here let two parallel clicks both
+    // see "not owned" and both pay.
+    const guardOwnership =
+      listing.saleMode === "UNLIMITED" && requiresDeliverable(listing.assetType);
     const basePrice = toNum(listing.price);
     if (!Number.isFinite(basePrice) || basePrice <= 0) {
       return NextResponse.json(
@@ -232,6 +221,19 @@ export async function POST(
       // matches only an ACTIVE row, so a listing sold or withdrawn a
       // moment ago yields count 0 rather than a second sale.
       const oneOff = listing.saleMode !== "UNLIMITED";
+      // Serialise every sale of this listing (checkout, cart, escrow).
+      await lockListingRow(tx, id);
+      if (guardOwnership) {
+        const owned = await tx.marketplacePurchase.findFirst({
+          where: { listingId: id, buyerId: userId, status: "COMPLETED" },
+          select: { id: true },
+        });
+        if (owned) throw new Error("ALREADY_OWNED");
+      }
+      // A ONE_OFF item already funded in escrow is promised to that buyer.
+      if (oneOff && (await oneOffEscrowTaken(tx, id))) {
+        throw new Error("Listing was just purchased by someone else.");
+      }
       const flipped = await tx.marketplaceListing.updateMany({
         where: { id, status: MarketplaceListingStatus.ACTIVE },
         data: {
@@ -473,6 +475,16 @@ export async function POST(
       /just purchased by someone else/i.test(error.message)
     ) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "ALREADY_OWNED") {
+      return NextResponse.json(
+        {
+          error:
+            "You already own this — download it again from Orders, at no extra cost.",
+          alreadyOwned: true,
+        },
+        { status: 409 }
+      );
     }
     // The debit compare-and-set matched nothing — the balance was spent between
     // the check above and the transaction. Nothing was purchased or charged.

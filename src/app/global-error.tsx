@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { hardReload, useErrorRecovery } from "@/lib/error-recovery";
 
 export default function GlobalError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
+  useErrorRecovery(error);
 
   return (
     <html lang="en">
@@ -39,7 +37,7 @@ export default function GlobalError({
             </p>
           )}
           <button
-            onClick={reset}
+            onClick={() => retry()}
             style={{
               marginTop: 20,
               padding: "10px 20px",
@@ -52,6 +50,22 @@ export default function GlobalError({
             }}
           >
             Try again
+          </button>
+          <button
+            onClick={hardReload}
+            style={{
+              marginTop: 20,
+              marginLeft: 12,
+              padding: "10px 20px",
+              borderRadius: 8,
+              background: "#1f2937",
+              color: "white",
+              border: "none",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Reload
           </button>
         </div>
       </body>

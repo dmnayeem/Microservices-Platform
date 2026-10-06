@@ -126,6 +126,7 @@ async function readListing(id: string) {
           avatar: true,
           username: true,
           createdAt: true,
+          status: true,
           _count: { select: { marketplaceListings: true } },
         },
       },
@@ -173,6 +174,8 @@ async function readListing(id: string) {
     // Seller proof documents stay behind the login.
     attachments: [] as string[],
     status: String(l.status),
+    // Indexed only while the seller is ACTIVE — the sitemap's rule too.
+    sellerActive: l.seller.status === "ACTIVE",
     views: l.views,
     uniqueViewers: l.uniqueViewers,
     watchCount: counts.watches,

@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import {
   isSuperAdmin,
   sanitizeCustomRolePermissions,
+  customRolePermissionsForEditor,
   type UserRole,
 } from "@/lib/rbac";
 import { z } from "zod";
@@ -35,7 +36,9 @@ export async function GET() {
     orderBy: { name: "asc" },
     include: { _count: { select: { users: true } } },
   });
-  return NextResponse.json({ roles });
+  return NextResponse.json({
+    roles: roles.map((r) => ({ ...r, permissions: customRolePermissionsForEditor(r.permissions) })),
+  });
 }
 
 // POST — create a custom role (super-admin only).

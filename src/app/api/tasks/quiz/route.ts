@@ -1,6 +1,8 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
 import { NextRequest, NextResponse } from "next/server";
-import { chargeTaskCompletion, notifyTaskClosed } from "@/lib/task-credit";
+import { chargeTaskCompletion, claimTaskCompletionSlot, notifyTaskClosed } from "@/lib/task-credit";
+import { getPlanMultipliers } from "@/lib/plan-multipliers";
+import { taskStartFraudGate } from "@/lib/task-start-gates";
 import { getBuyerSettings } from "@/lib/buyer-settings";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -352,6 +354,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // The same anti-fraud gate (device/IP caps, VPN, risk) every task START
+    // runs. A quiz is started and submitted in this one request, so without
+    // it the quiz was the one earning path that skipped the gate entirely.
+    const fraudBlocked = await taskStartFraudGate(request, session.user.id);
+    if (fraudBlocked) return fraudBlocked;
+
     // Grade against the ANSWER KEY IN THE DATABASE, never the one the browser
     // sent. This route used to score `answers[i] === questions[i].correctAnswer`
     // where BOTH sides came from the request body, so posting a one-question
@@ -393,8 +401,12 @@ export async function POST(request: NextRequest) {
     // and /api/tasks/[id]/submit cannot drift apart again — they used to pay
     // completely differently for the same answers.
     const passed = score >= QUIZ_PASS_PERCENT;
-    const pointsEarned = quizPayout(score, task.pointsReward);
-    const xpEarned = quizPayout(score, task.xpReward);
+    // Plan multipliers (effective plan) applied exactly as the submit and
+    // admin-review paths do: on the score-scaled reward, buyer charged the
+    // multiplied amount.
+    const planMult = await getPlanMultipliers(session.user.id);
+    const pointsEarned = Math.round(quizPayout(score, task.pointsReward) * planMult.taskReward);
+    const xpEarned = Math.round(quizPayout(score, task.xpReward) * planMult.xp);
 
     const answersJson = {
       questions: key.map((q) => q.question),
@@ -477,10 +489,10 @@ export async function POST(request: NextRequest) {
               totalEarnings: { increment: pointsEarned / pointsPerUsd },
             },
           });
-          await tx.task.update({
-            where: { id: taskId },
-            data: { completedCount: { increment: 1 } },
-          });
+          // Conditional slot claim — the cap is re-checked here, inside the
+          // payout, not only before it (two passes at once both slipped past
+          // the pre-check). Full → the whole payout (and any charge) rolls back.
+          if (!(await claimTaskCompletionSlot(tx, taskId))) throw new Error("QUIZ_FULL");
           await tx.transaction.create({
             data: {
               userId: session.user.id,
@@ -490,11 +502,11 @@ export async function POST(request: NextRequest) {
               amount: pointsEarned / pointsPerUsd,
               description: `Quiz completed: ${task.title} (Score: ${score}%)`,
               reference: `quiz_${sub.id}`,
-              metadata: { taskId, score, correctAnswers, totalQuestions },
+              metadata: { taskId, score, correctAnswers, totalQuestions, multiplier: planMult.taskReward, xpMultiplier: planMult.xp },
             },
           });
           return sub;
-        })
+        }, { timeout: 15_000, maxWait: 10_000 })
       : await prisma.taskSubmission.create({
           data: {
             taskId,
@@ -559,6 +571,12 @@ export async function POST(request: NextRequest) {
         : `You scored ${score}%. You need at least 70% to pass. Try again tomorrow!`,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "QUIZ_FULL") {
+      return NextResponse.json(
+        { error: "This quiz has reached its completion limit." },
+        { status: 400 }
+      );
+    }
     if (error instanceof Error && error.message === "QUIZ_ALREADY_DONE") {
       return NextResponse.json(
         { error: "You have already completed this quiz today" },

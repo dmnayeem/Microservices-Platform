@@ -24,6 +24,8 @@ import {
 } from "@/lib/affiliate";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum, toNumOrNull } from "@/lib/money";
+import { effectiveTutorHoldDays, getCourseSettings } from "@/lib/course-settings";
+import { payOrHoldTutor } from "@/lib/course-payouts";
 
 const enrollSchema = z.object({
   couponCode: z.string().max(60).optional().nullable(),
@@ -255,6 +257,10 @@ export async function POST(
     const tutorNet = affiliateId
       ? Math.round((tutorAmount - affiliateAmount) * 100) / 100
       : tutorAmount;
+    // The tutor's share is held for at least the refund window (admin-set at
+    // /admin/courses/settings), so a refund reverses an unpaid row instead of
+    // clawing back a balance the tutor may already have withdrawn.
+    const tutorHoldDays = effectiveTutorHoldDays(await getCourseSettings());
 
     // Atomic settle
     const result = await prisma.$transaction(async (tx) => {
@@ -338,14 +344,16 @@ export async function POST(
 
       // Credit tutor (if any) — net of any affiliate reward.
       if (course.tutorId && tutorNet > 0) {
-        await tx.user.update({
-          where: { id: course.tutorId },
-          data: {
-            cashBalance: { increment: tutorNet },
-            totalEarnings: { increment: tutorNet },
-          },
+        const tutorPay = await payOrHoldTutor(tx, {
+          tutorId: course.tutorId,
+          courseId: course.id,
+          enrollmentId: enrollment.id,
+          amount: tutorNet,
+          holdDays: tutorHoldDays,
         });
-        await tx.transaction.create({
+        // While held, the release job writes the earning row (and counts
+        // the earnings) when the money actually reaches the tutor.
+        if (!tutorPay.held) await tx.transaction.create({
           data: {
             userId: course.tutorId,
             type: TransactionType.COURSE_TUTOR_EARNING,
@@ -369,7 +377,9 @@ export async function POST(
           where: { userId: course.tutorId },
           data: {
             totalStudents: { increment: 1 },
-            totalEarningsCents: { increment: Math.round(tutorNet * 100) },
+            ...(tutorPay.held
+              ? {}
+              : { totalEarningsCents: { increment: Math.round(tutorNet * 100) } }),
           },
         });
       } else if (course.tutorId) {

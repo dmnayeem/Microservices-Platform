@@ -26,8 +26,17 @@ export const AD_MEDIA_COLUMN: Record<
  * Same-origin URL that streams an ad's creative through the first-party proxy
  * route. Relative on purpose so it stays same-origin in both client and SSR.
  */
-export function firstPartyMediaUrl(adId: string, field: AdMediaField): string {
-  return `/api/spaces/media/${adId}?f=${field}`;
+export function firstPartyMediaUrl(
+  adId: string,
+  field: AdMediaField,
+  version?: string | number | Date | null
+): string {
+  // `v` changes whenever the ad row changes, so the proxy's `immutable` cache
+  // header is actually true: an edited creative gets a new URL instead of a
+  // browser/CDN serving the old bytes for a week.
+  const v =
+    version instanceof Date ? version.getTime() : version != null ? String(version) : "";
+  return `/api/spaces/media/${adId}?f=${field}${v ? `&v=${encodeURIComponent(String(v))}` : ""}`;
 }
 
 /** Ad types whose creative WE host (and can therefore first-party). Network types
@@ -70,9 +79,11 @@ export function creativeUrl(
   adId: string,
   field: AdMediaField,
   stored: string | null | undefined,
-  proxy: boolean
+  proxy: boolean,
+  /** `Ad.updatedAt` — versions the proxied URL (see firstPartyMediaUrl). */
+  version?: string | number | Date | null
 ): string | undefined {
   if (!stored) return undefined;
   if (!proxy || isInlineCreative(stored)) return stored;
-  return firstPartyMediaUrl(adId, field);
+  return firstPartyMediaUrl(adId, field, version);
 }

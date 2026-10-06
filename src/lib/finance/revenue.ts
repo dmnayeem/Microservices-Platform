@@ -72,7 +72,21 @@ const within = (r: Range) =>
 
 export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBreakdown> {
   const created = within(range);
-  const [pointsPerUsd, testIds] = await Promise.all([getPointsPerUsd(), getFinanceTestUserIds()]);
+  const [pointsPerUsd, testIds, pendingSubRefs] = await Promise.all([
+    getPointsPerUsd(),
+    getFinanceTestUserIds(),
+    // Off-platform plan requests still awaiting verification carry a PENDING
+    // `subscription_<id>` ledger row. Their term can run out while they sit in
+    // the queue, which used to make the end-date rule below count them as paid.
+    prisma.transaction.findMany({
+      where: { status: "PENDING", reference: { startsWith: "subscription_" } },
+      select: { reference: true },
+      take: 5000,
+    }),
+  ]);
+  const pendingSubIds = pendingSubRefs
+    .map((t) => t.reference?.slice("subscription_".length) ?? "")
+    .filter((id) => id && !id.startsWith("from_"));
   // Finance test users are excluded from every stream: their purchases, fees
   // and ad spend are test money. `x` adds the exclusion on the named column(s).
   const x = <W extends object>(w: NoInfer<W>, fields: string | string[] = "userId", nullable = false): W =>
@@ -144,6 +158,7 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     prisma.subscription.aggregate({
       where: x({
         OR: [{ isActive: true }, { endDate: { lt: new Date() } }],
+        ...(pendingSubIds.length ? { id: { notIn: pendingSubIds } } : {}),
         ...(created ? { createdAt: created } : {}),
       }),
       _sum: { amount: true },
@@ -205,8 +220,43 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     Math.abs(toNum(badgeSales._sum.amount as never)) +
     Math.abs(badgeSales._sum.points ?? 0) / pointsPerUsd;
 
+  // Plan auto-renewals (lib/subscription-expiry). A renewal extends the SAME
+  // Subscription row, so `Subscription.amount` above counts only the first
+  // term — every renewal charge was money taken and never reported. Each one
+  // is a PURCHASE ledger row `sub_renew_*`. Older rows were written negative,
+  // newer ones positive: the sign is not trusted, each side is summed apart.
+  const renewWhere = (amount: { gt: number } | { lt: number }) =>
+    x({
+      type: "PURCHASE" as const,
+      status: "COMPLETED" as const,
+      reference: { startsWith: "sub_renew_" },
+      amount,
+      ...(created ? { createdAt: created } : {}),
+    });
+  const [renewPos, renewNeg] = (await Promise.all([
+    prisma.transaction.aggregate({ where: renewWhere({ gt: 0 }), _sum: { amount: true }, _count: true }),
+    prisma.transaction.aggregate({ where: renewWhere({ lt: 0 }), _sum: { amount: true }, _count: true }),
+  ])) as unknown as [SumCount<{ amount: unknown }>, SumCount<{ amount: unknown }>];
+  const renewUsd =
+    Math.abs(toNum(renewPos._sum.amount as never)) + Math.abs(toNum(renewNeg._sum.amount as never));
+  const renewCount = renewPos._count + renewNeg._count;
+
   const lotteryPoints =
     (lottery._sum.houseCutPoints ?? 0) + (lottery._sum.overflowToHouse ?? 0);
+
+  // Third-party network earnings (AdSense, Adsterra, …), typed in by hand at
+  // Ad Manager → Analytics → Network revenue. The "ads" stream below excludes
+  // network inventory, so this never double counts it. Windowed on the day the
+  // network earned it, not on when it was typed in.
+  const networkRev = await prisma.adNetworkRevenue
+    .aggregate({
+      where: range.from || range.to ? { date: { ...(range.from ? { gte: range.from } : {}), ...(range.to ? { lte: range.to } : {}) } } : {},
+      _sum: { revenueUsd: true },
+      _count: true,
+    })
+    .catch(() => null);
+  const networkRevUsd = networkRev ? toNum(networkRev._sum.revenueUsd as never) : 0;
+  const networkRevCount = networkRev?._count ?? 0;
 
   const streams: RevenueStream[] = [
     {
@@ -287,11 +337,20 @@ export async function getRevenueBreakdown(range: Range = {}): Promise<RevenueBre
     {
       key: "subscription",
       label: "Subscriptions",
-      usd: toNum(subs._sum.amount as never),
-      count: subs._count,
-      from: "Subscription.amount",
-      measured: subs._count > 0,
-      note: "Read from Subscription, not the ledger: plans paid offline are activated without a Transaction row.",
+      usd: toNum(subs._sum.amount as never) + renewUsd,
+      count: subs._count + renewCount,
+      from: "Subscription.amount + Transaction PURCHASE `sub_renew_*`",
+      measured: subs._count + renewCount > 0,
+      note: "First terms are read from Subscription, not the ledger (plans paid offline are activated without a COMPLETED purchase row until approved); auto-renewal charges are read from their `sub_renew_*` ledger rows.",
+    },
+    {
+      key: "adnetworks",
+      label: "Ad network earnings",
+      usd: networkRevUsd,
+      count: networkRevCount,
+      from: "AdNetworkRevenue (entered by hand per day)",
+      measured: networkRevCount > 0,
+      note: "What AdSense and the other networks report in their own dashboards, entered at Ad Manager → Analytics. Count = days entered.",
     },
     {
       key: "badges",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { z } from "zod";
 
@@ -60,6 +61,14 @@ export async function POST(request: NextRequest) {
         order: d.order ?? 0,
         isActive: d.isActive ?? true,
       },
+    });
+    await writeAudit({
+      actorId: session.user.id,
+      action: "OFFERWALL_CATEGORY_CREATED",
+      entity: "OfferwallCategory",
+      entityId: category.id,
+      summary: `Created offerwall category "${category.name}"`,
+      meta: { before: null, after: category },
     });
     return NextResponse.json({ category });
   } catch {

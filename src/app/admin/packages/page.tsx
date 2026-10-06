@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { AdminTable } from "@/components/admin/ui/admin-table";
 import { PackagePublishToggle } from "./_components/PackagePublishToggle";
-import { CompareRowsEditor } from "./_components/CompareRowsEditor";
+import { SubscriptionRequestsPanel } from "./_components/SubscriptionRequestsPanel";
 
 export default async function AdminPackagesPage() {
   const session = await auth();
@@ -273,6 +273,9 @@ export default async function AdminPackagesPage() {
         ]}
       />
 
+      {/* Off-platform plan requests awaiting payment verification */}
+      <SubscriptionRequestsPanel canEdit={await can(session.user.id, "packages.edit")} />
+
       {/* Recent Subscriptions */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
         <div className="flex items-center justify-between mb-6">
@@ -369,7 +372,6 @@ export default async function AdminPackagesPage() {
           Tip: Plans are evaluated by <strong>accessLevel</strong>. Tasks with <code>requiredAccessLevel ≥ N</code> only show to users on plans with <code>accessLevel ≥ N</code>.
         </p>
       </div>
-      <CompareRowsEditor canEdit={await can(session.user.id, "packages.edit")} />
     </div>
   );
 }

@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CourseStatus, NotificationType } from "@/generated/prisma";
+import {
+  canManageCourse,
+  lessonCompletionBlock,
+  lessonContentVisible,
+  lessonOpenedAt,
+} from "@/lib/course-access";
 
 // GET /api/courses/:id/lessons/:lessonId - Get lesson content
 export async function GET(
@@ -25,12 +31,18 @@ export async function GET(
             title: true,
             status: true,
             totalLessons: true,
+            tutorId: true,
           },
         },
       },
     });
 
-    if (!lesson || lesson.course.status !== CourseStatus.PUBLISHED) {
+    const isManager =
+      !!lesson &&
+      !!session?.user?.id &&
+      (await canManageCourse(session.user.id, lesson.course.tutorId));
+
+    if (!lesson) {
       return NextResponse.json(
         { error: "Lesson not found" },
         { status: 404 }
@@ -57,31 +69,54 @@ export async function GET(
       }
     }
 
-    // Check if lesson is locked (not free and not enrolled)
-    if (!lesson.isFree && lesson.order > 1 && !isEnrolled) {
+    // Unpublished (draft / under review): owner, admins and students who
+    // already enrolled only.
+    if (
+      lesson.course.status !== CourseStatus.PUBLISHED &&
+      !isManager &&
+      !isEnrolled
+    ) {
+      return NextResponse.json(
+        { error: "Lesson not found" },
+        { status: 404 }
+      );
+    }
+
+    // Locked unless free/preview, enrolled, or the owner/admin. The old gate
+    // (`!isFree && order > 1`) leaked the first two lessons of EVERY module,
+    // because `order` restarts per module.
+    if (
+      !lessonContentVisible(lesson, { enrolled: isEnrolled, manager: isManager })
+    ) {
       return NextResponse.json(
         { error: "Please enroll in this course to access this lesson" },
         { status: 403 }
       );
     }
 
-    // Get next and previous lessons
-    const [prevLesson, nextLesson] = await Promise.all([
-      prisma.courseLesson.findFirst({
-        where: {
-          courseId: id,
-          order: lesson.order - 1,
-        },
-        select: { id: true, title: true },
-      }),
-      prisma.courseLesson.findFirst({
-        where: {
-          courseId: id,
-          order: lesson.order + 1,
-        },
-        select: { id: true, title: true },
-      }),
-    ]);
+    // Prev/next in curriculum order: (module.order, lesson.order). Lessons
+    // without a module sort after every module, as the outline shows them.
+    const outline = await prisma.courseLesson.findMany({
+      where: { courseId: id },
+      select: {
+        id: true,
+        title: true,
+        order: true,
+        module: { select: { order: true } },
+      },
+    });
+    outline.sort(
+      (a, b) =>
+        (a.module?.order ?? Number.MAX_SAFE_INTEGER) -
+          (b.module?.order ?? Number.MAX_SAFE_INTEGER) || a.order - b.order
+    );
+    const at = outline.findIndex((l) => l.id === lesson.id);
+    const pick = (i: number) =>
+      i >= 0 && i < outline.length
+        ? { id: outline[i].id, title: outline[i].title }
+        : null;
+    const prevLesson = pick(at - 1);
+    const nextLesson = pick(at + 1);
 
     return NextResponse.json({
       lesson: {
@@ -179,6 +214,16 @@ export async function POST(
         { error: "Lesson not found" },
         { status: 404 }
       );
+    }
+
+    // Completion needs real, server-observed progress (see course-access).
+    const block = await lessonCompletionBlock({
+      userId: session.user.id,
+      lesson,
+      openedAt: await lessonOpenedAt(enrollment.id, lesson.id, lesson.duration),
+    });
+    if (block) {
+      return NextResponse.json({ error: block }, { status: 409 });
     }
 
     // Add lesson to completed list

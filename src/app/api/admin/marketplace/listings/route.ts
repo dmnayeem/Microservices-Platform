@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { writeAudit } from "@/lib/audit";
 import { toNum, toNumOrNull } from "@/lib/money";
 import {
   getLicenseTiersEnabled,
@@ -235,6 +236,8 @@ export async function POST(request: NextRequest) {
         status: data.status,
       },
     });
+    await writeAudit({ actorId: session.user.id, action: "MARKETPLACE_LISTING_CREATED", entity: "MarketplaceListing",
+      entityId: listing.id, summary: `Created listing "${listing.title}"`, meta: { before: null, after: listing } });
 
     revalidatePublicMarketplace(); // public catalog pages (lib/public-catalog-data.ts)
     return NextResponse.json({

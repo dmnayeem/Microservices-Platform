@@ -2,7 +2,7 @@ import { usd } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { USER_HOME } from "@/lib/routes";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, safeRead } from "@/lib/prisma";
 import { LISTED_TASK_WHERE } from "@/lib/task-audit";
 import { toNum, type MoneyInput } from "@/lib/money";
 import { isAdmin, type UserRole } from "@/lib/rbac";
@@ -91,6 +91,13 @@ export default async function AdminDashboardPage() {
   const sevenDaysAgo = subDays(todayStart, 7);
   const thirtyDaysAgo = subDays(todayStart, 30);
 
+  // Every read below is a display figure, so each one degrades on its own
+  // (safeRead → 0 / empty) instead of one failed query taking the whole admin
+  // dashboard to the error screen. The failure is logged and counted.
+  // `as never` lets one empty aggregate stand in for every aggregate's shape:
+  // the `_sum` fields read undefined → toNum() → 0, `_count` reads 0.
+  const EMPTY_AGG = { _sum: {}, _count: 0 } as never;
+
   const [
     totalUsers,
     newUsersToday,
@@ -135,75 +142,75 @@ export default async function AdminDashboardPage() {
     completedWithdrawalsCount,
     referralUsersCount,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
-    prisma.user.count({ where: { lastLoginAt: { gte: fiveMinAgo } } }),
-    prisma.user.count({ where: { lastLoginAt: { gte: dayAgo } } }),
-    prisma.user.findMany({
+    safeRead(prisma.user.count(), 0, "admin dashboard #0"),
+    safeRead(prisma.user.count({ where: { createdAt: { gte: todayStart } } }), 0, "admin dashboard #1"),
+    safeRead(prisma.user.count({ where: { lastLoginAt: { gte: fiveMinAgo } } }), 0, "admin dashboard #2"),
+    safeRead(prisma.user.count({ where: { lastLoginAt: { gte: dayAgo } } }), 0, "admin dashboard #3"),
+    safeRead(prisma.user.findMany({
       where: { createdAt: { gte: sevenDaysAgo } },
       select: { createdAt: true },
-    }),
+    }), [], "admin dashboard #4"),
 
-    prisma.task.count({ where: LISTED_TASK_WHERE }),
+    safeRead(prisma.task.count({ where: LISTED_TASK_WHERE }), 0, "admin dashboard #5"),
     // Auto-approved completions are the majority here and were being left
     // out; see lib/submission-status.ts.
-    prisma.taskSubmission.count({ where: completedBetween(todayStart) }),
-    prisma.taskSubmission.count({ where: completedBetween(monthStart) }),
-    prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }),
+    safeRead(prisma.taskSubmission.count({ where: completedBetween(todayStart) }), 0, "admin dashboard #6"),
+    safeRead(prisma.taskSubmission.count({ where: completedBetween(monthStart) }), 0, "admin dashboard #7"),
+    safeRead(prisma.taskSubmission.count({ where: AWAITING_REVIEW_WHERE }), 0, "admin dashboard #8"),
 
 
-    prisma.withdrawal.aggregate({
+    safeRead(prisma.withdrawal.aggregate({
       where: noTest({ status: "PENDING" }),
       _sum: { amount: true },
-    }),
-    prisma.withdrawal.count({ where: { status: "PENDING" } }),
-    prisma.withdrawal.aggregate({
+    }), EMPTY_AGG, "admin dashboard #9"),
+    safeRead(prisma.withdrawal.count({ where: { status: "PENDING" } }), 0, "admin dashboard #10"),
+    safeRead(prisma.withdrawal.aggregate({
       where: noTest({ status: "COMPLETED" }),
       _sum: { amount: true },
-    }),
-    prisma.subscription.aggregate({
+    }), EMPTY_AGG, "admin dashboard #11"),
+    safeRead(prisma.subscription.aggregate({
       where: noTest({ createdAt: { gte: todayStart }, isActive: true }),
       _sum: { amount: true },
-    }),
-    prisma.subscription.aggregate({
+    }), EMPTY_AGG, "admin dashboard #12"),
+    safeRead(prisma.subscription.aggregate({
       where: noTest({ createdAt: { gte: monthStart }, isActive: true }),
       _sum: { amount: true },
-    }),
-    prisma.subscription.aggregate({
+    }), EMPTY_AGG, "admin dashboard #13"),
+    safeRead(prisma.subscription.aggregate({
       where: noTest({ isActive: true }),
       _sum: { amount: true },
-    }),
-    prisma.referralEarning.aggregate({ where: noTest({}), _sum: { amount: true } }),
+    }), EMPTY_AGG, "admin dashboard #14"),
+    safeRead(prisma.referralEarning.aggregate({ where: noTest({}), _sum: { amount: true } }), EMPTY_AGG, "admin dashboard #15"),
 
-    prisma.subscription.count({ where: { isActive: true } }),
+    safeRead(prisma.subscription.count({ where: { isActive: true } }), 0, "admin dashboard #16"),
 
-    prisma.marketplaceListing.count(),
-    prisma.marketplacePurchase.count(),
-    prisma.marketplacePurchase.count({ where: { status: "PENDING" } }),
+    safeRead(prisma.marketplaceListing.count(), 0, "admin dashboard #17"),
+    safeRead(prisma.marketplacePurchase.count(), 0, "admin dashboard #18"),
+    safeRead(prisma.marketplacePurchase.count({ where: { status: "PENDING" } }), 0, "admin dashboard #19"),
 
-    prisma.course.count({ where: { status: "PUBLISHED" } }),
-    prisma.courseEnrollment.count(),
-    prisma.user.count({ where: { kycStatus: "APPROVED" } }),
+    safeRead(prisma.course.count({ where: { status: "PUBLISHED" } }), 0, "admin dashboard #20"),
+    safeRead(prisma.courseEnrollment.count(), 0, "admin dashboard #21"),
+    safeRead(prisma.user.count({ where: { kycStatus: "APPROVED" } }), 0, "admin dashboard #22"),
 
-    prisma.auditLog.findMany({
+    safeRead(prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
-    }),
+    }), [], "admin dashboard #23"),
     // Pre-fetch admin user names — done in next step using already-fetched logs
     Promise.resolve([] as string[]),
-    prisma.subscription.findMany({
+    safeRead(prisma.subscription.findMany({
       where: noTest({ createdAt: { gte: thirtyDaysAgo }, isActive: true }),
       select: { createdAt: true, amount: true },
-    }),
+    }), [], "admin dashboard #25"),
 
     // Deposits awaiting review — count + $ liability sitting in the queue.
-    prisma.deposit.aggregate({ where: noTest({ status: "PENDING" }), _sum: { amount: true }, _count: true }),
+    safeRead(prisma.deposit.aggregate({ where: noTest({ status: "PENDING" }), _sum: { amount: true }, _count: true }), EMPTY_AGG, "admin dashboard #26"),
     // Approved deposits — lifetime funded volume.
-    prisma.deposit.aggregate({ where: noTest({ status: "APPROVED" }), _sum: { amount: true } }),
+    safeRead(prisma.deposit.aggregate({ where: noTest({ status: "APPROVED" }), _sum: { amount: true } }), EMPTY_AGG, "admin dashboard #27"),
     // Wallet liability — withdrawable cash the platform owes users right now.
-    prisma.user.aggregate({ where: noTest({}, "id"), _sum: { cashBalance: true } }),
+    safeRead(prisma.user.aggregate({ where: noTest({}, "id"), _sum: { cashBalance: true } }), EMPTY_AGG, "admin dashboard #28"),
     // Ad credit outstanding — non-withdrawable balance advertisers can still spend.
-    prisma.user.aggregate({ where: noTest({}, "id"), _sum: { adCreditBalance: true } }),
+    safeRead(prisma.user.aggregate({ where: noTest({}, "id"), _sum: { adCreditBalance: true } }), EMPTY_AGG, "admin dashboard #29"),
     // Ad REVENUE — what advertisers have actually been billed.
     //
     // This summed `budget` and called it "Ad Spend": money COMMITTED, not money
@@ -212,13 +219,13 @@ export default async function AdminDashboardPage() {
     // wrong on the finance page until it was corrected there; the correction
     // never reached this card. `where`/`_sum` deliberately match
     // `src/lib/finance/revenue.ts`, so the two screens report one number.
-    prisma.adCampaign.aggregate({
+    safeRead(prisma.adCampaign.aggregate({
       where: noTest({ isHouse: false }, "advertiserId", true),
       _sum: { spentTotal: true, budget: true },
-    }),
+    }), EMPTY_AGG, "admin dashboard #30"),
     // Moved out of the post-batch waterfall.
-    prisma.withdrawal.count({ where: { status: "COMPLETED" } }),
-    prisma.user.count({ where: { referredById: { not: null } } }),
+    safeRead(prisma.withdrawal.count({ where: { status: "COMPLETED" } }), 0, "admin dashboard #31"),
+    safeRead(prisma.user.count({ where: { referredById: { not: null } } }), 0, "admin dashboard #32"),
   ]);
 
   // Resolve admin/user names for the audit log entries
@@ -226,10 +233,14 @@ export default async function AdminDashboardPage() {
     new Set(auditLogs.map((l) => l.userId).filter((v): v is string => !!v))
   );
   const actorMap = actorIds.length
-    ? await prisma.user.findMany({
-        where: { id: { in: actorIds } },
-        select: { id: true, name: true, email: true, username: true },
-      })
+    ? await safeRead(
+        prisma.user.findMany({
+          where: { id: { in: actorIds } },
+          select: { id: true, name: true, email: true, username: true },
+        }),
+        [],
+        "admin dashboard audit actors"
+      )
     : [];
   const actorById = new Map(actorMap.map((a) => [a.id, a]));
 
@@ -310,16 +321,16 @@ export default async function AdminDashboardPage() {
   // The owner's rule: managers and admins see TASK-related points and income;
   // the company's cash (revenue, deposits, withdrawals, wallets) is finance.
   const [taskPtsToday, taskPts30d, taskFee30d] = (await Promise.all([
-    prisma.taskSubmission.aggregate({ where: completedBetween(todayStart), _sum: { pointsEarned: true } }),
-    prisma.taskSubmission.aggregate({ where: completedBetween(thirtyDaysAgo), _sum: { pointsEarned: true } }),
+    safeRead(prisma.taskSubmission.aggregate({ where: completedBetween(todayStart), _sum: { pointsEarned: true } }), EMPTY_AGG, "admin dashboard task economy #0"),
+    safeRead(prisma.taskSubmission.aggregate({ where: completedBetween(thirtyDaysAgo), _sum: { pointsEarned: true } }), EMPTY_AGG, "admin dashboard task economy #1"),
     // The platform's commission when a buyer funds a task (ADMIN_FEE,
     // `task_fee_` reference — see src/lib/tx-sources.ts). Written negative on
     // the buyer's ledger, so its magnitude is the income.
-    prisma.transaction.aggregate({
+    safeRead(prisma.transaction.aggregate({
       where: noTest({ type: "ADMIN_FEE", reference: { startsWith: "task_fee_" }, createdAt: { gte: thirtyDaysAgo } }),
       _sum: { amount: true },
       _count: true,
-    }),
+    }), EMPTY_AGG, "admin dashboard task economy #2"),
   ])) as unknown as [
     { _sum: { pointsEarned: number | null } },
     { _sum: { pointsEarned: number | null } },

@@ -16,6 +16,7 @@ import {
   getLicenseTiersEnabled,
   getPayoutHoldConfig,
   getMarketplaceTaxConfig,
+  getDisputeWindowDays,
 } from "@/lib/marketplace-selling";
 
 export default async function MarketplaceSettingsPage() {
@@ -24,7 +25,7 @@ export default async function MarketplaceSettingsPage() {
   if (!(await can(session.user.id, "marketplace.view"))) redirect("/admin");
 
   const canManage = await can(session.user.id, "marketplace.manage");
-  const [config, promoPackages, mediation, licenseTiersEnabled, payoutHold, marketplaceTax, held] =
+  const [config, promoPackages, mediation, licenseTiersEnabled, payoutHold, marketplaceTax, held, disputeWindowDays] =
     await Promise.all([
       getCommissionConfig(),
       getPromotionPricing(),
@@ -37,6 +38,7 @@ export default async function MarketplaceSettingsPage() {
         _sum: { amount: true },
         _count: { _all: true },
       }),
+      getDisputeWindowDays(),
     ]);
 
   return (
@@ -65,6 +67,7 @@ export default async function MarketplaceSettingsPage() {
         licenseTiersEnabled={licenseTiersEnabled}
         payoutHold={payoutHold}
         tax={marketplaceTax}
+        disputeWindowDays={disputeWindowDays}
         heldNow={{
           count: held._count._all,
           amount: Number(held._sum.amount ?? 0),

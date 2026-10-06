@@ -71,7 +71,10 @@ export async function GET(request: NextRequest) {
       },
       update: { platformUserId: me.id, username: me.username ?? null, linkedAt: new Date() },
     });
-  } catch {
+  } catch (err) {
+    // @@unique([platform, platformUserId]) — this Discord user is already
+    // linked to a different RevType account.
+    if ((err as { code?: string })?.code === "P2002") return back(false, "already_linked");
     return back(false, "error");
   }
   return back(true);

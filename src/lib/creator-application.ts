@@ -105,15 +105,23 @@ export async function createCreatorApplication(
   });
   if (existing) throw new Error("You already have a pending application for this.");
 
-  return prisma.creatorApplication.create({
-    data: {
-      userId,
-      type,
-      message: input.message,
-      links: input.links ?? [],
-      payload: input.payload ?? Prisma.JsonNull,
-    },
-  });
+  return prisma.creatorApplication
+    .create({
+      data: {
+        userId,
+        type,
+        message: input.message,
+        links: input.links ?? [],
+        payload: input.payload ?? Prisma.JsonNull,
+      },
+    })
+    .catch((err: unknown) => {
+      // Partial unique "one PENDING per user per type" — a double submit raced the check above.
+      if ((err as { code?: string })?.code === "P2002") {
+        throw new Error("You already have a pending application for this.");
+      }
+      throw err;
+    });
 }
 
 /** Flip the User grant for a creator type (feature overrides, or affiliate join). */

@@ -22,7 +22,15 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const offer = await loadOffer(slug);
+  // Metadata must not be what fails the page: on a DB blip fall back to the
+  // site defaults and let the page's own read decide (it has an error boundary).
+  let offer;
+  try {
+    offer = await loadOffer(slug);
+  } catch (e) {
+    console.error("[offer] metadata read failed:", e);
+    return {};
+  }
   // A draft says nothing about itself — its title would otherwise leak to
   // anyone (or any unfurler) holding the address before it is published.
   if (!offer || offer.status !== "PUBLISHED") {

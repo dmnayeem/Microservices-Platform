@@ -10,6 +10,7 @@ import {
   PanelsTopLeft,
   Shield,
   UserCog,
+  UserSearch,
 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { parsePermissionOverrides } from "@/lib/rbac";
 import { parseModuleOverrides } from "@/lib/admin-module-rules";
 import { StaffAccessManager, type StaffRow } from "@/components/admin/control-center/staff-access-manager";
+import { FeatureSwitches } from "@/components/admin/control-center/feature-switches";
+import { loadFeatureSwitches, SWITCH_GROUPS } from "@/lib/control-center-switches";
 
 /**
  * Control Center — every access switch in one place (owner, 2026-10-05).
@@ -51,6 +54,13 @@ const CONTROLS = [
     title: "User pages & features",
     body: "Hide pages and features from users — everyone, per plan, per role or per person.",
     tone: "text-emerald-400 bg-emerald-500/10",
+  },
+  {
+    href: "/admin/visibility?tab=user",
+    icon: UserSearch,
+    title: "One user's pages & features",
+    body: "Open or close pages and features for a single person, and see why they see what they see.",
+    tone: "text-teal-400 bg-teal-500/10",
   },
   {
     href: "/admin/visibility?tab=categories",
@@ -99,7 +109,7 @@ export default async function ControlCenterPage() {
   // Every admin-panel role (ADMIN_ROLES) except the super admin, who always has everything.
   const staffWhere: Prisma.UserWhereInput = { role: { notIn: ["USER", "TUTOR", "AGENCY", "SUPER_ADMIN"] } };
   const staffOrder: Prisma.UserOrderByWithRelationInput[] = [{ role: "asc" }, { name: "asc" }];
-  const staff = await prisma.user.findMany({
+  const [staff, switches] = await Promise.all([prisma.user.findMany({
     where: staffWhere,
     select: {
       id: true,
@@ -114,7 +124,7 @@ export default async function ControlCenterPage() {
     },
     orderBy: staffOrder,
     take: 500,
-  });
+  }), loadFeatureSwitches()]);
 
   const rows: StaffRow[] = staff.map((u) => {
     const ov = parsePermissionOverrides(u.permissionOverrides);
@@ -178,6 +188,18 @@ export default async function ControlCenterPage() {
           Pick an admin to allow or block anything for them alone — on top of what their role gives.
         </p>
         <StaffAccessManager staff={rows} />
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-300/80">
+          Feature switches
+        </h2>
+        <p className="mb-3 text-xs text-slate-400">
+          Every on/off platform setting, grouped. The same switches as on System Settings and each
+          feature&apos;s own page — flipping one here changes it there too. Every change is in the admin
+          activity log.
+        </p>
+        <FeatureSwitches initial={switches} groups={SWITCH_GROUPS} />
       </section>
     </div>
   );

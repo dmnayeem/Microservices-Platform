@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BadgeCheck, Check, Coins, Flame, Loader2, Palette, RefreshCw, Sparkles, Wallet } from "lucide-react";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { VerifiedBadge, badgeRingStyle } from "@/components/user/profile/verified-badge";
@@ -39,14 +39,26 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
     void load();
   }, [load]);
 
+  // One Idempotency-Key per intended action (e.g. "badge:CASH"), made on the
+  // first click and kept until that action gets an answer — so a double tap
+  // or a network retry replays the first request instead of buying twice.
+  const intentKeys = useRef(new Map<string, string>());
   const post = async (url: string, body: unknown, key: string, okMsg?: string) => {
+    if (busy) return;
     setBusy(key);
+    let idemKey = intentKeys.current.get(key);
+    if (!idemKey) {
+      idemKey = newIdempotencyKey();
+      intentKeys.current.set(key, idemKey);
+    }
     try {
       const r = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": newIdempotencyKey() },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idemKey },
         body: JSON.stringify(body),
       });
+      // Answered (either way): the next click is a new intent.
+      intentKeys.current.delete(key);
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? "Try again");
       if (okMsg) toast.success(okMsg);
@@ -87,7 +99,16 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
       <button
         type="button"
         disabled={!!busy || d.wallet.points < pts(priceUsd)}
-        onClick={() => post("/api/badges/buy", { item, method: "POINTS" }, `${item}:POINTS`, `${label} is yours`)}
+        onClick={() => {
+          // Points pay for THIS month only — renewal is always charged in cash.
+          if (
+            !confirm(
+              `Pay ${pts(priceUsd).toLocaleString()} points for one month of ${label.toLowerCase()}?\n\nRenewal is cash-only: if auto-renew is on, next month is charged ${usd(priceUsd)} from your cash balance (not points). Turn auto-renew off if you don't want that.`
+            )
+          )
+            return;
+          void post("/api/badges/buy", { item, method: "POINTS" }, `${item}:POINTS`, `${label} is yours`);
+        }}
         className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-(--app-surface-2) px-2 py-2.5 text-xs font-bold text-(--app-ink) disabled:opacity-50"
         title={d.wallet.points < pts(priceUsd) ? "Not enough points" : undefined}
       >
@@ -170,7 +191,7 @@ export function BadgeShop({ name, avatar }: { name: string; avatar: string | nul
             <PayButtons item="badge" priceUsd={d.config.badgePriceUsd} label="The blue badge" />
             <p className="mt-2 text-[11px] text-(--app-ink-3)">
               {active ? "Adds another month." : "One month."} Wallet: {usd(d.wallet.cash)} · {d.wallet.points.toLocaleString()} pts.
-              Renewals are paid from your cash balance.
+              Renewals are paid from your cash balance only — paying with points covers this month, never the renewal.
             </p>
           </div>
         ) : null}

@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
+import { hardReload, useErrorRecovery } from "@/lib/error-recovery";
 
 export default function Error({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
+  useErrorRecovery(error);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-(--app-page) px-4">
@@ -32,16 +30,23 @@ export default function Error({
         )}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button
-            onClick={reset}
+            onClick={() => retry()}
             className="px-5 py-2.5 rounded-lg bg-(--app-cta) hover:bg-(--app-cta) text-(--app-on-cta) text-sm font-semibold"
           >
             Try again
           </button>
-          <Link
-            href="/dashboard"
+          <button
+            onClick={hardReload}
             className="px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
           >
-            Dashboard
+            Reload
+          </button>
+          {/* Not /dashboard: if the dashboard is what failed, that link loops. */}
+          <Link
+            href="/"
+            className="px-5 py-2.5 rounded-lg bg-(--app-surface-2) hover:bg-(--app-surface-hover) text-(--app-ink) text-sm font-semibold"
+          >
+            Home
           </Link>
         </div>
       </div>

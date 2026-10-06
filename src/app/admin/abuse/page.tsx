@@ -56,7 +56,11 @@ export default async function AbuseCenterPage({ searchParams }: { searchParams: 
   const access = await abuseAccess();
   if (!access.userId) redirect("/login");
   if (!access.view) redirect("/admin");
-  const sp = await searchParams;
+  // A repeated key arrives as string[] at runtime — take the first, so the
+  // `.trim()` / `.toLowerCase()` below can't crash the page.
+  const sp = Object.fromEntries(
+    Object.entries(await searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])
+  ) as SP;
   const tab = pickTab(TABS, sp.tab);
 
   const header = (

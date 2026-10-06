@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Check, Crown, Gem, Minus, Rocket, Shield, Sparkles, Star, Zap } from "lucide-react";
-import type { CompareCell, CompareRowDef } from "@/lib/plan-compare";
+import type { CompareCell } from "@/lib/plan-compare";
 import { usd } from "@/lib/utils";
 
 /**
@@ -149,89 +149,5 @@ export function PlanCardView({
 
       {footer && <div className="mt-6">{footer}</div>}
     </div>
-  );
-}
-
-function Cell({ v, variant }: { v: CompareCell | undefined; variant: Variant }) {
-  const t = T[variant];
-  if (v === true) return <Check className="mx-auto h-5 w-5 text-emerald-500" aria-label="Yes" />;
-  if (v === false || v === undefined) return <Minus className={`mx-auto h-4 w-4 ${t.ink3}`} aria-label="No" />;
-  return <span className={`text-sm font-semibold tabular-nums ${t.ink}`}>{v}</span>;
-}
-
-export function PlanCompareTable({
-  plans,
-  rows,
-  variant,
-}: {
-  plans: PlanCardData[];
-  rows: CompareRowDef[];
-  variant: Variant;
-}) {
-  const t = T[variant];
-  if (plans.length < 2 || rows.length === 0) return null;
-  const groups = [...new Set(rows.map((r) => r.group))];
-  return (
-    <div className={`overflow-x-auto rounded-2xl border ${t.line} ${t.card}`}>
-      <table className="w-full min-w-[30rem] border-collapse text-left">
-        <thead>
-          <tr className={t.head}>
-            <th className={`sticky left-0 z-10 px-4 py-3 text-xs font-bold uppercase tracking-wider ${t.ink3} ${t.head}`}>
-              Compare plans
-            </th>
-            {plans.map((p, i) => (
-              <th key={p.id} className="px-3 py-3 text-center">
-                <span className={`block text-sm font-bold ${t.ink}`} style={{ color: planLook(p, i).color }}>
-                  {p.name}
-                </span>
-                <span className={`block text-[11px] ${t.ink3}`}>
-                  {priceLabel(p).amount} {priceLabel(p).per}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((g) => (
-            <GroupRows key={g} group={g} rows={rows.filter((r) => r.group === g)} plans={plans} variant={variant} />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function GroupRows({
-  group,
-  rows,
-  plans,
-  variant,
-}: {
-  group: string;
-  rows: CompareRowDef[];
-  plans: PlanCardData[];
-  variant: Variant;
-}) {
-  const t = T[variant];
-  return (
-    <>
-      <tr>
-        <td colSpan={plans.length + 1} className={`px-4 pt-4 pb-1 text-[11px] font-bold uppercase tracking-[0.12em] ${t.ink3}`}>
-          {group}
-        </td>
-      </tr>
-      {rows.map((r) => (
-        <tr key={r.key} className={`border-t ${t.line}`}>
-          <td className={`sticky left-0 z-10 px-4 py-2.5 text-sm ${t.ink2} ${variant === "app" ? "bg-(--app-surface)" : "bg-(--mk-surface)"}`} title={r.hint}>
-            {r.label}
-          </td>
-          {plans.map((p) => (
-            <td key={p.id} className="px-3 py-2.5 text-center">
-              <Cell v={p.cells[r.key]} variant={variant} />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
   );
 }

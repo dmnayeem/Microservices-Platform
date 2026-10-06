@@ -22,9 +22,13 @@ import {
   readTiers,
   getMarketplaceTaxConfig,
   computeCommissionTax,
+  resolveTierPrice,
 } from "@/lib/marketplace-selling";
 import { userCanFeature } from "@/lib/packages";
 import { lt, sub, toNum } from "@/lib/money";
+import { requiresDeliverable } from "@/lib/marketplace-categories";
+import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
+import { CART_MAX_ITEMS } from "@/lib/marketplace-cart";
 
 // POST /api/cart/checkout
 //
@@ -85,6 +89,16 @@ export async function POST(request: NextRequest) {
     if (cart.length === 0) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
+    // Bounded so one checkout stays well inside the 15s transaction limit
+    // (every line locks a listing and writes several rows).
+    if (cart.length > CART_MAX_ITEMS) {
+      return NextResponse.json(
+        {
+          error: `A cart can hold at most ${CART_MAX_ITEMS} items — remove ${cart.length - CART_MAX_ITEMS} and check out the rest separately.`,
+        },
+        { status: 400 }
+      );
+    }
 
     // Pre-flight validation — fail fast with a helpful message before we hit
     // the transaction. The transactional `updateMany` guard below still
@@ -121,24 +135,46 @@ export async function POST(request: NextRequest) {
     // No writes here, so it is safe outside the transaction.
     const itemPlans = await Promise.all(
       cart.map(async (item) => {
+        // Priced exactly like direct checkout: the cart has no licence
+        // picker, so the default (cheapest) tier when tiers are on, else the
+        // listing price. Charging `listing.price` directly could disagree
+        // with checkout whenever the two had drifted.
+        const choice = resolveTierPrice(
+          toNum(item.listing.price),
+          readTiers(item.listing.licenseTiers),
+          null,
+          tiersEnabled
+        );
+        const unitPrice = choice.ok ? choice.price : toNum(item.listing.price);
+        // Each line is rounded to the cent BEFORE summing, because each
+        // seller is paid a per-line cent-rounded amount. Summing raw sub-cent
+        // prices and rounding once let a cart of N $0.005 lines charge
+        // N x $0.005 while paying the sellers N x $0.01.
+        const price = Math.round(unitPrice * 100) / 100;
         const bps = await resolveCommissionBps({
           assetType: item.listing.assetType,
           perListingOverride: item.listing.commissionRateBps,
         });
-        const { fee, sellerAmount } = splitPrice(toNum(item.listing.price), bps);
+        const { fee, sellerAmount } = splitPrice(price, bps);
         const { tax, pct: taxPct } = computeCommissionTax(fee, taxCfg);
-        return { item, bps, fee, sellerAmount, tax, taxPct };
+        // Stored as the purchase `amount`, like direct checkout: what this
+        // buyer actually paid for the line, tax included.
+        const lineTotal = Math.round((price + tax) * 100) / 100;
+        return {
+          item,
+          price,
+          lineTotal,
+          tierId: choice.ok ? (choice.tier?.id ?? null) : null,
+          bps,
+          fee,
+          sellerAmount,
+          tax,
+          taxPct,
+        };
       })
     );
 
-    // Each line is rounded to the cent BEFORE summing, because each seller is
-    // paid a per-line cent-rounded amount. Summing raw sub-cent prices and
-    // rounding once let a cart of N $0.005 lines charge N x $0.005 while paying
-    // the sellers N x $0.01 - money out of nothing on every half-cent line.
-    const goods = cart.reduce(
-      (s, i) => s + Math.round(toNum(i.listing.price) * 100) / 100,
-      0
-    );
+    const goods = itemPlans.reduce((s, p) => s + p.price, 0);
     const taxTotal = Math.round(itemPlans.reduce((s, p) => s + p.tax, 0) * 100) / 100;
     const total = Math.round((goods + taxTotal) * 100) / 100;
 
@@ -184,6 +220,20 @@ export async function POST(request: NextRequest) {
       for (const plan of itemPlans) {
         const l = plan.item.listing;
 
+        // Serialise every sale of this listing (checkout, cart, escrow), then
+        // re-check what a pre-flight outside the transaction cannot promise.
+        await lockListingRow(tx, l.id);
+        if (l.saleMode === "UNLIMITED" && requiresDeliverable(l.assetType)) {
+          const owned = await tx.marketplacePurchase.findFirst({
+            where: { listingId: l.id, buyerId: userId, status: "COMPLETED" },
+            select: { id: true },
+          });
+          if (owned) throw new Error(`ALREADY_OWNED:${l.title}`);
+        }
+        if (l.saleMode !== "UNLIMITED" && (await oneOffEscrowTaken(tx, l.id))) {
+          throw new Error(`"${l.title}" was just purchased by someone else.`);
+        }
+
         // Only a ONE_OFF listing leaves the shop when it sells; an UNLIMITED
         // one is licensed to everyone who wants it and stays ACTIVE. The
         // updateMany remains the concurrency guard either way — it matches
@@ -208,14 +258,13 @@ export async function POST(request: NextRequest) {
           data: {
             listingId: l.id,
             buyerId: userId,
-            amount: l.price,
+            amount: plan.lineTotal,
             fee: plan.fee,
             sellerAmount: plan.sellerAmount,
-            // The cart has no licence picker, and the listing price IS the
-            // cheapest tier, so that is what the buyer just bought. Recording
-            // it means a cart purchase carries the same proof of rights as one
-            // made from the listing page.
-            licenseTier: tiersEnabled ? (readTiers(l.licenseTiers)[0]?.id ?? null) : null,
+            // The cart has no licence picker, so the buyer bought the
+            // default (cheapest) tier. Recording it means a cart purchase
+            // carries the same proof of rights as one made from the listing page.
+            licenseTier: plan.tierId,
             tax: plan.tax,
             taxPct: plan.taxPct,
             status: "COMPLETED",
@@ -279,7 +328,7 @@ export async function POST(request: NextRequest) {
         created.push({
           purchaseId: p.id,
           listingId: l.id,
-          amount: l.price,
+          amount: plan.price,
           sellerAmount: plan.sellerAmount,
           sellerId: l.sellerId,
           title: l.title,
@@ -310,8 +359,8 @@ export async function POST(request: NextRequest) {
           points: 0,
           description: `Cart checkout (${cart.length} listing${cart.length > 1 ? "s" : ""})`,
           // Per-occurrence by design. A second checkout of a refilled cart
-          // with the same contents is a normal thing to do.
-          // A deterministic key would make `Transaction @@unique([userId, reference])`
+          // with the same contents is a normal thing to do.
+          // A deterministic key would make `Transaction @@unique([userId, reference])`
           // reject the second one, so this stays keyed on the instant it happened.
           reference: `cart_${Date.now()}_${userId}`,
           metadata: {
@@ -393,6 +442,15 @@ export async function POST(request: NextRequest) {
       /just purchased by someone else/i.test(error.message)
     ) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof Error && error.message.startsWith("ALREADY_OWNED:")) {
+      return NextResponse.json(
+        {
+          error: `You already own "${error.message.slice("ALREADY_OWNED:".length)}" — remove it from the cart and download it again from Orders.`,
+          alreadyOwned: true,
+        },
+        { status: 409 }
+      );
     }
     // The debit compare-and-set matched nothing — the balance was spent between
     // the check above and the transaction. Nothing was purchased or charged.

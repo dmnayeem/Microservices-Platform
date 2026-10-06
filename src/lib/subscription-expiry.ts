@@ -2,15 +2,39 @@ import { usd } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
 import { defaultPackage } from "@/lib/packages";
+import { getSetting } from "@/lib/system-settings";
+import { PLAN_DURATION_DAYS, planPriceUsd, type PlanDuration } from "@/lib/plan-pricing";
 import { toNum } from "@/lib/money";
 import { deliverToUser } from "@/lib/notify";
 
-const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Global admin switch (System Settings → Money → Plans). Default on. */
+export async function planAutoRenewEnabled(): Promise<boolean> {
+  return (await getSetting<boolean>("plans.auto_renew_enabled", true).catch(() => true)) !== false;
+}
+
+/**
+ * Which duration a subscription term was bought for, from its length. Terms
+ * longer than ~13 months (LIFETIME, or odd admin-made rows) never auto-renew.
+ */
+function termDuration(startDate: Date, endDate: Date): PlanDuration | null {
+  const days = (endDate.getTime() - startDate.getTime()) / DAY_MS;
+  if (days <= 0 || days > 400) return null;
+  if (days < 60) return "MONTHLY";
+  if (days < 200) return "QUARTERLY";
+  return "YEARLY";
+}
 
 /**
  * For each active subscription whose end date has passed:
- *   • autoRenew + enough wallet balance → charge again, extend the period, keep
- *     the package (idempotent: once extended the row leaves the due set).
+ *   • autoRenew on (and allowed globally by `plans.auto_renew_enabled`) + the
+ *     plan still on sale + the user still on it + enough CASH → charge the
+ *     plan's CURRENT price for the same term length and extend the period.
+ *     The charge is a compare-and-set on the period as read, and the ledger row
+ *     (PURCHASE `sub_renew_<id>_<oldEnd>`, counted as subscription revenue in
+ *     lib/finance/revenue.ts) is keyed on that same old value, so two
+ *     overlapping sweeps can never both charge.
  *   • otherwise → deactivate the subscription and revert the user to the default
  *     package (only when their overall entitlement has actually lapsed).
  * Idempotent + safe to re-run. Returns a summary.
@@ -30,16 +54,33 @@ async function runSubscriptionExpiryBatch(): Promise<{
   // Subscription has no `user` relation — batch-load balance + entitlement expiry.
   const balanceById = new Map<string, number>();
   const expiresById = new Map<string, Date | null>();
+  const planById = new Map<string, string | null>();
   if (due.length > 0) {
     const users = await prisma.user.findMany({
       where: { id: { in: due.map((s) => s.userId) } },
-      select: { id: true, cashBalance: true, packageExpiresAt: true },
+      select: { id: true, cashBalance: true, packageExpiresAt: true, packageId: true, status: true },
     });
     for (const u of users) {
-      balanceById.set(u.id, toNum(u.cashBalance));
+      // A banned / suspended account is never charged by a background job.
+      const blocked = u.status === "BANNED" || u.status === "SUSPENDED";
+      balanceById.set(u.id, blocked ? -1 : toNum(u.cashBalance));
       expiresById.set(u.id, u.packageExpiresAt);
+      planById.set(u.id, u.packageId);
     }
   }
+
+  const renewAllowed = due.some((s) => s.autoRenew) ? await planAutoRenewEnabled() : false;
+  const pkgIds = [
+    ...new Set(due.filter((s) => s.autoRenew && s.packageId).map((s) => s.packageId as string)),
+  ];
+  const pkgRows =
+    renewAllowed && pkgIds.length
+      ? await prisma.package.findMany({
+          where: { id: { in: pkgIds } },
+          select: { id: true, name: true, isActive: true, priceMonthly: true, priceYearly: true },
+        })
+      : [];
+  const pkgById = new Map(pkgRows.map((p) => [p.id, p]));
 
   const fallback = await defaultPackage();
 
@@ -47,53 +88,63 @@ async function runSubscriptionExpiryBatch(): Promise<{
   let expired = 0;
 
   for (const sub of due) {
-    const periodMs = Math.max(
-      sub.endDate.getTime() - sub.startDate.getTime(),
-      THIRTY_DAYS
-    );
-    const newEnd = new Date(now.getTime() + periodMs);
-    const subAmount = toNum(sub.amount);
+    const pkg = sub.packageId ? pkgById.get(sub.packageId) : undefined;
+    const duration = termDuration(sub.startDate, sub.endDate);
+    const price =
+      pkg && duration
+        ? planPriceUsd(
+            {
+              priceMonthly: toNum(pkg.priceMonthly),
+              priceYearly: pkg.priceYearly == null ? null : toNum(pkg.priceYearly),
+            },
+            duration
+          )
+        : null;
 
-    const canRenew =
+    if (
+      renewAllowed &&
       sub.autoRenew &&
-      subAmount > 0 &&
-      !!sub.packageId &&
-      (balanceById.get(sub.userId) ?? 0) >= subAmount;
-
-    if (canRenew) {
+      pkg &&
+      pkg.isActive &&
+      duration &&
+      price != null &&
+      price > 0 &&
+      // Only the plan the user is actually on renews.
+      planById.get(sub.userId) === sub.packageId &&
+      (balanceById.get(sub.userId) ?? 0) >= price
+    ) {
+      const newEnd = new Date(now.getTime() + PLAN_DURATION_DAYS[duration] * DAY_MS);
       try {
         await prisma.$transaction(async (tx) => {
-          // Claim THIS period first: two overlapping sweeps each compute their
-          // own `newEnd`, so the ledger reference differs and both would charge.
-          // Only the run that moves `endDate` off the value it read may debit.
+          // Claim THIS period first: only the run that moves `endDate` off the
+          // value it read may debit.
           const claim = await tx.subscription.updateMany({
-            where: { id: sub.id, isActive: true, endDate: sub.endDate },
-            data: { endDate: newEnd },
+            where: { id: sub.id, isActive: true, autoRenew: true, endDate: sub.endDate },
+            // startDate moves too, so the row always spans exactly one term
+            // (termDuration() reads the length to know what to renew next time).
+            data: { startDate: now, endDate: newEnd },
           });
           if (claim.count === 0) throw new Error("ALREADY_RENEWED");
           const debit = await tx.user.updateMany({
-            where: { id: sub.userId, cashBalance: { gte: subAmount } },
-            data: { cashBalance: { decrement: subAmount } },
+            where: { id: sub.userId, packageId: sub.packageId, cashBalance: { gte: price } },
+            data: { cashBalance: { decrement: price }, packageExpiresAt: newEnd },
           });
           if (debit.count === 0) throw new Error("INSUFFICIENT");
-
-          await tx.user.update({
-            where: { id: sub.userId },
-            data: { packageId: sub.packageId, packageExpiresAt: newEnd },
-          });
-          await tx.subscription.update({
-            where: { id: sub.id },
-            data: { endDate: newEnd },
-          });
           await tx.transaction.create({
             data: {
               userId: sub.userId,
               type: TransactionType.PURCHASE,
               status: TransactionStatus.COMPLETED,
-              amount: -subAmount,
+              amount: price,
               points: 0,
-              description: "Subscription auto-renewal",
-              reference: `sub_renew_${sub.id}_${newEnd.getTime()}`,
+              description: `${pkg.name} plan auto-renewal (${duration.toLowerCase()})`,
+              reference: `sub_renew_${sub.id}_${sub.endDate.getTime()}`,
+              metadata: {
+                subscriptionId: sub.id,
+                packageId: sub.packageId,
+                duration,
+                priceUsd: price,
+              },
             },
           });
         });
@@ -101,14 +152,14 @@ async function runSubscriptionExpiryBatch(): Promise<{
         void deliverToUser({
           userId: sub.userId,
           title: "Subscription renewed",
-          message: `Your plan was auto-renewed for ${usd(subAmount)}.`,
+          message: `Your ${pkg.name} plan was auto-renewed for ${usd(price)}.`,
           link: "/my-package",
         });
         continue;
       } catch (e) {
         // Another run already renewed this period — nothing left to do.
         if (e instanceof Error && e.message === "ALREADY_RENEWED") continue;
-        // Balance moved / race — fall through and expire instead.
+        // Balance moved / race / duplicate — fall through and expire instead.
       }
     }
 
@@ -137,8 +188,9 @@ async function runSubscriptionExpiryBatch(): Promise<{
     void deliverToUser({
       userId: sub.userId,
       title: "Subscription expired",
-      message:
-        "Your premium plan has ended. Renew any time to restore your benefits.",
+      message: sub.autoRenew
+        ? "Your premium plan has ended — it could not auto-renew (not enough cash in your wallet, or the plan is no longer sold). Renew any time to restore your benefits."
+        : "Your premium plan has ended. Renew any time to restore your benefits.",
       link: "/packages",
     });
   }

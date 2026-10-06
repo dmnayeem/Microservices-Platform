@@ -1,5 +1,6 @@
 "use client";
 
+import { ssGet, ssSet } from "@/lib/safe-storage";
 import { useState } from "react";
 import Link from "next/link";
 import { UserCog, X } from "lucide-react";
@@ -22,7 +23,7 @@ export function ProfileCompletionBanner({
 }) {
   const [hidden, setHidden] = useState(() => {
     if (typeof window === "undefined") return false;
-    return sessionStorage.getItem(DISMISS_KEY) === "1";
+    return ssGet(DISMISS_KEY) === "1";
   });
 
   if (hidden) return null;
@@ -57,7 +58,7 @@ export function ProfileCompletionBanner({
         <button
           onClick={() => {
             try {
-              sessionStorage.setItem(DISMISS_KEY, "1");
+              ssSet(DISMISS_KEY, "1");
             } catch {
               /* ignore */
             }

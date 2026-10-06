@@ -12,6 +12,10 @@ import {
   summariseReleases,
 } from "@/lib/marketplace-payouts";
 import {
+  releaseDueTutorPayouts,
+  summariseTutorReleases,
+} from "@/lib/course-payouts";
+import {
   runBroadcastSweep,
   summariseSweep as summariseBroadcasts,
 } from "@/lib/broadcast";
@@ -33,12 +37,14 @@ import {
 } from "@/lib/course-cron";
 import { pruneOldLogs } from "@/lib/log-retention";
 import { runAdCampaignSweep, runAdReviewSla } from "@/lib/ad-campaign-cron";
+import { runAdMeasureRollup } from "@/lib/ad-measure";
 import { closeDueAuctions } from "@/lib/marketplace-auctions";
 import { releaseDueDeals } from "@/lib/marketplace-deal";
 import { drawDueLotteries } from "@/lib/lottery-sweep";
 import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
 import { sweepStaleGameSessions } from "@/lib/game-cron";
 import { releaseDueCpaHolds } from "@/lib/cpa/credit";
+import { releaseHeldOfferwallCompletions } from "@/lib/offerwall";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -149,6 +155,18 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await releaseDuePayouts();
       return { ok: true, summary: summariseReleases(s), result: s };
+    },
+  },
+  {
+    name: "course-tutor-payouts",
+    label: "Release held tutor payouts",
+    description:
+      "A paid course enrolment parks the tutor’s share for at least the refund window (Courses → Settings), so a refund reverses an unpaid row instead of chasing money already withdrawn. This is what actually pays tutors once the hold expires — nothing else does. A payout whose enrolment has a refund request waiting for review stays held until the request is decided.",
+    intervalMs: 15 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const s = await releaseDueTutorPayouts();
+      return { ok: true, summary: summariseTutorReleases(s), result: s };
     },
   },
   {
@@ -337,6 +355,22 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     },
   },
   {
+    name: "ad-measure-rollup",
+    label: "Ad measurement totals",
+    description:
+      "Rebuilds today's and yesterday's ad report totals (viewable impressions, clicks, estimated clicks, invalid traffic filtered) from the raw measured events, and deletes raw events older than the retention period set in Ad Manager → Analytics. Safe to run any number of times — totals are recalculated, never added twice.",
+    intervalMs: 10 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const r = await runAdMeasureRollup();
+      return {
+        ok: true,
+        summary: `Rebuilt ${r.rows} ad total row${r.rows === 1 ? "" : "s"}, deleted ${r.pruned} old event${r.pruned === 1 ? "" : "s"}.`,
+        result: r,
+      };
+    },
+  },
+  {
     name: "auction-sweep",
     label: "Close finished auctions",
     description:
@@ -425,6 +459,23 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     },
   },
   {
+    name: "article-key-pool",
+    label: "Article key pools",
+    description:
+      "Keeps every running article task's key pool topped up (keys are created on demand, only a small buffer is stored), finishes purges that ran out of time, and deletes the finished keys of tasks that ended longer ago than their auto-purge setting. Keys tied to a submission still under review are never deleted.",
+    intervalMs: 10 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const { runArticleKeyMaintenance } = await import("@/lib/article-key-pool");
+      const r = await runArticleKeyMaintenance();
+      return {
+        ok: true,
+        summary: `Minted ${r.keysMinted} key(s) across ${r.toppedUp} pool(s); deleted ${r.keysDeleted} key(s) across ${r.purged} purge(s).`,
+        result: r,
+      };
+    },
+  },
+  {
     name: "cpa-hold-release",
     label: "Pay held CPA offers",
     description:
@@ -437,6 +488,22 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
         ok: true,
         summary: `Paid ${r.released} of ${r.candidates} due CPA conversion${r.candidates === 1 ? "" : "s"}.`,
         result: r,
+      };
+    },
+  },
+  {
+    name: "offerwall-hold-release",
+    label: "Pay held offerwall completions",
+    description:
+      "Pays offerwall completions whose hold time has passed (postback credits on offers with a hold). Proof submissions are not touched — they wait for review on /admin/offerwalls. Each completion is paid at most once however many times this runs; suspended accounts are skipped.",
+    intervalMs: 15 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const released = await releaseHeldOfferwallCompletions();
+      return {
+        ok: true,
+        summary: `Paid ${released} held offerwall completion${released === 1 ? "" : "s"}.`,
+        result: { released },
       };
     },
   },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { abuseAccess } from "@/lib/abuse/access";
+import { can } from "@/lib/permissions";
 import { runAbuseAction, type ActionResult } from "@/lib/abuse/actions";
 import { ACCOUNT_ACTIONS, isAbuseAction, type AbuseAction } from "@/lib/abuse/policy";
 
@@ -25,6 +26,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (wanted.some((x) => ACCOUNT_ACTIONS.includes(x)) && !a.account) {
     return NextResponse.json(
       { error: "Suspending, banning or restoring an account needs the “Ban / unban users” permission." },
+      { status: 403 }
+    );
+  }
+  // Releasing a held referral bonus pays points — needs the points-adjust right too.
+  if (wanted.includes("release_referral_bonus") && !(await can(a.userId, "users.adjust_points"))) {
+    return NextResponse.json(
+      { error: "Releasing a referral bonus needs the “Adjust points” permission." },
       { status: 403 }
     );
   }

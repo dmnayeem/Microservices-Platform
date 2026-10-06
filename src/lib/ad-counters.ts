@@ -45,6 +45,12 @@ const buffer = new Map<string, number>();
 const KEY_SEP = "|";
 /** Pending serve outcomes, keyed by placement id: [requests, fills]. */
 const serveBuffer = new Map<string, [number, number]>();
+/**
+ * Pending per-ad SERVED counts for the real-measurement rollup
+ * (`AdMeasureDaily.served`), keyed `adId|placement|network`. Served is a
+ * delivery, not an impression — impressions are now viewable-beacon only.
+ */
+const servedBuffer = new Map<string, number>();
 let oldestAt = 0;
 let flushing = false;
 
@@ -59,12 +65,14 @@ const FLUSH_AFTER_MS = 10_000;
  * double-counting. Never throws: analytics must not break ad serving.
  */
 export async function flushAdCounters(): Promise<void> {
-  if (flushing || (buffer.size === 0 && serveBuffer.size === 0)) return;
+  if (flushing || (buffer.size === 0 && serveBuffer.size === 0 && servedBuffer.size === 0)) return;
   flushing = true;
   const batch = [...buffer.entries()];
   const serveBatch = [...serveBuffer.entries()];
+  const servedBatch = [...servedBuffer.entries()];
   buffer.clear();
   serveBuffer.clear();
+  servedBuffer.clear();
   oldestAt = 0;
   try {
     const date = todayUtc();
@@ -126,6 +134,15 @@ export async function flushAdCounters(): Promise<void> {
           },
         })
       ),
+      // No FK on AdMeasureDaily, so a deleted ad cannot abort this batch.
+      ...servedBatch.map(([key, count]) => {
+        const [adId, placement, network] = key.split(KEY_SEP) as [string, string, string];
+        return prisma.adMeasureDaily.upsert({
+          where: { adId_placement_network_date: { adId, placement, network, date } },
+          create: { adId, placement, network, date, served: count },
+          update: { served: { increment: count } },
+        });
+      }),
     ]);
   } catch {
     // An ad deleted mid-flush aborts the transaction. Dropping the batch is the
@@ -172,10 +189,17 @@ export function bufferServeOutcome(placementId: string, filled: boolean): void {
   maybeFlush();
 }
 
+/** Record one delivered ad (real-measurement `served`). Buffered like the rest. */
+export function bufferServed(adId: string, placement: string, network: string): void {
+  const key = [adId, placement, network].map((s) => s.replaceAll(KEY_SEP, "_")).join(KEY_SEP);
+  servedBuffer.set(key, (servedBuffer.get(key) ?? 0) + 1);
+  maybeFlush();
+}
+
 function maybeFlush(): void {
   if (oldestAt === 0) oldestAt = Date.now();
   const stale = Date.now() - oldestAt >= FLUSH_AFTER_MS;
-  if (buffer.size + serveBuffer.size >= FLUSH_AT_SIZE || stale) {
+  if (buffer.size + serveBuffer.size + servedBuffer.size >= FLUSH_AT_SIZE || stale) {
     void flushAdCounters();
   }
 }

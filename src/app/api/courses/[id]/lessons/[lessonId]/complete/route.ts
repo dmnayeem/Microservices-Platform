@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { maybeIssueCertificate } from "@/lib/course-certificate";
+import { lessonCompletionBlock, lessonOpenedAt } from "@/lib/course-access";
 
 export async function POST(
   _request: NextRequest,
@@ -39,6 +40,16 @@ export async function POST(
   // Add lesson to completed set if not already
   const completedSet = new Set(enrollment.completedLessons);
   if (!completedSet.has(lessonId)) {
+    // Completion needs real, server-observed progress (see course-access).
+    const block = await lessonCompletionBlock({
+      userId,
+      lesson,
+      openedAt: await lessonOpenedAt(enrollment.id, lesson.id, lesson.duration),
+    });
+    if (block) {
+      return NextResponse.json({ error: block }, { status: 409 });
+    }
+
     completedSet.add(lessonId);
 
     const totalLessons = await prisma.courseLesson.count({

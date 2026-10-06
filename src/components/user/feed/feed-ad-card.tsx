@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   ArrowUpRight,
   
@@ -13,6 +13,8 @@ import { mediaSrc } from "@/lib/media-url";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { placementSpec } from "@/lib/ad-placements";
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { AdSlotShell } from "@/components/user/primitives/ad-slot-shell";
+import { adClickHref } from "@/lib/ad-measure-client";
 
 /** A native feed ad, shaped by GET /api/ads/feed. */
 export interface FeedAd {
@@ -92,48 +94,21 @@ function splitHeadline(title: string): { lead: string; accent: string } {
  * the round brand avatar, the description and the ⋮; then "Sponsored ·
  * BrandName"; then two full-width buttons.
  *
- * Impression (view) and click (open) tracking are the same two calls they were
- * before — `/api/spaces/[id]/event` with `kind: "view"` once on 50% visibility,
- * and `kind: "open"` from every control that navigates.
+ * Impression and click measurement: see src/lib/ad-measure-client.ts — a
+ * viewable-impression beacon from the AdSlotShell, and every control that
+ * navigates links through the `/api/spaces/go` click redirect.
  */
 export function FeedAdCard({ ad }: { ad: FeedAd }) {
   const ref = useRef<HTMLElement | null>(null);
-  const firedRef = useRef(false);
+  // Per-instance key for the measurement hook (ad-slot-shell.tsx).
+  const slotKey = `IN_FEED:${useId()}`;
   const [dismissed, setDismissed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
 
-  // Count one impression when the ad first scrolls into view.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting && !firedRef.current) {
-            firedRef.current = true;
-            fetch(`/api/spaces/${ad.adId}/event`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ kind: "view" }),
-            }).catch(() => {});
-            io.disconnect();
-          }
-        }
-      },
-      { threshold: 0.5 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [ad.adId]);
-
-  const trackClick = () => {
-    fetch(`/api/spaces/${ad.adId}/event`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "open", st: ad.st }),
-    }).catch(() => {});
-  };
+  // Impressions and clicks are measured, not fired from here: the AdSlotShell
+  // below counts a viewable impression (≥50% on screen for ≥1s) and the links
+  // go through the `/api/spaces/go` click redirect (src/lib/ad-measure*.ts).
 
   if (dismissed) return null;
 
@@ -162,13 +137,12 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
   };
 
   // One anchor shape for every region that navigates — the creative, the arrow
-  // inside it, and both buttons. There is exactly one `trackClick`, so no
+  // inside it, and both buttons. There is exactly one click href, so no
   // control can look actionable without billing.
   const linkProps = {
-    href: url ?? "",
+    href: adClickHref(ad.st, ad.adId, url) ?? "",
     target: "_blank",
     rel: "noopener sponsored noreferrer",
-    onClick: trackClick,
   } as const;
 
   const creative = (
@@ -273,6 +247,16 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
   );
 
   return (
+    <AdSlotShell
+      info={{
+        adId: ad.adId,
+        placement: "IN_FEED",
+        slotKey,
+        network: "own",
+        type: "NATIVE",
+        st: ad.st,
+      }}
+    >
     <article
       ref={ref}
       className="app-card relative isolate overflow-hidden p-0"
@@ -394,5 +378,6 @@ export function FeedAdCard({ ad }: { ad: FeedAd }) {
         )}
       </div>
     </article>
+    </AdSlotShell>
   );
 }

@@ -21,6 +21,8 @@ import {
   resolveCommissionBps,
   splitPrice,
 } from "@/lib/marketplace-commission";
+import { lockListingRow, oneOffEscrowTaken } from "@/lib/marketplace-deal";
+import { usd } from "@/lib/utils";
 
 const patchSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("accept") }),
@@ -31,6 +33,8 @@ const patchSchema = z.discriminatedUnion("action", [
     counterMessage: z.string().max(500).optional(),
   }),
   z.object({ action: z.literal("withdraw") }),
+  // Buyer takes the seller's counter-offer: a sale at `counterAmount`.
+  z.object({ action: z.literal("accept_counter") }),
 ]);
 
 // PATCH /api/marketplace/listings/:id/offers/:offerId
@@ -85,6 +89,18 @@ export async function PATCH(
           { status: 403 }
         );
       }
+    }
+    if (action.action === "accept_counter" && !isBuyer) {
+      return NextResponse.json(
+        { error: "Only the buyer can accept a counter-offer" },
+        { status: 403 }
+      );
+    }
+    if (action.action === "accept_counter" && (offer.status !== MarketplaceOfferStatus.COUNTERED || offer.counterAmount == null)) {
+      return NextResponse.json(
+        { error: "There is no counter-offer to accept." },
+        { status: 400 }
+      );
     }
     if (action.action === "withdraw" && !isBuyer) {
       return NextResponse.json(
@@ -154,7 +170,8 @@ export async function PATCH(
       return NextResponse.json({ offer: updated });
     }
 
-    // ── accept ──
+    // ── accept (seller takes the offer) / accept_counter (buyer takes the counter) ──
+    const byBuyer = action.action === "accept_counter";
     if (offer.listing.status !== MarketplaceListingStatus.ACTIVE) {
       return NextResponse.json(
         { error: "Listing is no longer active" },
@@ -162,7 +179,7 @@ export async function PATCH(
       );
     }
 
-    const acceptedAmount = toNum(offer.amount);
+    const acceptedAmount = byBuyer ? toNum(offer.counterAmount) : toNum(offer.amount);
     const bps = await resolveCommissionBps({
       assetType: offer.listing.assetType,
       perListingOverride: offer.listing.commissionRateBps,
@@ -192,6 +209,16 @@ export async function PATCH(
         data: { cashBalance: { decrement: buyerTotal } },
       });
       if (paid.count === 0) return null; // buyer can't cover — no sale
+
+      // Serialise with checkout / cart / escrow on this listing; a ONE_OFF
+      // item already funded in escrow is promised to that buyer.
+      await lockListingRow(tx, id);
+      if (
+        offer.listing.saleMode !== "UNLIMITED" &&
+        (await oneOffEscrowTaken(tx, id))
+      ) {
+        throw new Error("LISTING_TAKEN");
+      }
 
       // Re-check the listing inside the transaction. The status read above is
       // check-then-act; two accepts on competing offers could otherwise both
@@ -284,22 +311,31 @@ export async function PATCH(
     if (!settled) {
       return NextResponse.json(
         {
-          error:
-            "The buyer no longer has enough balance to cover this offer, so it wasn't accepted.",
+          error: byBuyer
+            ? `Your wallet doesn't cover ${usd(buyerTotal)} (the counter-offer plus tax), so nothing was charged.`
+            : "The buyer no longer has enough balance to cover this offer, so it wasn't accepted.",
         },
-        { status: 409 }
+        { status: byBuyer ? 402 : 409 }
       );
     }
 
     await prisma.notification
       .create({
-        data: {
-          userId: offer.buyerId,
-          type: NotificationType.SYSTEM,
-          title: "Offer accepted! 🎉",
-          message: `Your offer on "${offer.listing.title}" was accepted at $${acceptedAmount.toLocaleString()}.`,
-          data: { listingId: id, offerId, purchaseId: settled.purchase.id },
-        },
+        data: byBuyer
+          ? {
+              userId: offer.listing.sellerId,
+              type: NotificationType.SYSTEM,
+              title: "Counter-offer accepted 🎉",
+              message: `The buyer accepted your counter of $${acceptedAmount.toLocaleString()} on "${offer.listing.title}".`,
+              data: { listingId: id, offerId, purchaseId: settled.purchase.id },
+            }
+          : {
+              userId: offer.buyerId,
+              type: NotificationType.SYSTEM,
+              title: "Offer accepted! 🎉",
+              message: `Your offer on "${offer.listing.title}" was accepted at $${acceptedAmount.toLocaleString()}.`,
+              data: { listingId: id, offerId, purchaseId: settled.purchase.id },
+            },
       })
       .catch(() => {
         // Delivery is best-effort; the sale itself already stands.

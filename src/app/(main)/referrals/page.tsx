@@ -5,7 +5,7 @@ import {
   ReferralsView,
   type ReferralUser,
 } from "@/components/user/referrals/referrals-view";
-import { AdRenderer } from "@/components/user/primitives/ad-renderer";
+import { ServerAdSlot } from "@/components/user/primitives/server-ad-slot";
 import { getTeamSummary } from "@/lib/team";
 import {
   getReferralBonusConfig,
@@ -127,7 +127,7 @@ export default async function ReferralsPage() {
 
   return (
     <>
-      <AdRenderer placement="REFERRALS_TOP" className="mb-4" />
+      <ServerAdSlot placement="REFERRALS_TOP" className="mb-4" />
       <ReferralsView
       referralCode={code}
       shareUrl={shareUrl}

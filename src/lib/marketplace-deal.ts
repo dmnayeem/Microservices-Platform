@@ -60,6 +60,43 @@ const ACTIVE_STATUSES: MarketplaceDealStatus[] = [
   MarketplaceDealStatus.DISPUTED,
 ];
 
+/** Deal states in which a buyer's money is already committed to the item. */
+export const FUNDED_DEAL_STATUSES: MarketplaceDealStatus[] = [
+  MarketplaceDealStatus.FUNDED,
+  MarketplaceDealStatus.DELIVERED,
+  MarketplaceDealStatus.DISPUTED,
+];
+
+/**
+ * Row-lock a listing for the rest of the transaction. Every path that sells
+ * a ONE_OFF item (checkout, cart, escrow funding, escrow release) takes this
+ * lock first, so their "is it still available?" checks cannot interleave.
+ */
+export async function lockListingRow(tx: Tx, listingId: string): Promise<void> {
+  await tx.$queryRaw`SELECT "id" FROM "MarketplaceListing" WHERE "id" = ${listingId} FOR UPDATE`;
+}
+
+/**
+ * Is a ONE_OFF listing already promised to someone through escrow? Call after
+ * `lockListingRow`. A funded deal is a sale in progress: selling the same
+ * single item again through checkout, the cart or a second deal would leave
+ * one of the two buyers paying for something that no longer exists.
+ */
+export async function oneOffEscrowTaken(
+  tx: Tx,
+  listingId: string,
+  excludeDealId?: string
+): Promise<boolean> {
+  const n = await tx.marketplaceDeal.count({
+    where: {
+      listingId,
+      status: { in: FUNDED_DEAL_STATUSES },
+      ...(excludeDealId ? { id: { not: excludeDealId } } : {}),
+    },
+  });
+  return n > 0;
+}
+
 /**
  * Propose deal terms in a thread. Either the buyer or the seller may propose.
  * Resolves + stores the commission rate and (if admin-mediated) the fee now, so
@@ -181,6 +218,8 @@ export async function fundDeal(opts: {
           id: true,
           title: true,
           sellerId: true,
+          status: true,
+          saleMode: true,
           assetType: true,
           commissionRateBps: true,
           affiliateCommissionType: true,
@@ -193,6 +232,15 @@ export async function fundDeal(opts: {
   if (deal.buyerId !== buyerId) return { ok: false, error: "Only the buyer can fund this deal.", status: 403 };
   if (deal.status !== MarketplaceDealStatus.PROPOSED) {
     return { ok: false, error: `Deal is ${deal.status.toLowerCase()}, cannot fund.`, status: 400 };
+  }
+  // Terms the buyer proposed bind the seller only once the seller accepts
+  // them (see `acceptDeal`) — otherwise a buyer could name any price and
+  // lock the item in escrow at it.
+  if (deal.proposedById !== deal.sellerId) {
+    return { ok: false, error: "Waiting for the seller to accept your proposal.", status: 409 };
+  }
+  if (deal.listing.status !== MarketplaceListingStatus.ACTIVE) {
+    return { ok: false, error: "This listing is no longer available.", status: 409 };
   }
 
   const amount = toNum(deal.amount);
@@ -246,6 +294,21 @@ export async function fundDeal(opts: {
 
   try {
     await prisma.$transaction(async (tx) => {
+      // Re-check availability under the listing lock: checkout / cart / a
+      // second deal may have taken a ONE_OFF item since the read above.
+      await lockListingRow(tx, deal.listingId);
+      const live = await tx.marketplaceListing.findUnique({
+        where: { id: deal.listingId },
+        select: { status: true },
+      });
+      if (live?.status !== MarketplaceListingStatus.ACTIVE) throw new Error("UNAVAILABLE");
+      if (
+        deal.listing.saleMode !== "UNLIMITED" &&
+        (await oneOffEscrowTaken(tx, deal.listingId, dealId))
+      ) {
+        throw new Error("UNAVAILABLE");
+      }
+
       // CAS: claim the PROPOSED→FUNDED transition.
       const claimed = await tx.marketplaceDeal.updateMany({
         where: { id: dealId, status: MarketplaceDealStatus.PROPOSED },
@@ -303,6 +366,9 @@ export async function fundDeal(opts: {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "ALREADY_FUNDED") return { ok: true, dealId };
+    if (msg === "UNAVAILABLE") {
+      return { ok: false, error: "This item is no longer available — nothing was charged.", status: 409 };
+    }
     if (msg === "INSUFFICIENT") {
       return { ok: false, error: "Insufficient wallet balance to fund this deal.", status: 402 };
     }
@@ -418,6 +484,18 @@ export async function releaseDeal(opts: {
       });
       if (claimed.count === 0) throw new Error("RACE");
 
+      // A ONE_OFF item has exactly one buyer. If it was already sold
+      // (checkout before this deal was funded, or legacy data), releasing
+      // would record a SECOND sale of the same item and pay the seller twice
+      // for it — refund the escrow instead. Rolls back the claim above.
+      if (deal.listing?.saleMode !== "UNLIMITED") {
+        await lockListingRow(tx, deal.listingId);
+        const sold = await tx.marketplacePurchase.count({
+          where: { listingId: deal.listingId, status: "COMPLETED" },
+        });
+        if (sold > 0) throw new Error("ALREADY_SOLD");
+      }
+
       const purchase = await tx.marketplacePurchase.create({
         data: {
           listingId: deal.listingId,
@@ -519,6 +597,13 @@ export async function releaseDeal(opts: {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg === "RACE") return { ok: true, dealId };
+    if (msg === "ALREADY_SOLD") {
+      return {
+        ok: false,
+        error: "This one-off item was already sold to another buyer — refund this escrow instead.",
+        status: 409,
+      };
+    }
     throw err;
   }
 
@@ -629,6 +714,59 @@ export async function refundDeal(opts: {
     link: `/marketplace/messages/${deal.threadId}`,
   }).catch(() => {});
 
+  return { ok: true, dealId };
+}
+
+/**
+ * Seller accepts terms the BUYER proposed. Until then the buyer cannot fund
+ * (see `fundDeal`). Acceptance makes the seller the party standing behind
+ * the terms — `proposedById` moves to the seller — so no schema change is
+ * needed: "fundable" simply means "proposed or accepted by the seller".
+ */
+export async function acceptDeal(opts: {
+  dealId: string;
+  sellerId: string;
+}): Promise<DealResult> {
+  const { dealId, sellerId } = opts;
+  const deal = await prisma.marketplaceDeal.findUnique({
+    where: { id: dealId },
+    include: { listing: { select: { title: true, status: true } } },
+  });
+  if (!deal) return { ok: false, error: "Deal not found.", status: 404 };
+  if (deal.sellerId !== sellerId) {
+    return { ok: false, error: "Only the seller can accept this proposal.", status: 403 };
+  }
+  if (deal.status !== MarketplaceDealStatus.PROPOSED) {
+    return { ok: false, error: `Deal is ${deal.status.toLowerCase()}, cannot accept.`, status: 400 };
+  }
+  if (deal.proposedById === deal.sellerId) return { ok: true, dealId };
+  if (deal.listing.status !== MarketplaceListingStatus.ACTIVE) {
+    return { ok: false, error: "This listing is no longer available.", status: 409 };
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.marketplaceDeal.updateMany({
+        where: { id: dealId, status: MarketplaceDealStatus.PROPOSED, proposedById: deal.buyerId },
+        data: { proposedById: sellerId },
+      });
+      if (claimed.count === 0) throw new Error("RACE");
+      await systemMessage(
+        tx,
+        deal.threadId,
+        `Seller accepted the buyer's proposal of ${usd(toNum(deal.amount))}. The buyer can now fund escrow.`
+      );
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "RACE") return { ok: true, dealId };
+    throw err;
+  }
+  notifyUser({
+    userId: deal.buyerId,
+    type: "SYSTEM",
+    title: "Proposal accepted",
+    message: `The seller accepted ${usd(toNum(deal.amount))} for "${deal.listing.title}". Fund escrow to continue.`,
+    link: `/marketplace/messages/${deal.threadId}`,
+  }).catch(() => {});
   return { ok: true, dealId };
 }
 

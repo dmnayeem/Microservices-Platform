@@ -1,5 +1,9 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import http from "node:http";
+import https from "node:https";
+import zlib from "node:zlib";
+import { Readable } from "node:stream";
 import { raiseAbuseSignal, type AbuseSignal } from "@/lib/abuse/signal";
 
 /**
@@ -236,6 +240,17 @@ const defaultResolver: Resolver = async (host) =>
  * one internal record cannot be used to reach the internal one.
  */
 export async function guardUrl(raw: string | URL, opts: SafeGuardOptions = {}): Promise<URL> {
+  return (await guardAndResolve(raw, opts)).url;
+}
+
+/**
+ * `guardUrl`, plus the vetted addresses (null for an allowed IP-literal host).
+ * `safeFetch` connects to exactly these — see `pinnedFetch`.
+ */
+async function guardAndResolve(
+  raw: string | URL,
+  opts: SafeGuardOptions
+): Promise<{ url: URL; addrs: string[] | null }> {
   let u: URL;
   try {
     u = new URL(raw.toString());
@@ -262,7 +277,7 @@ export async function guardUrl(raw: string | URL, opts: SafeGuardOptions = {}): 
   if (isIP(host)) {
     if (isBlockedIp(host)) throw new SafeFetchError("blocked", "Blocked IP");
     if (!opts.allowIpLiteral) throw new SafeFetchError("blocked", "IP-literal host");
-    return u;
+    return { url: u, addrs: null };
   }
   if (
     host === "localhost" ||
@@ -282,7 +297,94 @@ export async function guardUrl(raw: string | URL, opts: SafeGuardOptions = {}): 
   }
   if (!addrs.length) throw new SafeFetchError("dns", "DNS resolution failed");
   if (addrs.some(isBlockedIp)) throw new SafeFetchError("blocked", "Blocked IP");
-  return u;
+  return { url: u, addrs };
+}
+
+/**
+ * Fetch `u` while connecting ONLY to `addrs` — the addresses `guardAndResolve`
+ * just vetted.
+ *
+ * Plain `fetch(url)` resolves the hostname a second time when it connects.
+ * A hostile DNS server can answer the guard with a public address and the
+ * connection with `169.254.169.254` a millisecond later (DNS rebinding), which
+ * walks straight past the SSRF check. Pinning the socket's `lookup` closes
+ * that gap. The Host header and TLS SNI still carry the real hostname, so
+ * virtual hosting and certificates behave exactly as with `fetch`.
+ *
+ * Returns a standard `Response` (body decompressed like `fetch` does) so every
+ * reader below works unchanged.
+ */
+function pinnedFetch(
+  u: URL,
+  addrs: string[],
+  init: { method: string; signal: AbortSignal; headers: Record<string, string> }
+): Promise<Response> {
+  const ip = addrs[0];
+  const family = isIP(ip) || 4;
+  return new Promise<Response>((resolve, reject) => {
+    const lib = u.protocol === "https:" ? https : http;
+    const req = lib.request(
+      u,
+      {
+        method: init.method,
+        signal: init.signal,
+        headers: {
+          Accept: "*/*",
+          "Accept-Encoding": "gzip, deflate, br",
+          ...init.headers,
+        },
+        // Node may ask for one address or (Happy Eyeballs) all of them.
+        lookup: ((
+          _host: string,
+          options: { all?: boolean } | number | undefined,
+          cb: (err: Error | null, address: unknown, fam?: number) => void
+        ) => {
+          if (typeof options === "object" && options?.all) {
+            cb(null, [{ address: ip, family }]);
+          } else {
+            cb(null, ip, family);
+          }
+        }) as unknown as http.RequestOptions["lookup"],
+      },
+      (res) => {
+        const headers = new Headers();
+        for (const [k, v] of Object.entries(res.headers)) {
+          if (v == null) continue;
+          try {
+            if (Array.isArray(v)) for (const x of v) headers.append(k, x);
+            else headers.set(k, String(v));
+          } catch {
+            /* a header value fetch would also reject — drop it */
+          }
+        }
+        const status = res.statusCode ?? 502;
+        const enc = String(res.headers["content-encoding"] ?? "").toLowerCase().trim();
+        let stream: Readable = res;
+        if (enc === "gzip" || enc === "x-gzip") stream = res.pipe(zlib.createGunzip());
+        else if (enc === "deflate") stream = res.pipe(zlib.createInflate());
+        else if (enc === "br") stream = res.pipe(zlib.createBrotliDecompress());
+        if (stream !== res) {
+          headers.delete("content-encoding");
+          headers.delete("content-length");
+        }
+        const noBody = init.method === "HEAD" || status === 204 || status === 304;
+        if (noBody) res.resume();
+        try {
+          resolve(
+            new Response(
+              noBody ? null : (Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>),
+              { status, statusText: res.statusMessage, headers }
+            )
+          );
+        } catch (e) {
+          res.destroy();
+          reject(e);
+        }
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 /* ────────────────────────────── rate limits ────────────────────────────── */
@@ -519,27 +621,32 @@ export async function safeFetch(raw: string | URL, opts: SafeFetchOptions = {}):
   const maxRedirects = opts.maxRedirects ?? SAFE_FETCH_DEFAULTS.maxRedirects;
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? SAFE_FETCH_DEFAULTS.timeoutMs);
   const signal = opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout;
-  const doFetch = opts.fetchImpl ?? fetch;
-
-  let current = await guardUrl(raw, opts);
+  let guarded = await guardAndResolve(raw, opts);
+  let current = guarded.url;
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    if (hop > 0) current = await guardUrl(current, opts);
+    if (hop > 0) {
+      guarded = await guardAndResolve(current, opts);
+      current = guarded.url;
+    }
     // The user is charged once per call; every hop is charged to its domain.
     if (!(await takeRateLimit(current, opts, hop === 0))) {
       throw new SafeFetchError("rate_limited", "Outbound limit reached");
     }
+    const method = opts.method ?? "GET";
+    const headers = {
+      "User-Agent": opts.userAgent ?? BROWSER_UA,
+      ...(opts.headers ?? {}),
+      ...IDENTITY_HEADERS,
+    };
     let res: Response;
     try {
-      res = await doFetch(current, {
-        method: opts.method ?? "GET",
-        signal,
-        redirect: "manual",
-        headers: {
-          "User-Agent": opts.userAgent ?? BROWSER_UA,
-          ...(opts.headers ?? {}),
-          ...IDENTITY_HEADERS,
-        },
-      });
+      // Test seam first; otherwise connect only to the vetted address
+      // (an IP-literal host has nothing to re-resolve, so plain fetch).
+      res = opts.fetchImpl
+        ? await opts.fetchImpl(current, { method, signal, redirect: "manual", headers })
+        : guarded.addrs
+        ? await pinnedFetch(current, guarded.addrs, { method, signal, headers })
+        : await fetch(current, { method, signal, redirect: "manual", headers });
     } catch (e) {
       throw new SafeFetchError(isAbort(e) ? "timeout" : "network", (e as Error)?.message);
     }

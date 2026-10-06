@@ -15,7 +15,8 @@ import { ABUSE_ACTIONS, type AbuseAction } from "./policy";
  * survives. The "restore" counterparts undo only what THIS case changed (the ids
  * in its own ACTION evidence), never anything an admin did for another reason.
  *
- * No action moves money. Holding withdrawals is a flag the approve route reads.
+ * No action moves money except release_referral_bonus (pays a held signup
+ * referral bonus, idempotently). Holding withdrawals is a flag the approve route reads.
  */
 
 export interface ActionResult {
@@ -269,6 +270,17 @@ async function run(c: CaseRow, action: AbuseAction, actorId: string, reason: str
     case "hide_item": {
       const r = await hideEntity(c.entityType, c.entityId, actorId);
       return { ok: true, changed: r.changed, message: r.changed ? "Item hidden." : "Nothing to hide (already hidden, or not a hideable item).", ids: r.ids };
+    }
+    case "release_referral_bonus": {
+      // The one action that moves money: it pays the signup referral bonuses a
+      // device-match hold withheld (selfReferralDeviceHold). Same functions as a
+      // normal signup, keyed on unique ledger references — never pays twice.
+      if (c.entityType !== "referral") {
+        return { ok: false, changed: 0, message: "Only for a held referral-bonus case.", ids: {} };
+      }
+      const { payReferralSignupRewards } = await import("@/lib/auth/services");
+      await payReferralSignupRewards(userId, { referredById: c.entityId });
+      return { ok: true, changed: 1, message: "Referral bonuses released (already-paid parts were skipped).", ids: {} };
     }
   }
 }

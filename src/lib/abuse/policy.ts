@@ -91,6 +91,7 @@ export const ABUSE_ACTIONS = {
   hold_withdrawals: { label: "Hold their withdrawals (no money moves)", restoreOf: null, needsUser: true },
   release_withdrawals: { label: "Release the withdrawal hold", restoreOf: "hold_withdrawals", needsUser: true },
   hide_item: { label: "Hide only the reported item", restoreOf: null, needsUser: false },
+  release_referral_bonus: { label: "Release the held referral bonus (referral cases only)", restoreOf: null, needsUser: true },
 } as const;
 
 export type AbuseAction = keyof typeof ABUSE_ACTIONS;

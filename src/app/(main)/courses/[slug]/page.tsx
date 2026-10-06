@@ -76,8 +76,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     path,
-    // Only PUBLISHED courses load at all; anything else is a 404.
-    robots: { index: true, follow: true },
+    // Only PUBLISHED courses load at all; anything else is a 404. NSFW ones
+    // stay reachable but out of the index — the sitemap leaves them out too.
+    robots: c.nsfw ? { index: false, follow: true } : { index: true, follow: true },
     image: c.bannerUrl || c.thumbnail || null,
     imageAlt: c.title,
     cardKicker: `${category} course`,

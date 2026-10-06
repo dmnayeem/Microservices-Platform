@@ -87,6 +87,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
   const [loading, setLoading] = useState(true);
   const [sheetAd, setSheetAd] = useState<EditableAd | null>(null);
   const [creating, setCreating] = useState(false);
+  const [measuredSince, setMeasuredSince] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -99,6 +100,7 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
       setCampaign(d.campaign);
       const a = await aRes.json().catch(() => ({ series: [], ads: [] }));
       setSeries(a.series ?? []);
+      setMeasuredSince(typeof a.measuredSince === "string" ? a.measuredSince : null);
 
       // The detail route carries the creative, status and controls; the
       // analytics route carries stats for the SELECTED window. Merge them.
@@ -407,6 +409,11 @@ export function CampaignDetailView({ campaignId }: { campaignId: string }) {
         <StatCard label="CTR" value={`${campaign.ctr.toFixed(2)}%`} icon={<Target className="w-4 h-4" />} tone="green" />
         <StatCard label="Spent" value={`${usd(campaign.spent)}`} icon={<DollarSign className="w-4 h-4" />} tone="blue" />
       </div>
+      <p className="text-[11px] text-(--app-ink-3) -mt-1">
+        Impressions count only when your ad was at least half on screen for a full second; bot and
+        invalid traffic is excluded and never billed.
+        {measuredSince ? ` Measured this way since ${measuredSince}.` : ""}
+      </p>
 
       {/* Daily chart — the API always returned clicks and spend too; the UI used
           to throw both away and hardcode 14 days. */}

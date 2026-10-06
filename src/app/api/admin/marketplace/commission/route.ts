@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { writeAudit } from "@/lib/audit";
 import {
   getCommissionConfig,
   saveCommissionConfig,
@@ -57,7 +58,16 @@ export async function PATCH(request: NextRequest) {
       default: v.data.default,
       byAssetType: v.data.byAssetType ?? {},
     };
+    const before = await getCommissionConfig();
     await saveCommissionConfig(cfg);
+    await writeAudit({
+      actorId: session.user.id,
+      action: "MARKETPLACE_COMMISSION_UPDATED",
+      entity: "SystemSetting",
+      entityId: "marketplace.commission",
+      summary: `Set marketplace commission (default ${cfg.default / 100}%)`,
+      meta: { before, after: cfg },
+    });
     return NextResponse.json({ config: cfg });
   } catch (error) {
     return NextResponse.json(

@@ -115,6 +115,8 @@ export async function generateDemoAds(
   await Promise.all(
     placements.map((placement, i) => {
       if (covered.has(placement.id)) return Promise.resolve();
+      // Not a visual slot — a LOCAL demo creative there could never render.
+      if (placement.name === "PAGE_SCRIPT") return Promise.resolve();
       const label = LABELS.get(placement.name) ?? placement.name;
       const color = PALETTE[i % PALETTE.length];
       const isFeed = placement.name === "IN_FEED";
