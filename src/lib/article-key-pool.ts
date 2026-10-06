@@ -188,10 +188,11 @@ export type PurgeResult = {
 
 /**
  * Delete the keys a task no longer needs. What goes:
- *   - fresh keys nobody was given;
+ *   - fresh keys nobody was given (not in a rolling cleanup: `keepUnused`);
  *   - keys handed out but never submitted — on a running task only once they
  *     are 48 h old (the worker has long since left); on an ended task, all;
- *   - keys whose submission is decided (approved or rejected).
+ *   - keys whose submission is decided (approved or rejected) — on a running
+ *     task only once they are 24 h old.
  * What stays: keys tied to a submission still PENDING or REVISION_REQUESTED.
  *
  * On an ended task the pool's allowance is also closed (`target = minted`) so
@@ -200,11 +201,19 @@ export type PurgeResult = {
  * Deletes in chunks within a time budget; `more` says the caller (or the
  * scheduler, via `purgeRequestedAt`) should run it again.
  */
-export async function purgeArticleKeys(taskId: string, budgetMs = 20_000): Promise<PurgeResult> {
+export async function purgeArticleKeys(
+  taskId: string,
+  budgetMs = 20_000,
+  opts: { keepUnused?: boolean } = {}
+): Promise<PurgeResult> {
   const started = Date.now();
   const task = await prisma.task.findUnique({ where: { id: taskId }, select: { status: true } });
   const ended = !!task && (ENDED_TASK_STATUSES as readonly string[]).includes(task.status);
   const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  // On a running task a decided key is kept for a day: the anonymous path
+  // rate-limits per browser by counting keys issued in the last 24 h, and
+  // deleting them sooner would let the same browser take another key.
+  const decidedBefore = ended ? new Date() : new Date(Date.now() - 24 * 60 * 60 * 1000);
   const out: PurgeResult = { unused: 0, abandoned: 0, finished: 0, more: false, keptPending: 0 };
 
   const loop = async (label: keyof Pick<PurgeResult, "unused" | "abandoned" | "finished">, sql: Prisma.Sql) => {
@@ -216,7 +225,7 @@ export async function purgeArticleKeys(taskId: string, budgetMs = 20_000): Promi
     out.more = true;
   };
 
-  await loop(
+  if (!opts.keepUnused) await loop(
     "unused",
     Prisma.sql`
       DELETE FROM "ArticleTaskKey" WHERE id IN (
@@ -256,6 +265,7 @@ export async function purgeArticleKeys(taskId: string, budgetMs = 20_000): Promi
           JOIN "TaskSubmission" s ON s.id = k."submissionId"
           WHERE k."taskId" = ${taskId}
             AND s.status IN ('APPROVED', 'AUTO_APPROVED', 'REJECTED')
+            AND COALESCE(k."issuedAt", k."claimedAt", k."createdAt") < ${decidedBefore}
           LIMIT ${PURGE_CHUNK}
         )`
     );
@@ -338,7 +348,32 @@ export async function runArticleKeyMaintenance(): Promise<{
     res.keysDeleted += r.unused + r.abandoned + r.finished;
   }
 
-  // 3. Top up running pools that still have allowance.
+  // 3. Rolling cleanup on RUNNING tasks: a task with no total limit never
+  //    ends, so without this every approved key would stay stored for good.
+  //    Decided keys (> 24 h) and abandoned ones (> 48 h) go; unused keys and
+  //    keys under review stay. At most every 6 h per task.
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+  const rolling = await prisma.articleKeyPool.findMany({
+    where: {
+      task: { status: { notIn: [...ENDED_TASK_STATUSES] } },
+      purgeRequestedAt: null,
+      OR: [{ lastPurgedAt: null }, { lastPurgedAt: { lt: sixHoursAgo } }],
+    },
+    select: { taskId: true },
+    orderBy: { lastPurgedAt: { sort: "asc", nulls: "first" } },
+    take: 50,
+  });
+  for (const p of rolling) {
+    if (Date.now() - started > BUDGET) return res;
+    const r = await purgeArticleKeys(p.taskId, 10_000, { keepUnused: true });
+    const n = r.abandoned + r.finished;
+    if (n > 0) {
+      res.purged++;
+      res.keysDeleted += n;
+    }
+  }
+
+  // 4. Top up running pools that still have allowance.
   const running = await prisma.articleKeyPool.findMany({
     where: { task: { status: "ACTIVE" }, purgeRequestedAt: null },
     select: { taskId: true, target: true, minted: true },

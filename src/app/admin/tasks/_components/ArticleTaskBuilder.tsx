@@ -1864,7 +1864,7 @@ function KeyPoolManager({
       !(await confirmDialog({
         title: "Purge finished keys?",
         description:
-          "Deletes unused keys, keys that were handed out but never submitted (on a running task only after 48 h), and keys whose submission is already approved or rejected. Keys under review are kept. A deleted key can never be submitted again. On an ended task, no new keys are created afterwards.",
+          "Deletes unused keys, keys that were handed out but never submitted (on a running task only after 48 h), and keys whose submission is already approved or rejected (on a running task, once they are a day old). Keys under review are kept. Running tasks are also cleaned automatically every few hours. A deleted key can never be submitted again. On an ended task, no new keys are created afterwards.",
         tone: "danger",
         confirmLabel: "Purge",
       }))
