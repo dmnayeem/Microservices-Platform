@@ -227,7 +227,7 @@ async function autoSuspend(userId: string, risk: number, signal: FraudSignal): P
       "Your account has been suspended",
       `${reason}\n\nIf you believe this is a mistake, you can appeal. An admin will review it and reply by email.`,
       `${base}/appeal?t=${signAppealToken(userId)}`,
-      { transactional: true, style: "URGENT" }
+      { transactional: true, style: "URGENT", category: "account_suspended" }
     ).catch(() => {});
   }
   return true;

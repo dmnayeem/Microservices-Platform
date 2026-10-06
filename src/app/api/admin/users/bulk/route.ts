@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         for (let i = 0; i < emails.length; i += 40) {
           await Promise.allSettled(
             emails.slice(i, i + 40).map((email) =>
-              sendNotificationEmail(email, subject, message)
+              sendNotificationEmail(email, subject, message, undefined, { category: "admin_manual" })
             )
           );
         }

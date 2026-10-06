@@ -196,7 +196,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         meta: { adminNote: adminNote ?? null, transactionId: transactionId ?? null },
       });
 
-      void deliverToUser({
+      void deliverToUser({ category: "money",
         userId: existingWithdrawal.userId,
         title: "Your withdrawal is being processed",
         message: `Your withdrawal of ${usd(existingWithdrawal.netAmount)} to ${methodLabel(existingWithdrawal.method)} was approved. We will send the payment and email you the reference when it is done.`,
@@ -336,7 +336,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // The payment receipt. Transactional: it goes out even to a user who
       // turned notification emails off — they need to know they were paid, and
       // with what reference, to find the money in their own account.
-      void deliverToUser({
+      void deliverToUser({ category: "money",
         userId: existingWithdrawal.userId,
         title: "Your withdrawal has been paid",
         message: [
@@ -463,7 +463,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       // Rejection is a service notice too: their money came back and they
       // should know why.
-      void deliverToUser({
+      void deliverToUser({ category: "money",
         userId: existingWithdrawal.userId,
         title: "Your withdrawal was not paid — money returned",
         message: [

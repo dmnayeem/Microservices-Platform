@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         // Transactional so the test arrives even while marketing email is
         // switched off — the admin is checking the design, not the switch.
         transactional: true,
+        category: "admin_manual",
         style: s("style") || undefined,
         kicker: s("kicker") || undefined,
         imageUrl: s("imageUrl") || undefined,

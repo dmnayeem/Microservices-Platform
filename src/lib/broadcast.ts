@@ -667,6 +667,9 @@ async function deliverEmails(
       slice.map((r) =>
         sendNotificationEmail(r.email as string, opts.subject, opts.body, opts.actionUrl ?? undefined, {
           transactional: !!opts.important,
+          // A broadcast is an admin sending by hand — never blocked by the
+          // automatic-email switches (it has its own caps and opt-out).
+          category: "admin_manual",
           style: opts.style,
           kicker: opts.kicker ?? undefined,
           imageUrl: opts.imageUrl ?? undefined,

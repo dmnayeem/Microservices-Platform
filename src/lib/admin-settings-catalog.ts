@@ -277,7 +277,7 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "email_from_name", group: "email", label: "From name", description: "The sender name shown beside the address.", effect: "Empty = the platform name." },
   { key: "email_test_recipient", group: "email", label: "Send test emails to", description: "Where the SMTP test and the broadcast \"Send test to me\" go.", effect: "Empty = your own admin account email." },
   { key: "email_reply_to", group: "email", label: "Reply-To address", description: "Where replies go. Use a mailbox somebody reads — a From address that bounces replies hurts inbox placement.", effect: "Empty = the From address." },
-  { key: "email_notifications_enabled", group: "email", label: "Send email", description: "Master switch for all outgoing email.", effect: "Off stops verification, password-reset and alert mail platform-wide." },
+  { key: "email_notifications_enabled", group: "email", label: "Send email", description: "Master switch for all outgoing email.", effect: "Off stops automatic and broadcast mail. Verification codes and password resets still go — a user must always be able to get in." },
   { key: "email_daily_cap", group: "email", label: "Broadcast emails", unit: "per day", description: "How many broadcast emails may leave the platform in one calendar day. Gmail SMTP allows 500, SendGrid's free tier 100, Amazon SES 200 in sandbox and 50,000 in production — set this to your provider's figure. Exceeding it gets the sending domain throttled, which takes password resets with it.", effect: "0 = no limit." },
   { key: "email_per_minute", group: "email", label: "Broadcast emails", unit: "per minute", description: "Throughput cap, so a large send is paced instead of arriving as a burst a provider reads as spam. 60 is safe almost everywhere.", effect: "0 = no limit." },
 
@@ -333,6 +333,7 @@ export interface SettingsLinkCard {
 export type SettingsWidget =
   | "email-test"
   | "email-deliverability"
+  | "email-categories"
   | "link-safety-test";
 
 export interface SettingsSection {
@@ -585,6 +586,13 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
             why: "Compose and schedule notification + email broadcasts. They obey the daily and per-minute caps above.",
           },
         ],
+      },
+      {
+        id: "which-emails",
+        title: "Which emails are sent",
+        blurb: "One switch per automatic email. Off = no email copy (the in-app notification still appears). Account access and your own sends are always on.",
+        keys: [],
+        widgets: ["email-categories"],
       },
       {
         id: "deliverability",

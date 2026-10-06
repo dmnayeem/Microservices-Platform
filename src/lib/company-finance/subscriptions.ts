@@ -467,7 +467,7 @@ export async function runSubscriptionReminders(now: Date = new Date()): Promise<
   // A bill about to lapse is a service notice to staff, not marketing: sent
   // even with notification emails off. Best effort — the in-app row is the record.
   for (const m of mails) {
-    await sendNotificationEmail(m.email, m.title, m.message, SUBSCRIPTIONS_TAB_HREF, { transactional: true })
+    await sendNotificationEmail(m.email, m.title, m.message, SUBSCRIPTIONS_TAB_HREF, { transactional: true, category: "staff_alerts" })
       .then(() => out.emails++)
       .catch(() => {});
   }

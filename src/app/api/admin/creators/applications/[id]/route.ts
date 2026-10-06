@@ -60,7 +60,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     });
 
     const meta = CREATOR_TYPES[app.type];
-    void deliverToUser({
+    void deliverToUser({ category: "account_review",
       userId: app.userId,
       title:
         action === "approve"

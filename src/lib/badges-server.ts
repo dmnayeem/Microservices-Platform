@@ -291,7 +291,7 @@ export async function runBadgeExpiry(limit = 200): Promise<{ renewed: number; en
         });
         ok = true;
         renewed++;
-        void deliverToUser({ userId: u.id, title: "Blue badge renewed", message: `Your blue badge renewed for ${usd(cfg.badgePriceUsd)}.`, link: "/badge" });
+        void deliverToUser({ category: "billing", userId: u.id, title: "Blue badge renewed", message: `Your blue badge renewed for ${usd(cfg.badgePriceUsd)}.`, link: "/badge" });
       } catch (e) {
         if (e instanceof Error && e.message === "RACE") continue;
       }
@@ -303,7 +303,7 @@ export async function runBadgeExpiry(limit = 200): Promise<{ renewed: number; en
       });
       if (r.count) {
         ended++;
-        void deliverToUser({
+        void deliverToUser({ category: "billing",
           userId: u.id,
           title: "Blue badge ended",
           message: u.blueBadgeAutoRenew

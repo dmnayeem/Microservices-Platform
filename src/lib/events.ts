@@ -414,7 +414,7 @@ export async function reviewEventProof(
       },
     });
     if (r.count === 0) return { ok: false, error: "This proof was already reviewed.", status: 409 };
-    void deliverToUser({
+    void deliverToUser({ category: "events",
       userId,
       title: "Event proof not accepted",
       message: `Your proof for "${event.title}" was not accepted${cleanNote ? `: ${cleanNote}` : "."} You can upload a new one while the event runs.`,
@@ -471,7 +471,7 @@ export async function reviewEventProof(
     throw err;
   }
   await syncUserLevelQuietly(userId);
-  void deliverToUser({
+  void deliverToUser({ category: "events",
     userId,
     title: "Event reward paid",
     message: `Your proof for "${event.title}" was approved — +${event.rewardPoints} points${event.rewardXp ? ` / +${event.rewardXp} XP` : ""}.`,
