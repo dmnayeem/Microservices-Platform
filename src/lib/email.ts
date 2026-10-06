@@ -4,6 +4,7 @@ import { getSeoSettings } from "@/lib/seo-settings";
 import { customLogo } from "@/lib/brand-icons";
 import { absoluteEmailUrl, toEmailSafeHtml } from "@/lib/email-html";
 import { renderEmail, type EmailBrand, type EmailContent } from "@/lib/email-layout";
+import { emailCategoryOn, type EmailCategoryKey } from "@/lib/email-categories";
 
 // Host, port, credentials and the From header come from `lib/mailer.ts`, which
 // reads the admin **Email settings** first and falls back to the env vars.
@@ -116,6 +117,8 @@ export async function sendPasswordResetEmail(email: string, token: string, name:
 }
 
 export async function sendWelcomeEmail(email: string, name: string) {
+  // Optional, unlike verification and reset: admin → Settings → Email.
+  if (!(await emailCategoryOn("welcome"))) return;
   const m = renderWelcomeEmail(await getEmailBrand(), name);
   await sendMail({ to: email, ...m, transactional: true });
 }
@@ -198,9 +201,18 @@ export async function sendNotificationEmail(
   email: string,
   title: string,
   message: string,
-  link?: string,
-  opts: NotificationEmailOpts = {}
+  link: string | undefined,
+  opts: NotificationEmailOpts & {
+    /**
+     * Which switch governs this email (lib/email-categories.ts). Required, so
+     * every new email has to pick one. Switchable categories are OFF unless
+     * the admin turned them on; locked ones (account access, admin sends)
+     * always go.
+     */
+    category: EmailCategoryKey;
+  }
 ) {
+  if (!(await emailCategoryOn(opts.category))) return;
   if (!(await isSmtpConfigured())) return;
   const [brand, cfg] = await Promise.all([getEmailBrand(), getMailConfig()]);
   const m = renderNotificationEmail(brand, title, message, link, opts);

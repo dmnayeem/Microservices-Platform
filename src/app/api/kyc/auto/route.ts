@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-    void deliverToUser({
+    void deliverToUser({ category: "account_review",
       userId,
       title: "KYC verified ✅",
       message: "Your identity has been verified — full withdrawal access unlocked.",

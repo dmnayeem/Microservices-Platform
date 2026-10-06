@@ -149,7 +149,7 @@ async function runSubscriptionExpiryBatch(): Promise<{
           });
         });
         renewed++;
-        void deliverToUser({
+        void deliverToUser({ category: "billing",
           userId: sub.userId,
           title: "Subscription renewed",
           message: `Your ${pkg.name} plan was auto-renewed for ${usd(price)}.`,
@@ -185,7 +185,7 @@ async function runSubscriptionExpiryBatch(): Promise<{
     });
     if (!ended) continue;
     expired++;
-    void deliverToUser({
+    void deliverToUser({ category: "billing",
       userId: sub.userId,
       title: "Subscription expired",
       message: sub.autoRenew

@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         return true;
       });
       if (credited) {
-        void deliverToUser({
+        void deliverToUser({ category: "money",
           userId: deposit.userId,
           title: "Deposit approved",
           message: `${usd(deposit.amount)} has been added to your balance.`,

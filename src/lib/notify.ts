@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { sendNotificationEmail } from "@/lib/email";
 import { NotificationType } from "@/generated/prisma/client";
 import { getSetting } from "@/lib/system-settings";
+import { emailCategoryForNotificationType, type EmailCategoryKey } from "@/lib/email-categories";
 
 /**
  * Platform-wide notification switches (admin → Settings → Notifications).
@@ -130,6 +131,11 @@ export async function deliverToUser(opts: {
   transactional?: boolean;
   /** Template id from `lib/notification-styles.ts`, for the email's band. */
   style?: string;
+  /**
+   * Which admin switch governs the email copy (lib/email-categories.ts).
+   * Off → no email; the in-app row and the push are unaffected.
+   */
+  category: EmailCategoryKey;
 }) {
   try {
     const user = await prisma.user.findUnique({
@@ -143,6 +149,7 @@ export async function deliverToUser(opts: {
       !user.email.endsWith("@deleted.local")
     ) {
       sendNotificationEmail(user.email, opts.title, opts.message, opts.link, {
+        category: opts.category,
         transactional: opts.transactional === true,
         ...(opts.style ? { style: opts.style } : {}),
       }).catch(() => {});
@@ -237,7 +244,9 @@ export async function notifyUser(opts: NotifyOptions) {
     user.email &&
     !user.email.endsWith("@deleted.local")
   ) {
-    sendNotificationEmail(user.email, title, message, link).catch(() => {});
+    sendNotificationEmail(user.email, title, message, link, {
+      category: emailCategoryForNotificationType(type),
+    }).catch(() => {});
   }
 
   if (

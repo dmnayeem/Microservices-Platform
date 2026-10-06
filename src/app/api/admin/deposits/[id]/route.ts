@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (rejected.count === 0) {
       return NextResponse.json({ error: ALREADY_REVIEWED }, { status: 409 });
     }
-    void deliverToUser({
+    void deliverToUser({ category: "money",
       userId: deposit.userId,
       title: "Deposit rejected",
       message: `Your deposit of ${usd(deposit.amount)} was not approved.${adminNote ? ` ${adminNote}` : ""}`,
@@ -176,7 +176,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     throw error;
   }
 
-  void deliverToUser({
+  void deliverToUser({ category: "money",
     userId: deposit.userId,
     title: "Deposit approved",
     message: wasCorrected

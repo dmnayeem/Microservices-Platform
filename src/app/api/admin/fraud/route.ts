@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         ? `Your appeal was approved and your account is active again.${b.note ? `\n\n${b.note}` : ""}\n\nPlease complete every task yourself — a further violation suspends the account again.`
         : `An admin reviewed your appeal and the suspension stays in place.${b.note ? `\n\nReason: ${b.note}` : ""}`,
       b.decision === "APPROVED" ? `${base}/login` : undefined,
-      { transactional: true, style: b.decision === "APPROVED" ? "SUCCESS" : "IMPORTANT" }
+      { transactional: true, style: b.decision === "APPROVED" ? "SUCCESS" : "IMPORTANT", category: "admin_manual" }
     ).catch(() => {});
   }
 

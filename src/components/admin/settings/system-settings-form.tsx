@@ -58,6 +58,7 @@ import {
 import { SettingsSearch } from "./settings-search";
 import { LinkSafetyTest } from "./link-safety-test";
 import { EmailDeliverabilityPanel } from "./email-deliverability-panel";
+import { EmailCategoriesPanel } from "./email-categories-panel";
 
 export type SettingsBag = Record<string, unknown>;
 
@@ -1449,6 +1450,7 @@ export function SystemSettingsForm({
       </div>
     ),
     "email-deliverability": () => <EmailDeliverabilityPanel />,
+    "email-categories": () => <EmailCategoriesPanel />,
     "link-safety-test": () => <LinkSafetyTest />,
   };
 

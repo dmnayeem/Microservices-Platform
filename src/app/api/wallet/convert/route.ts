@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    void deliverToUser({
+    void deliverToUser({ category: "money",
       userId: session.user.id,
       title: "Points converted to cash",
       message: `${result.pointsConverted.toLocaleString()} points became ${usd(result.cashAdded)} in your wallet — ready to withdraw.`,

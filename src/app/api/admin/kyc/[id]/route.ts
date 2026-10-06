@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         meta: { decisionNote: decisionNote ?? null },
       });
 
-      void deliverToUser({
+      void deliverToUser({ category: "account_review",
         userId: doc.userId,
         title: "KYC verified ✅",
         message: "Your identity has been verified — full withdrawal access unlocked.",
@@ -174,7 +174,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         meta: { rejectionReason, decisionNote: decisionNote ?? null },
       });
 
-      void deliverToUser({
+      void deliverToUser({ category: "account_review",
         userId: doc.userId,
         title: "KYC rejected",
         message: `Your verification was rejected. Reason: ${rejectionReason}. You can resubmit anytime.`,

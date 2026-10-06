@@ -67,7 +67,9 @@ export async function POST(request: NextRequest) {
   sendNotificationEmail(
     SUPPORT_EMAIL,
     `New contact: ${d.subject}`,
-    `From ${d.name} <${d.email}>${d.category ? ` · ${d.category}` : ""}\n\n${d.message}`
+    `From ${d.name} <${d.email}>${d.category ? ` · ${d.category}` : ""}\n\n${d.message}`,
+    undefined,
+    { category: "support_inbox" }
   ).catch(() => {});
 
   return NextResponse.json({ ok: true });
