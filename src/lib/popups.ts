@@ -9,7 +9,7 @@
  *     "has this person already seen it" is only known on their device.
  */
 
-export const POPUP_KINDS = ["NOTICE", "IMAGE", "AD"] as const;
+export const POPUP_KINDS = ["NOTICE", "IMAGE", "VIDEO", "HTML", "AD"] as const;
 export type PopupKind = (typeof POPUP_KINDS)[number];
 
 export const POPUP_PLACEMENTS = ["ALL", "APP", "SITE", "PATHS"] as const;
@@ -22,9 +22,42 @@ export const POPUP_FREQUENCIES = ["ONCE", "DAILY", "SESSION", "ALWAYS"] as const
 export type PopupFrequency = (typeof POPUP_FREQUENCIES)[number];
 
 export const POPUP_KIND_LABEL: Record<PopupKind, string> = {
-  NOTICE: "Notice",
-  IMAGE: "Image",
-  AD: "Ad",
+  NOTICE: "Notice (text + image + buttons)",
+  IMAGE: "Image (the picture is the popup)",
+  VIDEO: "Video (one or several)",
+  HTML: "HTML / ad code",
+  AD: "Ad (notice with a Sponsored label)",
+};
+
+export const POPUP_SIZES = ["SMALL", "MEDIUM", "LARGE", "FULL"] as const;
+export type PopupSize = (typeof POPUP_SIZES)[number];
+export const POPUP_SIZE_LABEL: Record<PopupSize, string> = {
+  SMALL: "Small",
+  MEDIUM: "Medium",
+  LARGE: "Large",
+  FULL: "Full screen",
+};
+
+export const POPUP_DEVICES = ["MOBILE", "TABLET", "DESKTOP"] as const;
+export type PopupDevice = (typeof POPUP_DEVICES)[number];
+export const POPUP_DEVICE_LABEL: Record<PopupDevice, string> = {
+  MOBILE: "Mobile",
+  TABLET: "Tablet",
+  DESKTOP: "Laptop / desktop",
+};
+/** The device class of a viewport width — the same breakpoints the app uses. */
+export function popupDeviceOfWidth(width: number): PopupDevice {
+  if (width < 640) return "MOBILE";
+  if (width < 1024) return "TABLET";
+  return "DESKTOP";
+}
+
+export const POPUP_PLAN_AUDIENCES = ["ANY", "FREE", "PAID"] as const;
+export type PopupPlanAudience = (typeof POPUP_PLAN_AUDIENCES)[number];
+export const POPUP_PLAN_AUDIENCE_LABEL: Record<PopupPlanAudience, string> = {
+  ANY: "Any plan",
+  FREE: "Free plan only",
+  PAID: "Paid plans only",
 };
 export const POPUP_PLACEMENT_LABEL: Record<PopupPlacement, string> = {
   ALL: "Every page",
@@ -44,6 +77,10 @@ export const POPUP_FREQUENCY_LABEL: Record<PopupFrequency, string> = {
   ALWAYS: "On every page load",
 };
 
+export type PopupVideo =
+  | { kind: "embed"; src: string }
+  | { kind: "file"; src: string; mime: string };
+
 /** What the browser receives for one popup: display fields only. */
 export interface PopupView {
   id: string;
@@ -54,6 +91,14 @@ export interface PopupView {
   imageUrl: string | null;
   ctaLabel: string | null;
   ctaUrl: string | null;
+  cta2Label: string | null;
+  cta2Url: string | null;
+  /** VIDEO: each link already resolved to what the player needs. */
+  videos: PopupVideo[];
+  /** HTML: the admin's code, rendered in a sandboxed iframe. */
+  htmlCode: string | null;
+  htmlHeight: number;
+  size: PopupSize;
   frequency: PopupFrequency;
   delaySeconds: number;
   /** Changes when the popup is edited, so an edited popup counts as new. */
@@ -67,6 +112,12 @@ export const sanitizePopupKind = (v: unknown) => pick(v, POPUP_KINDS, "NOTICE");
 export const sanitizePopupPlacement = (v: unknown) => pick(v, POPUP_PLACEMENTS, "ALL");
 export const sanitizePopupSession = (v: unknown) => pick(v, POPUP_SESSION_AUDIENCES, "ANY");
 export const sanitizePopupFrequency = (v: unknown) => pick(v, POPUP_FREQUENCIES, "ONCE");
+export const sanitizePopupSize = (v: unknown) => pick(v, POPUP_SIZES, "MEDIUM");
+export const sanitizePopupPlanAudience = (v: unknown) => pick(v, POPUP_PLAN_AUDIENCES, "ANY");
+export function sanitizePopupDevices(v: unknown): PopupDevice[] {
+  const list = Array.isArray(v) ? v : [];
+  return [...new Set(list.filter((d): d is PopupDevice => (POPUP_DEVICES as readonly string[]).includes(String(d))))];
+}
 
 /** "/wallet, /social\n/tasks" → ["/wallet", "/social", "/tasks"]. */
 export function sanitizePopupPaths(v: unknown): string[] {
