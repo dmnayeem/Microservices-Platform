@@ -76,3 +76,29 @@ export function scorePost(post: RankablePost, opts: ScoreOpts): number {
     (0.2 + random) * (1 + 0.35 * quality) * (0.6 + 0.4 * recencySoft) * follow
   );
 }
+
+/** How many of the newest posts the endless main feed shuffles through. */
+export const FEED_WINDOW = 3000;
+
+/**
+ * Score for the endless main feed — built ONLY from things that do not change
+ * while someone scrolls (post id, creation time, the session seed, follows).
+ * `scorePost` above also reads likes and lastActivityAt, which move every time
+ * someone reacts or comments; ranking each page against a moving order skipped
+ * some posts and repeated others. With a fixed order the feed is paged by a
+ * cursor and every post in the window is shown exactly once per round.
+ *
+ * Random is the main driver (a fresh seed per session / round = a new order);
+ * newer posts get a gentle lift that never buries old ones, and a followed
+ * author a small edge.
+ */
+export function streamScore(
+  post: { id: string; userId: string; createdAt: Date },
+  opts: ScoreOpts
+): number {
+  const ageHours = Math.max(0, (opts.now.getTime() - post.createdAt.getTime()) / (1000 * 60 * 60));
+  const recencySoft = 1 / (1 + ageHours / (HALF_LIFE_HOURS * 4));
+  const follow = opts.follows.has(post.userId) ? FOLLOW_MULT : 1;
+  const random = rand01(`${post.id}:${opts.seed}`);
+  return (0.2 + random) * (0.6 + 0.4 * recencySoft) * follow;
+}
