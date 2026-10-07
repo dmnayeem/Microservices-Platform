@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { recordPwaSeen } from "@/lib/pwa-install";
+import { recordPwaSeen, recordPwaUninstalled } from "@/lib/pwa-install";
 import { PWA_DISPLAY_MODES, parsePwaHost, parsePwaPlatform } from "@/lib/pwa-shared";
 
 export const runtime = "nodejs";
@@ -31,6 +31,18 @@ export async function POST(req: NextRequest) {
   const displayMode = typeof body.displayMode === "string" ? body.displayMode : "";
   const standalone = (PWA_DISPLAY_MODES as readonly string[]).includes(displayMode);
   const installedEvent = body.event === "installed";
+
+  // A browser offered "Install app" (PwaUninstallBeacon): for a user who had
+  // installed it on this platform, that means it was removed.
+  if (body.event === "install-offered" && !standalone) {
+    try {
+      const marked = await recordPwaUninstalled(userId, parsePwaPlatform(body.platform));
+      return NextResponse.json({ ok: true, uninstalled: marked });
+    } catch (err) {
+      console.error("[pwa/seen] install-offered", err);
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
+  }
 
   try {
     const r = await recordPwaSeen(userId, {

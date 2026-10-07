@@ -7,7 +7,7 @@ import { PWA_ROW_SELECT, parsePwaInstallFilters, pwaInstallWhere } from "@/lib/p
 
 export const runtime = "nodejs";
 
-/** GET — the App Installs list as CSV, same filters as the page. */
+/** GET — the PWA App list as CSV, same filters as the page. */
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   const iso = (d: Date | null) => (d ? d.toISOString() : "");
   const csv = toCsv(
-    ["User ID", "Name", "Username", "Email", "Status", "Joined", "Installed", "Platform", "First seen", "Last seen", "Days opened", "Rewarded at", "Last host"],
+    ["User ID", "Name", "Username", "Email", "Status", "Joined", "Installed", "Platform", "First seen", "Last seen", "Days opened", "Rewarded at", "Last host", "Uninstalled at"],
     rows.map((u) => [
       u.id,
       u.name ?? "",
@@ -32,14 +32,15 @@ export async function GET(req: NextRequest) {
       u.email,
       u.status,
       iso(u.createdAt),
-      u.pwaFirstSeenAt ? "yes" : "no",
+      u.pwaFirstSeenAt ? (u.pwaUninstalledAt ? "removed" : "yes") : "no",
       u.pwaPlatform ?? "",
       iso(u.pwaFirstSeenAt),
       iso(u.pwaLastSeenAt),
       u.pwaDays,
       iso(u.pwaRewardedAt),
       u.pwaHost ?? "",
+      iso(u.pwaUninstalledAt),
     ])
   );
-  return csvResponse(csv, csvFilename("app-installs"));
+  return csvResponse(csv, csvFilename("pwa-app"));
 }

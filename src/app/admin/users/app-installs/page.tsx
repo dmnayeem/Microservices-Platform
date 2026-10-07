@@ -2,13 +2,15 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Smartphone, Users, Percent, CalendarDays, Gift, Globe, Search, Download } from "lucide-react";
+import { Smartphone, Users, Percent, CalendarDays, Gift, Globe, Search, Download, UserX, Moon, UserMinus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import { parsePage } from "@/lib/paginate";
 import { getPwaRewardConfig } from "@/lib/pwa-install";
+import { utcDay } from "@/lib/active-days";
 import { PWA_PLATFORMS, PWA_PLATFORM_LABEL, type PwaPlatform } from "@/lib/pwa-shared";
 import {
+  DORMANT_DAYS,
   LEGACY_PWA_HOST,
   PWA_ROW_SELECT,
   parsePwaInstallFilters,
@@ -53,6 +55,8 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
     }),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Same cutoff as the "Not opened in 30+ days" filter (lib/pwa-admin.ts).
+  const dormantBefore = utcDay(DORMANT_DAYS - 1).getTime();
 
   const qs = (over: Record<string, string | number | undefined>) => {
     const next: Record<string, string | number | undefined> = {
@@ -70,7 +74,38 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
   const href = (over: Record<string, string | number | undefined>) => `/admin/users/app-installs?${qs(over)}`;
 
   const cards = [
-    { label: "Installed users", value: stats.total.toLocaleString(), icon: Smartphone, tone: "text-emerald-400" },
+    {
+      label: "Have the app now",
+      value: stats.installedNow.toLocaleString(),
+      sub: `${stats.total.toLocaleString()} installed it at some point`,
+      icon: Smartphone,
+      tone: "text-emerald-400",
+      href: href({ status: "installed", page: undefined }),
+    },
+    {
+      label: "Never installed",
+      value: stats.notInstalled.toLocaleString(),
+      sub: `of ${stats.everyone.toLocaleString()} users`,
+      icon: UserX,
+      tone: "text-gray-300",
+      href: href({ status: "not", page: undefined }),
+    },
+    {
+      label: "Uninstalled",
+      value: stats.uninstalled.toLocaleString(),
+      sub: "removed it after installing",
+      icon: UserMinus,
+      tone: "text-red-400",
+      href: href({ status: "uninstalled", page: undefined }),
+    },
+    {
+      label: `Not opened in ${DORMANT_DAYS}+ days`,
+      value: stats.dormant.toLocaleString(),
+      sub: "maybe removed — iPhone never reports it",
+      icon: Moon,
+      tone: "text-amber-300",
+      href: href({ status: "dormant", page: undefined }),
+    },
     {
       label: "Of active users",
       value: `${stats.activePct.toFixed(1)}%`,
@@ -111,25 +146,40 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-          <Smartphone className="h-6 w-6 text-emerald-400" /> App Installs
+          <Smartphone className="h-6 w-6 text-emerald-400" /> PWA App
         </h1>
         <p className="mt-1 text-sm text-gray-400">
-          Users who installed the app (opened it from the home screen, or the browser reported the install) and who
-          haven&apos;t. Days are counted in UTC. Staff are not counted.
+          Who installed the app, who never did, and who removed it. &quot;Installed&quot; = opened from the home
+          screen at least once, or the browser reported the install. &quot;Uninstalled&quot; = Chrome or Edge on the
+          same kind of device offered &quot;Install app&quot; again (they only do that when it is not installed);
+          iPhone never reports a removal, so check &quot;Not opened in {DORMANT_DAYS}+ days&quot; too. Days are in
+          UTC. Staff are not counted.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <c.icon className={`h-4 w-4 shrink-0 ${c.tone}`} />
-              <span className="truncate">{c.label}</span>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {cards.map((c) => {
+          const body = (
+            <>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <c.icon className={`h-4 w-4 shrink-0 ${c.tone}`} />
+                <span className="truncate">{c.label}</span>
+              </div>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-white">{c.value}</p>
+              {c.sub && <p className="text-xs text-gray-500">{c.sub}</p>}
+            </>
+          );
+          const cls = "block rounded-xl border border-gray-800 bg-gray-900 p-4";
+          return "href" in c && c.href ? (
+            <Link key={c.label} href={c.href} className={`${cls} transition-colors hover:border-gray-600`}>
+              {body}
+            </Link>
+          ) : (
+            <div key={c.label} className={cls}>
+              {body}
             </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums text-white">{c.value}</p>
-            {c.sub && <p className="text-xs text-gray-500">{c.sub}</p>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
@@ -161,8 +211,10 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
         <div className="flex flex-wrap items-center gap-2">
           {(
             [
-              ["installed", "Installed"],
-              ["not", "Not installed"],
+              ["installed", "Have the app"],
+              ["dormant", `Not opened ${DORMANT_DAYS}+ days`],
+              ["uninstalled", "Uninstalled"],
+              ["not", "Never installed"],
               ["all", "Everyone"],
             ] as const
           ).map(([k, label]) => (
@@ -197,7 +249,7 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
             </label>
           )}
           <label className="space-y-1 text-xs text-gray-500">
-            {f.status === "installed" ? "Installed from" : "Joined from"}
+            {f.status === "not" || f.status === "all" ? "Joined from" : "Installed from"}
             <input
               type="date"
               name="from"
@@ -232,7 +284,15 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
       <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
         <div className="border-b border-gray-800 px-4 py-3 text-sm text-white">
           <span className="font-semibold tabular-nums">{total.toLocaleString()}</span>{" "}
-          {f.status === "installed" ? "installed users" : f.status === "not" ? "users without the app" : "users"}
+          {
+            {
+              installed: "users who have the app",
+              dormant: `users who haven't opened the app in ${DORMANT_DAYS}+ days`,
+              uninstalled: "users who removed the app",
+              not: "users who never installed the app",
+              all: "users",
+            }[f.status]
+          }
         </div>
         {rows.length === 0 ? (
           <p className="px-4 py-16 text-center text-sm text-gray-500">
@@ -244,6 +304,7 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
               <thead>
                 <tr className="border-b border-gray-800 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   <th className="px-4 py-3">User</th>
+                  <th className="px-3 py-3">App</th>
                   <th className="px-3 py-3">Platform</th>
                   <th className="px-3 py-3">First seen</th>
                   <th className="px-3 py-3">Last seen</th>
@@ -260,6 +321,23 @@ export default async function AppInstallsPage({ searchParams }: PageProps) {
                         <span className="font-medium text-white group-hover:underline">{u.name || u.username || "—"}</span>
                         <span className="block max-w-[14rem] truncate text-xs text-gray-500">{u.email}</span>
                       </Link>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      {!u.pwaFirstSeenAt ? (
+                        <span className="text-xs text-gray-500">Never installed</span>
+                      ) : u.pwaUninstalledAt ? (
+                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-400">
+                          Removed {fmt(u.pwaUninstalledAt)}
+                        </span>
+                      ) : !u.pwaLastSeenAt || u.pwaLastSeenAt.getTime() < dormantBefore ? (
+                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                          Not opened {DORMANT_DAYS}+ days
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-400">
+                          Has the app
+                        </span>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-gray-300">
                       {u.pwaPlatform ? PWA_PLATFORM_LABEL[u.pwaPlatform as PwaPlatform] ?? u.pwaPlatform : "—"}

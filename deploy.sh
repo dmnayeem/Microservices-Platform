@@ -110,6 +110,21 @@ else
   fi
 fi
 
+# ---- 3c. keep the previous build's static files reachable -----------------
+# Next serves /_next/static only from the build it runs. A page opened before
+# this deploy still asks for the OLD build's CSS / JS chunks; without them it
+# rendered as bare HTML or failed with "Something went wrong". Hashed file
+# names never collide, so the previous build's recent files (3 days) are copied
+# in next to the new ones. -p keeps their dates, so they age out instead of
+# being carried forward forever. Never fails the deploy.
+if [[ $MODE == build && -n "$CURRENT" && "$CURRENT" != "$TARGET" && -d "$CURRENT/static" ]]; then
+  ROOT=$(pwd)
+  carried=$( (cd "$CURRENT/static" && find . -type f -mtime -3 -print0 \
+              | xargs -0 -r cp -n -p --parents -t "$ROOT/$TARGET/static/" 2>/dev/null; \
+             find . -type f -mtime -3 | wc -l) || echo 0)
+  log "Kept the previous build's static files reachable (${carried} files from $CURRENT)"
+fi
+
 # ---- 4. switch ------------------------------------------------------------
 log "Switching app -> $TARGET"
 set_dist "$TARGET"

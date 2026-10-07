@@ -12,8 +12,21 @@ import type { Prisma } from "@/generated/prisma/client";
 
 export const LEGACY_PWA_HOST = "www.revtype.com";
 
+/**
+ * installed   — has the app now (seen installed, no uninstall signal since)
+ * dormant     — has it, but hasn't opened it in 30+ days (on iOS the only
+ *               sign of a removal: Safari never says)
+ * uninstalled — removed it (a browser on the same platform offered "Install
+ *               app" again; cleared if they open it installed later)
+ * not         — never installed
+ * all         — everyone
+ */
+export const PWA_STATUSES = ["installed", "dormant", "uninstalled", "not", "all"] as const;
+export type PwaStatus = (typeof PWA_STATUSES)[number];
+export const DORMANT_DAYS = 30;
+
 export interface PwaInstallFilters {
-  status: "installed" | "not" | "all";
+  status: PwaStatus;
   platform: PwaPlatform | "";
   /** YYYY-MM-DD, inclusive. Install date for installed users, join date otherwise. */
   from: string;
@@ -24,7 +37,7 @@ export interface PwaInstallFilters {
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function parsePwaInstallFilters(p: Record<string, string | undefined>): PwaInstallFilters {
-  const status = p.status === "not" || p.status === "all" ? p.status : "installed";
+  const status = (PWA_STATUSES as readonly string[]).includes(p.status ?? "") ? (p.status as PwaStatus) : "installed";
   const platform = (PWA_PLATFORMS as string[]).includes(p.platform ?? "") ? (p.platform as PwaPlatform) : "";
   return {
     status,
@@ -46,8 +59,14 @@ export function pwaInstallWhere(f: PwaInstallFilters): Prisma.UserWhereInput {
   const hasRange = !!(f.from || f.to);
   const and: Prisma.UserWhereInput[] = [NON_STAFF_WHERE as Prisma.UserWhereInput];
 
-  if (f.status === "installed") {
+  const dormantBefore = utcDay(DORMANT_DAYS - 1);
+  if (f.status === "installed" || f.status === "dormant" || f.status === "uninstalled") {
     and.push({ pwaFirstSeenAt: hasRange ? { not: null, ...range } : { not: null } });
+    if (f.status === "uninstalled") and.push({ pwaUninstalledAt: { not: null } });
+    else and.push({ pwaUninstalledAt: null });
+    if (f.status === "dormant") {
+      and.push({ OR: [{ pwaLastSeenAt: null }, { pwaLastSeenAt: { lt: dormantBefore } }] });
+    }
   } else if (f.status === "not") {
     and.push({ pwaFirstSeenAt: null });
     if (hasRange) and.push({ createdAt: range as Prisma.DateTimeFilter });
@@ -80,12 +99,14 @@ export const PWA_ROW_SELECT = {
   pwaDays: true,
   pwaRewardedAt: true,
   pwaHost: true,
+  pwaUninstalledAt: true,
 } as const;
 
 export async function pwaInstallStats() {
   const installed = { ...NON_STAFF_WHERE, pwaFirstSeenAt: { not: null } } as Prisma.UserWhereInput;
+  const dormantBefore = utcDay(DORMANT_DAYS - 1);
   const active30 = { ...NON_STAFF_WHERE, activeDays: { some: { date: { gte: utcDay(29) } } } } as Prisma.UserWhereInput;
-  const [total, last7, last30, activeUsers, activeInstalled, byPlatform, rewarded, legacyWww, paid] =
+  const [total, last7, last30, activeUsers, activeInstalled, byPlatform, rewarded, legacyWww, paid, uninstalled, dormant, everyone] =
     await Promise.all([
       prisma.user.count({ where: installed }),
       prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaFirstSeenAt: { gte: utcDay(6) } } as Prisma.UserWhereInput }),
@@ -100,6 +121,17 @@ export async function pwaInstallStats() {
         where: { reference: { startsWith: "pwa_install_" } },
         _sum: { points: true },
       }),
+      prisma.user.count({ where: { ...NON_STAFF_WHERE, pwaFirstSeenAt: { not: null }, pwaUninstalledAt: { not: null } } as Prisma.UserWhereInput }),
+      prisma.user.count({
+        where: {
+          AND: [
+            installed,
+            { pwaUninstalledAt: null },
+            { OR: [{ pwaLastSeenAt: null }, { pwaLastSeenAt: { lt: dormantBefore } }] },
+          ],
+        },
+      }),
+      prisma.user.count({ where: NON_STAFF_WHERE as Prisma.UserWhereInput }),
     ]);
   const platforms = Object.fromEntries(PWA_PLATFORMS.map((p) => [p, 0])) as Record<PwaPlatform, number>;
   for (const g of byPlatform as unknown as Array<{ pwaPlatform: string | null; _count: { _all: number } }>) {
@@ -108,6 +140,12 @@ export async function pwaInstallStats() {
   }
   return {
     total,
+    // Has it now = ever installed minus removed.
+    installedNow: total - uninstalled,
+    uninstalled,
+    dormant,
+    notInstalled: Math.max(0, everyone - total),
+    everyone,
     last7,
     last30,
     activeUsers,

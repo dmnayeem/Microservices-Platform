@@ -14,13 +14,20 @@ import { lsGet, lsSet, ssGet, ssSet } from "@/lib/safe-storage";
  * screen. The OS does this, not our code, so the only place to correct it is
  * here.
  *
- * Rule — on a fresh load in the installed app, go to /dashboard when ALL of:
- *   - it is a new app session (sessionStorage is empty — cleared when the app
- *     is closed), or the app sat in the background for more than 30 minutes;
- *   - it is not a reload (pull-to-refresh keeps you where you are);
- *   - the page is exactly the one the user was last on — the signature of the
- *     OS restoring it. A push notification or link that opens a DIFFERENT
- *     page is a real destination and is left alone.
+ * Home is the feed (/social) — the manifest's start_url, which carries
+ * `?source=pwa` so a launch from the icon is recognisable (the marker is
+ * stripped). Rules, on a fresh load in the installed app (never on a reload —
+ * pull-to-refresh keeps you where you are):
+ *   - launched from the icon (`source=pwa`) → Home;
+ *   - a new app session (sessionStorage empty — cleared when the app is
+ *     closed) or 5+ minutes in the background, landing on:
+ *       · exactly the page the user was last on — the signature of the OS
+ *         restoring it, or
+ *       · /dashboard — the start_url of installs made before Home moved to
+ *         the feed (iOS keeps the start_url it was installed with)
+ *     → Home.
+ * A push notification or link that opens a DIFFERENT page is a real
+ * destination and is left alone.
  *
  * A quick app switch (page still alive) never reloads, so it never triggers.
  */
@@ -28,8 +35,9 @@ import { lsGet, lsSet, ssGet, ssSet } from "@/lib/safe-storage";
 const LAST_PATH = "rt_pwa_last_path";
 const HIDDEN_AT = "rt_pwa_hidden_at";
 const SESSION = "rt_pwa_session";
-const HOME = "/dashboard";
-const STALE_MS = 30 * 60 * 1000;
+const HOME = "/social";
+const LEGACY_START = "/dashboard";
+const STALE_MS = 5 * 60 * 1000;
 
 function navigationType(): string {
   try {
@@ -52,19 +60,24 @@ export function PwaLaunchHome() {
     checked.current = true;
     if (!isStandaloneApp()) return;
 
-    const here = window.location.pathname + window.location.search;
+    const params = new URLSearchParams(window.location.search);
+    const fromIcon = params.get("source") === "pwa";
+    if (fromIcon) params.delete("source");
+    const path = window.location.pathname;
+    const here = path + (params.toString() ? `?${params}` : "");
     const last = lsGet(LAST_PATH);
     const freshSession = !ssGet(SESSION);
     ssSet(SESSION, "1");
     const hiddenAt = Number(lsGet(HIDDEN_AT) || 0);
     const longAway = hiddenAt > 0 && Date.now() - hiddenAt > STALE_MS;
 
-    if (
-      (freshSession || longAway) &&
-      navigationType() !== "reload" &&
-      window.location.pathname !== HOME &&
-      last === here
-    ) {
+    if (navigationType() === "reload") return;
+    if (fromIcon) {
+      // Strip the marker (and land on Home if a restore swapped the path).
+      router.replace(path === HOME ? here : HOME);
+      return;
+    }
+    if ((freshSession || longAway) && path !== HOME && (last === here || path === LEGACY_START)) {
       router.replace(HOME);
     }
   }, [router]);

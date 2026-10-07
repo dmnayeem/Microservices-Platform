@@ -83,11 +83,39 @@ export interface PwaSeenResult {
  * install the user immediately removes is still visible to the admin but pays
  * nothing.
  */
+/**
+ * The app was removed. Chrome and Edge only offer "Install app"
+ * (`beforeinstallprompt`) when it is NOT installed, so a user who had it and
+ * is offered it again in a browser on the SAME platform has uninstalled it.
+ * A different platform proves nothing (the phone may still have it), so that
+ * is ignored. Once per removal: the stamp stays until the app is opened
+ * installed again (recordPwaSeen clears it).
+ */
+export async function recordPwaUninstalled(userId: string, platform: PwaPlatform): Promise<boolean> {
+  const r = await prisma.user.updateMany({
+    where: {
+      id: userId,
+      pwaFirstSeenAt: { not: null },
+      pwaUninstalledAt: null,
+      pwaPlatform: platform,
+    },
+    data: { pwaUninstalledAt: new Date() },
+  });
+  return r.count > 0;
+}
+
 export async function recordPwaSeen(userId: string, input: PwaSeenInput): Promise<PwaSeenResult> {
   const now = new Date();
   const out: PwaSeenResult = { newDay: false, days: 0, paid: 0 };
 
   if (!input.standalone && !input.installedEvent) return out;
+
+  // Installed again (opened from the home screen, or the browser's install
+  // event): whatever earlier "uninstalled" signal there was no longer holds.
+  await prisma.user.updateMany({
+    where: { id: userId, pwaUninstalledAt: { not: null } },
+    data: { pwaUninstalledAt: null },
+  });
 
   // The browser's install event only stamps the first-seen date (rare: once).
   if (!input.standalone) {
