@@ -40,12 +40,20 @@
 		reverse_proxy app:3000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-Host {host}
+			lb_try_duration 45s
+			lb_try_interval 250ms
 		}
 	}
 
 	reverse_proxy app:3000 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
+		# While deploy.sh recreates the app container (a few seconds), hold the
+		# request and retry instead of answering 502 at once. A 502 on a page's
+		# CSS is what showed the site as bare, unstyled HTML right after a
+		# deploy, and on a JS chunk it was "Something went wrong / Try again".
+		lb_try_duration 45s
+		lb_try_interval 250ms
 	}
 
 	request_body {

@@ -132,6 +132,16 @@ const nextConfig: NextConfig = {
   // Lets a verification build run to a separate folder (NEXT_DIST_DIR=.next-verify)
   // so it never clobbers a running `next dev` server's `.next`. Unset → default.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // Version-skew protection (docs: config/deploymentId). deploy.sh builds into
+  // `.next-<sha>` and the app then serves that same folder, so the sha is an id
+  // `next build` and `next start` both see. A page opened before a deploy then
+  // does ONE full reload on its next navigation instead of requesting chunks
+  // the new build doesn't have ("Something went wrong / Try again"), and asset
+  // URLs carry `?dpl=<sha>`, so no cache can hand one build's file to another.
+  // Dev and verification builds (.next, .next-verify) get none.
+  deploymentId: /^\.next-[0-9a-f]{7,40}$/.test(process.env.NEXT_DIST_DIR ?? "")
+    ? (process.env.NEXT_DIST_DIR as string).slice(".next-".length)
+    : undefined,
   // Link unfurlers that read only the first HTML they get: they must receive
   // the metadata in <head>, not streamed later. Next's default list plus the
   // ones it lacks (Pinterest, Telegram, Viber, Snapchat, Embedly/Iframely,
