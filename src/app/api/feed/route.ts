@@ -13,12 +13,7 @@ import { isValidPostBackground } from "@/lib/post-backgrounds";
 import { fetchLinkPreview, firstUrl } from "@/lib/link-preview";
 import { isEmbeddableVideoUrl } from "@/lib/video-url";
 import { screenLinks } from "@/lib/link-safety";
-import {
-  scorePost,
-  dayKey,
-  POOL_SIZE,
-  type RankablePost,
-} from "@/lib/feed-ranking";
+import { dayKey, FEED_WINDOW, streamScore } from "@/lib/feed-ranking";
 import { getUserDayContext } from "@/lib/user-day";
 import { getAdDensity } from "@/lib/ad-density";
 import { getSetting } from "@/lib/system-settings";
@@ -75,6 +70,10 @@ export async function GET(request: NextRequest) {
     const tag = searchParams.get("tag"); // Hashtag feed (without leading '#')
     const search = searchParams.get("search"); // Free-text content search
     const seed = searchParams.get("seed"); // Per-session jitter seed (reshuffle)
+    // Endless main feed: "after this post" (score~id) and which round of the
+    // feed this is (0 = the first; later rounds skip announcements/boosts).
+    const cursor = searchParams.get("cursor");
+    const cycle = Math.max(0, Math.min(1000, parseInt(searchParams.get("cycle") || "0", 10) || 0));
     // The instant page 1 was ranked at. Later pages score against the SAME
     // instant: scoring against a fresh `now` shifts the order a little, so a
     // post could move from page 2's range into page 1's after page 1 was
@@ -154,15 +153,17 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     // Only an anchor from the last hour is honoured; anything else ranks now.
     const rankNow =
-      page > 1 &&
+      (page > 1 || !!cursor) &&
       Number.isFinite(rankedAtParam) &&
       rankedAtParam <= now.getTime() &&
-      now.getTime() - rankedAtParam < 60 * 60_000
+      now.getTime() - rankedAtParam < 24 * 60 * 60_000
         ? new Date(rankedAtParam)
         : now;
     // The main feed (no user/group/tag/search filter) is ranked by a smart
     // hot-score; filtered feeds stay chronological (intentional).
     const isMainFeed = !userId && !groupId && !tag && !search;
+    // The top of a feed: announcements, promoted posts and boosts go here.
+    const firstPage = isMainFeed ? !cursor && cycle === 0 : page === 1;
     // A promotion that has RUN OUT leaves `isPromoted` true — nothing resets it —
     // and the page-1 promoted query only takes unexpired ones. Filtering on
     // `isPromoted: false` alone therefore dropped every expired promoted post out
@@ -182,126 +183,131 @@ export async function GET(request: NextRequest) {
     // "new activity" pill (see /api/feed/pulse). Only set on the main-feed pool
     // path; null elsewhere (client only reads it on page-1 main feed).
     let latestActivityAt: Date | null = null;
+    // Main feed only: where the next page continues (null = this round is done).
+    let nextCursor: string | null = null;
 
-    if (isMainFeed && skip < POOL_SIZE) {
-      // Score a bounded pool of the freshest posts (pinned first so boosted
-      // posts are always included), then paginate by score. Bounded LIMIT keeps
-      // this fast even at very large post counts.
-      const [pool, cnt] = await Promise.all([
+    if (isMainFeed) {
+      // ── Endless random feed, paged by cursor ─────────────────────────────
+      //
+      // Every post in the window (the newest FEED_WINDOW) is put in ONE random
+      // order per session — `streamScore` reads only what doesn't change while
+      // someone scrolls — and each page continues "after" the last post shown.
+      // Ranking each page afresh by likes / last activity used to shift the
+      // order between pages, so posts were skipped (never shown until a reload)
+      // and others repeated. When a round is used up the client starts a new
+      // round with a new seed: the feed never ends.
+      const windowSelect = {
+        id: true,
+        userId: true,
+        isPinned: true,
+        createdAt: true,
+        boostedUntil: true,
+        lastActivityAt: true,
+      } as const;
+      const [windowRows, cnt] = await Promise.all([
         prisma.post.findMany({
           where: organicWhere,
-          orderBy: [{ isPinned: "desc" }, { lastActivityAt: "desc" }],
-          take: POOL_SIZE,
-          select: FEED_POST_SELECT,
-          // The pool is IDENTICAL for every viewer — ranking, the per-viewer
-          // like/vote/follow state and the jitter are all applied after this, so
-          // caching it leaks nothing. A brand-new post can appear up to 15s late,
-          // and /api/feed/pulse (ttl 10) already drives the "new posts" pill, so
-          // the user gets a signal sooner than that anyway.
-          ...(isMainFeed ? { cacheStrategy: { ttl: 15, swr: 60 } } : {}),
+          orderBy: [{ createdAt: "desc" }],
+          take: FEED_WINDOW,
+          select: windowSelect,
+          // Identical for every viewer (ranking happens after), so it is shared.
+          cacheStrategy: { ttl: 15, swr: 60 },
         }),
-        isMainFeed ? cachedMainFeedCount() : prisma.post.count({ where }),
+        cachedMainFeedCount(),
       ]);
+      const pool = [...windowRows];
 
-      // The pool above is cached, so a post the viewer made a moment ago can be
-      // missing from it — they refresh and their own post is gone. Their recent
-      // posts are read uncached and joined in, so it takes its normal place.
-      if (session?.user?.id) {
+      // The window is cached, so the viewer's own post from a moment ago can be
+      // missing — read their recent posts uncached and add them.
+      const viewer = session?.user?.id ?? null;
+      if (viewer) {
         const inPool = new Set(pool.map((p) => p.id));
         const mine = await prisma.post.findMany({
-          where: {
-            ...organicWhere,
-            userId: session.user.id,
-            createdAt: { gte: new Date(now.getTime() - 10 * 60_000) },
-          },
+          where: { ...organicWhere, userId: viewer, createdAt: { gte: new Date(now.getTime() - 10 * 60_000) } },
           orderBy: { createdAt: "desc" },
           take: 10,
-          select: FEED_POST_SELECT,
+          select: windowSelect,
         });
         for (const p of mine) if (!inPool.has(p.id)) pool.push(p);
       }
 
-      // Viewer's follow set among pool authors → light ranking boost.
+      // Everyone the viewer follows (a small ranking edge).
       let follows = new Set<string>();
-      if (session?.user?.id) {
-        const authorIds = [...new Set(pool.map((p) => p.userId))];
-        if (authorIds.length > 0) {
-          const f = await prisma.follow.findMany({
-            where: {
-              followerId: session.user.id,
-              followingId: { in: authorIds },
-            },
-            select: { followingId: true },
-          });
-          follows = new Set(f.map((x) => x.followingId));
-        }
-      }
-
-      // Boost recirculation: actively-boosted posts get a strong score bump so
-      // they cycle back near the top across reloads (not a static pin) — until
-      // the viewer has seen each one `boost_max_per_user` times.
-      const boostedIds = pool
-        .filter((p) => {
-          const b = (p as unknown as { boostedUntil: Date | null }).boostedUntil;
-          return b != null && b > now;
-        })
-        .map((p) => p.id);
-      const boostCap = Math.max(
-        0,
-        Number(await getSetting<number>("feed.boost_max_per_user", 20)) || 20
-      );
-      const boostSeen = new Map<string, number>();
-      if (boostedIds.length > 0 && session?.user?.id) {
-        const views = await prisma.postBoostView.findMany({
-          where: { userId: session.user.id, postId: { in: boostedIds } },
-          select: { postId: true, count: true },
+      if (viewer) {
+        const f = await prisma.follow.findMany({
+          where: { followerId: viewer },
+          select: { followingId: true },
+          take: 5000,
         });
-        views.forEach((v) => boostSeen.set(v.postId, v.count));
+        follows = new Set(f.map((x) => x.followingId));
       }
-      const boostActive = (id: string) =>
-        boostedIds.includes(id) &&
-        (boostCap === 0 || (boostSeen.get(id) ?? 0) < boostCap);
 
-      // Per-session seed reshuffles the order each refresh; fall back to the UTC
-      // day key so an un-seeded request still gets stable daily variety.
       const jitterSeed = seed || dayKey(now);
-      const scoreById = new Map(
-        pool.map((p) => [
-          p.id,
-          scorePost(p as unknown as RankablePost, { follows, now: rankNow, seed: jitterSeed }) *
-            (boostActive(p.id) ? 8 : 1),
-        ])
-      );
-      // The globally most-recent activity is always within the freshest-500 pool.
-      latestActivityAt = pool.reduce<Date | null>((max, p) => {
-        const t = p.lastActivityAt;
-        return !max || t > max ? t : max;
-      }, null);
-      const ranked = [...pool].sort((a, b) => {
-        // Boosted (pinned) posts always float to the very top.
-        if (a.isPinned !== b.isPinned) return Number(b.isPinned) - Number(a.isPinned);
-        return (scoreById.get(b.id) ?? 0) - (scoreById.get(a.id) ?? 0);
+      const scored = pool.map((p) => ({
+        row: p,
+        score: streamScore(p, { follows, now: rankNow, seed: jitterSeed }),
+      }));
+      scored.sort((a, b) => {
+        if (a.row.isPinned !== b.row.isPinned) return Number(b.row.isPinned) - Number(a.row.isPinned);
+        if (b.score !== a.score) return b.score - a.score;
+        return a.row.id < b.row.id ? -1 : a.row.id > b.row.id ? 1 : 0;
       });
-      posts = ranked.slice(skip, skip + limit);
-      total = cnt;
+      latestActivityAt = pool.reduce<Date | null>((max, p) => (!max || p.lastActivityAt > max ? p.lastActivityAt : max), null);
 
-      // Count a boosted-post impression once per page-1 surfacing (best-effort,
-      // non-blocking) so the per-user frequency cap advances.
-      if (skip === 0 && session?.user?.id) {
-        const uid = session.user.id;
-        const shownBoosted = posts.filter((p) => boostActive(p.id)).map((p) => p.id);
-        for (const pid of shownBoosted) {
-          void prisma.postBoostView
-            .upsert({
-              where: { userId_postId: { userId: uid, postId: pid } },
-              create: { userId: uid, postId: pid, count: 1 },
-              update: { count: { increment: 1 }, lastShownAt: new Date() },
-            })
-            .catch(() => {});
+      // Where this page starts: right after the cursor post. If that post has
+      // since left the window (deleted / hidden), after the first one that
+      // ranks below the cursor's score.
+      let start = 0;
+      if (cursor) {
+        const sep = cursor.lastIndexOf("~");
+        const cScore = Number(cursor.slice(0, sep));
+        const cId = cursor.slice(sep + 1);
+        const at = scored.findIndex((s) => s.row.id === cId);
+        if (at >= 0) start = at + 1;
+        else if (Number.isFinite(cScore)) {
+          const next = scored.findIndex((s) => !s.row.isPinned && (s.score < cScore || (s.score === cScore && s.row.id > cId)));
+          start = next >= 0 ? next : scored.length;
         }
       }
+      const slice = scored.slice(start, start + limit);
+      const last = slice[slice.length - 1];
+      nextCursor = last && start + limit < scored.length ? `${last.score.toFixed(12)}~${last.row.id}` : null;
+
+      // Boosted posts recirculate on the first page of each visit — until the
+      // viewer has seen each one `boost_max_per_user` times.
+      let boostedFirst: string[] = [];
+      if (firstPage && viewer) {
+        const boostedIds = pool.filter((p) => p.boostedUntil != null && p.boostedUntil > now).map((p) => p.id);
+        if (boostedIds.length > 0) {
+          const boostCap = Math.max(0, Number(await getSetting<number>("feed.boost_max_per_user", 20)) || 20);
+          const views = await prisma.postBoostView.findMany({
+            where: { userId: viewer, postId: { in: boostedIds } },
+            select: { postId: true, count: true },
+          });
+          const seenCount = new Map(views.map((v) => [v.postId, v.count]));
+          boostedFirst = boostedIds.filter((id) => boostCap === 0 || (seenCount.get(id) ?? 0) < boostCap).slice(0, 3);
+          for (const pid of boostedFirst) {
+            void prisma.postBoostView
+              .upsert({
+                where: { userId_postId: { userId: viewer, postId: pid } },
+                create: { userId: viewer, postId: pid, count: 1 },
+                update: { count: { increment: 1 }, lastShownAt: new Date() },
+              })
+              .catch(() => {});
+          }
+        }
+      }
+
+      // Full rows for just this page, in the ranked order.
+      const pageIds = [...boostedFirst, ...slice.map((s) => s.row.id).filter((id) => !boostedFirst.includes(id))];
+      const rows = pageIds.length
+        ? await prisma.post.findMany({ where: { ...organicWhere, id: { in: pageIds } }, select: FEED_POST_SELECT })
+        : [];
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      posts = pageIds.map((id) => byId.get(id)).filter((r): r is FeedPostRow => !!r);
+      total = cnt;
     } else {
-      // Filtered feeds, or deep-scroll past the scored pool → chronological.
+      // Filtered feeds (profile, group, hashtag, search) → chronological.
       const orderBy = isMainFeed
         ? [{ lastActivityAt: "desc" as const }]
         : [{ isPinned: "desc" as const }, { createdAt: "desc" as const }];
@@ -323,7 +329,7 @@ export async function GET(request: NextRequest) {
     type FeedPost = (typeof posts)[number];
     let announcements: FeedPost[] = [];
     let promoted: FeedPost[] = [];
-    if (page === 1 && !userId && !groupId && !tag && !search) {
+    if (firstPage && isMainFeed) {
       [announcements, promoted] = await Promise.all([
         prisma.post.findMany({
           where: { ...where, isAnnouncement: true },
@@ -486,6 +492,7 @@ export async function GET(request: NextRequest) {
       posts: formattedPosts,
       latestActivityAt,
       rankedAt: rankNow.getTime(),
+      ...(isMainFeed ? { nextCursor, exhausted: nextCursor === null } : {}),
       pagination: {
         page,
         limit,

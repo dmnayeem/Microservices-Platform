@@ -42,6 +42,9 @@ import type {
   Sort,
 } from "./social-feed-view.types";
 
+/** A post as placed in the endless feed: `_k` = "<round>:<id>". */
+type FeedItem = FeedPost & { _k?: string };
+
 export function SocialFeedView({
   user,
   initialBanners,
@@ -373,7 +376,10 @@ function FeedTab({
   underPostBanner: boolean;
   underPostInterval: number;
 }) {
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  // `_k` = "<round>:<id>". The feed is endless: when every post has been
+  // shown, a new round starts in a new random order, so a post can appear once
+  // per round and needs a key per appearance.
+  const [posts, setPosts] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -383,9 +389,16 @@ function FeedTab({
   // pull-to-refresh regenerates it for fresh variety, while staying stable
   // across pages within one session (same seed).
   const seedRef = useRef<string>(Math.random().toString(36).slice(2));
-  // When page 1 was ranked; later pages rank against the same instant so no
+  // When this round was ranked; later pages rank against the same instant so no
   // post slips between two pages.
   const rankedAtRef = useRef<number | null>(null);
+  // Endless feed: where the next page continues (null = round finished), which
+  // round this is, which posts this round already showed, and the first post
+  // of each new round (a small "you've seen everything" divider goes above it).
+  const cursorRef = useRef<string | null>(null);
+  const cycleRef = useRef(0);
+  const seenRef = useRef<Set<string>>(new Set());
+  const [roundStarts, setRoundStarts] = useState<Set<string>>(() => new Set());
   // Baseline for the live "new activity" pill — the max lastActivityAt from the
   // last full load. The pulse poll compares against this.
   const latestSeenRef = useRef<number>(0);
@@ -417,14 +430,19 @@ function FeedTab({
         `/api/feed/inline?count=10${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`
       );
       const data = await res.json();
-      if (Array.isArray(data.ads) && data.ads.length > 0) {
-        const fresh = (data.ads as FeedAd[]).filter(
-          (a) => !feedAdIdsRef.current.has(a.adId)
-        );
-        if (fresh.length > 0) {
-          fresh.forEach((a) => feedAdIdsRef.current.add(a.adId));
-          setFeedAds((prev) => [...prev, ...fresh]);
-        }
+      let fresh = Array.isArray(data.ads)
+        ? (data.ads as FeedAd[]).filter((a) => !feedAdIdsRef.current.has(a.adId))
+        : [];
+      // Every ad has been shown once: start the rotation again rather than
+      // leaving the rest of an endless feed without ads. Served afresh, so each
+      // repeat carries its own serve token and counts as its own impression.
+      if (fresh.length === 0 && feedAdIdsRef.current.size > 0) {
+        const again = await fetch(`/api/feed/inline?count=10`).then((r) => r.json()).catch(() => null);
+        fresh = Array.isArray(again?.ads) ? (again.ads as FeedAd[]) : [];
+      }
+      if (fresh.length > 0) {
+        fresh.forEach((a) => feedAdIdsRef.current.add(a.adId));
+        setFeedAds((prev) => [...prev, ...fresh]);
       }
     } catch {
       /* no ads — feed just shows posts */
@@ -444,9 +462,14 @@ function FeedTab({
       const data = await res.json();
       const items: FeedPost[] = data.posts ?? [];
       rankedAtRef.current = typeof data.rankedAt === "number" ? data.rankedAt : null;
-      setPosts(items);
+      cursorRef.current = typeof data.nextCursor === "string" ? data.nextCursor : null;
+      cycleRef.current = 0;
+      seenRef.current = new Set(items.map((p) => p.id));
+      setRoundStarts(new Set());
+      setPosts(items.map((p) => ({ ...p, _k: `0:${p.id}` })));
       setPage(1);
-      setHasMore(items.length >= PAGE_SIZE);
+      // Endless: there is always more once there is anything at all.
+      setHasMore(items.length > 0);
       // Reset the live-pill baseline to the freshest activity we just loaded.
       if (data.latestActivityAt) {
         latestSeenRef.current = new Date(data.latestActivityAt).getTime();
@@ -478,21 +501,47 @@ function FeedTab({
     setLoadingMore(true);
     const next = page + 1;
     try {
-      const res = await fetch(
-        `/api/feed?page=${next}&limit=${PAGE_SIZE}&seed=${seedRef.current}` +
-          (rankedAtRef.current ? `&rankedAt=${rankedAtRef.current}` : "")
-      );
-      const data = await res.json();
-      const items: FeedPost[] = data.posts ?? [];
-      // De-dupe against posts already shown (announcements/promoted can repeat).
-      setPosts((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...items.filter((p) => !seen.has(p.id))];
-      });
+      // Two tries: the rest of this round, or — when the round is finished —
+      // the first page of a new round in a new random order.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const newRound = cursorRef.current === null;
+        if (newRound) {
+          cycleRef.current += 1;
+          seedRef.current = Math.random().toString(36).slice(2);
+          rankedAtRef.current = null;
+          seenRef.current = new Set();
+        }
+        const cycle = cycleRef.current;
+        const res = await fetch(
+          `/api/feed?page=${next}&limit=${PAGE_SIZE}&seed=${seedRef.current}&cycle=${cycle}` +
+            (cursorRef.current ? `&cursor=${encodeURIComponent(cursorRef.current)}` : "") +
+            (rankedAtRef.current ? `&rankedAt=${rankedAtRef.current}` : "")
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items: FeedPost[] = data.posts ?? [];
+        if (typeof data.rankedAt === "number" && rankedAtRef.current === null) rankedAtRef.current = data.rankedAt;
+        cursorRef.current = typeof data.nextCursor === "string" ? data.nextCursor : null;
+        // Each post once per round (a boosted post can also sit in the ranking).
+        const fresh = items.filter((p) => !seenRef.current.has(p.id));
+        fresh.forEach((p) => seenRef.current.add(p.id));
+        if (fresh.length > 0) {
+          if (newRound) {
+            const firstKey = `${cycle}:${fresh[0].id}`;
+            setRoundStarts((prev) => new Set(prev).add(firstKey));
+          }
+          setPosts((prev) => [...prev, ...fresh.map((p) => ({ ...p, _k: `${cycle}:${p.id}` }))]);
+          break;
+        }
+        // A brand-new round with nothing in it = no posts at all: stop.
+        if (newRound) {
+          setHasMore(false);
+          break;
+        }
+      }
       setPage(next);
-      setHasMore(items.length >= PAGE_SIZE);
     } catch {
-      setHasMore(false);
+      // Network blip: keep the feed endless — the next scroll tries again.
     } finally {
       setLoadingMore(false);
     }
@@ -697,7 +746,14 @@ function FeedTab({
             const un = Math.max(1, underPostInterval);
             const showUnderPost = underPostBanner && (i + 1) % un === 0;
             return (
-              <Fragment key={post.id}>
+              <Fragment key={post._k ?? post.id}>
+                {post._k && roundStarts.has(post._k) && (
+                  <div className="flex items-center gap-3 py-2 text-[11px] font-semibold text-(--app-ink-3)">
+                    <span className="h-px flex-1 bg-(--app-line)" />
+                    You&apos;ve seen everything new — here&apos;s more
+                    <span className="h-px flex-1 bg-(--app-line)" />
+                  </div>
+                )}
                 <FeedPostCard
                   post={post}
                   currentUserId={user.id}
