@@ -183,11 +183,14 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
         </button>
       </div>
 
-      <div className="max-w-full overflow-x-auto rounded-xl border border-slate-800">
+      {/* Scrolls on both axes inside a screen-high box, so the column header
+          stays pinned while the page list scrolls (sticky needs the scrolling
+          box to be this one — overflow-x alone made it scroll with the page). */}
+      <div className="max-h-[calc(100dvh-9rem)] max-w-full overflow-auto overscroll-contain rounded-xl border border-slate-800">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-slate-900">
-              <th className="sticky left-0 z-20 bg-slate-900 text-left px-3 py-2 font-semibold text-slate-300 min-w-37.5">
+              <th className="sticky left-0 top-0 z-30 bg-slate-900 text-left px-3 py-2 font-semibold text-slate-300 min-w-37.5 shadow-[inset_0_-1px_0_rgb(30_41_59)]">
                 Page
               </th>
               {columns.map((c) => {
@@ -196,11 +199,14 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
                 return (
                   <th
                     key={`${c.bucket}:${c.key}`}
-                    className={`px-2 py-2 text-center font-semibold whitespace-nowrap ${
-                      c.bucket === "global" ? "bg-rose-500/10 text-rose-400" : "text-slate-300"
+                    className={`sticky top-0 z-20 bg-slate-900 px-2 py-2 text-center font-semibold whitespace-nowrap shadow-[inset_0_-1px_0_rgb(30_41_59)] ${
+                      c.bucket === "global" ? "text-rose-400" : "text-slate-300"
                     }`}
                   >
-                    <div className="flex flex-col items-center gap-0.5">
+                    {/* Opaque base + tint: a see-through header would show the
+                        rows scrolling underneath it. */}
+                    {c.bucket === "global" && <span aria-hidden className="pointer-events-none absolute inset-0 bg-rose-500/10" />}
+                    <div className="relative flex flex-col items-center gap-0.5">
                       {bucketHead(c.bucket) && (
                         <span className="text-[9px] uppercase tracking-wider text-slate-500">
                           {bucketHead(c.bucket)}
