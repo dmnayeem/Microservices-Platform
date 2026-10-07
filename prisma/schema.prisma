@@ -1818,6 +1818,11 @@ model User {
   pwaRewardedAt                     DateTime?
   // Host the app was last opened on in standalone (legacy www installs).
   pwaHost                           String?
+  // When a browser on the SAME platform offered "Install app" again after the
+  // user had installed it — Chrome/Edge only offer that when the app is not
+  // installed, so it means the app was removed. Cleared the next time the app
+  // is opened installed. iOS never says; see "not opened in 30 days" instead.
+  pwaUninstalledAt                  DateTime?
   isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render
@@ -2013,6 +2018,7 @@ model User {
   @@index([fraudRisk])
   // /admin/users/app-installs lists and counts installs by first-seen date.
   @@index([pwaFirstSeenAt])
+  @@index([pwaUninstalledAt])
 }
 
 model Account {

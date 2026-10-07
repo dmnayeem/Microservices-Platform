@@ -1306,7 +1306,8 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "USERS",
   },
   {
-    name: "App Installs",
+    // Installed / never installed / uninstalled / not opened in 30 days.
+    name: "PWA App",
     href: "/admin/users/app-installs",
     icon: "Smartphone",
     permissions: ["users.view"],

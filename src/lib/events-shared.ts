@@ -129,7 +129,7 @@ export const EVENT_ACTION_META: Record<
   PWA_INSTALLED: {
     label: "Install the app",
     unit: "install",
-    hint: "Counts once per user, when they open the installed app (home-screen / PWA) on enough separate days — the same rule as the install bonus (Admin -> App Installs). Use target 1. Someone who installed before the event counts the next time they open the app during it.",
+    hint: "Counts once per user, when they open the installed app (home-screen / PWA) on enough separate days — the same rule as the install bonus (Admin -> PWA App). Use target 1. Someone who installed before the event counts the next time they open the app during it.",
   },
   TEAM_ADD: {
     label: "Invite to team (old)",

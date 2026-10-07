@@ -34,7 +34,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     description: s?.["seo.org_description"] || `Complete tasks, watch videos, and earn real money with ${name}.`,
     lang: "en",
     dir: "ltr",
-    start_url: "/dashboard",
+    // Home = the feed (/social). The marker tells PwaLaunchHome this launch
+    // came from the home-screen icon, not from a restored page or a link.
+    start_url: "/social?source=pwa",
     scope: "/",
     display: "standalone",
     display_override: ["standalone", "minimal-ui"],

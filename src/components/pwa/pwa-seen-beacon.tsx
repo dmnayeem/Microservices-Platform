@@ -9,11 +9,15 @@ import { detectPwaPlatform, type PwaDisplayMode } from "@/lib/pwa-shared";
  *  - In the installed app: one POST per local day (localStorage-marked only
  *    after the server accepted it, so a failed send retries next load).
  *  - In a browser tab: the `appinstalled` event, once, when they install.
+ *  - In a browser tab: "install offered" — Chrome/Edge fire
+ *    `beforeinstallprompt` only when the app is NOT installed, so for a user
+ *    who had installed it the server records an uninstall. Once per session.
  *
  * Renders nothing, never blocks, swallows every error. The server — not this
  * file — decides what counts: distinct UTC days, once-only reward.
  */
 const DAY_KEY = "pwa_seen_day";
+const OFFER_KEY = "pwa_offer_sent";
 
 function localDay(): string {
   const d = new Date();
@@ -76,7 +80,29 @@ export function PwaSeenBeacon() {
       void send({ event: "installed" });
     };
     window.addEventListener("appinstalled", onInstalled);
-    return () => window.removeEventListener("appinstalled", onInstalled);
+
+    // Browser only: the install offer means "not installed here". The root
+    // layout's inline script keeps the early event on window.__egBip and
+    // re-announces it as "eg-bip".
+    const onOffer = () => {
+      try {
+        if (sessionStorage.getItem(OFFER_KEY)) return;
+        sessionStorage.setItem(OFFER_KEY, "1");
+      } catch {
+        return; // no storage → can't keep it to once a session; skip
+      }
+      void send({ event: "install-offered" });
+    };
+    if (!mode) {
+      if ((window as unknown as { __egBip?: unknown }).__egBip) onOffer();
+      window.addEventListener("eg-bip", onOffer);
+      window.addEventListener("beforeinstallprompt", onOffer);
+    }
+    return () => {
+      window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("eg-bip", onOffer);
+      window.removeEventListener("beforeinstallprompt", onOffer);
+    };
   }, []);
 
   return null;
