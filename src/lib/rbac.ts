@@ -1683,12 +1683,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "ADS",
   },
   {
-    // Notices / images / ads over the site, targeted like banners.
+    // Notices / images / videos / HTML over the site, targeted like banners.
+    // Under Messaging (next to Notifications and Broadcasts), where admins
+    // look for "show users a message" — it was hard to find under Ads.
     name: "Popups",
     href: "/admin/popups",
     icon: "Megaphone",
     permissions: ["banners.view"],
-    category: "ADS",
+    category: "MESSAGING",
   },
   {
     name: "Offers",

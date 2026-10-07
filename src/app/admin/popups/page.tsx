@@ -11,9 +11,17 @@ export default async function PopupsAdminPage() {
   if (!(await can(session.user.id, "banners.view"))) redirect("/admin");
 
   const canManage = await can(session.user.id, "banners.manage");
-  const popups = await prisma.sitePopup.findMany({
-    orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-  });
+  const [popups, packages] = await Promise.all([
+    prisma.sitePopup.findMany({
+      orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+    }),
+    // For the "which plans" rule.
+    prisma.package.findMany({
+      where: { isActive: true },
+      orderBy: [{ accessLevel: "asc" }, { name: "asc" }],
+      select: { id: true, name: true },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -23,10 +31,11 @@ export default async function PopupsAdminPage() {
           Popups
         </h1>
         <p className="text-slate-400 text-sm mt-1">
-          Notices, images and ads that open over the site — for the pages, people and dates you choose.
+          Notices, images, videos, HTML/ad code and offers that open over the site — on the pages, for the
+          people and on the dates you choose.
         </p>
       </div>
-      <PopupsClient initial={popups} canManage={canManage} />
+      <PopupsClient initial={popups} canManage={canManage} packages={packages} />
     </div>
   );
 }

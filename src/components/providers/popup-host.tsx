@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { X, ArrowRight } from "lucide-react";
-import { mediaSrc } from "@/lib/media-url";
-import { OFFER_RICHTEXT_CLASS } from "@/lib/offers";
-import { isPopupQuietPath, type PopupView } from "@/lib/popups";
+import { isPopupQuietPath, popupDeviceOfWidth, type PopupView } from "@/lib/popups";
+import { PopupCard } from "@/components/popups/popup-card";
 
 /**
  * Site popups from /admin/popups. The server decides who may see which popup
@@ -72,7 +69,9 @@ export function PopupHost() {
   useEffect(() => {
     if (isPopupQuietPath(pathname)) return;
     let cancelled = false;
-    fetch(`/api/popups?path=${encodeURIComponent(pathname)}`, { cache: "no-store" })
+    // The device class decides device-targeted popups (mobile / tablet / desktop).
+    const device = popupDeviceOfWidth(window.innerWidth || 1024);
+    fetch(`/api/popups?path=${encodeURIComponent(pathname)}&d=${device}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { popups?: PopupView[] } | null) => {
         if (cancelled || !d?.popups?.length) return;
@@ -104,103 +103,12 @@ export function PopupHost() {
 
   if (!current) return null;
   const p = current;
-  const close = () => setCurrent(null);
-  const external = !!p.ctaUrl && /^https?:\/\//i.test(p.ctaUrl);
-  const onCta = () => {
-    track(p.id, "click");
-    close();
-  };
-  const imageOnly = p.kind === "IMAGE" && !p.body;
-
   return (
-    <div
-      className="fixed inset-0 z-[65] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
-      onClick={close}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={p.title}
-        onClick={(e) => e.stopPropagation()}
-        className="animate-pop-in relative flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900 text-white shadow-2xl"
-      >
-        <button
-          ref={closeRef}
-          type="button"
-          onClick={close}
-          aria-label="Close"
-          className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white hover:bg-black/60"
-        >
-          <X className="h-4.5 w-4.5" />
-        </button>
-
-        {p.imageUrl &&
-          (p.ctaUrl && imageOnly ? (
-            // An image popup is one big button when it has a link.
-            <a
-              href={p.ctaUrl}
-              target={external ? "_blank" : undefined}
-              rel={external ? "noopener noreferrer sponsored" : undefined}
-              onClick={onCta}
-              className="block"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={mediaSrc(p.imageUrl)} alt={p.title} className="block max-h-[70vh] w-full object-contain bg-black" />
-            </a>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaSrc(p.imageUrl)} alt="" className="block max-h-72 w-full object-cover" />
-          ))}
-
-        {!imageOnly && (
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-5">
-            {p.kind === "AD" && (
-              <span className="mb-2 inline-block rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                Sponsored
-              </span>
-            )}
-            <h2 className="pr-8 text-lg font-extrabold leading-snug">{p.title}</h2>
-            {p.body && (
-              <div
-                className={`${OFFER_RICHTEXT_CLASS} mt-2 text-sm`}
-                // Sanitised on the server (lib/rich-html.ts) before it is sent.
-                dangerouslySetInnerHTML={{ __html: p.body }}
-              />
-            )}
-          </div>
-        )}
-
-        {p.ctaUrl && p.ctaLabel && !imageOnly && (
-          <div className="flex flex-wrap gap-2 border-t border-white/10 px-5 py-4">
-            {external ? (
-              <a
-                href={p.ctaUrl}
-                target="_blank"
-                rel="noopener noreferrer sponsored"
-                onClick={onCta}
-                className="app-accent inline-flex grow basis-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold"
-              >
-                {p.ctaLabel} <ArrowRight className="h-4 w-4" />
-              </a>
-            ) : (
-              <Link
-                href={p.ctaUrl}
-                onClick={onCta}
-                className="app-accent inline-flex grow basis-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold"
-              >
-                {p.ctaLabel} <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
-            <button
-              type="button"
-              onClick={close}
-              className="grow basis-auto whitespace-nowrap rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5"
-            >
-              Close
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+    <PopupCard
+      popup={p}
+      closeRef={closeRef}
+      onClose={() => setCurrent(null)}
+      onCta={() => track(p.id, "click")}
+    />
   );
 }

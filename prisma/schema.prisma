@@ -431,6 +431,33 @@ model SitePopup {
   /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED"
   kycAudience  String   @default("ANY")
 
+  // ── Content (2026-10-07) ─────────────────────────────────────────────────
+  /// Video links for a VIDEO popup — YouTube, Vimeo or a direct .mp4 (our
+  /// uploads included). Several = the viewer switches between them.
+  videos       String[] @default([])
+  /// Raw HTML / ad code for an HTML popup. Rendered in a sandboxed iframe
+  /// (scripts run, but with no access to the site or the viewer's session).
+  htmlCode     String?  @db.Text
+  htmlHeight   Int      @default(320)
+  /// Optional second button.
+  cta2Label    String?
+  cta2Url      String?
+  /// SMALL | MEDIUM | LARGE | FULL
+  size         String   @default("MEDIUM")
+
+  // ── More audience rules ──────────────────────────────────────────────────
+  /// ANY | FREE (default plan) | PAID (any paid plan, not expired)
+  planAudience  String   @default("ANY")
+  /// Only these plans (Package ids). Empty = no plan rule beyond planAudience.
+  packageIds    String[] @default([])
+  minLevel      Int?
+  maxLevel      Int?
+  /// Account age in days: e.g. max 7 = new users only.
+  minAccountDays Int?
+  maxAccountDays Int?
+  /// MOBILE | TABLET | DESKTOP. Empty = every device.
+  devices       String[] @default([])
+
   @@index([isActive, priority])
 }
 

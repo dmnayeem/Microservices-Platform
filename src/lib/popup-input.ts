@@ -2,11 +2,14 @@ import { z } from "zod";
 import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import { sanitizeKycAudience } from "@/lib/banner-audience";
 import {
+  sanitizePopupDevices,
   sanitizePopupFrequency,
   sanitizePopupKind,
   sanitizePopupPaths,
   sanitizePopupPlacement,
+  sanitizePopupPlanAudience,
   sanitizePopupSession,
+  sanitizePopupSize,
 } from "@/lib/popups";
 
 const urlOrPath = z
@@ -30,6 +33,21 @@ export const popupSchema = z.object({
   isActive: z.boolean().optional(),
   startsAt: z.string().datetime().optional().nullable().or(z.literal("")),
   endsAt: z.string().datetime().optional().nullable().or(z.literal("")),
+  // Content
+  videos: z.array(urlOrPath).max(10, "At most 10 videos").optional(),
+  htmlCode: z.string().max(100_000).optional().nullable(),
+  htmlHeight: z.number().int().min(80).max(1200).optional(),
+  cta2Label: z.string().max(40).optional().nullable(),
+  cta2Url: urlOrPath.optional().nullable(),
+  size: z.string().optional(),
+  // Audience
+  planAudience: z.string().optional(),
+  packageIds: z.array(z.string().max(40)).max(50).optional(),
+  minLevel: z.number().int().min(0).max(1000).optional().nullable(),
+  maxLevel: z.number().int().min(0).max(1000).optional().nullable(),
+  minAccountDays: z.number().int().min(0).max(36500).optional().nullable(),
+  maxAccountDays: z.number().int().min(0).max(36500).optional().nullable(),
+  devices: z.array(z.string()).max(3).optional(),
 });
 
 /** Validated body → the columns to write (audience included). */
@@ -53,5 +71,18 @@ export function popupData(body: Record<string, unknown>, v: z.infer<typeof popup
     endsAt: v.endsAt ? new Date(v.endsAt) : null,
     ...sanitizeTaskAudience(body),
     kycAudience: sanitizeKycAudience(body.kycAudience),
+    videos: (v.videos ?? []).map((u) => u.trim()).filter(Boolean),
+    htmlCode: v.htmlCode?.trim() ? v.htmlCode : null,
+    htmlHeight: v.htmlHeight ?? 320,
+    cta2Label: v.cta2Label?.trim() || null,
+    cta2Url: v.cta2Url || null,
+    size: sanitizePopupSize(v.size),
+    planAudience: sanitizePopupPlanAudience(v.planAudience),
+    packageIds: [...new Set((v.packageIds ?? []).filter(Boolean))],
+    minLevel: v.minLevel ?? null,
+    maxLevel: v.maxLevel ?? null,
+    minAccountDays: v.minAccountDays ?? null,
+    maxAccountDays: v.maxAccountDays ?? null,
+    devices: sanitizePopupDevices(v.devices),
   };
 }
