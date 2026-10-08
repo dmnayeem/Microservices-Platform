@@ -291,8 +291,13 @@ function ProviderModal({
     signatureTemplate?: string;
     signatureParam?: string;
   };
+  // No scheme stored yet: start from the network's own preset when there is
+  // one. The generic HMAC default is a scheme no real network signs with, so a
+  // CPX Research provider saved with it rejected every postback (401).
+  const startProvider = provider?.provider ?? KNOWN_PROVIDERS[0];
+  const preset = cfg.signatureMode ? undefined : SIGNATURE_PRESETS[startProvider];
   const [form, setForm] = useState({
-    provider: provider?.provider ?? KNOWN_PROVIDERS[0],
+    provider: startProvider,
     apiKey: provider?.apiKey ?? "",
     secretKey: provider?.secretKey ?? "",
     callbackUrl: provider?.callbackUrl ?? "",
@@ -305,10 +310,10 @@ function ProviderModal({
     kind: cfg.kind === "SURVEY" ? "SURVEY" : "OFFER",
     apiEndpoint: cfg.apiEndpoint ?? "",
     holdHours: cfg.holdHours ?? 0,
-    signatureMode: cfg.signatureMode ?? "HMAC_SHA256",
-    signatureAlgo: cfg.signatureAlgo ?? "md5",
-    signatureTemplate: cfg.signatureTemplate ?? "",
-    signatureParam: cfg.signatureParam ?? "",
+    signatureMode: cfg.signatureMode ?? preset?.mode ?? "HMAC_SHA256",
+    signatureAlgo: cfg.signatureAlgo ?? preset?.algo ?? "md5",
+    signatureTemplate: cfg.signatureTemplate ?? preset?.template ?? "",
+    signatureParam: cfg.signatureParam ?? preset?.param ?? "",
   });
 
   const applyPreset = (key: string) => {
@@ -589,10 +594,11 @@ function ProviderModal({
                 value={form.apiEndpoint}
                 onChange={(e) => setForm({ ...form, apiEndpoint: e.target.value })}
                 className={inp + " font-mono text-xs"}
-                placeholder="https://api.provider.com/v1/offers?key=...&user_id={userId}"
+                placeholder="https://api.provider.com/v1/offers?key={apiKey}&user_id={userId}"
               />
               <p className="text-[11px] text-slate-500 mt-1">
                 Used by &quot;Sync offers&quot; to pull the catalog into your offers list.
+                Write <code>{"{apiKey}"}</code> where the API Key above should go.
               </p>
             </Field>
           )}

@@ -1,5 +1,7 @@
 "use client";
 
+import { isStandaloneApp } from "@/lib/standalone";
+import { APP_HEADER, TASK_REQUIREMENTS_CODE, TASK_REQUIREMENTS_EVENT } from "@/lib/task-device-shared";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { announceBalanceChange, BALANCE_EVENT, ENGAGED_EVENT } from "@/lib/header-data";
@@ -62,6 +64,9 @@ const BALANCE_WRITES: RegExp[] = [
 // Pages whose balance is rendered on the server and needs a re-render.
 const BALANCE_PAGES = /^\/(dashboard|wallet|earn|lottery|daily-mission|missions|events)(\/|$)/;
 
+// Task start endpoints (both the generic and the article session start).
+const TASK_START = /^\/api\/(tasks|article-tasks)\/[^/]+\/start$/;
+
 let installed = false;
 
 export function BalanceSync() {
@@ -78,7 +83,36 @@ export function BalanceSync() {
     const original = window.fetch.bind(window);
     let timer: ReturnType<typeof setTimeout> | null = null;
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      // Starting a task from the installed app says so — an "app only" task
+      // checks it (lib/task-device-gate.ts). Only string/URL calls, which is
+      // how every task screen calls /start.
+      let isTaskStart = false;
+      try {
+        if (typeof input === "string" || input instanceof URL) {
+          const u = new URL(typeof input === "string" ? input : input.href, window.location.origin);
+          isTaskStart = u.origin === window.location.origin && TASK_START.test(u.pathname);
+          if (isTaskStart && isStandaloneApp()) {
+            const h = new Headers(init?.headers);
+            h.set(APP_HEADER, "1");
+            init = { ...init, headers: h };
+          }
+        }
+      } catch {
+        /* never let the watcher break a request */
+      }
       const res = await original(input, init);
+      // An app-only / notifications-on task refused the start: show what to do.
+      if (isTaskStart && res.status === 403) {
+        res
+          .clone()
+          .json()
+          .then((d: { code?: string; needs?: string[] }) => {
+            if (d?.code === TASK_REQUIREMENTS_CODE) {
+              window.dispatchEvent(new CustomEvent(TASK_REQUIREMENTS_EVENT, { detail: { needs: d.needs ?? [] } }));
+            }
+          })
+          .catch(() => {});
+      }
       try {
         const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
         if (method !== "GET" && method !== "HEAD" && res.ok) {
@@ -91,7 +125,7 @@ export function BalanceSync() {
             }
             // Starting a task is the moment to ask for notifications / install
             // (push-permission-prompt.tsx, pwa-install-prompt.tsx listen).
-            if (/^\/api\/(tasks|article-tasks)\/[^/]+\/start$/.test(url.pathname)) {
+            if (TASK_START.test(url.pathname)) {
               window.dispatchEvent(new Event(ENGAGED_EVENT));
             }
           }

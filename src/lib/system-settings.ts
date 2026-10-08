@@ -92,10 +92,12 @@ export async function getSecret(
   envName: string,
   settingKey: string
 ): Promise<string> {
-  const env = process.env[envName];
+  // Trimmed: a key pasted with a trailing space or newline is saved as typed,
+  // and a newline in an Authorization header throws before the request leaves.
+  const env = process.env[envName]?.trim();
   if (env) return env;
   const v = await getSetting<string>(settingKey, "");
-  return typeof v === "string" ? v : "";
+  return typeof v === "string" ? v.trim() : "";
 }
 
 /**

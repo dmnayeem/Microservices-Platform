@@ -29,6 +29,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const gate = await requireCpaAdmin(CPA_MANAGE);
   if (gate instanceof NextResponse) return gate;
+  // The env var wins over the stored secret, so a rotation here would show a
+  // new secret that every postback is then checked against the OLD one with.
+  if (process.env.CPA_POSTBACK_SECRET) {
+    return NextResponse.json(
+      { error: "The secret is set by the CPA_POSTBACK_SECRET environment variable. Change it there." },
+      { status: 409 }
+    );
+  }
   const secret = await rotateCpaPostbackSecret();
   await writeAudit({
     actorId: gate.userId,

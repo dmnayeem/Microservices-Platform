@@ -69,9 +69,9 @@ export const GLOBAL_COUNTRIES: Array<{ name: string; flag: string }> = [
  * "where enabled" next to this list.
  */
 export const PAYOUT_METHODS = [
-  "PayPal",
-  "Binance",
   "Bitget",
+  "Binance",
+  "PayPal",
   "bKash",
   "Nagad",
   "Rocket",

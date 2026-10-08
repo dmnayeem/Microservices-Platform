@@ -135,6 +135,10 @@ interface TaskFormProps {
     cooldownMinutes: number;
     autoApprove: boolean;
     boardId?: string | null;
+    requireApp?: boolean;
+    requirePush?: boolean;
+    /** Set once users have been told about the task (lib/task-announce.ts). */
+    announcedAt?: Date | string | null;
   };
 }
 
@@ -208,7 +212,13 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     cooldownMinutes: task?.cooldownMinutes || 0,
     autoApprove: task?.autoApprove || false,
     boardId: task?.boardId ?? defaultBoardId ?? "",
+    requireApp: task?.requireApp ?? false,
+    requirePush: task?.requirePush ?? false,
   });
+  // "Tell users about this task" — nothing ticked = nothing is sent. Hidden
+  // once the task has been announced (it is sent once per task).
+  const alreadyAnnounced = !!task?.announcedAt;
+  const [notify, setNotify] = useState({ inApp: false, push: false, email: false });
 
   // Keep `?type=` and the picked type in step with each other.
   //
@@ -580,6 +590,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         hidden: formData.hidden === true,
         questions: formData.type === "QUIZ" ? questions : null,
         boardId: formData.boardId || null,
+        ...(alreadyAnnounced ? {} : { notify }),
         // Only on create: counts the task against the template it came from.
         ...(!effectiveTaskId && usedTemplateId ? { templateId: usedTemplateId } : {}),
       };
@@ -1463,6 +1474,91 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
               Auto-approve submissions
             </label>
           </div>
+        </div>
+      </div>
+
+      {/* Who can do it + who hears about it */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Requirements</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Leave both off for a normal task anyone can do. Users who already meet a requirement see nothing extra;
+            everyone else is shown what to turn on before they can start.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="flex items-start gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/40">
+              <input
+                type="checkbox"
+                checked={formData.requireApp}
+                onChange={(e) => setFormData({ ...formData, requireApp: e.target.checked })}
+                className="mt-0.5 w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+              />
+              <span>
+                <span className="block text-sm text-white">Only in the installed app</span>
+                <span className="block text-xs text-gray-500">The user must install the app and start the task from it.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-gray-800 p-3 cursor-pointer hover:bg-gray-800/40">
+              <input
+                type="checkbox"
+                checked={formData.requirePush}
+                onChange={(e) => setFormData({ ...formData, requirePush: e.target.checked })}
+                className="mt-0.5 w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+              />
+              <span>
+                <span className="block text-sm text-white">Notifications must be on</span>
+                <span className="block text-xs text-gray-500">The user must allow notifications before starting.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold text-white">Tell users about this task</h2>
+          {alreadyAnnounced ? (
+            <p className="text-xs text-gray-500 mt-1">Users were already told about this task. It is sent once per task.</p>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500 mt-1">
+                Sent once, when the task goes live (or at its start time), to the users this task targets. Tick nothing
+                and nothing is sent. Users who turned email or push off in their settings aren&apos;t sent those.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["inApp", "In-app notification"],
+                    ["push", "Push notification"],
+                    ["email", "Email"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <label
+                    key={k}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm cursor-pointer ${
+                      notify[k] ? "border-indigo-500 bg-indigo-500/10 text-white" : "border-gray-800 text-gray-400 hover:bg-gray-800/40"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={notify[k]}
+                      onChange={(e) => setNotify({ ...notify, [k]: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-indigo-500"
+                    />
+                    {label}
+                  </label>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const all = notify.inApp && notify.push && notify.email;
+                    setNotify({ inApp: !all, push: !all, email: !all });
+                  }}
+                  className="rounded-lg border border-gray-800 px-3 py-2 text-xs text-gray-400 hover:bg-gray-800/40"
+                >
+                  {notify.inApp && notify.push && notify.email ? "Clear all" : "Select all"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -19,6 +19,7 @@ import { parsePermissionOverrides } from "@/lib/rbac";
 import { parseModuleOverrides } from "@/lib/admin-module-rules";
 import { StaffAccessManager, type StaffRow } from "@/components/admin/control-center/staff-access-manager";
 import { FeatureSwitches } from "@/components/admin/control-center/feature-switches";
+import { ImpersonationPanel } from "@/components/admin/control-center/impersonation-panel";
 import { loadFeatureSwitches, SWITCH_GROUPS } from "@/lib/control-center-switches";
 
 /**
@@ -188,6 +189,20 @@ export default async function ControlCenterPage() {
           Pick an admin to allow or block anything for them alone — on top of what their role gives.
         </p>
         <StaffAccessManager staff={rows} />
+      </section>
+
+      <section>
+        <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-300/80">
+          Login as user
+        </h2>
+        <p className="mb-3 text-xs text-slate-400">
+          Who may sign in to a user&apos;s account from their admin page, and which accounts no one may sign in to.
+        </p>
+        <ImpersonationPanel
+          staff={staff
+            .filter((u) => u.status === "ACTIVE")
+            .map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }))}
+        />
       </section>
 
       <section>

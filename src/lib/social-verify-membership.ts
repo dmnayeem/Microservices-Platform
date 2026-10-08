@@ -28,12 +28,17 @@ export async function verifyTelegramMember(
     )}&user_id=${encodeURIComponent(platformUserId)}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
     const data = (await res.json().catch(() => null)) as
-      | { ok?: boolean; result?: { status?: string } }
+      | { ok?: boolean; description?: string; result?: { status?: string } }
       | null;
     if (!data) return "unverifiable";
     if (!data.ok) {
-      // Telegram returns ok:false for "user not found" (never joined / left).
-      return "failed";
+      // Only "user not found" means the user is not in the chat. A wrong bot
+      // token (401), a bot that is not an admin of the channel ("member list is
+      // inaccessible", 403) or a wrong chat id ("chat not found") is a setup
+      // problem — it used to be reported as "not joined" on every submission.
+      return /user not found|PARTICIPANT_ID_INVALID/i.test(data.description ?? "")
+        ? "failed"
+        : "unverifiable";
     }
     const status = data.result?.status;
     const joined =

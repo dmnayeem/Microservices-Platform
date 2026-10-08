@@ -856,7 +856,10 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     brand_description:
       "Paid micro-tasks from real businesses, a marketplace for digital products and services, online courses and creator commissions.",
     payment_methods_label: "Payout methods (where enabled)",
-    payment_methods: ["PayPal", "Binance", "Bitget", "bKash", "Nagad", "Rocket"],
+    // Bitget first — the main payout method. Bangladeshi wallets (bKash,
+    // Nagad, Rocket) are off the public footer; add them back any time at
+    // Admin → Landing → Footer.
+    payment_methods: ["Bitget", "Binance", "PayPal"],
     link_groups: [
       {
         title: "Product",

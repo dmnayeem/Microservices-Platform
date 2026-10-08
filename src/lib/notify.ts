@@ -60,6 +60,28 @@ function ensureVapid(): boolean {
   return vapidReady;
 }
 
+/**
+ * Unread notifications per user — sent with every push as `badgeCount`, so
+ * the number on the installed app's icon (public/sw.js → setAppBadge) is the
+ * real count even while the app is closed, like Messenger. A user missing from
+ * the map has none. Never throws.
+ */
+async function unreadCounts(userIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (userIds.length === 0) return out;
+  try {
+    const rows = (await prisma.notification.groupBy({
+      by: ["userId"],
+      where: { userId: { in: userIds }, isRead: false },
+      _count: { _all: true },
+    })) as unknown as { userId: string; _count: { _all: number } }[];
+    for (const r of rows) out.set(r.userId, r._count._all);
+  } catch {
+    /* no count → the service worker shows a plain dot instead */
+  }
+  return out;
+}
+
 /** True when our own web push (VAPID keys) can send. */
 export function isWebPushConfigured(): boolean {
   return ensureVapid();
@@ -84,17 +106,19 @@ export async function webPushToUsers(
     if (optedIn.length === 0) return out;
     const subs = await prisma.pushSubscription.findMany({
       where: { userId: { in: optedIn.map((u) => u.id) } },
-      select: { id: true, endpoint: true, p256dh: true, auth: true },
+      select: { id: true, userId: true, endpoint: true, p256dh: true, auth: true },
     });
     out.devices = subs.length;
-    const payload = JSON.stringify({ title: msg.title, body: msg.body, url: msg.url ?? "/" });
+    const counts = await unreadCounts(optedIn.map((u) => u.id));
+    const payloadFor = (userId: string) =>
+      JSON.stringify({ title: msg.title, body: msg.body, url: msg.url ?? "/", badgeCount: counts.get(userId) || undefined });
     // A few at a time: push services rate-limit a burst from one sender.
     const PARALLEL = 20;
     for (let i = 0; i < subs.length; i += PARALLEL) {
       await Promise.all(
         subs.slice(i, i + PARALLEL).map((s) =>
           webpush
-            .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
+            .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payloadFor(s.userId))
             .then(() => {
               out.delivered++;
             })
@@ -162,6 +186,7 @@ export async function deliverToUser(opts: {
         title: opts.title,
         body: opts.message,
         url: opts.link ?? "/",
+        badgeCount: (await unreadCounts([opts.userId])).get(opts.userId) || undefined,
       });
       await Promise.all(
         subs.map((s) =>
@@ -258,7 +283,12 @@ export async function notifyUser(opts: NotifyOptions) {
     const subs = await prisma.pushSubscription
       .findMany({ where: { userId } })
       .catch(() => []);
-    const payload = JSON.stringify({ title, body: message, url: link ?? "/" });
+    const payload = JSON.stringify({
+      title,
+      body: message,
+      url: link ?? "/",
+      badgeCount: (await unreadCounts([userId])).get(userId) || undefined,
+    });
     await Promise.all(
       subs.map((s) =>
         webpush

@@ -268,6 +268,23 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     },
   },
   {
+    name: "reengage-reminders",
+    label: "Inactive-user reminders",
+    description:
+      "Reminds people who haven't visited for a few days how much in tasks is waiting for them (the real amount they can do), by notification, push and — if switched on — email. One reminder per person per cooldown, however often this runs. Settings → Notifications.",
+    intervalMs: 6 * HOUR,
+    leaseMs: 10 * MINUTE,
+    async run() {
+      const { runReengageReminders } = await import("@/lib/reengage");
+      const r = await runReengageReminders();
+      return {
+        ok: true,
+        summary: `Reminded ${r.reminded} of ${r.candidates} inactive users (${r.skippedNoTasks} had no tasks to offer).`,
+        result: r,
+      };
+    },
+  },
+  {
     name: "course-reminders",
     label: "Course reminders",
     description:

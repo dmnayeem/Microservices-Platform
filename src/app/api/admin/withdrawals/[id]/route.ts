@@ -178,6 +178,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         data: {
           status: "PROCESSING",
           processedBy: session.user.id,
+          reviewedAt: new Date(),
           transactionId: transactionId || null,
         },
       });

@@ -35,12 +35,20 @@ export async function POST(request: NextRequest) {
   }
 
   const provider = v.data.provider;
-  const key = await getSecret(
+  const envName =
     provider === "GEMINI"
       ? "GEMINI_API_KEY"
       : provider === "OPENAI"
         ? "OPENAI_API_KEY"
-        : "MAGNIFIC_API_KEY",
+        : "MAGNIFIC_API_KEY";
+  // getSecret prefers the env var. Say so, or a passing test reads as "the key
+  // I just pasted works" while that key is not the one in use.
+  const fromEnv = !!process.env[envName]?.trim();
+  const source = fromEnv
+    ? ` (tested the ${envName} environment variable, which is used instead of the key saved here)`
+    : "";
+  const key = await getSecret(
+    envName,
     provider === "GEMINI"
       ? "gemini_api_key"
       : provider === "OPENAI"
@@ -77,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (res.ok) {
-      return NextResponse.json({ ok: true, message: `${provider} key works.` });
+      return NextResponse.json({ ok: true, message: `${provider} key works.${source}` });
     }
 
     const body = await res.json().catch(() => ({}));
@@ -89,8 +97,8 @@ export async function POST(request: NextRequest) {
       {
         error:
           res.status === 401 || res.status === 403
-            ? `${provider} rejected that key${detail ? ` — ${detail}` : ""}`
-            : `${provider} answered HTTP ${res.status}${detail ? ` — ${detail}` : ""}`,
+            ? `${provider} rejected that key${detail ? ` — ${detail}` : ""}${source}`
+            : `${provider} answered HTTP ${res.status}${detail ? ` — ${detail}` : ""}${source}`,
       },
       { status: 400 }
     );

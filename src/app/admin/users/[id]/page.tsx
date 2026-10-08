@@ -54,6 +54,8 @@ import { getXpRank, levelProgress } from "@/lib/user-rank";
 import { SmartImage } from "@/components/user/primitives/smart-image";
 import { Avatar } from "@/components/user/primitives/avatar";
 import { AdminTable } from "@/components/admin/ui/admin-table";
+import { ImpersonationBlockToggle } from "@/components/admin/users/impersonation-block-toggle";
+import { impersonationActor, impersonationRefusal } from "@/lib/impersonation";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -205,6 +207,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     sharedBy.get(s.deviceId)!.push(s.user);
   }
 
+  // "Login as user": the same rule the API enforces (src/lib/impersonation.ts).
+  const impActor = await impersonationActor(session.user.id);
   const user = userData as typeof userData & {
     transactions: Array<{
       id: string;
@@ -423,8 +427,11 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           canDelete={await can(session.user.id, "users.delete") && user.role !== "SUPER_ADMIN"}
           canApprove={await can(session.user.id, "users.edit") && (user.role !== "SUPER_ADMIN" || adminRole === "SUPER_ADMIN")}
           initialAction={ban ? "ban" : del ? "delete" : undefined}
-          canImpersonate={adminRole === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN" && user.id !== session.user.id}
+          canImpersonate={!!impActor && !impersonationRefusal(impActor, user)}
         />
+        {adminRole === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN" && user.id !== session.user.id && (
+          <ImpersonationBlockToggle userId={id} initial={user.impersonationBlocked} />
+        )}
       </div>
 
       {/* Admin context banner */}

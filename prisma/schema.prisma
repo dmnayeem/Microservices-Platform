@@ -1823,6 +1823,11 @@ model User {
   // installed, so it means the app was removed. Cleared the next time the app
   // is opened installed. iOS never says; see "not opened in 30 days" instead.
   pwaUninstalledAt                  DateTime?
+  // Last "you have new tasks waiting" reminder sent to an inactive user
+  // (src/lib/reengage.ts). One per inactivity stretch, with a cooldown.
+  lastReengageAt                    DateTime?
+  // Super admin's "never log in as this account" switch (src/lib/impersonation.ts).
+  impersonationBlocked              Boolean                      @default(false)
   isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render
@@ -2275,6 +2280,12 @@ model Task {
   expiresAt           DateTime?
   cooldownMinutes     Int              @default(0)
   autoApprove         Boolean          @default(false)
+  // Device requirements (src/lib/task-device-gate.ts): only doable from the
+  // installed app / with notifications on. Off = an ordinary task.
+  requireApp          Boolean          @default(false)
+  requirePush         Boolean          @default(false)
+  // When users were told about this task (src/lib/task-announce.ts) — once only.
+  announcedAt         DateTime?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   createdById         String?
@@ -2596,6 +2607,9 @@ model Withdrawal {
   status          WithdrawalStatus @default(PENDING)
   processedBy     String?
   processedAt     DateTime?
+  /// When the manual review passed (PENDING → PROCESSING) — the user's
+  /// tracker shows "Payment processing since …" from this.
+  reviewedAt      DateTime?
   transactionId   String?
   rejectionReason String?
   // Recorded when the admin marks it paid, and shown to the user in their

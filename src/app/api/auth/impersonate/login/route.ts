@@ -52,6 +52,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Checked again here, at the moment the session is made: the account may
+    // have been protected (or promoted) in the minutes since the token was
+    // issued.
+    if (user.impersonationBlocked || user.role === "SUPER_ADMIN") {
+      await prisma.verificationToken.deleteMany({ where: { token, type: "IMPERSONATE" } });
+      return NextResponse.json(
+        { error: "Logging in as this account is not allowed." },
+        { status: 403 }
+      );
+    }
+
     // Delete the token so it can only be used once
     await prisma.verificationToken.deleteMany({
       where: {

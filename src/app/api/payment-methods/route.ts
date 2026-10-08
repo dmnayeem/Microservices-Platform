@@ -30,7 +30,11 @@ export async function GET() {
 
     return NextResponse.json({
       paymentMethods: maskedMethods,
-      availableMethods: Object.values(PaymentMethod).map((method) => ({
+      // Bitget is the main payout method: first in the list, and the one
+      // the "add a method" form starts on. The rest keep the enum's order.
+      availableMethods: [...Object.values(PaymentMethod)]
+        .sort((a, b) => Number(b === PaymentMethod.BITGET) - Number(a === PaymentMethod.BITGET))
+        .map((method) => ({
         method,
         name: getMethodName(method),
         icon: getMethodIcon(method),
