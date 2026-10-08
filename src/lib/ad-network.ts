@@ -38,7 +38,20 @@ export async function getNetworkGlobals(): Promise<NetworkGlobals> {
     getSetting<string>("ads.adsense_client", ""),
     getSetting<string>("ads.gam_network_code", ""),
   ]);
-  return { adsenseClient: s(adsenseClient), gamNetworkCode: s(gamNetworkCode) };
+  return {
+    adsenseClient: normalizeAdsenseClient(s(adsenseClient)),
+    // Pasted as "/22106938064" it became the unit path "//22106938064/unit".
+    gamNetworkCode: s(gamNetworkCode).replace(/^\/+|\/+$/g, ""),
+  };
+}
+
+/**
+ * The AdSense console shows the publisher id as "pub-1234…", but the tag and
+ * every `<ins data-ad-client>` need "ca-pub-1234…". A bare "pub-…" saved in
+ * Monetization loaded `adsbygoogle.js?client=pub-…`, which never fills.
+ */
+export function normalizeAdsenseClient(v: string): string {
+  return /^pub-\d+$/i.test(v) ? `ca-${v.toLowerCase()}` : v;
 }
 
 /**
@@ -103,7 +116,7 @@ export function resolveNetworkSlot(
     const global = safeToken(g.adsenseClient);
     const slot = safeToken(ad.adSlot);
     if (!global || !slot) return null;
-    const override = safeToken(ad.adClient);
+    const override = normalizeAdsenseClient(safeToken(ad.adClient));
     if (override && override !== global) return null;
     return { kind: "ADSENSE", client: global, slot };
   }

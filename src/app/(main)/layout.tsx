@@ -27,6 +27,7 @@ import { getAppNavConfig, DEFAULT_APP_NAV } from "@/lib/nav-config-server";
 import { isPublicCatalogPath } from "@/lib/public-catalog";
 import { GuestShell } from "@/components/public/guest-shell";
 import { guestCatalogStatus } from "@/lib/public-catalog-data";
+import { utcDay } from "@/lib/active-days";
 
 export default async function MainLayout({
   children,
@@ -85,7 +86,14 @@ export default async function MainLayout({
     prisma.user
       .findUnique({
         where: { id: session.user.id },
-        select: { avatar: true, pwaRewardedAt: true },
+        select: {
+          avatar: true,
+          pwaRewardedAt: true,
+          pwaFirstSeenAt: true,
+          pwaLastSeenAt: true,
+          pwaUninstalledAt: true,
+          pwaPlatform: true,
+        },
         cacheStrategy: { ttl: 10, swr: 30 },
       })
       .catch(() => null),
@@ -120,6 +128,18 @@ export default async function MainLayout({
   const avatar = dbUser?.avatar ?? null;
   const installRewardPoints =
     pwaReward?.enabled && !dbUser?.pwaRewardedAt && !isStaffRole(session.user.role) ? pwaReward.points : 0;
+  // The platform this user has the app installed on — so a browser visit on
+  // that same kind of device is not asked to install it again. Not counted as
+  // installed once it was removed (a browser offered install again) or hasn't
+  // been opened in 30 days (iPhone never reports a removal): then the prompt
+  // comes back.
+  const appSince = utcDay(29);
+  const installedPlatform =
+    dbUser?.pwaFirstSeenAt &&
+    !dbUser.pwaUninstalledAt &&
+    (dbUser.pwaLastSeenAt ?? dbUser.pwaFirstSeenAt) >= appSince
+      ? dbUser.pwaPlatform ?? null
+      : null;
 
   return (
     <div className="min-h-screen bg-(--app-page)">
@@ -205,7 +225,11 @@ export default async function MainLayout({
           (a visitor on the landing page has nothing to be notified about),
           and asked again at the moment it matters: starting a task. */}
       <PushPermissionPrompt enabled={ui?.notificationPopup ?? true} />
-      <PwaInstallPrompt enabled={ui?.pwaInstallPrompt ?? true} rewardPoints={installRewardPoints} />
+      <PwaInstallPrompt
+        enabled={ui?.pwaInstallPrompt ?? true}
+        rewardPoints={installRewardPoints}
+        installedPlatform={installedPlatform}
+      />
       {/* Reports opening the INSTALLED app (once a day) for install tracking
           and the install reward — src/lib/pwa-install.ts. */}
       <PwaSeenBeacon />

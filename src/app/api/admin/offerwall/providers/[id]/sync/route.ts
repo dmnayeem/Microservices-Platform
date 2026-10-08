@@ -41,7 +41,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     provider: provider.provider,
     apiKey: provider.apiKey,
     secretKey: provider.secretKey,
-    config: { apiEndpoint: cfg.apiEndpoint, apiParams: cfg.apiParams, kind: cfg.kind },
+    // The provider's "API Key" box was saved but no adapter read it; the key had
+    // to be typed into the endpoint URL. `{apiKey}` in the endpoint now takes it.
+    config: {
+      apiEndpoint: cfg.apiEndpoint.replace(/\{apiKey\}/g, encodeURIComponent(provider.apiKey ?? "")),
+      apiParams: cfg.apiParams,
+      kind: cfg.kind,
+    },
   });
 
   if (normalized.length === 0) {

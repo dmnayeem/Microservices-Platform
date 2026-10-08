@@ -163,9 +163,12 @@ export function AdminPagesEditor({ groups, roles, initial, roleReach, canManage 
         <p className="text-xs text-slate-500">Only a super admin can change this table.</p>
       )}
 
-      <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto">
+      {/* Scrolls on both axes inside a screen-high box so the role header
+          stays pinned while the page list scrolls (with only overflow-x the
+          box never scrolled vertically, so `sticky` had nothing to stick to). */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 max-h-[calc(100dvh-9rem)] overflow-auto overscroll-contain">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-slate-900">
+          <thead className="sticky top-0 z-20 bg-slate-900 shadow-[inset_0_-1px_0_rgb(30_41_59)]">
             <tr className="border-b border-slate-800">
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 min-w-[14rem]">
                 Page

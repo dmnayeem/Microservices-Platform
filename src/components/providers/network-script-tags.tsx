@@ -56,7 +56,8 @@ export function NetworkScriptTags({
           id="google-cmp"
           async
           strategy="afterInteractive"
-          src={`https://fundingchoicesmessages.google.com/i/${client}?ers=1`}
+          // Google's CMP snippet takes the bare "pub-…" id, not the tag's "ca-pub-…".
+          src={`https://fundingchoicesmessages.google.com/i/${client.replace(/^ca-/, "")}?ers=1`}
         />
       )}
 

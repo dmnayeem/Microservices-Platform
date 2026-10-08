@@ -3,6 +3,7 @@
 import { lsGet, lsSet } from "@/lib/safe-storage";
 import { ENGAGED_EVENT } from "@/lib/header-data";
 import { useEffect, useState } from "react";
+import { detectPwaPlatform } from "@/lib/pwa-shared";
 import { Download, Share, Plus, X, MoreVertical } from "lucide-react";
 
 const SNOOZE_KEY = "pwa_install_snooze";
@@ -58,19 +59,44 @@ const isAndroid = () => typeof navigator !== "undefined" && /android/i.test(navi
 export function PwaInstallPrompt({
   enabled = true,
   rewardPoints = 0,
+  installedPlatform = null,
 }: {
   enabled?: boolean;
   /** App-install bonus on offer to this user (0 = none) — see lib/pwa-install.ts. */
   rewardPoints?: number;
+  /**
+   * The platform this user already has the app on (server-side, from the
+   * install tracking), or null. A browser visit on that same platform is never
+   * asked to install it again; a removal or 30 days unopened clears it.
+   */
+  installedPlatform?: string | null;
 }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "other">("other");
 
+  // Has the app on this kind of device already (opened it installed, not
+  // removed since) — the browser tab is just a browser tab, not a non-installer.
+  const hasAppHere = (): boolean => {
+    if (!installedPlatform) return false;
+    try {
+      const n = navigator as Navigator & { userAgentData?: { platform?: string } };
+      return (
+        detectPwaPlatform(n.userAgent, {
+          uaDataPlatform: n.userAgentData?.platform ?? null,
+          maxTouchPoints: n.maxTouchPoints ?? 0,
+        }) === installedPlatform
+      );
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (!enabled) return;
     if (typeof window === "undefined") return;
     if (isStandalone()) return; // already installed
+    if (hasAppHere()) return; // installed on this device, visiting in the browser
     if ((window.location.pathname || "").startsWith("/admin")) return;
 
     const snoozed = Number(lsGet(SNOOZE_KEY) ?? 0);
@@ -102,7 +128,6 @@ export function PwaInstallPrompt({
     // manual steps after a short delay instead.
     let timer: ReturnType<typeof setTimeout> | undefined;
     const p = isIos() ? "ios" : isAndroid() ? "android" : "other";
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlatform(p);
     if (p !== "other") {
       timer = setTimeout(() => setShow(true), p === "ios" ? 8000 : 12000);
@@ -114,7 +139,8 @@ export function PwaInstallPrompt({
       window.removeEventListener("appinstalled", onInstalled);
       if (timer) clearTimeout(timer);
     };
-  }, [enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, installedPlatform]);
 
   // Starting a task: offer the app too, a little after the notification ask
   // so the two never open on top of each other.
@@ -122,7 +148,7 @@ export function PwaInstallPrompt({
     if (!enabled || typeof window === "undefined") return;
     let t: ReturnType<typeof setTimeout> | undefined;
     const onEngaged = () => {
-      if (isStandalone()) return;
+      if (isStandalone() || hasAppHere()) return;
       const snoozed = Number(lsGet(SNOOZE_KEY) ?? 0);
       if (Date.now() - snoozed < SNOOZE_MS) return;
       if (window.__egBip) setDeferred(window.__egBip);
@@ -134,7 +160,8 @@ export function PwaInstallPrompt({
       window.removeEventListener(ENGAGED_EVENT, onEngaged);
       if (t) clearTimeout(t);
     };
-  }, [enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, installedPlatform]);
 
   const snoozeAndClose = () => {
     try {
