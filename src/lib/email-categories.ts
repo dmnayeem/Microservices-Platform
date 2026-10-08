@@ -119,6 +119,13 @@ export const EMAIL_CATEGORIES = [
   { key: "notif_message", label: "Chat messages", description: "A new chat message.", group: "activity", defaultOn: false },
   { key: "notif_course", label: "Courses", description: "Enrolments, course updates, certificates.", group: "activity", defaultOn: false },
   { key: "notif_promotion", label: "Promotions", description: "Automatic promotional notices (not broadcasts you send).", group: "activity", defaultOn: false },
+  {
+    key: "reengagement",
+    label: "Inactive-user reminders",
+    description: "\"New tasks worth $X are waiting\" to people who haven't visited for a few days (Settings → Notifications).",
+    group: "activity",
+    defaultOn: false,
+  },
   { key: "notif_system", label: "Other system notices", description: "Everything else the platform notifies about.", group: "activity", defaultOn: false },
 
   // ── Staff ───────────────────────────────────────────────────────────────

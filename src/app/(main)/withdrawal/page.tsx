@@ -46,6 +46,7 @@ export default async function WithdrawalPage() {
         status: true,
         createdAt: true,
         processedAt: true,
+        reviewedAt: true,
         transactionId: true,
         paidFrom: true,
         adminNote: true,
@@ -79,6 +80,7 @@ export default async function WithdrawalPage() {
       }))}
       />
       <MyWithdrawals
+        payoutMessage={wcfg.payoutMessage}
         items={mine.map((w) => ({
           ...w,
           amount: Number(w.amount),

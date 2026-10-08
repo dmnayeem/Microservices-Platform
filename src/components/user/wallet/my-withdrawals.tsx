@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
 import { usd } from "@/lib/utils";
 import { mediaSrc } from "@/lib/media-url";
+import { WithdrawalTracker } from "@/components/user/wallet/withdrawal-tracker";
 
 export interface MyWithdrawal {
   id: string;
@@ -12,6 +13,7 @@ export interface MyWithdrawal {
   status: string;
   createdAt: Date;
   processedAt: Date | null;
+  reviewedAt: Date | null;
   transactionId: string | null;
   paidFrom: string | null;
   adminNote: string | null;
@@ -20,8 +22,8 @@ export interface MyWithdrawal {
 }
 
 const STATUS: Record<string, { label: string; tone: string; Icon: typeof Clock }> = {
-  PENDING: { label: "Waiting for review", tone: "text-amber-300 bg-amber-500/10", Icon: Clock },
-  PROCESSING: { label: "Approved — being paid", tone: "text-sky-300 bg-sky-500/10", Icon: Loader2 },
+  PENDING: { label: "In manual review", tone: "text-amber-300 bg-amber-500/10", Icon: Clock },
+  PROCESSING: { label: "Approved — payment processing", tone: "text-sky-300 bg-sky-500/10", Icon: Loader2 },
   COMPLETED: { label: "Paid", tone: "text-emerald-300 bg-emerald-500/10", Icon: CheckCircle2 },
   REJECTED: { label: "Rejected — money returned", tone: "text-red-300 bg-red-500/10", Icon: XCircle },
 };
@@ -32,7 +34,7 @@ const STATUS: Record<string, { label: string; tone: string; Icon: typeof Clock }
  * payment screenshot. There was no such list before — a user could request a
  * withdrawal and then see only a ledger line.
  */
-export function MyWithdrawals({ items }: { items: MyWithdrawal[] }) {
+export function MyWithdrawals({ items, payoutMessage }: { items: MyWithdrawal[]; payoutMessage?: string }) {
   return (
     <section id="history" className="mt-6 scroll-mt-20">
       <h2 className="mb-3 text-base font-bold text-white">My withdrawals</h2>
@@ -60,6 +62,9 @@ export function MyWithdrawals({ items }: { items: MyWithdrawal[] }) {
                   </span>
                 </div>
 
+                {/* Where it is now — every step, not just "Pending". */}
+                <WithdrawalTracker w={w} payoutMessage={payoutMessage} compact={w.status === "COMPLETED"} />
+
                 {w.status === "COMPLETED" && (
                   <dl className="mt-3 grid gap-1.5 text-sm">
                     {w.processedAt && (
@@ -68,12 +73,6 @@ export function MyWithdrawals({ items }: { items: MyWithdrawal[] }) {
                     {w.transactionId && <Row label="Payment reference" value={w.transactionId} mono />}
                     {w.paidFrom && <Row label="Sent from" value={w.paidFrom} />}
                   </dl>
-                )}
-                {w.status === "REJECTED" && w.rejectionReason && (
-                  <p className="mt-3 text-sm text-(--app-ink-2)">
-                    <span className="text-(--app-ink-3)">Reason: </span>
-                    {w.rejectionReason}
-                  </p>
                 )}
                 {w.adminNote && (w.status === "COMPLETED" || w.status === "REJECTED") && (
                   <p className="mt-2 rounded-lg bg-(--app-page) px-3 py-2 text-sm text-(--app-ink-2) whitespace-pre-wrap">

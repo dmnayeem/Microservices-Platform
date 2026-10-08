@@ -47,6 +47,7 @@ import { summarizeEarnings } from "@/lib/dashboard-earnings";
 import { EarningsOverview } from "@/components/user/dashboard/earnings-overview";
 import { KycPromptBanner } from "@/components/user/primitives/kyc-prompt-banner";
 import { PwaRewardCard } from "@/components/pwa/pwa-reward-card";
+import { OpenWithdrawalCard } from "@/components/user/wallet/open-withdrawal-card";
 import { getPwaRewardConfig, pwaRewardStatus } from "@/lib/pwa-install";
 import { getHiddenPaths } from "@/lib/page-visibility-server";
 import { isPathHidden, taskTypePage } from "@/lib/page-visibility";
@@ -246,6 +247,11 @@ export default async function DashboardPage() {
 
       {/* App install bonus — renders nothing unless the reward is on and unpaid. */}
       <PwaRewardCard status={userData ? pwaRewardStatus(pwaCfg, userData) : null} />
+
+      {/* A withdrawal on its way: where it is, step by step. */}
+      <Suspense fallback={null}>
+        <OpenWithdrawalCard userId={session.user.id} />
+      </Suspense>
 
       {/* Balance hero + stat strip */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

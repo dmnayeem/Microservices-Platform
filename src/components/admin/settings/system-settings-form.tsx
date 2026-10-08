@@ -152,6 +152,9 @@ const DEFAULTS: SettingsBag = {
   push_notifications_enabled: true,
   notify_new_task: true,
   notify_withdrawal: true,
+  "reengage.enabled": true,
+  "reengage.inactive_days": 3,
+  "reengage.cooldown_days": 4,
   notify_level_up: true,
   "celebrate.achievement_min_points": 200,
   // Integrations
@@ -1001,6 +1004,39 @@ export function SystemSettingsForm({
         onChange={(v) => set("notify_new_task", v)}
         disabled={!canEdit}
       />
+    ),
+    "reengage.enabled": () => (
+      <SwitchRow settingKey="reengage.enabled"
+        checked={values["reengage.enabled"] !== false}
+        onChange={(v) => set("reengage.enabled", v)}
+        disabled={!canEdit}
+      />
+    ),
+    "reengage.inactive_days": () => (
+      <Row settingKey="reengage.inactive_days">
+        <input
+          type="number"
+          min={1}
+          max={60}
+          value={Number(values["reengage.inactive_days"] ?? 3)}
+          onChange={(e) => set("reengage.inactive_days", Number(e.target.value))}
+          disabled={!canEdit}
+          className={numInp}
+        />
+      </Row>
+    ),
+    "reengage.cooldown_days": () => (
+      <Row settingKey="reengage.cooldown_days">
+        <input
+          type="number"
+          min={1}
+          max={60}
+          value={Number(values["reengage.cooldown_days"] ?? 4)}
+          onChange={(e) => set("reengage.cooldown_days", Number(e.target.value))}
+          disabled={!canEdit}
+          className={numInp}
+        />
+      </Row>
     ),
     notify_withdrawal: () => (
       <SwitchRow settingKey="notify_withdrawal"
