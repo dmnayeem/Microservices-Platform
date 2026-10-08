@@ -71,6 +71,7 @@ const PANELS = [
   "src/components/admin/kyc/kyc-settings-panel.tsx",
   "src/components/admin/fraud/fraud-settings-panel.tsx",
   FEED_GENERAL_PANEL,
+  "src/components/admin/bonuses/welcome-bonus-panel.tsx",
 ];
 const EDITORS = [FORM, ...PANELS];
 

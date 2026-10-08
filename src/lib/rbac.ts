@@ -1579,6 +1579,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "ENGAGEMENT",
   },
   {
+    // Every automatic bonus on one screen (lib/bonus-center.ts).
+    name: "Bonus Center",
+    href: "/admin/bonuses",
+    icon: "Gift",
+    permissions: ["settings.view"],
+    category: "ENGAGEMENT",
+  },
+  {
     name: "Levels & Achievements",
     href: "/admin/gamification",
     icon: "Trophy",

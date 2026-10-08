@@ -32,6 +32,13 @@ export const POINTS_PER_USD_MIN = 10;
 export const POINTS_PER_USD_MAX = 1_000_000;
 
 export const NUMERIC_SETTING_BOUNDS: Record<string, SettingBound> = {
+  "bonus.welcome_points": {
+    min: 0,
+    max: 100_000,
+    integer: true,
+    label: "New user welcome bonus (points)",
+    why: "Paid once to every new account — a stray extra zero would pay it to everyone.",
+  },
   "pwa.install_reward_points": {
     min: 0,
     max: 100_000,
