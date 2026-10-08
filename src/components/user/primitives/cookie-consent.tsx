@@ -1,6 +1,7 @@
 "use client";
 
-import { lsGet, lsSet } from "@/lib/safe-storage";
+import { lsGet, lsRemove, lsSet } from "@/lib/safe-storage";
+import { REGION_STORAGE_KEY, REGION_TTL_MS } from "@/lib/consent-region";
 import { useEffect, useState } from "react";
 import { Cookie, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,17 +34,84 @@ const DEFAULT_PREFS: Prefs = {
   functional: true,
 };
 
+/**
+ * Does this visitor need the banner? Only in the EU/EEA, UK and Switzerland
+ * (src/lib/consent-region.ts). Asked once and cached for a week; if the
+ * question can't be answered, a Europe/* time zone decides — when unsure,
+ * asking is the safe side.
+ */
+async function needsBanner(): Promise<boolean> {
+  try {
+    const cached = JSON.parse(lsGet(REGION_STORAGE_KEY) || "null") as { consent?: boolean; at?: number } | null;
+    if (cached && typeof cached.consent === "boolean" && Date.now() - (cached.at ?? 0) < REGION_TTL_MS) {
+      return cached.consent;
+    }
+  } catch {
+    /* unreadable — ask again */
+  }
+  let consent: boolean;
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch("/api/geo/region", { signal: ctl.signal, cache: "no-store" });
+    clearTimeout(t);
+    const d = (await r.json()) as { consent?: boolean };
+    if (typeof d.consent !== "boolean") throw new Error("bad answer");
+    consent = d.consent;
+  } catch {
+    let tz = "";
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+      /* no Intl */
+    }
+    consent = tz.startsWith("Europe/") || tz === "Atlantic/Reykjavik" || tz === "Atlantic/Canary";
+  }
+  lsSet(REGION_STORAGE_KEY, JSON.stringify({ consent, at: Date.now() }));
+  return consent;
+}
+
+/** Everything on — the automatic consent outside the banner region. */
+const AUTO_ALL_ON = { essential: true, analytics: true, marketing: true, functional: true, auto: true } as const;
+
 export function CookieConsent({ enabled = true }: { enabled?: boolean }) {
   const [show, setShow] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
 
+  // Outside the EU/EEA, UK and Switzerland there is no banner: analytics,
+  // pixels and personalised ads are on, recorded as an automatic consent that
+  // every reader (SiteTracking, ad-consent) already understands. A choice the
+  // visitor made themselves is never overwritten. Inside the region the banner
+  // asks as before — and an automatic consent from elsewhere doesn't count there.
   useEffect(() => {
-    if (!enabled) return;
     if (typeof window === "undefined") return;
-    const saved = lsGet(STORAGE_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!saved) setShow(true);
+    let cancelled = false;
+    void needsBanner().then((ask) => {
+      if (cancelled) return;
+      const raw = lsGet(STORAGE_KEY);
+      let auto = false;
+      try {
+        auto = !!raw && (JSON.parse(raw) as { auto?: boolean }).auto === true;
+      } catch {
+        /* unreadable — treat as no choice */
+      }
+      if (!ask) {
+        if (!raw) {
+          lsSet(STORAGE_KEY, JSON.stringify(AUTO_ALL_ON));
+          window.dispatchEvent(new Event("eg-consent"));
+        }
+        return;
+      }
+      if (auto) {
+        lsRemove(STORAGE_KEY);
+        window.dispatchEvent(new Event("eg-consent"));
+      }
+      if (enabled && (!raw || auto)) setShow(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [enabled]);
 
   const persist = (p: Prefs) => {

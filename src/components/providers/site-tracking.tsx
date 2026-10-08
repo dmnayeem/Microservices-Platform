@@ -18,6 +18,12 @@ import { REACT_ATTR, type CodeTag } from "@/lib/custom-code";
  *    storage, and re-checked the moment the visitor chooses.
  *  - SPA navigations fire a page view for the pixels that need it (GA4 tracks
  *    history changes itself).
+ *  - Google Consent Mode v2: the Google tag (GA4 / Google Ads) ALWAYS loads.
+ *    Before consent it runs with storage denied — no cookies, cookieless pings
+ *    Google uses to model the missing visits — and switches to full
+ *    measurement the moment the visitor accepts. Outside the EU/EEA, UK and
+ *    Switzerland the banner records consent automatically, so it is full from
+ *    the start (cookie-consent.tsx).
  */
 
 const CONSENT_KEY = "cookie_consent_v1";
@@ -35,6 +41,7 @@ function readConsent(required: boolean): Consent {
 }
 
 type Win = Window & {
+  gtag?: (...a: unknown[]) => void;
   fbq?: (...a: unknown[]) => void;
   pintrk?: (...a: unknown[]) => void;
   ttq?: { page: () => void };
@@ -52,10 +59,17 @@ export function SiteTracking(props: {
 }) {
   const pathname = usePathname() ?? "/";
   const [consent, setConsent] = useState<Consent>({ analytics: false, marketing: false });
+  // False until the stored choice has been read: the empty starting state must
+  // not be sent to Google as a "denied" update (that briefly downgraded a
+  // returning visitor the snippet had already started as granted).
+  const [synced, setSynced] = useState(false);
   const first = useRef(true);
 
   useEffect(() => {
-    const sync = () => setConsent(readConsent(props.requireConsent));
+    const sync = () => {
+      setConsent(readConsent(props.requireConsent));
+      setSynced(true);
+    };
     sync();
     window.addEventListener("eg-consent", sync);
     window.addEventListener("storage", sync);
@@ -64,6 +78,25 @@ export function SiteTracking(props: {
       window.removeEventListener("storage", sync);
     };
   }, [props.requireConsent]);
+
+  // Consent Mode v2: tell the Google tag when the visitor's choice changes.
+  // (Its starting state is read from storage by the tag's own snippet below,
+  // so a choice made before the tag loaded is not lost.)
+  const gtagId = props.ga4 || props.ads;
+  useEffect(() => {
+    if (!gtagId || !synced) return;
+    const w = window as Win;
+    try {
+      w.gtag?.("consent", "update", {
+        analytics_storage: consent.analytics ? "granted" : "denied",
+        ad_storage: consent.marketing ? "granted" : "denied",
+        ad_user_data: consent.marketing ? "granted" : "denied",
+        ad_personalization: consent.marketing ? "granted" : "denied",
+      });
+    } catch {
+      /* never break the page over a tag */
+    }
+  }, [gtagId, synced, consent.analytics, consent.marketing]);
 
   // Page views on client-side navigation (the first one is fired by the
   // snippets themselves).
@@ -85,20 +118,31 @@ export function SiteTracking(props: {
   if (isAdminPath(pathname)) return null;
   if (props.scope === "public" && !isPublicPath(pathname)) return null;
 
-  const gtagId = props.ga4 || props.ads;
   const analytics = consent.analytics;
   const marketing = consent.marketing;
 
+  // The tag's starting consent, read from storage when the snippet RUNS (not
+  // from React state, which is still the empty default on the first render).
+  // Must be the first command: Google applies 'default' before any 'config'.
+  const consentDefault =
+    `var c={};try{c=JSON.parse(localStorage.getItem('${CONSENT_KEY}')||'{}')||{};}catch(e){}` +
+    `var req=${props.requireConsent ? "true" : "false"};` +
+    `var a=!req||c.analytics===true,m=!req||c.marketing===true;` +
+    `gtag('consent','default',{analytics_storage:a?'granted':'denied',ad_storage:m?'granted':'denied',` +
+    `ad_user_data:m?'granted':'denied',ad_personalization:m?'granted':'denied',wait_for_update:1500});`;
+
   return (
     <>
-      {gtagId && (analytics || marketing) && (
+      {gtagId && (
         <>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`} strategy="afterInteractive" />
           <Script id="eg-gtag" strategy="afterInteractive">
-            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());` +
-              (props.ga4 && analytics ? `gtag('config','${props.ga4}');` : "") +
-              (props.ads && marketing ? `gtag('config','${props.ads}');` : "")}
+            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;` +
+              consentDefault +
+              `gtag('js',new Date());` +
+              (props.ga4 ? `gtag('config','${props.ga4}');` : "") +
+              (props.ads ? `gtag('config','${props.ads}');` : "")}
           </Script>
+          <Script src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`} strategy="afterInteractive" />
         </>
       )}
       {props.gtm && analytics && (

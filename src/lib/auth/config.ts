@@ -157,6 +157,7 @@ export const authConfig: NextAuthConfig = {
         "/api/contact", // contact form on the marketing site
         "/api/abuse/report", // public abuse / copyright report form (/abuse) — honeypot + per-IP limit
         "/api/popups", // site popups, shown to visitors as well (targeting is server-side)
+        "/api/geo/region", // does this visitor need the cookie banner (EU/UK/CH only)
         "/api/blog/", // blog read counter (public articles)
         "/api/health",
         "/api/cpa/postback", // CPA network S2S postback — HMAC sig / secret key
