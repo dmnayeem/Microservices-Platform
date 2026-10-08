@@ -490,8 +490,10 @@ async function selfReferralDeviceHold(userId: string): Promise<boolean> {
  * writes, so a failure between them left the balance and the ledger disagreeing.
  */
 async function awardWelcomeBonus(userId: string): Promise<void> {
-  const points = parseInt(process.env.WELCOME_BONUS_POINTS || "0", 10);
-  if (!Number.isFinite(points) || points <= 0) return;
+  // Admin → Bonus Center; falls back to the old WELCOME_BONUS_POINTS env.
+  const { getWelcomeBonusPoints } = await import("@/lib/bonus-center");
+  const points = await getWelcomeBonusPoints();
+  if (points <= 0) return;
   try {
     const pointsPerUsd = await getPointsPerUsd();
     const { creditPoints } = await import("@/lib/ledger");

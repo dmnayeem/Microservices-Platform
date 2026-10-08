@@ -155,6 +155,7 @@ const DEFAULTS: SettingsBag = {
   "reengage.enabled": true,
   "reengage.inactive_days": 3,
   "reengage.cooldown_days": 4,
+  "reengage.max_per_run": 200,
   notify_level_up: true,
   "celebrate.achievement_min_points": 200,
   // Integrations
@@ -1020,6 +1021,19 @@ export function SystemSettingsForm({
           max={60}
           value={Number(values["reengage.inactive_days"] ?? 3)}
           onChange={(e) => set("reengage.inactive_days", Number(e.target.value))}
+          disabled={!canEdit}
+          className={numInp}
+        />
+      </Row>
+    ),
+    "reengage.max_per_run": () => (
+      <Row settingKey="reengage.max_per_run">
+        <input
+          type="number"
+          min={1}
+          max={2000}
+          value={Number(values["reengage.max_per_run"] ?? 200)}
+          onChange={(e) => set("reengage.max_per_run", Number(e.target.value))}
           disabled={!canEdit}
           className={numInp}
         />

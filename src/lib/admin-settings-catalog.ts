@@ -166,6 +166,7 @@ export const WITHDRAWALS_HOME = {
 };
 export const KYC_HOME = { href: "/admin/users/kyc?tab=settings", where: "KYC → Settings" };
 export const FRAUD_HOME = { href: "/admin/fraud?tab=settings", where: "Fraud Monitor → Settings" };
+export const BONUS_HOME = { href: "/admin/bonuses", where: "Bonus Center" };
 export const FEED_HOME = { href: "/admin/settings/feed?tab=general", where: "Feed settings → General" };
 
 /**
@@ -267,6 +268,8 @@ export const SETTINGS_CATALOG: readonly SettingEntry[] = [
   { key: "notify_new_task", group: "notifications", label: "New task available", description: "Notify users when a task they are eligible for is published.", effect: "Off = no email or push; the in-app record is still kept." },
   { key: "reengage.enabled", group: "notifications", label: "Remind inactive users", description: "When someone hasn't visited for a few days, send them an in-app notification and a push saying how much in tasks is waiting for them (the real amount they can do). Email too when \"Inactive-user reminders\" is on in Settings → Email.", effect: "Off = no reminders at all." },
   { key: "reengage.inactive_days", group: "notifications", label: "Remind after", unit: "days without a visit", description: "How long someone must have been away before the first reminder.", effect: "1–60. People away more than 60 days are not reminded." },
+  { key: "reengage.max_per_run", group: "notifications", label: "Reminders per run", unit: "people", description: "The most people reminded each time the scheduler runs, so a big backlog is spread out instead of sent at once.", effect: "1–2,000." },
+  { key: "bonus.welcome_points", group: "financial", label: "New user welcome bonus", unit: "points", description: "Points every new account gets once, when it is verified or created with Google.", effect: "0 = off. Applies to accounts created from now on.", home: BONUS_HOME },
   { key: "reengage.cooldown_days", group: "notifications", label: "Remind again after", unit: "days", description: "The shortest gap between two reminders to the same person.", effect: "1–60." },
   { key: "notify_withdrawal", group: "notifications", label: "Withdrawal status updates", description: "Notify a user when their withdrawal is approved, paid or rejected.", effect: "Off = no email or push; the in-app record is still kept." },
   { key: "notify_level_up", group: "notifications", label: "Level up", description: "Notify a user when they earn enough XP to reach the next level.", effect: "Off = no email or push; the in-app record is still kept." },
@@ -486,6 +489,13 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         links: [
           WITHDRAWAL_CARD,
           {
+            label: "Bonus Center",
+            href: BONUS_HOME.href,
+            linkLabel: "Bonus Center",
+            why: "Every automatic bonus in one place — welcome bonus, daily streak, app install, referral, milestones and more — with what each paid in the last 30 days.",
+            keys: homedAt(BONUS_HOME),
+          },
+          {
             label: "Referral commission %",
             href: "/admin/referrals?tab=commission",
             linkLabel: "Referrals page",
@@ -635,7 +645,7 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
         id: "reengage",
         title: "Inactive-user reminders",
         blurb: "\"New tasks worth $X are waiting\" — sent to people who stopped coming back. The amount is what that person can really do right now; with no tasks for them, nothing is sent.",
-        keys: ["reengage.enabled", "reengage.inactive_days", "reengage.cooldown_days"],
+        keys: ["reengage.enabled", "reengage.inactive_days", "reengage.cooldown_days", "reengage.max_per_run"],
       },
       {
         id: "celebrations",
