@@ -3,8 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import crypto from "crypto";
+import { impersonationActor, impersonationRefusal } from "@/lib/impersonation";
 
-// POST /api/admin/users/[id]/impersonate - Impersonate a user (super admin only)
+// POST /api/admin/users/[id]/impersonate — "Login as user". Who may, and as
+// whom, is decided in src/lib/impersonation.ts (super admin, or an admin the
+// super admin allowed in Control Center).
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -16,39 +19,25 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Only super admin can impersonate
-    if (session.user.role !== "SUPER_ADMIN") {
+    const actor = await impersonationActor(session.user.id);
+    if (!actor) {
       return NextResponse.json(
-        { error: "Only super admin can impersonate users" },
+        { error: "You don't have access to Login as user. The super admin can allow it in Control Center." },
         { status: 403 }
       );
     }
 
     const { id } = await params;
-
-    // Check if target user exists
     const targetUser = await prisma.user.findUnique({
       where: { id },
+      select: { id: true, email: true, role: true, impersonationBlocked: true },
     });
-
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-
-    // Cannot impersonate another super admin
-    if (targetUser.role === "SUPER_ADMIN") {
-      return NextResponse.json(
-        { error: "Cannot impersonate another super admin" },
-        { status: 403 }
-      );
-    }
-
-    // Cannot impersonate yourself
-    if (targetUser.id === session.user.id) {
-      return NextResponse.json(
-        { error: "Cannot impersonate yourself" },
-        { status: 400 }
-      );
+    const refusal = impersonationRefusal(actor, targetUser);
+    if (refusal) {
+      return NextResponse.json({ error: refusal }, { status: 403 });
     }
 
     // Generate a one-time impersonation token
@@ -75,7 +64,7 @@ export async function POST(
       entityId: targetUser.id,
       targetUserId: targetUser.id,
       summary: "Signed in as this user (impersonation)",
-      meta: { targetEmail: targetUser.email },
+      meta: { targetEmail: targetUser.email, actorRole: actor.role },
     });
 
     return NextResponse.json({

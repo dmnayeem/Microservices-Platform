@@ -1826,6 +1826,8 @@ model User {
   // Last "you have new tasks waiting" reminder sent to an inactive user
   // (src/lib/reengage.ts). One per inactivity stretch, with a cooldown.
   lastReengageAt                    DateTime?
+  // Super admin's "never log in as this account" switch (src/lib/impersonation.ts).
+  impersonationBlocked              Boolean                      @default(false)
   isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render

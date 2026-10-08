@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { impersonationActor, impersonationRefusal } from "@/lib/impersonation";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -42,6 +43,7 @@ export default async function EditUserPage({
         username: true,
         phone: true,
         role: true,
+        impersonationBlocked: true,
         customRoleId: true,
         status: true,
         level: true,
@@ -101,6 +103,7 @@ export default async function EditUserPage({
   // Normalize Prisma Accelerate's stringified DateTime back to Date for the
   // UserEditForm prop shape.
   const { tutorProfile, ...userRest } = userRaw;
+  const impActor = await impersonationActor(session.user.id);
   const user = {
     ...userRest,
     cashBalance: toNum(userRaw.cashBalance),
@@ -186,11 +189,7 @@ export default async function EditUserPage({
             await can(session.user.id, "users.edit") &&
             (user.role !== "SUPER_ADMIN" || isSuperAdmin)
           }
-          canImpersonate={
-            isSuperAdmin &&
-            user.role !== "SUPER_ADMIN" &&
-            user.id !== session.user.id
-          }
+          canImpersonate={!!impActor && !impersonationRefusal(impActor, user)}
         />
         {canBalance && (
           <div className="flex flex-wrap items-center gap-2 border-l border-slate-800 pl-3">

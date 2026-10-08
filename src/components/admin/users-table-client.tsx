@@ -1,6 +1,7 @@
 "use client";
 
 import { CountryFlag } from "@/components/admin/ui/country-flag";
+import { STAFF_ROLES } from "@/lib/staff";
 import { promptDialog } from "@/lib/confirm";
 
 import { useState } from "react";
@@ -30,6 +31,9 @@ import { userDisplayId } from "@/lib/display-id";
 import { toast } from "@/lib/toast";
 import { cn, usd } from "@/lib/utils";
 
+// Staff accounts only the super admin may sign in as (src/lib/impersonation.ts).
+const STAFF_ROLE_SET = new Set<string>(STAFF_ROLES);
+
 interface UserRow {
   id: string;
   name: string | null;
@@ -39,6 +43,7 @@ interface UserRow {
   role: string;
   status: string;
   kycStatus: string;
+  impersonationBlocked?: boolean;
   package: { slug: string; name: string; badgeColor: string | null } | null;
   pointsBalance: number;
   /** Null when the viewer has no finance access. */
@@ -68,6 +73,8 @@ interface UsersTableClientProps {
     canBan: boolean;
     canDelete: boolean;
     canImpersonate: boolean;
+    /** The super admin may also sign in as staff; others only as ordinary users. */
+    impersonateAsSuper?: boolean;
   };
 }
 
@@ -400,7 +407,10 @@ export function UsersTableClient({
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          {permissions.canImpersonate && u.role !== "SUPER_ADMIN" && (
+                          {permissions.canImpersonate &&
+                            u.role !== "SUPER_ADMIN" &&
+                            !u.impersonationBlocked &&
+                            (permissions.impersonateAsSuper || !STAFF_ROLE_SET.has(u.role)) && (
                             <button
                               onClick={() => handleImpersonate(u.id)}
                               className="p-1.5 rounded hover:bg-slate-700 text-indigo-400 hover:text-indigo-300"

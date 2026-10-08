@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { CountryFlag } from "@/components/admin/ui/country-flag";
 import { countryName } from "@/lib/country";
 import { can } from "@/lib/permissions";
+import { impersonationActor } from "@/lib/impersonation";
 import { redirect } from "next/navigation";
 import { prisma, safeRead } from "@/lib/prisma";
 import { toNum } from "@/lib/money";
@@ -140,6 +141,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
         role: true,
         status: true,
         kycStatus: true,
+        impersonationBlocked: true,
         package: { select: { slug: true, name: true, badgeColor: true } },
         pointsBalance: true,
         cashBalance: true,
@@ -232,6 +234,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
 
   const isSuperAdmin = userRole === "SUPER_ADMIN";
 
+  const impActor = await impersonationActor(session.user.id);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -519,7 +522,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
           canEdit: await can(session.user.id, "users.edit"),
           canBan: await can(session.user.id, "users.ban"),
           canDelete: await can(session.user.id, "users.delete"),
-          canImpersonate: await can(session.user.id, "users.impersonate"),
+          // Granted per admin by the super admin (Control Center), not by role.
+          canImpersonate: !!impActor,
+          impersonateAsSuper: impActor?.isSuper ?? false,
         }}
       />
 

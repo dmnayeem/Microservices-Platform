@@ -1081,7 +1081,7 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
   "users.adjust_level": { label: "Adjust level", description: "Raise, lower or set a user's level." },
   "users.adjust_followers": { label: "Adjust followers", description: "Change a user's shown follower/following/post counts and run follower boosts." },
   "users.grant_badge": { label: "Grant blue badge", description: "Give or remove a user's blue badge by hand (timed or lifetime). The badge is sold in the badge shop — this gives it away free." },
-  "users.impersonate": { label: "Impersonate users", description: "Log in as a user to see the app exactly as they do." },
+  "users.impersonate": { label: "Impersonate users (not used)", description: "Has no effect. \"Login as user\" is granted to named admins by the super admin in Control Center → Login as user, and accounts can be protected there." },
 
   // ── KYC & Verification ──
   "kyc.view": { label: "View KYC", description: "See submitted ID documents and blue-badge requests." },
