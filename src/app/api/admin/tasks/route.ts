@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { announceTask, parseTaskNotify } from "@/lib/task-announce";
 import { auth } from "@/lib/auth";
 import { can, canAny } from "@/lib/permissions";
 import { taskCreatePermFor, TASK_CREATE_PERMISSIONS } from "@/lib/rbac";
@@ -251,6 +252,9 @@ export async function POST(request: NextRequest) {
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         cooldownMinutes: parseInt(cooldownMinutes?.toString() || "0"),
         autoApprove: autoApprove || false,
+        // "Installed app only" / "notifications on" (lib/task-device-gate.ts).
+        ...(typeof body.requireApp === "boolean" ? { requireApp: body.requireApp } : {}),
+        ...(typeof body.requirePush === "boolean" ? { requirePush: body.requirePush } : {}),
         boardId: boardId || null,
         createdById: session.user.id,
         // Surveys: always manual review, and once per user — enforced per user
@@ -284,6 +288,14 @@ export async function POST(request: NextRequest) {
           data: { usageCount: { increment: 1 } },
         })
         .catch(() => {});
+    }
+
+    // "Tell users about this task" — only the channels the admin ticked;
+    // none ticked sends nothing. After the response; never fails the save.
+    const notify = parseTaskNotify(body.notify);
+    if (notify) {
+      const actorId = session.user.id;
+      after(() => announceTask(task, notify, actorId));
     }
 
     return NextResponse.json({ success: true, task }, { status: 201 });

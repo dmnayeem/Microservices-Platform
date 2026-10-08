@@ -2280,6 +2280,12 @@ model Task {
   expiresAt           DateTime?
   cooldownMinutes     Int              @default(0)
   autoApprove         Boolean          @default(false)
+  // Device requirements (src/lib/task-device-gate.ts): only doable from the
+  // installed app / with notifications on. Off = an ordinary task.
+  requireApp          Boolean          @default(false)
+  requirePush         Boolean          @default(false)
+  // When users were told about this task (src/lib/task-announce.ts) — once only.
+  announcedAt         DateTime?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   createdById         String?

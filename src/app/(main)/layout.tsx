@@ -4,6 +4,7 @@ import { getUiToggles } from "@/lib/ui-toggles-server";
 import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
 import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { BalanceSync } from "@/components/providers/balance-sync";
+import { TaskRequirementsGate } from "@/components/user/tasks/task-requirements-gate";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -221,6 +222,8 @@ export default async function MainLayout({
       <CelebrationHost />
       {/* Balances update after a claim/reward without a manual refresh. */}
       <BalanceSync />
+      {/* "App only" / "notifications on" tasks — opens only when a start is refused. */}
+      <TaskRequirementsGate />
       {/* "Allow notifications" and "Install the app" — signed-in users only
           (a visitor on the landing page has nothing to be notified about),
           and asked again at the moment it matters: starting a task. */}

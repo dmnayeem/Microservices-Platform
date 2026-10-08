@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { taskDeviceGate } from "@/lib/task-device-gate";
 import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
 import { openSubmission, OpenSubmissionBlocked } from "@/lib/open-submission";
@@ -199,6 +200,10 @@ export async function POST(
         { status: 403 }
       );
     }
+
+    // Admin's per-task "installed app only" / "notifications on" switches.
+    const deviceBlocked = await taskDeviceGate(request, task, session.user.id);
+    if (deviceBlocked) return deviceBlocked;
 
     // Sequential-unlock gate (feature #7): if this task is locked behind an
     // earlier, not-yet-completed task in the user's chain, block it. No-ops when
