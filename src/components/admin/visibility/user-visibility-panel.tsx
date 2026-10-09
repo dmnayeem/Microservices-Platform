@@ -354,6 +354,32 @@ function sourceLabel(sources: string[] | undefined): string | undefined {
     .join(" · ");
 }
 
+/** Set every row in a table or group to Inherit / Hide / Show at once. */
+function BulkTri({ label, onPick, small }: { label: string; onPick: (t: Tri) => void; small?: boolean }) {
+  const btn = small ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-[11px]";
+  return (
+    <div className="inline-flex shrink-0 items-center gap-1">
+      <span className={small ? "text-[10px] text-slate-500" : "text-[11px] text-slate-400"}>{label}:</span>
+      {(
+        [
+          ["inherit", "Inherit", "text-slate-300 hover:bg-slate-800"],
+          ["hide", "Hide", "text-rose-300 hover:bg-rose-500/10"],
+          ["show", "Show", "text-emerald-300 hover:bg-emerald-500/10"],
+        ] as const
+      ).map(([t, text, cls]) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onPick(t)}
+          className={`rounded border border-slate-700 font-semibold ${btn} ${cls}`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function TriTable({
   title,
   caption,
@@ -376,16 +402,20 @@ function TriTable({
 
   return (
     <div className="rounded-xl border border-slate-800 overflow-hidden">
-      <div className="px-4 py-3 bg-slate-900 border-b border-slate-800">
-        <h2 className="text-white font-semibold">{title}</h2>
-        <p className="text-xs text-slate-500 mt-0.5">{caption}</p>
+      <div className="flex flex-wrap items-start gap-3 px-4 py-3 bg-slate-900 border-b border-slate-800">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-white font-semibold">{title}</h2>
+          <p className="text-xs text-slate-500 mt-0.5">{caption}</p>
+        </div>
+        <BulkTri label="All" onPick={(t) => rows.forEach((r) => onChange(r.key, t))} />
       </div>
       <div className="divide-y divide-slate-800/60">
         {groups.map(([group, items]) => (
           <div key={group}>
-            <p className="px-4 py-1.5 bg-slate-950/60 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              {group}
-            </p>
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-950/60">
+              <p className="flex-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group}</p>
+              <BulkTri label="Group" small onPick={(t) => items.forEach((r) => onChange(r.key, t))} />
+            </div>
             {items.map((r) => {
               const tri = valueOf(r.key);
               // An override that says the same thing as the inherited value is

@@ -70,6 +70,13 @@ const ROLE_LABEL: Record<string, string> = {
 export function StaffAccessManager({ staff }: { staff: StaffRow[] }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string | null>(staff[0]?.id ?? null);
+  const [panelDirty, setPanelDirty] = useState(false);
+  const pick = (id: string) => {
+    if (id === selected) return;
+    if (panelDirty && !window.confirm("You have unsaved changes for this admin. Discard them?")) return;
+    setPanelDirty(false);
+    setSelected(id);
+  };
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
     return s
@@ -104,7 +111,7 @@ export function StaffAccessManager({ staff }: { staff: StaffRow[] }) {
             <li key={u.id}>
               <button
                 type="button"
-                onClick={() => setSelected(u.id)}
+                onClick={() => pick(u.id)}
                 className={cn(
                   "w-full rounded-lg px-3 py-2 text-left transition-colors",
                   selected === u.id ? "bg-amber-500/10 ring-1 ring-amber-500/40" : "hover:bg-slate-800/60"
@@ -130,7 +137,7 @@ export function StaffAccessManager({ staff }: { staff: StaffRow[] }) {
       </div>
 
       {selected ? (
-        <StaffPanel key={selected} row={staff.find((u) => u.id === selected)!} />
+        <StaffPanel key={selected} row={staff.find((u) => u.id === selected)!} onDirtyChange={setPanelDirty} />
       ) : null}
     </div>
   );
@@ -148,9 +155,23 @@ function Chip({ tone, children }: { tone: "emerald" | "rose" | "amber" | "sky"; 
 
 type State = "default" | "allow" | "block";
 
-function StaffPanel({ row }: { row: StaffRow }) {
+/** Finance grants as one canonical list: the old "all balances" shorthand split into points + cash. */
+function normGrants(g: string[]): string[] {
+  const out = g.filter((x) => x !== "users.adjust_balance");
+  if (g.includes("users.adjust_balance")) out.push("users.adjust_points", "users.adjust_cash");
+  return [...new Set(out)].sort();
+}
+
+/**
+ * One admin's access. Every click only changes the draft on screen; nothing is
+ * written until "Save changes" — the owner asked for one Save, not a save per
+ * click (2026-10-09).
+ */
+function StaffPanel({ row, onDirtyChange }: { row: StaffRow; onDirtyChange: (dirty: boolean) => void }) {
   const [b, setB] = useState<Breakdown | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [draftOv, setDraftOv] = useState<Record<string, boolean>>({});
+  const [draftFin, setDraftFin] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState("");
 
   const load = useCallback(async () => {
@@ -160,7 +181,10 @@ function StaffPanel({ row }: { row: StaffRow }) {
       toast.error("Could not load", { description: d.error ?? "Try again" });
       return;
     }
-    setB(d as Breakdown);
+    const bd = d as Breakdown;
+    setB(bd);
+    setDraftOv({ ...bd.overrides });
+    setDraftFin(normGrants(bd.financeGrants));
   }, [row.id]);
 
   useEffect(() => {
@@ -169,54 +193,84 @@ function StaffPanel({ row }: { row: StaffRow }) {
 
   const financeByRole = row.role === "FINANCE_ADMIN";
 
-  /** Write the per-user override for a non-finance permission. */
-  const setOverride = async (perm: Permission, state: State) => {
+  const savedFin = useMemo(() => (b ? normGrants(b.financeGrants) : []), [b]);
+  const changedOv = useMemo(() => {
+    if (!b) return [] as string[];
+    const keys = new Set([...Object.keys(b.overrides), ...Object.keys(draftOv)]);
+    return [...keys].filter((k) => b.overrides[k] !== draftOv[k]);
+  }, [b, draftOv]);
+  const changedFin = useMemo(
+    () => [...savedFin.filter((g) => !draftFin.includes(g)), ...draftFin.filter((g) => !savedFin.includes(g))],
+    [savedFin, draftFin]
+  );
+  const changes = changedOv.length + changedFin.length;
+  const dirty = changes > 0;
+
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
+
+  // Leaving the page with unsaved access changes asks first.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const discard = () => {
     if (!b) return;
-    const next = { ...b.overrides };
-    if (state === "default") delete next[perm];
-    else next[perm] = state === "allow";
-    setBusy(perm);
+    setDraftOv({ ...b.overrides });
+    setDraftFin(savedFin);
+  };
+
+  const save = async () => {
+    if (!b || !dirty) return;
+    setSaving(true);
     try {
-      const r = await fetch(`/api/admin/users/${row.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ permissionOverrides: Object.keys(next).length ? next : null }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error ?? "Try again");
+      if (changedOv.length > 0) {
+        const r = await fetch(`/api/admin/users/${row.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ permissionOverrides: Object.keys(draftOv).length ? draftOv : null }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error ?? "Permissions were not saved");
+      }
+      if (changedFin.length > 0) {
+        const r = await fetch("/api/admin/company-finance/team", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "grants", userId: row.id, grants: draftFin }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error ?? "Money permissions were not saved");
+      }
+      toast.success("Access saved", { description: `${changes} change${changes === 1 ? "" : "s"} for ${row.name || row.email}` });
       await load();
     } catch (e) {
       toast.error("Not saved", { description: e instanceof Error ? e.message : "Try again" });
+      await load();
     } finally {
-      setBusy(null);
+      setSaving(false);
     }
   };
 
-  /** Finance permissions only come from the person's finance grants. */
-  const setFinance = async (perm: Permission, on: boolean) => {
-    if (!b) return;
-    // The old "all balances" grant is split into points + cash, so turning
-    // one of them off does not silently keep it through the shorthand.
-    let grants = b.financeGrants.filter((g) => g !== "users.adjust_balance");
-    if (b.financeGrants.includes("users.adjust_balance")) {
-      grants.push("users.adjust_points", "users.adjust_cash");
-    }
-    grants = on ? [...new Set([...grants, perm])] : grants.filter((g) => g !== perm);
-    setBusy(perm);
-    try {
-      const r = await fetch("/api/admin/company-finance/team", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "grants", userId: row.id, grants }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error ?? "Try again");
-      await load();
-    } catch (e) {
-      toast.error("Not saved", { description: e instanceof Error ? e.message : "Try again" });
-    } finally {
-      setBusy(null);
-    }
+  /** A per-user override for a non-finance permission (draft). */
+  const setOverride = (perm: Permission, state: State) => {
+    setDraftOv((prev) => {
+      const next = { ...prev };
+      if (state === "default") delete next[perm];
+      else next[perm] = state === "allow";
+      return next;
+    });
+  };
+
+  /** Finance permissions only come from the person's finance grants (draft). */
+  const setFinance = (perm: Permission, on: boolean) => {
+    setDraftFin((prev) => (on ? [...new Set([...prev, perm])] : prev.filter((g) => g !== perm)).sort());
   };
 
   if (!b) {
@@ -227,10 +281,19 @@ function StaffPanel({ row }: { row: StaffRow }) {
     );
   }
 
-  const eff = new Set<string>(b.effective);
+  const savedEff = new Set<string>(b.effective);
   const base = new Set<string>(b.base);
+  const changed = new Set<string>([...changedOv, ...changedFin]);
+  // What this admin will have once saved. Unchanged rows show the server's
+  // answer; changed rows show what the draft will give them.
+  const has = (p: string): boolean => {
+    if (!changed.has(p)) return savedEff.has(p);
+    if (FINANCE.has(p)) return draftFin.includes(p);
+    return draftOv[p] === true ? true : draftOv[p] === false ? false : base.has(p);
+  };
+  const eff = { has };
   const stateOf = (p: Permission): State =>
-    b.overrides[p] === true ? "allow" : b.overrides[p] === false ? "block" : "default";
+    draftOv[p] === true ? "allow" : draftOv[p] === false ? "block" : "default";
 
   const toggleAdjust = (p: Permission) => {
     const on = !eff.has(p);
@@ -248,7 +311,7 @@ function StaffPanel({ row }: { row: StaffRow }) {
           <p className="truncate text-base font-bold text-white">{row.name || row.email}</p>
           <p className="truncate text-xs text-slate-400">
             {row.email} · {row.customRole ? `${row.customRole} (custom role)` : ROLE_LABEL[row.role] ?? row.role} ·{" "}
-            {eff.size} permissions
+            {b.effective.length} permissions
           </p>
         </div>
         <Link
@@ -274,16 +337,17 @@ function StaffPanel({ row }: { row: StaffRow }) {
               <button
                 key={perm}
                 type="button"
-                disabled={!!busy || locked}
+                disabled={saving || locked}
                 onClick={() => toggleAdjust(perm)}
                 className={cn(
                   "flex items-center gap-2.5 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed",
-                  on ? "border-emerald-500/40 bg-emerald-500/10" : "border-slate-700 bg-slate-950/60 hover:border-slate-500"
+                  on ? "border-emerald-500/40 bg-emerald-500/10" : "border-slate-700 bg-slate-950/60 hover:border-slate-500",
+                  changed.has(perm) && "ring-2 ring-amber-400/60"
                 )}
                 title={locked ? "Finance admins always have this — change their role to remove it" : undefined}
               >
                 <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg", tone)}>
-                  {busy === perm ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                  <Icon className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-white">{label}</span>
@@ -350,7 +414,10 @@ function StaffPanel({ row }: { row: StaffRow }) {
                     const isFinance = FINANCE.has(p);
                     const on = eff.has(p);
                     return (
-                      <li key={p} className="flex flex-wrap items-center gap-3 px-3 py-2">
+                      <li
+                        key={p}
+                        className={cn("flex flex-wrap items-center gap-3 px-3 py-2", changed.has(p) && "bg-amber-500/10")}
+                      >
                         <span
                           className={cn("h-2 w-2 shrink-0 rounded-full", on ? "bg-emerald-400" : "bg-slate-600")}
                           title={on ? "Has it" : "Does not have it"}
@@ -366,7 +433,11 @@ function StaffPanel({ row }: { row: StaffRow }) {
                           </span>
                           {m?.description && <span className="block text-[11px] text-slate-500">{m.description}</span>}
                         </span>
-                        {busy === p && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+                        {changed.has(p) && (
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-200">
+                            unsaved
+                          </span>
+                        )}
                         {isFinance ? (
                           financeByRole ? (
                             <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
@@ -379,7 +450,7 @@ function StaffPanel({ row }: { row: StaffRow }) {
                                 ["block", "Off"],
                                 ["allow", "On"],
                               ]}
-                              disabled={!!busy}
+                              disabled={saving}
                               onChange={(v) => setFinance(p, v === "allow")}
                             />
                           )
@@ -391,7 +462,7 @@ function StaffPanel({ row }: { row: StaffRow }) {
                               ["allow", "Allow"],
                               ["block", "Block"],
                             ]}
-                            disabled={!!busy}
+                            disabled={saving}
                             onChange={(v) => setOverride(p, v as State)}
                           />
                         )}
@@ -405,11 +476,63 @@ function StaffPanel({ row }: { row: StaffRow }) {
         </div>
       </div>
 
+      <SaveChangesBar
+        count={changes}
+        saving={saving}
+        onSave={save}
+        onDiscard={discard}
+        what={`for ${row.name || row.email}`}
+      />
+
       <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
         <p className="text-sm font-bold text-white">Admin pages</p>
         <p className="mb-3 text-[11px] text-slate-400">Show or hide individual admin pages for this admin.</p>
         <AdminModuleOverridesPanel userId={row.id} />
       </div>
+    </div>
+  );
+}
+
+/** Sticky "N unsaved changes — Discard / Save changes" bar. Hidden when there is nothing to save. */
+export function SaveChangesBar({
+  count,
+  saving,
+  onSave,
+  onDiscard,
+  what,
+  text,
+}: {
+  count: number;
+  saving: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+  what?: string;
+  /** Replaces "N unsaved changes" when the editor does not count them. */
+  text?: string;
+}) {
+  if (count === 0 && !saving) return null;
+  return (
+    <div className="sticky bottom-3 z-30 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-slate-900/95 p-3 shadow-2xl backdrop-blur">
+      <p className="min-w-0 flex-1 text-sm font-semibold text-amber-200">
+        {text ?? `${count} unsaved change${count === 1 ? "" : "s"}`}
+        {what ? <span className="font-normal text-slate-400"> {what}</span> : null}
+      </p>
+      <button
+        type="button"
+        onClick={onDiscard}
+        disabled={saving}
+        className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+      >
+        Discard
+      </button>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saving}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-60"
+      >
+        {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save changes
+      </button>
     </div>
   );
 }
