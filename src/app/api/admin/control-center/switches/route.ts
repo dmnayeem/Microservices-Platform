@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 import { saveSetting } from "@/lib/system-settings";
 import { invalidateUiTogglesCache } from "@/lib/ui-toggles-server";
+import { invalidateSocialEarningCache } from "@/lib/social-earning";
 import { validateSettingValues } from "@/lib/setting-guards";
 import { loadFeatureSwitches, switchEntry, unwrapSetting } from "@/lib/control-center-switches";
 
@@ -52,9 +53,19 @@ export async function PATCH(request: NextRequest) {
   // unwrap `{ v }`; switching the shape under them would silently flip them.
   const wrapped =
     !!found.stored && typeof found.stored === "object" && !Array.isArray(found.stored) && "v" in (found.stored as object);
-  const before = found.stored === undefined ? null : unwrapSetting(found.stored);
-  await saveSetting(key, wrapped ? { v: value } : value, found.entry.group);
+  let before: unknown = found.stored === undefined ? null : unwrapSetting(found.stored);
+  if (found.jsonField) {
+    // A field inside a JSON config (referral bonuses, affiliate): change that
+    // one field and keep every other setting in the object as it is.
+    const obj =
+      before && typeof before === "object" && !Array.isArray(before) ? (before as Record<string, unknown>) : {};
+    before = obj[found.jsonField] ?? null;
+    await saveSetting(key, { ...obj, [found.jsonField]: value }, found.entry.group);
+  } else {
+    await saveSetting(key, wrapped ? { v: value } : value, found.entry.group);
+  }
   invalidateUiTogglesCache();
+  if (key.startsWith("social_earning.")) invalidateSocialEarningCache();
 
   await writeAudit({
     actorId: g.actorId,

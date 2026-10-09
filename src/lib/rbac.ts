@@ -293,7 +293,8 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
       "users.ban",
       "users.delete",
       "users.adjust_balance",
-      "users.impersonate",
+      // "users.impersonate" is not listed: it grants nothing. "Login as user" is
+      // given to named admins in Control Center (src/lib/impersonation.ts).
       "users.grant_badge",
     ],
   },

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "@/lib/toast";
+import { SaveChangesBar } from "@/components/admin/control-center/staff-access-manager";
 import { permissionLabel, permissionDescription } from "@/lib/rbac";
 import {
   Loader2,
@@ -45,6 +46,10 @@ export function RolePermissionEditor({
   }, [editableRoles, config, defaults]);
 
   const [sets, setSets] = useState<Record<string, Set<string>>>(seed);
+  // What is saved, so "Discard" can put the screen back.
+  const [savedSets, setSavedSets] = useState<Record<string, Set<string>>>(seed);
+  const cloneSets = (x: Record<string, Set<string>>) =>
+    Object.fromEntries(Object.entries(x).map(([k, v]) => [k, new Set(v)]));
   const [selected, setSelected] = useState(editableRoles[0]?.role ?? "");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
@@ -105,6 +110,23 @@ export function RolePermissionEditor({
     return "some";
   };
 
+  /** Every permission this role may hold, on or off at once. */
+  const setWholeRole = (on: boolean) =>
+    mutate((s) => {
+      for (const cat of categories) {
+        for (const p of cat.permissions) {
+          if (hidden.has(p)) continue;
+          if (on) s.add(p);
+          else s.delete(p);
+        }
+      }
+    });
+
+  const discard = () => {
+    setSets(cloneSets(savedSets));
+    setDirty(false);
+  };
+
   const resetRole = () =>
     mutate((s) => {
       s.clear();
@@ -128,6 +150,7 @@ export function RolePermissionEditor({
         throw new Error(d.error ?? "Failed to save");
       }
       toast.success("Role permissions saved");
+      setSavedSets(cloneSets(sets));
       setDirty(false);
     } catch (err) {
       toast.error("Save failed", {
@@ -149,7 +172,7 @@ export function RolePermissionEditor({
           </h2>
           <p className="text-sm text-slate-400">
             {canManage
-              ? "Toggle whole sections on/off per role, or expand for fine-grained control. Changes apply everywhere instantly."
+              ? "Toggle whole sections on/off per role, or expand for fine-grained control. Nothing changes until you press Save changes."
               : "Read-only view — a super admin can edit these."}
           </p>
         </div>
@@ -194,6 +217,26 @@ export function RolePermissionEditor({
           </button>
         ))}
       </div>
+
+      {canManage && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-500">{selectedMeta?.label ?? "This role"}:</span>
+          <button
+            type="button"
+            onClick={() => setWholeRole(true)}
+            className="rounded-lg border border-emerald-500/40 px-2.5 py-1 font-semibold text-emerald-300 hover:bg-emerald-500/10"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            onClick={() => setWholeRole(false)}
+            className="rounded-lg border border-slate-700 px-2.5 py-1 font-semibold text-slate-300 hover:bg-slate-800"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Permission search */}
       <div className="relative mt-4">
@@ -306,6 +349,18 @@ export function RolePermissionEditor({
           );
         })}
       </div>
+
+      {canManage && (
+        <div className="mt-4">
+          <SaveChangesBar
+            count={dirty ? 1 : 0}
+            saving={saving}
+            onSave={save}
+            onDiscard={discard}
+            text="Unsaved role permission changes"
+          />
+        </div>
+      )}
     </div>
   );
 }

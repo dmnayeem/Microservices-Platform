@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useUrlTab } from "@/components/admin/ui/use-url-tab";
-import { EyeOff, Loader2, Save, Info } from "lucide-react";
+import { EyeOff, Loader2, Save, Info, RotateCcw } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
   USER_PAGES,
@@ -59,10 +59,41 @@ function withList(
   return next;
 }
 
+/** A checkbox that can also show "some" (indeterminate). */
+function TriCheck({
+  state,
+  onChange,
+  label,
+  className,
+}: {
+  state: "all" | "some" | "none";
+  onChange: (hideAll: boolean) => void;
+  label: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = state === "some";
+  }, [state]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={state === "all"}
+      onChange={() => onChange(state !== "all")}
+      aria-label={label}
+      title={label}
+      className={`w-4 h-4 cursor-pointer ${className ?? "accent-indigo-500"}`}
+    />
+  );
+}
+
 export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
   const [rules, setRules] = useState<PageVisibilityRules>(
     initialRules ?? emptyPageRules()
   );
+  // What is saved, so "Discard" can put the table back.
+  const [savedRules, setSavedRules] = useState<PageVisibilityRules>(initialRules ?? emptyPageRules());
   // `?view=` — the page's own `?tab=` picks Pages vs the other tabs.
   const [view, setView] = useUrlTab<View>(
     "all",
@@ -94,11 +125,37 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
     setDirty(true);
   };
 
-  const setColumn = (c: Column, hideAll: boolean) => {
-    setRules((prev) =>
-      withList(prev, c, hideAll ? USER_PAGES.map((p) => p.path) : [])
-    );
+  /** Hide or show a set of pages in a set of columns — the one bulk writer. */
+  const setMany = (cols: Column[], paths: string[], hide: boolean) => {
+    // Hiding pages from EVERYONE locks users out of them: ask first.
+    if (hide && cols.some((c) => c.bucket === "global") && paths.length > 1) {
+      if (!window.confirm(`Hide ${paths.length} pages from EVERY user? They disappear from the menus and open as "no access".`)) return;
+    }
+    setRules((prev) => {
+      let next = prev;
+      for (const c of cols) {
+        const cur = new Set(hiddenList(next, c));
+        for (const path of paths) {
+          if (hide) cur.add(path);
+          else cur.delete(path);
+        }
+        next = withList(next, c, Array.from(cur));
+      }
+      return next;
+    });
     setDirty(true);
+  };
+  const ALL_PATHS = USER_PAGES.map((p) => p.path);
+  const stateOf = (cols: Column[], paths: string[]): "all" | "some" | "none" => {
+    let on = 0;
+    for (const c of cols) for (const path of paths) if (isHidden(c, path)) on++;
+    const total = cols.length * paths.length;
+    return on === 0 ? "none" : on === total ? "all" : "some";
+  };
+  const setColumn = (c: Column, hideAll: boolean) => setMany([c], ALL_PATHS, hideAll);
+  const discard = () => {
+    setRules(savedRules);
+    setDirty(false);
   };
 
   const save = async () => {
@@ -114,6 +171,7 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
       });
       if (!res.ok) throw new Error();
       toast.success("Page visibility saved");
+      setSavedRules(rules);
       setDirty(false);
     } catch {
       toast.error("Couldn't save visibility rules");
@@ -173,6 +231,31 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMany(columns, ALL_PATHS, true)}
+            className="px-3 py-1.5 rounded-lg border border-rose-500/40 text-xs font-semibold text-rose-300 hover:bg-rose-500/10"
+            title="Tick every box in the columns shown (hide every page for them)"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            onClick={() => setMany(columns, ALL_PATHS, false)}
+            className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800"
+            title="Untick every box in the columns shown (show every page)"
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            onClick={discard}
+            disabled={saving || !dirty}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Discard
+          </button>
         <button
           onClick={save}
           disabled={saving || !dirty}
@@ -181,6 +264,7 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {dirty ? "Save changes" : "Saved"}
         </button>
+        </div>
       </div>
 
       {/* Scrolls on both axes inside a screen-high box, so the column header
@@ -192,6 +276,16 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
             <tr className="bg-slate-900">
               <th className="sticky left-0 top-0 z-30 bg-slate-900 text-left px-3 py-2 font-semibold text-slate-300 min-w-37.5 shadow-[inset_0_-1px_0_rgb(30_41_59)]">
                 Page
+              </th>
+              <th className="sticky top-0 z-20 bg-slate-900 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500 shadow-[inset_0_-1px_0_rgb(30_41_59)]">
+                <div className="flex flex-col items-center gap-1">
+                  <span>All</span>
+                  <TriCheck
+                    state={stateOf(columns, ALL_PATHS)}
+                    onChange={(hide) => setMany(columns, ALL_PATHS, hide)}
+                    label="Hide or show every page in every column shown"
+                  />
+                </div>
               </th>
               {columns.map((c) => {
                 const count = hiddenList(rules, c).length;
@@ -215,13 +309,15 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
                       <span className="max-w-24 truncate" title={c.label}>
                         {c.label}
                       </span>
-                      <button
-                        onClick={() => setColumn(c, !allHidden)}
-                        title={allHidden ? "Unhide every page in this column" : "Hide every page in this column"}
-                        className="text-[10px] text-slate-500 hover:text-white"
-                      >
-                        {allHidden ? "clear" : count > 0 ? `${count} hidden` : "hide all"}
-                      </button>
+                      <TriCheck
+                        state={allHidden ? "all" : count > 0 ? "some" : "none"}
+                        onChange={(hide) => setColumn(c, hide)}
+                        label={allHidden ? `Show every page for ${c.label}` : `Hide every page for ${c.label}`}
+                        className={c.bucket === "global" ? "accent-rose-500" : "accent-indigo-500"}
+                      />
+                      <span className="text-[10px] font-normal text-slate-500">
+                        {count > 0 ? `${count} hidden` : "none hidden"}
+                      </span>
                     </div>
                   </th>
                 );
@@ -235,7 +331,23 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
                   <td className="sticky left-0 z-10 bg-slate-950 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     {group}
                   </td>
-                  <td colSpan={columns.length} />
+                  <td className="px-2 py-1.5 text-center">
+                    <TriCheck
+                      state={stateOf(columns, pages.map((x) => x.path))}
+                      onChange={(hide) => setMany(columns, pages.map((x) => x.path), hide)}
+                      label={`Hide or show every ${group} page in every column shown`}
+                    />
+                  </td>
+                  {columns.map((c) => (
+                    <td key={`${c.bucket}:${c.key}`} className="px-2 py-1.5 text-center">
+                      <TriCheck
+                        state={stateOf([c], pages.map((x) => x.path))}
+                        onChange={(hide) => setMany([c], pages.map((x) => x.path), hide)}
+                        label={`Hide or show every ${group} page for ${c.label}`}
+                        className={c.bucket === "global" ? "accent-rose-500" : "accent-indigo-500"}
+                      />
+                    </td>
+                  ))}
                 </tr>
                 {pages.map((p) => {
                   const hiddenEverywhere = rules.global.includes(p.path);
@@ -249,6 +361,13 @@ export function VisibilityMatrix({ packages, roles, initialRules }: Props) {
                           )}
                         </span>
                         <span className="block text-[10px] text-slate-600">{p.path}</span>
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <TriCheck
+                          state={stateOf(columns, [p.path])}
+                          onChange={(hide) => setMany(columns, [p.path], hide)}
+                          label={`Hide or show ${p.label} in every column shown`}
+                        />
                       </td>
                       {columns.map((c) => {
                         const hidden = isHidden(c, p.path);
