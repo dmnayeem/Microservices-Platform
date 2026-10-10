@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { validPostImages } from "@/lib/post-images";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { unstable_cache } from "next/cache";
@@ -517,6 +518,9 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Plan switch (Admin → Packages): this plan may not use it.
+    const planGated = await planFeatureGate(session.user.id, "socialFeed");
+    if (planGated) return planGated;
 
     // A banned or suspended account must not be able to post. Posting also
     // pays — social earning credits the author — so this is an earning path as

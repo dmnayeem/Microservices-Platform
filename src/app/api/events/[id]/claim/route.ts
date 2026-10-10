@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
@@ -18,6 +19,9 @@ export async function POST(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Plan switch (Admin → Packages): this plan may not use it.
+  const planGated = await planFeatureGate(session.user.id, "events");
+  if (planGated) return planGated;
   // Super-admin page visibility: refuse when /events is hidden for this user.
   const pageHidden = await assertPageVisible(session.user.id, "/events");
   if (pageHidden) return pageHidden;

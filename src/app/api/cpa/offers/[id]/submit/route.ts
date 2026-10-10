@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -38,6 +39,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Plan switch (Admin → Packages): this plan may not use it.
+  const planGated = await planFeatureGate(userId, "cpa");
+  if (planGated) return planGated;
   // Super-admin page visibility: refuse when /cpa is hidden for this user.
   const pageHidden = await assertPageVisible(userId, "/cpa");
   if (pageHidden) return pageHidden;

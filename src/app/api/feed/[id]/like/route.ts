@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +19,9 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Plan switch (Admin → Packages): this plan may not use it.
+    const planGated = await planFeatureGate(session.user.id, "socialFeed");
+    if (planGated) return planGated;
 
     // Banned/suspended accounts keep a valid 30-day session, so the status has
     // to be checked here — see src/lib/require-active.ts.

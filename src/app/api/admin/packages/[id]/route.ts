@@ -43,6 +43,17 @@ const PLAN_PATCH = z
     advertiserEnabled: z.boolean().optional(),
     gamesEnabled: z.boolean().optional(),
     adFree: z.boolean().optional(),
+    browseEarnEnabled: z.boolean().optional(),
+    rewardedAdsEnabled: z.boolean().optional(),
+    cpaEnabled: z.boolean().optional(),
+    eventsEnabled: z.boolean().optional(),
+    missionsEnabled: z.boolean().optional(),
+    quizGamesEnabled: z.boolean().optional(),
+    boardsEnabled: z.boolean().optional(),
+    leaderboardEnabled: z.boolean().optional(),
+    chatEnabled: z.boolean().optional(),
+    groupsEnabled: z.boolean().optional(),
+    affiliateEnabled: z.boolean().optional(),
 
     // Creator / monetization capabilities
     createTasksEnabled: z.boolean().optional(),

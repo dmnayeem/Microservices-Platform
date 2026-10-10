@@ -68,6 +68,27 @@ export function hrefProblem(href: unknown): string | null {
   return 'must link to an in-app page starting with "/" or an https:// address';
 }
 
+/**
+ * Plan switches for pages whose menu items (in menus saved before the switch
+ * existed) carry no `feature` — derived from the link instead.
+ */
+const HREF_FEATURE: [string, string][] = [
+  ["/watch-ads", "browseEarn"],
+  ["/cpa", "cpa"],
+  ["/events", "events"],
+  ["/missions", "missions"],
+  ["/quizzes", "quizGames"],
+  ["/board-tasks", "boards"],
+  ["/leaderboard", "leaderboard"],
+  ["/chat", "chat"],
+  ["/groups", "groups"],
+  ["/affiliate", "affiliate"],
+];
+function featureOf(i: { href: string; feature?: string }): string | undefined {
+  if (i.feature) return i.feature;
+  return HREF_FEATURE.find(([h]) => i.href === h || i.href.startsWith(`${h}/`))?.[1];
+}
+
 /** Items the user may see: page not hidden, feature held. */
 export function visibleFor<T extends { href: string; feature?: string }>(
   items: readonly T[],
@@ -76,7 +97,7 @@ export function visibleFor<T extends { href: string; feature?: string }>(
 ): T[] {
   return items.filter(
     (i) =>
-      (!i.feature || !features || features.includes(i.feature)) &&
+      (!featureOf(i) || !features || features.includes(featureOf(i)!)) &&
       (isExternalHref(i.href) || !isPathHidden(i.href, hiddenPaths))
   );
 }

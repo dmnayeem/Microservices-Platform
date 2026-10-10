@@ -57,6 +57,17 @@ export interface PackageFormPkg {
   advertiserEnabled: boolean;
   gamesEnabled: boolean;
   adFree: boolean;
+  browseEarnEnabled?: boolean;
+  rewardedAdsEnabled?: boolean;
+  cpaEnabled?: boolean;
+  eventsEnabled?: boolean;
+  missionsEnabled?: boolean;
+  quizGamesEnabled?: boolean;
+  boardsEnabled?: boolean;
+  leaderboardEnabled?: boolean;
+  chatEnabled?: boolean;
+  groupsEnabled?: boolean;
+  affiliateEnabled?: boolean;
 
   // Creator / monetization capabilities
   createTasksEnabled: boolean;
@@ -137,6 +148,17 @@ const SECTION_TOGGLES: Array<{ key: keyof PackageFormPkg; label: string; tooltip
   { key: "coursesEnabled", label: "Courses", tooltip: "Access the courses section." },
   { key: "advertiserEnabled", label: "Advertiser", tooltip: "Create/fund ad campaigns on /advertiser." },
   { key: "gamesEnabled", label: "HTML5 Games", tooltip: "Access the games catalog at /games." },
+  { key: "browseEarnEnabled", label: "Browse & Earn", tooltip: "Passive points for viewing pages with ads." },
+  { key: "rewardedAdsEnabled", label: "Watch Ads (rewarded)", tooltip: "Points for watching rewarded video ads." },
+  { key: "cpaEnabled", label: "CPA Offers", tooltip: "Partner offers at /cpa." },
+  { key: "eventsEnabled", label: "Events", tooltip: "Events at /events." },
+  { key: "missionsEnabled", label: "Missions", tooltip: "Missions at /missions." },
+  { key: "quizGamesEnabled", label: "Quiz Games", tooltip: "Quiz games at /quizzes." },
+  { key: "boardsEnabled", label: "Task Boards", tooltip: "Board tasks at /board-tasks." },
+  { key: "leaderboardEnabled", label: "Leaderboards", tooltip: "Leaderboards at /leaderboard." },
+  { key: "chatEnabled", label: "Chat", tooltip: "Direct messages at /chat." },
+  { key: "groupsEnabled", label: "Groups", tooltip: "Groups in the feed." },
+  { key: "affiliateEnabled", label: "Affiliate", tooltip: "Affiliate programme at /affiliate." },
   { key: "adFree", label: "Ad-Free", tooltip: "Hide all ads for users on this plan (Browse & Earn still works)." },
 ];
 
@@ -389,7 +411,7 @@ export function PackageForm({ pkg, mode = "edit" }: PackageFormProps) {
             <input id="dtl" type="number" min={-1} value={data.dailyTaskLimit} onChange={(e) => setField("dailyTaskLimit", parseInt(e.target.value) || 0)} className={inputCls} />
           </Field>
           <Field label="Daily Post Limit" htmlFor="dpl" tooltip="Max social-feed posts per day for this plan. -1 = unlimited.">
-            <input id="dpl" type="number" min={-1} value={data.dailyPostLimit ?? -1} onChange={(e) => setField("dailyPostLimit", parseInt(e.target.value) || -1)} className={inputCls} />
+            <input id="dpl" type="number" min={-1} value={data.dailyPostLimit ?? -1} onChange={(e) => { const n = parseInt(e.target.value); setField("dailyPostLimit", Number.isFinite(n) ? Math.max(-1, n) : -1); }} className={inputCls} />
           </Field>
           <Field label="Min Withdrawal ($)" htmlFor="mw">
             <input id="mw" type="number" min={0} step="0.01" value={data.minWithdrawal} onChange={(e) => setField("minWithdrawal", parseFloat(e.target.value) || 0)} className={inputCls} />
@@ -714,6 +736,11 @@ const PYRAMID_PILLS: Array<{ n: number; label: string; rate: string }> = [
   { n: 3, label: "L3", rate: "+ One more level" },
   { n: 4, label: "L4", rate: "+ One more level" },
   { n: 5, label: "L5", rate: "+ One more level" },
+  { n: 6, label: "L6", rate: "+ One more level" },
+  { n: 7, label: "L7", rate: "+ One more level" },
+  { n: 8, label: "L8", rate: "+ One more level" },
+  { n: 9, label: "L9", rate: "+ One more level" },
+  { n: 10, label: "L10", rate: "+ One more level" },
 ];
 
 function ReferralPyramidSelector({

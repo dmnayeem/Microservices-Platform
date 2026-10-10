@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TransactionType, TransactionStatus } from "@/generated/prisma/client";
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Plan switch (Admin → Packages): this plan may not use it.
+  const planGated = await planFeatureGate(session.user.id, "rewardedAds");
+  if (planGated) return planGated;
   const { id } = await params;
   const userId = session.user.id;
 

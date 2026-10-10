@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { auth } from "@/lib/auth";
 import { groupsDisabled } from "@/lib/groups-gate";
 import { prisma } from "@/lib/prisma";
@@ -108,6 +109,9 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Plan switch (Admin → Packages): this plan may not use it.
+  const planGated = await planFeatureGate(session.user.id, "groups");
+  if (planGated) return planGated;
   const userId = session.user.id;
 
   const body = await request.json();

@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { planFeatureGate } from "@/lib/plan-gate";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -24,6 +25,9 @@ import { CPA_MY_CONVERSION_SELECT, CPA_PUBLIC_OFFER_SELECT, toPublicCpaOffer } f
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Plan switch (Admin → Packages): this plan may not use it.
+  const planGated = await planFeatureGate(session.user.id, "cpa");
+  if (planGated) return planGated;
   // Super-admin page visibility: refuse when /cpa is hidden for this user.
   const pageHidden = await assertPageVisible(session.user.id, "/cpa");
   if (pageHidden) return pageHidden;
