@@ -4,6 +4,7 @@ import Link from "next/link";
 import { USER_HOME } from "@/lib/routes";
 import { usePathname } from "next/navigation";
 import {
+  Compass,
   LayoutDashboard,
   Users,
   ListTodo,
@@ -95,6 +96,7 @@ interface AdminSidebarProps {
 // Icon mapping for dynamic rendering
 export const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
+  Compass,
   Users,
   Trophy,
   ListTodo,

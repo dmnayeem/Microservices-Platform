@@ -4,6 +4,7 @@ import { getUiToggles } from "@/lib/ui-toggles-server";
 import { PushPermissionPrompt } from "@/components/user/primitives/push-permission-prompt";
 import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { BalanceSync } from "@/components/providers/balance-sync";
+import { FirstTouchReport } from "@/components/providers/first-touch";
 import { TaskRequirementsGate } from "@/components/user/tasks/task-requirements-gate";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -222,6 +223,8 @@ export default async function MainLayout({
       <CelebrationHost />
       {/* Balances update after a claim/reward without a manual refresh. */}
       <BalanceSync />
+      {/* Sends a new account's saved sign-up source once. */}
+      <FirstTouchReport />
       {/* "App only" / "notifications on" tasks — opens only when a start is refused. */}
       <TaskRequirementsGate />
       {/* "Allow notifications" and "Install the app" — signed-in users only

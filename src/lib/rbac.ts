@@ -1788,6 +1788,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "OVERVIEW",
   },
   {
+    // Where new accounts came from (lib/signup-source.ts).
+    name: "Sign-up sources",
+    href: "/admin/signup-sources",
+    icon: "Compass",
+    permissions: ["analytics.view"],
+    category: "OVERVIEW",
+  },
+  {
     name: "AI Content",
     href: "/admin/ai",
     icon: "Sparkles",

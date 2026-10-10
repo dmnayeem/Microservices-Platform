@@ -8,6 +8,7 @@ import { logoHeight } from "@/lib/logo-size";
 import { parseCustomCode } from "@/lib/custom-code";
 import { SiteTracking, CustomCode } from "@/components/providers/site-tracking";
 import { DeviceBeacon } from "@/components/providers/device-beacon";
+import { FirstTouchCapture } from "@/components/providers/first-touch";
 import { JsonLd } from "@/components/seo/json-ld";
 import { siteShareImage } from "@/lib/seo/page-meta";
 import "@fontsource/inter/400.css";
@@ -331,6 +332,9 @@ export default async function RootLayout({
           {/* Sets the device id before sign-up, so the per-device account
               limit can see it (reporting happens in the signed-in app). */}
           <DeviceBeacon />
+          {/* Where this visitor came from (Google, Facebook, a utm link…), kept
+              on the device until they sign up — Admin → Sign-up sources. */}
+          <FirstTouchCapture />
           {/* Analytics / pixels and the owner's custom code (/admin/seo).
               With our cookie banner on they wait for the visitor's consent. */}
           <SiteTracking

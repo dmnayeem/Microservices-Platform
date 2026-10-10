@@ -1828,6 +1828,14 @@ model User {
   lastReengageAt                    DateTime?
   // Super admin's "never log in as this account" switch (src/lib/impersonation.ts).
   impersonationBlocked              Boolean                      @default(false)
+  // Where the person came from before signing up (src/lib/signup-source.ts):
+  // first outside touch on this device — Google, Facebook, a utm link… Null =
+  // joined before tracking started.
+  signupSource                      String?
+  signupMedium                      String?
+  signupCampaign                    String?
+  signupReferrer                    String?
+  signupLanding                     String?
   isBlueVerified                    Boolean                      @default(false)
   // Visual style for the verified badge. Null/"BLUE" = classic blue tick.
   // Other presets (GOLD, RAINBOW, EMERALD, PURPLE, ROSE, OCEAN) render
@@ -2024,6 +2032,7 @@ model User {
   // /admin/users/app-installs lists and counts installs by first-seen date.
   @@index([pwaFirstSeenAt])
   @@index([pwaUninstalledAt])
+  @@index([signupSource, createdAt])
 }
 
 model Account {

@@ -16,6 +16,7 @@ import {
   Phone,
   MapPin,
   Calendar,
+  Compass,
   Clock,
   CheckCircle,
   Wallet,
@@ -35,6 +36,7 @@ import {
   Pin,
 } from "lucide-react";
 import Link from "next/link";
+import { sourceLabel } from "@/lib/signup-source";
 import { format, formatDistanceToNow } from "date-fns";
 import { profileHref } from "@/lib/user-href";
 import { ROLE_CONFIG, roleDescription, type UserRole } from "@/lib/rbac";
@@ -591,6 +593,15 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
               Joined {format(user.createdAt, "MMM d, yyyy")} (
               {formatDistanceToNow(user.createdAt, { addSuffix: true })})
             </span>
+            <Link
+              href={`/admin/signup-sources?range=all&source=${user.signupSource ?? "unknown"}`}
+              className="inline-flex items-center gap-1.5 hover:underline"
+              title={[user.signupMedium, user.signupCampaign, user.signupReferrer, user.signupLanding].filter(Boolean).join(" · ") || undefined}
+            >
+              <Compass className="w-3.5 h-3.5 text-sky-400" />
+              Came from {sourceLabel(user.signupSource)}
+              {user.signupCampaign ? ` · ${user.signupCampaign}` : ""}
+            </Link>
             {user.lastLoginAt && (
               <span className="inline-flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-purple-400" />
