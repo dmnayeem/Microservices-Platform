@@ -3,29 +3,11 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { toNum, toNumOrNull } from "@/lib/money";
-import { z } from "zod";
+import { revalidateTag } from "next/cache";
+import { CAMPAIGNS_TAG, EFFECT_TYPES, clampCampaignValue } from "@/lib/campaigns";
+import { campaignSchema } from "@/lib/campaigns-shared";
 
-const schema = z.object({
-  title: z.string().min(2).max(120),
-  description: z.string().optional(),
-  type: z.enum([
-    "XP_MULTIPLIER",
-    "BONUS_POINTS",
-    "FREE_TICKETS",
-    "DISCOUNT",
-    "REFERRAL_BOOST",
-    "SEASONAL",
-  ]),
-  value: z.number().min(0).default(1),
-  startDate: z.string().datetime(),
-  endDate: z.string().datetime(),
-  targetType: z.enum(["ALL", "TIER", "NEW_USERS", "COUNTRY"]).default("ALL"),
-  targetValue: z.string().optional().nullable(),
-  budget: z.number().min(0).optional().nullable(),
-  bannerImage: z.string().url().optional().nullable().or(z.literal("")),
-  termsAndConditions: z.string().optional().nullable(),
-  status: z.enum(["SCHEDULED", "ACTIVE", "PAUSED", "ENDED"]).default("SCHEDULED"),
-});
+
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -35,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();
-  const v = schema.safeParse(body);
+  const v = campaignSchema.safeParse(body);
   if (!v.success) {
     return NextResponse.json(
       { error: "Invalid input", details: v.error.issues },
@@ -43,6 +25,11 @@ export async function POST(request: NextRequest) {
     );
   }
   const data = v.data;
+  if (new Date(data.endDate) <= new Date(data.startDate)) {
+    return NextResponse.json({ error: "The end date must be after the start date." }, { status: 400 });
+  }
+  // The boost types are multipliers, capped (lib/campaigns.ts).
+  if ((EFFECT_TYPES as readonly string[]).includes(data.type)) data.value = clampCampaignValue(data.value);
   const campaign = await prisma.campaign.create({
     data: {
       title: data.title,
@@ -69,6 +56,7 @@ export async function POST(request: NextRequest) {
       newData: { title: campaign.title, type: campaign.type },
     },
   });
+  revalidateTag(CAMPAIGNS_TAG, "max");
   return NextResponse.json(
     {
       success: true,

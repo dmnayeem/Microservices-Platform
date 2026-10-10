@@ -1,4 +1,5 @@
 import { getEffectivePackage, type PackageRow } from "@/lib/packages";
+import { campaignMultipliers } from "@/lib/campaigns";
 
 /**
  * The user's plan multipliers, resolved from their EFFECTIVE package — an
@@ -53,8 +54,16 @@ export async function getPlanMultipliers(
     return planMultipliersFromPackage(userIdOrPackage);
   }
   try {
-    const pkg = await getEffectivePackage(userIdOrPackage);
-    return planMultipliersFromPackage(pkg);
+    const [pkg, camp] = await Promise.all([
+      getEffectivePackage(userIdOrPackage),
+      // Live campaigns (Admin → Campaigns) boost task rewards on top of the plan.
+      campaignMultipliers(userIdOrPackage),
+    ]);
+    const plan = planMultipliersFromPackage(pkg);
+    return {
+      taskReward: Math.min(plan.taskReward * camp.taskReward, MAX_MULTIPLIER),
+      xp: Math.min(plan.xp * camp.xp, MAX_MULTIPLIER),
+    };
   } catch {
     return { taskReward: 1, xp: 1 };
   }

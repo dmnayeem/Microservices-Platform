@@ -6,6 +6,8 @@ import { toNum, toNumOrNull } from "@/lib/money";
 import { Megaphone, Calendar, Target, DollarSign } from "lucide-react";
 import { CampaignsClient } from "@/components/admin/campaigns/campaigns-client";
 
+const nowMs = () => Date.now();
+
 export default async function CampaignsAdminPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -16,11 +18,15 @@ export default async function CampaignsAdminPage() {
     orderBy: [{ status: "asc" }, { startDate: "desc" }],
   });
 
+  // By dates, as the cards and the reward engine see them — the stored status
+  // alone said "SCHEDULED" for campaigns that had long ended.
+  const now = nowMs();
+  const ended = (c: (typeof campaigns)[number]) => c.status === "ENDED" || c.endDate.getTime() < now;
   const stats = {
     total: campaigns.length,
-    active: campaigns.filter((c) => c.status === "ACTIVE").length,
-    scheduled: campaigns.filter((c) => c.status === "SCHEDULED").length,
-    ended: campaigns.filter((c) => c.status === "ENDED").length,
+    active: campaigns.filter((c) => c.status !== "PAUSED" && !ended(c) && c.startDate.getTime() <= now).length,
+    scheduled: campaigns.filter((c) => c.status !== "PAUSED" && !ended(c) && c.startDate.getTime() > now).length,
+    ended: campaigns.filter(ended).length,
   };
 
   return (
