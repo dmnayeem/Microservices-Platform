@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AD_FILL_PROBE } from "@/lib/ad-networks/fill-probe";
 import { prisma } from "@/lib/prisma";
 import { adFrameHost } from "@/lib/ad-networks/frame";
 import { getAdNetwork } from "@/lib/ad-networks/registry";
@@ -124,7 +125,7 @@ export async function GET(
     `frame-ancestors ${ancestors.length ? ancestors.join(" ") : "'none'"}`,
   ].join("; ");
 
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><base target="_blank"><style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}body{display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${snippet}</body></html>`;
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><base target="_blank"><style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}body{display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body>${snippet}${AD_FILL_PROBE}</body></html>`;
 
   return new NextResponse(doc, {
     status: 200,

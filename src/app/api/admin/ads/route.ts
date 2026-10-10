@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
     width: Number.isFinite(Number(body.width)) && Number(body.width) > 0 ? Math.round(Number(body.width)) : null,
     height: Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null,
     weight: Number.isFinite(Number(body.weight)) ? Math.max(1, Number(body.weight)) : 10,
+    priority: Number.isFinite(Number(body.priority)) ? Math.min(100, Math.max(0, Math.round(Number(body.priority)))) : 0,
     skipAfterSeconds: parseSeconds(body.skipAfterSeconds, 0, 60) ?? null,
     showSeconds: parseSeconds(body.showSeconds, 1, 300) ?? null,
     // Admin-created ads are auto-approved (admin IS the reviewer) — stamping

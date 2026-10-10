@@ -105,6 +105,11 @@ function isFilled(el: HTMLElement, network: string): boolean {
     const f = el.querySelector("iframe");
     return !!f && f.offsetWidth > 0 && f.offsetHeight > 0;
   }
+  // Any other network's HTML frame reports whether it drew anything
+  // (sandboxed-ad-frame.tsx). "pending" keeps the poll going; "0" is an empty
+  // frame and never an impression. No marker = our own creative: filled.
+  const host = el.querySelector("[data-ad-filled]");
+  if (host) return host.getAttribute("data-ad-filled") === "1";
   return true;
 }
 

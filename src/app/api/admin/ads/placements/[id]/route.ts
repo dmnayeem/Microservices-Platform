@@ -31,7 +31,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   } else if (body.rotationSeconds !== undefined) {
     const n = Number(body.rotationSeconds);
     data.rotationSeconds = Number.isFinite(n)
-      ? Math.min(60, Math.max(5, Math.round(n)))
+      ? Math.min(60, Math.max(10, Math.round(n)))
       : null;
   }
   // Per-space interstitial ad duration (seconds). null clears (→ default 5s).

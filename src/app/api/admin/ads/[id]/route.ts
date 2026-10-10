@@ -74,6 +74,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.height !== undefined)
     data.height = Number.isFinite(Number(body.height)) && Number(body.height) > 0 ? Math.round(Number(body.height)) : null;
   if (body.weight !== undefined) data.weight = Math.max(1, Number(body.weight) || 10);
+  if (body.priority !== undefined) data.priority = Math.min(100, Math.max(0, Math.round(Number(body.priority) || 0)));
   {
     const skip = parseSeconds(body.skipAfterSeconds, 0, 60);
     if (skip !== undefined) data.skipAfterSeconds = skip;

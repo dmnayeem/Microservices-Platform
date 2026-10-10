@@ -1,5 +1,6 @@
 "use client";
 
+import { AD_FILL_MESSAGE_KEY, AD_FILL_PROBE, AD_FILL_TIMEOUT_MS } from "@/lib/ad-networks/fill-probe";
 import { useEffect, useRef, useState } from "react";
 import { Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ export function SandboxedAdFrame({
   className,
   impressionPixel,
   badge = true,
+  onFill,
 }: {
   html?: string;
   /** Frame document on the separate ad origin; preferred over `html` when set. */
@@ -49,6 +51,8 @@ export function SandboxedAdFrame({
   className?: string;
   impressionPixel?: string | null;
   badge?: boolean;
+  /** Called once with whether the network drew anything (lib/ad-networks/fill-probe.ts). */
+  onFill?: (filled: boolean) => void;
   /**
    * @deprecated Ignored. Same-origin access is granted only to frames served
    * from AD_FRAME_ORIGIN (see above), never to a srcDoc frame.
@@ -56,7 +60,38 @@ export function SandboxedAdFrame({
   allowSameOrigin?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [scale, setScale] = useState(1);
+  // "pending" → "1" (filled) / "0" (empty). The viewability tracker counts an
+  // impression only on "1" (ad-measure-client.ts). If the probe never answers
+  // (blocked, odd tag), treat it as filled after a grace period — the old
+  // behaviour — so impressions are never under-counted.
+  const [fill, setFill] = useState<"pending" | "1" | "0">("pending");
+  const onFillRef = useRef(onFill);
+  useEffect(() => {
+    onFillRef.current = onFill;
+  }, [onFill]);
+  useEffect(() => {
+    let done = false;
+    const finish = (filled: boolean) => {
+      if (done) return;
+      done = true;
+      setFill(filled ? "1" : "0");
+      onFillRef.current?.(filled);
+    };
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data as Record<string, unknown> | null;
+      if (!d || typeof d !== "object" || d[AD_FILL_MESSAGE_KEY] !== 1) return;
+      if (!frameRef.current || e.source !== frameRef.current.contentWindow) return;
+      finish(d.filled === true);
+    };
+    window.addEventListener("message", onMsg);
+    const grace = setTimeout(() => finish(true), AD_FILL_TIMEOUT_MS + 4000);
+    return () => {
+      window.removeEventListener("message", onMsg);
+      clearTimeout(grace);
+    };
+  }, [frameUrl, html]);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -89,11 +124,13 @@ export function SandboxedAdFrame({
         ref={hostRef}
         className="relative w-full overflow-hidden rounded-xl border border-white/10 bg-(--app-surface)"
         style={{ height: Math.round(height * scale) }}
+        data-ad-filled={fill}
       >
         <iframe
+          ref={frameRef}
           title="Advertisement"
           src={frameUrl}
-          srcDoc={frameUrl ? undefined : html}
+          srcDoc={frameUrl ? undefined : html ? html + AD_FILL_PROBE : html}
           sandbox={sandbox}
           referrerPolicy="strict-origin-when-cross-origin"
           className="block border-0"

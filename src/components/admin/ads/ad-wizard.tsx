@@ -106,6 +106,7 @@ export function AdWizard({
   const [height, setHeight] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [weight, setWeight] = useState("10");
+  const [priority, setPriority] = useState("0");
   const [format, setFormat] = useState("BANNER");
   const [brandName, setBrandName] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
@@ -188,6 +189,7 @@ export function AdWizard({
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
         weight: Number(weight) || 10,
+        priority: Number(priority) || 0,
         status: "ACTIVE",
         headline,
         brandName,
@@ -492,6 +494,16 @@ export function AdWizard({
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Weight</label>
                 <input type="number" min={1} value={weight} onChange={(e) => setWeight(e.target.value)} className={inputCls} />
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs text-slate-400 mb-1"
+                  title="Higher is shown first in its space; if its network shows nothing, the next ad fills in. Same priority = weight decides."
+                >
+                  Priority (0–100)
+                </label>
+                <input type="number" min={0} max={100} value={priority} onChange={(e) => setPriority(e.target.value)} className={inputCls} />
               </div>
 
               <div>

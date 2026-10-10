@@ -387,7 +387,12 @@ async function serveAdInner(opts: {
   }
 
   const fresh = pool.filter((a) => !exclude.has(a.id));
-  const ads = fresh.length > 0 ? fresh : pool;
+  const candidates = fresh.length > 0 ? fresh : pool;
+  // Priority first: only the highest-priority ads still available compete;
+  // weight decides among them. Ads already shown (exclude) drop out, so the
+  // next priority gets its turn — e.g. after an empty network frame.
+  const topPriority = Math.max(...candidates.map((a) => a.priority ?? 0));
+  const ads = candidates.filter((a) => (a.priority ?? 0) === topPriority);
 
   // Weighted pick.
   const totalWeight = ads.reduce((sum, a) => sum + (a.weight ?? 10), 0);
@@ -404,7 +409,15 @@ async function serveAdInner(opts: {
   const rotateSecondsRaw =
     placementRow.rotationSeconds ??
     (await getSetting<number>("ads.rotation_seconds", 12));
-  const rotateSeconds = Math.min(60, Math.max(5, Number(rotateSecondsRaw) || 12));
+  const rotateSeconds = Math.min(60, Math.max(10, Number(rotateSecondsRaw) || 12));
+  // A network's ad is never reloaded on a timer unless the owner marked that
+  // network as allowing refresh (Admin → Ads → Networks). Rotating it away and
+  // back re-runs its tag, which most networks count as invalid traffic. The
+  // owner's own HTML (no network) and house ads rotate as before.
+  const noRefresh =
+    chosen.type === "HTML" &&
+    !!chosen.networkId &&
+    networkSettings?.networks[chosen.networkId]?.allowRefresh !== true;
   // Skip time: the ad's own setting wins, then the space's, then 5s — so one
   // space can mix 5s, 10s and 15s ads.
   const interstitialSeconds =
@@ -444,8 +457,8 @@ async function serveAdInner(opts: {
   // the ad was viewable (src/lib/ad-measure.ts).
 
   return {
-    poolSize: ads.length,
-    rotateMs: rotateSeconds * 1000,
+    poolSize: candidates.length,
+    rotateMs: noRefresh ? 0 : rotateSeconds * 1000,
     interstitialSeconds,
     showSeconds,
     // Never counted at serve any more — the client's viewability tracker is
@@ -872,6 +885,7 @@ export async function servePageScripts(opts: {
         targeting: true,
         freqCapPerDay: true,
         freqMinGapMinutes: true,
+        weight: true,
       },
       take: 20,
       cacheStrategy: { ttl: 30, swr: 120 },
@@ -880,8 +894,43 @@ export async function servePageScripts(opts: {
   ]);
 
   const out: PageScriptAd[] = [];
-  const [psViewer, psBot] = await Promise.all([currentAdViewer(userId), isBotRequest()]);
-  for (const a of ads) {
+  const [psViewer, psBot, maxRaw] = await Promise.all([
+    currentAdViewer(userId),
+    isBotRequest(),
+    getSetting<number>("ads.page_scripts_max", 2),
+  ]);
+  // Never stack page-level ads: at most one per network per page, and at most
+  // `ads.page_scripts_max` in all (Admin → Ads), chosen by weight. Every
+  // enabled script used to load together — several popunders / social bars
+  // from different networks on one page.
+  const maxPerPage = Math.min(10, Math.max(1, Math.floor(Number(maxRaw) || 2)));
+
+  // The daily cap per person, counted on the SERVER (the browser's own count
+  // can be cleared): script runs by this viewer today, per ad.
+  const capped = ads.filter((a) => (a.freqCapPerDay ?? 0) > 0).map((a) => a.id);
+  const ranToday = new Map<string, number>();
+  if (capped.length > 0) {
+    const dayStart = new Date();
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const rows = (await prisma.adEvent
+      .groupBy({
+        by: ["adId"],
+        where: { viewerHash: psViewer.viewerHash, kind: "SCRIPT_EXEC", adId: { in: capped }, createdAt: { gte: dayStart } },
+        _count: { _all: true },
+      })
+      .catch(() => [])) as unknown as { adId: string; _count: { _all: number } }[];
+    for (const r of rows) ranToday.set(r.adId, r._count._all);
+  }
+
+  // Weighted order, so the cap keeps the ads the owner weighted highest more often.
+  const ordered = ads
+    .map((a) => ({ a, k: Math.random() ** (1 / Math.max(1, a.weight ?? 10)) }))
+    .sort((x, y) => y.k - x.k)
+    .map((x) => x.a);
+  const usedNetworks = new Set<string>();
+  for (const a of ordered) {
+    if (out.length >= maxPerPage) break;
+    if (a.freqCapPerDay && (ranToday.get(a.id) ?? 0) >= a.freqCapPerDay) continue;
     // Untagged page scripts count as "Custom / other" — still a third party.
     const netId = a.networkId || "custom";
     if (!settings?.networks[netId]?.enabled) continue;
@@ -890,6 +939,8 @@ export async function servePageScripts(opts: {
     if (!matchesTargeting(a.targeting, viewer)) continue;
     const scripts = parseSnippetScripts(a.htmlContent);
     if (scripts.length === 0) continue;
+    if (usedNetworks.has(netId)) continue;
+    usedNetworks.add(netId);
     out.push({
       id: a.id,
       networkId: a.networkId,

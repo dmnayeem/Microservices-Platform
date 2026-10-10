@@ -907,6 +907,10 @@ model Ad {
   width             Int?
   height            Int?
   weight            Int                  @default(10)
+  /// Higher priority is served first; weight decides between ads of the same
+  /// priority. An empty network frame falls through to the next ad, so a
+  /// space works like a waterfall (lib/ad-serve.ts).
+  priority          Int                  @default(0)
   /// Full-screen (interstitial) timing for THIS ad, set by the admin.
   /// skipAfterSeconds: when Skip/Close appears (0–60). Null = the space's
   /// setting, then 5 — so one space can mix 5s, 10s and 15s ads.

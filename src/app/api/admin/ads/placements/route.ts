@@ -98,7 +98,7 @@ export async function GET() {
 
   const rotationSeconds = Math.min(
     60,
-    Math.max(5, Number(await getSetting<number>("ads.rotation_seconds", 12)) || 12)
+    Math.max(10, Number(await getSetting<number>("ads.rotation_seconds", 12)) || 12)
   );
   const adsenseClient = String((await getSetting<string>("ads.adsense_client", "")) || "");
   const gamNetworkCode = String((await getSetting<string>("ads.gam_network_code", "")) || "");
@@ -106,6 +106,8 @@ export async function GET() {
   const googleCmpEnabled = !!(await getSetting<boolean>("ads.google_cmp_enabled", false));
   const autoAdsEnabled = !!(await getSetting<boolean>("ads.auto_ads_enabled", false));
   const adsTxt = String((await getSetting<string>("ads.txt_content", "")) || "");
+  // Most page-level scripts (popunder / social bar …) that load on one page.
+  const pageScriptsMax = Math.min(10, Math.max(1, Number(await getSetting<number>("ads.page_scripts_max", 2)) || 2));
   // Volume discount on ad-credit purchases. Fully implemented since the credit
   // system shipped, and permanently 0 because no UI ever set it.
   const creditBonusPct = Math.min(
@@ -131,6 +133,7 @@ export async function GET() {
   return NextResponse.json({
     placements: withStats,
     rotationSeconds,
+    pageScriptsMax,
     cpcUsd,
     adsenseClient,
     gamNetworkCode,

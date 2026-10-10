@@ -105,8 +105,10 @@ const RECENT_KEEP = 4;
  * configured slower than this keeps its own value. Nobody perceives a banner
  * changing every 25s rather than every 12s, and the slower cadence gives each
  * impression a longer chance of being seen instead of scrolled past.
+ * (Lowered to 10s on 2026-10-11 so the admin's setting is what happens; the
+ * admin form and the server enforce the same 10s minimum.)
  */
-const MIN_ROTATE_MS = 25_000;
+const MIN_ROTATE_MS = 10_000;
 
 /* ── Presentation pieces shared by the three layouts ────────────────────────
    All of these are pure string work on the payload that is already on screen.
@@ -223,6 +225,8 @@ export function AdRenderer({
   // (single-ad space or ad-free viewer). Seeded from the SSR value when present.
   // The SSR seed takes the same floor as the fetched value; otherwise an
   // SSR-injected slot would keep the old 12s cadence for its whole life.
+  // Ads whose frame came back empty — each gets one fallback, never a loop.
+  const emptyHandledRef = useRef<Set<string>>(new Set());
   const rotateMsRef = useRef(
     initialRotateMs > 0 ? Math.max(initialRotateMs, MIN_ROTATE_MS) : 0
   );
@@ -300,8 +304,10 @@ export function AdRenderer({
           if (opts?.initial) setError(true);
           return false;
         }
+        // 0 from the server = this creative must stay (a network ad that may
+        // not be refreshed) — the old floor turned that 0 into 25s.
         rotateMsRef.current =
-          data.poolSize > 1 && typeof data.rotateMs === "number"
+          data.poolSize > 1 && typeof data.rotateMs === "number" && data.rotateMs > 0
             ? Math.max(data.rotateMs, MIN_ROTATE_MS)
             : 0;
         // Smoothly swap when this is a rotation (not the first paint).
@@ -340,6 +346,8 @@ export function AdRenderer({
         // they stop asking for creatives nobody is looking at.
         // A Google unit on screen is never rotated away or refreshed.
         if (document.hidden || !onScreenRef.current || googleOnScreenRef.current) return;
+        // The creative now on screen may not be rotated (see loadAd).
+        if (rotateMsRef.current <= 0) return;
         void loadAd({ rotate: true });
       }, rotateMsRef.current);
     };
@@ -783,6 +791,13 @@ export function AdRenderer({
             impressionPixel={ad.impressionPixel}
             // The label sits above the frame; a strip has no room for it.
             badge={!isStrip}
+            // A network that drew nothing: show the next ad instead of a blank
+            // box (once per ad, so an all-empty pool can't loop).
+            onFill={(filled) => {
+              if (filled || emptyHandledRef.current.has(ad.id)) return;
+              emptyHandledRef.current.add(ad.id);
+              void loadAd({ rotate: true });
+            }}
           />
         )}
         {dismissible && (

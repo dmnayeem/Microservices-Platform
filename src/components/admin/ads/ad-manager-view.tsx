@@ -115,6 +115,7 @@ interface Ad {
   width: number | null;
   height: number | null;
   weight: number;
+  priority?: number;
   skipAfterSeconds?: number | null;
   showSeconds?: number | null;
   status: string;
@@ -216,6 +217,7 @@ export function AdManagerView({
   const [campDetail, setCampDetail] = useState<string | null>(null);
   const [demoBusy, setDemoBusy] = useState(false);
   const [rotationSeconds, setRotationSeconds] = useState(12);
+  const [pageScriptsMax, setPageScriptsMax] = useState(2);
   const [rotationBusy, setRotationBusy] = useState(false);
   const [cpcUsd, setCpcUsd] = useState(0.01);
   const [cpcBusy, setCpcBusy] = useState(false);
@@ -293,6 +295,7 @@ export function AdManagerView({
       setCampaigns(c.campaigns ?? []);
       setPlacements(p.placements ?? []);
       if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
+      if (typeof p.pageScriptsMax === "number") setPageScriptsMax(p.pageScriptsMax);
       if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
       if (p.density) {
         setFeedAdInterval(p.density.feedAdInterval ?? 2);
@@ -335,8 +338,24 @@ export function AdManagerView({
     };
   }, []);
 
+  const savePageScriptsMax = async (n: number) => {
+    const clamped = Math.min(10, Math.max(1, Math.round(n) || 2));
+    setPageScriptsMax(clamped);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "ads", settings: { "ads.page_scripts_max": clamped } }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`At most ${clamped} page script${clamped === 1 ? "" : "s"} per page`);
+    } catch {
+      toast.error("Couldn't save");
+    }
+  };
+
   const saveRotationSeconds = async (secs: number) => {
-    const clamped = Math.min(60, Math.max(5, Math.round(secs) || 12));
+    const clamped = Math.min(60, Math.max(10, Math.round(secs) || 12));
     setRotationSeconds(clamped);
     setRotationBusy(true);
     try {
@@ -786,7 +805,9 @@ export function AdManagerView({
                 <b className="text-white">What is an ad space?</b> Each space is a fixed slot on a page
                 (see “Appears on” under each). Assign an ad to a space via the ad&apos;s <b>Placement</b>.
                 Put several active ads in one space and they <b>rotate automatically</b> — on reload and
-                every {rotationSeconds}s by default. Each space can set its own rotation time below.
+                every {rotationSeconds}s by default (10–60s). Each space can set its own rotation time below.
+                Google ads and ads from networks that don&apos;t allow refresh (Ads → Networks) are never
+                rotated away once shown — reloading their code on a timer counts as invalid traffic.
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-slate-400">
@@ -797,7 +818,7 @@ export function AdManagerView({
                     <label className="text-xs text-slate-400 whitespace-nowrap" title="Applies to spaces that don't set their own interval">Default rotate every</label>
                     <input
                       type="number"
-                      min={5}
+                      min={10}
                       max={60}
                       value={rotationSeconds}
                       disabled={!canManage || rotationBusy}
@@ -806,6 +827,24 @@ export function AdManagerView({
                       className="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
                     />
                     <span className="text-xs text-slate-400">seconds</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label
+                      className="text-xs text-slate-400 whitespace-nowrap"
+                      title="Popunder, social bar, in-page push… — at most this many load on one page, never two from the same network, chosen by weight. Each ad's daily cap per person is counted on the server."
+                    >
+                      Page scripts per page
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={pageScriptsMax}
+                      disabled={!canManage}
+                      onChange={(e) => setPageScriptsMax(Number(e.target.value))}
+                      onBlur={(e) => savePageScriptsMax(Number(e.target.value))}
+                      className="w-14 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-slate-400 whitespace-nowrap">Cost per click ($)</label>
@@ -1308,7 +1347,7 @@ function AdSpaceCard({
           <label className="whitespace-nowrap">Rotate every</label>
           <input
             type="number"
-            min={5}
+            min={10}
             max={60}
             defaultValue={p.rotationSeconds ?? ""}
             placeholder={String(rotationSeconds)}
@@ -1317,7 +1356,7 @@ function AdSpaceCard({
               const next =
                 v === ""
                   ? null
-                  : Math.min(60, Math.max(5, Math.round(Number(v) || rotationSeconds)));
+                  : Math.min(60, Math.max(10, Math.round(Number(v) || rotationSeconds)));
               if ((p.rotationSeconds ?? null) !== next) onSetRotation(next);
             }}
             className="w-14 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-center"
@@ -2267,6 +2306,7 @@ function AdModal({
   const [width, setWidth] = useState(String(ad?.width ?? ""));
   const [height, setHeight] = useState(String(ad?.height ?? ""));
   const [weight, setWeight] = useState(String(ad?.weight ?? 10));
+  const [priority, setPriority] = useState(String(ad?.priority ?? 0));
   // Full-screen timing. Empty skip = the space's setting; empty show = until closed.
   const [skipSecs, setSkipSecs] = useState(ad?.skipAfterSeconds != null ? String(ad.skipAfterSeconds) : "");
   const [showSecs, setShowSecs] = useState(ad?.showSeconds != null ? String(ad.showSeconds) : "");
@@ -2329,6 +2369,7 @@ function AdModal({
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
         weight: Number(weight) || 10,
+        priority: Number(priority) || 0,
         skipAfterSeconds: skipSecs.trim() === "" ? null : Number(skipSecs),
         showSeconds: showSecs.trim() === "" ? null : Number(showSecs),
         // No `status` — an edit must never change review state. New admin ads are
@@ -2538,6 +2579,15 @@ function AdModal({
           <div>
             <label className="block text-xs text-slate-400 mb-1">Weight</label>
             <input type="number" min={1} value={weight} onChange={(e) => setWeight(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label
+              className="block text-xs text-slate-400 mb-1"
+              title="Higher is shown first in its space; if its network shows nothing, the next ad fills in. Same priority = weight decides."
+            >
+              Priority (0–100)
+            </label>
+            <input type="number" min={0} max={100} value={priority} onChange={(e) => setPriority(e.target.value)} className={inputCls} />
           </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">Status</label>

@@ -402,6 +402,12 @@ export interface NetworkSettingsEntry {
   allowOnPaid: boolean;
   /** Extra ads.txt lines the network gave the owner (one per line). */
   adsTxt: string;
+  /**
+   * May a slot showing this network's ad be rotated (its tag reloaded on a
+   * timer)? Off by default: most networks treat an unapproved refresh as
+   * invalid traffic. Google: always false.
+   */
+  allowRefresh: boolean;
 }
 
 export interface NetworkSettings {
@@ -419,6 +425,7 @@ export const EMPTY_NETWORK_ENTRY: NetworkSettingsEntry = {
   publisherId: "",
   allowOnPaid: false,
   adsTxt: "",
+  allowRefresh: false,
 };
 
 /** Normalise whatever is stored into a complete, safe settings object. */
@@ -437,6 +444,7 @@ export function normalizeNetworkSettings(raw: unknown): NetworkSettings {
       // Google may never be allowed on paid pages, whatever is stored.
       allowOnPaid: n.google ? false : e.allowOnPaid === true,
       adsTxt: typeof e.adsTxt === "string" ? e.adsTxt.slice(0, 20_000) : "",
+      allowRefresh: n.google ? false : e.allowRefresh === true,
     };
   }
   return { networks, pageScriptsWithGoogle: src.pageScriptsWithGoogle === true };

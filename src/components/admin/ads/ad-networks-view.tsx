@@ -243,6 +243,23 @@ export function AdNetworksView({
                     />
                   </div>
                   {!n.google && (
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="text-xs">
+                        <p className="font-semibold text-slate-300">Allows refresh (rotation)</p>
+                        <p className="text-slate-500">
+                          Off: once shown, this network&apos;s ad stays in its space. Turn on only if {n.name}
+                          &apos;s terms allow refreshing ads on a timer.
+                        </p>
+                      </div>
+                      <Toggle
+                        label={`Allow ${n.name} ads to be refreshed`}
+                        on={e.allowRefresh}
+                        disabled={!canManage}
+                        onChange={(v) => patch(n.id, { allowRefresh: v })}
+                      />
+                    </div>
+                  )}
+                  {!n.google && (
                     <div>
                       <label className="block text-xs text-slate-400 mb-1">
                         Extra ads.txt lines from {n.name} (one per line)
