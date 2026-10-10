@@ -30,6 +30,18 @@ export const BADGE_STYLE_KIND: Record<VerifiedBadgeStyle, BadgeStyleKind> = {
   GOLD_SHIMMER: "animated",
   ICE: "animated",
   PLASMA: "animated",
+  LIGHTNING: "animated",
+  PHOENIX: "animated",
+  EMERALD_FLAME: "animated",
+  SHADOW_FLAME: "animated",
+  SUNBURST: "animated",
+  ORBIT: "animated",
+  PULSE_WAVE: "animated",
+  SAKURA: "animated",
+  HOLOGRAM: "animated",
+  RGB: "animated",
+  DIAMOND: "animated",
+  HEARTBEAT: "animated",
 };
 
 export const BADGE_STYLE_KEYS = Object.keys(BADGE_STYLE_KIND) as VerifiedBadgeStyle[];

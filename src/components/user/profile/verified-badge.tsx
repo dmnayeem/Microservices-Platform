@@ -17,7 +17,20 @@ export type VerifiedBadgeStyle =
   | "GALAXY"
   | "GOLD_SHIMMER"
   | "ICE"
-  | "PLASMA";
+  | "PLASMA"
+  // More animated styles (2026-10-11).
+  | "LIGHTNING"
+  | "PHOENIX"
+  | "EMERALD_FLAME"
+  | "SHADOW_FLAME"
+  | "SUNBURST"
+  | "ORBIT"
+  | "PULSE_WAVE"
+  | "SAKURA"
+  | "HOLOGRAM"
+  | "RGB"
+  | "DIAMOND"
+  | "HEARTBEAT";
 
 export const VERIFIED_BADGE_STYLES: Record<
   VerifiedBadgeStyle,
@@ -29,9 +42,28 @@ export const VERIFIED_BADGE_STYLES: Record<
     /** Display label used in the admin picker. */
     label: string;
     /** Animated effect behind the badge (`.vb-fx-<fx>` in globals.css). */
-    fx?: "flame" | "fire" | "aurora" | "neon" | "galaxy" | "ice" | "plasma";
+    fx?:
+      | "flame"
+      | "fire"
+      | "aurora"
+      | "neon"
+      | "galaxy"
+      | "ice"
+      | "plasma"
+      | "lightning"
+      | "phoenix"
+      | "emeraldflame"
+      | "shadowflame"
+      | "sunburst"
+      | "orbit"
+      | "pulsewave"
+      | "sakura"
+      | "hologram"
+      | "rgb"
+      | "diamond"
+      | "heartbeat";
     /** Effect on the badge body itself. */
-    bodyFx?: "shine" | "plasma";
+    bodyFx?: "shine" | "plasma" | "hue" | "beat";
     /** Matching ring around the profile photo (a CSS background). */
     ring?: string;
   }
@@ -129,6 +161,96 @@ export const VERIFIED_BADGE_STYLES: Record<
     bodyFx: "plasma",
     ring: "conic-gradient(#7c3aed, #06b6d4, #ec4899, #7c3aed)",
   },
+  LIGHTNING: {
+    gradient: "bg-linear-to-br from-yellow-200 via-amber-400 to-sky-500",
+    glow: "bg-yellow-300/80",
+    label: "Lightning",
+    fx: "lightning",
+    bodyFx: "shine",
+    ring: "conic-gradient(#fde047, #38bdf8, #ffffff, #fde047)",
+  },
+  PHOENIX: {
+    gradient: "bg-linear-to-br from-amber-300 via-rose-500 to-fuchsia-700",
+    glow: "bg-rose-400/80",
+    label: "Phoenix",
+    fx: "phoenix",
+    ring: "conic-gradient(#fbbf24, #f43f5e, #c026d3, #fbbf24)",
+  },
+  EMERALD_FLAME: {
+    gradient: "bg-linear-to-br from-lime-300 via-emerald-500 to-teal-700",
+    glow: "bg-emerald-400/80",
+    label: "Emerald Flame",
+    fx: "emeraldflame",
+    ring: "conic-gradient(#bef264, #10b981, #0f766e, #bef264)",
+  },
+  SHADOW_FLAME: {
+    gradient: "bg-linear-to-br from-violet-400 via-purple-700 to-slate-900",
+    glow: "bg-violet-500/80",
+    label: "Shadow Flame",
+    fx: "shadowflame",
+    ring: "conic-gradient(#a78bfa, #4c1d95, #0f172a, #a78bfa)",
+  },
+  SUNBURST: {
+    gradient: "bg-linear-to-br from-yellow-200 via-orange-400 to-amber-600",
+    glow: "bg-amber-300/80",
+    label: "Sunburst",
+    fx: "sunburst",
+    bodyFx: "shine",
+    ring: "conic-gradient(#fef08a, #f59e0b, #fef08a, #f97316, #fef08a)",
+  },
+  ORBIT: {
+    gradient: "bg-linear-to-br from-indigo-500 via-violet-600 to-sky-500",
+    glow: "bg-indigo-400/80",
+    label: "Orbit",
+    fx: "orbit",
+    ring: "conic-gradient(#0ea5e9, #312e81, #0ea5e9)",
+  },
+  PULSE_WAVE: {
+    gradient: "bg-linear-to-br from-lime-300 via-green-500 to-emerald-700",
+    glow: "bg-lime-300/80",
+    label: "Pulse Wave",
+    fx: "pulsewave",
+    ring: "conic-gradient(#a3e635, #22c55e, #a3e635)",
+  },
+  SAKURA: {
+    gradient: "bg-linear-to-br from-pink-200 via-pink-400 to-rose-500",
+    glow: "bg-pink-300/80",
+    label: "Sakura",
+    fx: "sakura",
+    ring: "conic-gradient(#fbcfe8, #f472b6, #fff1f2, #fbcfe8)",
+  },
+  HOLOGRAM: {
+    gradient: "bg-[linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899,#f59e0b,#22d3ee)]",
+    glow: "bg-cyan-200/80",
+    label: "Hologram",
+    fx: "hologram",
+    bodyFx: "hue",
+    ring: "conic-gradient(#a5f3fc, #c4b5fd, #f9a8d4, #fde68a, #a5f3fc)",
+  },
+  RGB: {
+    gradient: "bg-linear-to-br from-red-500 via-green-500 to-blue-500",
+    glow: "bg-red-400/80",
+    label: "RGB Gamer",
+    fx: "rgb",
+    bodyFx: "hue",
+    ring: "conic-gradient(#ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #d946ef, #ef4444)",
+  },
+  DIAMOND: {
+    gradient: "bg-linear-to-br from-cyan-300 via-sky-500 to-indigo-500",
+    glow: "bg-white/80",
+    label: "Diamond",
+    fx: "diamond",
+    bodyFx: "shine",
+    ring: "conic-gradient(#ffffff, #a5f3fc, #f5d0fe, #ffffff)",
+  },
+  HEARTBEAT: {
+    gradient: "bg-linear-to-br from-rose-400 via-red-600 to-rose-800",
+    glow: "bg-red-500/80",
+    label: "Heartbeat",
+    fx: "heartbeat",
+    bodyFx: "beat",
+    ring: "conic-gradient(#fb7185, #dc2626, #fb7185)",
+  },
 };
 
 const SIZES = {
@@ -184,7 +306,9 @@ export function VerifiedBadge({
           sz.box,
           resolved.gradient,
           resolved.bodyFx === "shine" && "vb-body-shine overflow-hidden",
-          resolved.bodyFx === "plasma" && "vb-body-plasma"
+          resolved.bodyFx === "plasma" && "vb-body-plasma",
+          resolved.bodyFx === "hue" && "vb-body-hue",
+          resolved.bodyFx === "beat" && "vb-body-beat"
         )}
       >
         {/* Glossy top highlight — adds a 3D feel */}
