@@ -11,9 +11,12 @@ export default async function BannersAdminPage() {
   if (!(await can(session.user.id, "banners.view"))) redirect("/admin");
 
   const canManage = await can(session.user.id, "banners.manage");
-  const banners = await prisma.banner.findMany({
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-  });
+  const [banners, packages] = await Promise.all([
+    prisma.banner.findMany({
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+    }),
+    prisma.package.findMany({ where: { isActive: true }, orderBy: { accessLevel: "asc" }, select: { id: true, name: true } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -27,7 +30,7 @@ export default async function BannersAdminPage() {
         </p>
       </div>
 
-      <BannersClient initial={banners} canManage={canManage} />
+      <BannersClient initial={banners} canManage={canManage} packages={packages} />
     </div>
   );
 }

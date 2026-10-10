@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeDeviceTarget } from "@/lib/device-target";
+import { sanitizeKycAudience } from "@/lib/banner-audience";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -22,6 +24,7 @@ const createSchema = z.object({
   category: z.enum(BOARD_CATEGORIES).nullable().optional(),
   // ISO datetime string; null = no deadline
   expiresAt: z.string().datetime().nullable().optional(),
+  startsAt: z.string().datetime().nullable().optional(),
   pointsReward: z.number().int().min(0).default(0),
   xpReward: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
@@ -98,6 +101,9 @@ export async function POST(req: NextRequest) {
       ...v.data,
       ...sanitizeTaskAudience(body),
       expiresAt: v.data.expiresAt ? new Date(v.data.expiresAt) : null,
+      startsAt: v.data.startsAt ? new Date(v.data.startsAt) : null,
+      kycAudience: sanitizeKycAudience((body as Record<string, unknown>).kycAudience),
+      ...sanitizeDeviceTarget(body),
       createdById: session.user.id,
     },
   });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { EXTRA_AUDIENCE_KEYS, sanitizeExtraAudience } from "@/lib/audience-extra";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { hasAudienceKeys, sanitizeTaskAudience } from "@/lib/task-targeting";
 import { sanitizeKycAudience } from "@/lib/banner-audience";
@@ -41,6 +42,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if ("deviceTypes" in body || "deviceOses" in body || "deviceBrands" in body) {
     Object.assign(data, sanitizeDeviceTarget(body));
   }
+  if (EXTRA_AUDIENCE_KEYS.some((k) => k in body)) Object.assign(data, sanitizeExtraAudience(body));
 
   const updated = await prisma.banner.update({ where: { id }, data });
   await prisma.auditLog.create({

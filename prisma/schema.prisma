@@ -383,6 +383,13 @@ model Banner {
   deviceTypes  String[] @default([])
   deviceOses   String[] @default([])
   deviceBrands String[] @default([])
+  /// Plan / level / account-age rules — the same as popups (lib/audience-extra.ts).
+  planAudience   String   @default("ANY")
+  packageIds     String[] @default([])
+  minLevel       Int?
+  maxLevel       Int?
+  minAccountDays Int?
+  maxAccountDays Int?
 
   @@index([location])
   @@index([isActive])
@@ -1378,6 +1385,14 @@ model TaskBoard {
   category      String?
   // null = no deadline
   expiresAt     DateTime?
+  // Shown from this time (null = straight away).
+  startsAt      DateTime?
+  /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED"
+  kycAudience   String      @default("ANY")
+  // Device targeting (src/lib/device-target.ts). Empty = any device.
+  deviceTypes   String[]    @default([])
+  deviceOses    String[]    @default([])
+  deviceBrands  String[]    @default([])
   pointsReward  Int         @default(0)
   xpReward      Int         @default(0)
   isActive      Boolean     @default(true)

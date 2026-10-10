@@ -71,7 +71,9 @@ export async function GET() {
       }),
       unlockIds.length
         ? prisma.taskBoard.findMany({
-            where: { id: { in: unlockIds } },
+            // Only prerequisites this viewer can see: one they can't (other
+            // audience / level / plan / expired) used to lock the board forever.
+            where: { id: { in: unlockIds }, ...(ctx ? visibleBoardWhere(ctx.viewer, { accessLevel: ctx.accessLevel }) : {}) },
             select: { id: true, title: true },
           })
         : Promise.resolve([]),

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { LocationBanners } from "@/components/user/primitives/location-banners";
 import { ledgerForUser } from "@/lib/ledger-display";
 import { redirect } from "next/navigation";
 import { prisma, safeRead } from "@/lib/prisma";
@@ -224,6 +225,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <LocationBanners userId={session.user.id} location="DASHBOARD" className="" />
       {/* One nudge at a time — profile completion takes priority over KYC. */}
       {gate.locked ? (
         <ProfileCompletionBanner

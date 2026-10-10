@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
-import { currentDevice } from "@/lib/device-current";
+import { filterBannersForViewer } from "@/lib/banners-server";
 import { syncCountryMode } from "@/lib/country-mode";
-import { bannerMatches } from "@/lib/banner-audience";
 import { redirect } from "next/navigation";
 import { prisma, safeRead } from "@/lib/prisma";
 import { SocialFeedView } from "@/components/user/feed/social-feed-view";
@@ -177,6 +176,8 @@ export default async function SocialPage() {
             gender: true,
             dateOfBirth: true,
             kycStatus: true,
+            level: true,
+            createdAt: true,
           },
           cacheStrategy: { ttl: 10, swr: 30 },
         })
@@ -221,8 +222,9 @@ export default async function SocialPage() {
   await syncCountryMode();
   // Only the banners aimed at this viewer (country, district, upazila,
   // gender, age, KYC — set per banner at /admin/banners).
-  const viewerDevice = await currentDevice();
-  const myBanners = bannerRows.filter((b) => bannerMatches(b, { ...(me ?? {}), device: viewerDevice }));
+  // Area / gender / age, KYC, device, plan, level and account age — the one
+  // banner rule (lib/banners-server.ts), shared with every other banner place.
+  const myBanners = await filterBannersForViewer(bannerRows, userId, me);
   const promoRow = myBanners[0];
   const promo = promoRow
     ? {

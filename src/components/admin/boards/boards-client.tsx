@@ -1,5 +1,7 @@
 "use client";
 
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
+import type { DeviceTarget } from "@/lib/device-target";
 import { confirmDialog } from "@/lib/confirm";
 
 import { useState } from "react";
@@ -36,6 +38,11 @@ interface Board {
   imageUrl: string | null;
   category: string | null;
   expiresAt: string | Date | null;
+  startsAt?: string | Date | null;
+  kycAudience?: string;
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
   pointsReward: number;
   xpReward: number;
   isActive: boolean;
@@ -110,6 +117,9 @@ interface FormState {
   imageUrl: string;
   category: string; // "" | one of BOARD_CATEGORIES
   expiresAt: string; // datetime-local string, "" means no deadline
+  startsAt: string; // datetime-local string, "" means straight away
+  kycAudience: string;
+  device: DeviceTarget;
   pointsReward: number;
   xpReward: number;
   isActive: boolean;
@@ -140,6 +150,9 @@ const EMPTY: FormState = {
   imageUrl: "",
   category: "",
   expiresAt: "",
+  startsAt: "",
+  kycAudience: "ANY",
+  device: { deviceTypes: [], deviceOses: [], deviceBrands: [] },
   pointsReward: 1000,
   xpReward: 100,
   isActive: true,
@@ -171,6 +184,13 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
       imageUrl: b.imageUrl ?? "",
       category: b.category ?? "",
       expiresAt: toDatetimeLocal(b.expiresAt ?? null),
+      startsAt: toDatetimeLocal(b.startsAt ?? null),
+      kycAudience: b.kycAudience ?? "ANY",
+      device: {
+        deviceTypes: b.deviceTypes ?? [],
+        deviceOses: b.deviceOses ?? [],
+        deviceBrands: b.deviceBrands ?? [],
+      },
       pointsReward: b.pointsReward,
       xpReward: b.xpReward,
       isActive: b.isActive,
@@ -238,6 +258,9 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
           expiresAt: modal.expiresAt
             ? new Date(modal.expiresAt).toISOString()
             : null,
+          startsAt: modal.startsAt ? new Date(modal.startsAt).toISOString() : null,
+          kycAudience: modal.kycAudience,
+          ...modal.device,
           pointsReward: modal.pointsReward,
           xpReward: modal.xpReward,
           isActive: modal.isActive,
@@ -635,6 +658,14 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
                     className={inp}
                   />
                 </Field>
+                <Field label="Starts (optional)">
+                  <DateField
+                    type="datetime-local"
+                    value={modal.startsAt}
+                    onChange={(v) => setModal({ ...modal, startsAt: v })}
+                    className={inp}
+                  />
+                </Field>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -767,6 +798,26 @@ export function BoardsClient({ initialBoards, canManage }: Props) {
                     })
                   }
                   disabled={!canManage}
+                />
+
+                <Field label="KYC status">
+                  <select
+                    value={modal.kycAudience}
+                    onChange={(e) => setModal({ ...modal, kycAudience: e.target.value })}
+                    disabled={!canManage}
+                    className={inp}
+                  >
+                    <option value="ANY">Everyone</option>
+                    <option value="VERIFIED">Only KYC-verified users</option>
+                    <option value="NOT_VERIFIED">Only users who have not done KYC</option>
+                  </select>
+                </Field>
+
+                <DeviceTargetPicker
+                  value={modal.device}
+                  onChange={(d) => setModal({ ...modal, device: d })}
+                  disabled={!canManage}
+                  note="The board shows only on these devices — the one the person is using."
                 />
 
                 <p className="text-[11px] text-slate-500">

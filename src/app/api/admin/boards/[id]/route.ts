@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeDeviceTarget } from "@/lib/device-target";
+import { sanitizeKycAudience } from "@/lib/banner-audience";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -22,6 +24,7 @@ const updateSchema = z.object({
   imageUrl: z.string().max(500).nullable().optional(),
   category: z.enum(BOARD_CATEGORIES).nullable().optional(),
   expiresAt: z.string().datetime().nullable().optional(),
+  startsAt: z.string().datetime().nullable().optional(),
   pointsReward: z.number().int().min(0).optional(),
   xpReward: z.number().int().min(0).optional(),
   isActive: z.boolean().optional(),
@@ -206,6 +209,11 @@ export async function PATCH(
       ...(v.data.expiresAt !== undefined
         ? { expiresAt: v.data.expiresAt ? new Date(v.data.expiresAt) : null }
         : {}),
+      ...(v.data.startsAt !== undefined
+        ? { startsAt: v.data.startsAt ? new Date(v.data.startsAt) : null }
+        : {}),
+      ...("kycAudience" in body ? { kycAudience: sanitizeKycAudience(body.kycAudience) } : {}),
+      ...("deviceTypes" in body || "deviceOses" in body || "deviceBrands" in body ? sanitizeDeviceTarget(body) : {}),
     },
   });
 

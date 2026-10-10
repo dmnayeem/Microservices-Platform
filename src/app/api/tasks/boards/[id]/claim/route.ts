@@ -91,12 +91,13 @@ export async function POST(
         },
         select: { id: true },
       }),
-      prisma.taskBoard.findUnique({
-        where: { id: board.unlockBoardId },
+      // Only a prerequisite this viewer can see locks the board.
+      prisma.taskBoard.findFirst({
+        where: { id: board.unlockBoardId, ...visibleBoardWhere(ctx!.viewer, { accessLevel: ctx!.accessLevel }) },
         select: { title: true },
       }),
     ]);
-    if (!prereqClaim && !legacyPrereq) {
+    if (!prereqClaim && !legacyPrereq && prereqBoard) {
       return NextResponse.json(
         {
           error: `Locked. Claim "${prereqBoard?.title ?? "the prerequisite board"}" first.`,

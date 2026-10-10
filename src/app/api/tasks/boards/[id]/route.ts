@@ -62,8 +62,9 @@ export async function GET(
         },
         select: { id: true },
       }),
-      prisma.taskBoard.findUnique({
-        where: { id: board.unlockBoardId },
+      // Only a prerequisite this viewer can see locks the board.
+      prisma.taskBoard.findFirst({
+        where: { id: board.unlockBoardId, ...(ctx ? visibleBoardWhere(ctx.viewer, { accessLevel: ctx.accessLevel }) : {}) },
         select: { id: true, title: true },
       }),
     ]);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeExtraAudience } from "@/lib/audience-extra";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
       ...sanitizeTaskAudience(body as Record<string, unknown>),
       kycAudience: sanitizeKycAudience((body as Record<string, unknown>).kycAudience),
       ...sanitizeDeviceTarget(body),
+      ...sanitizeExtraAudience(body as Record<string, unknown>),
     },
   });
   await prisma.auditLog.create({

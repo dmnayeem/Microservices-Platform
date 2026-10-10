@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { LocationBanners } from "@/components/user/primitives/location-banners";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EarningHub } from "@/components/user/earn/earning-hub";
@@ -42,6 +43,8 @@ export default async function EarnPage() {
   if (!user) redirect("/login");
 
   return (
+    <>
+    <LocationBanners userId={userId} location="EARN_HUB" />
     <EarningHub
       user={{
         id: user.id,
@@ -55,5 +58,6 @@ export default async function EarnPage() {
       initialTasks={initialTasks}
       hiddenPaths={hiddenPaths}
     />
+    </>
   );
 }

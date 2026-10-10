@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { LocationBanners } from "@/components/user/primitives/location-banners";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo/page-meta";
@@ -65,10 +66,13 @@ export default async function MarketplacePage({ searchParams }: Props) {
     .filter((s) => s.listingCount > 0);
 
   return (
-    <MarketplaceView
-      storefronts={storefronts}
-      topAd={<ServerAdSlot placement="MARKETPLACE_TOP" />}
-    />
+    <>
+      <LocationBanners userId={session.user.id} location="MARKETPLACE" />
+      <MarketplaceView
+        storefronts={storefronts}
+        topAd={<ServerAdSlot placement="MARKETPLACE_TOP" />}
+      />
+    </>
   );
 }
 

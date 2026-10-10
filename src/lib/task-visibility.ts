@@ -55,10 +55,13 @@ export const TASK_VIEWER_SELECT = {
   postalCode: true,
   gender: true,
   dateOfBirth: true,
+  // Boards (and banners) can target KYC status.
+  kycStatus: true,
 } as const;
 
 export type TaskViewer = TaskAudienceUser & {
   level?: number | null;
+  kycStatus?: string | null;
   /** The device they are on now (lib/device-current.ts). Undefined = not
    *  known here (background job) → device rules are not applied. */
   device?: Pick<DeviceInfo, "type" | "os" | "brand"> | null;
@@ -196,9 +199,19 @@ export function visibleBoardWhere(
     isActive: true,
     AND: [
       { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+      { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
       { minLevel: { lte: viewer.level ?? 1 } },
       { requiredAccessLevel: { lte: opts.accessLevel } },
       ...taskAudienceWhere<Prisma.TaskBoardWhereInput>(viewer),
+      // Device, at board level too: a board whose tasks are all for another
+      // device used to show as an empty board.
+      ...deviceTargetWhere<Prisma.TaskBoardWhereInput>(viewer.device),
+      // KYC status (unknown → only "ANY" boards).
+      viewer.kycStatus === "APPROVED"
+        ? { kycAudience: { in: ["ANY", "VERIFIED"] } }
+        : viewer.kycStatus !== undefined
+          ? { kycAudience: { in: ["ANY", "NOT_VERIFIED"] } }
+          : {},
     ],
   };
 }
