@@ -60,6 +60,7 @@
  * reversal is itself an auditable ledger row.
  */
 import { prisma } from "@/lib/prisma";
+import { getEffectivePackage, userCanFeature } from "@/lib/packages";
 import { getPointsPerUsd } from "@/lib/economy";
 import { getUserDayContext } from "@/lib/user-day";
 import { calculateLevel } from "@/lib/level";
@@ -335,13 +336,6 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
       status: true,
       createdAt: true,
       xp: true,
-      package: {
-        select: {
-          socialEarningMultiplier: true,
-          socialEarningEnabled: true,
-          socialEarningConfig: true,
-        },
-      },
     },
   });
   if (!user || user.status !== "ACTIVE") {
@@ -358,20 +352,24 @@ async function creditOne(ctx: CreditCtx): Promise<SideResult> {
     return { points: 0, xp: 0, skipped: "min_level" };
   }
 
-  const pkg = (
-    user as unknown as {
-      package: {
-        socialEarningMultiplier: number;
-        socialEarningEnabled: boolean;
-        socialEarningConfig: unknown;
-      } | null;
-    }
-  ).package;
-
-  // Plan-level hard gate — this package earns nothing socially.
-  if (pkg && pkg.socialEarningEnabled === false) {
+  // The EFFECTIVE plan (an expired subscription falls back to the default
+  // plan; no plan = the default plan) — this used to read the raw plan row,
+  // so an expired subscriber kept the paid multiplier and the default plan's
+  // own social settings were never applied. The switch also honours the
+  // per-user "Creator earnings" override (feature `socialEarning`).
+  const [effPkg, canEarn] = await Promise.all([
+    getEffectivePackage(userId).catch(() => null),
+    userCanFeature(userId, "socialEarning").catch(() => true),
+  ]);
+  if (!canEarn) {
     return { points: 0, xp: 0, skipped: "disabled" };
   }
+  const pkg = effPkg
+    ? {
+        socialEarningMultiplier: effPkg.socialEarningMultiplier,
+        socialEarningConfig: effPkg.socialEarningConfig as unknown,
+      }
+    : null;
 
   // Per-plan multiplier (defaults to 1× if no plan).
   const planMultiplier = pkg?.socialEarningMultiplier ?? 1;
