@@ -8,6 +8,14 @@ import { formatInternationalPhone } from "@/lib/phone-codes";
 import { userDisplayId } from "@/lib/display-id";
 
 import { csvCell, csvPhoneCell } from "@/lib/csv";
+import { sourceLabel } from "@/lib/signup-source";
+import {
+  describeDevice,
+  deviceBrandLabel,
+  deviceOsLabel,
+  deviceTypeLabel,
+  type DeviceType,
+} from "@/lib/device-info";
 
 // GET /api/admin/users/export - Export users as CSV
 export async function GET(request: NextRequest) {
@@ -70,6 +78,8 @@ export async function GET(request: NextRequest) {
         phoneVerified: true,
         createdAt: true,
         lastLoginAt: true,
+        signupSource: true,
+        signupCampaign: true,
         _count: {
           select: {
             referrals: true,
@@ -85,6 +95,34 @@ export async function GET(request: NextRequest) {
       package: { slug: string; name: string } | null;
     };
     const users = usersRaw as unknown as UserWithCount[];
+
+    // Each user's most recently used device (lib/device-info.ts), in chunks so
+    // a full export stays a handful of queries.
+    type LastDevice = {
+      userId: string;
+      deviceType: string | null;
+      os: string | null;
+      osVersion: string | null;
+      brand: string | null;
+      model: string | null;
+      browser: string | null;
+    };
+    const lastDevice = new Map<string, LastDevice>();
+    const deviceCount = new Map<string, number>();
+    const ids = users.map((u) => u.id);
+    for (let i = 0; i < ids.length; i += 5000) {
+      const chunk = ids.slice(i, i + 5000);
+      const [latest, counts] = await Promise.all([
+        prisma.$queryRaw<LastDevice[]>`
+          SELECT DISTINCT ON ("userId") "userId", "deviceType", "os", "osVersion", "brand", "model", "browser"
+          FROM "UserDevice" WHERE "userId" = ANY(${chunk})
+          ORDER BY "userId", "lastSeenAt" DESC`,
+        prisma.$queryRaw<{ userId: string; n: number }[]>`
+          SELECT "userId", COUNT(*)::int AS n FROM "UserDevice" WHERE "userId" = ANY(${chunk}) GROUP BY 1`,
+      ]);
+      for (const d of latest) lastDevice.set(d.userId, d);
+      for (const c of counts) deviceCount.set(c.userId, c.n);
+    }
 
     // Generate CSV
     const headers = [
@@ -112,12 +150,20 @@ export async function GET(request: NextRequest) {
       "Tasks Completed",
       "Created At",
       "Last Login",
+      "Came From",
+      "Campaign",
+      "Main Device",
+      "Device Type",
+      "System",
+      "Phone Brand",
+      "Devices Used",
     ];
 
     const csvRows = [headers.map(csvCell).join(",")];
 
     for (const user of users) {
       const internationalPhone = formatInternationalPhone(user.phone, user.country);
+      const dev = lastDevice.get(user.id);
       const row = [
         csvCell(userDisplayId(user.id)),
         csvCell(user.id),
@@ -145,6 +191,13 @@ export async function GET(request: NextRequest) {
         csvCell(user._count.taskSubmissions),
         csvCell(user.createdAt.toISOString()),
         csvCell(user.lastLoginAt?.toISOString() ?? ""),
+        csvCell(sourceLabel(user.signupSource)),
+        csvCell(user.signupCampaign ?? ""),
+        csvCell(dev ? describeDevice({ ...dev, type: (dev.deviceType ?? undefined) as DeviceType | undefined, os: dev.os ?? undefined, browser: dev.browser ?? undefined }) : ""),
+        csvCell(dev?.deviceType ? deviceTypeLabel(dev.deviceType) : ""),
+        csvCell(dev?.os ? deviceOsLabel(dev.os) : ""),
+        csvCell(dev?.brand ? deviceBrandLabel(dev.brand) : ""),
+        csvCell(deviceCount.get(user.id) ?? 0),
       ];
       csvRows.push(row.join(","));
     }

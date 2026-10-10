@@ -1,16 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { Smartphone } from "lucide-react";
+import { Download, Smartphone } from "lucide-react";
+import { DEVICE_RANGES, deviceFilterQuery, deviceListWhere, parseDeviceFilters } from "@/lib/device-report";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
-  DEVICE_BRANDS,
-  DEVICE_BROWSERS,
-  DEVICE_OSES,
-  DEVICE_TYPES,
   describeDevice,
   deviceBrandLabel,
   deviceBrowserLabel,
@@ -27,12 +24,7 @@ import {
  */
 export const dynamic = "force-dynamic";
 
-const RANGES = [
-  { id: "7", label: "7 days", days: 7 },
-  { id: "30", label: "30 days", days: 30 },
-  { id: "90", label: "90 days", days: 90 },
-  { id: "all", label: "All time", days: null },
-] as const;
+const RANGES = DEVICE_RANGES;
 const PAGE = 50;
 
 type Count = { k: string | null; n: number };
@@ -63,17 +55,11 @@ export default async function DevicesPage({
   if (!(await can(session.user.id, "analytics.view"))) redirect("/admin");
 
   const sp = await searchParams;
-  const range = RANGES.find((r) => r.id === sp.range) ?? RANGES[1];
-  const since = range.days ? new Date(Date.now() - range.days * 86_400_000) : new Date(0);
-  const valid = (v: string | undefined, list: { key: string }[]) =>
-    v && (v === "unknown" || list.some((x) => x.key === v)) ? v : null;
-  const filters: Record<FilterKey, string | null> = {
-    type: valid(sp.type, DEVICE_TYPES),
-    os: valid(sp.os, DEVICE_OSES),
-    brand: valid(sp.brand, DEVICE_BRANDS),
-    browser: valid(sp.browser, DEVICE_BROWSERS),
-  };
-  const q = (sp.q ?? "").trim().slice(0, 80);
+  const f = parseDeviceFilters(sp);
+  const range = RANGES.find((r) => r.id === f.rangeId) ?? RANGES[1];
+  const since = f.since;
+  const filters: Record<FilterKey, string | null> = { type: f.type, os: f.os, brand: f.brand, browser: f.browser };
+  const q = f.q;
   const page = Math.max(1, Math.min(200, parseInt(sp.page ?? "1", 10) || 1));
 
   // One WHERE for the breakdowns (raw SQL)…
@@ -96,17 +82,7 @@ export default async function DevicesPage({
       GROUP BY 1 ORDER BY 2 DESC`;
 
   // …and the same for the list (Prisma).
-  const listWhere: Prisma.UserDeviceWhereInput = {
-    lastSeenAt: { gte: since },
-    user: {
-      role: { in: ["USER", "TUTOR", "AGENCY"] },
-      ...(q ? { OR: [{ email: { contains: q, mode: "insensitive" } }, { name: { contains: q, mode: "insensitive" } }] } : {}),
-    },
-    ...(filters.type ? { deviceType: filters.type === "unknown" ? null : filters.type } : {}),
-    ...(filters.os ? { os: filters.os === "unknown" ? null : filters.os } : {}),
-    ...(filters.brand ? { brand: filters.brand === "unknown" ? null : filters.brand } : {}),
-    ...(filters.browser ? { browser: filters.browser === "unknown" ? null : filters.browser } : {}),
-  };
+  const listWhere = deviceListWhere(f);
 
   const [types, oses, brands, browsers, people, both, total, rows] = await Promise.all([
     by("deviceType"),
@@ -271,6 +247,13 @@ export default async function DevicesPage({
             className="w-56 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white placeholder:text-slate-500"
           />
           <button className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700">Search</button>
+          <a
+            href={`/api/admin/devices/export${deviceFilterQuery(f) ? `?${deviceFilterQuery(f)}` : ""}`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+            title="Download these devices (with the filters above) as a CSV file for Excel"
+          >
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </a>
         </form>
         <ul className="divide-y divide-slate-800/70">
           {rows.length === 0 && <li className="p-4 text-xs text-slate-500">No devices match.</li>}

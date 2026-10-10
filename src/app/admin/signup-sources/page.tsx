@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { Compass, Info } from "lucide-react";
+import { Compass, Download, Info } from "lucide-react";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -119,6 +119,13 @@ export default async function SignupSourcesPage({
           <h1 className="text-2xl font-bold text-white">Sign-up sources</h1>
           <p className="text-sm text-slate-400">Where new accounts came from, and how many of them went on to work.</p>
         </div>
+        <a
+          href={`/api/admin/signup-sources/export?range=${range.id}${picked ? `&source=${picked}` : ""}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+          title="Every new account in this period (and source, if one is picked) as a CSV file for Excel"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </a>
         <div className="flex flex-wrap gap-1.5">
           {RANGES.map((r) => (
             <Link
