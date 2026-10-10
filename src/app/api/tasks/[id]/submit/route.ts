@@ -1,6 +1,6 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
-import { normalizeVisitConfig } from "@/lib/visit-tasks";
-import { visitCodeFor, visitEvidence } from "@/lib/visit-tasks-server";
+import { normalizeVisitConfig, normVisitCode } from "@/lib/visit-tasks";
+import { redeemVisitPass, visitCodeFor, visitEvidence } from "@/lib/visit-tasks-server";
 import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -671,29 +671,52 @@ export async function POST(
         if (!typed) {
           return NextResponse.json({ error: "Enter the code you got at the end of the link." }, { status: 400 });
         }
-        const norm = (x: string) => x.toUpperCase().replace(/[^A-Z0-9]/g, "");
-        if (norm(typed) !== norm(visitCodeFor(task.id, session.user.id))) {
-          return NextResponse.json(
-            { error: "That code isn't right. Use the code shown to you at the end of the link.", code: "VISIT_BAD_CODE" },
-            { status: 400 }
-          );
+        const typedN = normVisitCode(typed);
+        // The arrival this claim rests on: the signed-in one recorded by
+        // /v/[taskId], or — for a one-time code from a signed-out browser —
+        // the pass, tied to this attempt by redeemVisitPass.
+        let reached: { verdict: string | null; referrerHost: string | null; elapsedSec: number | null } | null =
+          ev.reached ? { verdict: ev.reached.verdict, referrerHost: ev.reached.referrerHost, elapsedSec: ev.reached.elapsedSec } : null;
+        let viaPass = false;
+        if (typedN !== normVisitCode(visitCodeFor(task.id, session.user.id))) {
+          if (vcfg.signedOutCode === "off" || !/^P[A-Z0-9]{6}$/.test(typedN)) {
+            return NextResponse.json(
+              { error: "That code isn't right. Use the code shown to you at the end of the link.", code: "VISIT_BAD_CODE" },
+              { status: 400 }
+            );
+          }
+          const r = await redeemVisitPass({
+            taskId: task.id,
+            code: typedN,
+            userId: session.user.id,
+            submissionId: submission.id,
+            minSeconds: vcfg.minSeconds,
+          });
+          if (!r.ok) return NextResponse.json({ error: r.error, code: r.code }, { status: 400 });
+          viaPass = true;
+          reached = { verdict: r.verdict, referrerHost: r.referrerHost, elapsedSec: r.elapsedSec };
         }
-        const verdict = ev.reached?.verdict ?? null;
+        const verdict = reached?.verdict ?? null;
         visitMeta = {
           kind: "SHORTENER",
           opens: ev.visits.length,
           verdict,
-          referrerHost: ev.reached?.referrerHost ?? null,
-          secondsToArrive: ev.reached?.elapsedSec ?? null,
+          referrerHost: reached?.referrerHost ?? null,
+          secondsToArrive: reached?.elapsedSec ?? null,
           minSec: vcfg.minSeconds,
+          ...(viaPass ? { signedOutCode: true } : {}),
         };
-        if (!ev.reached) {
+        if (!reached) {
           visitHold = "Code entered, but this attempt never reached the link's end page — check before paying.";
         } else if (verdict !== "OK") {
           visitHold =
             verdict === "MISMATCH"
-              ? `Arrived from ${ev.reached.referrerHost ?? "another site"}, not the shortener — check before paying.`
-              : "Couldn't see where the visit came from (no referrer) — check before paying.";
+              ? `Arrived from ${reached.referrerHost ?? "another site"}, not the shortener — check before paying.`
+              : verdict === "TOO_FAST"
+                ? "Got through the link faster than it allows — check before paying."
+                : "Couldn't see where the visit came from (no referrer) — check before paying.";
+        } else if (viaPass && vcfg.signedOutCode === "review") {
+          visitHold = "Claimed with a one-time code from a browser that wasn't signed in — check before paying.";
         }
         visitAutoApprove = vcfg.autoApprove && !visitHold;
       }

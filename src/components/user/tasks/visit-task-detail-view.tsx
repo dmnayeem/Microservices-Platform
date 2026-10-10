@@ -255,7 +255,7 @@ export function VisitTaskDetailView({ taskId }: { taskId: string }) {
           <ol className="list-decimal space-y-1 rounded-xl bg-(--app-surface-2) p-4 pl-8 text-sm text-(--app-ink-2)">
             <li>Press <b>Open link</b>.</li>
             <li>Go through every step of the short link (wait, press continue…).</li>
-            <li>At the end you&apos;ll see your own code on a RevType page.</li>
+            <li>At the end you&apos;ll see your code on a RevType page (a P-XXXXXX code if that browser isn&apos;t signed in).</li>
             <li>Come back here, enter the code and press <b>Claim</b>.</li>
           </ol>
         )}

@@ -32,6 +32,13 @@ export interface VisitConfig {
   shortenerHosts: string[];
   /** SHORTENER: arrival with no / another referrer → review (default) or block. */
   onUnknownSource: "review" | "block";
+  /**
+   * SHORTENER: the end page opened in a browser that isn't signed in (apps
+   * often open links in the phone's other browser). "off" = ask them to sign
+   * in; "review" (default) = show a one-time code, claim held for an admin;
+   * "auto" = one-time code, paid like a signed-in arrival.
+   */
+  signedOutCode: "off" | "review" | "auto";
   /** Pay without review when every check passes. */
   autoApprove: boolean;
   /** The admin confirmed this link's network allows paid traffic. */
@@ -45,6 +52,7 @@ export const VISIT_DEFAULTS: VisitConfig = {
   minSeconds: 15,
   shortenerHosts: [],
   onUnknownSource: "review",
+  signedOutCode: "review",
   autoApprove: true,
   incentiveAllowed: false,
 };
@@ -91,6 +99,7 @@ export function normalizeVisitConfig(raw: unknown): VisitConfig {
       ),
     ].slice(0, 20),
     onUnknownSource: r.onUnknownSource === "block" ? "block" : "review",
+    signedOutCode: r.signedOutCode === "off" || r.signedOutCode === "auto" ? r.signedOutCode : "review",
     autoApprove: r.autoApprove !== false,
     incentiveAllowed: r.incentiveAllowed === true,
   };
@@ -121,6 +130,12 @@ export function hostMatches(host: string | null, allowed: string[]): boolean {
   const h = host.toLowerCase().replace(/^www\./, "");
   return allowed.some((a) => h === a || h.endsWith(`.${a}`));
 }
+
+/** Minutes a signed-out one-time code stays valid. */
+export const VISIT_PASS_TTL_MIN = 30;
+
+/** Upper-case letters and digits only, for comparing typed codes. */
+export const normVisitCode = (x: string) => x.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 /** Path of the shortener destination page on this site. */
 export const visitDestinationPath = (taskId: string) => `/v/${taskId}`;

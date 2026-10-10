@@ -117,6 +117,10 @@ export const authConfig: NextAuthConfig = {
         // Home-screen icons, fetched by the browser without cookies.
         "/app-icon",
         "/unsubscribe", // email unsubscribe confirm page — signed token, no session
+        // End page of a URL-shortener visit task. Apps often open links in the
+        // phone's other browser, which isn't signed in; the page then shows a
+        // one-time code (or asks to sign in, per task). Nothing pays here.
+        "/v",
       ];
 
       // Admin routes that require admin role

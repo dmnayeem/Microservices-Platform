@@ -148,6 +148,24 @@ export function VisitTaskBuilder({
               Some shorteners and in-app browsers hide where a visitor came from, so &ldquo;check before paying&rdquo; is the safer choice.
             </p>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">If the link ends in a browser that isn&apos;t signed in</label>
+            <select
+              value={value.signedOutCode}
+              onChange={(e) =>
+                set({ signedOutCode: e.target.value === "off" ? "off" : e.target.value === "auto" ? "auto" : "review" })
+              }
+              className={inp}
+            >
+              <option value="review">Show a one-time code, check the claim before paying</option>
+              <option value="auto">Show a one-time code, pay like a signed-in visit</option>
+              <option value="off">Show no code — ask them to sign in</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              The app often opens links in the phone&apos;s other browser. A one-time code works once, for 30 minutes,
+              and only if it was made after that person opened the link from the task.
+            </p>
+          </div>
         </div>
       )}
 

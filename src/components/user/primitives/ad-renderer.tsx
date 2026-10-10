@@ -13,6 +13,7 @@ import {
 import { requestAdBatched } from "@/lib/ad-batch-client";
 import { adClickHref } from "@/lib/ad-measure-client";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
+import { VastAdPlayer } from "@/components/user/primitives/vast-ad-player";
 import { NetworkAdSlot } from "@/components/user/primitives/network-ad-slot";
 import {
   AdSlotShell,
@@ -23,7 +24,7 @@ import {
 // hand-maintained duplicate that was missing VIDEO_OVERLAY / REWARD_INTERSTITIAL).
 export type AdPlacement = AdPlacementName;
 
-export type AdType = "LOCAL" | "HTML" | "ADSENSE" | "GAM";
+export type AdType = "LOCAL" | "HTML" | "ADSENSE" | "GAM" | "VAST";
 
 export interface AdResponse {
   id: string;
@@ -55,6 +56,8 @@ export interface AdResponse {
   network?: NetworkSlotConfig;
   /** HTML ads: registry network id (absent = own / direct-sold HTML). */
   networkId?: string;
+  /** VAST ads: the tag the browser loads (vast-ad-player.tsx). */
+  vastUrl?: string;
   /** HTML ads on the separate ad origin (AD_FRAME_ORIGIN); else `html` in srcDoc. */
   frameUrl?: string;
   /** Optional small-screen (<728px) variant of an HTML ad. */
@@ -749,6 +752,28 @@ export function AdRenderer({
           config={ad.network}
           maxHeightPx={spec.maxHeightPx}
           onUnfilled={() => void loadAd({ rotate: true, excludeNetwork: true })}
+        />
+      </div>
+    );
+  }
+
+  // VAST video — loaded and played by the viewer's browser. Never cut off by
+  // the rotation timer (the server sends rotateMs 0); the player asks for the
+  // next ad when the network had nothing or the video ended (once per ad, so an
+  // all-empty pool can't loop).
+  if (ad.type === "VAST" && ad.vastUrl) {
+    const vh = Math.min(dim?.h ?? 250, spec.maxHeightPx);
+    return shell(
+      <div ref={attachRoot} className={cn("relative mx-auto w-full", className)} style={{ ...outerStyle, maxWidth: dim?.w ?? 640 }}>
+        <VastAdPlayer
+          key={ad.id}
+          tagUrl={ad.vastUrl}
+          height={vh}
+          onDone={() => {
+            if (emptyHandledRef.current.has(ad.id)) return;
+            emptyHandledRef.current.add(ad.id);
+            void loadAd({ rotate: true });
+          }}
         />
       </div>
     );

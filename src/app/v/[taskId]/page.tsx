@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { allowedShortenerHosts, hostMatches } from "@/lib/visit-tasks";
-import { loadVisitTask, openAttempt, visitCodeFor } from "@/lib/visit-tasks-server";
+import { displayPass, issueVisitPass, loadVisitTask, openAttempt, visitCodeFor } from "@/lib/visit-tasks-server";
+import { VISIT_PASS_TTL_MIN } from "@/lib/visit-tasks";
 
 /**
  * The destination of a URL-shortener VISIT task. The admin sets the
@@ -22,6 +23,25 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Your code", robots: { index: false, follow: false } };
 
 const nowMs = () => Date.now();
+
+/** The shortener host this request came from, or null (none / our own pages). */
+function refererHost(h: Headers): string | null {
+  let refHost: string | null = null;
+  try {
+    const r = h.get("referer");
+    refHost = r ? new URL(r).host.toLowerCase().replace(/^www\./, "") : null;
+  } catch {
+    refHost = null;
+  }
+  // Our own pages are not the shortener (a reload of this page, say).
+  const ownHost = (h.get("host") ?? "").toLowerCase().replace(/^www\./, "");
+  return refHost && refHost === ownHost ? null : refHost;
+}
+
+function requestIp(h: Headers): string | null {
+  const v = h.get("x-vercel-forwarded-for") ?? h.get("x-real-ip") ?? h.get("x-forwarded-for");
+  return v ? v.split(",")[0]!.trim() : null;
+}
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -47,6 +67,54 @@ export default async function VisitDestinationPage({ params }: { params: Promise
 
   const session = await getSession();
   const userId = session?.user?.id;
+  if (!userId && task.config.signedOutCode !== "off") {
+    // A browser that isn't signed in (apps often open links in the phone's
+    // other browser): a one-time code the user types into the task. The claim
+    // ties it to their own open — see redeemVisitPass.
+    const h = await headers();
+    const refHost = refererHost(h);
+    const verdict = !refHost ? "UNKNOWN" : hostMatches(refHost, allowedShortenerHosts(task.config)) ? "OK" : "MISMATCH";
+    if (task.config.onUnknownSource === "block" && verdict !== "OK") {
+      return (
+        <Shell>
+          <p className="text-lg font-bold">We couldn&apos;t confirm this visit</p>
+          <p className="mt-2 text-sm text-(--app-ink-2)">
+            You didn&apos;t arrive through the task&apos;s link. Go back to the task and open the link from there.
+          </p>
+        </Shell>
+      );
+    }
+    const pass = await issueVisitPass({
+      taskId,
+      verdict,
+      referrerHost: refHost,
+      ip: requestIp(h),
+      userAgent: h.get("user-agent"),
+    });
+    if ("error" in pass) {
+      return (
+        <Shell>
+          <p className="text-lg font-bold">Too many codes</p>
+          <p className="mt-2 text-sm text-(--app-ink-2)">Too many codes were made from this connection. Try again in an hour.</p>
+        </Shell>
+      );
+    }
+    return (
+      <Shell>
+        <p className="text-sm font-semibold uppercase tracking-wider text-(--app-ink-3)">Your one-time code</p>
+        <p className="mt-2 select-all font-mono text-3xl font-black tracking-widest">{displayPass(pass.code)}</p>
+        <p className="mt-3 text-sm text-(--app-ink-2)">
+          Go back to “{task.title}” in the RevType app and enter this code to claim. It works once and only for the next{" "}
+          {VISIT_PASS_TTL_MIN} minutes.
+        </p>
+        {(task.config.signedOutCode === "review" || verdict !== "OK") && (
+          <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            This browser isn&apos;t signed in, so the claim will be checked by an admin before it pays.
+          </p>
+        )}
+      </Shell>
+    );
+  }
   if (!userId) {
     return (
       <Shell>
@@ -89,17 +157,7 @@ export default async function VisitDestinationPage({ params }: { params: Promise
   // Judge the arrival once (the first arrival is the one that counts).
   let verdict = visit.verdict;
   if (!visit.reachedAt) {
-    const h = await headers();
-    let refHost: string | null = null;
-    try {
-      const r = h.get("referer");
-      refHost = r ? new URL(r).host.toLowerCase().replace(/^www\./, "") : null;
-    } catch {
-      refHost = null;
-    }
-    // Our own pages are not the shortener (a reload of this page, say).
-    const ownHost = (h.get("host") ?? "").toLowerCase().replace(/^www\./, "");
-    if (refHost && refHost === ownHost) refHost = null;
+    const refHost = refererHost(await headers());
     const elapsed = Math.floor((nowMs() - visit.openedAt.getTime()) / 1000);
     verdict =
       elapsed < task.config.minSeconds

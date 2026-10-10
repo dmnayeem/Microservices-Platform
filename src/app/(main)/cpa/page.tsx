@@ -5,6 +5,7 @@ import { getPointsPerUsd } from "@/lib/economy";
 import { CpaOffersView } from "@/components/user/cpa/cpa-offers-view";
 import { ProfileGate } from "@/components/user/profile/profile-gate";
 import { getProfileGateState } from "@/lib/profile-gate-server";
+import { AdRenderer } from "@/components/user/primitives/ad-renderer";
 
 export const metadata = { title: "CPA Offers" };
 
@@ -27,5 +28,10 @@ export default async function CpaOffersPage({
   // server-side by /go/cpa and the submit route.
   const gate = await getProfileGateState(session.user.id, "cpa");
   if (gate.locked) return <ProfileGate progress={gate.progress} surface="CPA offers" />;
-  return <CpaOffersView pointsPerUsd={pointsPerUsd} initialTab={sp.tab === "mine" ? "mine" : "available"} />;
+  return (
+    <>
+      <AdRenderer placement="CPA_TOP" className="mb-4" />
+      <CpaOffersView pointsPerUsd={pointsPerUsd} initialTab={sp.tab === "mine" ? "mine" : "available"} />
+    </>
+  );
 }

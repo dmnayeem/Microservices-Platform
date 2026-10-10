@@ -11,6 +11,7 @@ interface VisitMeta {
   referrerHost?: string | null;
   secondsToArrive?: number | null;
   minSec?: number;
+  signedOutCode?: boolean;
 }
 
 const VERDICT: Record<string, { text: string; tone: string }> = {
@@ -45,7 +46,14 @@ export function VisitProofPanel({ submission }: { submission: PanelSubmission })
           {row("Arrival", v ? <span className={v.tone}>{v.text}</span> : <span className="text-red-300">Never reached the end page</span>)}
           {row("Came from", meta.referrerHost ?? "—")}
           {row("Open → arrival", meta.secondsToArrive != null ? `${meta.secondsToArrive}s (min ${meta.minSec ?? 0}s)` : "—")}
-          {row("Code", <span className="text-emerald-300">Correct for this user</span>)}
+          {row(
+            "Code",
+            meta.signedOutCode ? (
+              <span className="text-amber-300">One-time code (browser not signed in)</span>
+            ) : (
+              <span className="text-emerald-300">Correct for this user</span>
+            )
+          )}
         </>
       ) : (
         <>

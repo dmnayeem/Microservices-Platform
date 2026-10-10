@@ -35,6 +35,8 @@ export interface ServedAd {
   type: string;
   imageUrl?: string;
   videoUrl?: string;
+  /** type VAST: the tag the viewer's browser loads. */
+  vastUrl?: string;
   title?: string;
   body?: string;
   ctaLabel?: string;
@@ -74,7 +76,7 @@ export interface ServedAd {
 export function adNetworkOf(ad: { type?: string | null; networkId?: string | null }): string {
   if (ad.type === "ADSENSE") return "adsense";
   if (ad.type === "GAM") return "gam";
-  if (ad.type === "HTML" && ad.networkId) return ad.networkId;
+  if ((ad.type === "HTML" || ad.type === "VAST") && ad.networkId) return ad.networkId;
   return "own";
 }
 
@@ -414,10 +416,13 @@ async function serveAdInner(opts: {
   // network as allowing refresh (Admin → Ads → Networks). Rotating it away and
   // back re-runs its tag, which most networks count as invalid traffic. The
   // owner's own HTML (no network) and house ads rotate as before.
+  // A VAST video is never cut off by the timer either: the player asks for the
+  // next ad itself when the video ends (or comes back empty).
   const noRefresh =
-    chosen.type === "HTML" &&
-    !!chosen.networkId &&
-    networkSettings?.networks[chosen.networkId]?.allowRefresh !== true;
+    chosen.type === "VAST" ||
+    (chosen.type === "HTML" &&
+      !!chosen.networkId &&
+      networkSettings?.networks[chosen.networkId]?.allowRefresh !== true);
   // Skip time: the ad's own setting wins, then the space's, then 5s — so one
   // space can mix 5s, 10s and 15s ads.
   const interstitialSeconds =
@@ -475,7 +480,8 @@ async function serveAdInner(opts: {
       ctaUrl: chosen.targetUrl ?? undefined,
       html,
       network,
-      networkId: chosen.type === "HTML" ? chosen.networkId ?? undefined : undefined,
+      networkId: chosen.type === "HTML" || chosen.type === "VAST" ? chosen.networkId ?? undefined : undefined,
+      vastUrl: chosen.type === "VAST" ? chosen.vastUrl ?? undefined : undefined,
       frameUrl: html ? adFrameUrl(chosen.id, "d", chosen.updatedAt) : undefined,
       mobileHtml,
       mobileFrameUrl: mobileHtml ? adFrameUrl(chosen.id, "m", chosen.updatedAt) : undefined,

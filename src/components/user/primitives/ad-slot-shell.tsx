@@ -87,7 +87,7 @@ export function registerAdSlotTracker(t: AdSlotTracker): () => void {
 export function adNetworkLabel(ad: { type?: string; networkId?: string | null }): string {
   if (ad.type === "ADSENSE") return "adsense";
   if (ad.type === "GAM") return "gam";
-  if (ad.type === "HTML" && ad.networkId) return ad.networkId;
+  if ((ad.type === "HTML" || ad.type === "VAST") && ad.networkId) return ad.networkId;
   return "own";
 }
 

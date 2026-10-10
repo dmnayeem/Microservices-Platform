@@ -45,6 +45,9 @@ export const AD_PLACEMENTS = [
   { name: "NOTIFICATIONS_TOP", label: "Notifications", description: "Top of the notifications list.", where: "Notifications (/notifications) — top" },
   { name: "REFERRALS_TOP", label: "Referrals", description: "Top of the referrals page.", where: "Referrals (/referrals) — top" },
   { name: "DAILY_MISSION_TOP", label: "Daily Mission", description: "Top of the daily mission page.", where: "Daily Mission (/daily-mission) — top" },
+  { name: "CPA_TOP", label: "CPA Offers", description: "Top of the CPA offers page.", where: "CPA Offers (/cpa) — top" },
+  { name: "LOTTERY_TOP", label: "Lottery", description: "Top of the lottery page.", where: "Lottery (/lottery) — top" },
+  { name: "MILESTONES_TOP", label: "Milestones", description: "Top of the milestones page.", where: "Milestones (/milestones) — top" },
 
   // Watch-to-earn video. Incentivised by definition — the user is paid points
   // for watching — so Google inventory is barred from it in code, not by memory.
@@ -203,6 +206,10 @@ export const PLACEMENT_SPEC: Record<string, PlacementSpec> = {
   NOTIFICATIONS_TOP: LEADERBOARD_SPEC,
   REFERRALS_TOP: LEADERBOARD_SPEC,
   DAILY_MISSION_TOP: PAID_LEADERBOARD_SPEC,
+  // All three are reward surfaces (INCENTIVISED_PREFIXES).
+  CPA_TOP: PAID_LEADERBOARD_SPEC,
+  LOTTERY_TOP: PAID_LEADERBOARD_SPEC,
+  MILESTONES_TOP: PAID_LEADERBOARD_SPEC,
 
   // A video player, not a banner: it sizes itself and the user is paid to watch
   // it, so no Google creative may run here.
@@ -233,7 +240,13 @@ export function sizeFitsPlacement(placementName: string, size?: string | null): 
 }
 
 /** May this `Ad.type` run in this space? See `networkAllowed` above. */
+/** A VAST video needs a real box: not a page script, not a strip. */
+export const VAST_MIN_HEIGHT_PX = 150;
+
 export function typeFitsPlacement(placementName: string, type?: string | null): boolean {
+  if (type === "VAST") {
+    return placementName !== PAGE_SCRIPT_PLACEMENT && placementSpec(placementName).maxHeightPx >= VAST_MIN_HEIGHT_PX;
+  }
   if (type !== "ADSENSE" && type !== "GAM") return true;
   return placementSpec(placementName).networkAllowed;
 }
@@ -256,8 +269,10 @@ export function adMayServeIn(
   if (!typeFitsPlacement(placementName, ad.type)) return false;
   // A snippet tagged with a network the owner has switched off does not run,
   // anywhere. Untagged HTML (own / direct-sold) is not governed by this.
+  // VAST from a network is held to exactly the same rules as its HTML snippet.
+  const tagged = ad.type === "HTML" || ad.type === "VAST";
   if (
-    ad.type === "HTML" &&
+    tagged &&
     ad.networkId &&
     settings &&
     !settings.networks[ad.networkId]?.enabled
@@ -265,7 +280,7 @@ export function adMayServeIn(
     return false;
   }
   if (placementSpec(placementName).networkAllowed) return true;
-  if (ad.type !== "HTML") return true;
+  if (!tagged) return true;
   return networkAllowedOnPaid(ad.networkId, settings);
 }
 
@@ -344,7 +359,12 @@ export function checkAdFitsPlacement(args: {
     }
   }
 
-  if (!typeFitsPlacement(args.placementName, args.type)) {
+  if (args.type === "VAST" && !typeFitsPlacement(args.placementName, args.type)) {
+    out.push({
+      field: "type",
+      message: `A VAST video can't run in ${where} — it needs a space at least ${VAST_MIN_HEIGHT_PX}px tall (not a strip, not page scripts).`,
+    });
+  } else if (!typeFitsPlacement(args.placementName, args.type)) {
     out.push({
       field: "type",
       message: `Google ads (AdSense / Ad Manager) can't run in ${where}. Users are shown that space to earn or unlock a reward, and Google's policies prohibit their ads on incentivised placements — running them there risks the account. Use your own or a direct-sold creative.`,
@@ -424,6 +444,9 @@ export const INCENTIVISED_PREFIXES = [
   "/social-tasks",
   "/survey-tasks",
   "/video-tasks",
+  "/visit-tasks",
+  // The end page of a URL-shortener visit task (shows the code that pays).
+  "/v",
   // Paid-attention surfaces.
   "/watch-ads",
   "/earn",

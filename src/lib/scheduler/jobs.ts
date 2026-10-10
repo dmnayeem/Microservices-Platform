@@ -375,14 +375,14 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     name: "ad-measure-rollup",
     label: "Ad measurement totals",
     description:
-      "Rebuilds today's and yesterday's ad report totals (viewable impressions, clicks, estimated clicks, invalid traffic filtered) from the raw measured events, and deletes raw events older than the retention period set in Ad Manager → Analytics. Safe to run any number of times — totals are recalculated, never added twice.",
+      "Rebuilds today's and yesterday's ad report totals (viewable impressions, clicks, estimated clicks, invalid traffic filtered) from the raw measured events, corrects yesterday's report impressions to the exact raw count (unless switched off in Ad Manager), and deletes raw events older than the retention period set in Ad Manager → Analytics. Safe to run any number of times — totals are recalculated, never added twice.",
     intervalMs: 10 * MINUTE,
     leaseMs: 5 * MINUTE,
     async run() {
       const r = await runAdMeasureRollup();
       return {
         ok: true,
-        summary: `Rebuilt ${r.rows} ad total row${r.rows === 1 ? "" : "s"}, deleted ${r.pruned} old event${r.pruned === 1 ? "" : "s"}.`,
+        summary: `Rebuilt ${r.rows} ad total row${r.rows === 1 ? "" : "s"}, corrected ${r.reconciled} report row${r.reconciled === 1 ? "" : "s"}, deleted ${r.pruned} old event${r.pruned === 1 ? "" : "s"}.`,
         result: r,
       };
     },

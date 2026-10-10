@@ -42,6 +42,7 @@ import { SmartImage } from "@/components/user/primitives/smart-image";
 import { AudienceBuilder } from "@/components/admin/ads/audience-builder";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
 import { AD_PLACEMENTS, placementSizeKey, placementSpec } from "@/lib/ad-placements";
+import { HTML_AD_NETWORKS } from "@/lib/ad-networks/registry";
 import { AD_SIZES, resolveAdSize } from "@/lib/ad-sizes";
 import { SandboxedAdFrame } from "@/components/user/primitives/sandboxed-ad-frame";
 import {
@@ -104,6 +105,7 @@ interface Ad {
   format: string;
   contentUrl: string | null;
   videoUrl: string | null;
+  vastUrl?: string | null;
   targetUrl: string | null;
   htmlContent: string | null;
   adSlot?: string | null;
@@ -218,6 +220,7 @@ export function AdManagerView({
   const [demoBusy, setDemoBusy] = useState(false);
   const [rotationSeconds, setRotationSeconds] = useState(12);
   const [pageScriptsMax, setPageScriptsMax] = useState(2);
+  const [exactImpressions, setExactImpressions] = useState(true);
   const [rotationBusy, setRotationBusy] = useState(false);
   const [cpcUsd, setCpcUsd] = useState(0.01);
   const [cpcBusy, setCpcBusy] = useState(false);
@@ -296,6 +299,7 @@ export function AdManagerView({
       setPlacements(p.placements ?? []);
       if (typeof p.rotationSeconds === "number") setRotationSeconds(p.rotationSeconds);
       if (typeof p.pageScriptsMax === "number") setPageScriptsMax(p.pageScriptsMax);
+      if (typeof p.exactImpressions === "boolean") setExactImpressions(p.exactImpressions);
       if (typeof p.cpcUsd === "number") setCpcUsd(p.cpcUsd);
       if (p.density) {
         setFeedAdInterval(p.density.feedAdInterval ?? 2);
@@ -350,6 +354,22 @@ export function AdManagerView({
       if (!res.ok) throw new Error();
       toast.success(`At most ${clamped} page script${clamped === 1 ? "" : "s"} per page`);
     } catch {
+      toast.error("Couldn't save");
+    }
+  };
+
+  const saveExactImpressions = async (on: boolean) => {
+    setExactImpressions(on);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: "ads", settings: { "ads.exact_impressions": on } }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(on ? "Report impressions are corrected from raw events daily" : "Daily impression correction is off");
+    } catch {
+      setExactImpressions(!on);
       toast.error("Couldn't save");
     }
   };
@@ -846,6 +866,18 @@ export function AdManagerView({
                       className="w-14 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center disabled:opacity-50"
                     />
                   </div>
+                  <label
+                    className="flex items-center gap-2 text-xs text-slate-400 whitespace-nowrap"
+                    title="Impressions are counted in memory first, and a few are lost when a server instance shuts down. When on, every day yesterday's report numbers are set to the exact count of valid raw view events."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={exactImpressions}
+                      disabled={!canManage}
+                      onChange={(e) => saveExactImpressions(e.target.checked)}
+                    />
+                    Exact daily impressions
+                  </label>
                   <div className="flex items-center gap-2">
                     <label className="text-xs text-slate-400 whitespace-nowrap">Cost per click ($)</label>
                     <input
@@ -2261,8 +2293,10 @@ function AdModal({
   const [targetUrl, setTargetUrl] = useState(ad?.targetUrl ?? "");
   const [htmlContent, setHtmlContent] = useState(ad?.htmlContent ?? "");
   // Creative kind: IMAGE (incl. GIF) | VIDEO | HTML | NETWORK. Drives the DB `type`.
-  const [creative, setCreative] = useState<"IMAGE" | "VIDEO" | "HTML" | "NETWORK">(
-    ad?.type === "ADSENSE" || ad?.type === "GAM"
+  const [creative, setCreative] = useState<"IMAGE" | "VIDEO" | "HTML" | "NETWORK" | "VAST">(
+    ad?.type === "VAST"
+      ? "VAST"
+      : ad?.type === "ADSENSE" || ad?.type === "GAM"
       ? "NETWORK"
       : ad?.type === "HTML"
       ? "HTML"
@@ -2275,6 +2309,8 @@ function AdModal({
     ad?.type === "ADSENSE" ? "adsense" : ad?.type === "GAM" ? "gam" : "custom"
   );
   const [adSlot, setAdSlot] = useState(ad?.adSlot ?? "");
+  const [vastUrl, setVastUrl] = useState(ad?.vastUrl ?? "");
+  const [vastNetworkId, setVastNetworkId] = useState(ad?.type === "VAST" ? ad?.networkId ?? "" : "");
   const [adUnitPath, setAdUnitPath] = useState(ad?.adUnitPath ?? "");
   const [adClient, setAdClient] = useState(ad?.adClient ?? "");
   // HTML snippets: network, mobile variant, page-script frequency cap.
@@ -2346,6 +2382,8 @@ function AdModal({
             : "HTML"
           : creative === "HTML"
           ? "HTML"
+          : creative === "VAST"
+          ? "VAST"
           : "LOCAL";
       const payload = {
         campaignId,
@@ -2365,6 +2403,7 @@ function AdModal({
         impressionPixel,
         clickTracker,
         ...htmlNetworkPayload(netFields, type === "HTML"),
+        ...(type === "VAST" ? { vastUrl: vastUrl.trim(), networkId: vastNetworkId || null } : { vastUrl: null }),
         size,
         width: size === "custom" ? Number(width) || null : null,
         height: size === "custom" ? Number(height) || null : null,
@@ -2419,13 +2458,13 @@ function AdModal({
         <div>
           <label className="block text-xs text-slate-400 mb-1">Creative</label>
           <div className="flex gap-2">
-            {(["IMAGE", "VIDEO", "HTML", "NETWORK"] as const).map((c) => (
+            {(["IMAGE", "VIDEO", "HTML", "NETWORK", "VAST"] as const).map((c) => (
               <button
                 key={c}
                 onClick={() => setCreative(c)}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold ${creative === c ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"}`}
               >
-                {c === "IMAGE" ? "Image / GIF" : c === "VIDEO" ? "Video" : c === "HTML" ? "HTML / Script" : "Ad Network"}
+                {c === "IMAGE" ? "Image / GIF" : c === "VIDEO" ? "Video" : c === "HTML" ? "HTML / Script" : c === "VAST" ? "VAST video" : "Ad Network"}
               </button>
             ))}
           </div>
@@ -2464,6 +2503,28 @@ function AdModal({
                 <textarea value={htmlContent} onChange={(e) => setHtmlContent(e.target.value)} rows={4} className={inputCls} placeholder="<script>…</script> from any ad network" />
               </div>
             )}
+          </div>
+        ) : creative === "VAST" ? (
+          <div className="space-y-2">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">VAST tag URL (from the ad network)</label>
+              <input value={vastUrl} onChange={(e) => setVastUrl(e.target.value)} className={inputCls} placeholder="https://…/vast?…" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Network</label>
+              <select value={vastNetworkId} onChange={(e) => setVastNetworkId(e.target.value)} className={inputCls}>
+                <option value="">Own / direct-sold</option>
+                {HTML_AD_NETWORKS.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-slate-500">
+              Played muted in the space by the viewer&apos;s browser; never cut off by rotation. Needs a space at least
+              150px tall. VPAID (JavaScript) ads are not played.
+            </p>
           </div>
         ) : creative === "HTML" ? (
           <div>

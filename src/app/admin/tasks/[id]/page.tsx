@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { DELIVERED_SUBMISSION } from "@/lib/delivered-submission";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { TaskHistoryPanel } from "@/components/admin/tasks/task-history-panel";
+import { VisitTaskStats } from "@/components/admin/tasks/visit-task-stats";
 import {
   ArrowLeft,
   Video,
@@ -376,6 +377,8 @@ export default async function TaskDetailPage({ params }: PageProps) {
                 </div>
               );
             })()}
+
+          {task.type === "VISIT" && <VisitTaskStats taskId={task.id} visitConfig={task.visitConfig} />}
 
           {task.type === "PROXY" && (
             <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">

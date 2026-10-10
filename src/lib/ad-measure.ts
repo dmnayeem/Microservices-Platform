@@ -17,6 +17,7 @@ import { servableCampaignWhere } from "@/lib/ad-serve";
 import { getFraudConfig, isVpnIp } from "@/lib/fraud";
 import { isStaffRole } from "@/lib/staff";
 import { UNKNOWN_COUNTRY } from "@/lib/ad-geo";
+import { getSetting } from "@/lib/system-settings";
 
 /**
  * Real ad measurement — ingestion, billing, rollup.
@@ -462,12 +463,101 @@ export async function recomputeMeasureDay(day: Date): Promise<number> {
   return ops.length;
 }
 
-export async function runAdMeasureRollup(): Promise<{ rows: number; pruned: number }> {
+/**
+ * Make one finished day's report impressions EXACT.
+ *
+ * `Ad.impressions`, `AdDailyStat` and `AdCountryDailyStat` are fed by an
+ * in-memory buffer (ad-counters.ts) that is lost when a serverless instance is
+ * recycled before it flushes — so the reports every screen reads ran a little
+ * short. The raw `AdEvent` rows are complete: set each ad's day (and each
+ * country row) to the count of valid, non-staff VIEW events, and move the
+ * lifetime `Ad.impressions` by the same difference.
+ *
+ * Only a finished day: a late buffer flush lands on the flush day's bucket, so
+ * the day before is final once reconciled. Idempotent — a second run finds no
+ * difference.
+ */
+export async function reconcileImpressionsDay(day: Date): Promise<number> {
+  const start = new Date(day);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(start.getTime() + 86_400_000);
+  const events = (await prisma.adEvent.groupBy({
+    by: ["adId", "country"],
+    where: { kind: "VIEW", valid: true, internal: false, createdAt: { gte: start, lt: end } },
+    _count: { _all: true },
+  })) as unknown as Array<{ adId: string; country: string | null; _count: { _all: number } }>;
+
+  const [stats, countryStats] = await Promise.all([
+    prisma.adDailyStat.findMany({ where: { date: start }, select: { adId: true, impressions: true } }),
+    prisma.adCountryDailyStat.findMany({ where: { date: start }, select: { adId: true, country: true, impressions: true } }),
+  ]);
+  const want = new Map<string, number>();
+  const wantCountry = new Map<string, number>();
+  for (const e of events) {
+    want.set(e.adId, (want.get(e.adId) ?? 0) + e._count._all);
+    const c = `${e.adId}|${e.country || UNKNOWN_COUNTRY}`;
+    wantCountry.set(c, (wantCountry.get(c) ?? 0) + e._count._all);
+  }
+  const have = new Map(stats.map((r) => [r.adId, r.impressions]));
+  const haveCountry = new Map(countryStats.map((r) => [`${r.adId}|${r.country}`, r.impressions]));
+  // Ads that still exist (the counters have an FK; a deleted ad's events stay raw).
+  const adIds = [...new Set([...want.keys(), ...have.keys()])];
+  const alive = new Set(
+    (await prisma.ad.findMany({ where: { id: { in: adIds } }, select: { id: true } })).map((a) => a.id)
+  );
+
+  const ops: Prisma.PrismaPromise<unknown>[] = [];
+  for (const adId of adIds) {
+    if (!alive.has(adId)) continue;
+    const n = want.get(adId) ?? 0;
+    const delta = n - (have.get(adId) ?? 0);
+    if (delta === 0) continue;
+    ops.push(
+      prisma.adDailyStat.upsert({
+        where: { adId_date: { adId, date: start } },
+        create: { adId, date: start, impressions: n },
+        update: { impressions: n },
+      }),
+      prisma.ad.update({ where: { id: adId }, data: { impressions: { increment: delta } } })
+    );
+  }
+  for (const key of new Set([...wantCountry.keys(), ...haveCountry.keys()])) {
+    const [adId, country] = key.split("|") as [string, string];
+    if (!alive.has(adId)) continue;
+    const n = wantCountry.get(key) ?? 0;
+    if (n === (haveCountry.get(key) ?? 0)) continue;
+    ops.push(
+      prisma.adCountryDailyStat.upsert({
+        where: { adId_country_date: { adId, country, date: start } },
+        create: { adId, country, date: start, impressions: n },
+        update: { impressions: n },
+      })
+    );
+  }
+  // Small batches: Accelerate rejects a transaction over 15s.
+  for (let i = 0; i < ops.length; i += 25) {
+    await prisma.$transaction(ops.slice(i, i + 25));
+  }
+  return ops.length;
+}
+
+/** Admin → Ads: correct report impressions from raw events (default on). */
+export const EXACT_IMPRESSIONS_KEY = "ads.exact_impressions";
+
+export async function runAdMeasureRollup(): Promise<{ rows: number; pruned: number; reconciled: number }> {
   const today = todayUtc();
   const yesterday = new Date(today.getTime() - 86_400_000);
   // Yesterday too: events that landed just before midnight, and a run that
   // was missed across the boundary.
   const rows = (await recomputeMeasureDay(yesterday)) + (await recomputeMeasureDay(today));
+
+  // Yesterday is final once an hour of today has passed (buffers flush within
+  // minutes, and a late flush lands on today's bucket anyway).
+  let reconciled = 0;
+  const exact = (await getSetting<boolean>(EXACT_IMPRESSIONS_KEY, true)) !== false;
+  if (exact && Date.now() - today.getTime() >= 3_600_000) {
+    reconciled = await reconcileImpressionsDay(yesterday);
+  }
 
   const { rawRetentionDays } = await getIvtSettings();
   const cutoff = new Date(Date.now() - rawRetentionDays * 86_400_000);
@@ -483,7 +573,7 @@ export async function runAdMeasureRollup(): Promise<{ rows: number; pruned: numb
     pruned += r.count;
     if (ids.length < 5000) break;
   }
-  return { rows, pruned };
+  return { rows, pruned, reconciled };
 }
 
 /**

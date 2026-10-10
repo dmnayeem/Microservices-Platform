@@ -108,6 +108,7 @@ export async function GET() {
   const adsTxt = String((await getSetting<string>("ads.txt_content", "")) || "");
   // Most page-level scripts (popunder / social bar …) that load on one page.
   const pageScriptsMax = Math.min(10, Math.max(1, Number(await getSetting<number>("ads.page_scripts_max", 2)) || 2));
+  const exactImpressions = (await getSetting<boolean>("ads.exact_impressions", true)) !== false;
   // Volume discount on ad-credit purchases. Fully implemented since the credit
   // system shipped, and permanently 0 because no UI ever set it.
   const creditBonusPct = Math.min(
@@ -134,6 +135,7 @@ export async function GET() {
     placements: withStats,
     rotationSeconds,
     pageScriptsMax,
+    exactImpressions,
     cpcUsd,
     adsenseClient,
     gamNetworkCode,
