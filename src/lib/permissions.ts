@@ -1,5 +1,7 @@
 import "server-only";
 import { cache } from "react";
+import { getRoleMoney, designationKey } from "@/lib/role-money";
+import { FINANCE_PERMISSIONS } from "@/lib/rbac";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -147,6 +149,8 @@ interface ResolvedAccess {
    *  reads this, so showing one page does not open its permission-siblings. */
   basePerms: Set<Permission>;
   moduleOverrides: ModuleOverrides;
+  /** Active custom role id — page rules follow it instead of the base role. */
+  customRoleId: string | null;
 }
 
 // `User.moduleOverrides` ships in migration 20260929400000. Until it is
@@ -232,18 +236,19 @@ async function loadAccessUserFresh(userId: string): Promise<AccessUserRow | null
 const resolveAccess = cache(async function resolveAccess(
   userId: string
 ): Promise<ResolvedAccess> {
-  const [configured, user] = await Promise.all([
+  const [configured, user, roleMoney] = await Promise.all([
     getConfiguredRolePermissions(),
     loadAccessUser(userId),
+    getRoleMoney().catch(() => ({}) as Record<string, Permission[]>),
   ]);
   if (!user) {
-    return { role: null, perms: new Set(), basePerms: new Set(), moduleOverrides: {} };
+    return { role: null, perms: new Set(), basePerms: new Set(), moduleOverrides: {}, customRoleId: null };
   }
   const role = user.role as UserRole;
   // Super admin is always full — overrides/config can never strip it.
   if (role === "SUPER_ADMIN") {
     const full = new Set(ROLE_PERMISSIONS.SUPER_ADMIN);
-    return { role, perms: full, basePerms: full, moduleOverrides: {} };
+    return { role, perms: full, basePerms: full, moduleOverrides: {}, customRoleId: null };
   }
 
   // Base = active custom-role permissions when assigned, else the configured
@@ -269,6 +274,12 @@ const resolveAccess = cache(async function resolveAccess(
   }
   const financeGrants = user.financeGrants ?? [];
   const moduleOverrides = parseModuleOverrides(user.moduleOverrides);
+  const activeCustomRoleId = user.customRoleId && customRole?.isActive ? user.customRoleId : null;
+  // Money the designation carries — except what is blocked for this person by
+  // name (a per-user override of false).
+  const designationMoney = (roleMoney[designationKey(role, activeCustomRoleId)] ?? []).filter(
+    (p) => overrides[p] !== false
+  );
 
   // A per-admin page "show" brings that page's permissions with it, so the
   // page and its APIs work. It goes in BEFORE the strip below, which removes
@@ -282,9 +293,10 @@ const resolveAccess = cache(async function resolveAccess(
   // `stripProtectedForRole` — `financeGrants` is the only way in.
   return {
     role,
-    perms: stripProtectedForRole(withModules, role, financeGrants),
-    basePerms: stripProtectedForRole(perms, role, financeGrants),
+    perms: stripProtectedForRole(withModules, role, financeGrants, designationMoney),
+    basePerms: stripProtectedForRole(perms, role, financeGrants, designationMoney),
     moduleOverrides,
+    customRoleId: activeCustomRoleId,
   };
 });
 
@@ -299,14 +311,19 @@ export async function getAccessBreakdown(userId: string): Promise<{
   base: Permission[];
   overrides: Record<string, boolean>;
   financeGrants: string[];
+  /** Money this person's designation gives (before their own blocks). */
+  designationMoney: string[];
   effective: Permission[];
 } | null> {
-  const [configured, user] = await Promise.all([
+  const [configured, user, roleMoney] = await Promise.all([
     getConfiguredRolePermissions(),
     loadAccessUser(userId),
+    getRoleMoney().catch(() => ({}) as Record<string, Permission[]>),
   ]);
   if (!user) return null;
   const role = user.role as UserRole;
+  const activeCustom = user.customRoleId && user.customRole?.isActive ? user.customRoleId : null;
+  const designationMoney = role === "SUPER_ADMIN" ? [] : roleMoney[designationKey(role, activeCustom)] ?? [];
   const base =
     role === "SUPER_ADMIN"
       ? new Set(ROLE_PERMISSIONS.SUPER_ADMIN)
@@ -316,11 +333,19 @@ export async function getAccessBreakdown(userId: string): Promise<{
             user.customRole.permissions.includes(GRANULAR_SPLIT_MARKER)
           )
         : new Set(configured[role] ?? ROLE_PERMISSIONS[role] ?? []);
+  // "Default" for a money permission = what the designation gives. A money
+  // permission in the role's ordinary set is stripped for everyone but the
+  // finance roles, so it is not a default.
+  if (role !== "FINANCE_ADMIN" && role !== "FINANCE_MODERATOR" && role !== "SUPER_ADMIN") {
+    for (const p of FINANCE_PERMISSIONS) base.delete(p);
+  }
+  for (const p of designationMoney) base.add(p);
   return {
     role,
     base: [...base],
     overrides: parsePermissionOverrides(user.permissionOverrides),
     financeGrants: user.financeGrants ?? [],
+    designationMoney,
     effective: [...(await resolveAccess(userId)).perms],
   };
 }
@@ -354,6 +379,11 @@ export async function saveAdminModuleRules(
   rules: unknown
 ): Promise<AdminModuleRules> {
   const clean = parseAdminModuleRules(rules);
+  // The role-columns table does not send custom roles: keep what is saved.
+  if (!(rules && typeof rules === "object" && "customRoles" in (rules as object))) {
+    const current = parseAdminModuleRules(await getSetting<unknown>(ADMIN_MODULE_RULES_KEY, null));
+    clean.customRoles = current.customRoles ?? {};
+  }
   await prisma.systemSetting.upsert({
     where: { key: ADMIN_MODULE_RULES_KEY },
     create: {
@@ -381,12 +411,12 @@ export async function getModuleAccessInputs(userId: string) {
 export async function getModuleDecisions(
   userId: string
 ): Promise<Map<string, ModuleDecision>> {
-  const { role, basePerms, moduleOverrides, rules } =
+  const { role, basePerms, moduleOverrides, rules, customRoleId } =
     await getModuleAccessInputs(userId);
   const out = new Map<string, ModuleDecision>();
   if (!role) return out;
   for (const m of ADMIN_MODULES) {
-    out.set(m.href, decideModule(m, role, basePerms, rules, moduleOverrides));
+    out.set(m.href, decideModule(m, role, basePerms, rules, moduleOverrides, customRoleId));
   }
   return out;
 }

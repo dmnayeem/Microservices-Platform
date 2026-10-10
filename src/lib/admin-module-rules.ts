@@ -38,6 +38,9 @@ export interface AdminModuleRules {
   disabled: string[];
   /** Module hrefs hidden per admin role. SUPER_ADMIN is never stored. */
   roles: Partial<Record<UserRole, string[]>>;
+  /** Module hrefs hidden per custom role (by CustomRole id). A custom-role
+   *  admin follows this list instead of their base role's. */
+  customRoles?: Record<string, string[]>;
 }
 
 export type ModuleOverride = "show" | "hide";
@@ -81,7 +84,7 @@ function cleanHrefs(v: unknown): string[] {
 
 /** Sanitize stored/submitted rules: unknown hrefs, locked modules and SUPER_ADMIN dropped. */
 export function parseAdminModuleRules(raw: unknown): AdminModuleRules {
-  const out: AdminModuleRules = { disabled: [], roles: {} };
+  const out: AdminModuleRules = { disabled: [], roles: {}, customRoles: {} };
   if (!raw || typeof raw !== "object") return out;
   const src = raw as Record<string, unknown>;
   out.disabled = cleanHrefs(src.disabled);
@@ -92,6 +95,15 @@ export function parseAdminModuleRules(raw: unknown): AdminModuleRules {
   for (const role of CONFIGURABLE_ADMIN_ROLES) {
     const hrefs = cleanHrefs(roles[role]);
     if (hrefs.length) out.roles[role] = hrefs;
+  }
+  const custom =
+    src.customRoles && typeof src.customRoles === "object" && !Array.isArray(src.customRoles)
+      ? (src.customRoles as Record<string, unknown>)
+      : {};
+  for (const [id, v] of Object.entries(custom)) {
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) continue;
+    const hrefs = cleanHrefs(v);
+    if (hrefs.length) out.customRoles![id] = hrefs;
   }
   return out;
 }
@@ -152,7 +164,9 @@ export function decideModule(
   role: UserRole,
   perms: ReadonlySet<Permission>,
   rules: AdminModuleRules,
-  overrides: ModuleOverrides
+  overrides: ModuleOverrides,
+  /** Active custom role, when the admin has one. */
+  customRoleId?: string | null
 ): ModuleDecision {
   if (role === "SUPER_ADMIN") return { visible: true, source: "super-admin" };
   const byPerm = m.permissions.some((p) => perms.has(p));
@@ -162,7 +176,8 @@ export function decideModule(
   if (ov === "hide") return { visible: false, source: "override-hide" };
   if (ov === "show") return { visible: true, source: "override-show" };
   if (rules.disabled.includes(m.href)) return { visible: false, source: "off-for-all" };
-  if (rules.roles[role]?.includes(m.href)) return { visible: false, source: "role" };
+  const hiddenForDesignation = customRoleId ? rules.customRoles?.[customRoleId] : rules.roles[role];
+  if (hiddenForDesignation?.includes(m.href)) return { visible: false, source: "role" };
   return { visible: byPerm, source: byPerm ? "permission" : "no-permission" };
 }
 
@@ -171,9 +186,10 @@ export function decideInherited(
   m: AdminModule,
   role: UserRole,
   perms: ReadonlySet<Permission>,
-  rules: AdminModuleRules
+  rules: AdminModuleRules,
+  customRoleId?: string | null
 ): ModuleDecision {
-  return decideModule(m, role, perms, rules, {});
+  return decideModule(m, role, perms, rules, {}, customRoleId);
 }
 
 export const MODULE_SOURCE_LABEL: Record<ModuleSource, string> = {
@@ -183,7 +199,7 @@ export const MODULE_SOURCE_LABEL: Record<ModuleSource, string> = {
   "override-show": "shown for this admin",
   "override-hide": "hidden for this admin",
   "off-for-all": "off for all admins",
-  role: "hidden for role",
+  role: "hidden for this designation",
   permission: "permission",
   "no-permission": "no permission",
 };

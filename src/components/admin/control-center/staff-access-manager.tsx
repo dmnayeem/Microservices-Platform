@@ -41,6 +41,8 @@ interface Breakdown {
   base: Permission[];
   overrides: Record<string, boolean>;
   financeGrants: string[];
+  /** Money the admin's designation gives (Access → By designation). */
+  designationMoney?: string[];
   effective: Permission[];
 }
 
@@ -268,9 +270,21 @@ function StaffPanel({ row, onDirtyChange }: { row: StaffRow; onDirtyChange: (dir
     });
   };
 
-  /** Finance permissions only come from the person's finance grants (draft). */
-  const setFinance = (perm: Permission, on: boolean) => {
-    setDraftFin((prev) => (on ? [...new Set([...prev, perm])] : prev.filter((g) => g !== perm)).sort());
+  /**
+   * A money permission for this admin (draft). Default = whatever their
+   * designation gives; Allow = granted to them by name; Block = taken away from
+   * them even when the designation gives it.
+   */
+  const setMoney = (perm: Permission, state: State) => {
+    setDraftFin((prev) =>
+      (state === "allow" ? [...new Set([...prev, perm])] : prev.filter((g) => g !== perm)).sort()
+    );
+    setDraftOv((prev) => {
+      const next = { ...prev };
+      if (state === "block") next[perm] = false;
+      else delete next[perm];
+      return next;
+    });
   };
 
   if (!b) {
@@ -288,16 +302,26 @@ function StaffPanel({ row, onDirtyChange }: { row: StaffRow; onDirtyChange: (dir
   // answer; changed rows show what the draft will give them.
   const has = (p: string): boolean => {
     if (!changed.has(p)) return savedEff.has(p);
-    if (FINANCE.has(p)) return draftFin.includes(p);
+    if (FINANCE.has(p)) return draftFin.includes(p) || (base.has(p) && draftOv[p] !== false);
     return draftOv[p] === true ? true : draftOv[p] === false ? false : base.has(p);
   };
   const eff = { has };
   const stateOf = (p: Permission): State =>
-    draftOv[p] === true ? "allow" : draftOv[p] === false ? "block" : "default";
+    FINANCE.has(p)
+      ? draftFin.includes(p)
+        ? "allow"
+        : draftOv[p] === false
+          ? "block"
+          : "default"
+      : draftOv[p] === true
+        ? "allow"
+        : draftOv[p] === false
+          ? "block"
+          : "default";
 
   const toggleAdjust = (p: Permission) => {
     const on = !eff.has(p);
-    if (FINANCE.has(p)) return setFinance(p, on);
+    if (FINANCE.has(p)) return setMoney(p, on ? (base.has(p) ? "default" : "allow") : base.has(p) ? "block" : "default");
     // Back to the role default when that already matches; otherwise an explicit allow/block.
     return setOverride(p, on === base.has(p) ? "default" : on ? "allow" : "block");
   };
@@ -326,8 +350,8 @@ function StaffPanel({ row, onDirtyChange }: { row: StaffRow; onDirtyChange: (dir
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
         <p className="text-sm font-bold text-white">Change users&apos; numbers by hand</p>
         <p className="mb-3 text-[11px] text-slate-400">
-          Points and cash are money: only granted by name. XP, level and followers follow the role unless you
-          change them here.
+          Each follows this admin&apos;s designation (Access → By designation) unless you change it here for
+          them alone.
         </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           {ADJUST.map(({ perm, label, icon: Icon, tone }) => {
@@ -445,13 +469,14 @@ function StaffPanel({ row, onDirtyChange }: { row: StaffRow; onDirtyChange: (dir
                             </span>
                           ) : (
                             <Segmented
-                              value={on ? "allow" : "block"}
+                              value={stateOf(p)}
                               options={[
-                                ["block", "Off"],
-                                ["allow", "On"],
+                                ["default", base.has(p) ? "Default (on)" : "Default (off)"],
+                                ["allow", "Allow"],
+                                ["block", "Block"],
                               ]}
                               disabled={saving}
-                              onChange={(v) => setFinance(p, v === "allow")}
+                              onChange={(v) => setMoney(p, v as State)}
                             />
                           )
                         ) : (

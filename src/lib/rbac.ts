@@ -814,9 +814,11 @@ export function customRolePermissionsForEditor(stored: readonly string[]): strin
 export function stripProtectedForRole(
   perms: Set<Permission>,
   role: UserRole | undefined,
-  /** `User.financeGrants` — the ONLY source of finance access for anyone who
-   *  is not a super admin or finance admin. */
-  financeGrants: readonly string[] = []
+  /** `User.financeGrants` — money granted to this person by name. */
+  financeGrants: readonly string[] = [],
+  /** Money the super admin gave this person's whole designation
+   *  (src/lib/role-money.ts), minus anything blocked for them by name. */
+  designationMoney: readonly string[] = []
 ): Set<Permission> {
   if (role === "SUPER_ADMIN") return perms;
   // Staff administration: super admin and manager only.
@@ -837,7 +839,7 @@ export function stripProtectedForRole(
   //    role already has it, so the role matrix can narrow a moderator but can
   //    never widen one past the ceiling.
   if (role !== "FINANCE_ADMIN") {
-    const granted = expandLegacyPermissions(new Set<string>(financeGrants));
+    const granted = expandLegacyPermissions(new Set<string>([...financeGrants, ...designationMoney]));
     for (const p of FINANCE_SET) {
       const fromCeiling =
         role === "FINANCE_MODERATOR" && FINANCE_MODERATOR_CEILING_SET.has(p) && perms.has(p);

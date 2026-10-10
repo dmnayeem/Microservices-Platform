@@ -17,9 +17,13 @@ import {
   ExternalLink,
   UserCircle2,
   PanelsTopLeft,
+  BadgeCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
+import { DesignationAccessEditor } from "@/components/admin/access/designation-access-editor";
+import { getRoleMoney } from "@/lib/role-money";
+import { FINANCE_MODERATOR_CEILING, type Permission } from "@/lib/rbac";
 import { isSuperAdmin, type UserRole, ADMIN_ROLES, ROLE_CONFIG, ROLE_PERMISSIONS, PERMISSION_CATALOG, FINANCE_PERMISSIONS, SUPERADMIN_ONLY_PERMISSIONS, ROLE_META, permissionLabel, permissionDescription, ADMIN_MODULES, CATEGORY_LABELS, CATEGORY_ORDER, stripProtectedForRole, customRolePermissionsForEditor } from "@/lib/rbac";
 import { FEATURES } from "@/lib/features";
 import { AccessCatalog } from "@/components/admin/access/access-catalog";
@@ -56,10 +60,11 @@ interface PageProps {
   }>;
 }
 
-type ViewId = "admins" | "activity" | "roles" | "pages" | "catalog";
+type ViewId = "admins" | "designations" | "activity" | "roles" | "pages" | "catalog";
 
 const VIEW_TABS: Array<{ id: ViewId; label: string; icon: typeof Shield }> = [
   { id: "admins", label: "Admin Accounts", icon: Users },
+  { id: "designations", label: "By designation", icon: BadgeCheck },
   { id: "roles", label: "Roles & Permissions", icon: Key },
   { id: "pages", label: "Admin pages", icon: PanelsTopLeft },
   { id: "catalog", label: "What Everything Does", icon: BookOpen },
@@ -134,6 +139,95 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
           };
         })()
       : null;
+  // By designation: every staff designation with everything it gets, in one
+  // place (components/admin/access/designation-access-editor.tsx).
+  const designationTab =
+    view === "designations"
+      ? await (async () => {
+          const [configured, rules, roleMoney, customs, counts, isSuper] = await Promise.all([
+            getConfiguredRolePermissions(),
+            getAdminModuleRules(),
+            getRoleMoney(),
+            prisma.customRole.findMany({
+              where: { isActive: true },
+              orderBy: { name: "asc" },
+              select: { id: true, name: true, permissions: true, _count: { select: { users: true } } },
+            }) as unknown as Promise<{ id: string; name: string; permissions: string[]; _count: { users: number } }[]>,
+            prisma.user.groupBy({
+              by: ["role"],
+              where: { role: { in: CONFIGURABLE_ADMIN_ROLES }, customRoleId: null },
+              _count: { _all: true },
+            }) as unknown as Promise<{ role: string; _count: { _all: number } }[]>,
+            prisma.user
+              .findUnique({ where: { id: session.user.id }, select: { role: true } })
+              .then((u) => u?.role === "SUPER_ADMIN"),
+          ]);
+          const money = new Set<string>(FINANCE_PERMISSIONS);
+          const staffOnly = new Set<string>(SUPERADMIN_ONLY_PERMISSIONS);
+          // What a designation really holds: money only through the designation
+          // money row (or its own set for the finance roles), as the engine does.
+          const shown = (role: UserRole, set: Iterable<string>, key: string) => {
+            const out = new Set<string>(set);
+            if (role !== "FINANCE_ADMIN") {
+              for (const p of money) {
+                const ceiling = role === "FINANCE_MODERATOR" && FINANCE_MODERATOR_CEILING.includes(p as Permission);
+                if (!ceiling) out.delete(p);
+              }
+            }
+            for (const p of roleMoney[key] ?? []) out.add(p);
+            if (role !== "MANAGER") for (const p of staffOnly) out.delete(p);
+            out.delete("users.adjust_balance");
+            return [...out];
+          };
+          const notOfferedFor = (role: UserRole | "custom") =>
+            role === "MANAGER" ? ["users.adjust_balance"] : [...staffOnly, "users.adjust_balance"];
+          const designations = [
+            ...CONFIGURABLE_ADMIN_ROLES.map((r) => ({
+              key: r as string,
+              label: ROLE_CONFIG[r].label,
+              kind: "role" as const,
+              staff: counts.find((c) => c.role === r)?._count._all ?? 0,
+              permissions: shown(r, configured[r], r),
+              hiddenPages: rules.roles[r] ?? [],
+              defaults: shown(r, ROLE_PERMISSIONS[r], "__default__"),
+              notOffered: notOfferedFor(r),
+            })),
+            ...customs.map((c) => {
+              const key = `custom:${c.id}`;
+              return {
+                key,
+                label: c.name,
+                kind: "custom" as const,
+                staff: c._count.users,
+                permissions: shown("ADMIN", customRolePermissionsForEditor(c.permissions), key),
+                hiddenPages: rules.customRoles?.[c.id] ?? [],
+                defaults: null,
+                notOffered: notOfferedFor("custom"),
+              };
+            }),
+          ];
+          const groups = PERMISSION_CATALOG.map((g) => ({
+            label: g.label,
+            permissions: g.permissions.map((p) => ({
+              key: p,
+              label: permissionLabel(p),
+              description: permissionDescription(p) ?? "",
+              money: money.has(p),
+            })),
+          }));
+          const pages = CATEGORY_ORDER.flatMap((category) =>
+            ADMIN_MODULES.filter((m) => m.category === category && isConfigurableModule(m)).map((m) => ({
+              href: m.href,
+              name: m.name,
+              group: CATEGORY_LABELS[category],
+              permissions: m.permissions as string[],
+              offForAll: rules.disabled.includes(m.href),
+            }))
+          );
+          return { designations, groups, pages, canEdit: isSuper };
+        })()
+      : null;
+
   const customRolesRaw =
     view === "roles"
       ? await prisma.customRole.findMany({
@@ -380,6 +474,16 @@ export default async function AdminAccessPage({ searchParams }: PageProps) {
           );
         })}
       </div>
+
+      {/* BY DESIGNATION */}
+      {view === "designations" && designationTab && (
+        <DesignationAccessEditor
+          designations={designationTab.designations}
+          groups={designationTab.groups}
+          pages={designationTab.pages}
+          canEdit={designationTab.canEdit}
+        />
+      )}
 
       {/* ACTIVITY TAB */}
       {view === "activity" && (

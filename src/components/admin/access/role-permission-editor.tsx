@@ -172,7 +172,7 @@ export function RolePermissionEditor({
           </h2>
           <p className="text-sm text-slate-400">
             {canManage
-              ? "Toggle whole sections on/off per role, or expand for fine-grained control. Nothing changes until you press Save changes."
+              ? "Toggle whole sections on/off per role, or expand for fine-grained control. Nothing changes until you press Save changes. Money permissions and a role's admin pages are set together on the By designation tab."
               : "Read-only view — a super admin can edit these."}
           </p>
         </div>

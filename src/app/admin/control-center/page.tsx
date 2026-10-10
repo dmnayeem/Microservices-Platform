@@ -38,10 +38,10 @@ export const dynamic = "force-dynamic";
 
 const CONTROLS = [
   {
-    href: "/admin/access?view=roles",
+    href: "/admin/access?view=designations",
     icon: Key,
-    title: "Roles & permissions",
-    body: "What each role (Admin, Support, Moderator…) can do by default, and custom roles.",
+    title: "Access by designation",
+    body: "Everything a Manager, Admin, Finance Admin, Moderator… gets — permissions (money included) and admin pages — on one screen.",
     tone: "text-sky-400 bg-sky-500/10",
   },
   {

@@ -49,14 +49,14 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if ("error" in guard) return guard.error;
   const { id } = await params;
 
-  const { role, basePerms, moduleOverrides, rules } = await getModuleAccessInputs(id);
+  const { role, basePerms, moduleOverrides, rules, customRoleId } = await getModuleAccessInputs(id);
   if (!role) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (!ADMIN_ROLES.includes(role) || role === "SUPER_ADMIN") {
     return NextResponse.json({ role, applicable: false, modules: [] });
   }
 
   const modules = ADMIN_MODULES.map((m) => {
-    const inherited = decideInherited(m, role, basePerms, rules);
+    const inherited = decideInherited(m, role, basePerms, rules, customRoleId);
     return {
       href: m.href,
       name: m.name,
