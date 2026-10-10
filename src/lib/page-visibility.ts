@@ -46,6 +46,7 @@ export const USER_PAGES: UserPage[] = [
   { path: "/social-posts", label: "Social Posts", group: "Tasks" },
   { path: "/proxy-tasks", label: "Proxy Tasks", group: "Tasks" },
   { path: "/app-install-tasks", label: "App Install", group: "Tasks" },
+  { path: "/visit-tasks", label: "Visit Tasks", group: "Tasks" },
   { path: "/board-tasks", label: "Board Tasks", group: "Tasks" },
   // Earn
   { path: "/offerwalls", label: "Offerwalls", group: "Earn" },
@@ -159,6 +160,8 @@ export function taskTypePage(type: string | null | undefined): string | null {
       return "/manual-tasks";
     case "APPINSTALL":
       return "/app-install-tasks";
+    case "VISIT":
+      return "/visit-tasks";
     case "SOCIAL":
       return "/social-tasks";
     case "QUIZ":

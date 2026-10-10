@@ -91,6 +91,12 @@ export function toPlayerTask<T extends Record<string, unknown>>(
   if ("articleConfig" in out) {
     out.articleConfig = stripUniqueKey(out.articleConfig);
   }
+  // VISIT: the link opens only through /go/task (which records the open), so
+  // it is never sent to the browser — just what the task screen needs.
+  if ("visitConfig" in out && out.visitConfig != null) {
+    const v = out.visitConfig as Record<string, unknown>;
+    out.visitConfig = { kind: v.kind, staySeconds: v.staySeconds, minSeconds: v.minSeconds };
+  }
 
   return out;
 }

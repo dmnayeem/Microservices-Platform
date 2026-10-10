@@ -24,6 +24,7 @@ export const TEMPLATE_TASK_TYPES = [
   "PROXY",
   "OFFERWALL",
   "APPINSTALL",
+  "VISIT",
   "CUSTOM",
 ] as const;
 
@@ -36,6 +37,7 @@ export const TEMPLATE_TASK_TYPE_LABEL: Record<string, string> = {
   PROXY: "Proxy",
   OFFERWALL: "Offerwall",
   APPINSTALL: "App install",
+  VISIT: "Visit link",
   CUSTOM: "Custom",
 };
 

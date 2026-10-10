@@ -110,6 +110,7 @@ const CATEGORIES: Category[] = [
   { key: "social-posts", label: "Social Posts", description: "Write & publish a post", icon: Megaphone, color: "violet", href: "/social-posts", kind: "feature", feature: "social-posts" },
   { key: "social", label: "Social Tasks", description: "Like, comment, share, follow", icon: Share2, color: "pink", href: "/social-tasks", kind: "type", taskType: "SOCIAL" },
   { key: "appinstall", label: "App Install", description: "Install an app + proof", icon: Smartphone, color: "emerald", href: "/app-install-tasks", kind: "type", taskType: "APPINSTALL" },
+  { key: "visit", label: "Visit & Earn", description: "Open a link for a set time or pass a short link", icon: Smartphone, color: "cyan", href: "/visit-tasks", kind: "type", taskType: "VISIT" },
   { key: "custom", label: "Custom", description: "Custom tasks to earn", icon: Sparkles, color: "indigo", href: "/custom-tasks", kind: "type", taskType: "CUSTOM" },
   { key: "survey", label: "Survey", description: "Complete surveys", icon: ClipboardList, color: "purple", href: "/survey-tasks", kind: "type", taskType: "SURVEY" },
   { key: "quiz", label: "Quiz Tasks", description: "Answer quiz questions", icon: HelpCircle, color: "amber", href: "/quiz-tasks", kind: "type", taskType: "QUIZ" },

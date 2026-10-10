@@ -35,6 +35,7 @@ const taskTypeIcons: Record<string, typeof Video> = {
   OFFERWALL: Gift,
   CUSTOM: Sparkles,
   APPINSTALL: Smartphone,
+  VISIT: Globe,
 };
 
 const taskTypeColors: Record<string, string> = {
@@ -47,6 +48,7 @@ const taskTypeColors: Record<string, string> = {
   OFFERWALL: "text-emerald-400 bg-emerald-500/10",
   CUSTOM: "text-indigo-400 bg-indigo-500/10",
   APPINSTALL: "text-green-400 bg-green-500/10",
+  VISIT: "text-sky-400 bg-sky-500/10",
 };
 
 export default async function AdminSubmissionsPage({ searchParams }: PageProps) {
@@ -407,6 +409,7 @@ export default async function AdminSubmissionsPage({ searchParams }: PageProps) 
             <option value="OFFERWALL">Offerwall</option>
             <option value="CUSTOM">Custom</option>
             <option value="APPINSTALL">App Install</option>
+            <option value="VISIT">Visit Link</option>
           </select>
           <select
             name="board"

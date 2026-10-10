@@ -68,6 +68,7 @@ export default async function NewPackagePage() {
     surveyTasksEnabled: true,
     offerwallTasksEnabled: true,
     appInstallEnabled: true,
+    visitTasksEnabled: true,
 
     dailyTaskLimit: -1,
     minWithdrawal: 5,

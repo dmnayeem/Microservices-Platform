@@ -88,6 +88,7 @@ export default async function EditPackagePage({ params }: PageProps) {
     surveyTasksEnabled: pkg.surveyTasksEnabled,
     offerwallTasksEnabled: pkg.offerwallTasksEnabled,
     appInstallEnabled: pkg.appInstallEnabled,
+    visitTasksEnabled: pkg.visitTasksEnabled,
 
     dailyTaskLimit: pkg.dailyTaskLimit,
     minWithdrawal: toNum(pkg.minWithdrawal),

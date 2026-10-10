@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { normalizeVisitConfig, validateVisitConfig } from "@/lib/visit-tasks";
 import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { announceTask, parseTaskNotify } from "@/lib/task-announce";
 import { auth } from "@/lib/auth";
@@ -204,6 +205,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // VISIT: direct / smart link or URL shortener (lib/visit-tasks.ts).
+    const visitConfigOut = type === "VISIT" && body.visitConfig !== undefined ? normalizeVisitConfig(body.visitConfig) : null;
+    if (visitConfigOut) {
+      const err = validateVisitConfig(visitConfigOut);
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+    }
+
     // The same completability gate as creation. A task that was fine when it
     // was created and is then edited into an unfinishable state is exactly as
     // broken — and the edit path is the easier one to leave ungated.
@@ -216,6 +224,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         questions,
         videoConfig,
         articleConfig,
+        visitConfig: visitConfigOut,
       },
       { aiQuizAvailable: await isGeminiConfigured() }
     );
@@ -275,6 +284,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           ? JSON.parse(JSON.stringify(customConfig))
           : null,
         appInstallConfig: appInstallConfigOut,
+        ...(visitConfigOut ? { visitConfig: JSON.parse(JSON.stringify(visitConfigOut)) } : {}),
         proxyInstructions: proxyInstructions || null,
         startsAt: startsAt ? new Date(startsAt) : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,

@@ -38,6 +38,7 @@ export const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
   OFFERWALL: "offerwallTasks",
   CUSTOM: "tasks",
   APPINSTALL: "appInstall",
+  VISIT: "visitTasks",
 };
 
 /** The viewer columns task visibility depends on. */

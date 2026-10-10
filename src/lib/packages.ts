@@ -78,6 +78,7 @@ export interface PackageRow {
   surveyTasksEnabled: boolean;
   offerwallTasksEnabled: boolean;
   appInstallEnabled: boolean;
+  visitTasksEnabled: boolean;
   dailyTaskLimit: number;
   dailyPostLimit: number;
   minWithdrawal: number;

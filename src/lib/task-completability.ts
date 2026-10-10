@@ -1,3 +1,4 @@
+import { normalizeVisitConfig, validateVisitConfig } from "@/lib/visit-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
 
 /**
@@ -30,6 +31,7 @@ export interface TaskCompletabilityInput {
   questions?: unknown;
   videoConfig?: unknown;
   articleConfig?: unknown;
+  visitConfig?: unknown;
 }
 
 const num = (v: unknown) => {
@@ -71,6 +73,11 @@ export function taskCompletabilityError(
     if (!hasPages && !hasLinks && !input.contentUrl?.trim()) {
       return "An article task needs at least one article URL.";
     }
+  }
+
+  if (input.type === "VISIT") {
+    const err = validateVisitConfig(normalizeVisitConfig(input.visitConfig));
+    if (err) return err;
   }
 
   if (input.type === "QUIZ") {

@@ -30,6 +30,7 @@ export const TASK_COMMISSION_TYPES = [
   { type: "OFFERWALL", label: "Offerwall-type tasks" },
   { type: "CUSTOM", label: "Custom tasks" },
   { type: "APPINSTALL", label: "App install tasks" },
+  { type: "VISIT", label: "Visit tasks (links & shorteners)" },
 ] as const;
 
 export type TaskCommissionType = (typeof TASK_COMMISSION_TYPES)[number]["type"];

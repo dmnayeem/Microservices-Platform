@@ -54,6 +54,8 @@ const USER_EXEMPT: Record<string, string> = {
     "printable copy of an already-issued certificate, opened from /certificates; looked up by serial, nothing to earn or buy.",
   "/impersonate":
     "admin impersonation hand-off (one-time token from the admin panel), not a user feature.",
+  "/v/[taskId]":
+    "end page of a URL-shortener visit task; shows nothing unless an attempt was opened through /go/task, which is gated by /visit-tasks.",
 };
 
 /**

@@ -63,6 +63,9 @@ enum TaskType {
   OFFERWALL
   CUSTOM
   APPINSTALL
+  // Visit a link: an ad network's direct/smart link (stay N seconds) or a URL
+  // shortener that ends on our page with a personal code (lib/visit-tasks.ts).
+  VISIT
 }
 
 enum TaskStatus {
@@ -2324,6 +2327,7 @@ model Task {
   surveyConfig        Json? // Survey task config (see lib/survey-tasks.ts SurveyConfig)
   customConfig        Json? // Custom task config (see lib/custom-tasks.ts CustomConfig)
   appInstallConfig    Json? // App-install task config (see lib/app-install-tasks.ts AppInstallConfig)
+  visitConfig         Json? // Visit task config (see lib/visit-tasks.ts VisitConfig)
   proxyInstructions   String?          @db.Text
   startsAt            DateTime?
   expiresAt           DateTime?
@@ -2758,6 +2762,7 @@ model Package {
   surveyTasksEnabled    Boolean @default(true)
   offerwallTasksEnabled Boolean @default(true)
   appInstallEnabled     Boolean @default(true)
+  visitTasksEnabled     Boolean @default(true)
 
   // Limits
   dailyTaskLimit        Int     @default(-1)
@@ -5986,4 +5991,34 @@ model CourseTutorPayout {
   @@index([status, releaseAt])
   @@index([tutorId, status])
   @@index([courseId])
+}
+
+/// One open of a Visit task's link (lib/visit-tasks.ts). Times are the
+/// SERVER's: `openedAt` when /go/task redirected out, `returnedAt` when the
+/// task tab came back (direct link), `reachedAt` when our shortener
+/// destination page was reached. A visit pays only through the normal submit
+/// (and its budget/limit CAS) — this table is the evidence and the counts.
+model TaskVisit {
+  id           String    @id @default(cuid())
+  taskId       String
+  submissionId String
+  userId       String
+  /// DIRECT | SHORTENER
+  kind         String
+  openedAt     DateTime  @default(now())
+  returnedAt   DateTime?
+  reachedAt    DateTime?
+  elapsedSec   Int?
+  /// OPEN | EARLY (came back too soon) | DONE (stayed long enough) | REACHED (shortener destination)
+  outcome      String    @default("OPEN")
+  /// Shortener: OK | UNKNOWN (no referrer) | MISMATCH (not the shortener) | TOO_FAST
+  verdict      String?
+  referrerHost String?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  @@index([taskId, openedAt])
+  @@index([submissionId])
+  @@index([userId, openedAt])
 }

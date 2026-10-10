@@ -48,7 +48,8 @@ export type PackageFeatureKey =
   | "quizTasks"
   | "surveyTasks"
   | "offerwallTasks"
-  | "appInstall";
+  | "appInstall"
+  | "visitTasks";
 
 export const FEATURE_TO_COLUMN: Record<PackageFeatureKey, string> = {
   tasks: "tasksEnabled",
@@ -90,6 +91,7 @@ export const FEATURE_TO_COLUMN: Record<PackageFeatureKey, string> = {
   surveyTasks: "surveyTasksEnabled",
   offerwallTasks: "offerwallTasksEnabled",
   appInstall: "appInstallEnabled",
+  visitTasks: "visitTasksEnabled",
 };
 
 /** All feature keys (stable order) — for iterating overrides + admin UIs. */
@@ -150,6 +152,7 @@ export const FEATURES: {
   { key: "surveyTasks", label: "Survey Tasks", group: "task" , description: "Create SURVEY tasks." },
   { key: "offerwallTasks", label: "Offerwall Tasks", group: "task" , description: "Create OFFERWALL tasks." },
   { key: "appInstall", label: "App Install Tasks", group: "task" , description: "Create APP INSTALL tasks with screenshot proof steps." },
+  { key: "visitTasks", label: "Visit Tasks (links & shorteners)", group: "task", description: "Do VISIT tasks: open a direct / smart link for a set time, or pass a URL shortener and enter the code." },
 ];
 
 /**

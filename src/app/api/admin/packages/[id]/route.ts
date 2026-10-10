@@ -73,6 +73,7 @@ const PLAN_PATCH = z
     surveyTasksEnabled: z.boolean().optional(),
     offerwallTasksEnabled: z.boolean().optional(),
     appInstallEnabled: z.boolean().optional(),
+    visitTasksEnabled: z.boolean().optional(),
 
     dailyTaskLimit: z.number().int().min(-1).max(100000).optional(),
     dailyPostLimit: z.number().int().min(-1).max(100000).optional(),

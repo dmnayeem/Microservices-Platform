@@ -70,6 +70,7 @@ const PLAN_INPUT = z
     surveyTasksEnabled: z.boolean(),
     offerwallTasksEnabled: z.boolean(),
     appInstallEnabled: z.boolean().optional(),
+    visitTasksEnabled: z.boolean().optional(),
 
     // Limits
     dailyTaskLimit: z.number().int().min(-1).max(100000),
@@ -229,6 +230,7 @@ export async function POST(req: NextRequest) {
         surveyTasksEnabled: data.surveyTasksEnabled,
         offerwallTasksEnabled: data.offerwallTasksEnabled,
         appInstallEnabled: data.appInstallEnabled ?? true,
+        visitTasksEnabled: data.visitTasksEnabled ?? true,
 
         dailyTaskLimit: data.dailyTaskLimit,
         dailyPostLimit: data.dailyPostLimit ?? -1,

@@ -33,6 +33,7 @@ const TASK_TYPE_FEATURE: Record<TaskType, PackageFeatureKey> = {
   OFFERWALL: "offerwallTasks",
   CUSTOM: "tasks",
   APPINSTALL: "appInstall",
+  VISIT: "visitTasks",
 };
 
 // POST /api/tasks/:id/start - Start a task

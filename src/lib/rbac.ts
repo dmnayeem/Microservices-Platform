@@ -122,6 +122,7 @@ export type Permission =
   | "tasks.create.offerwall"
   | "tasks.create.custom"
   | "tasks.create.appinstall"
+  | "tasks.create.visit"
   | "boards.view"
   | "boards.manage"
   // Submissions
@@ -261,6 +262,7 @@ export const TASK_TYPES = [
   "OFFERWALL",
   "CUSTOM",
   "APPINSTALL",
+  "VISIT",
 ] as const;
 export type TaskTypeName = (typeof TASK_TYPES)[number];
 
@@ -1105,6 +1107,7 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
   "tasks.create.offerwall": { label: "Create Offerwall tasks", description: "Create offerwall tasks." },
   "tasks.create.custom": { label: "Create Custom tasks", description: "Create custom-type tasks." },
   "tasks.create.appinstall": { label: "Create App-Install tasks", description: "Create app-install-with-proof tasks." },
+  "tasks.create.visit": { label: "Create Visit tasks", description: "Create direct / smart link and URL-shortener visit tasks." },
   "boards.view": { label: "View task boards", description: "See task boards (bundled task sets) and their progress." },
   "boards.manage": { label: "Manage task boards", description: "Create, edit and assign tasks to task boards." },
   "submissions.view": { label: "View submissions", description: "See users' task submissions and their proof." },

@@ -331,7 +331,7 @@ export default async function AdminAnalyticsPage({ searchParams }: PageProps) {
   }));
   const TASK_TYPE_NAME: Record<string, string> = {
     VIDEO: "Video", SOCIAL: "Social", SURVEY: "Survey", QUIZ: "Quiz",
-    ARTICLE: "Article", CUSTOM: "Custom", APPINSTALL: "App Install",
+    ARTICLE: "Article", CUSTOM: "Custom", APPINSTALL: "App Install", VISIT: "Visit",
     PROXY: "Proxy", MANUAL: "Manual", BOARD: "Board", OFFERWALL: "Offerwall",
   };
   const taskBreakdown = taskTypeDist
