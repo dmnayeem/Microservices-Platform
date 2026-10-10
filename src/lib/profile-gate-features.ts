@@ -5,7 +5,7 @@
  */
 export const GATE_FEATURES = [
   { key: "tasks", label: "Tasks (every task type — also locks CPA offers and offerwalls)" },
-  { key: "missions", label: "Daily missions & missions" },
+  { key: "missions", label: "Daily missions, missions & events" },
   { key: "quizzes", label: "Quiz games" },
   { key: "offerwalls", label: "Offerwalls" },
   { key: "cpa", label: "CPA offers" },

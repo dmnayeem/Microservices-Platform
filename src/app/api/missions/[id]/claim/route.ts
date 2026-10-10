@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { requireActiveUser } from "@/lib/require-active";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -24,6 +25,11 @@ export async function POST(
   // that lets a user earn, or a locked user earns through the unchecked one.
   const profileGated = await profileGateResponse(session.user.id, "missions");
   if (profileGated) return profileGated;
+  // A reward claim pays out: a banned / suspended account may not claim.
+  const active = await requireActiveUser(session.user.id);
+  if (!active.ok) {
+    return NextResponse.json({ error: active.message }, { status: active.httpStatus });
+  }
   // Reward claim. Correctness comes from the unique ledger constraint; this
   // keeps a claim flood from being absorbed by the database.
   const limited = await enforceDbRateLimit(req, "claim", session.user.id, 30, 60_000);

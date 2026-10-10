@@ -543,8 +543,12 @@ export async function POST(request: NextRequest) {
     // unlocked an achievement and never paid the upline's commission. All three
     // are idempotent on the submission id. Board quizzes count as none — the
     // board's own claim is the one completion (see goal-progress ACCEPTS).
-    if (passed && pointsEarned > 0 && !task.boardId) {
-      await processReferralCommissions(session.user.id, pointsEarned, taskId, submission.id);
+    if (passed && !task.boardId) {
+      // Commission only on real earnings; a pass worth 0 points still counts
+      // toward "complete quizzes / tasks" events and missions.
+      if (pointsEarned > 0) {
+        await processReferralCommissions(session.user.id, pointsEarned, taskId, submission.id);
+      }
       await recordUserAction({
         userId: session.user.id,
         action: "quiz_approved",

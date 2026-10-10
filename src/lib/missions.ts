@@ -271,21 +271,26 @@ async function runClaim(
       // snapshot back into it would overwrite the real count.
       await tx.userMissionProgress.upsert({
         where: { userId_missionId: { userId, missionId } },
-        create: {
+        create: { userId, missionId },
+        update: {},
+      });
+      // Compare-and-set: only the first of two concurrent claims marks the
+      // row. An XP-only mission or tier has no ledger row to collide on, so a
+      // double tap used to pay its XP twice (events already worked this way).
+      const tier = metadata.tier != null ? (metadata.tier as number) : null;
+      const mark = await tx.userMissionProgress.updateMany({
+        where: {
           userId,
           missionId,
-          ...(metadata.tier != null
-            ? { claimedTiers: [metadata.tier as number] }
-            : {}),
-          ...(markComplete ? { claimedAt: new Date() } : {}),
+          ...(tier != null ? { NOT: { claimedTiers: { has: tier } } } : {}),
+          ...(markComplete ? { claimedAt: null } : {}),
         },
-        update: {
-          ...(metadata.tier != null
-            ? { claimedTiers: { push: metadata.tier as number } }
-            : {}),
+        data: {
+          ...(tier != null ? { claimedTiers: { push: tier } } : {}),
           ...(markComplete ? { claimedAt: new Date() } : {}),
         },
       });
+      if (mark.count === 0) throw new Error("ALREADY_CLAIMED");
       if (points > 0) {
         await creditPoints(tx, {
           userId,
@@ -309,7 +314,7 @@ async function runClaim(
 
     return { ok: true, rewardPoints: points, rewardXp: xp };
   } catch (err) {
-    if (isDuplicateLedgerError(err)) {
+    if (isDuplicateLedgerError(err) || (err instanceof Error && err.message === "ALREADY_CLAIMED")) {
       return { ok: false, error: "You already claimed this reward." };
     }
     console.error("mission claim failed:", err);

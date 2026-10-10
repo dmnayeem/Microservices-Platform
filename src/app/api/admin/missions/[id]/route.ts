@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { maxPackageAccessLevel } from "@/lib/events";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -67,6 +68,11 @@ export async function PATCH(
         { status: 400 }
       );
     }
+  }
+
+  // A plan level above the top real plan hides the mission from everyone.
+  if (typeof v.data.requiredAccessLevel === "number") {
+    v.data.requiredAccessLevel = Math.min(v.data.requiredAccessLevel, await maxPackageAccessLevel());
   }
 
   const mission = await prisma.mission.update({

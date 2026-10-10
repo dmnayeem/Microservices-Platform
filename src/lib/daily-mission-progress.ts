@@ -187,8 +187,10 @@ export async function buildDailyProgress(
   const submissions = await prisma.taskSubmission.findMany({
     where: {
       userId,
-      createdAt: { gte: todayStart },
       status: { in: [SubmissionStatus.APPROVED, SubmissionStatus.AUTO_APPROVED] },
+      // Counts on the day it was APPROVED: a task sent in last night and
+      // approved this morning counts today (it used to count on no day at all).
+      OR: [{ reviewedAt: { gte: todayStart } }, { reviewedAt: null, createdAt: { gte: todayStart } }],
     },
     select: { taskId: true, task: { select: { type: true, boardId: true } } },
   });

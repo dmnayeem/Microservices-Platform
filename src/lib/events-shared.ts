@@ -124,7 +124,7 @@ export const EVENT_ACTION_META: Record<
   UPLOAD_PROOF: {
     label: "Upload proof",
     unit: "upload",
-    hint: "Upload the required image/screenshot. Note this is claimed on trust — there is no review step.",
+    hint: "Upload the required image/screenshot. It pays after an admin approves the proof (Events → Proofs to review). Use one reward — tiers aren't used for this type.",
   },
   PWA_INSTALLED: {
     label: "Install the app",

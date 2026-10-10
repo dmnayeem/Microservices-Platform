@@ -27,6 +27,7 @@ interface AdminEvent {
   dailyCap?: number;
   tiers?: unknown;
   _count?: { progress: number };
+  claimedCount?: number;
 }
 
 const ACTION_KEYS = Object.keys(EVENT_ACTION_META) as EventActionType[];
@@ -149,6 +150,8 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
         ...rest,
         startAt: form.startAt ? new Date(form.startAt).toISOString() : "",
         endAt: form.endAt ? new Date(form.endAt).toISOString() : "",
+        // "Upload proof" pays one reward after review — never tiers.
+        tiers: form.actionType === "UPLOAD_PROOF" ? [] : form.tiers,
       };
       const r = await fetch(
         isEdit ? `/api/admin/events/${id}` : "/api/admin/events",
@@ -194,14 +197,18 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
     if (
       !(await confirmDialog({
         title: "Delete event?",
-        description: `"${ev.title}" and all its progress will be removed.`,
+        description: `"${ev.title}" will be removed. If people already have progress on it, it is turned off instead so nobody loses an unclaimed reward.`,
         tone: "danger",
         confirmLabel: "Delete",
       }))
     )
       return;
     const r = await fetch(`/api/admin/events/${ev.id}`, { method: "DELETE" });
-    if (r.ok) {
+    const d = (await r.json().catch(() => ({}))) as { deactivated?: boolean; message?: string };
+    if (r.ok && d.deactivated) {
+      setEvents((prev) => prev.map((e) => (e.id === ev.id ? { ...e, isActive: false } : e)));
+      toast.success("Event turned off", { description: d.message });
+    } else if (r.ok) {
       setEvents((prev) => prev.filter((e) => e.id !== ev.id));
       toast.success("Event deleted");
     } else toast.error("Couldn't delete");
@@ -350,7 +357,9 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
           </div>
 
           {/* Optional reward tiers (multi-tier, e.g. 10→X, 20→Y). When set, the
-              single Target/Reward above is ignored in favour of these. */}
+              single Target/Reward above is ignored in favour of these. Not for
+              "Upload proof": that pays one reward after review. */}
+          {form.actionType !== "UPLOAD_PROOF" && (
           <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-slate-300">
@@ -432,6 +441,7 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
               ))
             )}
           </div>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-slate-400">
@@ -508,25 +518,30 @@ export function EventsAdminView({ canManage }: { canManage: boolean }) {
                     {ev.title}
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    {EVENT_ACTION_META[ev.actionType].label} · target{" "}
-                    {ev.threshold} · +{ev.rewardPoints}p
-                    {ev.rewardXp ? ` / +${ev.rewardXp}xp` : ""} ·{" "}
-                    {new Date(ev.startAt).toLocaleDateString()}–
+                    {EVENT_ACTION_META[ev.actionType].label} ·{" "}
+                    {(() => {
+                      // Tiered events ignore the single target/reward — show the tiers.
+                      const tiers = parseEventTiers(ev.tiers);
+                      return tiers.length
+                        ? `${tiers.length} tiers: ${tiers.map((t) => `${t.threshold}→+${t.rewardPoints}p`).join(", ")}`
+                        : `target ${ev.threshold} · +${ev.rewardPoints}p${ev.rewardXp ? ` / +${ev.rewardXp}xp` : ""}`;
+                    })()}{" "}
+                    · {new Date(ev.startAt).toLocaleDateString()}–
                     {new Date(ev.endAt).toLocaleDateString()} ·{" "}
-                    {ev._count?.progress ?? 0} claimed
+                    {ev._count?.progress ?? 0} taking part · {ev.claimedCount ?? 0} claimed
                   </p>
                 </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                    live
+                {(() => {
+                  const ended = new Date(ev.endAt).getTime() < now;
+                  const label = !ev.isActive ? "OFF" : live ? "LIVE" : ended ? "ENDED" : "SCHEDULED";
+                  const tone =
+                    label === "LIVE"
                       ? "bg-emerald-500/15 text-emerald-400"
-                      : ev.isActive
+                      : label === "SCHEDULED"
                         ? "bg-amber-500/15 text-amber-400"
-                        : "bg-slate-700 text-slate-400"
-                  }`}
-                >
-                  {live ? "LIVE" : ev.isActive ? "SCHEDULED" : "OFF"}
-                </span>
+                        : "bg-slate-700 text-slate-400";
+                  return <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${tone}`}>{label}</span>;
+                })()}
                 {canManage && (
                   <>
                     <button

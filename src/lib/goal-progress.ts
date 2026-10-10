@@ -131,6 +131,8 @@ interface ActiveGoal {
   targeting: TaskAudience | null;
   dailyCap: number;
   link: string;
+  /** Missions: the mission that must be CLAIMED before this one counts. */
+  unlockMissionId?: string | null;
 }
 
 const TARGET_SELECT = {
@@ -167,7 +169,7 @@ const loadIndex = unstable_cache(
           dailyCap: true,
         },
         orderBy: { endAt: "asc" },
-        take: 50,
+        take: 300,
       }),
       prisma.mission.findMany({
         where: {
@@ -185,10 +187,11 @@ const loadIndex = unstable_cache(
           requiredAccessLevel: true,
           requiredLevel: true,
           dailyCap: true,
+          unlockMissionId: true,
           ...TARGET_SELECT,
         },
         orderBy: { order: "asc" },
-        take: 50,
+        take: 300,
       }),
     ]);
 
@@ -237,6 +240,7 @@ const loadIndex = unstable_cache(
           },
           dailyCap: m.dailyCap,
           link: "/missions",
+          unlockMissionId: m.unlockMissionId,
         })
       ),
     ];
@@ -347,6 +351,17 @@ async function eligible(
   userId: string,
   accessLevel?: number
 ): Promise<boolean> {
+  // A chained mission is locked until its prerequisite is claimed — and a
+  // locked mission must not quietly fill up, or it is already finished the
+  // moment it unlocks.
+  if (g.kind === "mission" && g.unlockMissionId) {
+    const pre = await prisma.userMissionProgress.findUnique({
+      where: { userId_missionId: { userId, missionId: g.unlockMissionId } },
+      select: { claimedAt: true },
+    });
+    if (!pre?.claimedAt) return false;
+  }
+
   if (g.requiredAccessLevel > 0) {
     let level = accessLevel;
     if (level == null) {
@@ -429,15 +444,8 @@ export async function recordUserAction(
           }
         }
 
-        const before = await creditOne(
-          g,
-          args.userId,
-          args.action,
-          dedupKey,
-          units,
-          dayKey
-        );
-        if (before != null) await maybeNotify(g, args.userId, before, before + units);
+        const res = await creditOne(g, args.userId, args.action, dedupKey, units, dayKey);
+        if (res) await maybeNotify(g, args.userId, res.before, res.before + res.credited);
       } catch {
         // One goal failing must not stop the others.
       }
@@ -468,9 +476,19 @@ async function readDayCount(
 
 /**
  * Insert the log row and bump the counter in one transaction.
- * Returns the progress value BEFORE the increment, or null if it was a
- * duplicate (already counted).
+ * Returns the progress BEFORE the increment and how much was credited, or null
+ * if nothing was (a duplicate action, or the daily cap is already used up).
+ *
+ * The daily cap counts UNITS (100 lottery tickets = 100, not 1) and is enforced
+ * here, as a conditional update, so two parallel actions can't both slip under
+ * it — the check in recordUserAction is only a cheap early exit.
  */
+type ProgressDelegate = {
+  findUnique(args: unknown): Promise<{ progress: number; dayKey: string | null; dayCount: number } | null>;
+  create(args: unknown): Promise<unknown>;
+  updateMany(args: unknown): Promise<{ count: number }>;
+};
+
 async function creditOne(
   g: ActiveGoal,
   userId: string,
@@ -478,73 +496,75 @@ async function creditOne(
   dedupKey: string,
   units: number,
   dayKey: string | null
-): Promise<number | null> {
+): Promise<{ before: number; credited: number } | null> {
   try {
     return await prisma.$transaction(async (tx) => {
       const nowTs = new Date();
+      const isEvent = g.kind === "event";
+      // A duplicate throws P2002 here and rolls the whole thing back, so the
+      // counter can never move twice for the same action.
+      if (isEvent) {
+        await tx.eventActionLog.create({ data: { userId, eventId: g.id, actionKey, dedupKey, units } });
+      } else {
+        await tx.missionActionLog.create({ data: { userId, missionId: g.id, actionKey, dedupKey, units } });
+      }
+      const del = (isEvent ? tx.userEventProgress : tx.userMissionProgress) as unknown as ProgressDelegate;
+      const key = isEvent ? { eventId: g.id } : { missionId: g.id };
+      const unique = isEvent
+        ? { userId_eventId: { userId, eventId: g.id } }
+        : { userId_missionId: { userId, missionId: g.id } };
 
-      if (g.kind === "event") {
-        // A duplicate throws P2002 here and rolls the whole thing back, so the
-        // counter can never move twice for the same action.
-        await tx.eventActionLog.create({
-          data: { userId, eventId: g.id, actionKey, dedupKey, units },
-        });
-        const existing = await tx.userEventProgress.findUnique({
-          where: { userId_eventId: { userId, eventId: g.id } },
-          select: { progress: true, dayKey: true },
-        });
-        const before = existing?.progress ?? 0;
-        const sameDay = dayKey != null && existing?.dayKey === dayKey;
-        await tx.userEventProgress.upsert({
-          where: { userId_eventId: { userId, eventId: g.id } },
-          create: {
+      const existing = await del.findUnique({
+        where: unique,
+        select: { progress: true, dayKey: true, dayCount: true },
+      });
+      const before = existing?.progress ?? 0;
+      const cap = dayKey ? g.dailyCap : 0;
+      let credit = units;
+      if (cap > 0) {
+        const used = existing?.dayKey === dayKey ? existing.dayCount : 0;
+        credit = Math.min(units, cap - used);
+        if (credit <= 0) throw new Error("CAP");
+      }
+
+      if (!existing) {
+        await del.create({
+          data: {
             userId,
-            eventId: g.id,
-            progress: units,
+            ...key,
+            progress: credit,
             joinedAt: nowTs,
             lastActionAt: nowTs,
             dayKey,
-            dayCount: dayKey ? 1 : 0,
-          },
-          update: {
-            progress: { increment: units },
-            lastActionAt: nowTs,
-            ...(dayKey ? { dayKey, dayCount: sameDay ? { increment: 1 } : 1 } : {}),
+            dayCount: dayKey ? credit : 0,
           },
         });
-        return before;
+        return { before, credited: credit };
       }
 
-      await tx.missionActionLog.create({
-        data: { userId, missionId: g.id, actionKey, dedupKey, units },
+      const base = { userId, ...key };
+      const bump = { progress: { increment: credit }, lastActionAt: nowTs };
+      if (!dayKey) {
+        await del.updateMany({ where: base, data: bump });
+        return { before, credited: credit };
+      }
+      // First action of a new day for this row: the day count starts over.
+      let r = await del.updateMany({
+        where: { ...base, OR: [{ dayKey: null }, { NOT: { dayKey } }] },
+        data: { ...bump, dayKey, dayCount: credit },
       });
-      const existing = await tx.userMissionProgress.findUnique({
-        where: { userId_missionId: { userId, missionId: g.id } },
-        select: { progress: true, dayKey: true },
-      });
-      const before = existing?.progress ?? 0;
-      const sameDay = dayKey != null && existing?.dayKey === dayKey;
-      await tx.userMissionProgress.upsert({
-        where: { userId_missionId: { userId, missionId: g.id } },
-        create: {
-          userId,
-          missionId: g.id,
-          progress: units,
-          joinedAt: nowTs,
-          lastActionAt: nowTs,
-          dayKey,
-          dayCount: dayKey ? 1 : 0,
-        },
-        update: {
-          progress: { increment: units },
-          lastActionAt: nowTs,
-          ...(dayKey ? { dayKey, dayCount: sameDay ? { increment: 1 } : 1 } : {}),
-        },
-      });
-      return before;
+      if (r.count === 0) {
+        // Same day: only while the cap still has room (re-checked by the row lock).
+        r = await del.updateMany({
+          where: { ...base, dayKey, ...(cap > 0 ? { dayCount: { lte: cap - credit } } : {}) },
+          data: { ...bump, dayCount: { increment: credit } },
+        });
+      }
+      if (r.count === 0) throw new Error("CAP");
+      return { before, credited: credit };
     });
   } catch {
-    // P2002 (already counted) or a transient failure — either way, no credit.
+    // P2002 (already counted), the cap, or a transient failure — no credit.
     return null;
   }
 }

@@ -29,6 +29,12 @@ function parseBody(b: Record<string, unknown>) {
     return Number.isFinite(n) && n >= 0 ? n : def;
   };
   const tiers = parseEventTiers(b.tiers);
+  // An upload-proof event pays one reward after review; tiers would be unreachable.
+  if (actionType === "UPLOAD_PROOF" && tiers.length > 0) {
+    return {
+      error: "An 'Upload proof' event can't have reward tiers — it pays one reward after an admin approves the proof." as const,
+    };
+  }
   return {
     data: {
       title,
@@ -79,7 +85,20 @@ export async function GET() {
     });
   }
   if (!seen.has(0)) accessLevels.unshift({ level: 0, label: "All users" });
-  return NextResponse.json({ events, accessLevels });
+
+  // Participants (anyone with progress) vs people who actually claimed a reward.
+  const ids = events.map((e) => e.id);
+  const claimedRows = ids.length
+    ? await prisma.$queryRaw<{ eventId: string; n: number }[]>`
+        SELECT "eventId", COUNT(*)::int AS n FROM "UserEventProgress"
+        WHERE "eventId" = ANY(${ids}) AND ("claimedAt" IS NOT NULL OR cardinality("claimedTiers") > 0)
+        GROUP BY 1`
+    : [];
+  const claimed = new Map(claimedRows.map((r) => [r.eventId, r.n]));
+  return NextResponse.json({
+    events: events.map((e) => ({ ...e, claimedCount: claimed.get(e.id) ?? 0 })),
+    accessLevels,
+  });
 }
 
 export async function POST(request: NextRequest) {

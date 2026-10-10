@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { profileGateResponse } from "@/lib/profile-gate-server";
 import { NextRequest, NextResponse } from "next/server";
 import { enforceDbRateLimit } from "@/lib/rate-limit-db";
 import { auth } from "@/lib/auth";
@@ -24,6 +25,9 @@ export async function POST(
   // keeps a claim flood from being absorbed by the database.
   const limited = await enforceDbRateLimit(req, "claim", session.user.id, 30, 60_000);
   if (limited) return limited;
+  // Profile gate — events are goals like missions and share its switch.
+  const profileGated = await profileGateResponse(session.user.id, "missions");
+  if (profileGated) return profileGated;
   // A reward claim pays out: a banned / suspended account may not claim.
   const active = await requireActiveUser(session.user.id);
   if (!active.ok) {

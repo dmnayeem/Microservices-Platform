@@ -73,6 +73,26 @@ export async function PATCH(
   }
 
   const before = await prisma.event.findUnique({ where: { id } });
+  if (!before) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+  // The window must still make sense after the edit (create already checks).
+  const start = (data.startAt as Date | undefined) ?? before.startAt;
+  const end = (data.endAt as Date | undefined) ?? before.endAt;
+  if (start && end && end <= start) {
+    return NextResponse.json({ error: "The end date must be after the start date." }, { status: 400 });
+  }
+  // An upload-proof event pays one reward after review — tiers can never be
+  // reached by it, so they are not allowed.
+  const finalType = (data.actionType as string | undefined) ?? before.actionType;
+  if (finalType === "UPLOAD_PROOF") {
+    const finalTiers = data.tiers !== undefined ? data.tiers : before.tiers;
+    if (finalTiers && parseEventTiers(finalTiers).length > 0) {
+      return NextResponse.json(
+        { error: "An 'Upload proof' event can't have reward tiers — it pays one reward after an admin approves the proof." },
+        { status: 400 }
+      );
+    }
+  }
   const event = await prisma.event.update({ where: { id }, data });
   await writeAudit({ actorId: session.user.id, action: "EVENT_UPDATED", entity: "Event", entityId: id,
     summary: `Edited event "${event.title}"`, meta: { before, after: event } });
@@ -91,9 +111,26 @@ export async function DELETE(
   }
   const { id } = await params;
   const before = await prisma.event.findUnique({ where: { id } });
+  if (!before) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  // People already have progress on it: deleting would silently wipe their
+  // unclaimed rewards (progress rows cascade). Switch it off instead, as
+  // missions do.
+  const participants = await prisma.userEventProgress.count({ where: { eventId: id } });
+  if (participants > 0) {
+    await prisma.event.update({ where: { id }, data: { isActive: false } });
+    await writeAudit({ actorId: session.user.id, action: "EVENT_DEACTIVATED", entity: "Event", entityId: id,
+      summary: `Turned off event "${before.title}" instead of deleting it (${participants} people have progress)`,
+      meta: { participants } });
+    revalidateTag(EVENTS_ACTIVE_TAG, "max");
+    return NextResponse.json({
+      ok: true,
+      deactivated: true,
+      message: `${participants} people have progress on this event, so it was turned off instead of deleted.`,
+    });
+  }
   await prisma.event.delete({ where: { id } });
   await writeAudit({ actorId: session.user.id, action: "EVENT_DELETED", entity: "Event", entityId: id,
-    summary: `Deleted event "${before?.title ?? id}"`, meta: { before, after: null } });
+    summary: `Deleted event "${before.title}"`, meta: { before, after: null } });
   revalidateTag(EVENTS_ACTIVE_TAG, "max");
   return NextResponse.json({ ok: true });
 }

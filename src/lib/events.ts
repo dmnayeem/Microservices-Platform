@@ -141,7 +141,9 @@ export async function listEventsForUser(
     const row = byEvent.get(e.id);
     // No await in this loop any more — progress is a field, not a query.
     const progress = progressFromRow(e, row ?? null);
-    const tiers = parseEventTiers(e.tiers);
+    // Upload-proof events pay one reward after review; any tiers saved on one
+    // (older data) are ignored so the proof button is shown, not "Locked" tiers.
+    const tiers = e.actionType === "UPLOAD_PROOF" ? [] : parseEventTiers(e.tiers);
     const claimedSet = new Set(row?.claimedTiers ?? []);
     const tierViews: EventTierView[] = tiers.map((t) => ({
       ...t,
@@ -305,6 +307,8 @@ export async function claimEvent(
           });
         }
       });
+      // Tier XP can cross a level, like the single claim below.
+      if (tier.rewardXp > 0) await syncUserLevelQuietly(userId);
       return { ok: true, rewardPoints: tier.rewardPoints, rewardXp: tier.rewardXp };
     } catch (err) {
       if (isDuplicateLedgerError(err) || (err instanceof Error && err.message === "ALREADY_CLAIMED")) {
