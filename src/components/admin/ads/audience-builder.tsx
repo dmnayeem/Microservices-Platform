@@ -1,5 +1,6 @@
 "use client";
 
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Users, X, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -180,6 +181,16 @@ export function AudienceBuilder({
         }}
         onChange={(patch) => set(patch as Partial<AdTargeting>)}
         hint="Optional. Empty = anywhere in the selected countries."
+      />
+
+      <DeviceTargetPicker
+        value={{
+          deviceTypes: value.deviceTypes ?? [],
+          deviceOses: value.deviceOses ?? [],
+          deviceBrands: value.deviceBrands ?? [],
+        }}
+        onChange={(d) => set(d)}
+        note="The ad is served only on these devices — the one the person is using. Reach estimates don't count devices."
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

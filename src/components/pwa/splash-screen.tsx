@@ -3,7 +3,12 @@
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import { useEffect, useState } from "react";
 import { X, ChevronRight } from "lucide-react";
-import type { SplashConfig } from "@/lib/splash";
+import { splashInWindow, type SplashConfig } from "@/lib/splash";
+import { matchesDeviceTarget } from "@/lib/device-target";
+import { parseDevice } from "@/lib/device-info";
+
+// iPadOS asks for the desktop site; touch gives it away.
+const isIpad = () => /Macintosh/.test(navigator.userAgent) && (navigator.maxTouchPoints ?? 0) > 1;
 import { SmartImage } from "@/components/user/primitives/smart-image";
 
 const SEEN_KEY = "splash_seen_v1";
@@ -40,6 +45,9 @@ export function SplashScreen() {
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d?.enabled || !Array.isArray(d.slides) || d.slides.length === 0) return;
+        // Dates and devices the admin chose (Admin → Splash screen).
+        if (!splashInWindow(d)) return;
+        if (!matchesDeviceTarget(d, parseDevice(navigator.userAgent, isIpad() ? { platform: "ipados" } : {}))) return;
         // Frequency policy.
         if (d.frequency === "once" && localStorage.getItem(SEEN_KEY)) return;
         if (d.frequency === "session" && sessionStorage.getItem(SEEN_KEY)) return;

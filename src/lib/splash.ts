@@ -1,6 +1,8 @@
 // Splash / onboarding screen config. Pure (no prisma) so it is safe to import
 // from client components. Persisted as a SystemSetting row (key below).
 
+import { sanitizeDeviceTarget } from "@/lib/device-target";
+
 export const SPLASH_SETTING_KEY = "splash_config";
 
 export type SplashFrequency = "once" | "session" | "always";
@@ -17,6 +19,13 @@ export interface SplashConfig {
   durationMs: number;
   frequency: SplashFrequency;
   slides: SplashSlide[];
+  /** Shown only from / until these times (ISO; "" = no limit). */
+  startsAt?: string;
+  endsAt?: string;
+  /** Device targeting (lib/device-target.ts) — checked in the browser. */
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
 }
 
 export const DEFAULT_SPLASH: SplashConfig = {
@@ -53,5 +62,21 @@ export function normalizeSplashConfig(raw: unknown): SplashConfig {
     frequency:
       r.frequency === "session" || r.frequency === "always" ? r.frequency : "once",
     slides,
+    startsAt: isoOrEmpty(r.startsAt),
+    endsAt: isoOrEmpty(r.endsAt),
+    ...sanitizeDeviceTarget(r),
   };
+}
+
+function isoOrEmpty(v: unknown): string {
+  if (typeof v !== "string" || !v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
+/** Is the splash inside its dates right now? */
+export function splashInWindow(c: Pick<SplashConfig, "startsAt" | "endsAt">, now = Date.now()): boolean {
+  if (c.startsAt && new Date(c.startsAt).getTime() > now) return false;
+  if (c.endsAt && new Date(c.endsAt).getTime() < now) return false;
+  return true;
 }

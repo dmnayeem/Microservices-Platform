@@ -33,7 +33,7 @@ export async function generateMetadata({
   }
   // A draft says nothing about itself — its title would otherwise leak to
   // anyone (or any unfurler) holding the address before it is published.
-  if (!offer || offer.status !== "PUBLISHED") {
+  if (!offer || offer.status !== "PUBLISHED" || outsideLiveWindow(offer)) {
     return { title: { absolute: "Offer not found · RevType" }, robots: { index: false, follow: false } };
   }
   return pageMeta({
@@ -47,14 +47,21 @@ export async function generateMetadata({
   });
 }
 
+/** Outside the offer's live dates (Admin → Offers → Live from / until). */
+function outsideLiveWindow(o: { startsAt: Date | null; endsAt: Date | null }): boolean {
+  const now = Date.now();
+  return (o.startsAt != null && o.startsAt.getTime() > now) || (o.endsAt != null && o.endsAt.getTime() < now);
+}
+
 export default async function OfferPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { preview } = await searchParams;
   const offer = await loadOffer(slug);
   if (!offer) notFound();
 
-  // Public sees PUBLISHED only. Drafts are viewable via ?preview=1 to an admin.
-  if (offer.status !== "PUBLISHED") {
+  // Public sees PUBLISHED only, inside its live window. Drafts and offers
+  // outside their dates are viewable via ?preview=1 to an admin.
+  if (offer.status !== "PUBLISHED" || outsideLiveWindow(offer)) {
     if (preview !== "1") notFound();
     const session = await getSession();
     const role = session?.user?.role as UserRole | undefined;

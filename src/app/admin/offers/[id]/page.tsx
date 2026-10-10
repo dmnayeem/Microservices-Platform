@@ -28,6 +28,8 @@ export default async function OfferEditorPage({
         thumbnailUrl: offer.thumbnailUrl ?? "",
         bgGradient: offer.bgGradient ?? "",
         status: offer.status,
+        startsAt: offer.startsAt?.toISOString() ?? null,
+        endsAt: offer.endsAt?.toISOString() ?? null,
         blocks: parseBlocks(offer.blocks),
       }}
     />

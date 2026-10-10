@@ -51,6 +51,16 @@ interface EditorOffer {
   bgGradient: string;
   status: string;
   blocks: OfferBlock[];
+  startsAt?: string | null;
+  endsAt?: string | null;
+}
+
+/** ISO → datetime-local value (local time). */
+function toLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 const inp =
@@ -77,6 +87,8 @@ export function OfferEditor({ offer }: { offer: EditorOffer }) {
     offer.bgGradient || OFFER_BG_GRADIENTS[0]
   );
   const [status, setStatus] = useState(offer.status);
+  const [startsAt, setStartsAt] = useState(toLocal(offer.startsAt));
+  const [endsAt, setEndsAt] = useState(toLocal(offer.endsAt));
   const [blocks, setBlocks] = useState<OfferBlock[]>(offer.blocks);
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -114,6 +126,8 @@ export function OfferEditor({ offer }: { offer: EditorOffer }) {
           bgGradient,
           status,
           blocks,
+          startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+          endsAt: endsAt ? new Date(endsAt).toISOString() : null,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -191,6 +205,14 @@ export function OfferEditor({ offer }: { offer: EditorOffer }) {
               className={inp}
               placeholder="my-offer"
             />
+          </Field>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="Live from (optional)">
+            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inp} />
+          </Field>
+          <Field label="Live until (optional)">
+            <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className={inp} />
           </Field>
         </div>
         <Field label="SEO / share description">

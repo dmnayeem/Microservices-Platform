@@ -1,3 +1,4 @@
+import { matchesDeviceTarget, sanitizeDeviceTarget } from "@/lib/device-target";
 // Client-safe ad-targeting types + a pure matcher. NO server imports here so
 // the advertiser/admin ad forms (client components) can reuse the type + parser.
 // Both serve paths (/api/ads/serve banner + /api/ads/feed native) use
@@ -27,6 +28,10 @@ export interface AdTargeting {
   languages?: string[]; // User.language
   minAccountAgeDays?: number; // from User.createdAt
   activeWithinDays?: number; // User.lastLoginAt recency
+  // Device of the viewer right now (lib/device-target.ts).
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
 }
 
 /** The viewer attributes we target on. */
@@ -48,6 +53,8 @@ export interface TargetableUser {
   language?: string | null;
   createdAt?: Date | string | null;
   lastLoginAt?: Date | string | null;
+  /** The device in use (undefined = unknown here → device rules not applied). */
+  device?: { type: string; os: string; brand: string | null } | null;
 }
 
 // ── Option constants for the admin targeting UI ──────────────────────────────
@@ -204,6 +211,10 @@ export function parseTargeting(v: unknown): AdTargeting {
   if (strArr(s.languages)?.length) out.languages = strArr(s.languages);
   if (posNum(s.minAccountAgeDays)) out.minAccountAgeDays = posNum(s.minAccountAgeDays);
   if (posNum(s.activeWithinDays)) out.activeWithinDays = posNum(s.activeWithinDays);
+  const dev = sanitizeDeviceTarget(s);
+  if (dev.deviceTypes.length) out.deviceTypes = dev.deviceTypes;
+  if (dev.deviceOses.length) out.deviceOses = dev.deviceOses;
+  if (dev.deviceBrands.length) out.deviceBrands = dev.deviceBrands;
   return out;
 }
 
@@ -267,5 +278,6 @@ export function matchesTargeting(
     const d = daysSince(user.lastLoginAt, now);
     if (d === null || d > t.activeWithinDays) return false;
   }
+  if (!matchesDeviceTarget(t, user.device as Parameters<typeof matchesDeviceTarget>[1])) return false;
   return true;
 }

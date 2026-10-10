@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
+
+/** ISO → the value a datetime-local input wants (local time). */
+function toLocal(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const off = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 16);
+}
 import { Loader2, Plus, Trash2, ArrowUp, ArrowDown, Eye } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { ImageUploadField } from "@/components/admin/shared/ImageUploadField";
@@ -142,6 +152,35 @@ export function SplashAdminView() {
             <option value="session">Every session</option>
             <option value="always">Every app open</option>
           </select>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Show from (optional)</label>
+          <input
+            type="datetime-local"
+            value={toLocal(cfg.startsAt)}
+            onChange={(e) => setCfg({ ...cfg, startsAt: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Show until (optional)</label>
+          <input
+            type="datetime-local"
+            value={toLocal(cfg.endsAt)}
+            onChange={(e) => setCfg({ ...cfg, endsAt: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+            className={inputCls}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <DeviceTargetPicker
+            value={{
+              deviceTypes: cfg.deviceTypes ?? [],
+              deviceOses: cfg.deviceOses ?? [],
+              deviceBrands: cfg.deviceBrands ?? [],
+            }}
+            onChange={(d) => setCfg({ ...cfg, ...d })}
+            note="The splash shows only on these devices."
+          />
         </div>
       </div>
 

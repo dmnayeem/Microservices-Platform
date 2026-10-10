@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { currentDevice } from "@/lib/device-current";
 import { effectiveCountry, isCountryIpOnly } from "@/lib/effective-country";
 import { syncCountryMode } from "@/lib/country-mode";
 import { prisma } from "@/lib/prisma";
@@ -278,7 +279,8 @@ async function serveAdInner(opts: {
   placementRowPromise.catch(() => {});
   costPromise.catch(() => {});
 
-  let viewer: TargetableUser = {};
+  // The device in use now, for device-targeted ads (undefined outside a request).
+  let viewer: TargetableUser = { device: await currentDevice() };
   let houseOnly = false;
   if (userId && !preview) {
     const [pkg, u] = await Promise.all([
@@ -292,7 +294,8 @@ async function serveAdInner(opts: {
     ]);
     if (pkg?.adFree && !interstitial) return SUPPRESSED; // Watch & Earn is unaffected
     houseOnly = !!pkg?.adFree;
-    viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
+    viewer = {
+      device: viewer.device, ...(u ?? {}), packageSlug: pkg?.slug ?? null };
     // Profile country, or the IP country when the profile has none.
     await syncCountryMode();
     viewer.country = isCountryIpOnly()
@@ -565,7 +568,8 @@ export async function serveFeedAds(opts: {
   const count = Math.min(Math.max(opts.count, 1), 20);
   const exclude = new Set(opts.exclude ?? []);
 
-  let viewer: TargetableUser = {};
+  // The device in use now, for device-targeted ads (undefined outside a request).
+  let viewer: TargetableUser = { device: await currentDevice() };
   if (userId) {
     const [pkg, u] = await Promise.all([
       getEffectivePackage(userId),
@@ -577,7 +581,8 @@ export async function serveFeedAds(opts: {
       }),
     ]);
     if (pkg?.adFree) return [];
-    viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
+    viewer = {
+      device: viewer.device, ...(u ?? {}), packageSlug: pkg?.slug ?? null };
     // Profile country, or the IP country when the profile has none.
     await syncCountryMode();
     viewer.country = isCountryIpOnly()
@@ -822,7 +827,8 @@ export async function servePageScripts(opts: {
   const none = { scripts: [] as PageScriptAd[], withGoogle: false };
   const { userId } = opts;
 
-  let viewer: TargetableUser = {};
+  // The device in use now, for device-targeted ads (undefined outside a request).
+  let viewer: TargetableUser = { device: await currentDevice() };
   if (userId) {
     const [pkg, u] = await Promise.all([
       getEffectivePackage(userId),
@@ -834,7 +840,8 @@ export async function servePageScripts(opts: {
     ]);
     // An ad-free plan buys freedom from page-level ads above all.
     if (pkg?.adFree) return none;
-    viewer = { ...(u ?? {}), packageSlug: pkg?.slug ?? null };
+    viewer = {
+      device: viewer.device, ...(u ?? {}), packageSlug: pkg?.slug ?? null };
     await syncCountryMode();
     viewer.country = isCountryIpOnly()
       ? effectiveCountry(u)

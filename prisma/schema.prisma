@@ -517,6 +517,9 @@ model Offer {
   bgGradient   String?
   blocks       Json     @default("[]")
   status       String   @default("DRAFT") // DRAFT | PUBLISHED
+  // A published offer is live only between these (null = no limit).
+  startsAt     DateTime?
+  endsAt       DateTime?
   createdById  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

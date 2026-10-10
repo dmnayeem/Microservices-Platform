@@ -24,6 +24,13 @@ export async function GET() {
       durationMs: cfg.durationMs,
       frequency: cfg.frequency,
       slides: usableSlides,
+      // Dates and devices are checked in the browser (this response is one
+      // cached copy for everyone).
+      startsAt: cfg.startsAt,
+      endsAt: cfg.endsAt,
+      deviceTypes: cfg.deviceTypes,
+      deviceOses: cfg.deviceOses,
+      deviceBrands: cfg.deviceBrands,
     });
   } catch {
     return NextResponse.json({ enabled: false });

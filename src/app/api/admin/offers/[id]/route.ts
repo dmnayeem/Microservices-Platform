@@ -43,6 +43,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (body.thumbnailUrl !== undefined) data.thumbnailUrl = body.thumbnailUrl || null;
   if (body.bgGradient !== undefined) data.bgGradient = body.bgGradient || null;
   if (body.status === "DRAFT" || body.status === "PUBLISHED") data.status = body.status;
+  // Live window (ISO or null). An end before the start is refused.
+  const when = (v: unknown) => {
+    if (v === null || v === "") return null;
+    const d = new Date(String(v));
+    return isNaN(d.getTime()) ? undefined : d;
+  };
+  if ("startsAt" in body) {
+    const d = when(body.startsAt);
+    if (d !== undefined) data.startsAt = d;
+  }
+  if ("endsAt" in body) {
+    const d = when(body.endsAt);
+    if (d !== undefined) data.endsAt = d;
+  }
+  const sa = (data.startsAt as Date | null | undefined) ?? existing.startsAt;
+  const ea = (data.endsAt as Date | null | undefined) ?? existing.endsAt;
+  if (sa && ea && ea <= sa) {
+    return NextResponse.json({ error: "The end date must be after the start date." }, { status: 400 });
+  }
   if (Array.isArray(body.blocks)) data.blocks = parseBlocks(body.blocks);
 
   // Slug: re-slugify + ensure uniqueness (excluding this offer) when provided.
