@@ -1,5 +1,7 @@
 "use client";
 
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
+import type { DeviceTarget } from "@/lib/device-target";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Video, FileText, HelpCircle, ClipboardList, Share2, Globe, Gift, Sparkles, Save, X, Plus, Trash2, AlertCircle, Loader2, Image as ImageIcon, Smartphone } from "lucide-react";
@@ -137,6 +139,9 @@ interface TaskFormProps {
     boardId?: string | null;
     requireApp?: boolean;
     requirePush?: boolean;
+    deviceTypes?: string[];
+    deviceOses?: string[];
+    deviceBrands?: string[];
     /** Set once users have been told about the task (lib/task-announce.ts). */
     announcedAt?: Date | string | null;
   };
@@ -219,6 +224,12 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
   // once the task has been announced (it is sent once per task).
   const alreadyAnnounced = !!task?.announcedAt;
   const [notify, setNotify] = useState({ inApp: false, push: false, email: false });
+  // Which devices see the task (lib/device-target.ts). Empty = every device.
+  const [deviceTarget, setDeviceTarget] = useState<DeviceTarget>({
+    deviceTypes: task?.deviceTypes ?? [],
+    deviceOses: task?.deviceOses ?? [],
+    deviceBrands: task?.deviceBrands ?? [],
+  });
 
   // Keep `?type=` and the picked type in step with each other.
   //
@@ -591,6 +602,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
         questions: formData.type === "QUIZ" ? questions : null,
         boardId: formData.boardId || null,
         ...(alreadyAnnounced ? {} : { notify }),
+        ...deviceTarget,
         // Only on create: counts the task against the template it came from.
         ...(!effectiveTaskId && usedTemplateId ? { templateId: usedTemplateId } : {}),
       };
@@ -1512,6 +1524,12 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             </label>
           </div>
         </div>
+
+        <DeviceTargetPicker
+          value={deviceTarget}
+          onChange={setDeviceTarget}
+          note="The task is listed and can be started only on these devices — checked on the device the person is using."
+        />
 
         <div>
           <h2 className="text-lg font-semibold text-white">Tell users about this task</h2>

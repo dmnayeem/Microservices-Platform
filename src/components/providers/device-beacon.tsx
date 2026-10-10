@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import {
+  DEVICE_COOKIE_NAME,
+  encodeDeviceCookie,
+  parseDevice,
+  type DeviceHints,
+} from "@/lib/device-info";
 
 /**
  * Gives this browser a stable device id and a coarse fingerprint, for the
@@ -20,6 +26,40 @@ const DID = "eg_did";
 const FP = "eg_fp";
 const TWO_YEARS = 60 * 60 * 24 * 730;
 
+type UAData = {
+  mobile?: boolean;
+  platform?: string;
+  getHighEntropyValues?: (h: string[]) => Promise<{ model?: string; platformVersion?: string; platform?: string; mobile?: boolean }>;
+};
+
+/**
+ * This device's Client Hints — the only way to learn an Android phone's model
+ * (and so its brand) since Chrome put "K" in the user agent instead. Empty on
+ * Safari and Firefox, which keep the full user agent anyway.
+ */
+async function deviceHints(): Promise<DeviceHints> {
+  const n = navigator as Navigator & { userAgentData?: UAData; maxTouchPoints?: number };
+  const out: DeviceHints = {};
+  const d = n.userAgentData;
+  if (d) {
+    out.mobile = typeof d.mobile === "boolean" ? d.mobile : null;
+    out.platform = d.platform ?? null;
+    try {
+      const h = await d.getHighEntropyValues?.(["model", "platformVersion"]);
+      out.model = h?.model || null;
+      out.platformVersion = h?.platformVersion || null;
+    } catch {
+      /* hints refused */
+    }
+  }
+  // iPadOS asks for the desktop site and says "Macintosh"; touch gives it away.
+  if (/Macintosh/.test(n.userAgent) && (n.maxTouchPoints ?? 0) > 1) out.platform = "ipados";
+  return out;
+}
+
+let hintsPromise: Promise<DeviceHints> | null = null;
+const getHints = () => (hintsPromise ??= deviceHints().catch(() => ({})));
+
 /** Report the visit unless this tab already did today (UTC, as the server counts). */
 function reportSeen() {
   const key = `eg_seen_${new Date().toISOString().slice(0, 10)}`;
@@ -29,7 +69,14 @@ function reportSeen() {
   } catch {
     /* storage blocked — report anyway; the server dedupes the day */
   }
-  void fetch("/api/device/seen", { method: "POST", keepalive: true }).catch(() => {});
+  void getHints().then((hints) =>
+    fetch("/api/device/seen", {
+      method: "POST",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hints }),
+    }).catch(() => {})
+  );
 }
 
 function readCookie(name: string): string | null {
@@ -80,6 +127,13 @@ export function DeviceBeacon({ report = false }: { report?: boolean }) {
         }
         writeCookie(DID, id);
         writeCookie(FP, await fingerprint());
+        // The current device (type, OS, brand, browser) for device-targeted
+        // tasks, banners and popups — read by lib/device-current.ts.
+        try {
+          writeCookie(DEVICE_COOKIE_NAME, encodeDeviceCookie(parseDevice(navigator.userAgent, await getHints())));
+        } catch {
+          /* parsing never blocks the beacon */
+        }
 
         if (!report || cancelled) return;
         reportSeen();

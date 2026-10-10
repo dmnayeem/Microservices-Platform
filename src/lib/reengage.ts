@@ -50,7 +50,12 @@ export async function getReengageConfig() {
 async function availableFor(userId: string, since: Date) {
   const ctx = await getTaskViewerContext(userId);
   if (!ctx || !ctx.hasTasksFeature) return null;
-  const base = visibleTaskWhere(ctx.viewer, { accessLevel: ctx.accessLevel, allowedTypes: ctx.allowedTypes });
+  // A background job has no "current device" (the request is the scheduler's),
+  // so device rules are not applied: the reminder goes to the person.
+  const base = visibleTaskWhere(
+    { ...ctx.viewer, device: undefined },
+    { accessLevel: ctx.accessLevel, allowedTypes: ctx.allowedTypes }
+  );
   const select = { id: true, pointsReward: true } as const;
   const fresh = await prisma.task.findMany({ where: { AND: [base, { createdAt: { gt: since } }] }, select, take: 200 });
   if (fresh.length > 0) return { tasks: fresh, isNew: true };

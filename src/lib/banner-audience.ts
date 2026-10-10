@@ -1,9 +1,11 @@
 import { matchesTaskAudience, type TaskAudience, type TaskAudienceUser } from "@/lib/task-targeting";
+import { matchesDeviceTarget, type DeviceTarget } from "@/lib/device-target";
+import type { DeviceInfo } from "@/lib/device-info";
 
 /**
  * Who a banner is shown to: the task audience (country, region, division,
  * district, upazila, postal code, gender, age — STRICT, see task-targeting.ts)
- * plus KYC status. Client-safe: no Prisma.
+ * plus KYC status and device. Client-safe: no Prisma.
  *
  * Matched in memory, not in the query: the banner list is one cached read
  * shared by every viewer, and a per-viewer WHERE would split that cache into
@@ -19,9 +21,16 @@ export function sanitizeKycAudience(v: unknown): KycAudience {
 
 export interface BannerViewer extends TaskAudienceUser {
   kycStatus?: string | null;
+  /** Device in use now (lib/device-current.ts); undefined = don't check. */
+  device?: Pick<DeviceInfo, "type" | "os" | "brand"> | null;
 }
 
-export function bannerMatches(banner: TaskAudience & { kycAudience?: string | null }, viewer: BannerViewer): boolean {
+export function bannerMatches(
+  banner: TaskAudience & { kycAudience?: string | null } & Partial<DeviceTarget>,
+  viewer: BannerViewer
+): boolean {
+  // Phone / computer, OS, brand — the same rule tasks use.
+  if (!matchesDeviceTarget(banner, viewer.device)) return false;
   const kyc = sanitizeKycAudience(banner.kycAudience);
   const verified = viewer.kycStatus === "APPROVED";
   if (kyc === "VERIFIED" && !verified) return false;

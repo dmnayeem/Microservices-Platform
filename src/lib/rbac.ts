@@ -1796,6 +1796,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "OVERVIEW",
   },
   {
+    // Which phones / computers people use (lib/device-info.ts).
+    name: "Devices",
+    href: "/admin/devices",
+    icon: "Smartphone",
+    permissions: ["analytics.view"],
+    category: "OVERVIEW",
+  },
+  {
     name: "AI Content",
     href: "/admin/ai",
     icon: "Sparkles",

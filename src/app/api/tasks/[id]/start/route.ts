@@ -1,4 +1,6 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { matchesDeviceTarget } from "@/lib/device-target";
+import { currentDevice } from "@/lib/device-current";
 import { taskDeviceGate } from "@/lib/task-device-gate";
 import { taskTypePage } from "@/lib/page-visibility";
 import { NextRequest, NextResponse } from "next/server";
@@ -197,6 +199,14 @@ export async function POST(
     if (!matchesTaskAudience(task, user)) {
       return NextResponse.json(
         { error: "This task isn't available for your profile or area." },
+        { status: 403 }
+      );
+    }
+
+    // Device targeting (phone / computer, OS, brand) — the device in use now.
+    if (!matchesDeviceTarget(task, await currentDevice())) {
+      return NextResponse.json(
+        { error: "This task isn't available on this device.", code: "TASK_DEVICE" },
         { status: 403 }
       );
     }

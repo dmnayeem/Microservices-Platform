@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentDevice } from "@/lib/device-current";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { bannerMatches, type BannerViewer } from "@/lib/banner-audience";
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
   // shown to them.
   await syncCountryMode();
   let viewer: BannerViewer = { lastCountry: countryOfIp(clientIp(request)) };
+  const viewerDevice = await currentDevice();
   let level: number | null = null;
   let joinedAt: number | null = null;
   let plan: { id: string; paid: boolean } | null = null;
@@ -121,7 +123,7 @@ export async function GET(request: NextRequest) {
   };
 
   const popups: PopupView[] = inPlay
-    .filter((p) => bannerMatches(p, viewer) && matchesExtra(p))
+    .filter((p) => bannerMatches(p, { ...viewer, device: viewerDevice }) && matchesExtra(p))
     .slice(0, 5)
     .map((p) => {
       const kind = sanitizePopupKind(p.kind);

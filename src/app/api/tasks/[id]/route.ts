@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { matchesDeviceTarget } from "@/lib/device-target";
+import { currentDevice } from "@/lib/device-current";
 import { syncCountryMode } from "@/lib/country-mode";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -68,7 +70,8 @@ export async function GET(
         dateOfBirth: true,
       },
     });
-    const audienceEligible = matchesTaskAudience(task, viewer ?? {});
+    const audienceEligible =
+      matchesTaskAudience(task, viewer ?? {}) && matchesDeviceTarget(task, await currentDevice());
 
     // Check if user has active submission
     const activeSubmission = await prisma.taskSubmission.findFirst({

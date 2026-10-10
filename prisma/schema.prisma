@@ -379,6 +379,10 @@ model Banner {
   maxAge       Int?
   /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED" (anything else).
   kycAudience  String   @default("ANY")
+  // Device targeting (src/lib/device-target.ts). Empty = any device.
+  deviceTypes  String[] @default([])
+  deviceOses   String[] @default([])
+  deviceBrands String[] @default([])
 
   @@index([location])
   @@index([isActive])
@@ -430,6 +434,10 @@ model SitePopup {
   maxAge       Int?
   /// "ANY" | "VERIFIED" (KYC approved) | "NOT_VERIFIED"
   kycAudience  String   @default("ANY")
+  // Device targeting (src/lib/device-target.ts). Empty = any device.
+  deviceTypes  String[] @default([])
+  deviceOses   String[] @default([])
+  deviceBrands String[] @default([])
 
   // ── Content (2026-10-07) ─────────────────────────────────────────────────
   /// Video links for a VIDEO popup — YouTube, Vimeo or a direct .mp4 (our
@@ -2204,12 +2212,22 @@ model UserDevice {
   seenCount   Int      @default(1)
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())
+  // Parsed from the user agent + Client Hints (src/lib/device-info.ts).
+  deviceType  String?
+  os          String?
+  osVersion   String?
+  brand       String?
+  model       String?
+  browser     String?
 
   @@unique([userId, deviceId])
   @@index([deviceId])
   @@index([fpHash])
   @@index([lastIp])
   @@index([lastSeenAt])
+  @@index([deviceType])
+  @@index([os])
+  @@index([brand])
 }
 
 /// A suspended user asking to be let back in. Filed from /appeal with a
@@ -2295,6 +2313,10 @@ model Task {
   requirePush         Boolean          @default(false)
   // When users were told about this task (src/lib/task-announce.ts) — once only.
   announcedAt         DateTime?
+  // Device targeting (src/lib/device-target.ts). Empty = any device.
+  deviceTypes  String[] @default([])
+  deviceOses   String[] @default([])
+  deviceBrands String[] @default([])
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   createdById         String?

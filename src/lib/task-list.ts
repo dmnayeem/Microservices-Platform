@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { currentDevice } from "@/lib/device-current";
 import { syncCountryMode } from "@/lib/country-mode";
 import { TaskType } from "@/generated/prisma";
 import { getEffectivePackage, packageHasFeature } from "@/lib/packages";
@@ -98,7 +99,7 @@ export async function listTasksForUser(
 
   // ONE definition of task visibility — src/lib/task-visibility.ts. Every
   // other task route builds its where from the same function now.
-  const where = visibleTaskWhere(user, {
+  const where = visibleTaskWhere({ ...user, device: await currentDevice() }, {
     accessLevel,
     allowedTypes,
     type,

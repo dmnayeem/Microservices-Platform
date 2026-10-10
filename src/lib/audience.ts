@@ -36,6 +36,14 @@ export interface AudienceCriteria {
    * send path uses the resolved one.
    */
   minTasksCompleted?: number;
+  /**
+   * Devices (src/lib/device-info.ts keys): the person has used a matching
+   * device — phone/tablet/computer, OS, brand — within the last 90 days.
+   * All set dimensions must hold on the SAME device.
+   */
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
 }
 
 const ci = (vals?: string[]) =>
@@ -174,6 +182,23 @@ export function audienceWhere(c: AudienceCriteria = {}): Prisma.UserWhereInput {
       dob.gt = d; // born less than (maxAge+1) years ago
     }
     where.dateOfBirth = dob;
+  }
+
+  if (c.deviceTypes?.length || c.deviceOses?.length || c.deviceBrands?.length) {
+    const recent = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    where.devices = {
+      some: {
+        lastSeenAt: { gte: recent },
+        ...(c.deviceTypes?.length ? { deviceType: { in: c.deviceTypes } } : {}),
+        ...(c.deviceOses?.length ? { os: { in: c.deviceOses } } : {}),
+        // "other" also covers a phone whose brand could not be read.
+        ...(c.deviceBrands?.length
+          ? c.deviceBrands.includes("other")
+            ? { OR: [{ brand: { in: c.deviceBrands } }, { brand: null }] }
+            : { brand: { in: c.deviceBrands } }
+          : {}),
+      },
+    };
   }
 
   return where;

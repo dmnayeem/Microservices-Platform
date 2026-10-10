@@ -3,6 +3,7 @@ import { countryOfIp } from "@/lib/geo";
 import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getFraudConfig, accountsOnIp, recordFraudEvent } from "@/lib/fraud";
+import { parseDevice, type DeviceHints } from "@/lib/device-info";
 
 /**
  * Devices, for multi-account detection that works in the real world.
@@ -30,6 +31,8 @@ export interface SeenDevice {
   ip: string | null;
   userAgent: string | null;
   country: string | null;
+  /** Client Hints from the browser, when it sent them. */
+  hints?: DeviceHints;
 }
 
 const clean = (v: string | undefined | null) => (v && ID_RE.test(v) ? v : null);
@@ -66,6 +69,22 @@ export async function recordDevice(userId: string, seen: SeenDevice): Promise<vo
       .catch(() => {});
   }
   if (!d.deviceId) return;
+  // Phone / computer, OS, brand, model, browser — for the device report and targeting.
+  const parsed = d.userAgent ? parseDevice(d.userAgent, d.hints ?? {}) : null;
+  // Only what is known: a call without Client Hints (sign-up, task start)
+  // must not wipe the brand/model a hinted call already found.
+  const deviceData = parsed
+    ? Object.fromEntries(
+        Object.entries({
+          deviceType: parsed.type,
+          os: parsed.os,
+          osVersion: parsed.osVersion,
+          brand: parsed.brand,
+          model: parsed.model,
+          browser: parsed.browser,
+        }).filter(([, v]) => v != null)
+      )
+    : {};
   try {
     const existing = await prisma.userDevice.findUnique({
       where: { userId_deviceId: { userId, deviceId: d.deviceId } },
@@ -83,6 +102,7 @@ export async function recordDevice(userId: string, seen: SeenDevice): Promise<vo
           ...(d.fpHash ? { fpHash: d.fpHash } : {}),
           ...(d.userAgent ? { userAgent: d.userAgent } : {}),
           ...(d.country ? { country: d.country } : {}),
+          ...deviceData,
         },
       });
     } else {
@@ -95,6 +115,7 @@ export async function recordDevice(userId: string, seen: SeenDevice): Promise<vo
           lastIp: d.ip,
           ips,
           country: d.country,
+          ...deviceData,
         },
       });
     }

@@ -1,5 +1,7 @@
 "use client";
 
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
+import type { DeviceTarget } from "@/lib/device-target";
 import { hasAudienceTargeting } from "@/lib/task-targeting";
 import { TaskAudienceTargeting, type TaskAudienceValue } from "@/components/admin/tasks/task-audience-targeting";
 import { confirmDialog } from "@/lib/confirm";
@@ -49,6 +51,9 @@ interface Banner {
   minAge: number | null;
   maxAge: number | null;
   kycAudience: string;
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
 }
 
 interface Props {
@@ -336,6 +341,9 @@ function EditBannerModal({
     minAge: banner.minAge ?? null,
     maxAge: banner.maxAge ?? null,
     kycAudience: banner.kycAudience ?? "ANY",
+    deviceTypes: banner.deviceTypes ?? [],
+    deviceOses: banner.deviceOses ?? [],
+    deviceBrands: banner.deviceBrands ?? [],
   });
 
   const submit = async () => {
@@ -809,9 +817,12 @@ const EMPTY_BANNER_AUDIENCE = {
   minAge: null as number | null,
   maxAge: null as number | null,
   kycAudience: "ANY",
+  deviceTypes: [] as string[],
+  deviceOses: [] as string[],
+  deviceBrands: [] as string[],
 };
 
-type AudienceForm = TaskAudienceValue & { kycAudience: string };
+type AudienceForm = TaskAudienceValue & { kycAudience: string } & DeviceTarget;
 
 /**
  * Who sees the banner — the same audience picker tasks use (country, region,
@@ -846,6 +857,11 @@ function BannerAudienceFields<F extends AudienceForm>({
         </select>
       </Field>
       <TaskAudienceTargeting value={form} onChange={(patch) => setForm({ ...form, ...patch })} />
+      <DeviceTargetPicker
+        value={{ deviceTypes: form.deviceTypes, deviceOses: form.deviceOses, deviceBrands: form.deviceBrands }}
+        onChange={(d) => setForm({ ...form, ...d })}
+        note="Shown only on these devices — the one the person is using."
+      />
     </div>
   );
 }

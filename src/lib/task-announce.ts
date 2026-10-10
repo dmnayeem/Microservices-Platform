@@ -43,6 +43,9 @@ type AnnounceTask = {
   genders: string[];
   minAge: number | null;
   maxAge: number | null;
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
 };
 
 async function criteriaFor(task: AnnounceTask): Promise<AudienceCriteria> {
@@ -57,6 +60,9 @@ async function criteriaFor(task: AnnounceTask): Promise<AudienceCriteria> {
   if (task.minAge != null) c.minAge = task.minAge;
   if (task.maxAge != null) c.maxAge = task.maxAge;
   if (task.minLevel > 1) c.minLevel = task.minLevel;
+  if (task.deviceTypes?.length) c.deviceTypes = task.deviceTypes;
+  if (task.deviceOses?.length) c.deviceOses = task.deviceOses;
+  if (task.deviceBrands?.length) c.deviceBrands = task.deviceBrands;
   if (task.requiredAccessLevel > 0) {
     const pkgs = await prisma.package.findMany({
       where: { accessLevel: { gte: task.requiredAccessLevel } },

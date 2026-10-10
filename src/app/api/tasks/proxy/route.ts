@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { currentDevice } from "@/lib/device-current";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +42,7 @@ export async function GET() {
   // This route had NO audience targeting, no expiry/start window and no
   // `hidden` filter — it showed proxy tasks the user could never start.
   const tasks = await prisma.task.findMany({
-    where: visibleTaskWhere(user, {
+    where: visibleTaskWhere({ ...user, device: await currentDevice() }, {
       accessLevel,
       allowedTypes: [TaskType.PROXY],
       type: TaskType.PROXY,

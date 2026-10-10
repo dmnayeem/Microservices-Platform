@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { announceTask, parseTaskNotify } from "@/lib/task-announce";
 import { auth } from "@/lib/auth";
 import { can, canAny } from "@/lib/permissions";
@@ -252,6 +253,10 @@ export async function POST(request: NextRequest) {
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         cooldownMinutes: parseInt(cooldownMinutes?.toString() || "0"),
         autoApprove: autoApprove || false,
+        // Device targeting (lib/device-target.ts) — only when the form sent it.
+        ...("deviceTypes" in body || "deviceOses" in body || "deviceBrands" in body
+          ? sanitizeDeviceTarget(body)
+          : {}),
         // "Installed app only" / "notifications on" (lib/task-device-gate.ts).
         ...(typeof body.requireApp === "boolean" ? { requireApp: body.requireApp } : {}),
         ...(typeof body.requirePush === "boolean" ? { requirePush: body.requirePush } : {}),

@@ -1,4 +1,5 @@
 import { assertPageVisible } from "@/lib/page-visibility-server";
+import { currentDevice } from "@/lib/device-current";
 import { NextRequest, NextResponse } from "next/server";
 import { syncCountryMode } from "@/lib/country-mode";
 import { auth } from "@/lib/auth";
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     where: {
       // Shared visibility rules (adds the `hidden` flag and the startsAt window
       // this route used to skip).
-      ...visibleTaskWhere(user, {
+      ...visibleTaskWhere({ ...user, device: await currentDevice() }, {
         accessLevel,
         allowedTypes: [TaskType.SOCIAL],
         type: TaskType.SOCIAL,

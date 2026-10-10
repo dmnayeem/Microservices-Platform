@@ -1,5 +1,7 @@
 "use client";
 
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
+import { EMPTY_DEVICE_TARGET, type DeviceTarget } from "@/lib/device-target";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -129,9 +131,13 @@ interface SearchedUser {
 /** Map the segment fields + audience picker into the AudienceCriteria payload. */
 function buildCriteria(
   fd: { segPackages: string[]; minLevel: string; maxLevel: string; activeWithinDays: string },
-  a: TaskAudienceValue
+  a: TaskAudienceValue,
+  dev: DeviceTarget = EMPTY_DEVICE_TARGET
 ): Record<string, unknown> {
   const c: Record<string, unknown> = {};
+  if (dev.deviceTypes.length) c.deviceTypes = dev.deviceTypes;
+  if (dev.deviceOses.length) c.deviceOses = dev.deviceOses;
+  if (dev.deviceBrands.length) c.deviceBrands = dev.deviceBrands;
   if (a.countries.length) c.countries = a.countries;
   if (a.regions.length) c.regions = a.regions;
   if (a.divisions.length) c.divisions = a.divisions;
@@ -193,6 +199,7 @@ export function SendNotificationForm() {
   });
 
   const [audience, setAudience] = useState<TaskAudienceValue>(EMPTY_AUDIENCE);
+  const [devices, setDevices] = useState<DeviceTarget>(EMPTY_DEVICE_TARGET);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -238,7 +245,7 @@ export function SendNotificationForm() {
         } else if (target === "specific") {
           payload.userIds = selectedUsers.map((u) => u.id);
         } else if (target === "segment") {
-          payload.criteria = buildCriteria({ segPackages, minLevel, maxLevel, activeWithinDays }, audience);
+          payload.criteria = buildCriteria({ segPackages, minLevel, maxLevel, activeWithinDays }, audience, devices);
           if (minTasksCompleted)
             payload.minTasksCompleted = parseInt(
               minTasksCompleted,
@@ -273,6 +280,7 @@ export function SendNotificationForm() {
     activeWithinDays,
     minTasksCompleted,
     audience,
+    devices,
     selectedUsers,
   ]);
 
@@ -365,7 +373,7 @@ export function SendNotificationForm() {
       } else if (formData.target === "specific") {
         payload.userIds = selectedUsers.map((u) => u.id);
       } else if (formData.target === "segment") {
-        payload.criteria = buildCriteria(formData, audience);
+        payload.criteria = buildCriteria(formData, audience, devices);
         if (formData.minTasksCompleted)
           payload.minTasksCompleted = parseInt(formData.minTasksCompleted);
       }
@@ -923,6 +931,13 @@ export function SendNotificationForm() {
                     age. Leave empty for no demographic filter.
                   </p>
                   <TaskAudienceTargeting value={audience} onChange={(patch) => setAudience((a) => ({ ...a, ...patch }))} />
+                </div>
+                <div className="border-t border-slate-800 pt-4">
+                  <DeviceTargetPicker
+                    value={devices}
+                    onChange={setDevices}
+                    note="People who used a matching device in the last 90 days (their phone, tablet or computer)."
+                  />
                 </div>
               </div>
             )}

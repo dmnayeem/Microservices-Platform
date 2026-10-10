@@ -1,5 +1,6 @@
 "use client";
 
+import { DeviceTargetPicker } from "@/components/shared/device-target-picker";
 import { useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -31,8 +32,6 @@ import { USER_PAGES } from "@/lib/page-visibility";
 import { resolveVideoUrl } from "@/lib/video-url";
 import { PopupCard } from "@/components/popups/popup-card";
 import {
-  POPUP_DEVICES,
-  POPUP_DEVICE_LABEL,
   POPUP_FREQUENCIES,
   POPUP_FREQUENCY_LABEL,
   POPUP_KINDS,
@@ -118,6 +117,9 @@ export interface PopupRow {
   minAccountDays: number | null;
   maxAccountDays: number | null;
   devices: string[];
+  deviceTypes?: string[];
+  deviceOses?: string[];
+  deviceBrands?: string[];
 }
 
 export interface PackageOption {
@@ -177,6 +179,9 @@ function emptyForm() {
     minAccountDays: null as number | null,
     maxAccountDays: null as number | null,
     devices: [] as string[],
+    deviceTypes: [] as string[],
+    deviceOses: [] as string[],
+    deviceBrands: [] as string[],
   };
 }
 type Form = ReturnType<typeof emptyForm>;
@@ -220,7 +225,12 @@ function formOf(p: PopupRow): Form {
     maxLevel: p.maxLevel ?? null,
     minAccountDays: p.minAccountDays ?? null,
     maxAccountDays: p.maxAccountDays ?? null,
-    devices: p.devices ?? [],
+    // The old screen-size rule (MOBILE / TABLET / DESKTOP) becomes the device
+    // type rule; saving clears the old field so only one rule remains.
+    devices: [] as string[],
+    deviceTypes: p.deviceTypes?.length ? p.deviceTypes : (p.devices ?? []).map((d) => d.toLowerCase()),
+    deviceOses: p.deviceOses ?? [],
+    deviceBrands: p.deviceBrands ?? [],
   };
 }
 
@@ -233,7 +243,10 @@ function hasExtraTargeting(p: PopupRow): boolean {
     p.maxLevel != null ||
     p.minAccountDays != null ||
     p.maxAccountDays != null ||
-    (p.devices?.length ?? 0) > 0
+    (p.devices?.length ?? 0) > 0 ||
+    (p.deviceTypes?.length ?? 0) > 0 ||
+    (p.deviceOses?.length ?? 0) > 0 ||
+    (p.deviceBrands?.length ?? 0) > 0
   );
 }
 
@@ -809,15 +822,11 @@ function PopupEditor({
                   <PagePicker value={form.paths} onChange={(v) => set("paths", v)} />
                 </Field>
               )}
-              <Field label="Devices" hint="None selected = every device.">
-                <div className="flex flex-wrap gap-1.5">
-                  {POPUP_DEVICES.map((d) => (
-                    <Chip key={d} on={form.devices.includes(d)} onClick={() => set("devices", toggleIn(form.devices, d))}>
-                      {POPUP_DEVICE_LABEL[d]}
-                    </Chip>
-                  ))}
-                </div>
-              </Field>
+              <DeviceTargetPicker
+                value={{ deviceTypes: form.deviceTypes, deviceOses: form.deviceOses, deviceBrands: form.deviceBrands }}
+                onChange={(d) => setForm((f) => ({ ...f, ...d }))}
+                note="Shown only on these devices — the one the person is using."
+              />
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="How often">
                   <select value={form.frequency} onChange={(e) => set("frequency", e.target.value)} className={inp}>

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { currentDevice } from "@/lib/device-current";
 import { syncCountryMode } from "@/lib/country-mode";
 import { bannerMatches } from "@/lib/banner-audience";
 import { redirect } from "next/navigation";
@@ -220,7 +221,8 @@ export default async function SocialPage() {
   await syncCountryMode();
   // Only the banners aimed at this viewer (country, district, upazila,
   // gender, age, KYC — set per banner at /admin/banners).
-  const myBanners = bannerRows.filter((b) => bannerMatches(b, me ?? {}));
+  const viewerDevice = await currentDevice();
+  const myBanners = bannerRows.filter((b) => bannerMatches(b, { ...(me ?? {}), device: viewerDevice }));
   const promoRow = myBanners[0];
   const promo = promoRow
     ? {

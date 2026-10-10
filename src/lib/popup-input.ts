@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sanitizeDeviceTarget } from "@/lib/device-target";
 import { sanitizeTaskAudience } from "@/lib/task-targeting";
 import { sanitizeKycAudience } from "@/lib/banner-audience";
 import {
@@ -71,6 +72,8 @@ export function popupData(body: Record<string, unknown>, v: z.infer<typeof popup
     endsAt: v.endsAt ? new Date(v.endsAt) : null,
     ...sanitizeTaskAudience(body),
     kycAudience: sanitizeKycAudience(body.kycAudience),
+    // Phone / computer, OS, brand (lib/device-target.ts).
+    ...sanitizeDeviceTarget(body),
     videos: (v.videos ?? []).map((u) => u.trim()).filter(Boolean),
     htmlCode: v.htmlCode?.trim() ? v.htmlCode : null,
     htmlHeight: v.htmlHeight ?? 320,
