@@ -3927,6 +3927,12 @@ model Lottery {
   endDate           DateTime
   drawDate          DateTime
   ticketPrice       Int
+  /// How members get tickets: PAID (bought with points), FREE (no purchase —
+  /// up to maxTicketsPerUser each) or EARNED (one ticket per `tasksPerTicket`
+  /// approved tasks during the lottery, no purchase). FREE / EARNED are free
+  /// prize draws: nobody stakes anything.
+  entryMode         String        @default("PAID")
+  tasksPerTicket    Int           @default(1)
   maxTickets        Int?
   ticketsSold       Int           @default(0)
   maxTicketsPerUser Int           @default(10)
@@ -5953,6 +5959,37 @@ model SpotlightBid {
 
   @@unique([auctionId, userId])
   @@index([auctionId, status])
+}
+
+/// Ambassador program (lib/ambassadors-server.ts): members apply, an admin
+/// approves; approved ambassadors earn a SEPARATE monthly bonus for the active
+/// members they brought in. The referral commission chain is not touched.
+model AmbassadorApplication {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  message   String?
+  /// PENDING | APPROVED | REJECTED | REMOVED
+  status    String    @default("PENDING")
+  adminNote String?
+  decidedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+}
+
+/// One monthly ambassador bonus (unique per member and month).
+model AmbassadorPayout {
+  id         String   @id @default(cuid())
+  userId     String
+  /// YYYY-MM
+  month      String
+  qualified  Int
+  points     Int
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, month])
+  @@index([month])
 }
 
 /// A level reward claimed (lib/level-rewards-server.ts). Unique on user +

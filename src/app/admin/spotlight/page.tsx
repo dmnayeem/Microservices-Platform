@@ -6,7 +6,7 @@ import { AdminSpotlightView } from "@/components/admin/spotlight/admin-spotlight
 export default async function AdminSpotlightPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (!(await can(session.user.id, "events.view"))) redirect("/admin");
-  const canManage = await can(session.user.id, "events.manage");
+  if (!(await can(session.user.id, "community.view"))) redirect("/admin");
+  const canManage = await can(session.user.id, "community.manage");
   return <AdminSpotlightView canManage={canManage} />;
 }

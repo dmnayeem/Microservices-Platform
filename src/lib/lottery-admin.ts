@@ -30,7 +30,10 @@ const base = {
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
   drawDate: z.string().datetime(),
-  ticketPrice: z.number().int().min(1).max(10_000_000),
+  // 0 is allowed for FREE / EARNED entry; PAID needs at least 1 (lotteryConfigError).
+  ticketPrice: z.number().int().min(0).max(10_000_000),
+  entryMode: z.enum(["PAID", "FREE", "EARNED"]).default("PAID"),
+  tasksPerTicket: z.number().int().min(1).max(1000).default(1),
   maxTickets: z.number().int().min(1).nullable().optional(),
   maxTicketsPerUser: z.number().int().min(1).max(10_000).default(10),
 
@@ -62,6 +65,12 @@ const PERCENT_EPSILON = 0.01;
  * admin list and then misbehaves at draw time, when money moves.
  */
 export function lotteryConfigError(v: Partial<LotteryInput>): string | null {
+  if ((v.entryMode ?? "PAID") === "PAID" && v.ticketPrice !== undefined && v.ticketPrice < 1) {
+    return "A paid lottery needs a ticket price of at least 1 point — or switch entry to Free / Earned.";
+  }
+  if (v.entryMode && v.entryMode !== "PAID" && v.prizeMode === "POOL" && !(v.poolSeedPoints && v.poolSeedPoints > 0)) {
+    return "A free draw sells no tickets, so a prize pool would be empty — use fixed prizes or add a pool seed.";
+  }
   const start = v.startDate ? new Date(v.startDate) : null;
   const end = v.endDate ? new Date(v.endDate) : null;
   const draw = v.drawDate ? new Date(v.drawDate) : null;

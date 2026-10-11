@@ -9,7 +9,7 @@ import { contestAdminGuard } from "@/lib/contests-admin";
  * changes status. A finished contest is final (its points are paid).
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await contestAdminGuard("events.manage");
+  const g = await contestAdminGuard("community.manage");
   if ("res" in g) return g.res;
   const { id } = await params;
   const existing = await prisma.contest.findUnique({ where: { id } });

@@ -11,7 +11,7 @@ import { npsOf, type FeedbackQuestion } from "@/lib/feedback";
  * response.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await engagementGuard("events.view");
+  const g = await engagementGuard("community.view");
   if ("res" in g) return g.res;
   const { id } = await params;
   const round = await prisma.feedbackRound.findUnique({ where: { id } });
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 /** PUT — `{ ...fields }` edits; `{ action: "publish" | "close" | "unpublish" }`. */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await engagementGuard("events.manage");
+  const g = await engagementGuard("community.manage");
   if ("res" in g) return g.res;
   const { id } = await params;
   const existing = await prisma.feedbackRound.findUnique({ where: { id }, select: { title: true } });

@@ -9,7 +9,7 @@ import { finalizeContest, payContest } from "@/lib/contests-server";
  * finished contest it re-runs the payouts, which skip anyone already paid.
  */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const g = await contestAdminGuard("events.manage");
+  const g = await contestAdminGuard("community.manage");
   if ("res" in g) return g.res;
   const { id } = await params;
   const existing = await prisma.contest.findUnique({ where: { id }, select: { status: true, title: true } });

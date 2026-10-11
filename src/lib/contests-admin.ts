@@ -5,7 +5,7 @@ import { can } from "@/lib/permissions";
 
 /** Contests sit with Events in the admin (ENGAGEMENT): same permissions. */
 export async function contestAdminGuard(
-  need: "events.view" | "events.manage"
+  need: "community.view" | "community.manage"
 ): Promise<{ userId: string } | { res: NextResponse }> {
   const session = await auth();
   if (!session?.user?.id) return { res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };

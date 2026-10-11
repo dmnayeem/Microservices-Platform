@@ -47,6 +47,7 @@ import { releaseDueCpaHolds } from "@/lib/cpa/credit";
 import { releaseHeldOfferwallCompletions } from "@/lib/offerwall";
 import { runBillReminders, summariseBillReminders } from "@/lib/company-finance/alerts";
 import { closeEndedSpotlights } from "@/lib/spotlight-server";
+import { runAmbassadorPayouts } from "@/lib/ambassadors-server";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -210,6 +211,18 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await runSubscriptionReminders();
       return { ok: true, summary: summariseReminders(s), result: s };
+    },
+  },
+  {
+    name: "ambassador-payouts",
+    label: "Ambassador monthly bonus",
+    description:
+      "From the 1st of each month, pays every approved ambassador last month's bonus: points for each new member they brought in who is active and has done the set number of tasks (Admin → Ambassadors). Separate from referral commission, which it never changes. Each ambassador is paid once per month — running it again pays nothing twice. Does nothing while the program is switched off.",
+    intervalMs: 6 * HOUR,
+    leaseMs: 10 * MINUTE,
+    async run() {
+      const r = await runAmbassadorPayouts();
+      return { ok: true, summary: `${r.month}: ${r.paid} paid (${r.points} pts), ${r.skipped} already paid or skipped`, result: r };
     },
   },
   {

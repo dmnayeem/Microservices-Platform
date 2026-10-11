@@ -62,6 +62,7 @@ export type ModuleCategory =
   | "FINANCE"
   | "COMMERCE"
   | "ENGAGEMENT"
+  | "COMMUNITY"
   | "ADS"
   | "MESSAGING"
   | "CONTENT"
@@ -75,6 +76,7 @@ export const CATEGORY_LABELS: Record<ModuleCategory, string> = {
   FINANCE: "Finance",
   COMMERCE: "Marketplace & Courses",
   ENGAGEMENT: "Engagement & Rewards",
+  COMMUNITY: "Community & Growth",
   ADS: "Ads & Promotions",
   MESSAGING: "Messaging",
   CONTENT: "Content & SEO",
@@ -191,6 +193,9 @@ export type Permission =
   | "missions.manage"
   | "events.view"
   | "events.manage"
+  // Community & Growth: contests, feedback, spotlight, ambassadors
+  | "community.view"
+  | "community.manage"
   // Quizzes
   | "quizzes.view"
   | "quizzes.manage"
@@ -367,6 +372,8 @@ export const PERMISSION_CATALOG: { label: string; permissions: Permission[] }[] 
       "missions.manage",
       "events.view",
       "events.manage",
+      "community.view",
+      "community.manage",
       "quizzes.view",
       "quizzes.manage",
       "lottery.view",
@@ -545,6 +552,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "tutor.applications.review",
     "creators.review",
     "missions.view", "missions.manage", "events.view", "events.manage",
+    "community.view", "community.manage",
     "quizzes.view", "quizzes.manage",
     "offerwalls.view", "offerwalls.manage",
     "fraud.view", "fraud.manage",
@@ -619,6 +627,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "tutor.applications.review",
     "creators.review",
     "missions.view", "missions.manage", "events.view", "events.manage",
+    "community.view", "community.manage",
     "quizzes.view", "quizzes.manage",
     "lottery.view", "lottery.manage",
     "leaderboards.view", "leaderboards.manage",
@@ -1141,6 +1150,8 @@ export const PERMISSION_META: Partial<Record<Permission, { label: string; descri
   "missions.manage": { label: "Manage missions", description: "Create and configure daily missions and task missions." },
   "events.view": { label: "View events", description: "See events / quests." },
   "events.manage": { label: "Manage events", description: "Create and configure events / quests and their rewards." },
+  "community.view": { label: "View community", description: "See creator contests, feedback rounds and ideas, Spotlight auctions and ambassadors." },
+  "community.manage": { label: "Manage community", description: "Run contests and pick winners, run feedback rounds and move ideas, open / close Spotlight auctions, approve ambassadors and their settings." },
   "quizzes.view": { label: "View quizzes", description: "See standalone published quizzes." },
   "quizzes.manage": { label: "Manage quizzes", description: "Create, edit and publish quizzes." },
   "lottery.view": { label: "View lottery", description: "See lottery draws, tickets and winners." },
@@ -1582,24 +1593,32 @@ export const ADMIN_MODULES: AdminModule[] = [
     name: "Contests",
     href: "/admin/contests",
     icon: "Trophy",
-    permissions: ["events.view"],
-    category: "ENGAGEMENT",
+    permissions: ["community.view"],
+    category: "COMMUNITY",
   },
   {
     // Monthly feedback rounds + the idea board (lib/feedback-server.ts).
     name: "Feedback",
     href: "/admin/feedback",
     icon: "MessageSquare",
-    permissions: ["events.view"],
-    category: "ENGAGEMENT",
+    permissions: ["community.view"],
+    category: "COMMUNITY",
   },
   {
     // Points auctions for a featured place in the feed (lib/spotlight-server.ts).
     name: "Spotlight",
     href: "/admin/spotlight",
     icon: "Sparkles",
-    permissions: ["events.view"],
-    category: "ENGAGEMENT",
+    permissions: ["community.view"],
+    category: "COMMUNITY",
+  },
+  {
+    // Ambassador program — a separate monthly bonus (lib/ambassadors-server.ts).
+    name: "Ambassadors",
+    href: "/admin/ambassadors",
+    icon: "BadgeCheck",
+    permissions: ["community.view"],
+    category: "COMMUNITY",
   },
   {
     name: "Quiz Games",
@@ -1926,6 +1945,7 @@ export const CATEGORY_ORDER: ModuleCategory[] = [
   "FINANCE",
   "COMMERCE",
   "ENGAGEMENT",
+  "COMMUNITY",
   "ADS",
   "MESSAGING",
   "CONTENT",

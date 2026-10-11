@@ -124,6 +124,9 @@ export async function GET(request: NextRequest) {
         endDate: lottery.endDate,
         drawDate: lottery.drawDate,
         ticketPrice: lottery.ticketPrice,
+        // PAID | FREE | EARNED — the page shows "free" / "earn by tasks" instead of a price.
+        entryMode: (lottery as { entryMode?: string }).entryMode ?? "PAID",
+        tasksPerTicket: (lottery as { tasksPerTicket?: number }).tasksPerTicket ?? 1,
         maxTickets: lottery.maxTickets,
         ticketsSold: sold,
         maxTicketsPerUser: lottery.maxTicketsPerUser,
@@ -284,6 +287,36 @@ export async function POST(request: NextRequest) {
             status: 400,
           };
         }
+        // EARNED: tickets come from work done during the lottery — one per
+        // `tasksPerTicket` approved tasks since it opened, up to the per-user
+        // cap. FREE: no purchase, just the per-user cap.
+        const entryMode = (lottery as { entryMode?: string }).entryMode ?? "PAID";
+        if (entryMode === "EARNED") {
+          const perTicket = Math.max(1, (lottery as { tasksPerTicket?: number }).tasksPerTicket ?? 1);
+          const done = await tx.taskSubmission.count({
+            where: {
+              userId,
+              status: { in: ["APPROVED", "AUTO_APPROVED"] },
+              createdAt: { gte: lottery.startDate },
+            },
+          });
+          const earned = Math.min(lottery.maxTicketsPerUser, Math.floor(done / perTicket));
+          if (userTicketCount + ticketCount > earned) {
+            const left = Math.max(0, earned - userTicketCount);
+            const toNext = perTicket - (done % perTicket);
+            return {
+              ok: false as const,
+              error:
+                left > 0
+                  ? `You can take ${left} more ticket${left === 1 ? "" : "s"} right now.`
+                  : earned >= lottery.maxTicketsPerUser
+                    ? `You already have the most tickets allowed (${lottery.maxTicketsPerUser}).`
+                    : `Complete ${toNext} more task${toNext === 1 ? "" : "s"} to earn your next ticket.`,
+              status: 400,
+            };
+          }
+        }
+
         if (userTicketCount + ticketCount > lottery.maxTicketsPerUser) {
           return {
             ok: false as const,
@@ -292,7 +325,8 @@ export async function POST(request: NextRequest) {
           };
         }
 
-        const totalCost = lottery.ticketPrice * ticketCount;
+        // Free / earned entry costs nothing — no debit, no purchase row.
+        const totalCost = entryMode === "PAID" ? lottery.ticketPrice * ticketCount : 0;
         if (!user || user.pointsBalance < totalCost) {
           return { ok: false as const, error: "Insufficient points balance", status: 400 };
         }
@@ -310,11 +344,13 @@ export async function POST(request: NextRequest) {
         // Conditional debit: the lock above is on the lottery, not the user,
         // so two buys in different lotteries could both pass the read check
         // and take the balance below zero.
-        const paid = await tx.user.updateMany({
-          where: { id: userId, pointsBalance: { gte: totalCost } },
-          data: { pointsBalance: { decrement: totalCost } },
-        });
-        if (paid.count === 0) throw new Error("LOTTERY_INSUFFICIENT");
+        if (totalCost > 0) {
+          const paid = await tx.user.updateMany({
+            where: { id: userId, pointsBalance: { gte: totalCost } },
+            data: { pointsBalance: { decrement: totalCost } },
+          });
+          if (paid.count === 0) throw new Error("LOTTERY_INSUFFICIENT");
+        }
         const updatedUser = (await tx.user.findUnique({
           where: { id: userId },
           select: { pointsBalance: true },
@@ -323,7 +359,7 @@ export async function POST(request: NextRequest) {
           where: { id: lotteryId },
           data: { ticketsSold: { increment: ticketCount } },
         });
-        await tx.transaction.create({
+        if (totalCost > 0) await tx.transaction.create({
           data: {
             userId,
             type: TransactionType.PURCHASE,

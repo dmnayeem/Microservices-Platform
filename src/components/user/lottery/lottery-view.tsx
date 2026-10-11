@@ -30,6 +30,9 @@ interface LotteryItem {
   description?: string | null;
   drawDate: string;
   ticketPrice: number;
+  /** PAID | FREE | EARNED — free / earned entry is a free prize draw. */
+  entryMode?: string;
+  tasksPerTicket?: number;
   ticketsSold: number;
   maxTickets?: number | null;
   maxTicketsPerUser: number;
@@ -351,7 +354,11 @@ function FeaturedLotteryCard({
         </span>
         <span className="inline-flex items-center gap-1">
           <Coins className="w-3.5 h-3.5" />
-          {lottery.ticketPrice} pts/ticket
+          {lottery.entryMode === "FREE"
+            ? "Free entry"
+            : lottery.entryMode === "EARNED"
+              ? `1 ticket per ${lottery.tasksPerTicket ?? 1} completed task${(lottery.tasksPerTicket ?? 1) === 1 ? "" : "s"}`
+              : `${lottery.ticketPrice} pts/ticket`}
         </span>
       </div>
 
@@ -381,9 +388,9 @@ function FeaturedLotteryCard({
                 <>
                   <p className="text-sm font-bold">{b.label}</p>
                   <p className="text-base font-extrabold mt-0.5 tabular-nums">
-                    {finalCost} pts
+                    {lottery.entryMode && lottery.entryMode !== "PAID" ? "Free" : `${finalCost} pts`}
                   </p>
-                  {discount < 1 && (
+                  {discount < 1 && (!lottery.entryMode || lottery.entryMode === "PAID") && (
                     <p className="text-[10px] text-amber-300 font-bold">
                       -{((1 - discount) * 100).toFixed(0)}% off
                     </p>
@@ -465,7 +472,7 @@ function LotteryRow({
         {busyId === `${lottery.id}-1` ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : isActive ? (
-          `${lottery.ticketPrice} pts`
+          lottery.entryMode && lottery.entryMode !== "PAID" ? "Get ticket" : `${lottery.ticketPrice} pts`
         ) : (
           lottery.status
         )}

@@ -36,6 +36,7 @@ export const ROBOTS_DISALLOW = [
   "/spotlight",
   "/feedback",
   "/level-rewards",
+  "/ambassador",
   "/v/",
   "/badge",
   "/article-tasks",

@@ -6,7 +6,7 @@ import { contestStandings } from "@/lib/contests-server";
 
 /** GET: every entry with its entrant and live score. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const g = await contestAdminGuard("events.view");
+  const g = await contestAdminGuard("community.view");
   if ("res" in g) return g.res;
   const { id } = await params;
   const [entries, standings] = await Promise.all([
@@ -26,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 /** PATCH `{ entryId, status?, adminScore?, rejectReason? }` */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await contestAdminGuard("events.manage");
+  const g = await contestAdminGuard("community.manage");
   if ("res" in g) return g.res;
   const { id } = await params;
   const contest = await prisma.contest.findUnique({ where: { id }, select: { status: true, title: true } });

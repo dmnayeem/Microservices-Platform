@@ -44,6 +44,8 @@ export interface LotteryFormValue {
   endDate: string;
   drawDate: string;
   ticketPrice: number;
+  entryMode?: string;
+  tasksPerTicket?: number;
   maxTickets: number | null;
   maxTicketsPerUser: number;
   prizeMode: PrizeMode;
@@ -97,6 +99,8 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
     endDate: toLocalInput(lottery?.endDate ?? ""),
     drawDate: toLocalInput(lottery?.drawDate ?? ""),
     ticketPrice: lottery?.ticketPrice ?? 100,
+    entryMode: (lottery?.entryMode ?? "EARNED") as "PAID" | "FREE" | "EARNED",
+    tasksPerTicket: lottery?.tasksPerTicket ?? 3,
     maxTickets: lottery?.maxTickets != null ? String(lottery.maxTickets) : "",
     maxTicketsPerUser: lottery?.maxTicketsPerUser ?? 10,
     prizeMode: (lottery?.prizeMode ?? "FIXED") as PrizeMode,
@@ -215,7 +219,9 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
             startDate: new Date(form.startDate).toISOString(),
             endDate: new Date(form.endDate).toISOString(),
             drawDate: new Date(form.drawDate).toISOString(),
-            ticketPrice: Number(form.ticketPrice),
+            entryMode: form.entryMode,
+            tasksPerTicket: Number(form.tasksPerTicket) || 1,
+            ticketPrice: form.entryMode === "PAID" ? Number(form.ticketPrice) : 0,
             maxTickets: form.maxTickets ? Number(form.maxTickets) : null,
             maxTicketsPerUser: Number(form.maxTicketsPerUser),
             prizeMode: form.prizeMode,
@@ -347,20 +353,59 @@ export function LotteryForm({ lottery, rolloverCandidates = [] }: LotteryFormPro
       </Card>
 
       <Card title="Tickets">
+        <div className="mb-4 space-y-2">
+          <label className="block text-sm font-medium text-gray-400">How members get tickets</label>
+          <select
+            value={form.entryMode}
+            onChange={(e) => set({ entryMode: e.target.value as "PAID" | "FREE" | "EARNED" })}
+            disabled={frozen}
+            className={inp}
+          >
+            <option value="EARNED">Earned by work — 1 ticket per completed tasks (recommended)</option>
+            <option value="FREE">Free — every member can take tickets, no purchase</option>
+            <option value="PAID">Bought with points</option>
+          </select>
+          {form.entryMode === "PAID" ? (
+            <p className="text-xs text-amber-300">
+              Paying points (which can become cash) for a chance to win is treated as gambling in many countries.
+              Free or Earned entry keeps it a free prize draw — nobody stakes anything.
+            </p>
+          ) : (
+            <p className="text-xs text-emerald-300">
+              No purchase — a free prize draw. Use fixed prizes (or a pool seed): no tickets are sold.
+            </p>
+          )}
+        </div>
         <div className="grid md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Ticket price (points) <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={form.ticketPrice}
-              onChange={(e) => set({ ticketPrice: Number(e.target.value) || 0 })}
-              disabled={frozen}
-              className={inp}
-            />
-          </div>
+          {form.entryMode === "PAID" ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Ticket price (points) <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={form.ticketPrice}
+                onChange={(e) => set({ ticketPrice: Number(e.target.value) || 0 })}
+                disabled={frozen}
+                className={inp}
+              />
+            </div>
+          ) : form.entryMode === "EARNED" ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Approved tasks per ticket
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={form.tasksPerTicket}
+                onChange={(e) => set({ tasksPerTicket: Number(e.target.value) || 1 })}
+                disabled={frozen}
+                className={inp}
+              />
+            </div>
+          ) : null}
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Max tickets (blank = unlimited)

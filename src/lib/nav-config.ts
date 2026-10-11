@@ -353,6 +353,7 @@ export const DEFAULT_SIDEBAR: SidebarConfig = {
       ["Affiliate", "/affiliate", "handshake", undefined, "commission partner links"],
       ["Milestones", "/milestones", "target", undefined, "progress rewards"],
       ["Level Rewards", "/level-rewards", "gift", undefined, "level up reward claim"],
+      ["Ambassador", "/ambassador", "medal", undefined, "ambassador program represent invite bonus"],
       ["Achievements", "/achievements", "award", undefined, "badges trophies"],
     ]),
     seedSection("Promote", [

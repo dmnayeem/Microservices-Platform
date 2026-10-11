@@ -5,7 +5,7 @@ import { contestAdminGuard as engagementGuard } from "@/lib/contests-admin";
 
 /** GET: every Spotlight auction with its bid count and top bid. POST: open a new one. */
 export async function GET() {
-  const g = await engagementGuard("events.view");
+  const g = await engagementGuard("community.view");
   if ("res" in g) return g.res;
   const rows = await prisma.spotlightAuction.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   const bids = await prisma.spotlightBid.findMany({
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const g = await engagementGuard("events.manage");
+  const g = await engagementGuard("community.manage");
   if ("res" in g) return g.res;
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const title = String(b.title ?? "").trim().slice(0, 120);

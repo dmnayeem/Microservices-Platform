@@ -60,6 +60,7 @@ export const USER_PAGES: UserPage[] = [
   { path: "/contests", label: "Creator Contests", group: "Earn" },
   { path: "/feedback", label: "Feedback", group: "Earn" },
   { path: "/spotlight", label: "Spotlight", group: "Earn" },
+  { path: "/ambassador", label: "Ambassador Program", group: "Earn" },
   { path: "/achievements", label: "Achievements", group: "Earn" },
   { path: "/leaderboard", label: "Leaderboard", group: "Earn" },
   { path: "/quizzes", label: "Quiz Games", group: "Earn" },

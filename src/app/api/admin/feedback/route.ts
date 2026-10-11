@@ -6,7 +6,7 @@ import { parseRound } from "@/lib/feedback-admin";
 
 /** GET: rounds with response counts. POST: create a round (draft). */
 export async function GET() {
-  const g = await engagementGuard("events.view");
+  const g = await engagementGuard("community.view");
   if ("res" in g) return g.res;
   const rounds = await prisma.feedbackRound.findMany({ orderBy: { startAt: "desc" }, take: 100 });
   const counts = (await prisma.feedbackResponse.groupBy({ by: ["roundId"], _count: { _all: true } })) as unknown as Array<{
@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const g = await engagementGuard("events.manage");
+  const g = await engagementGuard("community.manage");
   if ("res" in g) return g.res;
   const p = parseRound(await request.json().catch(() => null));
   if (!p.ok) return NextResponse.json({ error: p.error }, { status: 400 });

@@ -6,7 +6,7 @@ import { contestAdminGuard } from "@/lib/contests-admin";
 
 /** GET: every contest with entry counts. POST: create one (as a draft). */
 export async function GET() {
-  const g = await contestAdminGuard("events.view");
+  const g = await contestAdminGuard("community.view");
   if ("res" in g) return g.res;
   const rows = await prisma.contest.findMany({ orderBy: { createdAt: "desc" }, take: 200 });
   const counts = (await prisma.contestEntry.groupBy({
@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const g = await contestAdminGuard("events.manage");
+  const g = await contestAdminGuard("community.manage");
   if ("res" in g) return g.res;
   const parsed = parseContestInput(await request.json().catch(() => null));
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });

@@ -7,7 +7,7 @@ import { notifyIdeaShipped } from "@/lib/feedback-server";
 
 /** GET: every idea (most votes first) with its author. */
 export async function GET() {
-  const g = await engagementGuard("events.view");
+  const g = await engagementGuard("community.view");
   if ("res" in g) return g.res;
   const ideas = await prisma.featureIdea.findMany({ orderBy: [{ votes: "desc" }, { createdAt: "desc" }], take: 500 });
   const users = await prisma.user.findMany({
@@ -20,7 +20,7 @@ export async function GET() {
 
 /** PATCH `{ id, status?, adminNote? }` — moving to SHIPPED tells the author and every voter. */
 export async function PATCH(request: NextRequest) {
-  const g = await engagementGuard("events.manage");
+  const g = await engagementGuard("community.manage");
   if ("res" in g) return g.res;
   const body = (await request.json().catch(() => ({}))) as { id?: unknown; status?: unknown; adminNote?: unknown };
   const id = String(body.id ?? "");

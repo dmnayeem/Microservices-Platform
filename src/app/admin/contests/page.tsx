@@ -6,7 +6,7 @@ import { AdminContestsView } from "@/components/admin/contests/admin-contests-vi
 export default async function AdminContestsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (!(await can(session.user.id, "events.view"))) redirect("/admin");
-  const canManage = await can(session.user.id, "events.manage");
+  if (!(await can(session.user.id, "community.view"))) redirect("/admin");
+  const canManage = await can(session.user.id, "community.manage");
   return <AdminContestsView canManage={canManage} />;
 }

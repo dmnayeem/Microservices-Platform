@@ -249,6 +249,7 @@ export const API_MODULE_PREFIXES: Record<string, string> = {
   "/api/admin/contests": "/admin/contests",
   "/api/admin/feedback": "/admin/feedback",
   "/api/admin/spotlight": "/admin/spotlight",
+  "/api/admin/ambassadors": "/admin/ambassadors",
   "/api/admin/quizzes": "/admin/quizzes",
   "/api/admin/gamification": "/admin/gamification",
   "/api/admin/support": "/admin/support",

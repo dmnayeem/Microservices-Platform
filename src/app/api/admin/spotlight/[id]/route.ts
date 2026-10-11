@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
  * the end time) or cancel (the held bid is returned).
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await engagementGuard("events.manage");
+  const g = await engagementGuard("community.manage");
   if ("res" in g) return g.res;
   const { id } = await params;
   const body = (await request.json().catch(() => ({}))) as { action?: unknown };
