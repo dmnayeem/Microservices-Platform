@@ -4,10 +4,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { countryOfIp } from "@/lib/geo";
 import { clientIp } from "@/lib/rate-limit";
-import { getFraudConfig, isVpnIp, accountsOnIp } from "@/lib/fraud";
+import { getFraudConfig, accountsOnIp } from "@/lib/fraud";
 import { addFraudRisk } from "@/lib/fraud-risk";
 import { accountsOnDevice, flagOnce, readDevice, recordDevice } from "@/lib/device";
 import { getEffectivePackage } from "@/lib/packages";
+import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
 import {
   getActiveMissionForUser,
   buildDailyProgress,
@@ -23,7 +24,9 @@ import {
  */
 export async function taskStartFraudGate(
   request: NextRequest,
-  userId: string
+  userId: string,
+  /** The task being started — its own "no VPN" switch (Task.blockVpn). */
+  taskId?: string
 ): Promise<NextResponse | null> {
   // ── Anti-fraud gate (all admin-toggleable) ──────────────────────────────
   const ip = clientIp(request);
@@ -39,7 +42,16 @@ export async function taskStartFraudGate(
   // One offence per user per day: every retry of a blocked start used to
   // write another event, and now each one would also add risk.
   const today = new Date().toISOString().slice(0, 10);
-  if (isVpnIp(ip, fraud)) {
+  // Detected (prefix list or the provider) and recorded either way — the VPN
+  // users list shows who uses one even when nothing is blocked. Blocked when
+  // the site-wide switch, the "every task" switch or this task says so.
+  const vpnCfg = await getVpnSettings();
+  const onVpn = await checkAndNoteVpn(userId, ip, vpnCfg);
+  const taskSaysNo =
+    onVpn && !!taskId && !vpnCfg.blockTaskWork && !vpnCfg.blockAllTasks
+      ? (await prisma.task.findUnique({ where: { id: taskId }, select: { blockVpn: true } }))?.blockVpn === true
+      : false;
+  if (onVpn && (vpnCfg.blockTaskWork || vpnCfg.blockAllTasks || taskSaysNo)) {
     await addFraudRisk({
       userId: userId,
       signal: "VPN_DETECTED",

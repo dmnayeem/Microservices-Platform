@@ -29,6 +29,7 @@ import { FRAUD_HOME, keysHomedAt } from "@/lib/admin-settings-catalog";
  */
 const TABS = [
   { id: "monitor", label: "Monitor" },
+  { id: "vpn", label: "VPN users" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -49,6 +50,67 @@ export default async function FraudMonitorPage({
   if (!(await can(session.user.id, "fraud.view"))) redirect("/admin");
   const tab = pickTab(TABS, (await searchParams).tab);
   const tabs = <AdminTabs tabs={TABS} active={tab} basePath="/admin/fraud" />;
+
+  if (tab === "vpn") {
+    // Members seen on a VPN / proxy (lib/vpn.ts) — recorded whether or not
+    // anything is blocked, newest first.
+    const rows = await prisma.user.findMany({
+      where: { vpnLastSeenAt: { not: null } },
+      orderBy: { vpnLastSeenAt: "desc" },
+      take: 300,
+      select: { id: true, name: true, email: true, status: true, vpnLastSeenAt: true, vpnLastIp: true, vpnSeenCount: true, level: true },
+    });
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white inline-flex items-center gap-2">
+            <ShieldAlert className="w-6 h-6 text-red-400" />
+            Fraud Monitor
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Members seen on a VPN or proxy — recorded even with VPN blocking off. Detection uses the IP prefix list
+            and, when switched on in Settings, proxycheck.io.
+          </p>
+        </div>
+        {tabs}
+        {rows.length === 0 ? (
+          <p className="rounded-xl border border-slate-800 p-6 text-center text-sm text-slate-400">
+            Nobody seen on a VPN yet. (Turn on a detection service under Settings → VPN / proxy for real detection.)
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900 text-left text-xs text-slate-400">
+                <tr>
+                  <th className="px-3 py-2">Member</th>
+                  <th className="px-3 py-2">Last VPN IP</th>
+                  <th className="px-3 py-2">Times seen</th>
+                  <th className="px-3 py-2">Last seen</th>
+                  <th className="px-3 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((u) => (
+                  <tr key={u.id} className="border-t border-slate-800">
+                    <td className="px-3 py-2">
+                      <Link href={`/admin/users/${u.id}`} className="text-white hover:underline">
+                        {u.name ?? u.email}
+                      </Link>
+                      <p className="text-xs text-slate-500">{u.email} · L{u.level}</p>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-slate-300">{u.vpnLastIp ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-300">{u.vpnSeenCount}</td>
+                    <td className="px-3 py-2 text-slate-300">{u.vpnLastSeenAt ? format(u.vpnLastSeenAt, "MMM d, HH:mm") : "—"}</td>
+                    <td className="px-3 py-2 text-slate-300">{u.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (tab === "settings") {
     const [initial, canEditSettings] = await Promise.all([

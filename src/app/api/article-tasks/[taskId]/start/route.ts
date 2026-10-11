@@ -68,7 +68,7 @@ export async function POST(
     );
   }
 
-  const fraudBlocked = await taskStartFraudGate(request, session.user.id);
+  const fraudBlocked = await taskStartFraudGate(request, session.user.id, gateTaskId);
   if (fraudBlocked) return fraudBlocked;
 
   const { taskId } = await params;

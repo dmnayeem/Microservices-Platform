@@ -140,6 +140,7 @@ interface TaskFormProps {
     expiresAt: Date | null;
     cooldownMinutes: number;
     autoApprove: boolean;
+    blockVpn?: boolean;
     boardId?: string | null;
     requireApp?: boolean;
     requirePush?: boolean;
@@ -220,6 +221,7 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
     expiresAt: task?.expiresAt ? new Date(task.expiresAt).toISOString().slice(0, 16) : "",
     cooldownMinutes: task?.cooldownMinutes || 0,
     autoApprove: task?.autoApprove || false,
+    blockVpn: task?.blockVpn || false,
     boardId: task?.boardId ?? defaultBoardId ?? "",
     requireApp: task?.requireApp ?? false,
     requirePush: task?.requirePush ?? false,
@@ -1513,6 +1515,19 @@ export function TaskForm({ task, allowedTypes, defaultBoardId }: TaskFormProps) 
             />
             <label htmlFor="autoApprove" className="text-sm text-gray-400">
               Auto-approve submissions
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="blockVpn"
+              checked={formData.blockVpn}
+              onChange={(e) => setFormData({ ...formData, blockVpn: e.target.checked })}
+              className="w-5 h-5 rounded border-gray-700 bg-gray-800 text-indigo-500"
+            />
+            <label htmlFor="blockVpn" className="text-sm text-gray-400">
+              No VPN — members on a VPN / proxy can&apos;t start or submit this task
             </label>
           </div>
         </div>

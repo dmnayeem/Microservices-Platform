@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
     // The same anti-fraud gate (device/IP caps, VPN, risk) every task START
     // runs. A quiz is started and submitted in this one request, so without
     // it the quiz was the one earning path that skipped the gate entirely.
-    const fraudBlocked = await taskStartFraudGate(request, session.user.id);
+    const fraudBlocked = await taskStartFraudGate(request, session.user.id, taskId);
     if (fraudBlocked) return fraudBlocked;
 
     // Grade against the ANSWER KEY IN THE DATABASE, never the one the browser

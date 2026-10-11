@@ -110,6 +110,7 @@ export const USER_PAGES: UserPage[] = [
  */
 export const ALWAYS_VISIBLE_PATHS: readonly string[] = [
   "/no-access",
+  "/vpn-blocked",
   "/2fa-setup",
   "/update-password",
   "/settings",

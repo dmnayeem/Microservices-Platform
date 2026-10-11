@@ -33,6 +33,12 @@ const DEFAULTS: SettingsBag = {
   "antifraud.device_limit_action": "block",
   "antifraud.vpn_block_enabled": false,
   "antifraud.vpn_ranges": "",
+  "antifraud.one_account_per_device": true,
+  "antifraud.device_login_exempt": "",
+  "antifraud.vpn_provider": "none",
+  "antifraud.vpn_api_key": "",
+  "antifraud.vpn_block_all_tasks": false,
+  "antifraud.vpn_locked_paths": "",
   "antifraud.adblock_gate_enabled": true,
   "antifraud.adblock_reminder_minutes": 0,
 };
@@ -184,11 +190,72 @@ export function FraudSettingsPanel({
             </select>
           </Field>
         </div>
+        <Toggle settingKey="antifraud.one_account_per_device"
+          checked={values["antifraud.one_account_per_device"] !== false}
+          onChange={(v) => set("antifraud.one_account_per_device", v)}
+          disabled={!canEdit}
+        />
+        <Field settingKey="antifraud.device_login_exempt">
+          <input
+            type="text"
+            value={String(values["antifraud.device_login_exempt"] ?? "")}
+            onChange={(e) => set("antifraud.device_login_exempt", e.target.value)}
+            disabled={!canEdit}
+            placeholder="mother@example.com, son@example.com"
+            className={inp}
+          />
+        </Field>
+      </Section>
+
+      <Section title="VPN / proxy">
+        <div className="rounded-lg border border-sky-500/25 bg-sky-500/5 p-3 text-xs text-sky-100/90">
+          Members on a VPN are <b>recorded either way</b> — see the <b>VPN users</b> tab — even with every block
+          below off. Then choose what they can&apos;t do: all task work, every task, single tasks (&ldquo;No
+          VPN&rdquo; on the task form), or chosen pages.
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field settingKey="antifraud.vpn_provider">
+            <select
+              value={String(values["antifraud.vpn_provider"] ?? "none")}
+              onChange={(e) => set("antifraud.vpn_provider", e.target.value)}
+              disabled={!canEdit}
+              className={inp}
+            >
+              <option value="none">None — the IP prefix list only</option>
+              <option value="proxycheck">proxycheck.io — real VPN / proxy detection</option>
+            </select>
+          </Field>
+          <Field settingKey="antifraud.vpn_api_key">
+            <input
+              type="password"
+              autoComplete="off"
+              value={String(values["antifraud.vpn_api_key"] ?? "")}
+              onChange={(e) => set("antifraud.vpn_api_key", e.target.value)}
+              disabled={!canEdit}
+              className={inp}
+            />
+          </Field>
+        </div>
         <Toggle settingKey="antifraud.vpn_block_enabled"
           checked={values["antifraud.vpn_block_enabled"] === true}
           onChange={(v) => set("antifraud.vpn_block_enabled", v)}
           disabled={!canEdit}
         />
+        <Toggle settingKey="antifraud.vpn_block_all_tasks"
+          checked={values["antifraud.vpn_block_all_tasks"] === true}
+          onChange={(v) => set("antifraud.vpn_block_all_tasks", v)}
+          disabled={!canEdit}
+        />
+        <Field settingKey="antifraud.vpn_locked_paths">
+          <input
+            type="text"
+            value={String(values["antifraud.vpn_locked_paths"] ?? "")}
+            onChange={(e) => set("antifraud.vpn_locked_paths", e.target.value)}
+            disabled={!canEdit}
+            placeholder="/withdrawal /cpa /tasks"
+            className={inp}
+          />
+        </Field>
         <Field settingKey="antifraud.vpn_ranges">
           <input
             type="text"
@@ -229,7 +296,32 @@ export function FraudSettingsPanel({
 
       <SaveBar canEdit={canEdit} busy={busy} dirty={dirty} onSave={save} />
 
-      <div className="grid gap-3 sm:grid-cols-2 pt-2">
+      <h3 className="pt-2 text-sm font-semibold text-white">Other fraud controls — kept with the pages they belong to</h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SeeAlso
+          label="Require email verification to sign in"
+          href="/admin/settings?tab=users"
+          linkLabel="System Settings → Users & sign-up"
+          why="Stops accounts made with fake addresses from signing in at all."
+        />
+        <SeeAlso
+          label="Require KYC for withdrawals · withdrawal limits"
+          href="/admin/withdrawals?tab=settings"
+          linkLabel="Withdrawals → Settings"
+          why="The last line against a farm: money only leaves to verified people."
+        />
+        <SeeAlso
+          label="Referral limits & self-referral holds"
+          href="/admin/referrals?tab=limits"
+          linkLabel="Referrals → Limits"
+          why="How many referrals pay, and the bonuses held for same-device sign-ups."
+        />
+        <SeeAlso
+          label="Abuse signals & cases"
+          href="/admin/abuse"
+          linkLabel="Abuse Center"
+          why="Everything the fraud rules caught (device sharing, blocked logins, …) as cases to review."
+        />
         <SeeAlso
           label="Match country targeting by IP only"
           href="/admin/settings"

@@ -1741,6 +1741,11 @@ model User {
   /// Last time the user changed `timezone`. Daily claims key on the LOCAL day,
   /// so hopping UTC-12 → UTC+14 opened "tomorrow" at once; changes are limited.
   timezoneChangedAt                 DateTime?
+  /// Last time this member was seen on a VPN / proxy (lib/vpn.ts) — recorded
+  /// even when VPN blocking is off, so admins can see who uses one.
+  vpnLastSeenAt                     DateTime?
+  vpnLastIp                         String?
+  vpnSeenCount                      Int                          @default(0)
   role                              UserRole                     @default(USER)
   // Optional super-admin-defined custom role (permissions come from it; the
   // user's `role` is kept as ADMIN as the admin-panel baseline). Null = plain role.
@@ -2038,6 +2043,7 @@ model User {
 
   // NB: email + referralCode are already @unique (own B-tree) — no extra @@index.
   @@index([referredById])
+  @@index([vpnLastSeenAt])
   @@index([status])
   @@index([role])
   @@index([createdAt])
@@ -2335,6 +2341,9 @@ model Task {
   customConfig        Json? // Custom task config (see lib/custom-tasks.ts CustomConfig)
   appInstallConfig    Json? // App-install task config (see lib/app-install-tasks.ts AppInstallConfig)
   visitConfig         Json? // Visit task config (see lib/visit-tasks.ts VisitConfig)
+  /// Refuse this task to members on a VPN / proxy (lib/vpn.ts), even when the
+  /// site-wide VPN block is off.
+  blockVpn            Boolean   @default(false)
   proxyInstructions   String?          @db.Text
   startsAt            DateTime?
   expiresAt           DateTime?
@@ -5990,6 +5999,19 @@ model AmbassadorPayout {
 
   @@unique([userId, month])
   @@index([month])
+}
+
+/// What a VPN check said about an IP (lib/vpn.ts), cached for a week so the
+/// provider is asked at most once per IP per week.
+model IpReputation {
+  ip        String   @id
+  isVpn     Boolean
+  /// Provider's label, e.g. VPN | TOR | Hosting | Business
+  kind      String?
+  provider  String
+  checkedAt DateTime @default(now())
+
+  @@index([checkedAt])
 }
 
 /// A level reward claimed (lib/level-rewards-server.ts). Unique on user +

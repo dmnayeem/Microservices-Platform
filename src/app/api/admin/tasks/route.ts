@@ -263,6 +263,7 @@ export async function POST(request: NextRequest) {
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         cooldownMinutes: parseInt(cooldownMinutes?.toString() || "0"),
         autoApprove: autoApprove || false,
+        blockVpn: body.blockVpn === true,
         // Device targeting (lib/device-target.ts) — only when the form sent it.
         ...("deviceTypes" in body || "deviceOses" in body || "deviceBrands" in body
           ? sanitizeDeviceTarget(body)

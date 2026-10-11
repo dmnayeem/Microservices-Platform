@@ -101,6 +101,8 @@ import {
 } from "@/lib/social-proof-url";
 import { runAchievementCheck } from "@/lib/achievements";
 import { closeTaskIfFull } from "@/lib/task-slots";
+import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
+import { clientIp } from "@/lib/rate-limit";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -180,6 +182,19 @@ export async function POST(
     // hidden for this user. Refuses only; fails open on a read error.
     const pageHidden = await assertPageVisible(session.user.id, taskTypePage(task.type));
     if (pageHidden) return pageHidden;
+    // VPN lock (Fraud Control): checked again at submit — turning a VPN on
+    // after starting doesn't get round a task that refuses VPNs.
+    {
+      const vpnCfg = await getVpnSettings();
+      if (vpnCfg.blockTaskWork || vpnCfg.blockAllTasks || task.blockVpn) {
+        if (await checkAndNoteVpn(session.user.id, clientIp(request), vpnCfg)) {
+          return NextResponse.json(
+            { error: "Please turn off your VPN/proxy to submit this task.", code: "VPN_BLOCKED" },
+            { status: 403 }
+          );
+        }
+      }
+    }
     // Start checks these, submit did not: a task the admin paused, retired or
     // let expire kept accepting (and paying) work begun before the change.
     if (task.status !== "ACTIVE" || (task.expiresAt && task.expiresAt.getTime() < Date.now())) {
