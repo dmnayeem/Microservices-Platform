@@ -55,6 +55,7 @@ import {
 } from "@/lib/feed-quick-earn";
 import type { CustomWidget } from "@/lib/feed-custom-widgets";
 import { VerifiedBadge } from "@/components/user/profile/verified-badge";
+import { badgeText, navCountMap, useNavCounts } from "@/hooks/use-nav-counts";
 
 export interface RailEarner {
   id: string;
@@ -336,6 +337,9 @@ export function FeedRightRail({
   const rankTone = ["text-amber-400", "text-(--app-ink-2)", "text-orange-400"];
   const [widgets, setWidgets] = useState<RailWidgets | null>(null);
   const quickTiles = quickEarn.filter((t) => t.enabled);
+  // What is waiting behind each tile (tasks left, rewards to claim …) — the
+  // same red counts as the menu, so the eye goes where the work is.
+  const quickCounts = navCountMap(useNavCounts());
 
   useEffect(() => {
     let cancelled = false;
@@ -483,6 +487,7 @@ export function FeedRightRail({
           <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2">
             {quickTiles.map((q) => {
               const Icon = QUICK_EARN_ICONS[q.icon] ?? Zap;
+              const n = quickCounts[q.href] ?? 0;
               return (
                 <Link
                   key={q.id}
@@ -491,6 +496,14 @@ export function FeedRightRail({
                 >
                   <Icon className="w-4 h-4 shrink-0 text-(--app-ink-3)" />
                   <span className="truncate min-w-0">{q.label}</span>
+                  {n > 0 && (
+                    <span
+                      aria-label={`${n} waiting`}
+                      className="ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-5 text-center"
+                    >
+                      {badgeText(n)}
+                    </span>
+                  )}
                 </Link>
               );
             })}

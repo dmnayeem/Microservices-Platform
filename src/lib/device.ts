@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getFraudConfig, accountsOnIp, recordFraudEvent } from "@/lib/fraud";
 import { parseDevice, type DeviceHints } from "@/lib/device-info";
+import { getSetting } from "@/lib/system-settings";
 
 /**
  * Devices, for multi-account detection that works in the real world.
@@ -161,6 +162,22 @@ export type SignupCheck = { ok: true } | { ok: false; error: string };
 export async function checkSignup(d: SeenDevice, email?: string): Promise<SignupCheck> {
   const cfg = await getFraudConfig();
   const base = { ipAddress: d.ip, userAgent: d.userAgent };
+
+  // One account per device (Fraud Control): with it on, a device that already
+  // carries a member account can't make another — that account could never
+  // sign in here anyway (lib/device-login.ts).
+  if (d.deviceId) {
+    const one = (await getSetting<boolean>("antifraud.one_account_per_device", true)) !== false;
+    if (one && (await accountsOnDevice(d.deviceId)) >= 1) {
+      await recordFraudEvent({
+        ...base,
+        eventType: "MULTIPLE_ACCOUNTS_DEVICE",
+        severity: "HIGH",
+        details: { at: "signup", rule: "one_account_per_device", email, deviceId: d.deviceId },
+      });
+      return { ok: false, error: "This device already has an account. Sign in to it — one account per device." };
+    }
+  }
 
   if (cfg.maxAccountsPerDevice > 0 && d.deviceId) {
     const n = await accountsOnDevice(d.deviceId);

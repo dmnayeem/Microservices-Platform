@@ -125,6 +125,15 @@ export const {
         ) {
           return false;
         }
+        // One account per device — same rule as the email login.
+        if (existing) {
+          const full = await prisma.user.findUnique({
+            where: { email: user.email.toLowerCase() },
+            select: { id: true, email: true, role: true },
+          });
+          const { deviceLoginBlocked } = await import("@/lib/device-login");
+          if (full && (await deviceLoginBlocked(full))) return "/login?error=DeviceInUse";
+        }
         // A NEW account through Google meets the same device / IP rules as
         // the email form. Google sign-up used to skip them entirely.
         if (!existing) {

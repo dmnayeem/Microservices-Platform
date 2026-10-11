@@ -3525,3 +3525,28 @@ span[style*=";color:"] mark {
 
 /* Profile photos are rounded squares, not circles. */
 .vb-ring-rounded, .vb-ring-rounded::before { border-radius: 1.4rem; }
+
+/* ── Verified holders: thin avatar ring + premium post card (2026-10-11) ──── */
+/* The profile header's ring is a 5px halo; next to a 44px feed avatar that is
+   a donut. Thin: 2.5px, with a hairline of the card colour between it and the
+   photo so the two never blur together. */
+.vb-ring-thin::before { inset: -2.5px; }
+.vb-ring-thin > * { box-shadow: 0 0 0 1.5px var(--app-surface); }
+
+/* A badge holder's post: the badge colour as the card's edge (a gradient
+   border via two backgrounds — border-image ignores border-radius) and a soft
+   wash of it at the top. Static, so a long feed stays calm. */
+.post-premium {
+  border-color: transparent !important;
+  background:
+    linear-gradient(var(--app-surface), var(--app-surface)) padding-box,
+    var(--vb-ring, linear-gradient(135deg, #38bdf8, #2563eb)) border-box;
+  box-shadow: var(--app-e1), 0 8px 28px -14px rgb(56 189 248 / 0.35);
+}
+.post-premium::after {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 72px; pointer-events: none;
+  background: var(--vb-ring, linear-gradient(135deg, #38bdf8, #2563eb));
+  opacity: 0.07;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}

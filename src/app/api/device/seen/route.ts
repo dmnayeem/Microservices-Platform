@@ -15,6 +15,7 @@ function sanitizeHints(v: unknown): DeviceHints {
   };
 }
 import { markActiveToday } from "@/lib/active-days";
+import { checkAndNoteVpn } from "@/lib/vpn";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,12 @@ export async function POST(request: Request) {
   // Client Hints (phone model etc.) — optional; older clients send no body.
   const body = (await request.json().catch(() => null)) as { hints?: unknown } | null;
   const seen = { ...(await readDevice()), hints: sanitizeHints(body?.hints) };
-  await Promise.all([recordDevice(session.user.id, seen), markActiveToday(session.user.id)]);
+  await Promise.all([
+    recordDevice(session.user.id, seen),
+    markActiveToday(session.user.id),
+    // Seen on a VPN / proxy? Recorded for the VPN users list (Fraud Control),
+    // whether or not anything is blocked. Never fails the beacon.
+    seen.ip ? checkAndNoteVpn(session.user.id, seen.ip).catch(() => false) : Promise.resolve(false),
+  ]);
   return NextResponse.json({ ok: true });
 }

@@ -113,7 +113,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             type: "SYSTEM",
             title: "KYC verified ✅",
             message:
-              "Your identity has been verified. You now have full access to withdrawals and the blue badge." +
+              "Your identity has been verified. You now have full access to withdrawals. Want the blue verified badge? Get it from the Badge page." +
               (decisionNote ? `\n\n${decisionNote}` : ""),
           },
         }),

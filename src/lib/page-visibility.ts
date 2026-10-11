@@ -56,6 +56,11 @@ export const USER_PAGES: UserPage[] = [
   { path: "/missions", label: "Missions", group: "Earn" },
   { path: "/events", label: "Events", group: "Earn" },
   { path: "/milestones", label: "Milestones", group: "Earn" },
+  { path: "/level-rewards", label: "Level Rewards", group: "Earn" },
+  { path: "/contests", label: "Creator Contests", group: "Earn" },
+  { path: "/feedback", label: "Feedback", group: "Earn" },
+  { path: "/spotlight", label: "Spotlight", group: "Earn" },
+  { path: "/ambassador", label: "Ambassador Program", group: "Earn" },
   { path: "/achievements", label: "Achievements", group: "Earn" },
   { path: "/leaderboard", label: "Leaderboard", group: "Earn" },
   { path: "/quizzes", label: "Quiz Games", group: "Earn" },
@@ -105,6 +110,7 @@ export const USER_PAGES: UserPage[] = [
  */
 export const ALWAYS_VISIBLE_PATHS: readonly string[] = [
   "/no-access",
+  "/vpn-blocked",
   "/2fa-setup",
   "/update-password",
   "/settings",

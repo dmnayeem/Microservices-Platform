@@ -8,6 +8,8 @@ import { GamificationEditor } from "@/components/admin/gamification/gamification
 import { XP_SOURCES } from "@/lib/xp-sources";
 import { AdminTabs, pickTab } from "@/components/admin/ui/admin-tabs";
 import { MilestonesEditor } from "@/components/admin/gamification/milestones-editor";
+import { LevelRewardsEditor } from "@/components/admin/gamification/level-rewards-editor";
+import { getLevelRewards } from "@/lib/level-rewards-server";
 import { DailySoloRewardsEditor } from "@/components/admin/gamification/daily-solo-rewards-editor";
 import { MILESTONES, getMilestones } from "@/lib/milestones";
 import { getSetting } from "@/lib/system-settings";
@@ -19,6 +21,7 @@ const TABS = [
   { id: "levels", label: "Levels & achievements" },
   { id: "milestones", label: "Milestones" },
   { id: "rewards", label: "Daily & solo rewards" },
+  { id: "level-rewards", label: "Level rewards" },
 ];
 
 /**
@@ -90,6 +93,25 @@ export default async function AdminGamificationPage({
           }
           canEdit={canEdit}
         />
+      </div>
+    );
+  }
+
+  if (tab === "level-rewards") {
+    const [cfg, claimRows, levels] = await Promise.all([
+      getLevelRewards(),
+      prisma.levelRewardClaim.findMany({ select: { level: true } }),
+      prisma.user.findMany({ where: { status: "ACTIVE" }, select: { level: true } }),
+    ]);
+    const claims: Record<number, number> = {};
+    for (const c of claimRows) claims[c.level] = (claims[c.level] ?? 0) + 1;
+    const usersAt: Record<number, number> = {};
+    for (const r of cfg.rows) usersAt[r.level] = levels.filter((u) => u.level >= r.level).length;
+    return (
+      <div className="space-y-5">
+        {header}
+        <AdminTabs tabs={TABS} active={tab} basePath="/admin/gamification" />
+        <LevelRewardsEditor initial={cfg} claims={claims} usersAt={usersAt} canEdit={canEdit} />
       </div>
     );
   }

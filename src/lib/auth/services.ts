@@ -22,6 +22,8 @@ import { v4 as uuidv4 } from "uuid";
  */
 export type LoginReason =
   | "INVALID"
+  /** This device already belongs to another member account (lib/device-login.ts). */
+  | "DEVICE_IN_USE"
   /** 10 wrong passwords/codes for this address in 15 minutes. */
   | "TOO_MANY_ATTEMPTS"
   /**
@@ -132,6 +134,13 @@ export async function evaluateLogin(
       window: 2,
     });
     if (!valid) return fail("INVALID_2FA");
+  }
+
+  // One account per device (Fraud Control). After the password, so it never
+  // tells a stranger which addresses exist.
+  const { deviceLoginBlocked } = await import("@/lib/device-login");
+  if (await deviceLoginBlocked({ id: user.id, email: user.email, role: user.role })) {
+    return { ok: false, reason: "DEVICE_IN_USE" };
   }
 
   return {

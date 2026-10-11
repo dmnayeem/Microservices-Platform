@@ -18,9 +18,22 @@ export interface NavCounts {
   missions: number;
   events: number;
   lottery: number;
+  /** More counts by page (tasks left per type, rewards to claim, …). */
+  byHref: Record<string, number>;
 }
 
-const ZERO: NavCounts = { dailyMission: 0, missions: 0, events: 0, lottery: 0 };
+const ZERO: NavCounts = { dailyMission: 0, missions: 0, events: 0, lottery: 0, byHref: {} };
+
+/** Every count by the page it belongs to — one map for the menu, bottom bar and Quick Earn. */
+export function navCountMap(c: NavCounts): Record<string, number> {
+  return {
+    ...c.byHref,
+    "/daily-mission": c.dailyMission,
+    "/missions": c.missions,
+    "/events": c.events,
+    "/lottery": c.lottery,
+  };
+}
 let inflight: Promise<void> | null = null;
 let lastAt = 0;
 
@@ -43,6 +56,12 @@ function load(force = false): Promise<void> {
         missions: Number(d.missions) || 0,
         events: Number(d.events) || 0,
         lottery: Number(d.lottery) || 0,
+        byHref:
+          d.byHref && typeof d.byHref === "object"
+            ? Object.fromEntries(
+                Object.entries(d.byHref as Record<string, unknown>).map(([k, v]) => [k, Math.max(0, Number(v) || 0)])
+              )
+            : {},
       });
     })
     .catch(() => {})

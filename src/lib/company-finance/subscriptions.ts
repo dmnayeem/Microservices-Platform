@@ -5,6 +5,7 @@ import { sendNotificationEmail } from "@/lib/email";
 import { NotificationType, Prisma } from "@/generated/prisma/client";
 import { createEntry, usdRateFor, type Result } from "./books";
 import { periodOf } from "./constants";
+import { getFinanceAlertSettings } from "@/lib/company-finance/alerts";
 import {
   BILLING_CYCLES,
   SUB_STATUSES,
@@ -432,6 +433,12 @@ export async function runSubscriptionReminders(now: Date = new Date()): Promise<
   }
   if (toSend.length === 0) return out;
 
+  // The Alerts tab's switches (finance.alerts → SUBSCRIPTION_RENEWAL). Off:
+  // the reminders are still claimed (so switching it back on later does not
+  // dump a backlog) and lapsed items still expire — nothing is sent.
+  const rule = (await getFinanceAlertSettings()).SUBSCRIPTION_RENEWAL;
+  if (!rule.enabled || (!rule.inApp && !rule.email)) return out;
+
   const ownerIds = [...new Set(toSend.map((t) => t.ownerUserId).filter((x): x is string => !!x))];
   const people = await prisma.user.findMany({
     where: {
@@ -448,14 +455,16 @@ export async function runSubscriptionReminders(now: Date = new Date()): Promise<
   for (const t of toSend) {
     for (const p of people) {
       if (!isTeam(p) && p.id !== t.ownerUserId) continue;
-      rows.push({
-        userId: p.id,
-        type: NotificationType.SYSTEM,
-        title: t.title,
-        message: t.message,
-        data: { link: SUBSCRIPTIONS_TAB_HREF },
-      });
-      if (t.important && p.email && !p.email.endsWith("@deleted.local")) {
+      if (rule.inApp) {
+        rows.push({
+          userId: p.id,
+          type: NotificationType.SYSTEM,
+          title: t.title,
+          message: t.message,
+          data: { link: SUBSCRIPTIONS_TAB_HREF },
+        });
+      }
+      if (rule.email && t.important && p.email && !p.email.endsWith("@deleted.local")) {
         mails.push({ email: p.email, title: t.title, message: t.message });
       }
     }

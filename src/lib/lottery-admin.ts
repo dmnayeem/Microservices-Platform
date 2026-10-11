@@ -30,7 +30,10 @@ const base = {
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
   drawDate: z.string().datetime(),
-  ticketPrice: z.number().int().min(1).max(10_000_000),
+  // 0 is allowed for FREE / EARNED entry; PAID needs at least 1 (lotteryConfigError).
+  ticketPrice: z.number().int().min(0).max(10_000_000),
+  entryMode: z.enum(["PAID", "FREE", "EARNED"]).default("PAID"),
+  tasksPerTicket: z.number().int().min(1).max(1000).default(1),
   maxTickets: z.number().int().min(1).nullable().optional(),
   maxTicketsPerUser: z.number().int().min(1).max(10_000).default(10),
 
@@ -47,7 +50,14 @@ const base = {
 };
 
 export const lotteryCreateSchema = z.object(base);
-export const lotteryUpdateSchema = z.object(base).partial();
+// The update takes only what was sent. `.partial()` keeps zod's defaults, so
+// every PATCH used to fill in prizes: [], prizeMode, entryMode, minTickets …
+// — which reset the prizes, and (once tickets were sold) made every edit,
+// even a title, look like a change to a frozen field.
+const updateShape = Object.fromEntries(
+  Object.entries(base).map(([k, v]) => [k, v instanceof z.ZodDefault ? (v as z.ZodDefault<z.ZodTypeAny>).unwrap() : v])
+) as typeof base;
+export const lotteryUpdateSchema = z.object(updateShape).partial();
 
 export type LotteryInput = z.infer<typeof lotteryCreateSchema>;
 
@@ -62,6 +72,12 @@ const PERCENT_EPSILON = 0.01;
  * admin list and then misbehaves at draw time, when money moves.
  */
 export function lotteryConfigError(v: Partial<LotteryInput>): string | null {
+  if ((v.entryMode ?? "PAID") === "PAID" && v.ticketPrice !== undefined && v.ticketPrice < 1) {
+    return "A paid lottery needs a ticket price of at least 1 point — or switch entry to Free / Earned.";
+  }
+  if (v.entryMode && v.entryMode !== "PAID" && v.prizeMode === "POOL" && !(v.poolSeedPoints && v.poolSeedPoints > 0)) {
+    return "A free draw sells no tickets, so a prize pool would be empty — use fixed prizes or add a pool seed.";
+  }
   const start = v.startDate ? new Date(v.startDate) : null;
   const end = v.endDate ? new Date(v.endDate) : null;
   const draw = v.drawDate ? new Date(v.drawDate) : null;
@@ -118,6 +134,9 @@ export function lotteryConfigError(v: Partial<LotteryInput>): string | null {
 /** Turn validated input into Prisma data (dates parsed, empty tiers → null). */
 export function lotteryData(v: Partial<LotteryInput>) {
   const out: Record<string, unknown> = { ...v };
+  // A free / earned draw sells nothing: its price is 0, so no refund, pool or
+  // display can ever count a "sale" that never happened.
+  if (v.entryMode !== undefined && v.entryMode !== "PAID") out.ticketPrice = 0;
   if (v.startDate !== undefined) out.startDate = new Date(v.startDate);
   if (v.endDate !== undefined) out.endDate = new Date(v.endDate);
   if (v.drawDate !== undefined) out.drawDate = new Date(v.drawDate);

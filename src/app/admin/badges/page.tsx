@@ -58,7 +58,7 @@ export default async function AdminBadgesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-          <VerifiedBadge style="BLUE_FLAME" size="lg" /> Blue Badges
+          <VerifiedBadge href={null} style="BLUE_FLAME" size="lg" /> Blue Badges
         </h1>
         <p className="mt-1 text-sm text-gray-400">
           Members buy the blue badge monthly and can add animated styles. Badges you grant from a user&apos;s profile are
@@ -86,7 +86,7 @@ export default async function AdminBadgesPage() {
               .sort((a, b) => b._count._all - a._count._all)
               .map((r) => (
                 <span key={r.style} className="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-3 py-1.5 text-sm text-gray-200">
-                  <VerifiedBadge style={r.style} size="sm" />
+                  <VerifiedBadge href={null} style={r.style} size="sm" />
                   {styleLabel(r.style)} · {r._count._all}
                 </span>
               ))}
@@ -108,7 +108,7 @@ export default async function AdminBadgesPage() {
                   <a href={`/admin/users/${t.user.id}`} className="truncate hover:underline">
                     {t.user.name || t.user.email}
                   </a>
-                  {t.user.isBlueVerified && <VerifiedBadge style={t.user.verifiedBadgeStyle} size="sm" />}
+                  {t.user.isBlueVerified && <VerifiedBadge href={null} style={t.user.verifiedBadgeStyle} size="sm" />}
                 </span>
                 <span className="text-gray-400">{t.description}</span>
                 <span className="tabular-nums text-gray-200">

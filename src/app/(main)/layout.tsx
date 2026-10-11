@@ -30,6 +30,7 @@ import { isPublicCatalogPath } from "@/lib/public-catalog";
 import { GuestShell } from "@/components/public/guest-shell";
 import { guestCatalogStatus } from "@/lib/public-catalog-data";
 import { utcDay } from "@/lib/active-days";
+import { checkAndNoteVpn, getVpnSettings, pathVpnLocked } from "@/lib/vpn";
 
 export default async function MainLayout({
   children,
@@ -96,7 +97,8 @@ export default async function MainLayout({
           pwaUninstalledAt: true,
           pwaPlatform: true,
         },
-        cacheStrategy: { ttl: 10, swr: 30 },
+        // Not cached: the avatar has to change the moment the user uploads a
+        // new photo (a cached copy showed the old one for up to ~40s).
       })
       .catch(() => null),
     maintenanceFor(session.user.id).catch(() => ({
@@ -120,6 +122,21 @@ export default async function MainLayout({
   const pathname = hdrs.get("x-pathname") ?? "";
   if (pathname && isPathHidden(pathname, hiddenPaths)) {
     redirect("/no-access");
+  }
+
+  // VPN-locked pages (Fraud Control → VPN). Detection runs only on a locked
+  // page, so every other page costs nothing extra.
+  const vpnCfg = await getVpnSettings().catch(() => null);
+  const vpnLockedPaths = vpnCfg?.lockedPaths ?? [];
+  if (pathname && pathname !== "/vpn-blocked" && vpnCfg && pathVpnLocked(pathname, vpnLockedPaths)) {
+    const ip =
+      hdrs.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+      hdrs.get("x-real-ip")?.trim() ||
+      hdrs.get("x-forwarded-for")?.split(",").pop()?.trim() ||
+      null;
+    if (await checkAndNoteVpn(session.user.id, ip, vpnCfg).catch(() => false)) {
+      redirect(`/vpn-blocked?from=${encodeURIComponent(pathname)}`);
+    }
   }
 
   // Closed for everyone but staff, who need to be able to see the fix land.
@@ -146,7 +163,7 @@ export default async function MainLayout({
   return (
     <div className="min-h-screen bg-(--app-page)">
       {/* Redirect away from pages an admin has hidden for this user. */}
-      <PageAccessGuard hiddenPaths={hiddenPaths} />
+      <PageAccessGuard hiddenPaths={hiddenPaths} vpnLockedPaths={vpnLockedPaths} />
 
       {/* Sidebar */}
       <Sidebar

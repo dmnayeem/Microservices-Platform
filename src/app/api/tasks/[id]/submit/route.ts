@@ -101,6 +101,8 @@ import {
 } from "@/lib/social-proof-url";
 import { runAchievementCheck } from "@/lib/achievements";
 import { closeTaskIfFull } from "@/lib/task-slots";
+import { checkAndNoteVpn, getVpnSettings } from "@/lib/vpn";
+import { clientIp } from "@/lib/rate-limit";
 import {
   coerceQuizQuestions,
   coerceQuizAnswers,
@@ -180,6 +182,19 @@ export async function POST(
     // hidden for this user. Refuses only; fails open on a read error.
     const pageHidden = await assertPageVisible(session.user.id, taskTypePage(task.type));
     if (pageHidden) return pageHidden;
+    // VPN lock (Fraud Control): checked again at submit — turning a VPN on
+    // after starting doesn't get round a task that refuses VPNs.
+    {
+      const vpnCfg = await getVpnSettings();
+      if (vpnCfg.blockTaskWork || vpnCfg.blockAllTasks || task.blockVpn) {
+        if (await checkAndNoteVpn(session.user.id, clientIp(request), vpnCfg)) {
+          return NextResponse.json(
+            { error: "Please turn off your VPN/proxy to submit this task.", code: "VPN_BLOCKED" },
+            { status: 403 }
+          );
+        }
+      }
+    }
     // Start checks these, submit did not: a task the admin paused, retired or
     // let expire kept accepting (and paying) work begun before the change.
     if (task.status !== "ACTIVE" || (task.expiresAt && task.expiresAt.getTime() < Date.now())) {
@@ -287,7 +302,11 @@ export async function POST(
       task.type === "VIDEO" &&
       typeof videoDuration === "number" &&
       videoDuration > 0 &&
-      videoDuration < requiredSeconds
+      // Only when the 80% rule can't be met at all. A video the admin timed
+      // as 60s that the browser reports as 59.98s is a full watch, and it
+      // passes the normal rule — holding it turned auto-approve off for
+      // every task whose target equals the real length.
+      videoDuration < requiredSeconds * 0.8
     ) {
       videoTargetLowered = { claimedSec: Math.round(videoDuration), targetSec: requiredSeconds };
       requiredSeconds = Math.max(videoDuration, Math.min(requiredSeconds, 10));
@@ -724,6 +743,27 @@ export async function POST(
           visitHold = "Claimed with a one-time code from a browser that wasn't signed in — check before paying.";
         }
         visitAutoApprove = vcfg.autoApprove && !visitHold;
+      }
+    }
+
+    // Visit tasks can be scripted (open, wait, come back), so automatic pay is
+    // capped per member per day (Fraud Control: tasks.visit_daily_auto_cap,
+    // default 20). Past it, claims still go in — for a person to check.
+    if (task.type === "VISIT" && visitAutoApprove) {
+      const cap = Math.max(0, Number(await getSetting<number>("tasks.visit_daily_auto_cap", 20)) || 0);
+      if (cap > 0) {
+        const paidToday = await prisma.taskSubmission.count({
+          where: {
+            userId: session.user.id,
+            status: SubmissionStatus.AUTO_APPROVED,
+            task: { type: "VISIT" },
+            reviewedAt: { gte: new Date(Date.now() - 86_400_000) },
+          },
+        });
+        if (paidToday >= cap) {
+          visitAutoApprove = false;
+          visitHold = `Over the daily automatic limit for visit tasks (${cap}) — check before paying.`;
+        }
       }
     }
 

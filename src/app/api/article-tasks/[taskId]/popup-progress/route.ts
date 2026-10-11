@@ -56,28 +56,45 @@ export async function POST(
 
   // Paced on the SERVER clock. The count used to be taken as sent, so one
   // request with `popupsCompleted: 99` finished a page that was never opened.
-  // Each popup now needs its configured wait since the previous one was
-  // recorded; a lost request is caught up as long as the time has passed.
-  // ("fast" mode is the admin's no-gates smoke-test setting.)
+  //
+  // Measured as a running total from when this page could start (the attempt
+  // for page 1, the previous page's completion after that): popup n is
+  // allowed once the waits of popups 1..n have passed. A running total — not
+  // "time since the last report" — so a slow, lost or reordered request can
+  // never leave the page stuck one click behind. The 1.5s per popup covers the
+  // embed's 1-second dwell tick. ("fast" is the admin's no-gates test mode.)
+  let prevCount = 0;
+  let hasRow = false;
   if (cfg?.engagementMode !== "fast") {
-    const prev = await prisma.articleTaskPageProgress.findUnique({
-      where: { submissionId_pageIndex: { submissionId: v.payload.s, pageIndex } },
-      select: { popupsCompleted: true, updatedAt: true },
-    });
-    if (!prev) {
-      // First popup on this page: no earlier server time to measure from.
-      clamped = Math.min(clamped, 1);
-    } else {
-      let allowed = prev.popupsCompleted;
-      let budget = (Date.now() - prev.updatedAt.getTime()) / 1000;
-      while (allowed < required) {
-        const need = popupDelaySeconds(pageDef, allowed) * ARTICLE_TIMING_SLACK;
-        if (budget < need) break;
-        budget -= need;
-        allowed++;
-      }
-      // Never move backwards either.
-      clamped = Math.max(prev.popupsCompleted, Math.min(clamped, allowed));
+    const [prev, sub, prevPage] = await Promise.all([
+      prisma.articleTaskPageProgress.findUnique({
+        where: { submissionId_pageIndex: { submissionId: v.payload.s, pageIndex } },
+        select: { popupsCompleted: true },
+      }),
+      prisma.taskSubmission.findUnique({ where: { id: v.payload.s }, select: { createdAt: true } }),
+      pageIndex > 0
+        ? prisma.articleTaskPageProgress.findUnique({
+            where: { submissionId_pageIndex: { submissionId: v.payload.s, pageIndex: pageIndex - 1 } },
+            select: { completedAt: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    hasRow = !!prev;
+    prevCount = prev?.popupsCompleted ?? 0;
+    const base = prevPage?.completedAt ?? sub?.createdAt ?? new Date();
+    const elapsed = (Date.now() - base.getTime()) / 1000;
+    let allowed = 0;
+    let acc = 0;
+    while (allowed < required) {
+      acc += Math.max(0, popupDelaySeconds(pageDef, allowed) * ARTICLE_TIMING_SLACK - 1.5);
+      if (acc > elapsed) break;
+      allowed++;
+    }
+    // Never move backwards either.
+    clamped = Math.max(prevCount, Math.min(clamped, allowed));
+    // Nothing new: don't write (and don't move `updatedAt`).
+    if (hasRow && clamped <= prevCount) {
+      return corsResponse({ popupsCompleted: prevCount, required, pageCompleted: prevCount >= required });
     }
   }
   const pageCompleted = clamped >= required;

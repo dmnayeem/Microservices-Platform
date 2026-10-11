@@ -1741,6 +1741,11 @@ model User {
   /// Last time the user changed `timezone`. Daily claims key on the LOCAL day,
   /// so hopping UTC-12 → UTC+14 opened "tomorrow" at once; changes are limited.
   timezoneChangedAt                 DateTime?
+  /// Last time this member was seen on a VPN / proxy (lib/vpn.ts) — recorded
+  /// even when VPN blocking is off, so admins can see who uses one.
+  vpnLastSeenAt                     DateTime?
+  vpnLastIp                         String?
+  vpnSeenCount                      Int                          @default(0)
   role                              UserRole                     @default(USER)
   // Optional super-admin-defined custom role (permissions come from it; the
   // user's `role` is kept as ADMIN as the admin-panel baseline). Null = plain role.
@@ -2038,6 +2043,7 @@ model User {
 
   // NB: email + referralCode are already @unique (own B-tree) — no extra @@index.
   @@index([referredById])
+  @@index([vpnLastSeenAt])
   @@index([status])
   @@index([role])
   @@index([createdAt])
@@ -2335,6 +2341,9 @@ model Task {
   customConfig        Json? // Custom task config (see lib/custom-tasks.ts CustomConfig)
   appInstallConfig    Json? // App-install task config (see lib/app-install-tasks.ts AppInstallConfig)
   visitConfig         Json? // Visit task config (see lib/visit-tasks.ts VisitConfig)
+  /// Refuse this task to members on a VPN / proxy (lib/vpn.ts), even when the
+  /// site-wide VPN block is off.
+  blockVpn            Boolean   @default(false)
   proxyInstructions   String?          @db.Text
   startsAt            DateTime?
   expiresAt           DateTime?
@@ -3927,6 +3936,12 @@ model Lottery {
   endDate           DateTime
   drawDate          DateTime
   ticketPrice       Int
+  /// How members get tickets: PAID (bought with points), FREE (no purchase —
+  /// up to maxTicketsPerUser each) or EARNED (one ticket per `tasksPerTicket`
+  /// approved tasks during the lottery, no purchase). FREE / EARNED are free
+  /// prize draws: nobody stakes anything.
+  entryMode         String        @default("PAID")
+  tasksPerTicket    Int           @default(1)
   maxTickets        Int?
   ticketsSold       Int           @default(0)
   maxTicketsPerUser Int           @default(10)
@@ -5767,6 +5782,260 @@ model CompanySubscription {
 
   @@index([endDate])
   @@index([status])
+}
+
+/// A creator contest (lib/contests-server.ts): users submit a link to their
+/// own TikTok / Reel / Short / post about the platform; the winners are picked
+/// by the admin's score and members' votes together, and paid in points.
+/// Skill-judged, free to enter — no stake, no chance.
+model Contest {
+  id                String    @id @default(cuid())
+  title             String
+  description       String    @db.Text
+  rules             String?   @db.Text
+  coverImage        String?
+  /// Platforms accepted: TIKTOK | INSTAGRAM | YOUTUBE | FACEBOOK | ANY
+  platforms         String[]  @default(["ANY"])
+  /// Must appear in the post (checked when the link can be read), e.g. #RevType
+  hashtag           String?
+  /// Entries open → close (submissions), then members vote until votingEndsAt.
+  startAt           DateTime
+  endAt             DateTime
+  votingEndsAt      DateTime
+  /// Share of the final score from votes (0–100); the rest is the admin's score.
+  voteWeightPct     Int       @default(50)
+  minLevelToEnter   Int       @default(0)
+  minLevelToVote    Int       @default(3)
+  maxEntriesPerUser Int       @default(1)
+  /// [{ rank, points }] — 1st, 2nd, 3rd …
+  prizes            Json
+  /// Points for every approved entry that did not place.
+  participationPoints Int     @default(0)
+  /// DRAFT | PUBLISHED | FINISHED | CANCELLED (open / voting come from the dates)
+  status            String    @default("DRAFT")
+  finalizedAt       DateTime?
+  createdById       String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  entries ContestEntry[]
+
+  @@index([status, endAt])
+}
+
+model ContestEntry {
+  id           String   @id @default(cuid())
+  contestId    String
+  contest      Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  userId       String
+  url          String
+  platform     String
+  caption      String?
+  /// PENDING (admin review) | APPROVED (in the gallery) | REJECTED
+  status       String   @default("PENDING")
+  /// Link check: OK (read, hashtag found) | NO_HASHTAG | UNREADABLE
+  linkCheck    String?
+  rejectReason String?
+  /// Admin's judgement, 0–10.
+  adminScore   Int?
+  votes        Int      @default(0)
+  /// Set when the contest is finalized.
+  rank         Int?
+  prizePoints  Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([contestId, url])
+  @@index([contestId, status])
+  @@index([contestId, userId])
+}
+
+/// One vote per member per contest.
+model ContestVote {
+  id        String   @id @default(cuid())
+  contestId String
+  entryId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([contestId, userId])
+  @@index([entryId])
+}
+
+/// A feedback round — the monthly form (lib/feedback-server.ts). Questions are
+/// [{ id, type: RATING|NPS|CHOICE|TEXT, label, options?, required }].
+model FeedbackRound {
+  id           String   @id @default(cuid())
+  title        String
+  intro        String?  @db.Text
+  questions    Json
+  startAt      DateTime
+  endAt        DateTime
+  /// Points for a complete, genuine answer (once per member per round).
+  rewardPoints Int      @default(0)
+  minLevel     Int      @default(0)
+  /// DRAFT | PUBLISHED | CLOSED
+  status       String   @default("DRAFT")
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  responses FeedbackResponse[]
+
+  @@index([status, endAt])
+}
+
+model FeedbackResponse {
+  id        String        @id @default(cuid())
+  roundId   String
+  round     FeedbackRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  /// { [questionId]: number | string }
+  answers   Json
+  rewarded  Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  @@unique([roundId, userId])
+}
+
+/// A feature idea on the public board: members post and upvote; the admin
+/// moves it through PLANNED → IN_PROGRESS → SHIPPED (voters are told).
+model FeatureIdea {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String?   @db.Text
+  /// OPEN | PLANNED | IN_PROGRESS | SHIPPED | DECLINED | HIDDEN
+  status    String    @default("OPEN")
+  votes     Int       @default(0)
+  adminNote String?
+  shippedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status, votes])
+  @@index([userId, createdAt])
+}
+
+model FeatureIdeaVote {
+  id        String   @id @default(cuid())
+  ideaId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([ideaId, userId])
+}
+
+/// Spotlight — an open auction (in points) for a featured place in the feed
+/// (lib/spotlight-server.ts). The highest bid when bidding ends wins: the
+/// winner's chosen post is promoted for `displayHours`. Only the top bid is
+/// held; an outbid member gets their points back at once. No chance involved.
+model SpotlightAuction {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  biddingEndsAt DateTime
+  displayHours  Int       @default(24)
+  minBid        Int       @default(100)
+  /// Each new top bid must beat the current one by at least this.
+  bidStep       Int       @default(10)
+  /// OPEN | AWARDED | NO_BIDS | CANCELLED
+  status        String    @default("OPEN")
+  winnerUserId  String?
+  winnerPostId  String?
+  winnerBid     Int?
+  awardedAt     DateTime?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bids SpotlightBid[]
+
+  @@index([status, biddingEndsAt])
+}
+
+model SpotlightBid {
+  id        String           @id @default(cuid())
+  auctionId String
+  auction   SpotlightAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  userId    String
+  postId    String
+  amount    Int
+  /// HELD (top bid, points held) | OUTBID (refunded) | WON | REFUNDED (cancelled)
+  status    String           @default("HELD")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([auctionId, userId])
+  @@index([auctionId, status])
+}
+
+/// Ambassador program (lib/ambassadors-server.ts): members apply, an admin
+/// approves; approved ambassadors earn a SEPARATE monthly bonus for the active
+/// members they brought in. The referral commission chain is not touched.
+model AmbassadorApplication {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  message   String?
+  /// PENDING | APPROVED | REJECTED | REMOVED
+  status    String    @default("PENDING")
+  adminNote String?
+  decidedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status])
+}
+
+/// One monthly ambassador bonus (unique per member and month).
+model AmbassadorPayout {
+  id         String   @id @default(cuid())
+  userId     String
+  /// YYYY-MM
+  month      String
+  qualified  Int
+  points     Int
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, month])
+  @@index([month])
+}
+
+/// What a VPN check said about an IP (lib/vpn.ts), cached for a week so the
+/// provider is asked at most once per IP per week.
+model IpReputation {
+  ip        String   @id
+  isVpn     Boolean
+  /// Provider's label, e.g. VPN | TOR | Hosting | Business
+  kind      String?
+  provider  String
+  checkedAt DateTime @default(now())
+
+  @@index([checkedAt])
+}
+
+/// A level reward claimed (lib/level-rewards-server.ts). Unique on user +
+/// level: each level's reward pays once per account. `points` is what was paid.
+model LevelRewardClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  level     Int
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, level])
+  @@index([level])
+}
+
+/// Once-only finance alerts already sent (lib/company-finance/alerts.ts):
+/// "<TYPE>:<dedupe key>", e.g. "RECURRING_DUE:<recurringId>:2026-11". The
+/// unique key IS the claim — inserted before sending, so a rerun sends nothing.
+model FinanceAlertLog {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // ─── CPA offers ──────────────────────────────────────────────────────────────

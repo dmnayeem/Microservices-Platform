@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Home, Menu } from "lucide-react";
-import { useNavCounts, badgeText } from "@/hooks/use-nav-counts";
+import { navCountMap, useNavCounts, badgeText } from "@/hooks/use-nav-counts";
 import { cn } from "@/lib/utils";
 import { useMobileNav } from "@/lib/stores/mobile-nav-store";
 import { useAutoRefresh } from "@/hooks/use-auto-refresh";
@@ -52,6 +52,7 @@ export function BottomTabBar({
   // menu, so the menu button carries a dot for them (its number is already
   // the unread-notification count, and one badge must mean one thing).
   const navCounts = useNavCounts();
+  const tabCounts = navCountMap(navCounts);
   const menuHasGoals = navCounts.missions + navCounts.events + navCounts.lottery > 0;
   const [unread, setUnread] = useState(0);
   // This bar is `md:hidden` — above that it's not visible, so skip its poll
@@ -223,12 +224,12 @@ export function BottomTabBar({
               ) : (
                 <span className="relative">
                   <NavIcon iconKey={tab.icon} fallback={Home} className="w-5.5 h-5.5" />
-                  {tab.href === "/daily-mission" && navCounts.dailyMission > 0 && (
+                  {(tabCounts[tab.href] ?? 0) > 0 && (
                     <span
-                      aria-label={`${navCounts.dailyMission} left today`}
+                      aria-label={`${tabCounts[tab.href]} waiting`}
                       className="absolute -top-1.5 -right-2 px-1 min-w-4.5 h-4.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-4.5 text-center ring-2 ring-(--shell-bar-bg)"
                     >
-                      {badgeText(navCounts.dailyMission)}
+                      {badgeText(tabCounts[tab.href]!)}
                     </span>
                   )}
                 </span>

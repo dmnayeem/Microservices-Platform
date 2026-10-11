@@ -100,7 +100,9 @@ export function normalizeVisitConfig(raw: unknown): VisitConfig {
     ].slice(0, 20),
     onUnknownSource: r.onUnknownSource === "block" ? "block" : "review",
     signedOutCode: r.signedOutCode === "off" || r.signedOutCode === "auto" ? r.signedOutCode : "review",
-    autoApprove: r.autoApprove !== false,
+    // A shortener arrival rests on a Referer header a script can forge, so a
+    // shortener task is reviewed unless the admin turns auto-pay on.
+    autoApprove: kind === "SHORTENER" ? r.autoApprove === true : r.autoApprove !== false,
     incentiveAllowed: r.incentiveAllowed === true,
   };
 }

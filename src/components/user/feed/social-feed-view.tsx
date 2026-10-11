@@ -561,8 +561,12 @@ function FeedTab({
     );
     io.observe(el);
     return () => io.disconnect();
+    // `loading` is here because the sentinel only exists once the first page
+    // has rendered: on mount it was null, nothing else in this list changed
+    // when the first load finished, so the observer was never attached and
+    // the "endless" feed stopped after page one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, hasMore, loadingMore]);
+  }, [page, hasMore, loadingMore, loading]);
 
   useEffect(() => {
     void load();
@@ -772,6 +776,16 @@ function FeedTab({
           {/* Infinite-scroll sentinel + loading state */}
           <div ref={sentinelRef} className="h-1" />
           {loadingMore && <ListSkeleton rows={2} />}
+          {/* Fallback for a browser where the scroll trigger doesn't fire. */}
+          {hasMore && !loadingMore && (
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              className="mx-auto block rounded-full border border-(--app-line) bg-(--app-surface) px-4 py-2 text-xs font-bold text-(--app-ink-2) hover:text-(--app-ink)"
+            >
+              Load more posts
+            </button>
+          )}
           {!hasMore && (
             <p className="text-center text-[11px] text-(--app-ink-3) py-4">
               You&apos;re all caught up.

@@ -112,6 +112,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       rolloverTargetId: v.data.rolloverTargetId ?? existing.rolloverTargetId,
       poolSeedPoints: v.data.poolSeedPoints ?? existing.poolSeedPoints,
       poolCapPoints: v.data.poolCapPoints ?? existing.poolCapPoints,
+      entryMode: v.data.entryMode ?? ((existing as { entryMode?: string }).entryMode as "PAID" | "FREE" | "EARNED" | undefined),
+      ticketPrice: v.data.ticketPrice ?? existing.ticketPrice,
     };
     const configErr = lotteryConfigError(merged);
     if (configErr) return NextResponse.json({ error: configErr }, { status: 400 });

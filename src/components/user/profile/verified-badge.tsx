@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VerifiedBadgeLink } from "@/components/user/profile/verified-badge-link";
 
 export type VerifiedBadgeStyle =
   | "BLUE"
@@ -266,6 +267,7 @@ export function VerifiedBadge({
   size = "md",
   tooltip = "Verified",
   className,
+  href = "/badge",
 }: {
   /** Preset visual style. Defaults to classic blue. */
   style?: VerifiedBadgeStyle | string | null;
@@ -273,6 +275,8 @@ export function VerifiedBadge({
   /** Tooltip text shown on hover. */
   tooltip?: string;
   className?: string;
+  /** Where a tap goes — the badge shop by default; null = not clickable. */
+  href?: string | null;
 }) {
   const lookup = style
     ? (VERIFIED_BADGE_STYLES as Record<string, typeof VERIFIED_BADGE_STYLES.BLUE>)[style]
@@ -280,11 +284,12 @@ export function VerifiedBadge({
   const resolved = lookup ?? VERIFIED_BADGE_STYLES.BLUE;
   const sz = SIZES[size];
 
-  return (
+  const badge = (
     <span
       className={cn(
         "relative inline-flex items-center justify-center group/vb shrink-0",
         resolved.fx && `vb-fx vb-fx-${resolved.fx}`,
+        href && "cursor-pointer",
         className
       )}
       aria-label={tooltip}
@@ -343,10 +348,35 @@ export function VerifiedBadge({
       </span>
     </span>
   );
+
+  if (!href) return badge;
+  return (
+    <VerifiedBadgeLink href={href} label={`${tooltip} — get your verified badge`} className="inline-flex shrink-0">
+      {badge}
+    </VerifiedBadgeLink>
+  );
 }
 
-/** The profile-photo ring for a badge style, or undefined for the plain ones. */
+/** Rings for the static styles, which have no `ring` of their own. */
+const STATIC_RINGS: Record<string, string> = {
+  BLUE: "conic-gradient(#38bdf8, #2563eb, #7dd3fc, #38bdf8)",
+  GOLD: "conic-gradient(#fde68a, #f59e0b, #fbbf24, #fde68a)",
+  RAINBOW: "conic-gradient(#f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171)",
+  EMERALD: "conic-gradient(#6ee7b7, #059669, #34d399, #6ee7b7)",
+  PURPLE: "conic-gradient(#c4b5fd, #7c3aed, #a78bfa, #c4b5fd)",
+  ROSE: "conic-gradient(#fda4af, #e11d48, #fb7185, #fda4af)",
+  OCEAN: "conic-gradient(#67e8f9, #0284c7, #22d3ee, #67e8f9)",
+};
+
+/** The ring colour for a badge style (every style has one now). */
+export function badgeRingColor(style: string | null | undefined): string | undefined {
+  if (!style) return undefined;
+  const own = (VERIFIED_BADGE_STYLES as Record<string, { ring?: string }>)[style]?.ring;
+  return own ?? STATIC_RINGS[style] ?? STATIC_RINGS.BLUE;
+}
+
+/** The profile-photo ring for a badge style. */
 export function badgeRingStyle(style: string | null | undefined): React.CSSProperties | undefined {
-  const r = style ? (VERIFIED_BADGE_STYLES as Record<string, { ring?: string }>)[style]?.ring : undefined;
+  const r = badgeRingColor(style);
   return r ? ({ ["--vb-ring" as string]: r } as React.CSSProperties) : undefined;
 }

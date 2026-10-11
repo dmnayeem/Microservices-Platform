@@ -46,6 +46,7 @@ function LoginForm() {
   const verified = searchParams.get("verified") === "true";
   // Set when Google sign-up is refused by the device / network account limit.
   const accountLimit = searchParams.get("error") === "AccountLimit";
+  const deviceInUse = searchParams.get("error") === "DeviceInUse";
   // Only a same-site path. `router.push()` follows an absolute URL off-site, so
   // `/login?callbackUrl=https://evil.example` was an open redirect straight
   // after a real sign-in. `//host`, `/\host` and `/<tab>/host` are off-site
@@ -108,6 +109,10 @@ function LoginForm() {
       if (reason === "INVALID_2FA") {
         setNeedsOtp(true);
         setError("Invalid 2FA code. Try again.");
+        return;
+      }
+      if (reason === "DEVICE_IN_USE") {
+        setError("This device is already used by another account. Sign in on your own device — one account per device.");
         return;
       }
       if (reason === "TOO_MANY_ATTEMPTS") {
@@ -223,6 +228,12 @@ function LoginForm() {
             Email verified successfully! You can now log in.
           </div>
         )}
+        {deviceInUse && (
+          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            This device is already used by another account. Sign in on your own device — one account per device.
+          </div>
+        )}
+
         {accountLimit && (
           <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             A new account can&apos;t be created from this device — it already has the maximum number of accounts. Sign in

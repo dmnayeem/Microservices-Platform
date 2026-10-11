@@ -970,7 +970,7 @@ export function UserEditForm({
                           &quot;Verified&quot; tooltip.
                         </p>
                       </div>
-                      <VerifiedBadge
+                      <VerifiedBadge href={null}
                         style={form.verifiedBadgeStyle as VerifiedBadgeStyle}
                         size="md"
                       />
@@ -996,7 +996,7 @@ export function UserEditForm({
                             )}
                             title={meta.label}
                           >
-                            <VerifiedBadge style={id} size="md" />
+                            <VerifiedBadge href={null} style={id} size="md" />
                             <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">
                               {meta.label}
                             </span>

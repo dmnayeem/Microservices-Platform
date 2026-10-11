@@ -45,6 +45,9 @@ import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
 import { sweepStaleGameSessions } from "@/lib/game-cron";
 import { releaseDueCpaHolds } from "@/lib/cpa/credit";
 import { releaseHeldOfferwallCompletions } from "@/lib/offerwall";
+import { runBillReminders, summariseBillReminders } from "@/lib/company-finance/alerts";
+import { closeEndedSpotlights } from "@/lib/spotlight-server";
+import { runAmbassadorPayouts } from "@/lib/ambassadors-server";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -208,6 +211,42 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await runSubscriptionReminders();
       return { ok: true, summary: summariseReminders(s), result: s };
+    },
+  },
+  {
+    name: "ambassador-payouts",
+    label: "Ambassador monthly bonus",
+    description:
+      "From the 1st of each month, pays every approved ambassador the bonus for the month before last (so late joiners have a month to qualify): points for each new member they brought in who is active and has done the set number of tasks (Admin → Ambassadors). Separate from referral commission, which it never changes. Each ambassador is paid once per month — running it again pays nothing twice. Does nothing while the program is switched off.",
+    intervalMs: 6 * HOUR,
+    leaseMs: 10 * MINUTE,
+    async run() {
+      const r = await runAmbassadorPayouts();
+      return { ok: true, summary: `${r.month}: ${r.paid} paid (${r.points} pts), ${r.skipped} already paid or skipped`, result: r };
+    },
+  },
+  {
+    name: "spotlight-close",
+    label: "Close Spotlight auctions",
+    description:
+      "When a Spotlight auction's bidding time ends, the highest bid wins: its points are spent and the winner's post is promoted in the feed for the auction's display hours. An auction with no bids is closed as such. Each auction is closed once — running it again changes nothing.",
+    intervalMs: 10 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const r = await closeEndedSpotlights();
+      return { ok: true, summary: `${r.awarded} awarded, ${r.empty} closed without bids`, result: r };
+    },
+  },
+  {
+    name: "finance-bill-reminders",
+    label: "Bill reminders (finance)",
+    description:
+      "Warns the finance team before each recurring bill (rent, internet, servers, salaries) falls due — 7 days ahead by default — and when a bill is still unpaid after its due date (the day after and a week later). In-app and by email, as switched on the Alerts tab of the company books. Each reminder goes out once: running it again sends nothing new.",
+    intervalMs: 6 * HOUR,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const s = await runBillReminders();
+      return { ok: true, summary: summariseBillReminders(s), result: s };
     },
   },
   // ── Moved here from Inngest ───────────────────────────────────────────────

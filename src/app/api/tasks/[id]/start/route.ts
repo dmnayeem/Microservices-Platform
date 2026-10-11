@@ -74,7 +74,7 @@ export async function POST(
     }
 
     // Anti-fraud gate (all admin-toggleable) — see lib/task-start-gates.ts.
-    const fraudBlocked = await taskStartFraudGate(request, session.user.id);
+    const fraudBlocked = await taskStartFraudGate(request, session.user.id, gateTaskId);
     if (fraudBlocked) return fraudBlocked;
 
     const { id } = await params;

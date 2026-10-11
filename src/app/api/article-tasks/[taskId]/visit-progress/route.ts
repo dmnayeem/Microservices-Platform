@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ARTICLE_TIMING_SLACK, minPageSeconds, renderedPopupCount } from "@/lib/article-tasks";
+import { minPageSeconds, renderedPopupCount } from "@/lib/article-tasks";
 import type { ArticleConfig } from "@/lib/article-tasks";
 import {
   signArticleVisitToken,
@@ -72,8 +72,12 @@ export async function POST(
   // used to add the page on request, with no time at all.
   if (!v.payload.p.includes(pageIndex) && cfg?.engagementMode !== "fast") {
     const since = Math.floor(Date.now() / 1000) - (v.payload.iat ?? 0);
-    if (since < minPageSeconds(pages[pageIndex]!) * ARTICLE_TIMING_SLACK) {
-      return corsResponse({ error: "Keep reading — this page isn't finished yet." }, { status: 425 });
+    const need = minPageSeconds(pages[pageIndex]!);
+    if (since < need) {
+      return corsResponse(
+        { error: "Keep reading — this page isn't finished yet.", retryAfter: Math.ceil(need - since) },
+        { status: 425 }
+      );
     }
   }
 

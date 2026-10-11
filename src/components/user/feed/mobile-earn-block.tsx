@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { cn, pts } from "@/lib/utils";
 import { notifyCenter } from "@/lib/notify-center";
 import { BalanceSkeleton } from "@/components/user/primitives/skeleton";
+import { badgeText, navCountMap, useNavCounts } from "@/hooks/use-nav-counts";
 // `COLOR_CLASSES` is deliberately not imported any more: the admin still picks
 // a colour per Quick Earn tile and it is still stored, but the feed renders
 // these tiles neutral. See the note on the grid below.
@@ -85,6 +86,8 @@ export function MobileEarnBlock({
   };
 
   const tiles = (quickEarn ?? []).filter((t) => t.enabled);
+  // The menu's red counts, per tile — tasks left, rewards to claim.
+  const quickCounts = navCountMap(useNavCounts());
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -157,15 +160,24 @@ export function MobileEarnBlock({
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 [&>*:last-child:nth-child(3n+1)]:col-span-3 sm:[&>*:last-child:nth-child(3n+1)]:col-span-1">
             {tiles.map((q) => {
               const Icon = QUICK_EARN_ICONS[q.icon] ?? Zap;
+              const n = quickCounts[q.href] ?? 0;
               return (
                 <Link
                   key={q.id}
                   href={q.href}
                   className={cn(
-                    "app-tile app-press app-lift flex flex-col items-center justify-center gap-1.5",
+                    "app-tile app-press app-lift relative flex flex-col items-center justify-center gap-1.5",
                     "min-h-20 px-2 py-3 text-center font-bold text-(--app-ink)"
                   )}
                 >
+                  {n > 0 && (
+                    <span
+                      aria-label={`${n} waiting`}
+                      className="absolute top-1.5 right-1.5 min-w-5 h-5 px-1.5 rounded-full bg-(--app-badge) text-(--app-on-accent) text-[10px] font-extrabold leading-5 text-center"
+                    >
+                      {badgeText(n)}
+                    </span>
+                  )}
                   <Icon className="w-5 h-5 shrink-0 text-(--app-ink-3)" />
                   <span className="w-full truncate text-xs leading-tight">
                     {q.label}

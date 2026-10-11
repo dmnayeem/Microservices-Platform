@@ -99,12 +99,22 @@ export async function POST(
             )
           );
 
+    // Carry the part-second forward: flooring every ~5s gap and resetting the
+    // clock to `now` lost up to a second per beat (~10–20% of the watch). The
+    // clock jumps to `now` only when nothing is carried (first beat, a
+    // re-anchor, or a gap longer than one step — paused or hidden time).
+    const gapMs = submission.lastBeatAt ? now - submission.lastBeatAt.getTime() : 0;
+    const nextBeatAt =
+      step > 0 && step < BEAT_MAX_STEP && gapMs < (BEAT_MAX_STEP + 1) * 1000
+        ? submission.lastBeatAt!.getTime() + step * 1000
+        : now;
+
     let next = submission.watchedSeconds + step;
     if (watchTarget > 0) next = Math.min(next, watchTarget);
 
     const updated = await prisma.taskSubmission.update({
       where: { id: submission.id },
-      data: { watchedSeconds: next, lastBeatAt: new Date(now) },
+      data: { watchedSeconds: next, lastBeatAt: new Date(nextBeatAt) },
       select: { watchedSeconds: true },
     });
 
