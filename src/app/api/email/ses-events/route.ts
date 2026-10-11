@@ -76,9 +76,11 @@ export async function POST(request: NextRequest) {
 
   const topics = allowedTopics();
   if (!topics.length || !topics.includes(msg?.TopicArn)) {
+    console.warn(JSON.stringify({ at: "ses-feedback", refused: "unknown topic", topic: String(msg?.TopicArn ?? "").slice(0, 200), configured: topics.length }));
     return NextResponse.json({ error: "unknown topic" }, { status: 403 });
   }
   if (!(await verifySnsMessage(msg))) {
+    console.warn(JSON.stringify({ at: "ses-feedback", refused: "bad signature", type: msg.Type, sigVersion: msg.SignatureVersion, cert: String(msg.SigningCertURL ?? "").slice(0, 200) }));
     return NextResponse.json({ error: "bad signature" }, { status: 403 });
   }
 
