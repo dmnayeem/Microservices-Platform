@@ -51,6 +51,7 @@ export async function getEmailBrand(): Promise<EmailBrand> {
     legalLine,
     helpUrl: `${SITE_URL}/help`,
     privacyUrl: `${SITE_URL}/privacy`,
+    termsUrl: `${SITE_URL}/terms`,
   };
 }
 

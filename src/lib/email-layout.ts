@@ -35,6 +35,8 @@ export type EmailBrand = {
   legalLine: string | null;
   helpUrl: string;
   privacyUrl: string;
+  /** Terms of Service. Optional so older brand objects still render. */
+  termsUrl?: string;
 };
 
 export type EmailContent = {
@@ -146,6 +148,7 @@ export function renderEmail(brand: EmailBrand, c: EmailContent): { html: string;
   const footerLinks = [
     `<a href="${escapeHtml(brand.helpUrl)}" style="${linkStyle}">Help</a>`,
     `<a href="${escapeHtml(brand.privacyUrl)}" style="${linkStyle}">Privacy</a>`,
+    ...(brand.termsUrl ? [`<a href="${escapeHtml(brand.termsUrl)}" style="${linkStyle}">Terms</a>`] : []),
     ...(c.unsubscribeUrl ? [`<a href="${escapeHtml(c.unsubscribeUrl)}" style="${linkStyle}">Unsubscribe</a>`] : []),
   ].join(" &nbsp;&middot;&nbsp; ");
 
@@ -200,6 +203,7 @@ ${preheaderBlock(c.preheader ?? "")}
     ...(c.reason ? [c.reason] : []),
     `Help: ${brand.helpUrl}`,
     `Privacy: ${brand.privacyUrl}`,
+    ...(brand.termsUrl ? [`Terms: ${brand.termsUrl}`] : []),
     ...(c.unsubscribeUrl ? [`Unsubscribe: ${c.unsubscribeUrl}`] : []),
     `(c) ${year} ${brand.name}${brand.legalLine ? ` - ${brand.legalLine}` : ""}`,
   ]

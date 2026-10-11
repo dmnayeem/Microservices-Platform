@@ -4,6 +4,7 @@ import { z } from "zod";
 import { registerUser } from "@/lib/auth/services";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { validatePassword } from "@/lib/password-policy";
+import { checkSignupEmail } from "@/lib/email-address-check";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -29,6 +30,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = registerSchema.parse(body);
+
+    // Deliverable, non-disposable address — every verification email to a
+    // dead address is a hard bounce against the whole platform's sending.
+    const emailCheck = await checkSignupEmail(validatedData.email);
+    if (!emailCheck.ok) {
+      return NextResponse.json({ success: false, error: emailCheck.error }, { status: 400 });
+    }
 
     // Admin Security policy (password_min_length + require_strong_passwords).
     const pwError = await validatePassword(validatedData.password);
