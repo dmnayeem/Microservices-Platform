@@ -1586,6 +1586,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "ENGAGEMENT",
   },
   {
+    // Monthly feedback rounds + the idea board (lib/feedback-server.ts).
+    name: "Feedback",
+    href: "/admin/feedback",
+    icon: "MessageSquare",
+    permissions: ["events.view"],
+    category: "ENGAGEMENT",
+  },
+  {
     name: "Quiz Games",
     href: "/admin/quizzes",
     icon: "Brain",

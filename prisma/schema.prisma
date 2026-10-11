@@ -5847,6 +5847,70 @@ model ContestVote {
   @@index([entryId])
 }
 
+/// A feedback round — the monthly form (lib/feedback-server.ts). Questions are
+/// [{ id, type: RATING|NPS|CHOICE|TEXT, label, options?, required }].
+model FeedbackRound {
+  id           String   @id @default(cuid())
+  title        String
+  intro        String?  @db.Text
+  questions    Json
+  startAt      DateTime
+  endAt        DateTime
+  /// Points for a complete, genuine answer (once per member per round).
+  rewardPoints Int      @default(0)
+  minLevel     Int      @default(0)
+  /// DRAFT | PUBLISHED | CLOSED
+  status       String   @default("DRAFT")
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  responses FeedbackResponse[]
+
+  @@index([status, endAt])
+}
+
+model FeedbackResponse {
+  id        String        @id @default(cuid())
+  roundId   String
+  round     FeedbackRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  /// { [questionId]: number | string }
+  answers   Json
+  rewarded  Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  @@unique([roundId, userId])
+}
+
+/// A feature idea on the public board: members post and upvote; the admin
+/// moves it through PLANNED → IN_PROGRESS → SHIPPED (voters are told).
+model FeatureIdea {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String?   @db.Text
+  /// OPEN | PLANNED | IN_PROGRESS | SHIPPED | DECLINED | HIDDEN
+  status    String    @default("OPEN")
+  votes     Int       @default(0)
+  adminNote String?
+  shippedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status, votes])
+  @@index([userId, createdAt])
+}
+
+model FeatureIdeaVote {
+  id        String   @id @default(cuid())
+  ideaId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([ideaId, userId])
+}
+
 /// A level reward claimed (lib/level-rewards-server.ts). Unique on user +
 /// level: each level's reward pays once per account. `points` is what was paid.
 model LevelRewardClaim {
