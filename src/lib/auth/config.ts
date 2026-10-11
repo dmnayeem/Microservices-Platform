@@ -167,6 +167,7 @@ export const authConfig: NextAuthConfig = {
         "/api/cpa/postback", // CPA network S2S postback — HMAC sig / secret key
         "/api/affiliate/click", // affiliate link click from logged-out visitors — per-IP limited, writes only a click row + cookie
         "/api/security/csp-report", // browser CSP violation reports — sent without cookies
+        "/api/email/ses-events", // Amazon SES bounce/complaint feedback via SNS — signature + topic allowlist
         "/api/email/unsubscribe", // RFC 8058 one-click unsubscribe (Gmail/Yahoo POST) — signed token
         "/api/ads/frame/", // ad frame document on AD_FRAME_ORIGIN — no session ever read; 404 on the app host
         "/api/spaces/panel", // ad serve for logged-out visitors on public pages — targeting/caps handle anon; in-memory limited
