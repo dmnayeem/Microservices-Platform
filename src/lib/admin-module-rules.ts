@@ -246,6 +246,7 @@ export const API_MODULE_PREFIXES: Record<string, string> = {
   "/api/admin/missions": "/admin/missions",
   "/api/admin/daily-missions": "/admin/daily-missions",
   "/api/admin/events": "/admin/events",
+  "/api/admin/contests": "/admin/contests",
   "/api/admin/quizzes": "/admin/quizzes",
   "/api/admin/gamification": "/admin/gamification",
   "/api/admin/support": "/admin/support",

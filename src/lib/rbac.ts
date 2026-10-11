@@ -1578,6 +1578,14 @@ export const ADMIN_MODULES: AdminModule[] = [
     category: "ENGAGEMENT",
   },
   {
+    // Creator contests (lib/contests-server.ts) — same permissions as Events.
+    name: "Contests",
+    href: "/admin/contests",
+    icon: "Trophy",
+    permissions: ["events.view"],
+    category: "ENGAGEMENT",
+  },
+  {
     name: "Quiz Games",
     href: "/admin/quizzes",
     icon: "Brain",

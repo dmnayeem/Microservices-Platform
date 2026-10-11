@@ -72,7 +72,7 @@ function verifyStatuses(metadata: unknown): string[] {
 }
 
 /** Ask as a link-preview crawler first, then as a browser. Same chain as submit. */
-async function verifyFetch(url: string, userId: string): Promise<string | null> {
+export async function verifyFetch(url: string, userId: string): Promise<string | null> {
   // `userId`: the per-user outbound limit counts distinct URLs, so re-reading a
   // page the user already submitted costs them nothing extra.
   const asCrawler = await fetchRawHtml(url, CRAWLER_UA, VERIFY_MAX_BYTES, { userId }).catch(() => null);

@@ -5769,6 +5769,84 @@ model CompanySubscription {
   @@index([status])
 }
 
+/// A creator contest (lib/contests-server.ts): users submit a link to their
+/// own TikTok / Reel / Short / post about the platform; the winners are picked
+/// by the admin's score and members' votes together, and paid in points.
+/// Skill-judged, free to enter — no stake, no chance.
+model Contest {
+  id                String    @id @default(cuid())
+  title             String
+  description       String    @db.Text
+  rules             String?   @db.Text
+  coverImage        String?
+  /// Platforms accepted: TIKTOK | INSTAGRAM | YOUTUBE | FACEBOOK | ANY
+  platforms         String[]  @default(["ANY"])
+  /// Must appear in the post (checked when the link can be read), e.g. #RevType
+  hashtag           String?
+  /// Entries open → close (submissions), then members vote until votingEndsAt.
+  startAt           DateTime
+  endAt             DateTime
+  votingEndsAt      DateTime
+  /// Share of the final score from votes (0–100); the rest is the admin's score.
+  voteWeightPct     Int       @default(50)
+  minLevelToEnter   Int       @default(0)
+  minLevelToVote    Int       @default(3)
+  maxEntriesPerUser Int       @default(1)
+  /// [{ rank, points }] — 1st, 2nd, 3rd …
+  prizes            Json
+  /// Points for every approved entry that did not place.
+  participationPoints Int     @default(0)
+  /// DRAFT | PUBLISHED | FINISHED | CANCELLED (open / voting come from the dates)
+  status            String    @default("DRAFT")
+  finalizedAt       DateTime?
+  createdById       String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  entries ContestEntry[]
+
+  @@index([status, endAt])
+}
+
+model ContestEntry {
+  id           String   @id @default(cuid())
+  contestId    String
+  contest      Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  userId       String
+  url          String
+  platform     String
+  caption      String?
+  /// PENDING (admin review) | APPROVED (in the gallery) | REJECTED
+  status       String   @default("PENDING")
+  /// Link check: OK (read, hashtag found) | NO_HASHTAG | UNREADABLE
+  linkCheck    String?
+  rejectReason String?
+  /// Admin's judgement, 0–10.
+  adminScore   Int?
+  votes        Int      @default(0)
+  /// Set when the contest is finalized.
+  rank         Int?
+  prizePoints  Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([contestId, url])
+  @@index([contestId, status])
+  @@index([contestId, userId])
+}
+
+/// One vote per member per contest.
+model ContestVote {
+  id        String   @id @default(cuid())
+  contestId String
+  entryId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([contestId, userId])
+  @@index([entryId])
+}
+
 /// A level reward claimed (lib/level-rewards-server.ts). Unique on user +
 /// level: each level's reward pays once per account. `points` is what was paid.
 model LevelRewardClaim {
