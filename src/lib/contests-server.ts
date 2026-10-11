@@ -122,8 +122,15 @@ export async function castContestVote(
     return fail(`Accounts can vote after ${MIN_ACCOUNT_AGE_DAYS_TO_VOTE} days.`);
   }
 
+  // Accounts made after the contest opened can't vote — a fresh account is the
+  // cheapest vote there is.
+  if (user.createdAt.getTime() > contest.startAt.getTime()) {
+    return fail("Only accounts that existed before this contest started can vote.");
+  }
   const mine = await prisma.userDevice.findMany({ where: { userId }, select: { deviceId: true, fpHash: true }, take: 20 });
-  if (mine.length) {
+  // No device on record = never used the site in a browser (a script): no vote.
+  if (mine.length === 0) return fail("Open RevType in your browser first, then vote.");
+  {
     const ids = mine.map((d) => d.deviceId);
     const fps = mine.map((d) => d.fpHash).filter((f): f is string => !!f);
     const shared = await prisma.userDevice.findFirst({

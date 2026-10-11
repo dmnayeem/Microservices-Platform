@@ -79,7 +79,7 @@ export function AmbassadorView() {
                 <li>• Reach <b className="text-white">{t.monthlyTarget}</b> such members in a month: <b className="text-white">+{pts(t.targetBonus)} pts</b> extra.</li>
               )}
               {t.monthlyCap > 0 && <li>• Up to {pts(t.monthlyCap)} pts a month.</li>}
-              <li>• Paid at the start of each month for the month before.</li>
+              <li>• Each month is paid at the start of the month after next — so members you bring in late in a month have time to get going.</li>
               <li>
                 • To apply: level {t.minLevelToApply}+
                 {t.requireKyc ? ", verified identity (KYC)" : ""}
@@ -103,7 +103,7 @@ export function AmbassadorView() {
                   <div className="rounded-xl bg-(--app-surface-2) p-3">
                     <p className="t-meta text-(--app-ink-3)">Bonus so far</p>
                     <p className="text-2xl font-black text-amber-300">{pts(data.thisMonth.projected)} pts</p>
-                    <p className="text-xs text-(--app-ink-3)">paid next month</p>
+                    <p className="text-xs text-(--app-ink-3)">counted until paid</p>
                   </div>
                 </div>
               )}

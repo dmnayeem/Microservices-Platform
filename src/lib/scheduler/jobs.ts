@@ -217,7 +217,7 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     name: "ambassador-payouts",
     label: "Ambassador monthly bonus",
     description:
-      "From the 1st of each month, pays every approved ambassador last month's bonus: points for each new member they brought in who is active and has done the set number of tasks (Admin → Ambassadors). Separate from referral commission, which it never changes. Each ambassador is paid once per month — running it again pays nothing twice. Does nothing while the program is switched off.",
+      "From the 1st of each month, pays every approved ambassador the bonus for the month before last (so late joiners have a month to qualify): points for each new member they brought in who is active and has done the set number of tasks (Admin → Ambassadors). Separate from referral commission, which it never changes. Each ambassador is paid once per month — running it again pays nothing twice. Does nothing while the program is switched off.",
     intervalMs: 6 * HOUR,
     leaseMs: 10 * MINUTE,
     async run() {

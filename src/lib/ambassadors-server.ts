@@ -34,12 +34,35 @@ export async function qualifiedInMonth(ambassadorId: string, month: string, cfg:
     take: 5000,
   });
   if (joined.length === 0) return 0;
-  const done = (await prisma.taskSubmission.groupBy({
-    by: ["userId"],
-    where: { userId: { in: joined.map((u) => u.id) }, status: { in: ["APPROVED", "AUTO_APPROVED"] } },
-    _count: { _all: true },
-  })) as unknown as Array<{ userId: string; _count: { _all: number } }>;
-  return done.filter((d) => d._count._all >= cfg.qualifyTasks).length;
+  const ids = joined.map((u) => u.id);
+  const [done, ambDevices, refDevices] = await Promise.all([
+    // Real work only: visit tasks can be scripted, so they don't count.
+    prisma.taskSubmission.groupBy({
+      by: ["userId"],
+      where: { userId: { in: ids }, status: { in: ["APPROVED", "AUTO_APPROVED"] }, task: { type: { not: "VISIT" } } },
+      _count: { _all: true },
+    }) as unknown as Promise<Array<{ userId: string; _count: { _all: number } }>>,
+    prisma.userDevice.findMany({ where: { userId: ambassadorId }, select: { deviceId: true, fpHash: true }, take: 50 }),
+    prisma.userDevice.findMany({ where: { userId: { in: ids } }, select: { userId: true, deviceId: true, fpHash: true } }),
+  ]);
+  const ambIds = new Set(ambDevices.map((d) => d.deviceId));
+  const ambFps = new Set(ambDevices.map((d) => d.fpHash).filter((f): f is string => !!f));
+  const devicesOf = new Map<string, { deviceId: string; fpHash: string | null }[]>();
+  for (const d of refDevices) devicesOf.set(d.userId, [...(devicesOf.get(d.userId) ?? []), d]);
+  const seenFps = new Set<string>();
+  let n = 0;
+  for (const d of done) {
+    if (d._count._all < cfg.qualifyTasks) continue;
+    const devs = devicesOf.get(d.userId) ?? [];
+    // The ambassador's own device or browser = their own second account.
+    if (devs.some((x) => ambIds.has(x.deviceId) || (x.fpHash && ambFps.has(x.fpHash)))) continue;
+    // Several "referrals" on one browser fingerprint count once.
+    const fps = devs.map((x) => x.fpHash).filter((f): f is string => !!f);
+    if (fps.some((f) => seenFps.has(f))) continue;
+    fps.forEach((f) => seenFps.add(f));
+    n++;
+  }
+  return n;
 }
 
 /** Can this member apply, and if not, why. */
@@ -134,9 +157,13 @@ export async function payAmbassadorMonth(month: string): Promise<{ paid: number;
   return out;
 }
 
-/** Scheduler: on or after the 1st, pay last month (once). */
+/**
+ * Scheduler: pays the month before LAST (once) — e.g. October on 1 December.
+ * A member who joined on the 30th gets a full month to do their tasks before
+ * their month is paid; paying a day after it ended lost them forever.
+ */
 export async function runAmbassadorPayouts(now = new Date()): Promise<{ month: string; paid: number; points: number; skipped: number }> {
-  const last = monthOf(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)));
+  const last = monthOf(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1)));
   const cfg = await getAmbassadorConfig();
   if (!cfg.enabled) return { month: last, paid: 0, points: 0, skipped: 0 };
   return { month: last, ...(await payAmbassadorMonth(last)) };

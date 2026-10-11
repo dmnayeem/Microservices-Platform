@@ -39,6 +39,7 @@ const DEFAULTS: SettingsBag = {
   "antifraud.vpn_api_key": "",
   "antifraud.vpn_block_all_tasks": false,
   "antifraud.vpn_locked_paths": "",
+  "tasks.visit_daily_auto_cap": 20,
   "antifraud.adblock_gate_enabled": true,
   "antifraud.adblock_reminder_minutes": 0,
 };
@@ -57,6 +58,16 @@ export function FraudSettingsPanel({
   return (
     <div className="max-w-4xl space-y-4">
       <Section title="Task approval automation">
+        <Field settingKey="tasks.visit_daily_auto_cap">
+          <input
+            type="number"
+            min={0}
+            value={Number(values["tasks.visit_daily_auto_cap"] ?? 20)}
+            onChange={(e) => set("tasks.visit_daily_auto_cap", Math.max(0, parseInt(e.target.value) || 0))}
+            disabled={!canEdit}
+            className={inp}
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field settingKey="antifraud.auto_approve_min_trust">
             <input

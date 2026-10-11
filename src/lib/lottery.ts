@@ -457,7 +457,8 @@ export async function payRefunds(
           await prisma.$transaction(async (tx) => {
             await creditPoints(tx, {
               userId: t.userId,
-              points: l.ticketPrice,
+              // Free / earned tickets cost nothing, so they refund nothing.
+              points: ((l as { entryMode?: string }).entryMode ?? "PAID") === "PAID" ? l.ticketPrice : 0,
               type: TransactionType.REFUND,
               description: `Lottery refunded (${reason}): ${l.title}`,
               reference: `lottery_refund_${lotteryId}_${t.id}`,

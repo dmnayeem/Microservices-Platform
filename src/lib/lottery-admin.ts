@@ -50,7 +50,14 @@ const base = {
 };
 
 export const lotteryCreateSchema = z.object(base);
-export const lotteryUpdateSchema = z.object(base).partial();
+// The update takes only what was sent. `.partial()` keeps zod's defaults, so
+// every PATCH used to fill in prizes: [], prizeMode, entryMode, minTickets …
+// — which reset the prizes, and (once tickets were sold) made every edit,
+// even a title, look like a change to a frozen field.
+const updateShape = Object.fromEntries(
+  Object.entries(base).map(([k, v]) => [k, v instanceof z.ZodDefault ? (v as z.ZodDefault<z.ZodTypeAny>).unwrap() : v])
+) as typeof base;
+export const lotteryUpdateSchema = z.object(updateShape).partial();
 
 export type LotteryInput = z.infer<typeof lotteryCreateSchema>;
 
@@ -127,6 +134,9 @@ export function lotteryConfigError(v: Partial<LotteryInput>): string | null {
 /** Turn validated input into Prisma data (dates parsed, empty tiers → null). */
 export function lotteryData(v: Partial<LotteryInput>) {
   const out: Record<string, unknown> = { ...v };
+  // A free / earned draw sells nothing: its price is 0, so no refund, pool or
+  // display can ever count a "sale" that never happened.
+  if (v.entryMode !== undefined && v.entryMode !== "PAID") out.ticketPrice = 0;
   if (v.startDate !== undefined) out.startDate = new Date(v.startDate);
   if (v.endDate !== undefined) out.endDate = new Date(v.endDate);
   if (v.drawDate !== undefined) out.drawDate = new Date(v.drawDate);

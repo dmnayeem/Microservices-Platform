@@ -59,7 +59,7 @@ export async function visitEvidence(submissionId: string) {
 
 const PASS_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 /** Passes one address may make per hour, across all tasks (reload / farm guard). */
-const PASS_PER_IP_HOUR = 20;
+const PASS_PER_IP_HOUR = 60;
 
 /** `P-XXXXXX` as shown; stored without the dash. */
 export const displayPass = (code: string) => `${code.slice(0, 1)}-${code.slice(1)}`;

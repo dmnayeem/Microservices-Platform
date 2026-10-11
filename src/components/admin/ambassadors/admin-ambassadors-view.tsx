@@ -32,7 +32,7 @@ export function AdminAmbassadorsView({ canManage }: { canManage: boolean }) {
   const [saving, setSaving] = useState(false);
   const [payMonth, setPayMonth] = useState(() => {
     const d = new Date();
-    const prev = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
+    const prev = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 2, 1));
     return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
   });
 
@@ -100,7 +100,7 @@ export function AdminAmbassadorsView({ canManage }: { canManage: boolean }) {
         <p className="mt-1 text-sm text-slate-400">
           Members apply; you approve. Approved ambassadors get a separate monthly bonus for each new member they bring
           in who becomes active (does the set number of tasks). The 3-level referral commission is not touched — this
-          is paid on its own, at the start of each month for the month before (or with &ldquo;Pay month&rdquo;).
+          is paid on its own: each month at the start of the month after next, so late joiners have time to qualify (or any finished month with &ldquo;Pay month&rdquo;). A referral counts only if it isn&apos;t on the ambassador&apos;s device or browser, and visit tasks don&apos;t count.
         </p>
       </div>
 

@@ -746,6 +746,27 @@ export async function POST(
       }
     }
 
+    // Visit tasks can be scripted (open, wait, come back), so automatic pay is
+    // capped per member per day (Fraud Control: tasks.visit_daily_auto_cap,
+    // default 20). Past it, claims still go in — for a person to check.
+    if (task.type === "VISIT" && visitAutoApprove) {
+      const cap = Math.max(0, Number(await getSetting<number>("tasks.visit_daily_auto_cap", 20)) || 0);
+      if (cap > 0) {
+        const paidToday = await prisma.taskSubmission.count({
+          where: {
+            userId: session.user.id,
+            status: SubmissionStatus.AUTO_APPROVED,
+            task: { type: "VISIT" },
+            reviewedAt: { gte: new Date(Date.now() - 86_400_000) },
+          },
+        });
+        if (paidToday >= cap) {
+          visitAutoApprove = false;
+          visitHold = `Over the daily automatic limit for visit tasks (${cap}) — check before paying.`;
+        }
+      }
+    }
+
     // ── Social task: enforce each action's configured proof requirements ──
     // These were previously checked only in the browser, so a crafted POST with
     // an empty `items` array was accepted and went to a reviewer with no proof

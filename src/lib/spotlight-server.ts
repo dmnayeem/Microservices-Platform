@@ -136,15 +136,21 @@ export async function placeSpotlightBid(
 export async function closeEndedSpotlights(): Promise<{ awarded: number; empty: number }> {
   const due = await prisma.spotlightAuction.findMany({
     where: { status: "OPEN", biddingEndsAt: { lte: new Date() } },
+    orderBy: { biddingEndsAt: "asc" },
     select: { id: true },
     take: 50,
   });
   let awarded = 0;
   let empty = 0;
+  // One auction failing must never stop the others from closing.
   for (const { id } of due) {
-    const r = await awardSpotlight(id);
-    if (r === "awarded") awarded++;
-    else if (r === "empty") empty++;
+    try {
+      const r = await awardSpotlight(id);
+      if (r === "awarded") awarded++;
+      else if (r === "empty") empty++;
+    } catch (e) {
+      console.error("[spotlight] award failed", id, e);
+    }
   }
   return { awarded, empty };
 }
@@ -165,8 +171,11 @@ export async function awardSpotlight(auctionId: string): Promise<"awarded" | "em
       where: { id: auctionId },
       data: { status: "AWARDED", winnerUserId: top.userId, winnerPostId: top.postId, winnerBid: top.amount, awardedAt: new Date() },
     });
-    await tx.post.update({
-      where: { id: top.postId },
+    // The winning bid is spent either way. A post the winner deleted, hid or
+    // made private after bidding is simply not promoted — it used to throw
+    // here, roll the award back, and stall every auction behind it.
+    await tx.post.updateMany({
+      where: { id: top.postId, userId: top.userId, isPublic: true, isHidden: false },
       data: { isPromoted: true, promotedUntil: until, promotedNote: "Spotlight" },
     });
     await tx.notification.create({

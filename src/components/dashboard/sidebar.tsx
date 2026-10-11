@@ -3,7 +3,7 @@
 import { BrandLockup, BrandMark } from "@/components/providers/brand";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useNavCounts, badgeText } from "@/hooks/use-nav-counts";
+import { navCountMap, useNavCounts, badgeText } from "@/hooks/use-nav-counts";
 import { useState } from "react";
 import { Avatar } from "@/components/user/primitives/avatar";
 import {
@@ -111,12 +111,7 @@ function SidebarContent({ user, pathname, onNavigate, onSignOut, features, hidde
   // What is still waiting on these pages, like the notification bell's count:
   // it goes down as the user completes tasks and claims rewards.
   const navCounts = useNavCounts();
-  const countFor: Record<string, number> = {
-    "/daily-mission": navCounts.dailyMission,
-    "/missions": navCounts.missions,
-    "/events": navCounts.events,
-    "/lottery": navCounts.lottery,
-  };
+  const countFor: Record<string, number> = navCountMap(navCounts);
   // Segment-prefix match, same as the route guards: hiding "/tutor" also
   // drops "/tutor/courses" from the Teaching section.
   const visible = (item: NavItem) => visibleFor([item], features, hiddenPaths).length > 0;

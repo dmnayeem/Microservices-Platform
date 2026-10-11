@@ -298,6 +298,8 @@ export async function POST(request: NextRequest) {
               userId,
               status: { in: ["APPROVED", "AUTO_APPROVED"] },
               createdAt: { gte: lottery.startDate },
+              // Visit tasks can be scripted — they don't earn tickets.
+              task: { type: { not: "VISIT" } },
             },
           });
           const earned = Math.min(lottery.maxTicketsPerUser, Math.floor(done / perTicket));
