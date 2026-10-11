@@ -56,6 +56,11 @@ export async function syncUserLevel(
     where: { id: userId },
     data: { level: shouldBe },
   });
+  // A level with a reward: a celebration popup with a Claim button. Imported
+  // lazily — level-sync is imported by a dozen reward paths, and this keeps
+  // the level-rewards module (and its ledger import) out of their graph.
+  const { notifyLevelRewards } = await import("@/lib/level-rewards-server");
+  await notifyLevelRewards(userId, user.level, shouldBe);
   return { level: shouldBe, changed: true };
 }
 

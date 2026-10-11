@@ -5769,6 +5769,19 @@ model CompanySubscription {
   @@index([status])
 }
 
+/// A level reward claimed (lib/level-rewards-server.ts). Unique on user +
+/// level: each level's reward pays once per account. `points` is what was paid.
+model LevelRewardClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  level     Int
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, level])
+  @@index([level])
+}
+
 /// Once-only finance alerts already sent (lib/company-finance/alerts.ts):
 /// "<TYPE>:<dedupe key>", e.g. "RECURRING_DUE:<recurringId>:2026-11". The
 /// unique key IS the claim — inserted before sending, so a rerun sends nothing.

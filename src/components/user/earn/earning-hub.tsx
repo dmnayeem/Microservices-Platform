@@ -42,6 +42,7 @@ import { levelProgress, calculateXpForLevel } from "@/lib/level";
 import { taskRunHref } from "@/lib/task-routes";
 import { isPathHidden, taskTypePage } from "@/lib/page-visibility";
 import { ScrollFadeRow } from "@/components/user/primitives/scroll-fade-row";
+import { LevelRewardsCard } from "@/components/user/gamification/level-rewards-card";
 
 type TabKey =
   | "tasks"
@@ -505,6 +506,8 @@ export function LevelUpTab({ user }: { user: UserSummary }) {
   return (
     <div className="space-y-4">
       <AdRenderer placement="EARN_HUB" />
+      {/* What reaching a level pays (admin's ladder) — claimable ones first. */}
+      <LevelRewardsCard compact />
       {/* Current Level Card */}
       <div
         className={`rounded-2xl p-5 bg-linear-to-r ${currentTier.gradient} shadow-2xl`}
