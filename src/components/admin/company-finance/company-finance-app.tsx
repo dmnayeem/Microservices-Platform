@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Landmark,
   Settings2,
+  BellRing,
   ShieldCheck,
   AlertTriangle,
   type LucideIcon,
@@ -26,6 +27,7 @@ import { RecurringTab } from "./recurring-tab";
 import { SubscriptionsTab } from "./subscriptions-tab";
 import { TaxTab } from "./tax-tab";
 import { SettingsTab } from "./settings-tab";
+import { AlertsTab } from "./alerts-tab";
 import { TeamTab } from "./team-tab";
 
 type TabId =
@@ -38,6 +40,7 @@ type TabId =
   | "subscriptions"
   | "tax"
   | "settings"
+  | "alerts"
   | "team";
 
 const TABS: { id: TabId; label: string; icon: LucideIcon; show: (m: Meta) => boolean }[] = [
@@ -50,6 +53,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon; show: (m: Meta) => boo
   { id: "subscriptions", label: "Subscriptions", icon: CalendarClock, show: () => true },
   { id: "tax", label: "VAT & tax", icon: Landmark, show: () => true },
   { id: "settings", label: "Categories & fields", icon: Settings2, show: (m) => m.can.settings },
+  { id: "alerts", label: "Alerts", icon: BellRing, show: (m) => m.can.settings },
   { id: "team", label: "Finance team", icon: ShieldCheck, show: (m) => m.can.staff },
 ];
 const TAB_IDS = TABS.map((t) => t.id);
@@ -114,6 +118,7 @@ export function CompanyFinanceApp() {
       {active === "subscriptions" && <SubscriptionsTab meta={meta} />}
       {active === "tax" && <TaxTab meta={meta} />}
       {active === "settings" && <SettingsTab meta={meta} onChanged={reload} />}
+      {active === "alerts" && <AlertsTab />}
       {active === "team" && <TeamTab />}
     </div>
   );

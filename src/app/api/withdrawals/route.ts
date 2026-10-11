@@ -20,6 +20,7 @@ import { getWithdrawalConfig } from "@/lib/withdrawal";
 import { profileGateResponse } from "@/lib/profile-gate-server";
 import { getCourseSettings } from "@/lib/course-settings";
 import { getDisputeWindowDays } from "@/lib/marketplace-selling";
+import { queueFinanceAlert } from "@/lib/company-finance/alerts";
 
 // GET /api/withdrawals - Get user's withdrawal history
 export async function GET(request: NextRequest) {
@@ -450,6 +451,13 @@ export async function POST(request: NextRequest) {
           netAmount,
         },
       },
+    });
+
+    // The finance team hears about it (Alerts tab → "New withdrawal request").
+    queueFinanceAlert("WITHDRAWAL_REQUEST", {
+      title: `New withdrawal request: ${usd(amount)}`,
+      message: `${session.user.name || session.user.email || "A user"} asked to withdraw ${usd(amount)} via ${method} (${usd(netAmount)} after the fee). Waiting for approval.`,
+      link: `/admin/withdrawals/${withdrawal.id}`,
     });
 
     return NextResponse.json({

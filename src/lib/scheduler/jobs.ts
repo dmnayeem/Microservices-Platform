@@ -45,6 +45,7 @@ import { runPreviousMonthReferralBonuses } from "@/lib/referral-bonus";
 import { sweepStaleGameSessions } from "@/lib/game-cron";
 import { releaseDueCpaHolds } from "@/lib/cpa/credit";
 import { releaseHeldOfferwallCompletions } from "@/lib/offerwall";
+import { runBillReminders, summariseBillReminders } from "@/lib/company-finance/alerts";
 
 /**
  * Everything the platform used to ask a cron to call.
@@ -208,6 +209,18 @@ export const SCHEDULED_JOBS: ScheduledJobDef[] = [
     async run() {
       const s = await runSubscriptionReminders();
       return { ok: true, summary: summariseReminders(s), result: s };
+    },
+  },
+  {
+    name: "finance-bill-reminders",
+    label: "Bill reminders (finance)",
+    description:
+      "Warns the finance team before each recurring bill (rent, internet, servers, salaries) falls due — 7 days ahead by default — and when a bill is still unpaid after its due date (the day after and a week later). In-app and by email, as switched on the Alerts tab of the company books. Each reminder goes out once: running it again sends nothing new.",
+    intervalMs: 6 * HOUR,
+    leaseMs: 5 * MINUTE,
+    async run() {
+      const s = await runBillReminders();
+      return { ok: true, summary: summariseBillReminders(s), result: s };
     },
   },
   // ── Moved here from Inngest ───────────────────────────────────────────────

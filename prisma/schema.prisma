@@ -5769,6 +5769,17 @@ model CompanySubscription {
   @@index([status])
 }
 
+/// Once-only finance alerts already sent (lib/company-finance/alerts.ts):
+/// "<TYPE>:<dedupe key>", e.g. "RECURRING_DUE:<recurringId>:2026-11". The
+/// unique key IS the claim — inserted before sending, so a rerun sends nothing.
+model FinanceAlertLog {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 // ─── CPA offers ──────────────────────────────────────────────────────────────
 // A module of its own, deliberately separate from the Offerwall (owner's call,
 // 2026-09-29). Admin adds a network offer with a macro tracking link; the user

@@ -6,6 +6,8 @@ import { withIdempotency } from "@/lib/idempotency";
 import { prisma } from "@/lib/prisma";
 import { getEnabledDepositMethods } from "@/lib/deposit-methods";
 import { toNum } from "@/lib/money";
+import { queueFinanceAlert } from "@/lib/company-finance/alerts";
+import { usd } from "@/lib/utils";
 
 /** List the current user's deposits. */
 export async function GET() {
@@ -88,6 +90,13 @@ export async function POST(request: NextRequest) {
       proofUrl,
       status: "PENDING",
     },
+  });
+
+  // The finance team hears about it (Alerts tab → "New manual deposit").
+  queueFinanceAlert("DEPOSIT_REQUEST", {
+    title: `New deposit to check: ${usd(amount)}`,
+    message: `${session.user.name || session.user.email || "A user"} sent ${usd(amount)} by ${picked.label} (transaction id ${txnId}). Waiting for approval.`,
+    link: "/admin/deposits",
   });
 
   return NextResponse.json({ success: true, deposit });
