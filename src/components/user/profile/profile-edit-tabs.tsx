@@ -302,7 +302,7 @@ export function KycTab({ data }: { data: ProfileResponse }) {
 
       <p className="text-sm text-(--app-ink-3) mb-4">
         Submit a government-issued ID (front + back) and a selfie to verify your identity.
-        Approved KYC unlocks higher withdrawal limits and the blue 🔵 badge.
+        Approved KYC unlocks higher withdrawal limits. The blue 🔵 badge is bought separately on the Badge page.
       </p>
 
       <div className="flex flex-wrap gap-2">

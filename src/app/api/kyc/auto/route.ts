@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
           type: "SYSTEM",
           title: "KYC verified ✅",
           message:
-            "Your identity was verified instantly. You now have full access to withdrawals and the blue badge.",
+            "Your identity was verified instantly. You now have full access to withdrawals. Want the blue verified badge? Get it from the Badge page.",
         },
       });
     });
